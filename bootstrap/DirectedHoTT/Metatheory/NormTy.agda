@@ -30,19 +30,19 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
-module DirectedHoTT.Metatheory.NormTy (𝒮 : KSig) (wf : WfK 𝒮) where
+module DirectedHoTT.Metatheory.NormTy (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at the whole signature, its entries typed and its
 --   references reducible — both from its context formation
 private
   n : ℕ
-  n = KSig.size 𝒮
+  n = Defs.size 𝒮
   ok : Ty.EntriesOK 𝒮 n
   ok = Entries.sigOK 𝒮 n wf
   refs : Sem.RefsOK 𝒮 n

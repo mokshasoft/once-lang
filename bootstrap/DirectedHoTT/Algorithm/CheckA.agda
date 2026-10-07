@@ -74,7 +74,7 @@ module DirectedHoTT.Algorithm.CheckA (S : Sig) (wfK : WfK (kernel S))
 open Sig S
 
 private
-  𝒮 : KSig
+  𝒮 : Defs
   𝒮 = kernel S
   ok : _
   ok = Entries.sigOK 𝒮 size wfK

@@ -21,8 +21,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Lib.NatVal (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Lib.NatVal (𝒮 : Defs) where
 open import DirectedHoTT.Spec.Syntax using ( RTm; ε; nzero; nsuc )
 open import DirectedHoTT.Spec.Reduction 𝒮 using ( _⟶*_ )
 

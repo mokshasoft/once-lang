@@ -9,11 +9,11 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
 import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
-module DirectedHoTT.Metatheory.Fundamental (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) (refs : Sem.RefsOK 𝒮 n) where
+module DirectedHoTT.Metatheory.Fundamental (𝒮 : Defs) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) (refs : Sem.RefsOK 𝒮 n) where
 open import DirectedHoTT.Algorithm.DecEq
   using ( Dec )
 open import DirectedHoTT.Metatheory.RedCong 𝒮
@@ -1920,7 +1920,7 @@ fund (⊢tr dc' da' dv nc hc ha dt du dp de) x₀ ρ =
 -- ★ a REFERENCE (PLAN-REF): a projection from the signature, related by
 --   the oracle — its declared type is closed, so the substitution only
 --   weakens it
-fund {σ = σ} (⊢ref {d = d} p) x₀ ρ = relTy (sym (εwk-sub σ (KSig.type 𝒮 d))) (refs p x₀)
+fund {σ = σ} (⊢ref {d = d} p) x₀ ρ = relTy (sym (εwk-sub σ (Defs.type 𝒮 d))) (refs p x₀)
 fund {σ = σ} (⊢conv d c) x₀ ρ =
   ( conv₁ (≅ᵀ-sub σ c) (dfst (fund d x₀ ρ))
   , sem-conv (≅ᵀ-sub σ c) (dfst (fund d x₀ ρ))

@@ -15,9 +15,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig )
+open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
-module DirectedHoTT.Algorithm.NbE.TblOK (𝒮 : KSig) (tbl : Tbl) where
+module DirectedHoTT.Algorithm.NbE.TblOK (𝒮 : Defs) (tbl : Tbl) where
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; ref )
 open import DirectedHoTT.Spec.Reduction 𝒮 using ( _≅_ )

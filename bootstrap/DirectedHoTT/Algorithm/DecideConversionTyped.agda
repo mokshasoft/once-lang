@@ -17,17 +17,17 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig )
+open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
-module DirectedHoTT.Algorithm.DecideConversionTyped (𝒮 : KSig) (wf : WfK 𝒮) where
+module DirectedHoTT.Algorithm.DecideConversionTyped (𝒮 : Defs) (wf : WfK 𝒮) where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
 
 -- ★ PLAN-REF: at a well-formed signature (all its names)
 private
-  n = KSig.size 𝒮
+  n = Defs.size 𝒮
   ok = Entries.sigOK 𝒮 n wf
   refs = Entries.refsOK 𝒮 n (λ p → p) wf
 

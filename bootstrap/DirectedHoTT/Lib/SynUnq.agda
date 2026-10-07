@@ -23,14 +23,14 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
-module DirectedHoTT.Lib.SynUnq (𝒮 : KSig) (wf : WfK 𝒮) where
+module DirectedHoTT.Lib.SynUnq (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
 private
-  𝓃 = KSig.size 𝒮
+  𝓃 = Defs.size 𝒮
   ok = Entries.sigOK 𝒮 𝓃 wf
   refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 

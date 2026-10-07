@@ -17,8 +17,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig )
-module DirectedHoTT.Spec.Reduction (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+module DirectedHoTT.Spec.Reduction (𝒮 : Defs) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -30,7 +30,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-subTy; subTy-cong; renTy-subTy; subTm-renTm; subTm-id
         ; εwkTy; εwk-ren; εwk-sub; εwkTm
         ; IMu; Desc; DIh; Fin; ⌜IMu⌝; ⌜Fin⌝; con; ielim; dι; dσ; dρ; dpay; dih
-        ; fzero; fsuc; fcase; fcase0; psplit; ref; KSig; _<ˢ_ )
+        ; fzero; fsuc; fcase; fcase0; psplit; ref; Defs; _<ˢ_ )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -271,7 +271,7 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- ★ δ: a reference is a projection from the signature, and unfolds to
   --   its body (PLAN-REF, D082).  The body is closed, so the rule is
   --   context-free; a name beyond the signature is stuck.
-  δref      : {Δ : Cx} (d : ℕ) → d <ˢ KSig.size 𝒮 → ref {Δ} d ⟶ εwkTm {Δ} (KSig.body 𝒮 d)
+  δref      : {Δ : Cx} (d : ℕ) → d <ˢ Defs.size 𝒮 → ref {Δ} d ⟶ εwkTm {Δ} (Defs.body 𝒮 d)
   -- congruences
   ξ-⌜IMu⌝ᴵ  : {I I' D i : RTm Γ} → I ⟶ I' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I' D i
   ξ-⌜IMu⌝ᴰ  : {I D D' i : RTm Γ} → D ⟶ D' → ⌜IMu⌝ I D i ⟶ ⌜IMu⌝ I D' i

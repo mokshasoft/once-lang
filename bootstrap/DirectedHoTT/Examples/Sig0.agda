@@ -14,7 +14,7 @@
 module DirectedHoTT.Examples.Sig0 where
 open import normalizer.Syntax.Types using ( tt )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( KSig; ∅ᴷ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; ∅ᴷ )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Spec.Typing as Ty
 import DirectedHoTT.Metatheory.Entries as Entries

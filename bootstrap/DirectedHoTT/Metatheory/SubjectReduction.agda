@@ -26,10 +26,10 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
-module DirectedHoTT.Metatheory.SubjectReduction (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
+module DirectedHoTT.Metatheory.SubjectReduction (𝒮 : Defs) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
@@ -511,7 +511,7 @@ gen-psplit (⊢conv d c) with gen-psplit d
 -- ★ a reference: its name is in scope, and the use's type converts to
 --   the declared one
 gen-ref : {Γ : Ctx} {d : ℕ} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ref d ∷ C →
-          (d <ˢ n) × (C ≅ᵀ εwkTy (KSig.type 𝒮 d))
+          (d <ˢ n) × (C ≅ᵀ εwkTy (Defs.type 𝒮 d))
 gen-ref (⊢ref p) = p , crflᵀ
 gen-ref (⊢conv d c) with gen-ref d
 ... | p , c' = p , ctrnᵀ (csymᵀ c) c'

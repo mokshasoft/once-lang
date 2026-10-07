@@ -34,8 +34,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.RedCong (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.RedCong (𝒮 : Defs) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -514,7 +514,7 @@ ren-comm2 {Γ} ρ b x y =
   subst (λ z → fcase (fsuc (renTm ρ t)) (renTm ρ a) (renTm (extR ρ) b) ⟶ z)
         (sym (ren-comm ρ b t))
         (fcase-s _ _ _)
-⟶-ren ρ (δref d p) = subst (λ z → ref d ⟶ z) (sym (εwkTm-ren ρ (KSig.body 𝒮 d))) (δref d p)
+⟶-ren ρ (δref d p) = subst (λ z → ref d ⟶ z) (sym (εwkTm-ren ρ (Defs.body 𝒮 d))) (δref d p)
 ⟶-ren ρ (psplit-β b x y) =
   subst (λ z → psplit (renTm (extR (extR ρ)) b) (pair (renTm ρ x) (renTm ρ y)) ⟶ z)
         (sym (ren-comm2 ρ b x y))

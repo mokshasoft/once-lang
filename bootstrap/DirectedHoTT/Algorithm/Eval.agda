@@ -39,8 +39,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Algorithm.Eval (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Algorithm.Eval (𝒮 : Defs) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; Σ; _,_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
@@ -93,7 +93,7 @@ apG cB b c₁ s true  h = just (_ , ap-J cB b c₁ s h)
 apG cB b c₁ s false h = nothing
 
 -- ★ δ fires exactly on the names of the signature (PLAN-REF)
-refHead : (n : ℕ) → Dec (n <ˢ KSig.size 𝒮) → Maybe (Step (ref {Γ} n))
+refHead : (n : ℕ) → Dec (n <ˢ Defs.size 𝒮) → Maybe (Step (ref {Γ} n))
 refHead n (yes p) = just (_ , δref n p)
 refHead n (no _)  = nothing
 
@@ -131,7 +131,7 @@ head (dih D e (dρ j C) p)                  = just (_ , dih-ρ D e j C p)
 head (fcase fzero a b)                     = just (_ , fcase-z a b)
 head (fcase (fsuc t) a b)                  = just (_ , fcase-s t a b)
 head (psplit b (pair x y))                 = just (_ , psplit-β b x y)
-head (ref n)                               = refHead n (n <ˢ? KSig.size 𝒮)
+head (ref n)                               = refHead n (n <ˢ? Defs.size 𝒮)
 head _                                     = nothing
 
 headᵀ : (A : RTy Γ) → Maybe (Stepᵀ A)
@@ -258,9 +258,9 @@ private
 nf-irr  : {t v : RTm Γ} → Nf t → t ⟶ v → ⊥
 nf-irrᵀ : {A B : RTy Γ} → Nfᵀ A → A ⟶ᵀ B → ⊥
 
-nf-irr (nf-ref {d = d} h) (δref _ p) = refStuck d p (d <ˢ? KSig.size 𝒮) h
+nf-irr (nf-ref {d = d} h) (δref _ p) = refStuck d p (d <ˢ? Defs.size 𝒮) h
   where
-  refStuck : (d : ℕ) → d <ˢ KSig.size 𝒮 → (q : Dec (d <ˢ KSig.size 𝒮)) → refHead {Γ} d q ≡ nothing → ⊥
+  refStuck : (d : ℕ) → d <ˢ Defs.size 𝒮 → (q : Dec (d <ˢ Defs.size 𝒮)) → refHead {Γ} d q ≡ nothing → ⊥
   refStuck d p (yes _) ()
   refStuck d p (no ¬p) _ = ¬p p
 nf-irr (nf-app _ _ ()) (β _ _)

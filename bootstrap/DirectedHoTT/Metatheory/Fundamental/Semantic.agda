@@ -15,8 +15,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
-module DirectedHoTT.Metatheory.Fundamental.Semantic (𝒮 : KSig) where
+open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.Fundamental.Semantic (𝒮 : Defs) where
 open import DirectedHoTT.Metatheory.TySub.Red 𝒮
   using ( wk-cancel-tm )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
@@ -1664,4 +1664,4 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( εwkTy; ref; Var; Cx )
 
 RefsOK : ℕ → Set
-RefsOK m = ∀ {Ξ : Cx} {d} → d <ˢ m → Var Ξ → Rel (εwkTy {Ξ} (KSig.type 𝒮 d)) (ref d)
+RefsOK m = ∀ {Ξ : Cx} {d} → d <ˢ m → Var Ξ → Rel (εwkTy {Ξ} (Defs.type 𝒮 d)) (ref d)
