@@ -11,30 +11,42 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.JudgeCase where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.JudgeCase (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Lib.NatCode using ( fromI )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_; v₀; _,ₚ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynFib using ( Row )
-open import DirectedHoTT.Lib.SynPat using ( module Pat; lookSh )
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows )
-open import DirectedHoTT.Examples.Knot.JudgeIx
-open import DirectedHoTT.Examples.Knot.JudgeTmIx
-open import DirectedHoTT.Examples.Knot.JudgeFib using () renaming ( RowOK to RowOKₒ )
-open import DirectedHoTT.Examples.Knot.Ctors
-open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
-open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
+import DirectedHoTT.Lib.NatCode 𝒮 𝓃 as ᴵNatCode
+open ᴵNatCode using ( fromI )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_; v₀; _,ₚ_ )
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( PayV )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( Row )
+open import DirectedHoTT.Lib.SynPat 𝒮 𝓃 ok using ( module Pat; lookSh )
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( rows; ⊢rows )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.JudgeTmIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.JudgeFib 𝒮 wf using () renaming ( RowOK to RowOKₒ )
+open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( ⌜TSig⌝; ⌜TSig⌝-sub; ⊢⌜TSig⌝ )
+open import DirectedHoTT.Examples.Knot.Ctors 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk; ⊢wkS )
+open ᴵNatCode using ( ⊢isuc )
 
 private
   variable
@@ -94,32 +106,32 @@ toTm da = ⊢conv da (csymᵀ (credᵀ El-⌜Tm⌝))
 ------------------------------------------------------------------------
 
 -- a bare telescope (a case's row)
-defRow₀ : (T : {Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → Tel Δ) → TelLaw T → Row
-defRow₀ T law = record { R = λ j p c → ⌜ T j p c ⌝ᵗ ; R-sub = law }
+defRow₀ : (T : {Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ) → TelLaw T → Row
+defRow₀ T law = record { R = λ q j p c → ⌜ T q j p c ⌝ᵗ ; R-sub = law }
 
 -- term shape `sh`, the type's head `h`, the case's row `r` over `(j , q , (Γ , p))`
 module CaseRow (sh : Shape) (shok : ShOK 2 sh) (h : ℕ) (r : Row) where
-  open Pat KOK JT JT-sub ⊢JT (CI sh) (CI-sub sh) (⊢CI shok) 0 h r public
+  open Pat KOK ⌜TSig⌝ ⌜TSig⌝-sub ⊢⌜TSig⌝ JT JT-sub ⊢JT (CI sh) (CI-sub sh) (⊢CI shok) 0 h r public
 
-  CX : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-  CX j p c = CASE j (snd c) ((fst c) ,ₚ p)
+  CX : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
+  CX q j p c = CASE q j (snd c) ((fst c) ,ₚ p)
 
   rX : Row
   rX = record
-    { R = λ j p c → rows (CX j p c ∷ [])
-    ; R-sub = λ σ j p c →
-        trans (rows-sub' σ (CX j p c ∷ []))
-              (cong (λ X → rows (X ∷ [])) {x = subTm σ (CX j p c)} {y = CX (subTm σ j) (subTm σ p) (subTm σ c)}
-                    (CASE-sub σ j (snd c) ((fst c) ,ₚ p))) }
+    { R = λ q j p c → rows (CX q j p c ∷ [])
+    ; R-sub = λ σ q j p c →
+        trans (rows-sub' σ (CX q j p c ∷ []))
+              (cong (λ X → rows (X ∷ [])) {x = subTm σ (CX q j p c)} {y = CX (subTm σ q) (subTm σ j) (subTm σ p) (subTm σ c)}
+                    (CASE-sub σ q j (snd c) ((fst c) ,ₚ p))) }
 
-  ⊢CX : RowOK 0 (lookSh KSig 0 h) r → {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
+  ⊢CX : RowOK 0 (lookSh KSig 0 h) r → {Ξ : Ctx} {q j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ q ∷ El ⌜TSig⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ →
         Ξ ⊢ p ∷ PayV sh ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (CTat ((tag 1) ,ₚ j)) →
-        Ξ ⊢ CX j p c ∷ Desc JT
-  ⊢CX rok {Ξ} {j} {p} {c} dj dp dc =
-    ⊢CASE {Ξ} {j} {snd c} {pair (fst c) p} rok lt-z dj (⊢tyOf dc) (⊢cI sh shok dj (⊢ctxOf dc) dp)
+        Ξ ⊢ CX q j p c ∷ Desc JT
+  ⊢CX rok {Ξ} {q} {j} {p} {c} dq dj dp dc =
+    ⊢CASE {Ξ} {q} {j} {snd c} {pair (fst c) p} rok lt-z dq dj (⊢tyOf dc) (⊢cI sh shok dj (⊢ctxOf dc) dp)
 
   okX : RowOK 0 (lookSh KSig 0 h) r → RowOKₒ 1 sh rX
-  okX rok {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {JT} {1} {CX j p c ∷ []} ⊢JT (⊢CX rok {Ξ} {j} {p} {c} dj dp dc ∷ᵈ []ᵈ)
+  okX rok {Ξ} {q} {j} {p} {c} dq dj dp dc = ⊢rows {Ξ} {JT} {1} {CX q j p c ∷ []} ⊢JT (⊢CX rok {Ξ} {q} {j} {p} {c} dq dj dp dc ∷ᵈ []ᵈ)
 
 ------------------------------------------------------------------------
 -- 4. GOAL-DIRECTED σ-PREFIX TYPING: the contexts flow from the goal (a

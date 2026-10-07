@@ -47,7 +47,7 @@ open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf
   using ( canNat; NatShape; ns-zero; ns-suc; sz; _≤_; ≤-refl )
 open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( tag; conₗ; Lt; lt-z; lt-s; selF-β; nth-sub; subC; selF; Nth; [] )
 open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok using ( ⌜_⌝ᵗ; ⌜_⌝ₛ; nth-⌜⌝; nthᵗ-z; nthᵗ-s )
-open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num )
+open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num; num-sub )
 open import DirectedHoTT.Lib.NatFib 𝒮 𝓃 ok using ( fibN-z; fibN-s )
 open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( toI; fromI )
 open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
@@ -86,6 +86,17 @@ data SArgs sg d where
 ⌜ s-nat m as ⌝ᵃ = pair (num m) ⌜ as ⌝ᵃ
 ⌜ s-cls t as ⌝ᵃ = pair ⌜ t ⌝ˢ ⌜ as ⌝ᵃ
 ⌜ s-v i _ ⌝ᵃ    = pair (tag i) unit
+
+-- ★ a quotation is CLOSED: substitution leaves it alone (PLAN-REF K2: the
+--   quoted signature's entries sit under binders)
+⌜⌝ˢ-sub : {sg : Sig n} {Δ : Cx} (σ : Sub Δ Θ) (x : STm sg s d) → subTm σ (⌜ x ⌝ˢ {Δ}) ≡ ⌜ x ⌝ˢ
+⌜⌝ᵃ-sub : {sg : Sig n} {sh : Shape} {Δ : Cx} (σ : Sub Δ Θ) (as : SArgs sg d sh) → subTm σ (⌜ as ⌝ᵃ {Δ}) ≡ ⌜ as ⌝ᵃ
+⌜⌝ˢ-sub σ (node {k = k} _ _ as) = cong₂ (λ t p → con (pair t p)) (tag-sub σ k) (⌜⌝ᵃ-sub σ as)
+⌜⌝ᵃ-sub σ s[]          = refl
+⌜⌝ᵃ-sub σ (s-rec t as) = cong₂ pair (⌜⌝ˢ-sub σ t) (⌜⌝ᵃ-sub σ as)
+⌜⌝ᵃ-sub σ (s-nat m as) = cong₂ pair (num-sub σ m) (⌜⌝ᵃ-sub σ as)
+⌜⌝ᵃ-sub σ (s-cls t as) = cong₂ pair (⌜⌝ˢ-sub σ t) (⌜⌝ᵃ-sub σ as)
+⌜⌝ᵃ-sub σ (s-v i _)    = cong (λ t → pair t unit) (tag-sub σ i)
 
 ------------------------------------------------------------------------
 -- 2. ★ QUOTATION IS INJECTIVE — structurally.

@@ -19,32 +19,42 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.ConvDecode where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.ConvDecode (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Metatheory.Canonicity using ( sz; _≤_; ≤-refl )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; v₀; _,ₚ_; nth-z; nth-s )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.Decode
-open import DirectedHoTT.Lib.Size using ( szp; szˡ; szʳ )
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Ctx using ( ⌜Ty⌝; El-⌜Ty⌝ )
-open import DirectedHoTT.Examples.Knot.Unquote
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝; El-⌜Tm⌝ )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1 )
-open import DirectedHoTT.Examples.Knot.RedIx
-open import DirectedHoTT.Examples.Knot.Red using ( ⌜⟶⌝; El-⌜⟶⌝ )
-open import DirectedHoTT.Examples.Knot.RedT using ( ⌜⟶ᵀ⌝; El-⌜⟶ᵀ⌝ )
-open import DirectedHoTT.Examples.Knot.Conv
-open import DirectedHoTT.Examples.Knot.RedDecode using ( decRed )
-open import DirectedHoTT.Examples.Knot.RedTDecode using ( decRedT )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
+open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( sz; _≤_; ≤-refl )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; v₀; _,ₚ_; nth-z; nth-s )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Decode 𝒮 wf
+open import DirectedHoTT.Lib.Size 𝒮 wf using ( szp; szˡ; szʳ )
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( ⌜Ty⌝; El-⌜Ty⌝ )
+open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( ⌜Tm⌝; El-⌜Tm⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1 )
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf using ( ⌜⟶⌝; El-⌜⟶⌝ )
+open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf using ( ⌜⟶ᵀ⌝; El-⌜⟶ᵀ⌝ )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf
+open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf using ( decRed )
+open import DirectedHoTT.Examples.Knot.RedTDecode 𝒮 wf using ( decRedT )
 
 ------------------------------------------------------------------------
 -- 1. t ≅ u

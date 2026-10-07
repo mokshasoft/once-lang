@@ -6,30 +6,42 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.JudgeIx where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.JudgeIx (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Lib.NatCode using ( fromI )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; Dσ-sub; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; _,ₚ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
-open import DirectedHoTT.Lib.NatCode using ( ⊢isuc )
-open import DirectedHoTT.Examples.Knot.Ctors
-open import DirectedHoTT.Examples.Knot.Ren using ( wk; wk-sub; ⊢wkS )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Sorted using ( ⊢sortOf )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynFib using ( Row; module Fib; ⊢conRow )
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Lookup using ( ⌜Ctx⌝; rows; ⊢rows )
+import DirectedHoTT.Lib.NatCode 𝒮 𝓃 as ᴵNatCode
+open ᴵNatCode using ( fromI )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 as ᴵTySub
+open ᴵTySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶ᵀ*-IMu )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; tag; Lt; lt-z; lt-s; subC; selF-sub; Dσ-sub; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; _,ₚ_ )
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( PayV; payV-red; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
+open ᴵNatCode using ( ⊢isuc )
+open import DirectedHoTT.Examples.Knot.Ctors 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk; wk-sub; ⊢wkS )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok using ( ⊢sortOf )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( Row; module Fib; ⊢conRow )
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( ⌜Ctx⌝; rows; ⊢rows )
 
 
 private
@@ -105,7 +117,7 @@ ixJ i t c = pair i (t ,ₚ c)
     tyB2 : (Ξ ▹ El (⌜IMu⌝ (SI 2) KD i)) ⊢ty El B2
     tyB2 = ty-El (⊢wk {Ξ} {El (⌜IMu⌝ (SI 2) KD i)} {CTat i} {U} (sub-lemma' ⊢CT di))
       where
-        open import DirectedHoTT.Metatheory.TySub using ( sub-lemma; ⊢single )
+        open ᴵTySub using ( sub-lemma; ⊢single )
         sub-lemma' : {Ξ' : Ctx} {j : RTm ⌊ Ξ' ⌋} → (Ξ' ▹ El (SI 2)) ⊢ CT ∷ U → Ξ' ⊢ j ∷ El (SI 2) → Ξ' ⊢ CTat j ∷ U
         sub-lemma' dC dj = sub-lemma dC (⊢single dj)
     p2 : Ξ ⊢ pair t c ∷ Σ' (El (⌜IMu⌝ (SI 2) KD i)) (El B2)
@@ -272,18 +284,20 @@ DF-sub σ j I = cong (λ z → kPi (kEl (subTm σ I)) (kDesc z)) {x = subTm σ (
 ⊢DF dj dI = ⊢kPi dj (⊢kEl dj dI) (⊢kDesc (⊢isuc dj) (⊢wkS (lt-s lt-z) dj dI))
 
 
--- a row from its telescope and the telescope's law (`refl` when definitional)
-TelLaw : ({Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → Tel Δ) → Set
-TelLaw T = {Δ Θ : Cx} (σ : Sub Δ Θ) (j p c : RTm Δ) →
-           subTm σ ⌜ T j p c ⌝ᵗ ≡ ⌜ T (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ
+-- a row from its telescope and the telescope's law (`refl` when definitional);
+--   the telescope is over the family's PARAMETER `q` too (PLAN-REF: the
+--   quoted signature), which a row that does not cite it ignores
+TelLaw : ({Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ) → Set
+TelLaw T = {Δ Θ : Cx} (σ : Sub Δ Θ) (q j p c : RTm Δ) →
+           subTm σ ⌜ T q j p c ⌝ᵗ ≡ ⌜ T (subTm σ q) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ
 
-defRow : (T : {Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → Tel Δ) → TelLaw T → Row
+defRow : (T : {Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ) → TelLaw T → Row
 defRow T law = record
-  { R = λ j p c → row1 (T j p c)
-  ; R-sub = λ σ j p c →
-      trans (rows-sub' σ (⌜ T j p c ⌝ᵗ ∷ []))
-            (cong (λ C → rows (C ∷ [])) {x = subTm σ ⌜ T j p c ⌝ᵗ} {y = ⌜ T (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ}
-                  (law σ j p c)) }
+  { R = λ q j p c → row1 (T q j p c)
+  ; R-sub = λ σ q j p c →
+      trans (rows-sub' σ (⌜ T q j p c ⌝ᵗ ∷ []))
+            (cong (λ C → rows (C ∷ [])) {x = subTm σ ⌜ T q j p c ⌝ᵗ} {y = ⌜ T (subTm σ q) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ}
+                  (law σ q j p c)) }
 
 
 -- ★ DIh: its index code `I` is not a subterm, so it is a σ-field; the
@@ -319,7 +333,7 @@ mc-sub σ j g I D =
 
 -- empty fibre (a head no rule concludes with)
 rNone : Row
-rNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
+rNone = record { R = λ q j p c → rows [] ; R-sub = λ σ q j p c → refl }
 
 -- a payload of the Knot, at its normal form
 ⊢payK : {Ξ : Ctx} {s : ℕ} {j p : RTm ⌊ Ξ ⌋} {sh : Shape} → Lt s 2 → ShOK 2 sh → Ξ ⊢ j ∷ El ⌜Nat⌝ →

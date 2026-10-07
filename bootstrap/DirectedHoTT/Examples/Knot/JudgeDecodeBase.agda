@@ -18,31 +18,41 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.JudgeDecodeBase where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.JudgeDecodeBase (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶ᵀ*-IMu; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-trans )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Metatheory.Canonicity using ( sz )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; v₀; v₁; v₂; v₃; _,ₚ_ )
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.SynRed using ( mono-by; σₗ; _∷ʳ_; []ʳ )
-open import DirectedHoTT.Lib.Decode
-open import DirectedHoTT.Lib.Size using ( _<_; <ˡ; <ʳ )
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx; El-⌜Ty⌝ )
-open import DirectedHoTT.Examples.Knot.Unquote using ( hdTm; pfTm; quote-hdTm; unqTy )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tyIx; tmIx )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1 )
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
-open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCV; TCV-sub; TCVat )
-open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝; ⌜≅ᵀ⌝-sub; El-⌜≅ᵀ⌝; K≅ᵀ )
-open import DirectedHoTT.Examples.Knot.ConvDecode using ( decConvT )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶ᵀ*-IMu; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-trans )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
+open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( sz )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; v₀; v₁; v₂; v₃; _,ₚ_ )
+open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok using ( mono-by; σₗ; _∷ʳ_; []ʳ )
+open import DirectedHoTT.Lib.Decode 𝒮 wf
+open import DirectedHoTT.Lib.Size 𝒮 wf using ( _<_; <ˡ; <ʳ )
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( quoteCtx; El-⌜Ty⌝ )
+open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf using ( hdTm; pfTm; quote-hdTm; unqTy )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( JT; tyIx; tmIx )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1 )
+open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf using ( D⊢ )
+open import DirectedHoTT.Examples.Knot.JudgeConv 𝒮 wf using ( TCV; TCV-sub; TCVat )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf using ( ⌜≅ᵀ⌝; ⌜≅ᵀ⌝-sub; El-⌜≅ᵀ⌝; K≅ᵀ )
+open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf using ( decConvT )
 
 ------------------------------------------------------------------------
 -- 1. The induction hypotheses: every inhabitant below `N` decodes.

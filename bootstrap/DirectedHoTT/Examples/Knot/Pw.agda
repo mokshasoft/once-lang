@@ -11,36 +11,49 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.Pw where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.Pw (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; _,ₚ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
-open import DirectedHoTT.Lib.NatCode using ( fromI )
-open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynFib using ( Row )
-open import DirectedHoTT.Examples.Knot.Ctors
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Lookup using ( rows; ⊢rows; toTy; hereTy )
-open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0; sub0-sub )
-open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS; wk-sub )
-open import DirectedHoTT.Examples.Knot.SubEnv
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( defRow; rows-sub'; ⌜Tm⌝; ⌜Tm⌝-sub; ⊢⌜Tm⌝; TelLaw )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub; hereTm; toTm; wkN; wkK; wkG )
-open import DirectedHoTT.Examples.Knot.GenHelpers
-open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkA⌝-sub; ⌜StkC⌝; ⊢⌜StkC⌝; ⌜StkC⌝-sub )
-open import DirectedHoTT.Examples.Knot.RedIx
-open import DirectedHoTT.Examples.Knot.NestIx
-open import DirectedHoTT.Lib.SynPat using ( module Pat )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( defRow₀ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; tag; Lt; lt-z; lt-s; []ᵈ; _∷ᵈ_; AllD; v₀; _,ₚ_ )
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK; ⊢natFst; ⊢natSnd )
+import DirectedHoTT.Lib.NatCode 𝒮 𝓃 as ᴵNatCode
+open ᴵNatCode using ( fromI )
+open ᴵNatCode using ( ⊢isuc; toI )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( Row )
+open import DirectedHoTT.Examples.Knot.Ctors 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( rows; ⊢rows; toTy; hereTy )
+open import DirectedHoTT.Examples.Knot.Sub 𝒮 wf using ( sub0; ⊢sub0; sub0-sub )
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk; ⊢wkS; wk-sub )
+open import DirectedHoTT.Examples.Knot.SubEnv 𝒮 wf
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( defRow; rows-sub'; ⌜Tm⌝; ⌜Tm⌝-sub; ⊢⌜Tm⌝; TelLaw )
+import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf as ᴵJudgeCase
+open ᴵJudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub; hereTm; toTm; wkN; wkK; wkG )
+open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkA⌝-sub; ⌜StkC⌝; ⊢⌜StkC⌝; ⌜StkC⌝-sub )
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.NestIx 𝒮 wf
+open import DirectedHoTT.Lib.SynPat 𝒮 𝓃 ok using ( module Pat )
+open ᴵJudgeCase using ( defRow₀ )
+open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( ⌜QSig⌝; ⌜QSig⌝-sub; ⊢⌜QSig⌝; wkQ )
 
 private
   variable
@@ -74,21 +87,21 @@ TPwcPi⁽0⁾-cong J J' X X' F1 F1' refl refl refl = refl
 TPwcPi⁽0⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F1 : RTm Δ) → subTm σ ⌜ TPwcPi⁽0⁾ J X F1 ⌝ᵗ ≡ ⌜ TPwcPi⁽0⁾ (subTm σ J) (subTm σ X) (subTm σ F1) ⌝ᵗ
 TPwcPi⁽0⁾-sub σ J X F1 = (TPwcPiI-sub σ J X F1)
 
-TPwcPi : RTm Δ → RTm Δ → RTm Δ → Tel Δ
-TPwcPi j p c = TPwcPi⁽0⁾ j c (fst (snd p))
+TPwcPi : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TPwcPi qs j p c = TPwcPi⁽0⁾ j c (fst (snd p))
 
 TPwcPi-law : TelLaw TPwcPi
-TPwcPi-law σ j p c = TPwcPi⁽0⁾-sub σ j c (fst (snd p))
+TPwcPi-law σ qs j p c = TPwcPi⁽0⁾-sub σ j c (fst (snd p))
 
-okTPwcPi : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcPi ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → TelOK Ξ Pwₘ.J (TPwcPi j p c)
-okTPwcPi {Ξ} {j} {p} {c} dj dp dc = (okTPwcPiI {_} {j} {c} {(fst (snd p))} dj (⊢pwTgt dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} dp))))
+okTPwcPi : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜Unit⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcPi ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → TelOK Ξ Pwₘ.J (TPwcPi qs j p c)
+okTPwcPi {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (okTPwcPiI {_} {j} {c} {(fst (snd p))} dj (⊢pwTgt dc) (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 1} (⊢recFst {s = 1} {k = 1} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 1 ∷ʰ []ʰ)} dp))))
 
 rPwcPi : Row
-rPwcPi = record { R = λ j p c → rows (⌜ TPwcPi j p c ⌝ᵗ ∷ []) ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ TPwcPi j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ TPwcPi j p c ⌝ᵗ)} {y = ⌜ TPwcPi (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (TPwcPi-law σ j p c)) }
-allrPwcPi : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcPi ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → AllD Ξ Pwₘ.J (⌜ TPwcPi j p c ⌝ᵗ ∷ [])
-allrPwcPi {Ξ} {j} {p} {c} dj dp dc = (⊢tel {Ξ} {Pwₘ.J} {TPwcPi j p c} Pwₘ.⊢J (okTPwcPi dj dp dc)) ∷ᵈ []ᵈ
+rPwcPi = record { R = λ qs j p c → rows (⌜ TPwcPi qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ TPwcPi qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ TPwcPi qs j p c ⌝ᵗ)} {y = ⌜ TPwcPi (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (TPwcPi-law σ qs j p c)) }
+allrPwcPi : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜Unit⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcPi ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → AllD Ξ Pwₘ.J (⌜ TPwcPi qs j p c ⌝ᵗ ∷ [])
+allrPwcPi {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (⊢tel {Ξ} {Pwₘ.J} {TPwcPi qs j p c} Pwₘ.⊢J (okTPwcPi dqs dj dp dc)) ∷ᵈ []ᵈ
 okPwcPi : Pwₘ.RowOK 1 sh-kcPi rPwcPi
-okPwcPi {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Pwₘ.J} {1} {⌜ TPwcPi j p c ⌝ᵗ ∷ []} Pwₘ.⊢J (allrPwcPi dj dp dc)
+okPwcPi {Ξ} {qs} {j} {p} {c} dqs dj dp dc = ⊢rows {Ξ} {Pwₘ.J} {1} {⌜ TPwcPi qs j p c ⌝ᵗ ∷ []} Pwₘ.⊢J (allrPwcPi dqs dj dp dc)
 
 -- PwcHom
 CPwcHom_0A : RTm Δ → RTm Δ → RTm Δ
@@ -146,27 +159,27 @@ TPwcHom⁽0⁾-sub : (σ : Sub Δ Θ) (J : RTm Δ) (X : RTm Δ) (F0 : RTm Δ) (F
 TPwcHom⁽0⁾-sub σ J X F0 F1 F2 =
   dσ-cong1 (subTm σ (CPwcHom_0I J)) (CPwcHom_0I (subTm σ J)) (subTm (extS σ) ⌜ TPwcHom⁽1⁾ (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀ ⌝ᵗ) ⌜ TPwcHom⁽1⁾ (w1 (subTm σ J)) (w1 (subTm σ X)) (w1 (subTm σ F0)) (w1 (subTm σ F1)) (w1 (subTm σ F2)) v₀ ⌝ᵗ (CPwcHom_0I-sub σ J) (trans (TPwcHom⁽1⁾-sub (extS σ) (w1 J) (w1 X) (w1 F0) (w1 F1) (w1 F2) v₀) (TPwcHom⁽1⁾-cong (subTm (extS σ) (w1 J)) (w1 (subTm σ J)) (subTm (extS σ) (w1 X)) (w1 (subTm σ X)) (subTm (extS σ) (w1 F0)) (w1 (subTm σ F0)) (subTm (extS σ) (w1 F1)) (w1 (subTm σ F1)) (subTm (extS σ) (w1 F2)) (w1 (subTm σ F2)) (subTm (extS σ) v₀) v₀ (w1-sub σ J) (w1-sub σ X) (w1-sub σ F0) (w1-sub σ F1) (w1-sub σ F2) refl))
 
-TPwcHom : RTm Δ → RTm Δ → RTm Δ → Tel Δ
-TPwcHom j p c = TPwcHom⁽0⁾ j c (fst p) (fst (snd p)) (fst (snd (snd p)))
+TPwcHom : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ
+TPwcHom qs j p c = TPwcHom⁽0⁾ j c (fst p) (fst (snd p)) (fst (snd (snd p)))
 
 TPwcHom-law : TelLaw TPwcHom
-TPwcHom-law σ j p c = TPwcHom⁽0⁾-sub σ j c (fst p) (fst (snd p)) (fst (snd (snd p)))
+TPwcHom-law σ qs j p c = TPwcHom⁽0⁾-sub σ j c (fst p) (fst (snd p)) (fst (snd (snd p)))
 
-okTPwcHom : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → TelOK Ξ Pwₘ.J (TPwcHom j p c)
-okTPwcHom {Ξ} {j} {p} {c} dj dp dc = (Pwₘ.okσ (okCPwcHom_0I {_} {j} dj) (okTPwcHomI {_} {(w1 j)} {(w1 c)} {(w1 (fst p))} {(w1 (fst (snd p)))} {(w1 (fst (snd (snd p))))} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = (nsuc j)} {t = c} (⊢pwTgt dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (hereTm {m = (nsuc j)})))
+okTPwcHom : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜Unit⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → TelOK Ξ Pwₘ.J (TPwcHom qs j p c)
+okTPwcHom {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (Pwₘ.okσ (okCPwcHom_0I {_} {j} dj) (okTPwcHomI {_} {(w1 j)} {(w1 c)} {(w1 (fst p))} {(w1 (fst (snd p)))} {(w1 (fst (snd (snd p))))} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = (nsuc j)} {t = c} (⊢pwTgt dc)) (wkK {s = 1} {d = j} {t = (fst p)} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))) (wkK {s = 1} {d = j} {t = (fst (snd p))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp)))) (wkK {s = 1} {d = j} {t = (fst (snd (snd p)))} (⊢atDepthSK {sg = KSig} {a = tag 1} {j = j} {s = 1} {k = 0} (⊢recFst {s = 1} {k = 0} {sh = ([]ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ []ʰ)} (⊢recSnd {s = 1} {k = 0} {sh = (rec 1 0 ∷ʰ rec 1 0 ∷ʰ []ʰ)} dp))))) (hereTm {m = (nsuc j)})))
 
 rPwcHom : Row
-rPwcHom = record { R = λ j p c → rows (⌜ TPwcHom j p c ⌝ᵗ ∷ []) ; R-sub = λ σ j p c → trans (rows-sub' σ (⌜ TPwcHom j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ TPwcHom j p c ⌝ᵗ)} {y = ⌜ TPwcHom (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (TPwcHom-law σ j p c)) }
-allrPwcHom : {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → AllD Ξ Pwₘ.J (⌜ TPwcHom j p c ⌝ᵗ ∷ [])
-allrPwcHom {Ξ} {j} {p} {c} dj dp dc = (⊢tel {Ξ} {Pwₘ.J} {TPwcHom j p c} Pwₘ.⊢J (okTPwcHom dj dp dc)) ∷ᵈ []ᵈ
+rPwcHom = record { R = λ qs j p c → rows (⌜ TPwcHom qs j p c ⌝ᵗ ∷ []) ; R-sub = λ σ qs j p c → trans (rows-sub' σ (⌜ TPwcHom qs j p c ⌝ᵗ ∷ [])) (cong (λ X → rows (X ∷ [])) {x = subTm σ (⌜ TPwcHom qs j p c ⌝ᵗ)} {y = ⌜ TPwcHom (subTm σ qs) (subTm σ j) (subTm σ p) (subTm σ c) ⌝ᵗ} (TPwcHom-law σ qs j p c)) }
+allrPwcHom : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ qs ∷ El ⌜Unit⌝ → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV sh-kcHom ((tag 1) ,ₚ j) (SI 2) (SD KSig) → Ξ ⊢ c ∷ El (Pwₘ.Cat ((tag 1) ,ₚ j)) → AllD Ξ Pwₘ.J (⌜ TPwcHom qs j p c ⌝ᵗ ∷ [])
+allrPwcHom {Ξ} {qs} {j} {p} {c} dqs dj dp dc = (⊢tel {Ξ} {Pwₘ.J} {TPwcHom qs j p c} Pwₘ.⊢J (okTPwcHom dqs dj dp dc)) ∷ᵈ []ᵈ
 okPwcHom : Pwₘ.RowOK 1 sh-kcHom rPwcHom
-okPwcHom {Ξ} {j} {p} {c} dj dp dc = ⊢rows {Ξ} {Pwₘ.J} {1} {⌜ TPwcHom j p c ⌝ᵗ ∷ []} Pwₘ.⊢J (allrPwcHom dj dp dc)
+okPwcHom {Ξ} {qs} {j} {p} {c} dqs dj dp dc = ⊢rows {Ξ} {Pwₘ.J} {1} {⌜ TPwcHom qs j p c ⌝ᵗ ∷ []} Pwₘ.⊢J (allrPwcHom dqs dj dp dc)
 
 PwNone : Row
-PwNone = record { R = λ j p c → rows [] ; R-sub = λ σ j p c → refl }
+PwNone = record { R = λ qs j p c → rows [] ; R-sub = λ σ qs j p c → refl }
 
 okPwNone : (s : ℕ) (sh : Shape) → Pwₘ.RowOK s sh PwNone
-okPwNone s sh dj dp dc = ⊢rows {I = Pwₘ.J} {Cs = []} Pwₘ.⊢J []ᵈ
+okPwNone s sh dqs dj dp dc = ⊢rows {I = Pwₘ.J} {Cs = []} Pwₘ.⊢J []ᵈ
 
 -- ★ THE FAMILY, as its table: each Knot constructor's row and its typing,
 --   in KSig's order (sort 0: types; sort 1: terms).
@@ -239,5 +252,5 @@ module _ where
 module PwF = Pwₘ.FamilyT rowsPw
 
 KPw : RTm Δ → RTm Δ → RTm Δ → RTy Δ
-KPw d t u = PwF.KF (ixPw d t u)
+KPw d t u = PwF.KF unit (ixPw d t u)
 

@@ -32,24 +32,34 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.PwCore where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.PwCore (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; ⊤; tt; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Signature using ( Sig; <-here; <-there )
 open import DirectedHoTT.Metatheory.Signature using ( wf→ok )
 open import DirectedHoTT.Algorithm.NbE using ( nbe )
-open import DirectedHoTT.Algorithm.NbESound using ( nbe-sound; ≅-sub )
-open import DirectedHoTT.Algorithm.ConvLazy using ( cong≅ᵗ )
+open import DirectedHoTT.Algorithm.NbESound 𝒮 using ( nbe-sound; ≅-sub )
+open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅ᵗ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Tm_ )
 import DirectedHoTT.Examples.PwCore as P
-open import DirectedHoTT.Examples.Knot.Sig using ( K )
-open import DirectedHoTT.Examples.Knot.RedIx using ( CP; ixPw; ⊢ixPw; module Pwₘ )
-open import DirectedHoTT.Examples.Knot.Pw using ( module PwF; KPw )
-import DirectedHoTT.Examples.Knot.Ren as KR
-import DirectedHoTT.Examples.Knot.JudgeIx as JI
-import DirectedHoTT.Lib.Syn as LS
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf using ( K )
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf using ( CP; ixPw; ⊢ixPw; module Pwₘ )
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf using ( module PwF; KPw )
+import DirectedHoTT.Examples.Knot.Ren 𝒮 wf as KR
+import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf as JI
+import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok as LS
 
 private
   variable

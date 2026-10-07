@@ -17,26 +17,36 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.Lookup where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.Lookup (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; _,_; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
-open import DirectedHoTT.Lib.NatNum using ( ⊢num )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; selF; Dσ; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s; v₀; v₁; v₂; v₃; v₄; v₅; v₆; v₇; _,ₚ_ )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.TelAt using ( HypAt; ⊢payAt )
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.NatFib
-open import DirectedHoTT.Lib.NatCode
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( ⊢num )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; tag; selF; Dσ; ⊢selF; AllD; []ᵈ; _∷ᵈ_; subC; lt-z; nth-z; nth-s; v₀; v₁; v₂; v₃; v₄; v₅; v₆; v₇; _,ₚ_ )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok using ( HypAt; ⊢payAt )
+open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.NatFib 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.NatCode 𝒮 𝓃
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk; ⊢wkS )
 
 private
   variable

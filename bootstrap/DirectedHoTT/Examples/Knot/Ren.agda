@@ -8,23 +8,34 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.Ren where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.Ren (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; sym; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; tag; _,ₚ_; v₀; v₁ )
-open import DirectedHoTT.Lib.NatCode using ( toI; fromI )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Lt; lt-z; lt-s; tag; _,ₚ_; v₀; v₁ )
+open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( toI; fromI )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast )
 open import normalizer.Syntax.Types using ( cong₂ )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynTravM using ( VarsAt )
-open import DirectedHoTT.Lib.SynRen
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynTravM 𝒮 𝓃 ok using ( VarsAt )
+open import DirectedHoTT.Lib.SynRen 𝒮 𝓃 ok
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
 
 -- the kernel's variables are terms: sort 1, the `var` row (Tm row 0)
+import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 as ᴵSyntactic
 KVars : VarsAt KSig 1
 KVars = varsAt KSig 1 refl
 
@@ -77,7 +88,7 @@ wk-ren ρ s d t = trans (sym (subTm-var ρ (wk s d t)))
                        (trans (wk-sub ⟨ ρ ⟩ᵣ s d t)
                               (cong₂ (wk s) {x = subTm ⟨ ρ ⟩ᵣ d} {x' = renTm ρ d} {y = subTm ⟨ ρ ⟩ᵣ t} {y' = renTm ρ t}
                                      (subTm-var ρ d) (subTm-var ρ t)))
-  where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
+  where open ᴵSyntactic using ( ⟨_⟩ᵣ; subTm-var )
 
 ------------------------------------------------------------------------
 -- ★ WEAKENING A CLOSED TERM to any depth: one `wk` per level, by `natrec`

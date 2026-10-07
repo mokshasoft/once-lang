@@ -17,27 +17,37 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.OpAgree where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.OpAgree (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( pwShift )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-appˡ; ⟶*-ielimᵗ )
-open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; v₀; v₁; _,ₚ_ )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Sub
-open import DirectedHoTT.Examples.Knot.SubEnv
-open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx; cext )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( DF; mc )
-import DirectedHoTT.Examples.Knot.Ren as KR
-open import DirectedHoTT.Examples.Knot.RenAgree using ( RepR; ren-agree-ty; ren-agree-tm )
-open import DirectedHoTT.Examples.Knot.SubAgree using ( RepS; module ES; module TRR; repS-lift; repR-wk; sub-agree-ty; sub-agree-tm )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-appˡ; ⟶*-ielimᵗ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( wk-cancel-tm )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( conₗ; v₀; v₁; _,ₚ_ )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Sub 𝒮 wf
+open import DirectedHoTT.Examples.Knot.SubEnv 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( quoteCtx; cext )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( DF; mc )
+import DirectedHoTT.Examples.Knot.Ren 𝒮 wf as KR
+open import DirectedHoTT.Examples.Knot.RenAgree 𝒮 wf using ( RepR; ren-agree-ty; ren-agree-tm )
+open import DirectedHoTT.Examples.Knot.SubAgree 𝒮 wf using ( RepS; module ES; module TRR; repS-lift; repR-wk; sub-agree-ty; sub-agree-tm )
 
 private
   variable
