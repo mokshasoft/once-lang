@@ -13,11 +13,14 @@
 --     FM(i, t)  =  El C(i) → Desc J
 --     FIBM      =  one method per constructor:  λ p h c. R_{s,k} j p c
 --
--- ★ Each row is a NATURAL family `R j p c` (a function of the method's
---   index, payload and convoy, with its substitution law).  So the
+-- ★ Each row is a NATURAL family `R q j p c` (a function of the family's
+--   PARAMETER `q`, the method's index, payload and convoy, with its
+--   substitution law).  The parameter is uniform across the family's
+--   recursive structure (PLAN-REF: the Knot's quoted signature), so the
+--   description is `D q`; a parameterless family ignores it.  So the
 --   computation rule is proven ONCE, here, with the rows abstract:
 --
---     fib-β :  app (ielim D (tag s , j) FIBM (conₗ k p)) c  ⟶*  R_{s,k} j p c
+--     fib-β :  app (ielim D (tag s , j) (FIBM q) (conₗ k p)) c  ⟶*  R_{s,k} q j p c
 --
 --   and every β is cast to its clean reduct, so no substitution tower forms
 --   (memory: beta-chains-cast-each-step).  A row is typed at ARBITRARY
@@ -63,14 +66,16 @@ private
 
 record Row : Set₁ where
   field
-    R     : {Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → RTm Δ
-    R-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (j p c : RTm Δ) → subTm σ (R j p c) ≡ R (subTm σ j) (subTm σ p) (subTm σ c)
+    R     : {Δ : Cx} → RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
+    R-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) (q j p c : RTm Δ) →
+            subTm σ (R q j p c) ≡ R (subTm σ q) (subTm σ j) (subTm σ p) (subTm σ c)
 
 -- the weakenings the β-walk passes through, and their cancellation
-W1 W2 W3 : RTm Δ → RTm _
+W1 W2 W3 W4 : RTm Δ → RTm _
 W1 t = renTm vs t
 W2 t = renTm vs (W1 t)
 W3 t = renTm vs (W2 t)
+W4 t = renTm vs (W3 t)
 
 private
   k0 : (u t : RTm Δ) → subTm (single u) (W1 t) ≡ t
@@ -81,6 +86,19 @@ private
 
   k2 : (u t : RTm Δ) → subTm (extS (extS (single u))) (W3 t) ≡ W2 t
   k2 u t = trans (wk-sub (extS (single u)) (W2 t)) (cong (renTm vs) (k1 u t))
+
+  k3 : (u t : RTm Δ) → subTm (extS (extS (extS (single u)))) (W4 t) ≡ W3 t
+  k3 u t = trans (wk-sub (extS (extS (single u))) (W3 t)) (cong (renTm vs) (k2 u t))
+
+  -- a substitution past the weakenings
+  ws1 : (σ : Sub Δ Θ) (t : RTm Δ) → subTm (extS σ) (W1 t) ≡ W1 (subTm σ t)
+  ws1 σ t = wk-sub σ t
+  ws2 : (σ : Sub Δ Θ) (t : RTm Δ) → subTm (extS (extS σ)) (W2 t) ≡ W2 (subTm σ t)
+  ws2 σ t = trans (wk-sub (extS σ) (W1 t)) (cong (renTm vs) (ws1 σ t))
+  ws3 : (σ : Sub Δ Θ) (t : RTm Δ) → subTm (extS (extS (extS σ))) (W3 t) ≡ W3 (subTm σ t)
+  ws3 σ t = trans (wk-sub (extS (extS σ)) (W2 t)) (cong (renTm vs) (ws2 σ t))
+  ws4 : (σ : Sub Δ Θ) (t : RTm Δ) → subTm (extS (extS (extS (extS σ)))) (W4 t) ≡ W4 (subTm σ t)
+  ws4 σ t = trans (wk-sub (extS (extS (extS σ))) (W3 t)) (cong (renTm vs) (ws3 σ t))
 
   -- one β, cast to its clean reduct
   βcast : (t : RTm (Δ ∙)) (u v : RTm Δ) → subTm (single u) t ≡ v → app (lam t) u ⟶* v
@@ -93,6 +111,8 @@ private
 -- the family's index and convoy, before any row (so rows can be TYPED
 -- in modules of their own)
 module Fib₀ {sg : Sig n} (ok : SigOK n sg)
+           (P : {Δ : Cx} → RTm Δ) (P-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (P {Δ}) ≡ P)
+           (⊢P : {Γ : Ctx} → Γ ⊢ P ∷ U)
            (J : {Δ : Cx} → RTm Δ) (J-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (J {Δ}) ≡ J)
            (⊢J : {Γ : Ctx} → Γ ⊢ J ∷ U)
            (C : {Δ : Cx} → RTm (Δ ∙)) (C-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm (extS σ) (C {Δ}) ≡ C)
@@ -125,11 +145,18 @@ module Fib₀ {sg : Sig n} (ok : SigOK n sg)
   ⊢FM : {Γ : Ctx} → motCtx Γ (SI n) (SD sg) ⊢ty FM
   ⊢FM = ty-Π (ty-El (⊢wk ⊢C)) (ty-Desc ⊢J)
 
-  -- a row, typed: at ANY index, payload and convoy
+  -- the parameter, weakened
+  P-ren : (ρ : Ren Δ Θ) → renTm ρ (P {Δ}) ≡ P
+  P-ren ρ = trans (sym (subTm-var ρ P)) (P-sub ⟨ ρ ⟩ᵣ)
+
+  ⊢wkP : {Ξ : Ctx} {B : RTy ⌊ Ξ ⌋} {q : RTm ⌊ Ξ ⌋} → Ξ ⊢ q ∷ El P → (Ξ ▹ B) ⊢ renTm vs q ∷ El P
+  ⊢wkP {Ξ} {B} {q} dq = ⊢-cast (cong El (P-ren vs)) (⊢wk {Ξ} {B} {q} {El P} dq)
+
+  -- a row, typed: at ANY parameter, index, payload and convoy
   RowOK : ℕ → Shape → Row → Set
-  RowOK s sh r = {Ξ : Ctx} {j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ →
+  RowOK s sh r = {Ξ : Ctx} {q j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ q ∷ El P → Ξ ⊢ j ∷ El ⌜Nat⌝ →
                  Ξ ⊢ p ∷ PayV sh (pair (tag s) j) (SI n) (SD sg) → Ξ ⊢ c ∷ El (Cat (pair (tag s) j)) →
-                 Ξ ⊢ R r j p c ∷ Desc J
+                 Ξ ⊢ R r q j p c ∷ Desc J
 
   -- ★ a family's rows WITH their typings, one entry per constructor, in
   --   the signature's order — what a family is, read off as a table.  The
@@ -151,7 +178,7 @@ module Fib₀ {sg : Sig n} (ok : SigOK n sg)
 
   -- past the end of a table (never typed, never reached)
   pastRow : Row
-  pastRow = record { R = λ j p c → j ; R-sub = λ σ j p c → refl }
+  pastRow = record { R = λ q j p c → j ; R-sub = λ σ q j p c → refl }
 
   rowInSh : {s c : ℕ} {shs : Shapes c} → RowsOK s shs → ℕ → Row
   rowInSh []ᴿ               k       = pastRow
@@ -182,6 +209,8 @@ module Fib₀ {sg : Sig n} (ok : SigOK n sg)
   okOf {s = s} {k = k} {sh = sh} t ng nh = subst (λ m → RowOK m sh (rowIn t s k)) (+'-zero s) (okIn t ng nh)
 
 module Fib {sg : Sig n} (ok : SigOK n sg)
+           (P : {Δ : Cx} → RTm Δ) (P-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (P {Δ}) ≡ P)
+           (⊢P : {Γ : Ctx} → Γ ⊢ P ∷ U)
            (J : {Δ : Cx} → RTm Δ) (J-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (J {Δ}) ≡ J)
            (⊢J : {Γ : Ctx} → Γ ⊢ J ∷ U)
            (C : {Δ : Cx} → RTm (Δ ∙)) (C-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm (extS σ) (C {Δ}) ≡ C)
@@ -189,22 +218,23 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
            (row : ℕ → ℕ → Row) where
 
   open Row
-  open Fib₀ ok J J-sub ⊢J C C-sub ⊢C public
+  open Fib₀ ok P P-sub ⊢P J J-sub ⊢J C C-sub ⊢C public
 
-  -- the methods
-  mF : Row → RTm (Δ ∙)
-  mF r = lam (lam (lam (R r (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))))
+  -- the methods, at the parameter `q` (four binders out: the index, then
+  -- the payload, its hypotheses, the convoy)
+  mF : Row → RTm Δ → RTm (Δ ∙)
+  mF r q = lam (lam (lam (R r (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))))
 
-  mFs : {c : ℕ} → ℕ → Shapes c → ℕ → Cons (Δ ∙) c
-  mFs s []ˢʰ         k = []
-  mFs s (sh ∷ˢʰ shs) k = mF (row s k) ∷ mFs s shs (suc k)
+  mFs : {c : ℕ} → ℕ → Shapes c → ℕ → RTm Δ → Cons (Δ ∙) c
+  mFs s []ˢʰ         k q = []
+  mFs s (sh ∷ˢʰ shs) k q = mF (row s k) q ∷ mFs s shs (suc k) q
 
-  sortMsF : {m : ℕ} → Sig m → ℕ → Cons Δ m
-  sortMsF []ᵍ          s = []
-  sortMsF (shs ∷ᵍ sg') s = lam (methAt (mFs s shs zero)) ∷ sortMsF sg' (suc s)
+  sortMsF : {m : ℕ} → Sig m → ℕ → RTm Δ → Cons Δ m
+  sortMsF []ᵍ          s q = []
+  sortMsF (shs ∷ᵍ sg') s q = lam (methAt (mFs s shs zero q)) ∷ sortMsF sg' (suc s) q
 
-  FIBM : RTm Δ
-  FIBM = methAt (sortMsF sg zero)
+  FIBM : RTm Δ → RTm Δ
+  FIBM q = methAt (sortMsF sg zero q)
 
   ----------------------------------------------------------------------
   -- 3. ★ TYPED.
@@ -221,12 +251,12 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
                  (trans (cong (renTm vs) (trans (cong (renTm vs) (tag-ren vs s)) (tag-ren vs s))) (tag-ren vs s))
 
     -- ★ one constructor's method, from its row's typing
-    ⊢mF : {Γ : Ctx} {s k c : ℕ} {shs : Shapes c} {sh : Shape} → NthG sg s shs → NthSh shs k sh →
-          RowOK s sh (row s k) →
+    ⊢mF : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} {s k c : ℕ} {shs : Shapes c} {sh : Shape} → Γ ⊢ q ∷ El P →
+          NthG sg s shs → NthSh shs k sh → RowOK s sh (row s k) →
           HypAt (Γ ▹ El ⌜Nat⌝) (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M FM) (σₛ s) (tel sh (var vz))
-            ⊢ lam (R (row s k) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))
+            ⊢ lam (R (row s k) (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))
             ∷ subTy (atS (ιₛ s) (conₗ k (var (vs vz)))) (wk1M FM)
-    ⊢mF {Γ = Γ} {s = s} {k = k} {sh = sh} ng nh rok =
+    ⊢mF {Γ = Γ} {q = q} {s = s} {k = k} {sh = sh} dq ng nh rok =
       ⊢-cast (sym (FM-at s k)) (⊢lam (ty-El dCs) dR)
       where
         H = HypAt (Γ ▹ El ⌜Nat⌝) (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M FM) (σₛ s) (tel sh (var vz))
@@ -255,37 +285,40 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
         dp : H₃ ⊢ var (vs (vs vz)) ∷ PayV sh ι₃ (SI n) (SD sg)
         dp = ⊢conv (⊢-cast (cong₃ (λ I D X → El (dpay I D X)) (SI-wks 4) eD eP) (⊢var (there (there here))))
                    (red→≅ᵀ (payV-red sh ι₃ (SI n) (SD sg)))
-        dR : H₃ ⊢ R (row s k) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz) ∷ Desc J
-        dR = rok dj dp dc
+        dq₄ : H₃ ⊢ W4 q ∷ El P
+        dq₄ = ⊢wkP (⊢wkP (⊢wkP (⊢wkP dq)))
+        dR : H₃ ⊢ R (row s k) (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz) ∷ Desc J
+        dR = rok dq₄ dj dp dc
 
-    perT : {Γ : Ctx} {s c c' k : ℕ} {shsAll : Shapes c} {shs : Shapes c'} →
+    perT : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} {s c c' k : ℕ} {shsAll : Shapes c} {shs : Shapes c'} → Γ ⊢ q ∷ El P →
            NthG sg s shsAll → ShsOK n shs →
            ({j : ℕ} {sh : Shape} → NthSh shs j sh → NthSh shsAll (j +' k) sh) →
            ({j : ℕ} {sh : Shape} → NthSh shs j sh → RowOK s sh (row s (j +' k))) →
            PerKAt (Γ ▹ El ⌜Nat⌝) (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M FM) (ιₛ s)
-                  (selF (subC (σₛ s) ⌜ tels shsAll ⌝ₛ)) k (mFs s shs k)
-    perT ng []ᵒˢ look oks = []ₐ
-    perT {s = s} ng (shok ∷ᵒˢ shoks) look oks =
-      entₛ ⊢⌜Nat⌝ (sigOK ok) ⊢FM (nth-stels ng) (nth-tels (look nthʰ-z)) (⊢mF ng (look nthʰ-z) (oks nthʰ-z))
-      ∷ₐ perT ng shoks (λ n' → look (nthʰ-s n')) (λ n' → oks (nthʰ-s n'))
+                  (selF (subC (σₛ s) ⌜ tels shsAll ⌝ₛ)) k (mFs s shs k q)
+    perT dq ng []ᵒˢ look oks = []ₐ
+    perT {s = s} dq ng (shok ∷ᵒˢ shoks) look oks =
+      entₛ ⊢⌜Nat⌝ (sigOK ok) ⊢FM (nth-stels ng) (nth-tels (look nthʰ-z)) (⊢mF dq ng (look nthʰ-z) (oks nthʰ-z))
+      ∷ₐ perT dq ng shoks (λ n' → look (nthʰ-s n')) (λ n' → oks (nthʰ-s n'))
 
-    perS : {Γ : Ctx} {m s₀ : ℕ} {sg' : Sig m} →
+    perS : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} {m s₀ : ℕ} {sg' : Sig m} → Γ ⊢ q ∷ El P →
            SigOK n sg' → ({j c : ℕ} {shs : Shapes c} → NthG sg' j shs → NthG sg (j +' s₀) shs) →
            ({j c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG sg' j shs → NthSh shs k sh → RowOK (j +' s₀) sh (row (j +' s₀) k)) →
-           PerS Γ (SortT (SI n) (SD sg) FM ⌜Nat⌝) s₀ (sortMsF sg' s₀)
-    perS []ᵒᵍ look oks = []ₚ
-    perS {Γ = Γ} (shoks ∷ᵒᵍ okss) look oks =
+           PerS Γ (SortT (SI n) (SD sg) FM ⌜Nat⌝) s₀ (sortMsF sg' s₀ q)
+    perS dq []ᵒᵍ look oks = []ₚ
+    perS {Γ = Γ} dq (shoks ∷ᵒᵍ okss) look oks =
       ⊢sortMeth ⊢⌜Nat⌝ (allSD ⊢SI (sigOK ok)) ⊢FM (nth-⌜⌝ₛₛ (nth-stels (look nthᵍ-z)))
-                (perT (look nthᵍ-z) shoks (λ {j} n' → subst (λ m → NthSh _ m _) (sym (+'-zero j)) n')
+                (perT dq (look nthᵍ-z) shoks (λ {j} n' → subst (λ m → NthSh _ m _) (sym (+'-zero j)) n')
                       (λ {j} n' → subst (λ m → RowOK _ _ (row _ m)) (sym (+'-zero j)) (oks nthᵍ-z n')))
-      ∷ₚ perS okss (λ n' → look (nthᵍ-s n')) (λ n' → oks (nthᵍ-s n'))
+      ∷ₚ perS dq okss (λ n' → look (nthᵍ-s n')) (λ n' → oks (nthᵍ-s n'))
 
   -- ★ THE FIBRE METHOD, typed from every row's typing
-  ⊢FIBM : {Γ : Ctx} → ({s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG sg s shs → NthSh shs k sh → RowOK s sh (row s k)) →
-          Γ ⊢ FIBM ∷ MethTy (SI n) (SD sg) FM
-  ⊢FIBM oks =
+  ⊢FIBM : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} → Γ ⊢ q ∷ El P →
+          ({s c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG sg s shs → NthSh shs k sh → RowOK s sh (row s k)) →
+          Γ ⊢ FIBM q ∷ MethTy (SI n) (SD sg) FM
+  ⊢FIBM dq oks =
     ⊢methₛ ⊢⌜Nat⌝ (⊢SD ok) ⊢FM
-      (perS ok (λ {j} n' → subst (λ m → NthG _ m _) (sym (+'-zero j)) n')
+      (perS dq ok (λ {j} n' → subst (λ m → NthG _ m _) (sym (+'-zero j)) n')
                (λ {j} ng nh → subst (λ m → RowOK m _ (row m _)) (sym (+'-zero j)) (oks ng nh)))
 
   ----------------------------------------------------------------------
@@ -293,88 +326,103 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
   ----------------------------------------------------------------------
 
   private
-    nth-mFs : {c k₀ k : ℕ} (s : ℕ) {shs : Shapes c} {sh : Shape} → NthSh shs k sh →
-              Nth (mFs {Δ = Δ} s shs k₀) k (mF (row s (k +' k₀)))
+    nth-mFs : {c k₀ k : ℕ} (s : ℕ) {shs : Shapes c} {sh : Shape} {q : RTm Δ} → NthSh shs k sh →
+              Nth (mFs {Δ = Δ} s shs k₀ q) k (mF (row s (k +' k₀)) q)
     nth-mFs s nthʰ-z      = nth-z
     nth-mFs s (nthʰ-s nt) = nth-s (nth-mFs s nt)
 
-    nth-sortMsF : {m s₀ s c : ℕ} {sg' : Sig m} {shs : Shapes c} → NthG sg' s shs →
-                  Nth (sortMsF {Δ = Δ} sg' s₀) s (lam (methAt (mFs (s +' s₀) shs zero)))
+    nth-sortMsF : {m s₀ s c : ℕ} {sg' : Sig m} {shs : Shapes c} {q : RTm Δ} → NthG sg' s shs →
+                  Nth (sortMsF {Δ = Δ} sg' s₀ q) s (lam (methAt (mFs (s +' s₀) shs zero q)))
     nth-sortMsF nthᵍ-z      = nth-z
     nth-sortMsF (nthᵍ-s nt) = nth-s (nth-sortMsF nt)
 
-  fib-β : {s c k : ℕ} {shs : Shapes c} {sh : Shape} {D j p c₀ : RTm Δ} → NthG sg s shs → NthSh shs k sh →
-          app (ielim D (pair (tag s) j) FIBM (conₗ k p)) c₀ ⟶* R (row s k) j p c₀
-  fib-β {Δ = Δ} {s = s} {k = k} {shs = shs} {D = D} {j} {p} {c₀} ng nh =
+  fib-β : {s c k : ℕ} {shs : Shapes c} {sh : Shape} {D q j p c₀ : RTm Δ} → NthG sg s shs → NthSh shs k sh →
+          app (ielim D (pair (tag s) j) (FIBM q) (conₗ k p)) c₀ ⟶* R (row s k) q j p c₀
+  fib-β {Δ = Δ} {s = s} {k = k} {shs = shs} {D = D} {q} {j} {p} {c₀} ng nh =
     ⟶*-trans (⟶*-appˡ (ιₛ-red nE nm))
-      (subst (λ z → app (app (app z p) h) c₀ ⟶* R r j p c₀) (sym e0)
+      (subst (λ z → app (app (app z p) h) c₀ ⟶* R r q j p c₀) (sym e0)
         (⟶*-trans (⟶*-appˡ (⟶*-appˡ (βcast t0 p (lam t1) e1)))
         (⟶*-trans (⟶*-appˡ (βcast t1 h (lam t2) e2))
-                  (βcast t2 c₀ (R r j p c₀) e3))))
+                  (βcast t2 c₀ (R r q j p c₀) e3))))
     where
       r = row s k
-      nE : Nth (sortMsF {Δ = Δ} sg zero) s (lam (methAt (mFs s shs zero)))
-      nE = subst (λ m → Nth (sortMsF sg zero) s (lam (methAt (mFs m shs zero)))) (+'-zero s) (nth-sortMsF ng)
-      nm : Nth (mFs {Δ = Δ} s shs zero) k (mF r)
-      nm = subst (λ m → Nth (mFs s shs zero) k (mF (row s m))) (+'-zero k) (nth-mFs s nh)
-      h = dih D FIBM (app D (pair (tag s) j)) (pair (tag k) p)
+      nE : Nth (sortMsF {Δ = Δ} sg zero q) s (lam (methAt (mFs s shs zero q)))
+      nE = subst (λ m → Nth (sortMsF sg zero q) s (lam (methAt (mFs m shs zero q)))) (+'-zero s) (nth-sortMsF ng)
+      nm : Nth (mFs {Δ = Δ} s shs zero q) k (mF r q)
+      nm = subst (λ m → Nth (mFs s shs zero q) k (mF (row s m) q)) (+'-zero k) (nth-mFs s nh)
+      h = dih D (FIBM q) (app D (pair (tag s) j)) (pair (tag k) p)
       t0 : RTm (Δ ∙)
-      t0 = lam (lam (R r (W3 j) (var (vs (vs vz))) (var vz)))
+      t0 = lam (lam (R r (W3 q) (W3 j) (var (vs (vs vz))) (var vz)))
       t1 : RTm (Δ ∙)
-      t1 = lam (R r (W2 j) (W2 p) (var vz))
+      t1 = lam (R r (W2 q) (W2 j) (W2 p) (var vz))
       t2 : RTm (Δ ∙)
-      t2 = R r (W1 j) (W1 p) (var vz)
-      e0 : subTm (single j) (mF r) ≡ lam t0
+      t2 = R r (W1 q) (W1 j) (W1 p) (var vz)
+      e0 : subTm (single j) (mF r q) ≡ lam t0
       e0 = cong (λ X → lam (lam (lam X)))
-                {x = subTm (extS (extS (extS (single j)))) (R r (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))}
-                {y = R r (W3 j) (var (vs (vs vz))) (var vz)}
-                (R-sub r (extS (extS (extS (single j)))) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))
+                {x = subTm (extS (extS (extS (single j)))) (R r (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))}
+                {y = R r (W3 q) (W3 j) (var (vs (vs vz))) (var vz)}
+                (trans (R-sub r (extS (extS (extS (single j)))) (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))
+                       (cong (λ z → R r z (W3 j) (var (vs (vs vz))) (var vz)) (k3 j q)))
       e1 : subTm (single p) t0 ≡ lam t1
       e1 = cong (λ X → lam (lam X))
-                {x = subTm (extS (extS (single p))) (R r (W3 j) (var (vs (vs vz))) (var vz))}
-                {y = R r (W2 j) (W2 p) (var vz)}
-                (trans (R-sub r (extS (extS (single p))) (W3 j) (var (vs (vs vz))) (var vz))
-                       (cong (λ z → R r z (W2 p) (var vz)) {x = subTm (extS (extS (single p))) (W3 j)} {y = W2 j} (k2 p j)))
+                {x = subTm (extS (extS (single p))) (R r (W3 q) (W3 j) (var (vs (vs vz))) (var vz))}
+                {y = R r (W2 q) (W2 j) (W2 p) (var vz)}
+                (trans (R-sub r (extS (extS (single p))) (W3 q) (W3 j) (var (vs (vs vz))) (var vz))
+                       (cong₂ (λ a b → R r a b (W2 p) (var vz))
+                              {x = subTm (extS (extS (single p))) (W3 q)} {x' = W2 q}
+                              {y = subTm (extS (extS (single p))) (W3 j)} {y' = W2 j}
+                              (k2 p q) (k2 p j)))
       e2 : subTm (single h) t1 ≡ lam t2
       e2 = cong lam
-                {x = subTm (extS (single h)) (R r (W2 j) (W2 p) (var vz))}
-                {y = R r (W1 j) (W1 p) (var vz)}
-                (trans (R-sub r (extS (single h)) (W2 j) (W2 p) (var vz))
-                       (cong₂ (λ a b → R r a b (var vz))
-                              {x = subTm (extS (single h)) (W2 j)} {x' = W1 j} {y = subTm (extS (single h)) (W2 p)} {y' = W1 p}
-                              (k1 h j) (k1 h p)))
-      e3 : subTm (single c₀) t2 ≡ R r j p c₀
-      e3 = trans (R-sub r (single c₀) (W1 j) (W1 p) (var vz))
-                 (cong₂ (λ a b → R r a b c₀) {x = subTm (single c₀) (W1 j)} {x' = j} {y = subTm (single c₀) (W1 p)} {y' = p}
-                        (k0 c₀ j) (k0 c₀ p))
+                {x = subTm (extS (single h)) (R r (W2 q) (W2 j) (W2 p) (var vz))}
+                {y = R r (W1 q) (W1 j) (W1 p) (var vz)}
+                (trans (R-sub r (extS (single h)) (W2 q) (W2 j) (W2 p) (var vz))
+                       (cong₃ (λ a b c → R r a b c (var vz))
+                              {a = subTm (extS (single h)) (W2 q)} {a' = W1 q}
+                              {b = subTm (extS (single h)) (W2 j)} {b' = W1 j}
+                              {c = subTm (extS (single h)) (W2 p)} {c' = W1 p}
+                              (k1 h q) (k1 h j) (k1 h p)))
+      e3 : subTm (single c₀) t2 ≡ R r q j p c₀
+      e3 = trans (R-sub r (single c₀) (W1 q) (W1 j) (W1 p) (var vz))
+                 (cong₃ (λ a b c → R r a b c c₀)
+                        {a = subTm (single c₀) (W1 q)} {a' = q}
+                        {b = subTm (single c₀) (W1 j)} {b' = j}
+                        {c = subTm (single c₀) (W1 p)} {c' = p}
+                        (k0 c₀ q) (k0 c₀ j) (k0 c₀ p))
 
   ----------------------------------------------------------------------
-  -- 5. ★ CLOSED: the fibre method commutes with every substitution.
+  -- 5. ★ NATURAL in the parameter: the fibre method commutes with every
+  --    substitution, which acts on its parameter alone (a closed
+  --    parameter gives a closed method).
   ----------------------------------------------------------------------
 
-  mF-sub : (σ : Sub Δ Θ) (r : Row) → subTm (extS σ) (mF {Δ} r) ≡ mF r
-  mF-sub σ r = cong (λ X → lam (lam (lam X)))
-                    {x = subTm (extS (extS (extS (extS σ)))) (R r (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))}
-                    {y = R r (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz)}
-                    (R-sub r (extS (extS (extS (extS σ)))) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))
+  mF-sub : (σ : Sub Δ Θ) (r : Row) (q : RTm Δ) → subTm (extS σ) (mF {Δ} r q) ≡ mF r (subTm σ q)
+  mF-sub σ r q = cong (λ X → lam (lam (lam X)))
+                    {x = subTm (extS (extS (extS (extS σ)))) (R r (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))}
+                    {y = R r (W4 (subTm σ q)) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz)}
+                    (trans (R-sub r (extS (extS (extS (extS σ)))) (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz))
+                           (cong (λ z → R r z (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz)) (ws4 σ q)))
 
-  mFs-sub : {c : ℕ} (σ : Sub Δ Θ) (s : ℕ) (shs : Shapes c) (k : ℕ) → subC (extS σ) (mFs {Δ = Δ} s shs k) ≡ mFs s shs k
-  mFs-sub σ s []ˢʰ         k = refl
-  mFs-sub σ s (sh ∷ˢʰ shs) k = cong₂ _∷_ (mF-sub σ (row s k)) (mFs-sub σ s shs (suc k))
+  mFs-sub : {c : ℕ} (σ : Sub Δ Θ) (s : ℕ) (shs : Shapes c) (k : ℕ) (q : RTm Δ) →
+            subC (extS σ) (mFs {Δ = Δ} s shs k q) ≡ mFs s shs k (subTm σ q)
+  mFs-sub σ s []ˢʰ         k q = refl
+  mFs-sub σ s (sh ∷ˢʰ shs) k q = cong₂ _∷_ (mF-sub σ (row s k) q) (mFs-sub σ s shs (suc k) q)
 
-  sortMsF-sub : {m : ℕ} (σ : Sub Δ Θ) (sg' : Sig m) (s : ℕ) → subC σ (sortMsF {Δ = Δ} sg' s) ≡ sortMsF sg' s
-  sortMsF-sub σ []ᵍ          s = refl
-  sortMsF-sub σ (shs ∷ᵍ sg') s =
-    cong₂ _∷_ (cong lam (trans {x = subTm (extS σ) (methAt (mFs s shs zero))}
-                               {y = methAt (subC (extS σ) (mFs s shs zero))} {z = methAt (mFs s shs zero)}
-                               (methAt-sub (extS σ) (mFs s shs zero))
-                               (cong methAt {x = subC (extS σ) (mFs s shs zero)} {y = mFs s shs zero} (mFs-sub σ s shs zero))))
-              (sortMsF-sub σ sg' (suc s))
+  sortMsF-sub : {m : ℕ} (σ : Sub Δ Θ) (sg' : Sig m) (s : ℕ) (q : RTm Δ) →
+                subC σ (sortMsF {Δ = Δ} sg' s q) ≡ sortMsF sg' s (subTm σ q)
+  sortMsF-sub σ []ᵍ          s q = refl
+  sortMsF-sub σ (shs ∷ᵍ sg') s q =
+    cong₂ _∷_ (cong lam (trans {x = subTm (extS σ) (methAt (mFs s shs zero q))}
+                               {y = methAt (subC (extS σ) (mFs s shs zero q))} {z = methAt (mFs s shs zero (subTm σ q))}
+                               (methAt-sub (extS σ) (mFs s shs zero q))
+                               (cong methAt {x = subC (extS σ) (mFs s shs zero q)} {y = mFs s shs zero (subTm σ q)}
+                                     (mFs-sub σ s shs zero q))))
+              (sortMsF-sub σ sg' (suc s) q)
 
-  FIBM-sub : (σ : Sub Δ Θ) → subTm σ (FIBM {Δ}) ≡ FIBM
-  FIBM-sub σ = trans {x = subTm σ (FIBM {_})} {y = methAt (subC σ (sortMsF sg zero))} {z = FIBM}
-                     (methAt-sub σ (sortMsF sg zero))
-                     (cong methAt {x = subC σ (sortMsF sg zero)} {y = sortMsF sg zero} (sortMsF-sub σ sg zero))
+  FIBM-sub : (σ : Sub Δ Θ) (q : RTm Δ) → subTm σ (FIBM {Δ} q) ≡ FIBM (subTm σ q)
+  FIBM-sub σ q = trans {x = subTm σ (FIBM {_} q)} {y = methAt (subC σ (sortMsF sg zero q))} {z = FIBM (subTm σ q)}
+                     (methAt-sub σ (sortMsF sg zero q))
+                     (cong methAt {x = subC σ (sortMsF sg zero q)} {y = sortMsF sg zero (subTm σ q)} (sortMsF-sub σ sg zero q))
 
 ------------------------------------------------------------------------
 -- 6. ★ A CONSTRUCTOR OF A ONE-ROW FIBRE: tag 0, then the row's payload.
