@@ -22,7 +22,10 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Parser.Token
-open import Once.Parser.Module using (parseDeclB; colonHead; colDrop1; eqHead)
+open import Once.Parser.Module using (parseDeclB)
+open import Once.Parser.Module.FunDef.Body using (eqHead)
+open import Once.Parser.Module.FunDef.Body using (eqHead)
+open import Once.Parser.Module.DeclTail using (colDrop1; colonHead)
 open import Once.Parser.Module.Import using (parseImportB)
 open import Once.Parser.Module.DeclTail using (parseTypeAliasB; parseSignatureB)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)

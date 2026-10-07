@@ -14,7 +14,7 @@
 
 module Once.Parser.Module.FunDef where
 
-open import Once.Parser.Module.FunDef.Params public
-open import Once.Parser.Module.FunDef.Body public
-open import Once.Parser.Module.FunDef.Def public
-open import Once.Parser.Module.FunDef.OpDecl public
+open import Once.Parser.Module.FunDef.Params
+open import Once.Parser.Module.FunDef.Body
+open import Once.Parser.Module.FunDef.Def
+open import Once.Parser.Module.FunDef.OpDecl
