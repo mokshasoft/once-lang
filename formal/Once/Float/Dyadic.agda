@@ -82,7 +82,7 @@ record FloatFormat : Set where
     sig-bits : ℕ      -- significand field width (23 single, 52 double)
     exp-bits : ℕ      -- exponent field width     (8 single, 11 double)
 
-open FloatFormat public
+open FloatFormat
 
 binary32 : FloatFormat
 binary32 = mkFormat 23 8

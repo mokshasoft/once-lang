@@ -325,7 +325,9 @@ adefs-unique t dc df =
 
 open import Data.Nat using (suc; _≤_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n)
-open import Once.Denotation.Program using (IRFun; fname; fbody; IRProgram; table; main)
+open import Once.Denotation.Program using (IRFun; IRProgram)
+open Once.Denotation.Program.IRProgram using (main; table)
+open Once.Denotation.Program.IRFun using (fbody; fname)
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; top-done; program-image)
 open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; fresh-above; clabs-++; nf)
 import Once.CCC.Codegen.CLabelsUnique as CLU

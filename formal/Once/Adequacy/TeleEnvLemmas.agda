@@ -50,7 +50,8 @@ import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callsE; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Denotation.Program using (IRFun; fname; tableEnv; tableCalls)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
+open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; Imports; ctxWithImportsAndPolys)

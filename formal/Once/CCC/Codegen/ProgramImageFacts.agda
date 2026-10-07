@@ -32,7 +32,8 @@ open import Once.CCC.Codegen.AllocMin o using (AllocMinI)
 
 open import Once.CCC.Codegen.ShapeTable using (heap-moded)
 open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next; top-done)
-open import Once.Denotation.Program using (IRFun; irProgram; fname; fbody)
+open import Once.Denotation.Program using (IRFun; irProgram)
+open Once.Denotation.Program.IRFun using (fbody; fname)
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
 import Once.CCC.Codegen.SlotBudget as SB

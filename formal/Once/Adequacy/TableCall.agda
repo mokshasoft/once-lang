@@ -40,7 +40,8 @@ open import Once.IR.Ref using (refIR)
 import Once.Compile as C
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ)
-open import Once.Denotation.Program using (IRFun; irFun; fname; tableEnv; tableCalls)
+open import Once.Denotation.Program using (IRFun; irFun; tableEnv; tableCalls)
+open Once.Denotation.Program.IRFun using (fname)
 open import Once.Compile using (irFunOf)
 
 ------------------------------------------------------------------------

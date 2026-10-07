@@ -36,7 +36,9 @@ open import Once.Denotation.TraceMonad using (>>=T-identityˡ)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
-open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; table; main; tableEnv; tableCalls; tableEnv-at)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at)
+open Once.Denotation.Program.IRProgram using (main; table)
+open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Semantics.Machine
 open import Once.Denotation.ValueDomain
 import Once.Denotation.DenotTrace

@@ -67,7 +67,8 @@ import Once.Surface.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.Program using (IRFun; fname)
+open import Once.Denotation.Program using (IRFun)
+open Once.Denotation.Program.IRFun using (fname)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.Telescope using (Tele; runProgram; program; noKinds; noVars; noResp)

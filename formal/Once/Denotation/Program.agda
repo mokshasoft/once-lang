@@ -52,7 +52,7 @@ record IRFun : Set where
     fcod  : IRTy
     fbody : IR fdom fcod
 
-open IRFun public
+open IRFun
 
 ------------------------------------------------------------------------
 -- The call environment of a table.
@@ -158,7 +158,7 @@ record IRProgram : Set where
     table : List IRFun
     main  : IR Unit Unit
 
-open IRProgram public
+open IRProgram
 
 runIR : TargetNum → FFIAnswers → IRProgram → T ⟦ Unit ⟧ᴰᴵ
 runIR fmt φ p = evalᴰ fmt (tableEnv fmt φ (table p)) (main p) tt

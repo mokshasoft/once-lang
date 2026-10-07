@@ -23,7 +23,9 @@ open import Data.Nat using (ℕ; suc)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry; c-start; e-fn; link-top)
 open import Once.CCC.Label using (LabelId; mkLabelId)
-open import Once.Denotation.Program using (IRFun; fname; fbody; IRProgram; table; main)
+open import Once.Denotation.Program using (IRFun; IRProgram)
+open Once.Denotation.Program.IRProgram using (main; table)
+open Once.Denotation.Program.IRFun using (fbody; fname)
 import Once.CCC.Codegen.IRToTrace as IT
 
 -- One function entry, placed at label counter `l`: the marker, then the

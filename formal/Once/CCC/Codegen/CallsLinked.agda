@@ -13,7 +13,7 @@
 
 open import Once.CanonicalName using (CanonicalName)
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; LinkedAt; Linked)
+open import Once.Denotation.Program using (IRFun; Linked)
 open import Once.Spec.Contract using (ISig)
 
 module Once.CCC.Codegen.CallsLinked (o : CanonicalName) (tbl : List IRFun) where

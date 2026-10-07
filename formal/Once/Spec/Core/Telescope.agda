@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 import Once.Type as T
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; interp)
+open import Once.Denotation.TraceMonad using (T; projTrace; interp)
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Surface.Context using (Usage)

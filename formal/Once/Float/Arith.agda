@@ -65,8 +65,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂)
 
 open import Once.Float.Dyadic
-  using (FloatFormat; sig-bits; exp-bits; bias; bitLen; signBit; modPow;
-         binary32; binary64)
+  using (FloatFormat; bias; bitLen; signBit; modPow; binary32; binary64)
+open Once.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
 open import Once.Float.Decimal using (divRHE; packAt; infinity; signedZero)
 
 ------------------------------------------------------------------------

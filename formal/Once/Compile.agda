@@ -84,7 +84,9 @@ import Once.Arith.Backend.RiscV64.Emit as RVA
 import Once.CCC.Label as Label
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
-open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main)
+open import Once.Denotation.Program using (IRFun; irFun; IRProgram; irProgram)
+open Once.Denotation.Program.IRProgram using (main; table)
+open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 
 -- Re-export Parser (for module loading)

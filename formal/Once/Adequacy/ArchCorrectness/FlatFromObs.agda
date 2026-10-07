@@ -44,7 +44,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedProgram; fname; fbody)
+open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedProgram)
+open Once.Denotation.Program.IRFun using (fbody; fname)
 open import Once.Spec.Contract using (ISig)
 import Once.Denotation.TraceMonad as TM
 import Once.CCC.FrameSemantics

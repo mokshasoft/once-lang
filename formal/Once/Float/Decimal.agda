@@ -42,7 +42,8 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.Float.Dyadic
-  using (FloatFormat; sig-bits; exp-bits; bitLen; binary32; binary64; bias; signBit; signBit<; combine-bound; modPow; modPow<)
+  using (FloatFormat; bitLen; binary32; binary64; bias; signBit; signBit<; combine-bound; modPow; modPow<)
+open Once.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
 
 ------------------------------------------------------------------------
 -- The payload

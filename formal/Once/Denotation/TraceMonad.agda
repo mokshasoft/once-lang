@@ -71,7 +71,7 @@ record CallOp : Set where
     cdom   : Type
     cbase  : IsBaseType cdom
     ccod   : Type
-open CallOp public
+open CallOp
 
 record HaltOp : Set where
   constructor haltOp
@@ -79,7 +79,7 @@ record HaltOp : Set where
     hname  : CanonicalName
     hdom   : Type
     hbase  : IsBaseType hdom
-open HaltOp public
+open HaltOp
 
 -- The observable of a call is the call itself: its identity, domain and argument.
 callEvent : (o : CallOp) → M.⟦ cdom o ⟧ → SigOpEvent
@@ -339,7 +339,7 @@ record PrefixFamily (tr : ℕ → List SigOpEvent) : Set where
     bnd : Bounded tr
     sat : Saturating tr
     coh : Coherent tr
-open PrefixFamily public
+open PrefixFamily
 
 take-pf : ∀ (xs : List SigOpEvent) → PrefixFamily (λ n → take n xs)
 take-pf xs = prefixFamily (λ k → length-take-≤ k xs) (λ k → take-sat k xs) (λ k → take-coh k xs)

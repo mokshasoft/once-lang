@@ -108,7 +108,7 @@ open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFo
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 open import Once.Denotation.Trace using (SigOpEvent) public
 import Once.Denotation.DenotTrace as DT
-open import Once.Denotation.TraceMonad using (projTrace) public
+open import Once.Denotation.TraceMonad using () public
 import Once.Denotation.TraceMonad as TM
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace) public
 

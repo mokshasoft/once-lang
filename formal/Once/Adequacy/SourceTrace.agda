@@ -69,8 +69,11 @@ open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent
 -- recursive and a parameterised module stops reducing at a variable instance.
 open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.TraceMonad
-  using (projTrace; PrefixFamily; bnd; sat; coh; projTrace-pf; Interp; pureHalf)
-open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; IRProgram; table; main; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
+  using (projTrace; PrefixFamily; projTrace-pf; Interp; pureHalf)
+open Once.Denotation.TraceMonad.PrefixFamily using (bnd; coh; sat)
+open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
+open Once.Denotation.Program.IRProgram using (main; table)
+open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.Spec.Contract using (ISig)
 import Once.IR as I

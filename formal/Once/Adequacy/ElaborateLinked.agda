@@ -38,7 +38,8 @@ open import Once.Surface.Elaborate
 import Once.Surface.Properties
 import Once.IRTy
 open import Once.Type using (⟦_⟧T)
-open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; LinkedAt; LinkedAt-at; Linked; Declared-at)
+open import Once.Denotation.Program using (IRFun; LinkedAt; LinkedAt-at; Linked; Declared-at)
+open Once.Denotation.Program.IRFun using (fcod; fdom; fname)
 open import Once.Spec.Contract using (ISig; contractOf; contract-eff; value-∈; answer-∈)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
