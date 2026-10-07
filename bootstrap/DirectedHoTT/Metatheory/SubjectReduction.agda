@@ -29,7 +29,7 @@
 open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
-module DirectedHoTT.Metatheory.SubjectReduction (𝒮 : KSig) (n : ℕ) (ok : Ty.SigOK 𝒮 n) where
+module DirectedHoTT.Metatheory.SubjectReduction (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
