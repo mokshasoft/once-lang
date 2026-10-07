@@ -2181,6 +2181,7 @@ open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.GenHelpers
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen
 open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK )
+open import DirectedHoTT.Examples.Knot.QSig using ( ⌜QSig⌝; ⌜TSig⌝; wkQ; wkT )
 
 """
 
@@ -4017,6 +4018,7 @@ open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; 
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
+open import DirectedHoTT.Examples.Knot.QSig using ( ⌜QSig⌝; ⌜TSig⌝; wkQ; wkT )
 RCIMPORTS
 """
 RCIMPORTS = {
