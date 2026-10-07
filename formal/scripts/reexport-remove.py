@@ -537,7 +537,100 @@ def live_line(path, line, names, defmods, cone):
     prefix = m + "." + x + "."
     return any(n.startswith(prefix) for n in names)
 
+# --- the dead-import pruning pass (plan 0.92 §9, user 2026-10-07) ---------------
+
+def prune_module(path, recs, dry=False):
+    """Remove names listed in this module's `open` directives that never occur in
+    it; drop a statement left opening nothing (unless its module is used
+    qualified). Re-exports (`public`) are left to the other pass."""
+    used = {r["written"] for r in recs} | {base(r["resolved"]) for r in recs}
+    quals = set()
+    for r in recs:
+        w = r["written"]
+        if "." in w.strip("."): quals.add(w.rsplit(".", 1)[0])
+        for q in r.get("qualifier", []): quals.add(q["resolved"])
+    L = open(path, encoding="utf-8").read().split("\n")
+    out, i, removed, log = [], 0, 0, []
+    while i < len(L):
+        m = re.match(r"^\s*open\s+(?:import\s+)?([^\s(]+)", L[i])
+        if not m:
+            out.append(L[i]); i += 1; continue
+        mod = m.group(1)
+        s0, e = statement(L, i)
+        text = "\n".join(L[s0:e])
+        code = re.sub(r"--.*", "", text)                 # `public` anywhere: a re-export
+        if re.search(r"\bpublic\b", code) or "using" not in code and "renaming" not in code:
+            out += L[s0:e]; i = e; continue
+        gone = []
+        def fix(mm, rename):
+            items = [t.strip() for t in mm.group(2).split(";") if t.strip()]
+            keep = []
+            for t in items:
+                n = t.split(" to ")[1].strip() if rename and " to " in t else t
+                if t.startswith(("module ", "instance")) or n in used: keep.append(t)
+                else: gone.append(t)
+            return mm.group(1) + "(" + "; ".join(keep) + ")"
+        new = re.sub(r"(\busing\s*)\(([^()]*)\)", lambda mm: fix(mm, False), text)
+        new = re.sub(r"(\brenaming\s*)\(([^()]*)\)", lambda mm: fix(mm, True), new)
+        if not gone:
+            out += L[s0:e]; i = e; continue
+        removed += len(gone)
+        flat = re.sub(r"\s+", " ", new).strip()
+        head = flat.split(mod, 1)[1].strip()            # what follows the module name
+        opens_nothing = (re.fullmatch(r"using \(\s*\)( renaming \(\s*\))?", head) is not None)
+        if opens_nothing and mod not in quals:
+            log.append(f"{path}:{s0 + 1}: drop `{flat}` (was {gone})")
+        else:
+            log.append(f"{path}:{s0 + 1}: {gone}")
+            out += new.split("\n")
+        i = e
+    if removed and not dry:
+        open(path, "w", encoding="utf-8").write("\n".join(out))
+    return removed, log
+
+def prune(ast_json, chunk=110):
+    names, defmods, cone = apex_live(ast_json)
+    mods = sorted(m for m in cone if not m.startswith("Once.Spec") and m != "Once.Spec"
+                  and not m.startswith("Once.Probe."))
+    total = 0
+    for k in range(0, len(mods), chunk):
+        part = mods[k:k + chunk]
+        print(f"chunk {k // chunk + 1}: {len(part)} modules", flush=True)
+        before, err = report(part, STAGE + "/prune-before.jsonl", cache=True)
+        if before is None: sys.exit("snapshot failed:\n" + err)
+        skip = set()
+        for _ in range(12):
+            backup = {}
+            n = 0
+            for m in part:
+                if m in skip or m not in before: continue
+                p = modpath(m); backup[p] = open(p, encoding="utf-8").read()
+                c, _ = prune_module(p, before[m])
+                if c: n += c
+                else: del backup[p]
+            if not backup: print("  nothing to prune"); break
+            after, err = report(part, STAGE + "/prune-after.jsonl")
+            bad = None
+            if after is None:
+                mm = re.search(r"stage/formal/(Once/[^:\s]+)\.agda:\d+", err)
+                bad = mm.group(1).replace("/", ".") if mm else None
+            else:
+                sb, sa = signature(before), signature(after)
+                diff = [m for m in sb if sb[m] != sa.get(m)]
+                bad = diff[0] if diff else None
+            if bad is None:
+                print(f"  OK: {n} dead names removed in {len(backup)} modules", flush=True)
+                total += n; break
+            for p, t in backup.items(): open(p, "w", encoding="utf-8").write(t)
+            if bad not in part:
+                sys.exit("verification failed outside the chunk:\n" + (err or "")[-3000:])
+            print(f"  {bad}: left as is, retrying", flush=True)
+            skip.add(bad)
+    print(f"TOTAL {total}")
+
 if __name__ == "__main__":
+    if len(sys.argv) >= 3 and sys.argv[1] == "prune":
+        prune(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 110); sys.exit(0)
     if len(sys.argv) == 3 and sys.argv[1] == "live-candidates":
         names, defmods, cone = apex_live(sys.argv[2])
         rows = []
