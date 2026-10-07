@@ -25,24 +25,26 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.IrrProbe where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; sym; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
         ; RTm; var; nsuc; lam; app; fst; snd; ⌜Nat⌝
         ; subTm; subTy; renTm; extR )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single
         ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢app; ⊢fst; ⊢snd
         ; _⟶*_; done; step; β; ξ-appˡ; ⊢idrefl; ⊢⌜Nat⌝; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-lemma; Ren⊢ )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Amrec
+open Lib0.Metatheory-TySub using ( ⊢-cast; ren-lemma; Ren⊢ )
+open Lib0.Lib-Wk using ( w )
+open Lib0.Lib-Amrec
   using ( Prv; prv; prvTm; prvOk; StepExt; aStepT; idOfRed; module AmTΠ )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asP )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT; asP )
 open import DirectedHoTT.Examples.Gcd.Step using ( msr; ⊢msr; ⊢gcdIH )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
 
 ------------------------------------------------------------------------
 -- ★ THE TRIVIAL STEP — `λ x. λ ih. fst x`.  The IH is bound and ignored.

@@ -32,13 +32,16 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.PairLib where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat; U; Σ'
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
         ; Π; renTy; renTm; subTy; subTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝; _⊢ty_
@@ -46,19 +49,19 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
         ; _⟶_; _⟶*_; done; step; βfst; βsnd; β; natrec-zero; natrec-suc
         ; ξ-nsuc; ξ-Homˡ; ξ-Homʳ; ξ-appˡ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
-open import DirectedHoTT.Lib.Rec   using ( aIHT; aIHTat )
-open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open Lib0.Metatheory-TySub using ( ⊢wk )
+open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )
+open import DirectedHoTT.Lib.Rec ∅ᴷ 0   using ( aIHT; aIHTat )
+open Lib0.Lib-Amrec using ( aStepT; module AmTΠ )
 -- ⚠ `measure-evals` moved to `…LibAmrecClosed` 2026-08-21: it is the
 --   CLOSED-CARRIER layer and the only thing that needed `natEval`, whose
 --   proof drags the canonicity stack.  This use site is at `◇`, so it is
 --   the right client for it.
-open import DirectedHoTT.Lib.AmrecClosed
+open Lib0.Lib-AmrecClosed
   using ( measure-evals; module AmTΠ◇ )
-open import DirectedHoTT.Lib.NatVal using ( NatVal; nv-zero; nv-suc )
+open Lib0.Lib-NatVal using ( NatVal; nv-zero; nv-suc )
 
 ------------------------------------------------------------------------
 -- ★ THE INSTANTIATION.  The carrier is a TYPE, so there is no code, no

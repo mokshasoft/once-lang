@@ -23,11 +23,14 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Ord where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import normalizer.Syntax.Types using ( _≡_; refl; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; unit; nzero; nsuc; absurd; ordtr )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( _⟶ᵀ_
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
@@ -35,8 +38,8 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶_; _⟶*_; done; step
         ; ordtr-z; ordtr-sss
         ; _⊢_∷_; ⊢unit; ⊢conv; ⊢nsuc; ⊢nzero; ⊢absurd; ⊢ordtr )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
-open import DirectedHoTT.Metatheory.Canonicity using ( consistency )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
+open Lib0.Metatheory-Canonicity using ( consistency )
 
 n1 n2 : {Γ : Cx} → RTm Γ
 n1 = nsuc nzero
@@ -110,5 +113,5 @@ trans-computes =
 --   client to inherit this module's whole closure.
 ------------------------------------------------------------------------
 
-open import DirectedHoTT.Lib.Ord
+open Lib0.Lib-Ord
   using ( ⊢trans; ⊢strong-base; ⊢strong-step; ⊢strong-base'; ⊢strong-descend )

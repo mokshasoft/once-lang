@@ -21,13 +21,15 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Strong where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; Π; lam; app; renTy; subTy )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
@@ -36,7 +38,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; ⊢lam; ⊢app; there; nrs; single
         ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
-open import DirectedHoTT.Metatheory.RedCong
+open Lib0.Metatheory-RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 ------------------------------------------------------------------------
 -- ★ THE PRIMITIVES NOW LIVE IN `…LibStrong` — the ⌜Hom⌝/⌜Nat⌝ bridge and
@@ -47,7 +49,7 @@ open import DirectedHoTT.Metatheory.RedCong
 --   directly, so nothing inherits this module's closure to reach them.
 ------------------------------------------------------------------------
 
-open import DirectedHoTT.Lib.Strong
+open Lib0.Lib-Strong
   using ( El-homNat; natAsEl; elAsNat
         ; reflMot; reflTm; ⊢reflMot; ⊢le-refl-z; ⊢le-refl-s; ⊢le-refl
         ; sucMot; ⊢sucMot; ⊢le-suc )

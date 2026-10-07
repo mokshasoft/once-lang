@@ -14,29 +14,31 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Rec where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; sym )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Id
         ; RTm; var; nzero; nsuc; app; pair; fst; snd; ⌜Nat⌝
         ; subTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; ⊢app; ⊢nsuc; ⊢nzero; ⊢conv; csymᵀ
         ; _⟶*_; done; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ⊢[] )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Amrec
+open Lib0.Metatheory-TySub using ( ⊢-cast; ⊢[] )
+open Lib0.Lib-Wk using ( w )
+open Lib0.Lib-Amrec
   using ( Prv; prv; prvTm; prvOk; idToRed; idOfRed )
-open import DirectedHoTT.Lib.Pair using ( PairT; asN ; msrPair)
-open import DirectedHoTT.Lib.ArithComm using ( transN; ⊢transN )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Homʳ )
-open import DirectedHoTT.Lib.Nat using ( ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm )
-open import DirectedHoTT.Lib.Strong using ( reflTm; ⊢le-refl )
+open Lib0.Lib-Pair using ( PairT; asN ; msrPair)
+open Lib0.Lib-ArithComm using ( transN; ⊢transN )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Homʳ )
+open Lib0.Lib-Nat using ( ⊢plus )
+open Lib0.Lib-Monus using ( monusTm )
+open Lib0.Lib-Strong using ( reflTm; ⊢le-refl )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( msr; ⊢msr; recCert; gcd-gt-term; gt-mh-1 )
-open import DirectedHoTT.Lib.ArithMonus using ( ⊢desc-left )
-open import DirectedHoTT.Lib.Nat using ( plusTm )
+open Lib0.Lib-ArithMonus using ( ⊢desc-left )
+open Lib0.Lib-Nat using ( plusTm )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
 open import DirectedHoTT.Examples.Gcd.Eqs using ( module GcdEqAt )
 

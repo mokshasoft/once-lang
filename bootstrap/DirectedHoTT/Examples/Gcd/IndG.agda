@@ -29,34 +29,29 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.IndG where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; U; Nat; Hom; Π
         ; var; fst; snd; app; nzero; nsuc; natrec; ⌜Nat⌝
         ; subTm; subTy; renTm; renTy; Ren; Sub; extR; extS )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
-        ; βfst; βsnd
-        ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
-        ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done; wk-single; natrec-suc; ⊢pair; ctrnᵀ )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El; doneᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; Ren⊢; ⊢[] )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-w; cong₃; cong₄; pw1; sub-w-single )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asN )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
-open import DirectedHoTT.Lib.Amrec
+open Lib0.Spec-Typing using ( Ctx; _▹_; ⌊_⌋; single; nrs ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc ; βfst; βsnd ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝ ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done; wk-single; natrec-suc; ⊢pair; ctrnᵀ )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El; doneᵀ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast; Ren⊢; ⊢[] )
+open Lib0.Lib-Wk using ( w; sub-w; sub-w²; ren-w; cong₃; cong₄; pw1; sub-w-single )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT; asN )
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-ArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
+open Lib0.Lib-Amrec
   using ( Prv; prv; prvOk; prv-cast; wR; renren; module AmTΠ )
-open import DirectedHoTT.Lib.IHCall
+open Lib0.Lib-IHCall
   using ( ihCallT; ihCall; ⊢ihCallT; ihCallIntro; ihCallElim )
-open import DirectedHoTT.Lib.AmrecInd using ( PAtR; IndPW; IndStep )
-open import DirectedHoTT.Lib.Natrec using ( Ren⊢-id; ⊢natrec-var; prvNatrec )
-open import DirectedHoTT.Spec.Typing
-  using ( natrec-zero; β; ξ-appˡ; ⊢natrec )
+open Lib0.Lib-AmrecInd using ( PAtR; IndPW; IndStep )
+open Lib0.Lib-Natrec using ( Ren⊢-id; ⊢natrec-var; prvNatrec )
+open Lib0.Spec-Typing using ( natrec-zero; β; ξ-appˡ; ⊢natrec )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG; gcdStp; gcdBody
         ; PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ; PAIRˢ; CERTˢ; KS; NS
@@ -69,8 +64,8 @@ open import DirectedHoTT.Examples.Gcd.StepExt
 open import DirectedHoTT.Examples.Gcd.StepExtE using ( gcdIH-sub )
 open import DirectedHoTT.Examples.Gcd.StepExtL using ( red₃z )
 open import DirectedHoTT.Examples.Gcd.StepExtLs using ( red₃s )
-open import DirectedHoTT.Lib.ArithMonus using ( ⊢desc-left )
-open import DirectedHoTT.Lib.Pair using ( msrPair )
+open Lib0.Lib-ArithMonus using ( ⊢desc-left )
+open Lib0.Lib-Pair using ( msrPair )
 
 ------------------------------------------------------------------------
 -- ★ WHAT A CUSTOMER SUPPLIES.  Six facts about the motive and four

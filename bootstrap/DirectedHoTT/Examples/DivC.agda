@@ -32,15 +32,17 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.DivC where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Rec using ( rec1T )
+open Lib0.Lib-Wk using ( w )
+open Lib0.Lib-Rec using ( rec1T )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat; U
         ; RTm; var; nzero; nsuc; natrec; lam; app
         ; Π; renTy; renTm; subTy; subTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⟶*_; done; step; natrec-zero; ξ-appˡ
         ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
@@ -48,14 +50,14 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Nat; ty-Hom; ty-El; ty-Π
         ; _≅ᵀ_; csymᵀ; ctrnᵀ
         ; _⟶_; β; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
-open import DirectedHoTT.Lib.Monus
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open Lib0.Lib-Monus
   using ( monusTm; ⊢monus )
 open import DirectedHoTT.Examples.Div
   using ( monusStep; ⊢div-descend )
-open import DirectedHoTT.Lib.Strong using ( reflTm )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open Lib0.Lib-Strong using ( reflTm )
+open Lib0.Metatheory-TySub using ( ⊢wk )
 open import DirectedHoTT.Examples.AmrecC using ( aStepT; module AmΠ )
 -- ★ the ℕ-carrier instantiation package, reused verbatim from the
 --   instantiation spike — the data are CONTEXT-POLYMORPHIC, so the same

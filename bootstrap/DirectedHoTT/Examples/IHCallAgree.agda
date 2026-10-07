@@ -33,15 +33,17 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.IHCallAgree where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; El; Id; var; vz; vs; fst; snd; app; ⌜Nat⌝ )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Pair using ( PairT )
-open import DirectedHoTT.Lib.Rec using ( aIHTat'; rec1T' )
-open import DirectedHoTT.Lib.DvdArith using ( QCode )
-open import DirectedHoTT.Lib.Max using ( MaxCode )
-open import DirectedHoTT.Lib.IHCall using ( ihCallT; ihCall )
+open Lib0.Lib-Wk using ( w )
+open Lib0.Lib-Pair using ( PairT )
+open Lib0.Lib-Rec using ( aIHTat'; rec1T' )
+open Lib0.Lib-DvdArith using ( QCode )
+open Lib0.Lib-Max using ( MaxCode )
+open Lib0.Lib-IHCall using ( ihCallT; ihCall )
 open import DirectedHoTT.Examples.Gcd.Step using ( msr )
 open import DirectedHoTT.Examples.Gcd.StepExt using ( pwT )
 open import DirectedHoTT.Examples.Gcd.IndG using ( module Plumb )

@@ -11,15 +11,17 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.SigCoreTest where
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Sugar using ( tag )
-open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ )
-import DirectedHoTT.Lib.Syn as L
+open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
+open import DirectedHoTT.Lib.Sugar ∅ᴷ 0 ok₀ using ( tag )
+open import DirectedHoTT.Lib.Tel ∅ᴷ 0 ok₀ using ( ⌜_⌝ᵗ )
+import DirectedHoTT.Lib.Syn ∅ᴷ 0 ok₀ as L
 open import DirectedHoTT.Examples.Knot.Sig using ( sh-kPi; sh-kFin; sh-kvar; sh-klam; sh-kref; sh-knatrec )
 open import DirectedHoTT.Examples.SigCore
 open import DirectedHoTT.Examples.SigCoreEval

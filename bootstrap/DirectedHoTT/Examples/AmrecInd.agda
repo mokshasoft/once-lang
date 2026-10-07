@@ -41,14 +41,16 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecInd where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; El; U; Nat; unit; ⌜Unit⌝ )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_
         ; ⊢unit; ⊢conv; ⊢⌜Unit⌝; csymᵀ; credᵀ; El-⌜Unit⌝ )
-open import DirectedHoTT.Lib.Amrec
+open Lib0.Lib-Amrec
   using ( aStepT; Prv; prv; StepExt )
-open import DirectedHoTT.Lib.AmrecInd
+open Lib0.Lib-AmrecInd
   using ( IndStep; module Concl )
 
 module Sat (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)

@@ -32,22 +32,25 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Mutual where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import normalizer.Syntax.Types using ( _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-nsuc )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar
+open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-nsuc )
+open Lib0.Metatheory-TySub using ( ⊢wk )
+open Lib0.Metatheory-Premises using ( mot-ren; ⊢wkD )
+open Lib0.Lib-Sugar
   using ( Cons; []; _∷_; conₗ; tag; selF-β; nth-sub; nth-z; nth-s; lt-z; lt-s; AllD; _∷ᵈ_; []ᵈ )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Sorted
-open import DirectedHoTT.Lib.TelAt
-open import DirectedHoTT.Lib.TelFold using ( sizeAlg )
-open import DirectedHoTT.Lib.TelFoldS using ( sortFolds; ⊢foldₛ )
+open Lib0.Lib-Tel
+open Lib0.Lib-MethAt
+open Lib0.Lib-NatNum using ( num )
+open Lib0.Lib-Sorted
+open Lib0.Lib-TelAt
+open Lib0.Lib-TelFold using ( sizeAlg )
+open Lib0.Lib-TelFoldS using ( sortFolds; ⊢foldₛ )
 
 ------------------------------------------------------------------------
 -- 0. THE INDEX: a sort, and nothing else (`J = ⌜Unit⌝`).

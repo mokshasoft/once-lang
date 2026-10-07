@@ -45,6 +45,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Step where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; subst; sym )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -52,7 +54,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
         ; subTm; subTy; renTm; renTy; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
         ; Sub; Ren; Var; idₛ; renTm-renTm; _∘ᵣ_ )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
@@ -61,25 +63,25 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; csymᵀ
         ; ξ-nsuc; ξ-Homˡ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open Lib0.Metatheory-TySub using ( ⊢wk )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub; wk-sub-tm )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren; ⟶*-sub )
-open import DirectedHoTT.Lib.Nat
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren; ⟶*-sub )
+open Lib0.Lib-Nat
   using ( plusTm; ⊢plus )
 open import DirectedHoTT.Examples.Nat
   using ( n1; n2; n3 )
-open import DirectedHoTT.Lib.Monus
+open Lib0.Lib-Monus
   using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc )
 open import DirectedHoTT.Examples.Div
   using ( monus-computes )
-open import DirectedHoTT.Lib.Rec using ( aIHTat )
-open import DirectedHoTT.Lib.Amrec using ( aStepT; aIHTat-sub; aIHTat-ren )
-open import DirectedHoTT.Lib.Wk using ( wkGen; wkGenR )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asP; msrPair )
-open import DirectedHoTT.Lib.Arith using ( plusMonoTm )
-open import DirectedHoTT.Lib.ArithComm using ( plusMonoLTm; plusMonoLTm-sub )
-open import DirectedHoTT.Lib.ArithMonus
+open Lib0.Lib-Rec using ( aIHTat )
+open Lib0.Lib-Amrec using ( aStepT; aIHTat-sub; aIHTat-ren )
+open Lib0.Lib-Wk using ( wkGen; wkGenR )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT; asP; msrPair )
+open Lib0.Lib-Arith using ( plusMonoTm )
+open Lib0.Lib-ArithComm using ( plusMonoLTm; plusMonoLTm-sub )
+open Lib0.Lib-ArithMonus
   using ( monusLtTm; monusLtTm-sub; ⊢desc-left; ⊢desc-right; pred* )
 
 ------------------------------------------------------------------------

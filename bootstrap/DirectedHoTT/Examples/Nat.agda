@@ -18,6 +18,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Nat where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -26,8 +28,8 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm )
 -- ★ the PRIMITIVES now live in `…LibNat`; re-exported so every existing
 --   importer of this module keeps working unchanged.
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Spec-Typing
   using ( single; _⟶_; _⟶*_; done; step
         ; natrec-zero; natrec-suc; ξ-nsuc
         ; Ctx; ◇; ⌊_⌋

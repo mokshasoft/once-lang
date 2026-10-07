@@ -19,24 +19,26 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.DvdL where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Examples.Gcd.Dvd public
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom
         ; var; nzero; nsuc; fst; snd; app; subTm; subTy )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢conv
         ; csymᵀ; _⟶*_; step; done; βfst; βsnd )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Pair using ( asN; PairT )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢tyIdN )
-open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvOk )
-open import DirectedHoTT.Lib.DvdArith
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast )
+open Lib0.Lib-Wk using ( w )
+open Lib0.Lib-Pair using ( asN; PairT )
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-ArithComm using ( IdN; ⊢tyIdN )
+open Lib0.Lib-Amrec using ( Prv; prv; prvOk )
+open Lib0.Lib-DvdArith
   using ( QCode; QCode-conv; QCode-convU; ⊢Q-fst; ⊢Q-snd )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ; gcdIH; ⊢gcdIH; msr )

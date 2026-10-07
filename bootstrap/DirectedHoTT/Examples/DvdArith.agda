@@ -24,28 +24,30 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.DvdArith where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; Nat; base
         ; RTm; var; nzero; nsuc; app )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
         ; _⟶*_; done; step; natrec-zero; natrec-suc
         ; csymᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-nsuc )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Mul using ( mulTm; ⊢mul; mul-zero; mul-suc )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; reflN; ⊢reflN )
-open import DirectedHoTT.Lib.Dvd using ( dvdT; dvd-intro )
-open import DirectedHoTT.Lib.DvdArith using ( assocB; ⊢assoc; distB; ⊢dist; dvdSum; ⊢dvd-plus; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
-open import DirectedHoTT.Lib.MonusPlus
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idʳ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-nsuc )
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Mul using ( mulTm; ⊢mul; mul-zero; mul-suc )
+open Lib0.Lib-ArithComm using ( IdN; reflN; ⊢reflN )
+open Lib0.Lib-Dvd using ( dvdT; dvd-intro )
+open Lib0.Lib-DvdArith using ( assocB; ⊢assoc; distB; ⊢dist; dvdSum; ⊢dvd-plus; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
+open Lib0.Lib-MonusPlus
   using ( mpAt; ⊢mpAt; mpUse; mpTm; ⊢monusPlus; monusPlus )
-open import DirectedHoTT.Lib.MonusLe
+open Lib0.Lib-MonusLe
   using ( mlAt; ⊢mlAt; mlTm; ⊢monusLe; monusLe )
-open import DirectedHoTT.Lib.Monus using ( predTm; monusTm; ⊢pred; ⊢monus )
+open Lib0.Lib-Monus using ( predTm; monusTm; ⊢pred; ⊢monus )
 
 ------------------------------------------------------------------------
 -- 1. AT VARIABLES.  Context `◇ ▹ Nat ▹ Nat ▹ Nat`: [0] = c, [1] = b,

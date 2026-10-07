@@ -23,18 +23,20 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Motives where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; El; Nat; nzero; nsuc )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; csymᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ )
-open import DirectedHoTT.Lib.Monus using ( monusTm )
-open import DirectedHoTT.Lib.ArithComm using ( IdN )
-open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvOk )
-open import DirectedHoTT.Lib.DvdArith
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ )
+open Lib0.Lib-Monus using ( monusTm )
+open Lib0.Lib-ArithComm using ( IdN )
+open Lib0.Lib-Amrec using ( Prv; prv; prvOk )
+open Lib0.Lib-DvdArith
   using ( QCode; ⊢QCode; QCode-sub; QCode-ren; QCode-red; QCode-redU
         ; ⊢Q-fst; ⊢Q-snd )
-open import DirectedHoTT.Lib.Max
+open Lib0.Lib-Max
   using ( MaxCode; ⊢MaxCode; MaxCode-sub; MaxCode-ren
         ; MaxCode-red; MaxCode-redU; El-max
         ; maxLeaf-b0; maxLeaf-a0; maxLeaf-le; maxLeaf-gt )

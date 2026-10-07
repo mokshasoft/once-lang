@@ -36,6 +36,9 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Overview where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
@@ -45,7 +48,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; renTy; subTm; ⌜Hom⌝-cong₃ )
 open import DirectedHoTT.Spec.Variance
   using ( occ-ren-tm; avoids-wk; NoNatC; nonatc-ren; nnc-base )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( single; _⟶_; _⟶*_; done; step
         ; β; tr-taut; tr-J-base; hrefl-pw; ap-J
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Hom⌝; Hom-U
@@ -53,8 +56,8 @@ open import DirectedHoTT.Spec.Typing
         ; Ctx; ◇; _▹_; ⌊_⌋; here
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
         ; _⊢ty_; ty-base; ty-El; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Metatheory.Canonicity using ( consistency )
+open Lib0.Metatheory-TySub using ( ⊢wk )
+open Lib0.Metatheory-Canonicity using ( consistency )
 
 ------------------------------------------------------------------------
 -- 1. ★ DIRECTED COMPOSITION — `trans`, the first real theorem one

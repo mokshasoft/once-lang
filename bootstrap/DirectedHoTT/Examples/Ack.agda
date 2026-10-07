@@ -35,17 +35,19 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Ack where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Nat; U; Σ'
         ; RTm; var; lam; fst; snd; ⌜Σ⌝; ⌜Nat⌝
         ; Π )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⟶ᵀ_; El-⌜Σ⌝; El-⌜Nat⌝
         ; _⊢_∷_; ⊢var; here; ⊢lam; ⊢fst; ⊢snd; ⊢conv; ⊢⌜Nat⌝; ⊢⌜Σ⌝
         ; _⊢ty_; ty-El )
-open import DirectedHoTT.Metatheory.RedCong
+open Lib0.Metatheory-RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 
 ------------------------------------------------------------------------

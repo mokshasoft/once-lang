@@ -24,16 +24,19 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.WkTm where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import normalizer.Syntax.Types using ( _≡_; cong; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ )
-open import DirectedHoTT.Lib.Sugar
+open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ )
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast )
+open Lib0.Metatheory-Fundamental-Syntactic using ( ⟨_⟩ᵣ )
+open Lib0.Lib-Sugar
   using ( Cons; []; _∷_; conₗ; methₗ; selF; selF-β; nth-z; nth-s; MethK; PerK; []ₘ; _∷ₘ_; ⊢methₗ )
-open import DirectedHoTT.Lib.Tel
+open Lib0.Lib-Tel
 open import DirectedHoTT.Examples.Scoped
   using ( TmTs; TmD; ⊢TmD; TmOK; Tm; varT; lamT; appT; varOK; lamOK; appOK
         ; tvar; tlam; tapp; ⊢tvar; ⊢tlam; ⊢tapp; ⊢isuc; fz; idTm )

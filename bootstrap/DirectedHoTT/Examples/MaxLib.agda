@@ -27,15 +27,17 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.MaxLib where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; RTm; El; Nat; nzero; nsuc )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; ⌊_⌋; _⊢_∷_; _⊢ty_; _≅ᵀ_; _⟶*_; done; step
         ; ⊢nzero; ⊢nsuc; natrec-zero )
-open import DirectedHoTT.Lib.Max
+open Lib0.Lib-Max
   using ( MaxT; ⊢MaxT; MaxCode; MaxCode-conv; MaxCode-convU )
-open import DirectedHoTT.Lib.Nat using ( plusTm )
+open Lib0.Lib-Nat using ( plusTm )
 
 ------------------------------------------------------------------------
 -- 1 · `⊢MaxT` — the DECODED predicate is a well-formed type.

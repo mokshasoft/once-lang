@@ -25,13 +25,15 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Div where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; renTy; subTy; Π; lam; app )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc
         ; _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
@@ -41,11 +43,10 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
         ; ⊢lam; ⊢app; nrs; wk-single )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Lib.Strong
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
+open Lib0.Metatheory-TySub using ( ⊢wk )
+open Lib0.Lib-Strong
   using ( El-homNat; natAsEl; ⊢le-refl; ⊢le-suc; reflTm )
 
 ------------------------------------------------------------------------
@@ -58,7 +59,7 @@ open import DirectedHoTT.Lib.Strong
 --   client to inherit this module's whole closure.
 ------------------------------------------------------------------------
 
-open import DirectedHoTT.Lib.Monus
+open Lib0.Lib-Monus
   using ( predTm; monusTm; ⊢pred; ⊢monus
         ; pred-zero; pred-suc; monus-zero; monus-suc
         ; homˡ*; predMot; ⊢predMot; ⊢pred-le )

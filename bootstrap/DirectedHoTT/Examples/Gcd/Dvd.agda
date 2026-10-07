@@ -20,42 +20,44 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Dvd where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; RTm; Nat; U; El; Σ'
         ; var; fst; snd; ⌜Nat⌝; nzero; nsuc; Π; app; Hom; natrec; subTy
         ; subTm; renTm; renTy; Ren; extR; extS )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
         ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
         ; ⊢conv; _≅ᵀ_; csymᵀ; natrec-zero; _⟶*_; step; done; β; ξ-appˡ; wk-single )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; ren-w; sub-w-single )
-open import DirectedHoTT.Lib.Pair using ( PairT; asN; asP )
-open import DirectedHoTT.Lib.DvdArith
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
+open Lib0.Lib-Wk using ( w; sub-w; ren-w; sub-w-single )
+open Lib0.Lib-Pair using ( PairT; asN; asP )
+open Lib0.Lib-DvdArith
   using ( QCode; ⊢QCode; QCode-sub; QCode-ren; QCode-red; QCode-conv
         ; ⊢Q-intro; ⊢Q-fst; ⊢Q-snd
         ; ⊢dvd-zero; ⊢dvd-refl; ⊢dvd-plus; ⊢dvd-cong; ⊢congPL )
-open import DirectedHoTT.Lib.Dvd using ( dvdT )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢symN; ⊢transN )
-open import DirectedHoTT.Lib.MonusPlus using ( monusPlus )
-open import DirectedHoTT.Lib.MonusLe using ( monusLe )
-open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvOk; wR; renren )
-open import DirectedHoTT.Lib.AmrecInd using ( PAtR; IndPW )
-open import DirectedHoTT.Lib.Natrec using ( Ren⊢-id )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; Ren⊢ )
+open Lib0.Lib-Dvd using ( dvdT )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-ArithComm using ( IdN; ⊢symN; ⊢transN )
+open Lib0.Lib-MonusPlus using ( monusPlus )
+open Lib0.Lib-MonusLe using ( monusLe )
+open Lib0.Lib-Amrec using ( Prv; prv; prvOk; wR; renren )
+open Lib0.Lib-AmrecInd using ( PAtR; IndPW )
+open Lib0.Lib-Natrec using ( Ren⊢-id )
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast; Ren⊢ )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
         ; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s; gcdBody; gcdStp )
 open import DirectedHoTT.Examples.Gcd.StepExt
   using ( appGcdIH; gcdIH-w; gcdIH-w²; gcdAt; red-β
         ; μ₁; f₁; μ₂; f₂; μ₃; f₃; Θ₂; Θ₃; probe₁-s; probe₂-s )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Pair using ( ⊢PairT )
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Pair using ( ⊢PairT )
 
 
 ------------------------------------------------------------------------

@@ -25,9 +25,11 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AckKernel where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; Nat; RTm; var; vz; vs; nzero; nsuc; natrec; lam; app; Π )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ty-Nat; ty-Π )

@@ -24,16 +24,18 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Spec where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTm; El; var; fst; snd; app; ⌜Nat⌝; subTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ⌊_⌋; single; _⊢_∷_; ⊢⌜Nat⌝; wk-single )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT )
-open import DirectedHoTT.Lib.Dvd using ( dvdT )
-open import DirectedHoTT.Lib.DvdArith using ( QCode; QCode-sub; ⊢Q-fst; ⊢Q-snd )
-open import DirectedHoTT.Lib.Amrec using ( Prv; prvOk; prv-cast )
-open import DirectedHoTT.Lib.AmrecInd using ( module Concl )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT )
+open Lib0.Lib-Dvd using ( dvdT )
+open Lib0.Lib-DvdArith using ( QCode; QCode-sub; ⊢Q-fst; ⊢Q-snd )
+open Lib0.Lib-Amrec using ( Prv; prvOk; prv-cast )
+open Lib0.Lib-AmrecInd using ( module Concl )
 open import DirectedHoTT.Examples.Gcd.Step using ( msr; ⊢msr; gcdStp; ⊢gcdStp )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
 -- ⚠⚠ `IndStep` NOW COMES FROM THE SHARED PLUMBING, not from a bespoke
