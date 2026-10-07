@@ -737,71 +737,88 @@ lvlAt (Γ ∙)   (suc m) l = pickTm (l == m) (var vz) (wk (lvlAt Γ m l))
 lvl : (Γ : Cx) → ℕ → RTm Γ
 lvl Γ = lvlAt Γ (len Γ)
 
-rb  : Bool → ℕ → (Γ : Cx) → Val → RTm Γ
-rbᶜ : Bool → ℕ → (Γ : Cx) → Clo → RTm (Γ ∙)
-rbLam : Bool → ℕ → (Γ : Cx) → Clo → RTm Γ
-rbTrPw : Bool → ℕ → (Γ : Cx) → Clo → Clo → Clo → Val → Maybe TrPwV → RTm Γ
-rb₂ : Bool → ℕ → (Γ : Cx) → Clo₂ → RTm ((Γ ∙) ∙)
+rbAt : Bool → ℕ → (Γ : Cx) → ℕ → Val → RTm Γ
+rbᶜAt : Bool → ℕ → (Γ : Cx) → ℕ → Clo → RTm (Γ ∙)
+rbLamAt : Bool → ℕ → (Γ : Cx) → ℕ → Clo → RTm Γ
+rbTrPwAt : Bool → ℕ → (Γ : Cx) → ℕ → Clo → Clo → Clo → Val → Maybe TrPwV → RTm Γ
+rb₂At : Bool → ℕ → (Γ : Cx) → ℕ → Clo₂ → RTm ((Γ ∙) ∙)
 
-rb u k Γ (vvar l)        = lvl Γ l
-rb u k Γ (vlam c)        = rbLam u k Γ c
-rb u k Γ (vapp f a)      = app (rb u k Γ f) (rb u k Γ a)
-rb u k Γ (vpair a b)     = pair (rb u k Γ a) (rb u k Γ b)
-rb u k Γ (vabsurd c e)   = absurd (rb u k Γ c) (rb u k Γ e)
-rb u k Γ (vordtr a t v p q) = ordtr (rb u k Γ a) (rb u k Γ t) (rb u k Γ v) (rb u k Γ p) (rb u k Γ q)
-rb u k Γ (vfst p)        = fst (rb u k Γ p)
-rb u k Γ (vsnd p)        = snd (rb u k Γ p)
-rb u k Γ v⌜base⌝         = ⌜base⌝
-rb u k Γ (v⌜Π⌝ c d)      = ⌜Π⌝ (rb u k Γ c) (rbᶜ u k Γ d)
-rb u k Γ (v⌜Σ⌝ c d)      = ⌜Σ⌝ (rb u k Γ c) (rbᶜ u k Γ d)
-rb u k Γ (v⌜Hom⌝ c a b)  = ⌜Hom⌝ (rb u k Γ c) (rb u k Γ a) (rb u k Γ b)
-rb u k Γ (vhrefl c t)    = hrefl (rb u k Γ c) (rb u k Γ t)
-rb u k Γ (vtr d p e)     = tr (rbᶜ u k Γ d) (rb u k Γ p) (rb u k Γ e)
-rb u k Γ (vap c b p)     = ap (rb u k Γ c) (rbᶜ u k Γ b) (rb u k Γ p)
-rb u k Γ (v⌜Id⌝ c a b)   = ⌜Id⌝ (rb u k Γ c) (rb u k Γ a) (rb u k Γ b)
-rb u k Γ (vidrefl c t)   = idrefl (rb u k Γ c) (rb u k Γ t)
-rb u k Γ (vjsub d p e)   = jsub (rbᶜ u k Γ d) (rb u k Γ p) (rb u k Γ e)
-rb u k Γ vunit           = unit
-rb u k Γ vnzero          = nzero
-rb u k Γ (vnsuc t)       = nsuc (rb u k Γ t)
-rb u k Γ (vnatrec z s t) = natrec (rb u k Γ z) (rb₂ u k Γ s) (rb u k Γ t)
-rb u k Γ (vcon p)        = con (rb u k Γ p)
-rb u k Γ (vielim D i e t) = ielim (rb u k Γ D) (rb u k Γ i) (rb u k Γ e) (rb u k Γ t)
-rb u k Γ vdι             = dι
-rb u k Γ (vdσ S f)       = dσ (rb u k Γ S) (rb u k Γ f)
-rb u k Γ (vdρ j C)       = dρ (rb u k Γ j) (rb u k Γ C)
-rb u k Γ (vdpay I D C)   = dpay (rb u k Γ I) (rb u k Γ D) (rb u k Γ C)
-rb u k Γ (vdih D e C p)  = dih (rb u k Γ D) (rb u k Γ e) (rb u k Γ C) (rb u k Γ p)
-rb u k Γ vfzero          = fzero
-rb u k Γ (vfsuc t)       = fsuc (rb u k Γ t)
-rb u k Γ (vfcase t a b)  = fcase (rb u k Γ t) (rb u k Γ a) (rbᶜ u k Γ b)
-rb u k Γ (vfcase0 t)     = fcase0 (rb u k Γ t)
-rb u k Γ (vpsplit b p)   = psplit (rb₂ u k Γ b) (rb u k Γ p)
-rb u k Γ v⌜Nat⌝          = ⌜Nat⌝
-rb u k Γ v⌜Unit⌝         = ⌜Unit⌝
-rb u k Γ (v⌜IMu⌝ I D i)  = ⌜IMu⌝ (rb u k Γ I) (rb u k Γ D) (rb u k Γ i)
-rb u k Γ (v⌜Fin⌝ t)      = ⌜Fin⌝ (rb u k Γ t)
-rb false k Γ (vref d b)  = ref d b
-rb true zero Γ (vref d b) = ref d b
-rb true (suc k) Γ (vref d b) = rb true k Γ (eval k 0 [] b)
+rbAt u k Γ n (vvar l)        = lvlAt Γ n l
+rbAt u k Γ n (vlam c)        = rbLamAt u k Γ n c
+rbAt u k Γ n (vapp f a)      = app (rbAt u k Γ n f) (rbAt u k Γ n a)
+rbAt u k Γ n (vpair a b)     = pair (rbAt u k Γ n a) (rbAt u k Γ n b)
+rbAt u k Γ n (vabsurd c e)   = absurd (rbAt u k Γ n c) (rbAt u k Γ n e)
+rbAt u k Γ n (vordtr a t v p q) = ordtr (rbAt u k Γ n a) (rbAt u k Γ n t) (rbAt u k Γ n v) (rbAt u k Γ n p) (rbAt u k Γ n q)
+rbAt u k Γ n (vfst p)        = fst (rbAt u k Γ n p)
+rbAt u k Γ n (vsnd p)        = snd (rbAt u k Γ n p)
+rbAt u k Γ n v⌜base⌝         = ⌜base⌝
+rbAt u k Γ n (v⌜Π⌝ c d)      = ⌜Π⌝ (rbAt u k Γ n c) (rbᶜAt u k Γ n d)
+rbAt u k Γ n (v⌜Σ⌝ c d)      = ⌜Σ⌝ (rbAt u k Γ n c) (rbᶜAt u k Γ n d)
+rbAt u k Γ n (v⌜Hom⌝ c a b)  = ⌜Hom⌝ (rbAt u k Γ n c) (rbAt u k Γ n a) (rbAt u k Γ n b)
+rbAt u k Γ n (vhrefl c t)    = hrefl (rbAt u k Γ n c) (rbAt u k Γ n t)
+rbAt u k Γ n (vtr d p e)     = tr (rbᶜAt u k Γ n d) (rbAt u k Γ n p) (rbAt u k Γ n e)
+rbAt u k Γ n (vap c b p)     = ap (rbAt u k Γ n c) (rbᶜAt u k Γ n b) (rbAt u k Γ n p)
+rbAt u k Γ n (v⌜Id⌝ c a b)   = ⌜Id⌝ (rbAt u k Γ n c) (rbAt u k Γ n a) (rbAt u k Γ n b)
+rbAt u k Γ n (vidrefl c t)   = idrefl (rbAt u k Γ n c) (rbAt u k Γ n t)
+rbAt u k Γ n (vjsub d p e)   = jsub (rbᶜAt u k Γ n d) (rbAt u k Γ n p) (rbAt u k Γ n e)
+rbAt u k Γ n vunit           = unit
+rbAt u k Γ n vnzero          = nzero
+rbAt u k Γ n (vnsuc t)       = nsuc (rbAt u k Γ n t)
+rbAt u k Γ n (vnatrec z s t) = natrec (rbAt u k Γ n z) (rb₂At u k Γ n s) (rbAt u k Γ n t)
+rbAt u k Γ n (vcon p)        = con (rbAt u k Γ n p)
+rbAt u k Γ n (vielim D i e t) = ielim (rbAt u k Γ n D) (rbAt u k Γ n i) (rbAt u k Γ n e) (rbAt u k Γ n t)
+rbAt u k Γ n vdι             = dι
+rbAt u k Γ n (vdσ S f)       = dσ (rbAt u k Γ n S) (rbAt u k Γ n f)
+rbAt u k Γ n (vdρ j C)       = dρ (rbAt u k Γ n j) (rbAt u k Γ n C)
+rbAt u k Γ n (vdpay I D C)   = dpay (rbAt u k Γ n I) (rbAt u k Γ n D) (rbAt u k Γ n C)
+rbAt u k Γ n (vdih D e C p)  = dih (rbAt u k Γ n D) (rbAt u k Γ n e) (rbAt u k Γ n C) (rbAt u k Γ n p)
+rbAt u k Γ n vfzero          = fzero
+rbAt u k Γ n (vfsuc t)       = fsuc (rbAt u k Γ n t)
+rbAt u k Γ n (vfcase t a b)  = fcase (rbAt u k Γ n t) (rbAt u k Γ n a) (rbᶜAt u k Γ n b)
+rbAt u k Γ n (vfcase0 t)     = fcase0 (rbAt u k Γ n t)
+rbAt u k Γ n (vpsplit b p)   = psplit (rb₂At u k Γ n b) (rbAt u k Γ n p)
+rbAt u k Γ n v⌜Nat⌝          = ⌜Nat⌝
+rbAt u k Γ n v⌜Unit⌝         = ⌜Unit⌝
+rbAt u k Γ n (v⌜IMu⌝ I D i)  = ⌜IMu⌝ (rbAt u k Γ n I) (rbAt u k Γ n D) (rbAt u k Γ n i)
+rbAt u k Γ n (v⌜Fin⌝ t)      = ⌜Fin⌝ (rbAt u k Γ n t)
+rbAt false k Γ n (vref d b)  = ref d b
+rbAt true zero Γ n (vref d b) = ref d b
+rbAt true (suc k) Γ n (vref d b) = rbAt true k Γ n (eval k 0 [] b)
 
 -- a λ-value: λ of its body — except tr-pw's, whose guard is re-checked
 --   (at this fuel): the λ of its body when it holds, else the redex
-rbLam u k Γ c@(clo _ _)        = lam (rbᶜ u k Γ c)
-rbLam u k Γ c@(cloK _)         = lam (rbᶜ u k Γ c)
-rbLam u k Γ c@(cloHrefl _ _ _) = lam (rbᶜ u k Γ c)
-rbLam u k Γ c@(cloDpay _ _ _)  = lam (rbᶜ u k Γ c)
-rbLam u k Γ c@(cloHomTo _ _)   = lam (rbᶜ u k Γ c)
-rbLam u k Γ c@(cloTrPw d f e)  = rbTrPw u k Γ c d f e (trPwView k (len Γ) d)
-rbTrPw u k Γ c d f e (just _) = lam (rbᶜ u k Γ c)
-rbTrPw u k Γ c d f e nothing  = tr (rbᶜ u k Γ d) (lam (rbᶜ u k Γ f)) (rb u k Γ e)
+rbLamAt u k Γ n c@(clo _ _)        = lam (rbᶜAt u k Γ n c)
+rbLamAt u k Γ n c@(cloK _)         = lam (rbᶜAt u k Γ n c)
+rbLamAt u k Γ n c@(cloHrefl _ _ _) = lam (rbᶜAt u k Γ n c)
+rbLamAt u k Γ n c@(cloDpay _ _ _)  = lam (rbᶜAt u k Γ n c)
+rbLamAt u k Γ n c@(cloHomTo _ _)   = lam (rbᶜAt u k Γ n c)
+rbLamAt u k Γ n c@(cloTrPw d f e)  = rbTrPwAt u k Γ n c d f e (trPwView k n d)
+rbTrPwAt u k Γ n c d f e (just _) = lam (rbᶜAt u k Γ n c)
+rbTrPwAt u k Γ n c d f e nothing  = tr (rbᶜAt u k Γ n d) (lam (rbᶜAt u k Γ n f)) (rbAt u k Γ n e)
 
-rbᶜ u zero    Γ c = ⌊ c ⌋ᶜ (lvl Γ)
-rbᶜ u (suc k) Γ c = rb u k (Γ ∙) (inst k (suc (len Γ)) c (vvar (len Γ)))
+rbᶜAt u zero    Γ n c = ⌊ c ⌋ᶜ (lvlAt Γ n)
+rbᶜAt u (suc k) Γ n c = rbAt u k (Γ ∙) (suc n) (inst k (suc n) c (vvar n))
 
-rb₂ u zero    Γ c = ⌊ c ⌋² (lvl Γ)
-rb₂ u (suc k) Γ c = rb u k ((Γ ∙) ∙)
-  (inst₂ k (suc (suc (len Γ))) c (vvar (len Γ)) (vvar (suc (len Γ))))
+rb₂At u zero    Γ n c = ⌊ c ⌋² (lvlAt Γ n)
+rb₂At u (suc k) Γ n c = rbAt u k ((Γ ∙) ∙) (suc (suc n))
+  (inst₂ k (suc (suc n)) c (vvar n) (vvar (suc n)))
+
+
+-- ★ the readback with the context length computed ONCE (passed down, as
+--   `lvlAt`): `len` per variable and per binder was 15% of PwCore's
+--   checking (profiled 2026-10-06).  `rb u k Γ` is `rbAt u k Γ (len Γ)`,
+--   and `len (Γ ∙)` is `suc (len Γ)`, so every clause still holds
+--   DEFINITIONALLY at the old names.
+rb  : Bool → ℕ → (Γ : Cx) → Val → RTm Γ
+rb u k Γ = rbAt u k Γ (len Γ)
+rbᶜ : Bool → ℕ → (Γ : Cx) → Clo → RTm (Γ ∙)
+rbᶜ u k Γ = rbᶜAt u k Γ (len Γ)
+rbLam : Bool → ℕ → (Γ : Cx) → Clo → RTm Γ
+rbLam u k Γ = rbLamAt u k Γ (len Γ)
+rbTrPw : Bool → ℕ → (Γ : Cx) → Clo → Clo → Clo → Val → Maybe TrPwV → RTm Γ
+rbTrPw u k Γ = rbTrPwAt u k Γ (len Γ)
+rb₂ : Bool → ℕ → (Γ : Cx) → Clo₂ → RTm ((Γ ∙) ∙)
+rb₂ u k Γ = rb₂At u k Γ (len Γ)
 
 ------------------------------------------------------------------------
 -- 8. TYPES (`_⟶ᵀ_`, `Algorithm/Eval.headᵀ`).  Terms never contain types,
@@ -956,34 +973,42 @@ tDIhF k       n D M (notDesc C) p = tDIh D M C p
 ⌊ tinst c v ⌋ᵀ      L = subTy (single (⌊ v ⌋ L)) (⌊ c ⌋ᵀᶜ L)
 ⌊ tinst₂ c j t ⌋ᵀ   L = subTy (single (⌊ t ⌋ L)) (subTy (extS (single (⌊ j ⌋ L))) (⌊ c ⌋ᵀ² L))
 
+rbᵀAt : Bool → ℕ → (Γ : Cx) → ℕ → TVal → RTy Γ
+rbᵀᶜAt : Bool → ℕ → (Γ : Cx) → ℕ → TClo → RTy (Γ ∙)
+rbᵀ₂At : Bool → ℕ → (Γ : Cx) → ℕ → TClo₂ → RTy ((Γ ∙) ∙)
+
+rbᵀAt u k Γ n tbase          = base
+rbᵀAt u k Γ n tU             = U
+rbᵀAt u k Γ n tUnit          = Unit
+rbᵀAt u k Γ n tNat           = Nat
+rbᵀAt u k Γ n (tΠ A B)       = Π (rbᵀAt u k Γ n A) (rbᵀᶜAt u k Γ n B)
+rbᵀAt u k Γ n (tΣ A B)       = Σ' (rbᵀAt u k Γ n A) (rbᵀᶜAt u k Γ n B)
+rbᵀAt u k Γ n (tEl c)        = El (rbAt u k Γ n c)
+rbᵀAt u k Γ n (tHom A a b)   = Hom (rbᵀAt u k Γ n A) (rbAt u k Γ n a) (rbAt u k Γ n b)
+rbᵀAt u k Γ n (tId A a b)    = Id (rbᵀAt u k Γ n A) (rbAt u k Γ n a) (rbAt u k Γ n b)
+rbᵀAt u k Γ n (tIMu I D i)   = IMu (rbAt u k Γ n I) (rbAt u k Γ n D) (rbAt u k Γ n i)
+rbᵀAt u k Γ n (tDesc I)      = Desc (rbAt u k Γ n I)
+rbᵀAt u k Γ n (tDIh D M C p) = DIh (rbAt u k Γ n D) (rbᵀ₂At u k Γ n M) (rbAt u k Γ n C) (rbAt u k Γ n p)
+rbᵀAt u k Γ n (tFin t)       = Fin (rbAt u k Γ n t)
+rbᵀAt u zero    Γ n (tinst c v)    = ⌊ tinst c v ⌋ᵀ (lvlAt Γ n)
+rbᵀAt u (suc k) Γ n (tinst c v)    = rbᵀAt u k Γ n (instᵀ k n c v)
+rbᵀAt u zero    Γ n (tinst₂ c j t) = ⌊ tinst₂ c j t ⌋ᵀ (lvlAt Γ n)
+rbᵀAt u (suc k) Γ n (tinst₂ c j t) = rbᵀAt u k Γ n (instᵀ₂ k n c j t)
+
+rbᵀᶜAt u zero    Γ n c = ⌊ c ⌋ᵀᶜ (lvlAt Γ n)
+rbᵀᶜAt u (suc k) Γ n c = rbᵀAt u k (Γ ∙) (suc n) (instᵀ k (suc n) c (vvar n))
+
+rbᵀ₂At u zero    Γ n c = ⌊ c ⌋ᵀ² (lvlAt Γ n)
+rbᵀ₂At u (suc k) Γ n c = rbᵀAt u k ((Γ ∙) ∙) (suc (suc n))
+  (instᵀ₂ k (suc (suc n)) c (vvar n) (vvar (suc n)))
+
+
 rbᵀ  : Bool → ℕ → (Γ : Cx) → TVal → RTy Γ
+rbᵀ u k Γ = rbᵀAt u k Γ (len Γ)
 rbᵀᶜ : Bool → ℕ → (Γ : Cx) → TClo → RTy (Γ ∙)
+rbᵀᶜ u k Γ = rbᵀᶜAt u k Γ (len Γ)
 rbᵀ₂ : Bool → ℕ → (Γ : Cx) → TClo₂ → RTy ((Γ ∙) ∙)
-
-rbᵀ u k Γ tbase          = base
-rbᵀ u k Γ tU             = U
-rbᵀ u k Γ tUnit          = Unit
-rbᵀ u k Γ tNat           = Nat
-rbᵀ u k Γ (tΠ A B)       = Π (rbᵀ u k Γ A) (rbᵀᶜ u k Γ B)
-rbᵀ u k Γ (tΣ A B)       = Σ' (rbᵀ u k Γ A) (rbᵀᶜ u k Γ B)
-rbᵀ u k Γ (tEl c)        = El (rb u k Γ c)
-rbᵀ u k Γ (tHom A a b)   = Hom (rbᵀ u k Γ A) (rb u k Γ a) (rb u k Γ b)
-rbᵀ u k Γ (tId A a b)    = Id (rbᵀ u k Γ A) (rb u k Γ a) (rb u k Γ b)
-rbᵀ u k Γ (tIMu I D i)   = IMu (rb u k Γ I) (rb u k Γ D) (rb u k Γ i)
-rbᵀ u k Γ (tDesc I)      = Desc (rb u k Γ I)
-rbᵀ u k Γ (tDIh D M C p) = DIh (rb u k Γ D) (rbᵀ₂ u k Γ M) (rb u k Γ C) (rb u k Γ p)
-rbᵀ u k Γ (tFin t)       = Fin (rb u k Γ t)
-rbᵀ u zero    Γ (tinst c v)    = ⌊ tinst c v ⌋ᵀ (lvl Γ)
-rbᵀ u (suc k) Γ (tinst c v)    = rbᵀ u k Γ (instᵀ k (len Γ) c v)
-rbᵀ u zero    Γ (tinst₂ c j t) = ⌊ tinst₂ c j t ⌋ᵀ (lvl Γ)
-rbᵀ u (suc k) Γ (tinst₂ c j t) = rbᵀ u k Γ (instᵀ₂ k (len Γ) c j t)
-
-rbᵀᶜ u zero    Γ c = ⌊ c ⌋ᵀᶜ (lvl Γ)
-rbᵀᶜ u (suc k) Γ c = rbᵀ u k (Γ ∙) (instᵀ k (suc (len Γ)) c (vvar (len Γ)))
-
-rbᵀ₂ u zero    Γ c = ⌊ c ⌋ᵀ² (lvl Γ)
-rbᵀ₂ u (suc k) Γ c = rbᵀ u k ((Γ ∙) ∙)
-  (instᵀ₂ k (suc (suc (len Γ))) c (vvar (len Γ)) (vvar (suc (len Γ))))
+rbᵀ₂ u k Γ = rbᵀ₂At u k Γ (len Γ)
 
 ------------------------------------------------------------------------
 -- 9. The entry points.

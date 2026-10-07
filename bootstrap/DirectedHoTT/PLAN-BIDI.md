@@ -779,10 +779,16 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
         `lam`, holding the elaborated `con` payloads). Making the Knot's
         constructors closed entries cut it to 116k nodes and `decTo`
         calls by 29%, and the time not at all.
-      - ⬜ What remains is NbE (2503 conversions that differ
-        syntactically): `len` (15%; readback still computes the context
-        length per variable and per binder), `eval`, `refV` (every
-        conversion unfolds references through their bodies).
+      - ✅ Readback computes the context length ONCE (`NbE.rbAt` and
+        friends, the length passed down as `lvlAt`; the old names are
+        wrappers, `len (Γ ∙)` is `suc (len Γ)`, so no proof changed).
+        Unfoldings 57.9M → 49.0M (`len` 8.94M → 0.20M); peak 4.25 →
+        3.4 GB (two runs; wall-clock time not comparable, the machine
+        was shared).
+      - ⬜ What remains is reference evaluation in NbE (2503 conversions
+        that differ syntactically): `eval`, `force`, `refV`, `lookup`
+        (~38%). Every conversion re-evaluates the bodies it unfolds:
+        PLAN-EVAL E4's trigger, now measured.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
