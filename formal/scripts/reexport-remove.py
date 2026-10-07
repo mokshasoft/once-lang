@@ -549,6 +549,10 @@ def prune_module(path, recs, dry=False):
         w = r["written"]
         if "." in w.strip("."): quals.add(w.rsplit(".", 1)[0])
         for q in r.get("qualifier", []): quals.add(q["resolved"])
+    # a qualifier is a use of the module it names: `R.f` uses the imported record `R`
+    for q in list(quals):
+        parts = q.split(".")
+        used |= {".".join(parts[k:]) for k in range(len(parts))} | set(parts)
     L = open(path, encoding="utf-8").read().split("\n")
     out, i, removed, log = [], 0, 0, []
     while i < len(L):
