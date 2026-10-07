@@ -7,9 +7,9 @@ typing `ok`).  This tool brings a module that USES them into line, the way
 the generators (`gen-knot.py`, `gen-judge.py`) must emit it:
 
   * the module's header becomes `(𝒮 : Defs) (wf : WfK 𝒮)` — one hypothesis,
-    the signature's context formation — with the bound `𝓃 = size 𝒮`, the
-    entries' typing `ok` and the references' reducibility `refs` derived in a
-    private block (`Metatheory/Entries`);
+    the signature's context formation — and the libraries get the bound,
+    the entries' typing and the references' reducibility in their ONE global
+    spelling `(Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) (Entries.refsᵂ 𝒮 wf)`;
   * every import of a parameterised module gets its arguments, read off that
     module's OWN header (so nothing here can drift from the tree);
   * each parameterised module is instantiated ONCE per file (`import M args
@@ -17,6 +17,12 @@ the generators (`gen-knot.py`, `gen-judge.py`) must emit it:
     make its names ambiguous wherever they meet.
 
 A module that imports nothing parameterised is left alone.
+
+★ A module that cites the CORE's entries (`Knot/PwCore`), or imports one
+that does, is over a signature CONTAINING the core: its header gains
+`(core : Core₀.Kc ⊑ᴰ 𝒮)` (`Spec/SigExtend`), class `C` — a reference is a
+projection from the ambient signature, so a use of a name is a
+hypothesis on it.  Already-converted modules are UPGRADED in place.
 
   planref.py FILE...        rewrite the files in place
   (library) convert_text(text) -> text
@@ -28,8 +34,19 @@ import sys
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 # the arguments each kind of parameter list takes, inside a W module
-ARGS = {'R': '𝒮', 'T': '𝒮 𝓃', 'O': '𝒮 𝓃 ok', 'F': '𝒮 𝓃 ok refs', 'W': '𝒮 wf'}
-SPEC_ARGS = {'DirectedHoTT.Spec.Typing': '𝒮 𝓃', 'DirectedHoTT.Spec.Reduction': '𝒮'}
+# ★ ONE global spelling of the derived arguments (`Metatheory/Entries`): a
+#   private abbreviation per module makes two instances of one library
+#   differ syntactically, and Agda compares them by unfolding (measured
+#   4 s → 3416 s)
+N_, OK_, REFS_ = '(Defs.size 𝒮)', '(Entries.okᵂ 𝒮 wf)', '(Entries.refsᵂ 𝒮 wf)'
+ARGS = {'R': '𝒮', 'T': '𝒮 ' + N_, 'O': '𝒮 %s %s' % (N_, OK_), 'F': '𝒮 %s %s %s' % (N_, OK_, REFS_),
+        'W': '𝒮 wf', 'C': '𝒮 wf core'}
+ATOM = r'(?:𝒮|wf|core|\(Defs\.size 𝒮\)|\(Entries\.okᵂ 𝒮 wf\)|\(Entries\.refsᵂ 𝒮 wf\))'
+ARGRE = ATOM + r'(?: ' + ATOM + r')*'
+CORE_PRE = ('open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )\n'
+            'import DirectedHoTT.Examples.PwCore as Core₀\n')
+CORE_HDR = '(𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮)'
+SPEC_ARGS = {'DirectedHoTT.Spec.Typing': '𝒮 (Defs.size 𝒮)', 'DirectedHoTT.Spec.Reduction': '𝒮'}
 QUAL = r'(?=\s+(?:using|hiding|renaming|public|as)\b|\s*$)'
 _cls = {}
 
@@ -45,7 +62,9 @@ def module_class(mod):
             s = open(p).read()
             m = re.search(r'^module ' + re.escape(mod) + r'\b(.*?)\bwhere', s, re.M | re.S)
             ps = m.group(1) if m else ''
-            if '(wf : WfK' in ps:
+            if '(core :' in ps:
+                c = 'C'
+            elif '(wf : WfK' in ps:
                 c = 'W'
             elif '(refs :' in ps:
                 c = 'F'
@@ -71,21 +90,20 @@ def _alias(mod):
 
 
 def convert_text(text):
-    hm = re.search(r'^module (\S+) where$', text, re.M)
+    hm = re.search(r'^module (DirectedHoTT\.\S+) where$', text, re.M)
     if not hm or not _imports_param(text):
         return text
     me = hm.group(1)
     pre = ('open import DirectedHoTT.Spec.Syntax using ( Defs )\n'
            'open import DirectedHoTT.Spec.SigWf using ( WfK )\n'
            'import DirectedHoTT.Metatheory.Entries as Entries\n')
-    post = ('\n\n-- ★ PLAN-REF: over a well-formed signature, at all its names\n'
-            'private\n'
-            '  𝓃 = Defs.size 𝒮\n'
-            '  ok = Entries.sigOK 𝒮 𝓃 wf\n'
-            '  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf\n')
+    post = '\n'
     head, body = text[:hm.start()], text[hm.end():]
-    text = head + pre + f'module {me} (𝒮 : Defs) (wf : WfK 𝒮) where' + post + body
-    hm = re.search(r'^module \S+ \(𝒮 : Defs\) \(wf : WfK 𝒮\) where$', text, re.M)
+    if _cls.get(me) == 'C':
+        text = head + pre + CORE_PRE + f'module {me} {CORE_HDR} where' + post + body
+    else:
+        text = head + pre + f'module {me} (𝒮 : Defs) (wf : WfK 𝒮) where' + post + body
+    hm = re.search(r'^module \S+ \(𝒮 : Defs\) \(wf : WfK 𝒮\)(?: \(core : [^)]*\))? where$', text, re.M)
     head, body = text[:hm.end()], text[hm.end():]
 
     # arguments
@@ -106,7 +124,7 @@ def convert_text(text):
     L = body.split('\n')
     top = {}
     for i, l in enumerate(L):
-        m = re.match(r'^open import (DirectedHoTT\.[A-Za-z.]+) ((?:𝒮|𝓃|ok|refs|wf)(?: (?:𝒮|𝓃|ok|refs|wf))*)(.*)$', l)
+        m = re.match(r'^open import (DirectedHoTT\.[A-Za-z.]+) (' + ARGRE + r')(.*)$', l)
         if m:
             top.setdefault((m.group(1), m.group(2)), []).append(i)
     aliases = {}
@@ -136,7 +154,7 @@ def convert_text(text):
             need.append((mod, a, al))
         return f'{lead}open {al}{rest}'
     need = []
-    body = re.sub(r'^(\s+(?:where\s+)?|\S.*\bwhere\s+)open import (DirectedHoTT\.[A-Za-z.]+) ((?:𝒮|𝓃|ok|refs|wf)(?: (?:𝒮|𝓃|ok|refs|wf))*)((?: (?:using|hiding|renaming)\b.*)?)$',
+    body = re.sub(r'^(\s+(?:where\s+)?|\S.*\bwhere\s+)open import (DirectedHoTT\.[A-Za-z.]+) (' + ARGRE + r')((?: (?:using|hiding|renaming)\b.*)?)$',
                   local, body, flags=re.M)
     if need:
         # a top-level open of the same instance becomes the alias, else add one
@@ -152,12 +170,29 @@ def convert_text(text):
             if not done:
                 j = 0
                 while j < len(L) and (L[j].strip() == '' or L[j].startswith('--') or L[j].startswith('private')
-                                       or re.match(r'^(open import|import|open ᴵ|  (𝓃|ok|refs) = )', L[j])
+                                       or re.match(r'^(open import|import|open ᴵ)', L[j])
                                        or (L[j][:1].isspace() and not re.match(r'^\s+\S+\s*:', L[j]))):
                     j += 1
                 L.insert(j, f'import {mod} {a} as {al}')
         body = '\n'.join(L)
     return head + body
+
+
+def upgrade_text(text):
+    """an already-converted `(𝒮)(wf)` module that is (now) `C`: the header
+    gains `core`, and every import of a `C` module passes it"""
+    hm = re.search(r'^module (\S+) \(𝒮 : Defs\) \(wf : WfK 𝒮\)( \(core : [^)]*\))? where$', text, re.M)
+    if not hm:
+        return text
+    me = hm.group(1)
+    if _cls.get(me) != 'C':
+        return text
+    if not hm.group(2):
+        text = text[:hm.start()] + CORE_PRE + f'module {me} {CORE_HDR} where' + text[hm.end():]
+    def fix(m):
+        mod = m.group(2)
+        return m.group(0) if module_class(mod) != 'C' else f'{m.group(1)}{mod} 𝒮 wf core'
+    return re.sub(r'^(.*?(?:open import|import) )(DirectedHoTT\.[A-Za-z.]+) 𝒮 wf(?! core)', fix, text, flags=re.M)
 
 
 def _modname(path):
@@ -170,21 +205,34 @@ def convert_all(outs):
     fixpoint: a module that imports a parameterised one, or one of the batch
     that will be, becomes `W`), then each text converted."""
     names = {p: _modname(p) for p in outs}
-    w = set()
+    # ★ the core's citers first: a module importing a `C` module is `C`
+    cset = {n for n in names.values() if module_class(n) == 'C'}
     changed = True
     while changed:
         changed = False
         for p, t in outs.items():
             n = names[p]
-            if n in w or not re.search(r'^module \S+ where$', t, re.M):
+            if n in cset:
+                continue
+            imps = re.findall(r'(?:open import|import) (DirectedHoTT\.[A-Za-z.]+)', t)
+            if any(i in cset or (i not in names.values() and module_class(i) == 'C') for i in imps):
+                cset.add(n)
+                changed = True
+    w = set(cset)
+    changed = True
+    while changed:
+        changed = False
+        for p, t in outs.items():
+            n = names[p]
+            if n in w or not re.search(r'^module DirectedHoTT\.\S+ where$', t, re.M):
                 continue
             imps = re.findall(r'(?:open import|import) (DirectedHoTT\.[A-Za-z.]+)', t)
             if any(i in SPEC_ARGS or i in w or (i not in names.values() and module_class(i)) for i in imps):
                 w.add(n)
                 changed = True
     for n in w:
-        _cls[n] = 'W'
-    return {p: convert_text(t) for p, t in outs.items()}
+        _cls[n] = 'C' if n in cset else 'W'
+    return {p: upgrade_text(convert_text(t)) for p, t in outs.items()}
 
 
 if __name__ == '__main__':

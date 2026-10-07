@@ -13,9 +13,10 @@
 --   `Knot/Pw.PwF.DF` (`Examples/NbEPwAgree`).
 --
 -- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`): 84.5 s / 4.25 GB
---   (2026-10-06, after `decTo` compares BY NAMES, `Algorithm/EraName`;
---   144 s / 4.9 GB after CheckA's syntactic fast path; before that the
---   checker ran out of memory on the 52-branch rows cascade).
+--   (2026-10-06, when references still carried their bodies; 144 s /
+--   4.9 GB before that; before CheckA's syntactic fast path the checker
+--   ran out of memory on the 52-branch rows cascade).  PLAN-REF: to
+--   re-measure.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -23,8 +24,10 @@ module DirectedHoTT.Examples.PwCore where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc; _-_; _+_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; vz; vs )
-open import DirectedHoTT.Metatheory.Signature using ( WfSig )
+open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; vz; vs; Defs )
+open import DirectedHoTT.Metatheory.Signature using ( WfSig; wf→K )
+open import DirectedHoTT.Spec.Signature using ( kernel )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
 open import DirectedHoTT.Algorithm.Surface
 open import DirectedHoTT.Algorithm.SigBuild using ( module SigExtend )
 import DirectedHoTT.Examples.SigMeth as Base
@@ -186,3 +189,11 @@ open SigExtend Base.S Base.abody Base.wf 5 tys tms 1000 public
 
 wf : WfSig S
 wf = fromJust wfSig _
+
+-- ★ PLAN-REF: the core as a KERNEL signature — what the Knot's codes cite
+--   (`Knot/PwCore` is over any signature containing it)
+Kc : Defs
+Kc = kernel S
+
+wfKc : WfK Kc
+wfKc = wf→K S wf

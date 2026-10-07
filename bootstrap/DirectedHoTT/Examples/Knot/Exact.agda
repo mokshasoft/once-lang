@@ -17,44 +17,47 @@
 --   exactConv/exactConvT t ≅ u,    A ≅ᵀ B           (ConvDecode)
 --   exactLk              Γ ∋ x ∷ A                  (LookupDecode)
 --   exactPw, exactNNC, exactStkA, exactStkC, exactFlat   the side conditions
+--
+-- ★ PLAN-REF (D082): the judgements are read AT THE QUOTED AMBIENT
+--   SIGNATURE — reduction and conversion at `q𝒮 = quoteDefs 𝒮`, typing at
+--   `t𝒮 = (q𝒮 , (Defs.size 𝒮))` (`Knot/QuoteSig`): the Knot over `𝒮` says exactly what
+--   the kernel over `𝒮` says.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
-module DirectedHoTT.Examples.Knot.Exact (𝒮 : Defs) (wf : WfK 𝒮) where
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PwCore as Core₀
+module DirectedHoTT.Examples.Knot.Exact (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( _≡_; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; pw?; pwBody; stkA?; stkC?; flat?; 𝔹; true )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal; WN )
-open import DirectedHoTT.Metatheory.Fundamental 𝒮 𝓃 ok refs using ( wnorm )
-open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 𝓃 ok using ( sr* )
+open import DirectedHoTT.Metatheory.Fundamental 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) (Entries.refsᵂ 𝒮 wf) using ( wnorm )
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( sr* )
 open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( quoteCtx )
 open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( JT; tyIx; tmIx )
-open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf using ( D⊢ )
+open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf core using ( D⊢ )
 open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( K∋; ix∋ )
-open import DirectedHoTT.Examples.Knot.Red 𝒮 wf using ( K⟶ )
-open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf using ( K⟶ᵀ )
-open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf using ( K≅; K≅ᵀ )
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core using ( K⟶ )
+open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core using ( K⟶ᵀ )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( K≅; K≅ᵀ )
 open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf using ( KPw )
 open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( KNNC; KStkA; KStkC; KFlat )
-open import DirectedHoTT.Examples.Knot.JudgeDecode 𝒮 wf using ( decTy; decTm )
-open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf using ( decRed )
-open import DirectedHoTT.Examples.Knot.RedTDecode 𝒮 wf using ( decRedT )
-open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf using ( decConv; decConvT )
+open import DirectedHoTT.Examples.Knot.JudgeDecode 𝒮 wf core using ( decTy; decTm )
+open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf core using ( decRed )
+open import DirectedHoTT.Examples.Knot.RedTDecode 𝒮 wf core using ( decRedT )
+open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf core using ( decConv; decConvT )
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; t𝒮 )
 open import DirectedHoTT.Examples.Knot.LookupDecode 𝒮 wf using ( decLk )
-open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf using ( decPw )
+open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf core using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf using ( decNNC; decStkA; decStkC; decFlat )
 
 -- a closed typed term has a closed normal form at the same type
@@ -69,23 +72,23 @@ private
   ... | k' , (d' , n') = dec k' d' n'
 
 exactTy : (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →
-          ◇ ⊢ k ∷ IMu JT D⊢ (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → Γ ⊢ty A
+          ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → Γ ⊢ty A
 exactTy Γ A = via (λ _ d n → decTy Γ A d n)
 
 exactTm : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →
-          ◇ ⊢ k ∷ IMu JT D⊢ (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → Γ ⊢ t ∷ A
+          ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → Γ ⊢ t ∷ A
 exactTm Γ t A = via (λ _ d n → decTm Γ t A d n)
 
-exactRed : {Γ : Cx} (t u : RTm Γ) {k : RTm ε} → ◇ ⊢ k ∷ K⟶ (dep Γ) (quoteTm t) (quoteTm u) → t ⟶ u
+exactRed : {Γ : Cx} (t u : RTm Γ) {k : RTm ε} → ◇ ⊢ k ∷ K⟶ q𝒮 (dep Γ) (quoteTm t) (quoteTm u) → t ⟶ u
 exactRed t u = via (λ _ d n → decRed t {u} d n)
 
-exactRedT : {Γ : Cx} (A B : RTy Γ) {k : RTm ε} → ◇ ⊢ k ∷ K⟶ᵀ (dep Γ) (quoteTy A) (quoteTy B) → A ⟶ᵀ B
+exactRedT : {Γ : Cx} (A B : RTy Γ) {k : RTm ε} → ◇ ⊢ k ∷ K⟶ᵀ q𝒮 (dep Γ) (quoteTy A) (quoteTy B) → A ⟶ᵀ B
 exactRedT A B = via (λ _ d n → decRedT A {B} d n)
 
-exactConv : {Γ : Cx} (t u : RTm Γ) {k : RTm ε} → ◇ ⊢ k ∷ K≅ (dep Γ) (quoteTm t) (quoteTm u) → t ≅ u
+exactConv : {Γ : Cx} (t u : RTm Γ) {k : RTm ε} → ◇ ⊢ k ∷ K≅ q𝒮 (dep Γ) (quoteTm t) (quoteTm u) → t ≅ u
 exactConv t u = via (λ _ d n → decConv t u d n)
 
-exactConvT : {Γ : Cx} (A B : RTy Γ) {k : RTm ε} → ◇ ⊢ k ∷ K≅ᵀ (dep Γ) (quoteTy A) (quoteTy B) → A ≅ᵀ B
+exactConvT : {Γ : Cx} (A B : RTy Γ) {k : RTm ε} → ◇ ⊢ k ∷ K≅ᵀ q𝒮 (dep Γ) (quoteTy A) (quoteTy B) → A ≅ᵀ B
 exactConvT A B = via (λ _ d n → decConvT A B d n)
 
 exactLk : {Γ : Ctx} (x : Var ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →

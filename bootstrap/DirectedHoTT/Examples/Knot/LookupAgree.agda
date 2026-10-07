@@ -14,18 +14,13 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Examples.Knot.LookupAgree (𝒮 : Defs) (wf : WfK 𝒮) where
 
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( Σ; _,_ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( ⊢isuc )
+open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk )

@@ -40,17 +40,13 @@ import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Lib.NatEval (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
-private
-  n = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 n wf
-  refs = Entries.refsOK 𝒮 n (λ p → p) wf
 
 open import normalizer.Syntax.Types using ( ⊥-elim )
 open import DirectedHoTT.Spec.Syntax using ( RTm; ε; Nat )
-open import DirectedHoTT.Spec.Typing 𝒮 n using ( ◇; _⊢_∷_; c-◇ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) using ( ◇; _⊢_∷_; c-◇ )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( mkWN )
-open import DirectedHoTT.Metatheory.Fundamental 𝒮 n ok refs using ( wnorm )
-open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok using ( sr* )
+open import DirectedHoTT.Metatheory.Fundamental 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) (Entries.refsᵂ 𝒮 wf) using ( wnorm )
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( sr* )
 open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf
   using ( progress; prog-can; prog-step; canNat; ns-zero; ns-suc )
 open import DirectedHoTT.Lib.NatVal 𝒮 using ( NatVal; nv-zero; nv-suc )

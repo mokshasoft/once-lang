@@ -26,31 +26,26 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Examples.Knot.LookupCon (𝒮 : Defs) (wf : WfK 𝒮) where
 
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.RedCong 𝒮
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; tag; selF; selF-sub; Dσ-sub; ⊢selF; selF-β; subC; nth-z; nth-s; lt-z; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
-open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.NatFib 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.NatCode 𝒮 𝓃
-open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; conₗ; tag; selF; selF-sub; Dσ-sub; ⊢selF; selF-β; subC; nth-z; nth-s; lt-z; ⊢tag; ⊢pay-σ; ⊢con-fib; []ᵈ; _∷ᵈ_; v₀; v₁; v₂; v₃; v₄; v₅; _,ₚ_ )
+open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.MethAt 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.NatFib 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮)
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk; wk-sub; ⊢wkS )
 open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf
-open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( ⊢conRow )
+open import DirectedHoTT.Lib.SynFib 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( ⊢conRow )
 
 private
   variable
@@ -492,12 +487,12 @@ module _ {Θ : Ctx} {m g a' a : RTm ⌊ Θ ⌋} where
     ⊢conRow {Θ} {I∋} {D∋} {ix∋ (nsuc m) (cext g a') fzero a} {⌜ hereT m a' a ⌝ᵗ} {pair e unit} ⊢I∋ ⊢D∋
             (⊢ix∋ (⊢isuc dm) (⊢cext dm dg da') (⊢fzero (fromI dm)) da)
             (fib-here m g a' a)
-            (⊢tel {Θ} {I∋} {hereT m a' a} ⊢I∋ ok)
-            (⊢payσ {Θ} {I∋} {D∋} ⊢I∋ ⊢D∋ {⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m a')} {e} {unit} {tι} ok de
+            (⊢tel {Θ} {I∋} {hereT m a' a} ⊢I∋ okH)
+            (⊢payσ {Θ} {I∋} {D∋} ⊢I∋ ⊢D∋ {⌜Id⌝ (⌜Ty⌝ (nsuc m)) a (wk 0 m a')} {e} {unit} {tι} okH de
                    (⊢payι {Θ} {I∋} {D∋} ⊢I∋ ⊢D∋ {unit} ⊢unit))
     where
-      ok : TelOK Θ I∋ (hereT m a' a)
-      ok = hereOK {Θ} {m} {a'} {a} dm da' da
+      okH : TelOK Θ I∋ (hereT m a' a)
+      okH = hereOK {Θ} {m} {a'} {a} dm da' da
 
 module _ {Θ : Ctx} {m g a' y a : RTm ⌊ Θ ⌋} where
   -- there : Γ' ∋ y ∷ B → (Γ' ▹ A') ∋ vs y ∷ wk B

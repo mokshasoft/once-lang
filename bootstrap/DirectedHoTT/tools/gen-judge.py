@@ -2325,7 +2325,7 @@ def gen_preds_dec():
             binds = "".join(" (%s : %s)" % (a, fty(f)) for f, a in zip(fs, args))
             h1 = "d%s₁" % nm
             L.append("  %s : {Γ : Cx}%s {x : RTm ε} →" % (h1, binds))
-            L.append("       RowsDec %sₘ.J %sF.DF (⌜ T%s (dep Γ) %s unit ⌝ᵗ ∷ []) x → %s" % (P, P, nm, PP, res))
+            L.append("       RowsDec %sₘ.J (%sF.DF unit) (⌜ T%s unit (dep Γ) %s unit ⌝ᵗ ∷ []) x → %s" % (P, P, nm, PP, res))
             if not prems:
                 ctor = "refl" if fn is not None else NNC_CTORS[h]
                 body.append("  %s%s _ = %s" % (h1, "".join(" " + a for a in args), ctor))
@@ -2338,7 +2338,7 @@ def gen_preds_dec():
                 vals = ["(dep Γ)"] + [qf(f, a) for f, a in zip(fs, args)]
                 vars_ = ["(var %s)" % var(i) for i in range(n + 1)]
                 hs = ["done"] + ["(prj-tup {ws = %s} unit %s)" % (" ∷ ".join([qf(f, a) for f, a in zip(fs, args)] + ["[]"]), nth_expr(i)) for i in range(n)]
-                L.append("  %s : {Γ : Cx}%s → ⌜ T%s (dep Γ) %s unit ⌝ᵗ ⟶* ⌜ %s ⌝ᵗ" % (Rn, binds, nm, PP, " ".join([TV] + vals)))
+                L.append("  %s : {Γ : Cx}%s → ⌜ T%s unit (dep Γ) %s unit ⌝ᵗ ⟶* ⌜ %s ⌝ᵗ" % (Rn, binds, nm, PP, " ".join([TV] + vals)))
                 body.append("  %s {Γ}%s = mono-by {Δ = ε} {n = %d} {as = %s} {as' = %s} ⌜ %s ⌝ᵗ (%s-sub (σₗ (%s)) %s) (%s-sub (σₗ (%s)) %s) (%s)" % (
                     Rn, "".join(" " + a for a in args), n + 1, "(%s)" % " ∷ ".join(srcs + ["[]"]), "(%s)" % " ∷ ".join(vals + ["[]"]),
                     " ".join([TV] + vars_), TV, " ∷ ".join(srcs + ["[]"]), " ".join(vars_), TV, " ∷ ".join(vals + ["[]"]),
@@ -2351,18 +2351,18 @@ def gen_preds_dec():
                 if pr[0] == "σ":
                     Q, i = pr[1], pr[2]
                     S = "⌜%s⌝ (dep Γ) %s" % (Q, qf(fs[i], args[i]))
-                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΣ %sₘ.J %sF.DF (%s) (lam dι) q → %s" % (h2, binds, P, P, S, res))
+                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΣ %sₘ.J (%sF.DF unit) (%s) (lam dι) q → %s" % (h2, binds, P, P, S, res))
                     body.append("  %s {Γ}%s (_ , (_ , (q , (nth-z , (_ , (dq , nq)))))) =" % (h1, "".join(" " + a for a in args)))
-                    body.append("    %s {Γ = Γ}%s (pay-σ {I = %sₘ.J} {D = %sF.DF} {C = %s} {S = %s} {f = lam dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (
+                    body.append("    %s {Γ = Γ}%s (pay-σ {I = %sₘ.J} {D = (%sF.DF unit)} {C = %s} {S = %s} {f = lam dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (
                         h2, "".join(" " + a for a in args), P, P, C, S, Rn, "".join(" " + a for a in args)))
                     body.append("  %s%s (e , (_ , (_ , ((de , _) , (ne , _))))) = %s %s (⊢conv de El-⌜%s⌝) ne" % (
                         h2, "".join(" " + a for a in args), DEC[Q], args[i], Q))
                 else:
                     i, k = pr
                     J = "ix%s %s %s" % (P, depv(k), qf(fs[i], args[i]))
-                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΡ %sₘ.J %sF.DF (%s) dι q → %s" % (h2, binds, P, P, J, res))
+                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΡ %sₘ.J (%sF.DF unit) (%s) dι q → %s" % (h2, binds, P, P, J, res))
                     body.append("  %s {Γ}%s (_ , (_ , (q , (nth-z , (_ , (dq , nq)))))) =" % (h1, "".join(" " + a for a in args)))
-                    body.append("    %s {Γ = Γ}%s (pay-ρ {I = %sₘ.J} {D = %sF.DF} {C = %s} {j = %s} {C' = dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (
+                    body.append("    %s {Γ = Γ}%s (pay-ρ {I = %sₘ.J} {D = (%sF.DF unit)} {C = %s} {j = %s} {C' = dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (
                         h2, "".join(" " + a for a in args), P, P, C, J, Rn, "".join(" " + a for a in args)))
                     rec = "%s %s dr nr" % (DEC[P], args[i])
                     out = rec if fn is not None else "%s (%s)" % (NNC_CTORS[h], rec)
@@ -2386,7 +2386,7 @@ def gen_preds_dec():
             for f, a in reversed(list(zip(fs, args))): PP = "(%s ,ₚ %s)" % (qf(f, a), PP)
             nm = "%s⊢%s" % (P, h)
             L.append("%s {Γ} %s dx nrm =" % (dn, pat))
-            L.append("  d%s₁ {Γ = Γ}%s (rows-dec {I = %sₘ.J} {D = %sF.DF} {i = ix%s (dep Γ) (quoteTm %s)} {m = 1} {Cs = ⌜ T%s (dep Γ) %s unit ⌝ᵗ ∷ []}" % (
+            L.append("  d%s₁ {Γ = Γ}%s (rows-dec {I = %sₘ.J} {D = (%sF.DF unit)} {i = ix%s (dep Γ) (quoteTm %s)} {m = 1} {Cs = ⌜ T%s unit (dep Γ) %s unit ⌝ᵗ ∷ []}" % (
                 nm, "".join(" " + a for a in args), P, P, P, subjE, nm, PP))
             L.append("    (%sF.fibF {s = 1} {k = %d} {j = dep Γ} {p = %s} {c = unit} (atᵍ 1) (atʰ %d)) dx nrm)" % (P, K, PP, K))
         L.append("")
@@ -2448,8 +2448,11 @@ open import DirectedHoTT.Examples.Knot.PwDecode using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode
 open import DirectedHoTT.Lib.RowsElim
 open import DirectedHoTT.Examples.Knot.RedCompDecode
-open import DirectedHoTT.Examples.Knot.Ref using ( Tδ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecᶻ )
+open import DirectedHoTT.Examples.Knot.Ref using ( Tδ; TδT; TδT-sub )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-appʳ; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ )
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( q𝒮; homLt; sizeQ-at; bodiesQ-at )
+open import DirectedHoTT.Examples.Knot.QSig using ( sizeQ; bodiesQ )
+open import DirectedHoTT.Lib.Strong using ( El-homNat )
 
 """
 
@@ -2494,13 +2497,13 @@ def gen_red_dec(fams=("⟶",), mod="RedDecode"):
         dn, RT, Q, _, arr = FAMSPEC[fam]
         F = FAMS[fam]
         L.append("%s : {Γ : Cx} (t : %s Γ) {u : %s Γ} {k : RTm ε} →" % (dn, RT, RT))
-        L.append("  ◇ ⊢ k ∷ IMu %s %s (%s (dep Γ) (%s t) (%s u)) → IsNormal k → t %s u" % (F["J"], F["D"], F["ix"], Q, Q, arr))
+        L.append("  ◇ ⊢ k ∷ IMu %s (%s %s) (%s (dep Γ) (%s t) (%s u)) → IsNormal k → t %s u" % (F["J"], F["D"], DQ(fam), F["ix"], Q, Q, arr))
     L.append("")
     helpers, clauses = [], []
     for fam in fams:
         dn, RT, Q, _, arr = FAMSPEC[fam]
         F = FAMS[fam]
-        Jn, Dn = F["J"], F["D"]
+        Jn, Dn = F["J"], "(%s %s)" % (F["D"], DQ(fam))
         S = F["S"]
         heads = TYHEADS if fam == "⟶ᵀ" else TMHEADS
         for h in heads:
@@ -2512,23 +2515,45 @@ def gen_red_dec(fams=("⟶",), mod="RedDecode"):
             recs = DECREC.get((fam, h))
             if recs is None:
                 if (fam, h) == ("⟶", "ref"):
-                    # ★ δ (hand row `Knot/Ref`): one row, its Ford against `εwk-agree`
-                    PPr = "(pair (quoteℕ a0) (pair (quoteTm a1) unit))"
+                    # ★ δ (hand row `Knot/Ref`, PLAN-REF K4): one row — the side
+                    #   condition `n < sizeQ q𝒮` decoded to `n <ˢ size 𝒮` (`homLt`),
+                    #   the Ford equation against the quoted body (`bodiesQ-at`,
+                    #   `εwk-agree`)
+                    PPr = "(pair (quoteℕ a0) unit)"
                     clauses += ["%s {Γ} %s {u} dk nrm =" % (dn, pat),
-                        "  rows-dec {I = %s} {D = %s} {i = %s (dep Γ) (quoteTm (ref {Γ} a0 a1)) (quoteTm u)} {m = 1} {Cs = ⌜ Tδ (dep Γ) %s (quoteTm u) ⌝ᵗ ∷ []}" % (Jn, Dn, F["ix"], PPr),
-                        "    (%s {s = %d} {k = %d} {j = dep Γ} {p = %s} {c = quoteTm u} (atᵍ %d) (atʰ %d)) dk nrm" % (F["fib"], S, K, PPr, S, K),
-                        "  ▷ λ { (_ , (_ , (_ , (nth-z , (_ , (dq , nq)))))) → dδ a0 a1 u dq nq }"]
-                    helpers.append(["dδ : {Γ : Cx} (a0 : ℕ) (a1 : RTm ε) (u : RTm Γ) {q : RTm ε} →",
-                        "  ◇ ⊢ q ∷ El (dpay %s %s ⌜ Tδ (dep Γ) %s (quoteTm u) ⌝ᵗ) → IsNormal q → ref a0 a1 ⟶ u" % (Jn, Dn, PPr),
-                        "dδ {Γ} a0 a1 u dq nq =",
+                        "  rows-dec {I = %s} {D = %s} {i = %s (dep Γ) (quoteTm (ref {Γ} a0)) (quoteTm u)} {m = 1} {Cs = ⌜ Tδ q𝒮 (dep Γ) %s (quoteTm u) ⌝ᵗ ∷ []}" % (Jn, Dn, F["ix"], PPr),
+                        "    (%s {s = %d} {k = %d} {q = q𝒮} {j = dep Γ} {p = %s} {c = quoteTm u} (atᵍ %d) (atʰ %d)) dk nrm" % (F["fib"], S, K, PPr, S, K),
+                        "  ▷ λ { (_ , (_ , (_ , (nth-z , (_ , (dq , nq)))))) → dδ a0 u dq nq }"]
+                    helpers.append(["dδ : {Γ : Cx} (a0 : ℕ) (u : RTm Γ) {q : RTm ε} →",
+                        "  ◇ ⊢ q ∷ El (dpay %s %s ⌜ Tδ q𝒮 (dep Γ) %s (quoteTm u) ⌝ᵗ) → IsNormal q → ref a0 ⟶ u" % (Jn, Dn, PPr),
+                        "dδ {Γ} a0 u dq nq =",
                         "  pay-σ dq done nq",
+                        "  ▷ λ { (h , (_ , (_ , ((dH , dR) , (_ , nR))))) →",
+                        "  pay-σ dR (step (β _ h) (subst (λ z → z ⟶* _) (sym (EQ h)) done)) nR",
                         "  ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →",
-                        "  close (δref {Γ} a0 a1) (ctrn (idrefl-decᶜ dF nF) (⟶*→≅ (⟶*-trans (⟶*-natrecᶻ (prj-tup {ws = quoteℕ a0 ∷ quoteTm a1 ∷ []} unit (atᶜ 1))) (εwk-agree Γ a1)))) }",
+                        "  close (δref {Γ} a0 (homLt a0 (Defs.size 𝒮) (⊢conv dH (red→≅ᵀ (HR h)))))",
+                        "        (ctrn (idrefl-decᶜ dF nF) (⟶*→≅ (⟶*-trans (⟶*-natrecᶻ BR) (εwk-agree Γ (Defs.body 𝒮 a0))))) } }",
+                        "  where",
+                        "    n' c' : RTm ε",
+                        "    n' = fst %s" % PPr,
+                        "    c' = quoteTm u",
+                        "    EQ : (h : RTm ε) → subTm (single h) ⌜ TδT (w1 q𝒮) (w1 (dep Γ)) (w1 n') (w1 c') ⌝ᵗ ≡ ⌜ TδT q𝒮 (dep Γ) n' c' ⌝ᵗ",
+                        "    EQ h = trans (TδT-sub (single h) (w1 q𝒮) (w1 (dep Γ)) (w1 n') (w1 c'))",
+                        "                 (cong₄ (λ a b x y → ⌜ TδT a b x y ⌝ᵗ) (wk-cancel-tm h q𝒮) (wk-cancel-tm h (dep Γ)) (wk-cancel-tm h n') (wk-cancel-tm h c'))",
+                        "    -- the side condition at numerals: the name out of the payload, the size out of the signature",
+                        "    HR : (h : RTm ε) → El (⌜Hom⌝ ⌜Nat⌝ (nsuc n') (sizeQ q𝒮)) ⟶ᵀ* Hom Nat (nsuc (num a0)) (num (Defs.size 𝒮))",
+                        "    HR h = ⟶ᵀ*-trans (El-homNat _ _)",
+                        "             (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟶*-nsuc (step (βfst (quoteℕ a0) unit) (subst (λ z → quoteℕ a0 ⟶* z) (quoteℕ-num a0) done))))",
+                        "                        (⟶ᵀ*-Homʳ (sizeQ-at 𝒮)))",
+                        "    -- the body: the name, then the lookup, computed",
+                        "    BR : bodiesQ q𝒮 n' ⟶* quoteTm (Defs.body 𝒮 a0)",
+                        "    BR = ⟶*-trans (⟶*-appʳ (step (βfst (quoteℕ a0) unit) (subst (λ z → quoteℕ a0 ⟶* z) (quoteℕ-num a0) done)))",
+                        "                  (bodiesQ-at 𝒮 a0)",
                         ""])
                     continue
                 if (fam, h) in HANDROWS:
                     clauses.append("%s {Γ} %s {u} dk nrm = {!!}" % (dn, pat)); continue
-                clauses.append("%s {Γ} %s {u} dk nrm = ⊥-elim (rows-none (%s {s = %d} {k = %d} {j = dep Γ} {c = %s u} (atᵍ %d) (atʰ %d)) dk nrm)"
+                clauses.append("%s {Γ} %s {u} dk nrm = ⊥-elim (rows-none (%s {s = %d} {k = %d} {q = q𝒮} {j = dep Γ} {c = %s u} (atᵍ %d) (atʰ %d)) dk nrm)"
                                % (dn, pat, F["fib"], S, K, Q, S, K))
                 continue
             PP = "unit"
@@ -2539,7 +2564,7 @@ def gen_red_dec(fams=("⟶",), mod="RedDecode"):
             ENTRIES = " ∷ ".join(ent(r) for r in range(nc)) + " ∷ []"
             cl = ["%s {Γ} %s {u} dk nrm =" % (dn, pat),
                   "  rows-elim (rows-dec {I = %s} {D = %s} {i = %s (dep Γ) (%s %s) (%s u)} {m = %d} {Cs = %s}" % (Jn, Dn, F["ix"], Q, subjE, Q, nc, ENTRIES),
-                  "    (%s {s = %d} {k = %d} {j = dep Γ} {p = %s} {c = %s u} (atᵍ %d) (atʰ %d)) dk nrm)" % (F["fib"], S, K, PP, Q, S, K)]
+                  "    (%s {s = %d} {k = %d} {q = q𝒮} {j = dep Γ} {p = %s} {c = %s u} (atᵍ %d) (atʰ %d)) dk nrm)" % (F["fib"], S, K, PP, Q, S, K)]
             alts_ = []
             for r in range(nc):
                 nth = "nth-z"
@@ -2564,7 +2589,7 @@ def gen_red_dec(fams=("⟶",), mod="RedDecode"):
         H += ["-- the induction hypothesis a ξ helper receives: the caller's decoder at the field",
               "IH%s : {Γ : Cx} → %s Γ → Set" % (arr, RT),
               "IH%s {Γ} t = {u : %s Γ} {k : RTm ε} → ◇ ⊢ k ∷ IMu %s %s (%s (dep Γ) (%s t) (%s u)) → IsNormal k → t %s u" % (
-                  arr, RT, F["J"], F["D"], F["ix"], Q, Q, arr), ""]
+                  arr, RT, F["J"], "(%s %s)" % (F["D"], DQ(fam)), F["ix"], Q, Q, arr), ""]
     for hl in helpers: H += hl
     L.insert(1, "open import DirectedHoTT.Examples.Knot.%sXi\n" % mod)
     L += clauses
@@ -2581,7 +2606,7 @@ def rule_ih(rec):
 def gen_rule_dec(fam, h, r, rec, hn, fs, args, pat, subjE, PP, entry, ximap, qf, fty):
     """one rule's decoder: its signature and its ▷ chain"""
     dn, RT, Q, arr = ("decRed", "RTm", "quoteTm", "⟶") if fam == "⟶" else ("decRedT", "RTy", "quoteTy", "⟶ᵀ")
-    F = FAMS[fam]; Jn, Dn = F["J"], F["D"]
+    F = FAMS[fam]; Jn, Dn = F["J"], "(%s %s)" % (F["D"], DQ(fam))
     binds = "".join(" (%s : %s)" % (a, fty(f)) for f, a in zip(fs, args))
     ihf = rule_ih(rec)
     if ihf is not None: binds += " (ih : IH%s %s)" % (arr, args[ihf])
@@ -2650,7 +2675,7 @@ def gen_rule_dec(fam, h, r, rec, hn, fs, args, pat, subjE, PP, entry, ximap, qf,
     else:
         # the premise is the existential `e1`, a code of the term reduction (`RedC`)
         dd = "(%s)" % ("j" if dz == 0 else ("(nsuc j)" if dz == 1 else "(nsuc (nsuc j))"))
-        ih = "(decRed %s {E} (subst (λ z → ◇ ⊢ e1 ∷ IMu Redₘ.J ⟶F.DF (ix⟶ %s %s z)) eqE (⊢conv de1 El-⌜⟶⌝)) ne1)" % (
+        ih = "(decRed %s {E} (subst (λ z → ◇ ⊢ e1 ∷ IMu Redₘ.J (⟶F.DF q𝒮) (ix⟶ %s %s z)) eqE (⊢conv de1 El-⌜⟶⌝)) ne1)" % (
             args[i], dd, "f%d" % i)
     lines.append("  %s {Γ = Γ%s} (⊢conv de0 (credᵀ %s)) ne0" % (unq, " ∙" * dz, elq))
     lines.append("  ▷ λ { (E , eqE) →")
@@ -2718,6 +2743,7 @@ open import DirectedHoTT.Examples.Knot.RedT
 open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.PwDecode using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( q𝒮 )
 
 private
   ⟶≡ : {Θ : Cx} {t u u' : RTm Θ} → u ≡ u' → t ⟶* u → t ⟶* u'
@@ -2754,7 +2780,7 @@ def comp_dec(fam, h, r, rec, spat, shyps, red):
     QT = {0: "quoteTy", 1: "quoteTm"}
     Q = QT[S]
     arr, RT, close_ = ("⟶", "RTm", "close") if S else ("⟶ᵀ", "RTy", "closeᵀ")
-    F = FAMS[fam]; Jn, Dn = F["J"], F["D"]
+    F = FAMS[fam]; Jn, Dn = F["J"], "(%s %s)" % (F["D"], DQ(fam))
     al, rc, nc, csf, n, val, XP, tn = rec["al"], rec["rc"], rec["nc"], rec["csf"], rec["n"], rec["val"], rec["XP"], rec["tn"]
     fs, nest = rec["fs"], rec["nest"]
     Ln = len(nest)
@@ -2820,17 +2846,17 @@ def comp_dec(fam, h, r, rec, spat, shyps, red):
         for m in range(k):
             Pm = nc["Pn"](m)
             conv0 = "(pair c (pair p unit))" if m == 0 else at(nc["convoy_at"](m), m - 1)
-            u1 = "%s.CASE j %s %s" % (Pm, pat(m), conv0)
+            u1 = "%s.CASE q𝒮 j %s %s" % (Pm, pat(m), conv0)
             steps.append((cur, u1, "(%s.CASE-⟶ᵃ %s)" % (Pm, red_pos(skey(m), m - 1)))); cur = u1
             if m >= 1:
-                u2 = "%s.CASE j %s cv%d" % (Pm, pat(m), m)
+                u2 = "%s.CASE q𝒮 j %s cv%d" % (Pm, pat(m), m)
                 pw = ["(prj-tup {ws = %s} unit %s)" % (wl(CW(m - 1)), nth_expr(t)) for t in range(len(CW(m - 1)))] + ["done"]
                 steps.append((cur, u2, "(%s.CASE-⟶ᶜ (tup-mono {w = unit} (%s)))" % (Pm, " ∷ʳ ".join(pw + ["[]ʳ"])))); cur = u2
             if m + 1 < Ln:
-                land = "%s.CASE j %s %s" % (nc["Pn"](m + 1), at(nc["scrut_at"](m + 1, nest[m + 1][0]), m), at(nc["convoy_at"](m + 1), m))
+                land = "%s.CASE q𝒮 j %s %s" % (nc["Pn"](m + 1), at(nc["scrut_at"](m + 1, nest[m + 1][0]), m), at(nc["convoy_at"](m + 1), m))
             else:
                 land = "⌜ %s j q%d cv%d ⌝ᵗ" % (al.pfx, m, m)
-            steps.append((cur, land, "(%s.case-β {j = j} {q = q%d} {c = cv%d} %s %s)" % (Pm, m, m, ngf(m), nhf(m)))); cur = land
+            steps.append((cur, land, "(%s.case-β {q = q𝒮} {j = j} {pl = q%d} {c = cv%d} %s %s)" % (Pm, m, m, ngf(m), nhf(m)))); cur = land
         return steps, cur
     def where_block(k, extra=(), ncv=None):
         ncv = k if ncv is None else ncv
@@ -2860,10 +2886,10 @@ def comp_dec(fam, h, r, rec, spat, shyps, red):
         steps, cur = walk(k)
         Pk = nc["Pn"](k)
         conv = "(pair c (pair p unit))" if k == 0 else at(nc["convoy_at"](k), k - 1)
-        u1 = "%s.CASE j %s %s" % (Pk, kname(pos), conv)
+        u1 = "%s.CASE q𝒮 j %s %s" % (Pk, kname(pos), conv)
         steps.append((cur, u1, "(%s.CASE-⟶ᵃ %s)" % (Pk, red_pos(pos, k - 1))))
         if k >= 1:
-            u2 = "%s.CASE j %s cv%d" % (Pk, kname(pos), k)
+            u2 = "%s.CASE q𝒮 j %s cv%d" % (Pk, kname(pos), k)
             pw = ["(prj-tup {ws = %s} unit %s)" % (wl(CW(k - 1)), nth_expr(t)) for t in range(len(CW(k - 1)))] + ["done"]
             steps.append((u1, u2, "(%s.CASE-⟶ᶜ (tup-mono {w = unit} (%s)))" % (Pk, " ∷ʳ ".join(pw + ["[]ʳ"]))))
             u1 = u2
@@ -2879,7 +2905,7 @@ def comp_dec(fam, h, r, rec, spat, shyps, red):
         cvk = cv_lit(k)
         out += where_block(k, [
             "    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ %s)))" % chain(steps, u1),
-            "    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay %s %s (%s.CASE j z %s))) (quote-hd%s %s) dq₁" % (Jn, Dn, Pk, cvk, Ty_, v),
+            "    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay %s %s (%s.CASE q𝒮 j z %s))) (quote-hd%s %s) dq₁" % (Jn, Dn, Pk, cvk, Ty_, v),
             "    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s.case-any {j = j} {q = pf%s %s} {c = %s} %s (nh%s %s)))))" % (
                 Pk, Ty_, v, cvk, ngf(k), Ty_, v)], ncv=k + 1 if k >= 1 else 0)
         out.append("")
@@ -3087,6 +3113,7 @@ open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.PredsDecode
 open import DirectedHoTT.Examples.Knot.LookupDecode using ( decLk )
 open import DirectedHoTT.Examples.Knot.JudgeDecodeBase
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( t𝒮 )
 
 """
 
@@ -3134,7 +3161,7 @@ def judge_dec(fam, h, r, rec):
     def sig_(hn, qbinds, A_):
         Ab = " (A : RTy ⌊ Γ ⌋)" if (S == 1 and A_ == "A") else ""
         return ["%s : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx)%s%s%s {w : RTm ε} → sz w < N →" % (hn, binds, qbinds, Ab),
-                "  ◇ ⊢ w ∷ El (dpay JT D⊢ %s) → IsNormal w → %s" % (entry(A_), concl(A_)),
+                "  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) %s) → IsNormal w → %s" % (entry(A_), concl(A_)),
                 "%s ihTy ihTm Γ%s%s%s {w} hq dq nq =" % (hn, "".join(" " + a for a in fvars),
                     "".join(" " + x for x in _re.findall(r"\((Q\d+) :", qbinds)), " A" if Ab else "")]
     out = []
@@ -3149,15 +3176,15 @@ def judge_dec(fam, h, r, rec):
         L0 = sig_(base, "", "A")
         PN = "P" + al.pfx
         u0 = csf[r][0](DQ(fam), "j", "p", "c")
-        u1 = "%s.CASE j X0 (pair (fst c) p)" % PN
-        u2 = "%s.CASE j X0 c'" % PN
+        u1 = "%s.CASE t𝒮 j X0 (pair (fst c) p)" % PN
+        u2 = "%s.CASE t𝒮 j X0 c'" % PN
         chain0 = "(⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᵃ (step (βsnd g X0) done)) (%s.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done))))" % (
             u0, u1, u2, PN, PN)
         ispat = "eqv"
         for x_ in reversed(qn): ispat = "(%s , %s)" % (x_, ispat)
         L0 += ["  pat-hit 0 %d (hdTy A) dq₃ nq" % SIG[case][2],
                "  ▷ λ e → is%s A e" % case,
-               "  ▷ λ { %s → subst (λ z → Γ ⊢ %s ∷ z) (sym eqv) (%s ihTy ihTm Γ%s%s hq (subst (λ z → ◇ ⊢ w ∷ El (dpay JT D⊢ %s)) eqv dq) nq) }" % (
+               "  ▷ λ { %s → subst (λ z → Γ ⊢ %s ∷ z) (sym eqv) (%s ihTy ihTm Γ%s%s hq (subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) %s)) eqv dq) nq) }" % (
                    ispat, subj, hn1, "".join(" " + a for a in fvars), "".join(" " + x for x in qn), entry("z")),
                "  where",
                "    %s : RTm ε" % " ".join(["j", "g"] + fvn + ["X0", "p", "c", "c'"]),
@@ -3165,7 +3192,7 @@ def judge_dec(fam, h, r, rec):
         L0 += ["    f%d = %s" % (i, qf(fs[i], fvars[i])) for i in range(len(fs))]
         L0 += ["    X0 = quoteTy A", "    p = %s" % PPs().replace("(quoteTm ", "(quoteTm ") , "    c = pair g X0", "    c' = pair g p",
                "    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ %s)))" % chain0,
-               "    dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT D⊢ (%s.CASE j z c'))) (quote-hdTy A) dq₁" % PN,
+               "    dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (%s.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁" % PN,
                "    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))" % PN, ""]
         # the p line above must use the where-names
         L0 = [l if not l.startswith("    p = ") else "    p = %s" % ("".join("(pair %s " % x for x in fvn) + "unit" + ")" * len(fvn)) for l in L0]
@@ -3202,7 +3229,7 @@ def judge_dec(fam, h, r, rec):
         eq = "(trans (%s-sub (single e%d) %s) (%s-cong %s %s))" % (tn(k + 1), k, " ".join(nx), tn(k + 1),
              " ".join("(subTm (single e%d) %s) %s" % (k, u_, v_) for u_, v_ in zip(nx, a_ + ["e%d" % k])),
              " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in a_] + ["refl"]))
-        return "(⊢-cast (cong (λ Z → El (dpay JT D⊢ Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (eq, dq, k)
+        return "(⊢-cast (cong (λ Z → El (dpay JT (D⊢ t𝒮) Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (eq, dq, k)
     kval = dict(val, X="X0")
     kexpr = lambda a: al.body.expr(a, kval)
     # ── Spec side of a Knot expression, and its F3 agreement (Knot ⟶* quote Spec)
@@ -3357,13 +3384,13 @@ def judge_dec(fam, h, r, rec):
         if e[0] == "ty":
             _, d, g, T = e
             ix = "tyIx %s %s %s" % (kexpr(d), kexpr(g), kexpr(T))
-            pr = subst_es("◇ ⊢ r%d ∷ IMu JT D⊢ (%s)" % (t, ix), "dr%d" % t)
+            pr = subst_es("◇ ⊢ r%d ∷ IMu JT (D⊢ t𝒮) (%s)" % (t, ix), "dr%d" % t)
             if agctx(g) or ag(T): pr = "(⊢conv %s (tyIx≅ %s %s))" % (pr, agctx(g) or "done", ag(T) or "done")
             lines.append("  ihTy %s %s %s %s nr%d" % (sctx(g), sx(T), bound[t], pr, t))
         else:
             _, d, g, s_, T = e
             ix = "tmIx %s %s %s %s" % (kexpr(d), kexpr(g), kexpr(s_), kexpr(T))
-            pr = subst_es("◇ ⊢ r%d ∷ IMu JT D⊢ (%s)" % (t, ix), "dr%d" % t)
+            pr = subst_es("◇ ⊢ r%d ∷ IMu JT (D⊢ t𝒮) (%s)" % (t, ix), "dr%d" % t)
             if agctx(g) or ag(s_) or ag(T):
                 pr = "(⊢conv %s (tmIx≅ %s %s %s))" % (pr, agctx(g) or "done", ag(s_) or "done", ag(T) or "done")
             lines.append("  ihTm %s %s %s %s %s nr%d" % (sctx(g), sx(s_), sx(T), bound[t], pr, t))
@@ -3408,13 +3435,13 @@ def judge_dec(fam, h, r, rec):
     if case:
         PN = "P" + al.pfx
         u0 = csf[r][0](DQ(fam), "j", "p", "c")
-        u1 = "%s.CASE j X0 (pair (fst c) p)" % PN
-        u2 = "%s.CASE j X0 c'" % PN
+        u1 = "%s.CASE t𝒮 j X0 (pair (fst c) p)" % PN
+        u2 = "%s.CASE t𝒮 j X0 c'" % PN
         u3 = "⌜ %s j q c' ⌝ᵗ" % al.pfx
         wh.append("    R₀ : %s ⟶* %s" % (u0, tgt))
         wh.append("    R₀ = ⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᵃ (step (βsnd g X0) done))" % (u0, u1, tgt, PN))
         wh.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))" % (u1, u2, tgt, PN))
-        wh.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.case-β {j = j} {q = q} {c = c'} (atᵍ 0) (atʰ %d)) R₁))" % (
+        wh.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.case-β {q = t𝒮} {j = j} {pl = q} {c = c\'} (atᵍ 0) (atʰ %d)) R₁))" % (
             u2, u3, tgt, PN, SIG[case][2]))
     else:
         wh.append("    R₀ = R₁")
@@ -3478,9 +3505,9 @@ open import DirectedHoTT.Examples.Knot.JudgeDecodeTm
 open import DirectedHoTT.Examples.Knot.JudgeDecodeHand
 
 decTyW : {N : ℕ} → Acc N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {k : RTm ε} → sz k ≤ N →
-         ◇ ⊢ k ∷ IMu JT D⊢ (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢ty A
+         ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢ty A
 decTmW : {N : ℕ} → Acc N → (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {k : RTm ε} → sz k ≤ N →
-         ◇ ⊢ k ∷ IMu JT D⊢ (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ t ∷ A
+         ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ t ∷ A
 
 """
 
@@ -3512,15 +3539,15 @@ def gen_judge_dispatch():
                 ents = [rec0["csf"][r][0]("t𝒮", j, PP, C) for r in range(nc)]
                 hands = None
             elif (fam, h) == ("⊢", "ref"):
-                nc = 2; ents = ["⌜ T⊢ref %s %s %s ⌝ᵗ" % (j, PP, C), "⌜ TCVat %d %s %s %s ⌝ᵗ" % (K, j, PP, C)]
-                hands = "jdref ihTy ihTm Γ a0 a1 A"
+                nc = 2; ents = ["⌜ T⊢ref t𝒮 %s %s %s ⌝ᵗ" % (j, PP, C), "⌜ TCVat %d t𝒮 %s %s %s ⌝ᵗ" % (K, j, PP, C)]
+                hands = "jdref ihTy ihTm Γ a0 A"
             else:
                 raise ValueError(("no rows", fam, h))
             ix = "tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy %s)" % patE if S == 0 else "tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm %s) (quoteTy A)" % patE
             hdr = "%s (acc rs) Γ %s%s {k} hk dk nk =" % (dn, pat, "" if S == 0 else " A")
             cl = [hdr,
-                  "  rows-elim< (rows-dec {I = JT} {D = D⊢} {i = %s} {m = %d} {Cs = %s}" % (ix, nc, " ∷ ".join(ents + ["[]"])),
-                  "    (fibK {s = %d} {k = %d} {j = dep ⌊ Γ ⌋} {p = %s} {c = %s} (atᵍ %d) (atʰ %d)) dk nk)" % (S, K, PP, C, S, K)]
+                  "  rows-elim< (rows-dec {I = JT} {D = (D⊢ t𝒮)} {i = %s} {m = %d} {Cs = %s}" % (ix, nc, " ∷ ".join(ents + ["[]"])),
+                  "    (fibK {s = %d} {k = %d} {q = t𝒮} {j = dep ⌊ Γ ⌋} {p = %s} {c = %s} (atᵍ %d) (atʰ %d)) dk nk)" % (S, K, PP, C, S, K)]
             alts_ = []
             for r in range(nc):
                 nth = "nth-z"
@@ -3540,10 +3567,10 @@ def gen_judge_dispatch():
             L += cl + [""]
     L += ["-- ★ the theorems",
           "decTy : (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →",
-          "        ◇ ⊢ k ∷ IMu JT D⊢ (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢ty A",
+          "        ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢ty A",
           "decTy Γ A {k} dk nk = decTyW (<-wf (sz k)) Γ A ≤-refl dk nk", "",
           "decTm : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →",
-          "        ◇ ⊢ k ∷ IMu JT D⊢ (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ t ∷ A",
+          "        ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ t ∷ A",
           "decTm Γ t A {k} dk nk = decTmW (<-wf (sz k)) Γ t A ≤-refl dk nk"]
     return L
 
@@ -3768,20 +3795,23 @@ def gen_enred():
         pat = "(%s {_} %s r)" % (name, " ".join("{%s}" % b for b in bs))
         fty = lambda k, x: "(⊢quoteTm %s)" % x if fs[k][0] == "rec" else "(⊢quoteℕ %s)" % x
         args = " ".join([fty(k, largs[k]) for k in range(len(fs))] + ["(⊢quoteTm %s)" % rargs[i], "(Σ.snd (enRed r))"])
-        L.append("enRed {Γ} %s = _ , %s (⊢dep' Γ) %s" % (pat, con, args))
+        L.append("enRed {Γ} %s = _ , %s ⊢q𝒮 (⊢dep' Γ) %s" % (pat, con, args))
         seen.add(name)
     # the computation rules
     for spat, h, k, hyps, red in RED_COMP:
         n_xi, n_comp = alts[h]
         con = "con⟶%s%s" % (h, alt_tag(h, n_xi + k + 1, n_xi + n_comp))
-        app = "%s dj %s" % (con, " ".join(hyps))
+        app = "%s ⊢q𝒮 dj %s" % (con, " ".join(hyps))
         body = app if red is None else "⊢conv (%s) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ %s))))" % (app, red)
         L.append("enRed {Γ} (%s) = _ , %s" % (hidΓ(spat), body))
         L.append("  where dj = ⊢dep' Γ")
         seen.add(spat.split()[0])
     # δ: the hand-written row of `Knot/Ref` (PLAN-BIDI §2-ter, option 3)
-    L.append("enRed {Γ} (δref n b) = _ , ⊢conv (con⟶δ (⊢dep' Γ) (⊢quoteℕ n) (⊢quoteTm b)) "
-             "(red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (εwk-agree Γ b)))))")
+    # ★ PLAN-REF K4: δ at the quoted ambient signature — the side condition
+    #   computed (`⊢below`), the body looked up (`bodiesQ-at`)
+    L.append("enRed {Γ} (δref n lt) = _ , ⊢conv (con⟶δ ⊢q𝒮 (⊢dep' Γ) (⊢quoteℕ n) (⊢below lt)) "
+             "(red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (⟶*-trans (⟶*-natrecᶻ (⟶*-trans (⟶*-appʳ (subst (λ z → quoteℕ n ⟶* z) (quoteℕ-num n) done)) "
+             "(bodiesQ-at 𝒮 n))) (εwk-agree Γ (Defs.body 𝒮 n)))))))")
     seen.add("δref")
     return L
 
@@ -3798,7 +3828,7 @@ ENRED_HDR = """-----------------------------------------------------------------
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RedAgree where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; Σ; _,_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; subst; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
@@ -3818,12 +3848,15 @@ open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.RedXiConGen
 open import DirectedHoTT.Examples.Knot.RedCompConGen
 open import DirectedHoTT.Examples.Knot.RefCon using ( con⟶δ )
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( q𝒮; ⊢q𝒮; ⊢below; bodiesQ-at )
+open import DirectedHoTT.Examples.Knot.Unquote using ( quoteℕ-num )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-natrecᶻ; ⟶*-appʳ )
 
 private
   ⟶≡ : {Θ : Cx} {t u u' : RTm Θ} → u ≡ u' → t ⟶* u → t ⟶* u'
   ⟶≡ refl r = r
 
-enRed : {Γ : Cx} {t u : RTm Γ} → t ⟶ u → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ (dep Γ) (quoteTm t) (quoteTm u))
+enRed : {Γ : Cx} {t u : RTm Γ} → t ⟶ u → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ q𝒮 (dep Γ) (quoteTm t) (quoteTm u))
 """
 
 
@@ -3874,11 +3907,11 @@ def gen_enredT():
             tail = ["(⊢quoteTy %s)" % rargs[i], "(Σ.snd (enRedT r))"]
         else:
             tail = ["(⊢quoteTm %s)" % rargs[i], "(⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))"]
-        L.append("enRedT {Γ} %s = _ , %s (⊢dep' Γ) %s" % (pat, con, " ".join([fty(k, largs[k]) for k in range(len(fs))] + tail)))
+        L.append("enRedT {Γ} %s = _ , %s ⊢q𝒮 (⊢dep' Γ) %s" % (pat, con, " ".join([fty(k, largs[k]) for k in range(len(fs))] + tail)))
     for spat, h, k, hyps, red in REDT_COMP:
         n_xi, n_comp = alts[h]
         con = "con⟶ᵀ%s%s" % (h, alt_tag(h, n_xi + k + 1, n_xi + n_comp))
-        app = "%s dj%s" % (con, "".join(" " + x for x in hyps))
+        app = "%s ⊢q𝒮 dj%s" % (con, "".join(" " + x for x in hyps))
         body = app if red is None else "⊢conv (%s) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ %s))))" % (app, red)
         pat = "(%s)" % hidΓ(spat) if " " in spat else spat
         L.append("enRedT {Γ} %s = _ , %s" % (pat, body))
@@ -3908,8 +3941,9 @@ open import DirectedHoTT.Examples.Knot.RedT using ( K⟶ᵀ )
 open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.RedAgree using ( enRed )
 open import DirectedHoTT.Examples.Knot.RedTConGen
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( q𝒮; ⊢q𝒮 )
 
-enRedT : {Γ : Cx} {A B : RTy Γ} → A ⟶ᵀ B → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ᵀ (dep Γ) (quoteTy A) (quoteTy B))
+enRedT : {Γ : Cx} {A B : RTy Γ} → A ⟶ᵀ B → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ᵀ q𝒮 (dep Γ) (quoteTy A) (quoteTy B))
 """
 
 PCHDR = """------------------------------------------------------------------------
@@ -3979,7 +4013,7 @@ open import DirectedHoTT.Examples.Knot.SubEnv
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝; ⊢⌜Tm⌝; ⌜Ty⌝; ⊢⌜Ty⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; hereTm; toTm; wkN; wkK; wkG )
 open import DirectedHoTT.Examples.Knot.GenHelpers
-open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝; ⊢u₀ )
 open import DirectedHoTT.Examples.Knot.RedIx
 open import DirectedHoTT.Examples.Knot.NestIx
 open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )

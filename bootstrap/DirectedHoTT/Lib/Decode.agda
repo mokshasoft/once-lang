@@ -37,27 +37,23 @@ import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Lib.Decode (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
-private
-  n = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 n wf
-  refs = Entries.refsOK 𝒮 n (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Syntax using ( Fin )
-open import DirectedHoTT.Lib.NatNum 𝒮 n using ( num )
-open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; red→≅ᵀ; ⟶*-trans
         ; ⟶*-appˡ; ⟶*-appʳ; ⟶*-dpayᴵ; ⟶*-dpayᴰ; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( church-rosser )
 open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( church-rosserᵀ; IMu-inj; Σ-inj; Fin-inj; Id-reduct; nzero≇nsuc; nsuc-inj≅; Fin-cong≅ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( wk-cancel-tm; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( wk-cancel-tm; ⊢-cast )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( ≅ᵀ-sub )
-open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
   using ( gen-con; gen-pair; gen-fsuc; gen-idrefl )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
 open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf
@@ -66,8 +62,8 @@ open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf
         ; co-con; co-pair; co-unit; co-fzero; co-fsuc; co-idrefl
         ; gen-fzero; canUnit )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( _,ₛ_ )
-open import DirectedHoTT.Lib.Sugar 𝒮 n ok using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; Nth; nth-z; nth-s; selF; selF-β )
-open import DirectedHoTT.Lib.Tel 𝒮 n ok using ( Tel; tι; tσ; tρ; ⌜_⌝ᵗ; sub-snoc )
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; Nth; nth-z; nth-s; selF; selF-β )
+open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Tel; tι; tσ; tρ; ⌜_⌝ᵗ; sub-snoc )
 
 ------------------------------------------------------------------------
 -- 1. Normal forms, and their subterms.

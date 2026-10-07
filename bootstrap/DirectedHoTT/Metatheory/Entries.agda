@@ -46,3 +46,20 @@ refsOK (suc m) inS (w , e) <-here x₀ =
   let r = F.fund 𝒮 m (sigOK m w) (refsOK m (λ p → inS (<-there p)) w) (Ty.okBody e) x₀ (F.⊩ˢ-ε 𝒮 m (sigOK m w) (refsOK m (λ p → inS (<-there p)) w)) in
   dfst r , exp₁ (dfst r) (snr-δ (inS <-here)) (dsnd r)
 refsOK (suc m) inS (w , e) (<-there p) x₀ = refsOK m (λ q → inS (<-there q)) w p x₀
+
+------------------------------------------------------------------------
+-- ★ AT A WELL-FORMED SIGNATURE, ALL ITS NAMES: what a development over
+--   `(𝒮)(wf)` passes to the libraries.  ONE global spelling — a private
+--   abbreviation per module would make two instances of one library
+--   differ syntactically in their arguments, and Agda compares those by
+--   unfolding the library's definitions (measured: a 4 s module at
+--   3416 s, PLAN-REF 2026-10-08).
+------------------------------------------------------------------------
+
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+
+okᵂ : WfK 𝒮 → Ty.EntriesOK 𝒮 (Defs.size 𝒮)
+okᵂ wf = sigOK (Defs.size 𝒮) wf
+
+refsᵂ : WfK 𝒮 → RefsOK (Defs.size 𝒮)
+refsᵂ wf = refsOK (Defs.size 𝒮) (λ p → p) wf
