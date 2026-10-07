@@ -221,6 +221,14 @@ def add_imports(path, additions):
         s = statement_start(L, line0)
         _, e = statement(L, s)              # AFTER it: a local open needs the facade bound
         ind = L[s][:len(L[s]) - len(L[s].lstrip())]
+        mo = re.match(r"open (\S+)\.([^.\s]+)$", target)
+        if mo and not target.startswith("open import"):
+            fac, sub = mo.groups()
+            src = "\n".join(L)
+            al = re.findall(r"import\s+" + re.escape(fac) + r"\s+as\s+(\S+)", src)
+            plain = re.search(r"import\s+" + re.escape(fac) + r"(?!\s+as\b)(\s|$)", src)
+            if al and not plain:
+                target = "open " + al[0] + "." + sub      # the facade is bound only by its alias here
         L.insert(e, ind + target + " using (" + "; ".join(sorted(names)) + ")")
     open(path, "w", encoding="utf-8").write("\n".join(L))
 
@@ -298,7 +306,9 @@ def run(targets):
     # pre-existing RED islands cannot be scope checked, so they cannot be verified;
     # they are left as they are (plan 0.92 §9)
     red = set(os.environ.get("RED", "Once.Allocator.Slab Once.Spike.RelSpike Once.Optimizer.Normal").split())
-    imps = [m for m in importers(facades) if m not in facades and m not in red] + facades
+    # refutation probes (`Once.Probe.*`) target postulates since removed: stale by design
+    imps = [m for m in importers(facades)
+            if m not in facades and m not in red and not m.startswith("Once.Probe.")] + facades
     # The snapshot checks the UNCHANGED tree, so a module failing it is red already:
     # drop it (and what imports it) and retry.
     for _ in range(10):
