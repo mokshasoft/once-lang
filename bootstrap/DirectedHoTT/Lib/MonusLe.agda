@@ -26,31 +26,33 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.MonusLe where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.MonusLe (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; El; Id; Nat; Π; lam; app
         ; RTm; var; nzero; nsuc; natrec; ⌜Id⌝; ⌜Nat⌝
         ; subTy; subTm; renTy; renTm; Ren; extS; extR )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ty-Nat; ty-Π
         ; csymᵀ; ξ-Idʳ; natrec-zero; natrec-suc; _⟶*_; step; done; wk-single )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; nrs-w; sub-w; cong₃; ren-w; ren-w² )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus
+open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Monus 𝒮 n
   using ( predTm; monusTm; ⊢pred; ⊢monus; monus-zero; monus-suc )
-open import DirectedHoTT.Lib.ArithComm
+open import DirectedHoTT.Lib.ArithComm 𝒮 n
   using ( IdN; ⊢tyIdN; congS; ⊢congS; symN; ⊢symN; transN; ⊢transN
         ; plus0Tm; ⊢plus0; plusSTm; ⊢plusS )
-open import DirectedHoTT.Lib.DvdArith
+open import DirectedHoTT.Lib.DvdArith 𝒮 n
   using ( congPL; ⊢congPL; zmTm; ⊢zero-monus; pmTm; ⊢pred-monus )
 
 ------------------------------------------------------------------------

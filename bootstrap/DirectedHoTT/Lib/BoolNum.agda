@@ -19,12 +19,14 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.BoolNum where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.BoolNum (𝒮 : KSig) (n : ℕ) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; _∨_ )
-open import DirectedHoTT.Lib.NatMaxNum using ( maxℕ )
+open import DirectedHoTT.Lib.NatMaxNum 𝒮 n using ( maxℕ )
 
 b2n : 𝔹 → ℕ
 b2n true  = suc zero

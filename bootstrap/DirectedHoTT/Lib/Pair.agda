@@ -34,20 +34,22 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Pair where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Pair (𝒮 : KSig) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Σ'
         ; RTm; var; nzero; nsuc; pair; fst; snd; ⌜Nat⌝ )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢conv; ⊢fst; ⊢snd
         ; ty-Nat; ty-Σ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
         ; ξ-nsuc; ξ-Homˡ; βfst; βsnd; ξ-natrecⁿ; ξ-natrecᶻ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
-open import DirectedHoTT.Lib.Nat using ( plusTm )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( ⊢le-refl; reflTm )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm )
 
 ------------------------------------------------------------------------
 -- the carrier and its two measures.  ★ A TYPE, so `⊢fst`/`⊢snd` apply

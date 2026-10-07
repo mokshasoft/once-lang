@@ -25,13 +25,15 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Ord where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Ord (𝒮 : KSig) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTy; Hom; Nat; U; El; RTm; nzero; nsuc; ordtr; absurd )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢absurd
         ; Hom-Nat-sz; Hom-Nat-ss )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; doneᵀ )
 
 -- ★★ …and transitivity types at OPEN naturals, which is the whole
 --    reason the former exists.  No numerals, no case split, no `Acc`.

@@ -250,3 +250,17 @@ the `below` check), then Lib, Examples, the Knot and its generators.
   are gone (`⊢ᴬref` bounds the names); the kernel hypothesis is `wf→K`.
 
 Next: Lib, then Examples, then the Knot.
+
+### 2026-10-07 — Lib green
+
+- No reference cases: the layer is parameters and imports only. Classes
+  computed as a fixpoint over imports: 33 typing-level `(𝒮)(n)`, 20
+  `(𝒮)(n)(ok)` — nearly all through `Lib/Sugar`, whose `srᵀ*` (subject
+  reduction for TYPES) genuinely needs the entries typed (a type reduction
+  may contain a δ step) — 8 `(𝒮)(wf)` (canonicity, the fundamental lemma),
+  5 reduction-level.
+- The kernel's `SigOK` is renamed `EntriesOK`: `Lib/Syn` has its own
+  `SigOK` (the Knot's quoted signatures), used across Lib.
+- Where a file declares its own `n`, the module parameter is `𝓃`.
+- Module discipline extended to LOCAL imports (`where open import M args`):
+  they open the file's one top-level instance (`open ᴵM …`).

@@ -21,9 +21,10 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatVal where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Lib.NatVal (𝒮 : KSig) where
 open import DirectedHoTT.Spec.Syntax using ( RTm; ε; nzero; nsuc )
-open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
+open import DirectedHoTT.Spec.Reduction 𝒮 using ( _⟶*_ )
 
 data NatVal (n : RTm ε) : Set where
   nv-zero : n ⟶* nzero                → NatVal n

@@ -29,33 +29,36 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Sugar where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.Sugar (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Unit using ( ⊤ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans; ⟶*-dpayᶜ; ⟶ᵀ*-El; red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Πˡ
         ; ⟶*-appˡ; ⟶*-appʳ )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( wk-sub; ≅ᵀ-sub )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
   using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
-open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢wk; ⊢-cast; wk-cancel-tm; ren-ty; sub-ty; Ren⊢-ext; wk-ren
-        ; ren-lemma; Ren⊢; ∋-cast; conv-ctxᵀ; sub-lemma )
-open import DirectedHoTT.Metatheory.Premises
+open import DirectedHoTT.Metatheory.Premises 𝒮 n
   using ( fsucS⊢; MethG; MethG-wf; MethCtx; MethG-sub; MethG-monoᶜ; mot-ren
         ; methSg; MethTy-wf; MethTy-MethG; ⊢wkD )
-open import DirectedHoTT.Metatheory.Validity
+open import DirectedHoTT.Metatheory.Validity 𝒮 n ok
   using ( wk-app-vz; srᵀ* )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
   using ( ⊢single )
-open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
+open import DirectedHoTT.Lib.NatNum 𝒮 n using ( num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Spec.Variance
   using ( ren-as-sub )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
+  using ( ⊢single; ⊢wk; ⊢-cast; wk-cancel-tm; ren-ty; sub-ty; Ren⊢-ext; wk-ren
+        ; ren-lemma; Ren⊢; ∋-cast; conv-ctxᵀ; sub-lemma )
 
 private
   variable

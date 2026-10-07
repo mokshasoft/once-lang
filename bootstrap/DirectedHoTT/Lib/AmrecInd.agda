@@ -42,37 +42,39 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.AmrecInd where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.AmrecInd (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
         ; lam; absurd; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; ordtr; unit
         ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy; Sub
         ; subTm-subTm; subTm-renTm; subTm-cong )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
         ; ty-El; ty-Π; ty-Hom; ty-Nat
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr
         ; Hom-Nat-ss; ⊢natrec; wk-single )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; wk-cancel-tm )
-open import DirectedHoTT.Lib.Rec using ( aIHTat; aIHT; aIHT-fit )
-open import DirectedHoTT.Lib.Wk
+open import DirectedHoTT.Lib.Rec 𝒮 n using ( aIHTat; aIHT; aIHT-fit )
+open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃; cong₄; ren-sub )
-open import DirectedHoTT.Lib.Amrec
+open import DirectedHoTT.Lib.Amrec 𝒮 n
   using ( aStepT; aStepT-ren; Prv; prv; prvOk; prvTm; StepExt; idOfRed
         ; prv-cast; wR; Ren⊢-comp; renren; renrenTy; extcondR; sub1-ren
         ; subren; subrenTy; extcond; renTy-idR; renTm-idR; ren-subTy'
         ; module AmTΠ )
-open import DirectedHoTT.Lib.AmrecRen
+open import DirectedHoTT.Lib.AmrecRen 𝒮 n
   using ( amrecTm'; amrecTm-ren; ihS-atP'; ihS-atP-ren; StepExt-ren )
-open import DirectedHoTT.Lib.Id using ( symTm; ⊢symId; prvSym )
-open import DirectedHoTT.Lib.Ord using ( ⊢strong-base )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; ⊢le-suc; reflTm )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Lib.Natrec using ( Ren⊢-id )
+open import DirectedHoTT.Lib.Id 𝒮 n using ( symTm; ⊢symId; prvSym )
+open import DirectedHoTT.Lib.Ord 𝒮 n using ( ⊢strong-base )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( ⊢le-refl; ⊢le-suc; reflTm )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Lib.Natrec 𝒮 n using ( Ren⊢-id )
 
 ------------------------------------------------------------------------
 -- ★★ `Id` SYMMETRY, AT THE `Prv` LEVEL.

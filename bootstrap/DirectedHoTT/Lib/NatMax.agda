@@ -12,11 +12,13 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatMax where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.NatMax (𝒮 : KSig) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; Nat )
-open import DirectedHoTT.Spec.Typing using ( Ctx; ⌊_⌋; _⊢_∷_ )
-open import DirectedHoTT.Lib.Nat   using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
+open import DirectedHoTT.Spec.Typing 𝒮 n using ( Ctx; ⌊_⌋; _⊢_∷_ )
+open import DirectedHoTT.Lib.Nat 𝒮 n   using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Monus 𝒮 n using ( monusTm; ⊢monus )
 
 maxTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 maxTm a b = plusTm a (monusTm b a)

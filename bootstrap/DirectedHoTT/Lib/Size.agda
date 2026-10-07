@@ -12,13 +12,23 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Size where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Lib.Size (𝒮 : KSig) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: at a well-formed signature, all its names
+private
+  n = KSig.size 𝒮
+  ok = Entries.sigOK 𝒮 n wf
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import normalizer.Syntax.Types using ( _≡_; refl )
-open import DirectedHoTT.Metatheory.Canonicity using ( sz; _≤_; s≤s; ≤-refl; ≤-trans; ≤-suc; un≤; ≤+ˡ; ≤+ʳ )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ )
+open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( sz; _≤_; s≤s; ≤-refl; ≤-trans; ≤-suc; un≤; ≤+ˡ; ≤+ʳ )
+open import DirectedHoTT.Lib.Sugar 𝒮 n ok using ( tag; conₗ )
 
 -- the payload of a node is smaller than the node
 szp : (k : ℕ) (p : RTm ε) {f : ℕ} → sz (conₗ k p) ≤ suc f → sz p ≤ f

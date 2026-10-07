@@ -43,23 +43,25 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Arith where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Arith (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; Hom; Nat
         ; RTm; var; nzero; nsuc; natrec
         ; renTy; renTm; subTy; subTm )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; Hom-Nat-ss
         ; ξ-nsuc; ξ-Homˡ; ξ-Homʳ; natrec-zero; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w; nrs-w )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; nrs-w )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
 
 ------------------------------------------------------------------------
 -- ⚠ THE MOTIVE MUST BE BOUND-EXPLICIT, exactly as `LibAmrec`'s `aAuxB`.

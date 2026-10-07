@@ -29,16 +29,26 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.AmrecClosed where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Lib.AmrecClosed (𝒮 : KSig) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: at a well-formed signature, all its names
+private
+  n = KSig.size 𝒮
+  ok = Entries.sigOK 𝒮 n wf
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
 open import DirectedHoTT.Spec.Syntax
   using ( ε; _∙; RTy; RTm; U; Nat; natrec; app; subTm; extS )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( ◇; _▹_; single; _⊢_∷_; _⊢ty_; _⟶*_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢[] )
-open import DirectedHoTT.Lib.Strong using ( reflTm )
-open import DirectedHoTT.Lib.NatVal using ( NatVal; nv-zero; nv-suc )
-open import DirectedHoTT.Lib.NatEval using ( natEval )
-open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢[] )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( reflTm )
+open import DirectedHoTT.Lib.NatVal 𝒮 using ( NatVal; nv-zero; nv-suc )
+open import DirectedHoTT.Lib.NatEval 𝒮 wf using ( natEval )
+open import DirectedHoTT.Lib.Amrec 𝒮 n using ( aStepT; module AmTΠ )
 
 ------------------------------------------------------------------------
 -- ★★ AT A CLOSED CARRIER, THE UNFOLDING'S PREMISE IS FREE.

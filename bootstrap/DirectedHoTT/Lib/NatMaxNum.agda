@@ -20,18 +20,20 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatMaxNum where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.NatMaxNum (𝒮 : KSig) (n : ℕ) where
 
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; nzero; nsuc )
-open import DirectedHoTT.Spec.Typing using ( _⟶*_; done )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-natrecᶻ; ⟶*-natrecⁿ )
-open import DirectedHoTT.Lib.RedChain using ( _»_ )
-open import DirectedHoTT.Lib.NatNum using ( num; plus-num )
-open import DirectedHoTT.Lib.Monus
+open import DirectedHoTT.Spec.Typing 𝒮 n using ( _⟶*_; done )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-natrecᶻ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Lib.RedChain 𝒮 using ( _»_ )
+open import DirectedHoTT.Lib.NatNum 𝒮 n using ( num; plus-num )
+open import DirectedHoTT.Lib.Monus 𝒮 n
   using ( predTm; monusTm; pred-zero; pred-suc; monus-zero; monus-suc )
-open import DirectedHoTT.Lib.ArithMonus using ( pred* )
-open import DirectedHoTT.Lib.NatMax using ( maxTm )
+open import DirectedHoTT.Lib.ArithMonus 𝒮 n using ( pred* )
+open import DirectedHoTT.Lib.NatMax 𝒮 n using ( maxTm )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; trans; sym )
 
 -- ★ `pred` on ℕ, written out: `Agda.Builtin.Nat` has no `pred`.

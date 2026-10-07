@@ -23,13 +23,15 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatEq where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.NatEq (𝒮 : KSig) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; natrec; nzero; Nat )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢natrec; ⊢nzero; ty-Nat )
-open import DirectedHoTT.Lib.NatNum using ( num; ⊢num )
-open import DirectedHoTT.Lib.NatMax using ( maxTm; ⊢max )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
+open import DirectedHoTT.Lib.NatNum 𝒮 n using ( num; ⊢num )
+open import DirectedHoTT.Lib.NatMax 𝒮 n using ( maxTm; ⊢max )
+open import DirectedHoTT.Lib.Monus 𝒮 n using ( monusTm; ⊢monus )
 
 -- ★ `isZero 0 = 1`, `isZero (suc _) = 0`.  ⚠ The step ignores BOTH the
 --   number and the IH, so it is `nzero` outright — `Lib/Monus.predTm`

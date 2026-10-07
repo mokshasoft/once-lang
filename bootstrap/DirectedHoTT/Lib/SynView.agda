@@ -16,22 +16,26 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.SynView where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.SynView (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-snd; ⟶*-⌜IMu⌝ⁱ; ⟶*-⌜Fin⌝; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-El; ⟶ᵀ*-trans )
-open import DirectedHoTT.Metatheory.RedCong using () renaming ( red→≅ᵀ to red→≅ᵀ⁺ )
-open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub; iinst-sub; wk2-subTy )
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-snd; ⟶*-⌜IMu⌝ⁱ; ⟶*-⌜Fin⌝; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-El; ⟶ᵀ*-trans )
+open ᴵRedCong using () renaming ( red→≅ᵀ to red→≅ᵀ⁺ )
+import DirectedHoTT.Metatheory.TySub 𝒮 n as ᴵTySub
+open ᴵTySub using ( wk-cancel-tm )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub; iinst-sub; wk2-subTy )
 open import DirectedHoTT.Spec.Syntax using ( cong₃; cong₄ )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; vz-cancel )
-open import DirectedHoTT.Lib.Tel using ( ⌜_⌝ᵗ )
-open import DirectedHoTT.Lib.Syn
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var )
+open import DirectedHoTT.Lib.Sugar 𝒮 n ok using ( tag; conₗ; vz-cancel )
+open import DirectedHoTT.Lib.Tel 𝒮 n ok using ( ⌜_⌝ᵗ )
+open import DirectedHoTT.Lib.Syn 𝒮 n ok
 
 private
   variable
@@ -202,8 +206,8 @@ IhV-sub σ vʰ i D M p = refl
 ------------------------------------------------------------------------
 
 private
-  open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-  open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ )
+  open ᴵTySub using ( ⊢-cast )
+  open ᴵRedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ )
 
   wkc3 : (a : RTm Δ) (sh : Shape) (i I D : RTm Δ) →
          subTy (single a) (PayV sh (renTm vs i) (renTm vs I) (renTm vs D)) ≡ PayV sh i I D

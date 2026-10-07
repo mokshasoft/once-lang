@@ -40,7 +40,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.CongMacro where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Lib.CongMacro (𝒮 : KSig) where
 
 open import Agda.Builtin.Reflection
 open import Agda.Builtin.List
@@ -53,7 +54,7 @@ open import Agda.Builtin.Unit using ( ⊤; tt )
 open import DirectedHoTT.Spec.Syntax
   using ( app; pair; fst; snd; ielim; nsuc; jsub; fsuc; psplit )
   renaming ( lam to Rlam; con to Rcon )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
         ; ⟶*-lam; ⟶*-con; ⟶*-nsuc; ⟶*-jsubᵖ; ⟶*-fsuc; ⟶*-psplitᵍ
         ; ⟶*-ielimᴰ; ⟶*-ielimⁱ; ⟶*-ielimᵉ; ⟶*-ielimᵗ )

@@ -34,22 +34,24 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatEqNum where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.NatEqNum (𝒮 : KSig) (n : ℕ) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⟶*_; done; step; natrec-zero; natrec-suc )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-natrecⁿ; ⟶*-natrecᶻ )
-open import DirectedHoTT.Lib.RedChain using ( _»_ )
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.BoolNum using ( b2n )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-natrecⁿ; ⟶*-natrecᶻ )
+open import DirectedHoTT.Lib.RedChain 𝒮 using ( _»_ )
+open import DirectedHoTT.Lib.NatNum 𝒮 n using ( num )
+open import DirectedHoTT.Lib.BoolNum 𝒮 n using ( b2n )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
-open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
-open import DirectedHoTT.Lib.Monus using ( monusTm )
-open import DirectedHoTT.Lib.NatEq using ( isZeroTm; eqNatTm )
-open import DirectedHoTT.Lib.NatMaxNum
+open import DirectedHoTT.Lib.ICast 𝒮 n using ( ⟶*-castᵣ )
+open import DirectedHoTT.Lib.Monus 𝒮 n using ( monusTm )
+open import DirectedHoTT.Lib.NatEq 𝒮 n using ( isZeroTm; eqNatTm )
+open import DirectedHoTT.Lib.NatMaxNum 𝒮 n
   using ( maxℕ; monusℕ; monus-num; maxTm-red; monusℕ-zeroˡ; monusℕ-suc
         ; maxℕ≡max'; max' )
 

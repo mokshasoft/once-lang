@@ -27,7 +27,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.DvdArith where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.DvdArith (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
@@ -36,7 +38,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝
         ; pair; fst; snd; absurd
         ; subTy; subTm; renTy; renTm; Ren; extS; extR )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
@@ -47,25 +49,24 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
         ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Id⌝ʳ; ξ-⌜Id⌝ˡ
         ; _⟶*_; step; done; wk-single )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_; ⟶ᵀ*-El )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_; ⟶ᵀ*-El )
+open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-ren )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; nrs-w; ren-sub; sub-w; cong₃; ren-w²; ren-w³; ren-w )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Strong using ( natAsEl; elAsNat )
-open import DirectedHoTT.Lib.Pair using ( asN )
-open import DirectedHoTT.Lib.ArithComm
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( natAsEl; elAsNat )
+open import DirectedHoTT.Lib.Pair 𝒮 n using ( asN )
+open import DirectedHoTT.Lib.ArithComm 𝒮 n
   using ( IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; congS; ⊢congS
         ; symN; ⊢symN; transN; ⊢transN
         ; plus0B; plus0Tm; ⊢plus0; plusSB; plusSTm; ⊢plusS )
-open import DirectedHoTT.Lib.Mul
+open import DirectedHoTT.Lib.Mul 𝒮 n
   using ( mulTm; ⊢mul; mulTm-sub; mul-zero; mul-suc; mulTm-ren )
-open import DirectedHoTT.Lib.Dvd
+open import DirectedHoTT.Lib.Dvd 𝒮 n
   using ( dvdT; dvd-intro; dvd-wit; dvd-eq; dvdCode; ⊢dvdCode )
-open import DirectedHoTT.Lib.Monus
+open import DirectedHoTT.Lib.Monus 𝒮 n
   using ( predTm; monusTm; ⊢pred; ⊢monus; pred-suc; monus-zero; monus-suc )
 
 ------------------------------------------------------------------------

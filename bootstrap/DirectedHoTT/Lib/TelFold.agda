@@ -26,27 +26,30 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.TelFold where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.TelFold (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( ⊢-cast; ⊢wk )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
   using ( ⟨_⟩ᵣ; subTy-var; _,ₛ_ )
-open import DirectedHoTT.Metatheory.Premises
+open import DirectedHoTT.Metatheory.Premises 𝒮 n
   using ( MethG; methSg )
-open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Lib.Sugar 𝒮 n ok
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; Dₗ; conₗ; selF; selF-β; methₗ
         ; AllD; []ᵈ; _∷ᵈ_; ⊢Dₗ; PerK; []ₘ; _∷ₘ_; ⊢methₗ; MethK )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Nat
+open import DirectedHoTT.Lib.Tel 𝒮 n ok
+open import DirectedHoTT.Lib.Nat 𝒮 n
   using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.NatMax
+open import DirectedHoTT.Lib.NatMax 𝒮 n
   using ( maxTm; ⊢max )
 
 private

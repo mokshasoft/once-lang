@@ -18,23 +18,26 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.SynTravM where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.SynTravM (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; ⟶ᵀ*-Πˡ; ⟶*-pairˡ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; selF; subC; tag; conₗ; selF-β; nth-sub; Lt )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.TelAt using ( allSD; nth-⌜⌝ₛₛ )
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.Sorted using ( σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; ⊢sortMeth; ⊢methₛ; SortT )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynView
-open import DirectedHoTT.Lib.SynTrav
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; ⟶ᵀ*-Πˡ; ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 using ( mot-ren; ⊢wkD )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; selF; subC; tag; conₗ; selF-β; nth-sub; Lt )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok using ( allSD; nth-⌜⌝ₛₛ )
+open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok using ( σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; ⊢sortMeth; ⊢methₛ; SortT )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynTrav 𝒮 𝓃 ok
 
 private
   variable

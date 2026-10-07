@@ -40,7 +40,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.AmrecRen where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.AmrecRen (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; Ren
@@ -50,30 +52,30 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
         ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; subTy-cong; idₛ
         ; renTy-subTy; renTm-subTm; ordtr-cong₅; Id-cong₃ )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _∋_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; wk-single )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-Homʳ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢wk; ⊢-cast; ∋-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
-        ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
-open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-Homʳ; stepᵀ; doneᵀ )
+import DirectedHoTT.Metatheory.TySub 𝒮 n as ᴵTySub
+open ᴵTySub using ( ⊢wk; ⊢-cast; ∋-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( ⊢le-refl; reflTm )
+open import DirectedHoTT.Lib.Ord 𝒮 n using ( ⊢strong-base'; ⊢strong-step )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Lib.Wk
+open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; wᶠ; ⊢wkᶠ; cong₃; cong₄; sub-w; sub-w²; sub-w³; sub-w⁴; ren-w; wk-singleTy; wᶠ-single
         ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ; sub-wTy; wᶠ-sub
         ; ren-sub; ren-w²; ren-w³; nrs-w; cong₅; cong₆; _∙^_; w^; wTy^; wᶠ^ )
-open import DirectedHoTT.Lib.Rec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
+open import DirectedHoTT.Lib.Rec 𝒮 n using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
 -- (`…LibNatVal` import DELETED 2026-08-21 — it was DEAD: none of
 --  `NatVal`/`nv-zero`/`nv-suc`/`natEval` occurred anywhere in this file,
 --  yet it propagated the canonicity stack to every client.)
-open import DirectedHoTT.Metatheory.TySub using ( ⊢[] )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
-open import DirectedHoTT.Lib.Amrec
+open ᴵTySub using ( ⊢[] )
+open ᴵRedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Lib.Amrec 𝒮 n
 
 ------------------------------------------------------------------------
 -- ★★★ THE TERM-LEVEL CONSTRUCTIONS, PARAMETERISED — and their `-ren` laws.

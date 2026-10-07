@@ -16,14 +16,16 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Monus where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Monus (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; renTy; subTy; Π; lam; app )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc
         ; _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
@@ -33,11 +35,11 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
         ; ⊢lam; ⊢app; nrs; wk-single )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Lib.Strong
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
+open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk )
+open import DirectedHoTT.Lib.Strong 𝒮 n
   using ( El-homNat; natAsEl; ⊢le-refl; ⊢le-suc; reflTm )
 
 ------------------------------------------------------------------------

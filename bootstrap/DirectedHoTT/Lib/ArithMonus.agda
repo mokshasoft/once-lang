@@ -29,7 +29,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.ArithMonus where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.ArithMonus (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -37,30 +39,27 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; ordtr; unit; lam; app; absurd
         ; pair; snd
         ; renTm; subTy; subTm; Sub; extS )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢ordtr; ty-Nat; ty-Hom
-        ; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd
-        ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ; wk-single; βsnd )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[] )
-open import DirectedHoTT.Lib.Wk using ( w; nrs-w; sub-w; sub-w² )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus
+import DirectedHoTT.Spec.Typing 𝒮 n as ᴵTyping
+open ᴵTyping using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec ; ⊢ordtr; ty-Nat; ty-Hom ; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ; wk-single; βsnd )
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open ᴵRedCong using ( ⟶*-trans )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast; ⊢[] )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; nrs-w; sub-w; sub-w² )
+import DirectedHoTT.Lib.Strong 𝒮 n as ᴵStrong
+open ᴵStrong using ( ⊢le-refl; reflTm )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Monus 𝒮 n
   using ( predTm; ⊢pred; ⊢pred-le; monusTm; ⊢monus
         ; monus-zero; monus-suc; pred-suc; pred-zero; homˡ* )
-open import DirectedHoTT.Lib.Arith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
-open import DirectedHoTT.Lib.ArithComm
+open import DirectedHoTT.Lib.Arith 𝒮 n using ( plusMonoB; plusMonoTm; ⊢plus-mono )
+open import DirectedHoTT.Lib.ArithComm 𝒮 n
   using ( plusMonoLB; plusMonoLTm; plusMonoLTm-sub; ⊢plus-mono-l
         ; IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; transN; ⊢transN )
-open import DirectedHoTT.Lib.Strong using ( natAsEl )
-open import DirectedHoTT.Lib.Pair using ( asN )
+open ᴵStrong using ( natAsEl )
+open import DirectedHoTT.Lib.Pair 𝒮 n using ( asN )
 open import DirectedHoTT.Spec.Syntax using ( jsub; ⌜Id⌝; ⌜Nat⌝; idrefl )
-open import DirectedHoTT.Spec.Typing
-  using ( ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝; ⊢idrefl; ty-Id; ty-El; ty-Π; ⊢lam; ⊢app )
+open ᴵTyping using ( ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝; ⊢idrefl; ty-Id; ty-El; ty-Π; ⊢lam; ⊢app )
 
 ------------------------------------------------------------------------
 -- lifting a reduction into `pred`'s scrutinee

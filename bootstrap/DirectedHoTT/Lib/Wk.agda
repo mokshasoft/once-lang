@@ -28,7 +28,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Wk where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Wk (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; Ren
@@ -37,9 +39,9 @@ open import DirectedHoTT.Spec.Syntax
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
         ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong
         ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _∋_∷_; here; there; wk-single )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( ren-lemma; Ren⊢; Ren⊢-ext; ∋-cast )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 

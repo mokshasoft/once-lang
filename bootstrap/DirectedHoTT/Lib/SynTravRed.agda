@@ -18,27 +18,32 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.SynTravRed where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.SynTravRed (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd; ⟶*-con; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-dihᶜ; ⟶*-dihᵖ )
-open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; conₗ; selF; selF-β; nth-sub; subC )
-open import DirectedHoTT.Lib.Tel using ( nth-⌜⌝; ⌜_⌝ₛ; ⌜_⌝ᵗ )
-open import DirectedHoTT.Lib.TelAt using ( nth-⌜⌝ₛₛ )
-open import DirectedHoTT.Lib.Sorted using ( ιₛ-red; fibₛ-β )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynView using ( DihV; dihV-red )
-open import DirectedHoTT.Lib.SynTrav
-open import DirectedHoTT.Lib.SynTravM
-open import DirectedHoTT.Lib.MethAt using ( methAt )
-open import DirectedHoTT.Lib.Wk using ( sub-w⁴; sub-w³ )
-open import DirectedHoTT.Lib.MethAt using ( methAt-β; methAt-sub )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( wk-cancel-tm )
+import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 as ᴵSubjectReductionBase
+open ᴵSubjectReductionBase using () renaming ( wk-sub to wkS )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; conₗ; selF; selF-β; nth-sub; subC )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok using ( nth-⌜⌝; ⌜_⌝ₛ; ⌜_⌝ᵗ )
+open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok using ( nth-⌜⌝ₛₛ )
+open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok using ( ιₛ-red; fibₛ-β )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( DihV; dihV-red )
+open import DirectedHoTT.Lib.SynTrav 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynTravM 𝒮 𝓃 ok
+import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok as ᴵMethAt
+open ᴵMethAt using ( methAt )
+open import DirectedHoTT.Lib.Wk 𝒮 𝓃 using ( sub-w⁴; sub-w³ )
+open ᴵMethAt using ( methAt-β; methAt-sub )
 open import DirectedHoTT.Spec.Syntax using ( cong₃; cong₄ )
 
 private
@@ -321,7 +326,7 @@ module TravRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (
     pt (vs vz)          = wk-cancel-tm c b
     pt (vs (vs vz))     = trans (cong (subTm (single c)) (trans (wkS (single b) (renTm vs a)) (cong (renTm vs) (wk-cancel-tm b a))))
                                 (wk-cancel-tm c a)
-      where open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
+      where open ᴵSubjectReductionBase using () renaming ( wk-sub to wkS )
     pt (vs (vs (vs x))) = refl
     eq : subTm (single c) (subTm (extS (single b)) (subTm (extS (extS (single a))) X)) ≡ subTm (σ3 a b c) X
     eq = trans (cong (subTm (single c)) (subTm-subTm X)) (trans (subTm-subTm X) (subTm-cong pt X))
@@ -355,7 +360,7 @@ module EnvRed {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg)
         eq = cong₂ (λ a c → fcase x a (app c (var vz)))
                    (wk-cancel-tm x u)
                    (trans (wkS (single x) (renTm vs f)) (cong (renTm vs) (wk-cancel-tm x f)))
-          where open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
+          where open ᴵSubjectReductionBase using () renaming ( wk-sub to wkS )
 
   -- ★ (f , u) at zero is u
   cons-z : {e d u f : RTm Γ} → app (CONS· e d u f) fzero ⟶* u

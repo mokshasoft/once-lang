@@ -16,19 +16,20 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Mul where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Mul (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; var; vz; nzero; nsuc; natrec; Nat; Sub; subTm
         ; Ren; renTm; extS )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢var; here; ⊢nzero; ⊢natrec; ty-Nat
-        ; _⟶*_; done; step; natrec-zero; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Spec.Typing using ( single )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-sub )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
+import DirectedHoTT.Spec.Typing 𝒮 n as ᴵTyping
+open ᴵTyping using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢var; here; ⊢nzero; ⊢natrec; ty-Nat ; _⟶*_; done; step; natrec-zero; natrec-suc; wk-single )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk )
+open ᴵTyping using ( single )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; sub-w; sub-w²; ren-sub )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
 
 mulTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 mulTm m n = natrec nzero (plusTm (w (w n)) (var vz)) m

@@ -45,15 +45,18 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.IHeadRed where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.IHeadRed (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; ielim; app; dih; pair )
-open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
+open import DirectedHoTT.Spec.Typing 𝒮 n using ( _⟶*_ )
 -- ⚠ `_»_` is NOT imported: it is a LOCAL infix alias for `⟶*-trans`,
 --   redefined in 10+ Knot modules.  A library lemma must not depend
 --   on a notation its clients happen to have spelled out.
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
-open import DirectedHoTT.Lib.Sugar using ( Cons; Nth; methₗ; conₗ; tag; ιₗ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans )
+open import DirectedHoTT.Lib.Sugar 𝒮 n ok using ( Cons; Nth; methₗ; conₗ; tag; ιₗ )
 
 private variable
   Γ : Cx

@@ -20,23 +20,26 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.TelAt where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.TelAt (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans; ⟶*-appʳ; ⟶*-dihᶜ; red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; conv-ctx; sub-lemma )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( subTm-var )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast; conv-ctx; sub-lemma )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( subTm-var )
+open import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 using ( mot-ren; ⊢wkD )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; selF; selF-β; nth-sub; subC; conₗ; AllD )
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.Sorted
+open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok
 
 private
   variable

@@ -23,16 +23,18 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Id where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Id (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; El; U; var; vz; vs; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃
         ; renTm )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢jsub
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Lib.Amrec using ( Prv; prv )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.Amrec 𝒮 n using ( Prv; prv )
 
 ------------------------------------------------------------------------
 -- ★ THE TERM, and its typing.

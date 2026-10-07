@@ -8,10 +8,12 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatCode where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.NatCode (𝒮 : KSig) (n : ℕ) where
 
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
 
 ------------------------------------------------------------------------
 -- Crossing between `Nat` and `El ⌜Nat⌝`; an index successor and equation.
