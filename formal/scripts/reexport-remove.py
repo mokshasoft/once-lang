@@ -436,6 +436,16 @@ def run(targets):
                       r"The module\s+(\S+)\s+doesn't\s+export\s+the\s+following:\s*\n((?:\s+\S.*\n)+?)when", err)
         if not m:
             for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
+            # A name lost through a chain the lineage cannot attribute (anonymous
+            # module applications): drop the spot whose module declares it.
+            ns = re.search(r"Not in scope:\s*\n\s*(\S+)", err)
+            if ns:
+                n = ns.group(1).split(".")[-1]
+                hit = [(f, ln) for f, ln, fac, add, drop, stmt in plan
+                       if (stmt.startswith("open import ") and declares(modpath(stmt.split()[2]), n))
+                       or (not stmt.startswith("open import ") and declares(f, n))]
+                for f, ln in hit:
+                    print(f"DROP-SPOT {f}:{ln}")
             sys.exit("verification run failed (tree restored):\n" + err)
         path, line, fac = m.group(1), int(m.group(2)), m.group(3)
         if fac not in stmt_of:                       # Agda names it by the importer's alias
@@ -451,6 +461,10 @@ def run(targets):
         where = {}
         for n in names:
             ts = target_of.get((fac, n)) or (stmt_of.get(fac) if len(stmt_of.get(fac, ())) == 1 else None)
+            if not ts:
+                # `fac` may be a CHAIN module re-exporting a removed facade: the
+                # snapshot knows where the name crossed, whichever facade it was
+                ts = set().union(*[v for (f, m2), v in target_of.items() if m2 == n]) or None
             if not ts or len(ts) != 1:
                 for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
                 print("AMBIGUOUS-FACADE " + fac)
