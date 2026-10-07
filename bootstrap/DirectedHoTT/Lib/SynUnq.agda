@@ -28,29 +28,24 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Lib.SynUnq (𝒮 : Defs) (wf : WfK 𝒮) where
 
--- ★ PLAN-REF: at a well-formed signature, all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim; _⊎_; inj₁; inj₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶ᵀ*-El; red→≅ᵀ; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast )
-open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 𝓃 ok using ( gen-nsuc )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( gen-nsuc )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
 open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf
   using ( canNat; NatShape; ns-zero; ns-suc; sz; _≤_; ≤-refl )
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( tag; conₗ; Lt; lt-z; lt-s; selF-β; nth-sub; subC; selF; Nth; [] )
-open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok using ( ⌜_⌝ᵗ; ⌜_⌝ₛ; nth-⌜⌝; nthᵗ-z; nthᵗ-s )
-open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num; num-sub )
-open import DirectedHoTT.Lib.NatFib 𝒮 𝓃 ok using ( fibN-z; fibN-s )
-open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( toI; fromI )
-open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( tag; conₗ; Lt; lt-z; lt-s; selF-β; nth-sub; subC; selF; Nth; [] )
+open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( ⌜_⌝ᵗ; ⌜_⌝ₛ; nth-⌜⌝; nthᵗ-z; nthᵗ-s )
+open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num; num-sub )
+open import DirectedHoTT.Lib.NatFib 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( fibN-z; fibN-s )
+open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( toI; fromI )
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Lib.Decode 𝒮 wf
 open import DirectedHoTT.Lib.SynDecode 𝒮 wf
 open import DirectedHoTT.Lib.Size 𝒮 wf using ( szp; szˡ; szʳ )

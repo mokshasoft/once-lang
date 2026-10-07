@@ -45,7 +45,11 @@ open import Agda.Builtin.List using ( List; []; _∷_ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; vz; vs )
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )
 open import DirectedHoTT.Algorithm.Surface
-open import DirectedHoTT.Examples.Knot.Sig using ( KSig )
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀ )
+import DirectedHoTT.Lib.Syn
+-- the Knot's signature (signature-free data, read at the empty signature)
+open import DirectedHoTT.Examples.Knot.Sig ∅ᴷ wf₀ using ( KSig )
 
 ------------------------------------------------------------------------
 -- Writing terms: levels, numerals.
@@ -231,7 +235,7 @@ private
 ------------------------------------------------------------------------
 
 private
-  import DirectedHoTT.Lib.Syn as LS
+  module LS = DirectedHoTT.Lib.Syn ∅ᴷ 0 ok₀
 
   numS tagS : ℕ → T
   numS zero    = nzero
@@ -484,12 +488,6 @@ tms = at unit (tm-SI ∷ tm-add ∷ tm-FlC ∷ tm-Fld ∷ tm-ShC ∷ tm-Shape �
 open import DirectedHoTT.Algorithm.SigBuild using ( module SigBuild )
 open SigBuild 22 tys tms 1000 public
 
-open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_ )
-open import DirectedHoTT.Spec.Signature using ( Sig )
-import DirectedHoTT.Spec.Syntax as R
-open import DirectedHoTT.Algorithm.Eval using ( eval; nfd; out )
-open import DirectedHoTT.Lib.NatNum using ( num )
-import DirectedHoTT.Lib.Syn as L
 
 -- ★ the core is well-formed: the checker's output, nothing written
 wf : WfSig S

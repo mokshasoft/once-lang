@@ -22,23 +22,18 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Examples.Knot.OpAgree (𝒮 : Defs) (wf : WfK 𝒮) where
 
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( pwShift )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-con; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-appˡ; ⟶*-ielimᵗ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( wk-cancel-tm )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( conₗ; v₀; v₁; _,ₚ_ )
-open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( conₗ; v₀; v₁; _,ₚ_ )
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Sub 𝒮 wf

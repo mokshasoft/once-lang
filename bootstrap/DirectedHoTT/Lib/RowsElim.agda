@@ -22,10 +22,6 @@ import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Lib.RowsElim (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
-private
-  n = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 n wf
-  refs = Entries.refsOK 𝒮 n (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( Σ; _,_; _×_ )
@@ -35,9 +31,9 @@ open import Agda.Builtin.Unit using ( ⊤ )
 -- the empty handler list (re-exported for the generated dispatchers)
 open import Agda.Builtin.Unit public using ( tt )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar 𝒮 n ok using ( Cons; []; _∷_; Nth; nth-z; nth-s )
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; Nth; nth-z; nth-s )
 open import DirectedHoTT.Lib.Decode 𝒮 wf using ( RowsDec )
 open import DirectedHoTT.Lib.Size 𝒮 wf using ( _<_; <ᶜ )
 open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( sz; _≤_ )

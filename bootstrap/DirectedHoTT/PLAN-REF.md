@@ -313,3 +313,72 @@ Next: Lib, then Examples, then the Knot.
   body from `quoteTm` injectivity after the lookup computes.
 - K6. The signature-building examples (SigCore, SigMeth, PwCore, the NbE
   agreement tests) at their `kernel S`; then MEASURE (step 5 of §4).
+
+### 2026-10-07 — Knot stage: K2 done, K3 underway
+
+- **K2.** `Knot/QSig`: `⌜QSig⌝` with typed projections `sizeQ`/`typesQ`/
+  `bodiesQ`. The TYPING judgement's parameter is `⌜TSig⌝ = Σ ⌜QSig⌝ Nat`,
+  the signature AND the bound, as `Spec/Typing (𝒮)(n)`; its conversion
+  premise passes `sigT q`. `Knot/QuoteSig`: `quoteDefs 𝒯`. A `natrec`
+  chain SHIFTS the entry function at each step, so `typesQ`/`bodiesQ
+  (quoteDefs 𝒯) (num d) ⟶*` the quoted entry is a one-line induction at
+  every name (the kernel's default `⟨Unit∣unit⟩` past the size).
+- **K3, positions.** `gen-judge` has an ambient position `QS`, mentioned
+  only by `⌜⟶⌝` (RedT's premise on the lower stratum). A telescope takes the
+  signature iff it cites it. A row is always `R q j p c`. Families over
+  nothing (`Pw`, the side conditions) are at `unit`.
+- ★ **The core is a hypothesis on the ambient signature (decided).**
+  `Knot/PwCore`'s code is a reference to the core entries (P4). A reference
+  is a projection from the ambient signature, so the Knot that cites the
+  core is over any signature CONTAINING it:
+  `(core : PwCore.Kc ⊑ᴰ 𝒮)` (`Spec/SigExtend`: same names, types and bodies
+  below the core's size). Two consequences:
+  - `⊢⌜Pw⌝` is `⊢ref` with no premise.
+  - The conversions core ≅ Knot are decided ONCE at the concrete core by NbE
+    and carried to `𝒮` by `SigExt.ext≅`.
+
+  `tools/planref.py` gives every module importing a core citer the third
+  parameter (class `C`; 33 Knot modules). The rejected alternative, a Knot
+  that never cites the core with core-agreement as a separate theorem,
+  reverts P4 and the direction of R4 (the Knot moving INTO the core).
+- ⬜ **Follow-up: split signature-free data out of parameterised modules.**
+  - Agda datatypes are generative in their module's parameters:
+    `Lib/Syn.Sig 𝒮₁ …` ≠ `Lib/Syn.Sig 𝒮₂ …`. So signature-independent
+    data (`Fld`/`Shape`/`Sig`/`ShOK`/`SigOK`/`NthG`, `Lt`, `Cons`, `Tel`,
+    `STm`, the Knot's `KSig`/`KOK`, …) should live in unparameterised
+    modules, as `Spec/Base` does for the kernel.
+  - Today every crossing between two signatures goes through raw `RTm`
+    (signature-free), so nothing is blocked. The core examples instantiate
+    Lib and the Knot at `∅ᴷ` (`Examples/Lib0`).
+
+### 2026-10-08 — K3/K4 green through the constructors; K5 written; a regression to profile
+
+- **Green** (checked in dependency order): QSig, QuoteSig, Knot/PwCore (over
+  `core`, 46 s / 1.6 GB, conversions decided at the core by NbE), Ref, Red,
+  RedT, Conv, ConvCon, JudgeConv, JudgeRowsTm, RefJudge, JudgeRowsGen,
+  Judge, RefCon, QView, RenAgree, SubAgree, OpAgree, PredsCon, PredsAgree;
+  the core examples SigCore → SigMeth → PwCore at the empty signature's
+  Lib/Knot instances (136 s / 3.9 GB for the three).
+- **K4** δ: `n < sizeQ q ⟹ kref n ⟶ εwkK 1 j (bodiesQ q n)`; ⊢ref:
+  `n < boundT q ⟹ kref n : εwkK 0 j (typesQ (sigT q) n)` — no premise. Both
+  rows as a TAIL after the side condition (`TδT`/`T⊢refT`, own law), the
+  row at the sources (`T q j p c = T' q j (nameOf p) c`), constructors by
+  one `mono-by`.
+- **K5** (written, checking): decoders read closed derivations at the
+  quoted ambient signature (`q𝒮`, typing at `t𝒮 = (q𝒮 , size)`). The side
+  condition decodes by `homLt` (a closed `Hom Nat (d+1) m` at numerals is
+  `d <ˢ m`: the order computes, consistency at 0) and encodes by
+  `⊢below`/`⊢belowT` (`homLt⁻`: it computes to `Unit`). The typing
+  family's conversion premise is at `sigT t𝒮`, a redex: the family at a
+  REDUCING parameter reduces (`Lib/SynFam.DF-⟶*`, `KF-⟶ᵀ*`, by substitution
+  monotonicity).
+- ⚠ **Regression, being profiled.** Single-module checks against the P5
+  sweep: PredsCon 4 → 79 s, Red 12 → 579 s, RedT 11 → 189 s, JudgeRowsGen
+  13 → 259 s, RenAgree 4 → 3416 s. Not the new parameter (RenAgree does not
+  mention it).
+  - First hypothesis, acted on: per-module private abbreviations
+    (`𝓃`/`ok`/`refs`) made two instances of one library differ
+    syntactically. Every module now passes ONE global spelling
+    (`Metatheory/Entries.okᵂ`/`refsᵂ`; `planref.py`).
+  - That alone did NOT fix it (PredsCon 79 s), so it is now profiled
+    (`tools/agda-profile.sh`).

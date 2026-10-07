@@ -34,7 +34,7 @@ open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast; wk-cancel-tm; sub-lemma; ⊢single )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-appˡ; ⟶*-appʳ; ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-fst; ⟶*-snd; subTm-monoˢ; _⟶ᵀ*_; ⟶ᵀ*-IMuᴰ )
 open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( tag; conₗ )
 open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
 open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
@@ -171,6 +171,21 @@ module SynFam {sg : Sig n} (ok : SigOK n sg)
                          {y = subTm (extS σ) (FIBMₒ {Δ ∙} (renTm vs q))} {y' = FIBMₒ (renTm vs (subTm σ q))}
                          (SD-sub (extS σ) sg)
                          (trans (FIBMₒ-sub (extS σ) (renTm vs q)) (cong FIBMₒ (wkS σ q)))
+
+    -- ★ the family at a REDUCING parameter (one read off a pair, …): the
+    --   fibre function reduces with it — substitution is monotone
+    DF-⟶* : {q q' : RTm Δ} → q ⟶* q' → DF q ⟶* DF q'
+    DF-⟶* {Δ} {q} {q'} r =
+      subst (λ z → z ⟶* DF q') (DF-sub (single q) (var vz))
+        (subst (λ z → subTm (single q) (DF {Δ ∙} (var vz)) ⟶* z) (DF-sub (single q') (var vz))
+          (subTm-monoˢ h (DF (var vz))))
+      where
+        h : (x : Var (Δ ∙)) → single q x ⟶* single q' x
+        h vz     = r
+        h (vs x) = done
+
+    KF-⟶ᵀ* : {q q' x : RTm Δ} → q ⟶* q' → KF q x ⟶ᵀ* KF q' x
+    KF-⟶ᵀ* r = ⟶ᵀ*-IMuᴰ (DF-⟶* r)
 
     module _ {Γ : Ctx} {q : RTm ⌊ Γ ⌋} (dq : Γ ⊢ q ∷ El P) where
       private

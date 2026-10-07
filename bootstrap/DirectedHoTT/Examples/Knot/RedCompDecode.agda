@@ -5,13 +5,9 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
-module DirectedHoTT.Examples.Knot.RedCompDecode (𝒮 : Defs) (wf : WfK 𝒮) where
-
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PwCore as Core₀
+module DirectedHoTT.Examples.Knot.RedCompDecode (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
 ------------------------------------------------------------------------
@@ -31,15 +27,15 @@ private
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody; stkA?; stkC? )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans )
-open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; tag; atᶜ; v₀; v₁; v₂; v₃; v₄; v₅; v₆; v₇; v₈; v₉; _,ₚ_; nth-z; nth-s )
-open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; conₗ; tag; atᶜ; v₀; v₁; v₂; v₃; v₄; v₅; v₆; v₇; v₈; v₉; _,ₚ_; nth-z; nth-s )
+open import DirectedHoTT.Lib.SynRed 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Lib.Decode 𝒮 wf
 open import DirectedHoTT.Lib.PatDecode 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
@@ -56,13 +52,14 @@ open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.NestIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf
-open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf using ( El-⌜Pw⌝ )
+open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf core using ( El-⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Red 𝒮 wf
-open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core
+open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
-open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf using ( decPw )
+open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf core using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮 )
 
 private
   ⟶≡ : {Θ : Cx} {t u u' : RTm Θ} → u ≡ u' → t ⟶* u → t ⟶* u'
@@ -77,7 +74,7 @@ closeᵀ {u = u} {v} r e = subst (λ w → _ ⟶ᵀ w) (sym (quoteTy-inj u v (nf
 
 
 cd⟶app₍2₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (x0ᵢ0 : RTm (Γ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶app₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (app (lam x0ᵢ0) a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶app₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (app (lam x0ᵢ0) a1) ⟶ u
 cd⟶app₍2₎ᴸ1 {Γ} a1 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -94,14 +91,14 @@ cd⟶app₍2₎ᴸ1 {Γ} a1 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ [])} {as' = (j ∷ c ∷ f1 ∷ a0ᵢ0 ∷ [])} ⌜ T⟶app₃⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶app₃⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ [])) v₀ v₁ v₂ v₃) (T⟶app₃⁽0⁾-sub (σₗ (j ∷ c ∷ f1 ∷ a0ᵢ0 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((klam a0ᵢ0) ∷ f1 ∷ [])} unit (atᶜ 1))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶app₃ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶app₃⁽0⁾ j c f1 a0ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶app₃ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶app₃ᶜ0.CASE j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶app₃⁽0⁾ j c f1 a0ᵢ0 ⌝ᵗ} (PT⟶app₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶app₃ᶜ0.CASE j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶app₃ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶app₃⁽0⁾ j c f1 a0ᵢ0 ⌝ᵗ} (PT⟶app₃ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 1)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶app₃ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶app₃ᶜ0.CASE q𝒮 j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶app₃⁽0⁾ j c f1 a0ᵢ0 ⌝ᵗ} (PT⟶app₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶app₃ᶜ0.CASE q𝒮 j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶app₃ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶app₃⁽0⁾ j c f1 a0ᵢ0 ⌝ᵗ} (PT⟶app₃ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 1)) R₁))
 
 cd⟶app₍2₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶app₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (app a0 a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶app₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (app a0 a1) ⟶ u
 cd⟶app₍2₎ {Γ} a0 a1 u {q} dq nq =
   pat-hit 1 1 (hdTm a0) dq₃ nq
   ▷ λ e → islam a0 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (app z a1) ⟶ u) (sym eqv) (cd⟶app₍2₎ᴸ1 a1 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶app₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (app z a1) ⟶ u) (sym eqv) (cd⟶app₍2₎ᴸ1 a1 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶app₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 p c : RTm ε
     j = dep Γ
@@ -110,11 +107,11 @@ cd⟶app₍2₎ {Γ} a0 a1 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶app₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶app₃ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶app₃ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶app₃ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶fst₍1₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fst₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fst (x0ᵢ0 ,ₚ x0ᵢ1)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fst₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fst (x0ᵢ0 ,ₚ x0ᵢ1)) ⟶ u
 cd⟶fst₍1₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -131,14 +128,14 @@ cd⟶fst₍1₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv0) ∷ (fst q0) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ0 ∷ [])} ⌜ T⟶fst₂⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶fst₂⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst q0) ∷ [])) v₀ v₁ v₂) (T⟶fst₂⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶fst₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶fst₂⁽0⁾ j c a0ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶fst₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶fst₂ᶜ0.CASE j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶fst₂⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶fst₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶fst₂ᶜ0.CASE j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶fst₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶fst₂⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶fst₂ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 3)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶fst₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶fst₂ᶜ0.CASE q𝒮 j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶fst₂⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶fst₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶fst₂ᶜ0.CASE q𝒮 j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶fst₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶fst₂⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶fst₂ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 3)) R₁))
 
 cd⟶fst₍1₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fst₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fst a0) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fst₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fst a0) ⟶ u
 cd⟶fst₍1₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 3 (hdTm a0) dq₃ nq
   ▷ λ e → ispair a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (fst z) ⟶ u) (sym eqv) (cd⟶fst₍1₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fst₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (fst z) ⟶ u) (sym eqv) (cd⟶fst₍1₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fst₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -146,11 +143,11 @@ cd⟶fst₍1₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶fst₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fst₂ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fst₂ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶fst₂ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶snd₍1₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶snd₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (snd (x0ᵢ0 ,ₚ x0ᵢ1)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶snd₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (snd (x0ᵢ0 ,ₚ x0ᵢ1)) ⟶ u
 cd⟶snd₍1₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -167,14 +164,14 @@ cd⟶snd₍1₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ1 ∷ [])} ⌜ T⟶snd₂⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶snd₂⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂) (T⟶snd₂⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶snd₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶snd₂⁽0⁾ j c a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶snd₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶snd₂ᶜ0.CASE j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶snd₂⁽0⁾ j c a0ᵢ1 ⌝ᵗ} (PT⟶snd₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶snd₂ᶜ0.CASE j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶snd₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶snd₂⁽0⁾ j c a0ᵢ1 ⌝ᵗ} (PT⟶snd₂ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 3)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶snd₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶snd₂ᶜ0.CASE q𝒮 j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶snd₂⁽0⁾ j c a0ᵢ1 ⌝ᵗ} (PT⟶snd₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶snd₂ᶜ0.CASE q𝒮 j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶snd₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶snd₂⁽0⁾ j c a0ᵢ1 ⌝ᵗ} (PT⟶snd₂ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 3)) R₁))
 
 cd⟶snd₍1₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶snd₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (snd a0) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶snd₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (snd a0) ⟶ u
 cd⟶snd₍1₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 3 (hdTm a0) dq₃ nq
   ▷ λ e → ispair a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (snd z) ⟶ u) (sym eqv) (cd⟶snd₍1₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶snd₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (snd z) ⟶ u) (sym eqv) (cd⟶snd₍1₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶snd₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -182,11 +179,11 @@ cd⟶snd₍1₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶snd₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶snd₂ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶snd₂ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶snd₂ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ordtr₍5₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nzero {Γ}) a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nzero {Γ}) a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍5₎ᴸ1 {Γ} a1 a2 a3 a4 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -205,14 +202,14 @@ cd⟶ordtr₍5₎ᴸ1 {Γ} a1 a2 a3 a4 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv0) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶ordtr₆⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶ordtr₆⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ [])) v₀ v₁) (T⟶ordtr₆⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶ordtr₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ordtr₆⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ordtr₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₆ᶜ0.CASE j (knzero) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₆⁽0⁾ j c ⌝ᵗ} (PT⟶ordtr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₆ᶜ0.CASE j (knzero) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ordtr₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ordtr₆⁽0⁾ j c ⌝ᵗ} (PT⟶ordtr₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 19)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ordtr₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₆ᶜ0.CASE q𝒮 j (knzero) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₆⁽0⁾ j c ⌝ᵗ} (PT⟶ordtr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₆ᶜ0.CASE q𝒮 j (knzero) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ordtr₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ordtr₆⁽0⁾ j c ⌝ᵗ} (PT⟶ordtr₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 19)) R₁))
 
 cd⟶ordtr₍5₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍5₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
   pat-hit 1 19 (hdTm a0) dq₃ nq
   ▷ λ e → isnzero a0 e
-  ▷ λ { eqv → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍5₎ᴸ1 a1 a2 a3 a4 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍5₎ᴸ1 a1 a2 a3 a4 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 p c : RTm ε
     j = dep Γ
@@ -224,11 +221,11 @@ cd⟶ordtr₍5₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ f4 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₆ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₆ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₆ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ordtr₍6₎ᴸ3 : {Γ : Cx} (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) (nzero {Γ}) a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) (nzero {Γ}) a3 a4) ⟶ u
 cd⟶ordtr₍6₎ᴸ3 {Γ} a3 a4 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -252,14 +249,14 @@ cd⟶ordtr₍6₎ᴸ3 {Γ} a3 a4 x0ᵢ0 u {q} dq nq =
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (fst (snd cv2)))))) ∷ [])} {as' = (j ∷ c ∷ f3 ∷ [])} ⌜ T⟶ordtr₇⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶ordtr₇⁽0⁾-sub (σₗ (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (fst (snd cv2)))))) ∷ [])) v₀ v₁ v₂) (T⟶ordtr₇⁽0⁾-sub (σₗ (j ∷ c ∷ f3 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 3 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((knsuc a0ᵢ0) ∷ (knzero) ∷ (knzero) ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 3))) ∷ʳ []ʳ)
     R₀ : (PT⟶ordtr₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ordtr₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₇ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₇ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j (knzero) cv1} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE j (knzero) cv1} {u = PT⟶ordtr₇ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ2.CASE j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ2.CASE j (knzero) cv2} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE j (knzero) cv2} {u = ⌜ T⟶ordtr₇ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ2.case-β {j = j} {q = q2} {c = cv2} (atᵍ 1) (atʰ 19)) R₁))))))))
+    R₀ = (⟶*-trans {t = (PT⟶ordtr₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₇ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₇ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) cv1} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) cv1} {u = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (knzero) cv2} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (knzero) cv2} {u = ⌜ T⟶ordtr₇ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₇⁽0⁾ j c f3 ⌝ᵗ} (PT⟶ordtr₇ᶜ2.case-β {q = q𝒮} {j = j} {pl = q2} {c = cv2} (atᵍ 1) (atʰ 19)) R₁))))))))
 
 cd⟶ordtr₍6₎ᴸ2 : {Γ : Cx} (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) a2 a3 a4) ⟶ u
 cd⟶ordtr₍6₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 u {q} dq nq =
   pat-hit 1 19 (hdTm a2) dq₃ nq
   ▷ λ e → isnzero a2 e
-  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍6₎ᴸ3 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍6₎ᴸ3 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 p c q0 q1 cv0 cv1 cv2 : RTm ε
     j = dep Γ
@@ -276,16 +273,16 @@ cd⟶ordtr₍6₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₇ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE j f2 cv2} (PT⟶ordtr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₇ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE j f2 cv2} (PT⟶ordtr₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE j f2 cv2} (PT⟶ordtr₇ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j (knzero) cv1} {v = PT⟶ordtr₇ᶜ2.CASE j f2 cv2} (PT⟶ordtr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE j (knzero) cv1} {u = PT⟶ordtr₇ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE j f2 cv2} (PT⟶ordtr₇ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ2.CASE j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE j f2 cv2} (PT⟶ordtr₇ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₇ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ2.CASE j z cv2))) (quote-hdTm a2) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₇ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₇ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₇ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) cv1} {v = PT⟶ordtr₇ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (knzero) cv1} {u = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₇ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₇ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ2.CASE q𝒮 j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₇ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₇ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ2.CASE q𝒮 j z cv2))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₇ᶜ2.case-any {j = j} {q = pfTm a2} {c = cv2} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ordtr₍6₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍6₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
   pat-hit 1 19 (hdTm a1) dq₃ nq
   ▷ λ e → isnzero a1 e
-  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍6₎ᴸ2 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍6₎ᴸ2 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -300,16 +297,16 @@ cd⟶ordtr₍6₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₇ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₇ᶜ1.CASE j f1 cv1} (PT⟶ordtr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₇ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ1.CASE j f1 cv1} (PT⟶ordtr₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ1.CASE j f1 cv1} (PT⟶ordtr₇ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₇ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₇ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₇ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₇ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₇ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₇ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₇ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₇ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ordtr₍6₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍6₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
   pat-hit 1 20 (hdTm a0) dq₃ nq
   ▷ λ e → isnsuc a0 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍6₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍6₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 p c : RTm ε
     j = dep Γ
@@ -321,11 +318,11 @@ cd⟶ordtr₍6₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ f4 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₇ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₇ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₇ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ordtr₍7₎ᴸ3 : {Γ : Cx} (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) (nzero {Γ}) a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) (nzero {Γ}) a3 a4) ⟶ u
 cd⟶ordtr₍7₎ᴸ3 {Γ} a3 a4 x0ᵢ0 x1ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -350,14 +347,14 @@ cd⟶ordtr₍7₎ᴸ3 {Γ} a3 a4 x0ᵢ0 x1ᵢ0 u {q} dq nq =
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (snd (fst (snd cv2))))))) ∷ [])} {as' = (j ∷ c ∷ f4 ∷ [])} ⌜ T⟶ordtr₈⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶ordtr₈⁽0⁾-sub (σₗ (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (snd (fst (snd cv2))))))) ∷ [])) v₀ v₁ v₂) (T⟶ordtr₈⁽0⁾-sub (σₗ (j ∷ c ∷ f4 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 4 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((knsuc a0ᵢ0) ∷ (knsuc a1ᵢ0) ∷ (knzero) ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 4))) ∷ʳ []ʳ)
     R₀ : (PT⟶ordtr₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ordtr₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₈ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₈ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₈ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ2.CASE j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ2.CASE j (knzero) cv2} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE j (knzero) cv2} {u = ⌜ T⟶ordtr₈ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ2.case-β {j = j} {q = q2} {c = cv2} (atᵍ 1) (atʰ 19)) R₁))))))))
+    R₀ = (⟶*-trans {t = (PT⟶ordtr₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₈ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₈ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (knzero) cv2} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (knzero) cv2} {u = ⌜ T⟶ordtr₈ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₈⁽0⁾ j c f4 ⌝ᵗ} (PT⟶ordtr₈ᶜ2.case-β {q = q𝒮} {j = j} {pl = q2} {c = cv2} (atᵍ 1) (atʰ 19)) R₁))))))))
 
 cd⟶ordtr₍7₎ᴸ2 : {Γ : Cx} (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) a2 a3 a4) ⟶ u
 cd⟶ordtr₍7₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 x1ᵢ0 u {q} dq nq =
   pat-hit 1 19 (hdTm a2) dq₃ nq
   ▷ λ e → isnzero a2 e
-  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍7₎ᴸ3 a3 a4 x0ᵢ0 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍7₎ᴸ3 a3 a4 x0ᵢ0 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 a1ᵢ0 p c q0 q1 cv0 cv1 cv2 : RTm ε
     j = dep Γ
@@ -375,16 +372,16 @@ cd⟶ordtr₍7₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 x1ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₈ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE j f2 cv2} (PT⟶ordtr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₈ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE j f2 cv2} (PT⟶ordtr₈ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE j f2 cv2} (PT⟶ordtr₈ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = PT⟶ordtr₈ᶜ2.CASE j f2 cv2} (PT⟶ordtr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₈ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE j f2 cv2} (PT⟶ordtr₈ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ2.CASE j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE j f2 cv2} (PT⟶ordtr₈ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₈ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ2.CASE j z cv2))) (quote-hdTm a2) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₈ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₈ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₈ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₈ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = PT⟶ordtr₈ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₈ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ2.CASE q𝒮 j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₈ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₈ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ2.CASE q𝒮 j z cv2))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₈ᶜ2.case-any {j = j} {q = pfTm a2} {c = cv2} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ordtr₍7₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍7₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
   pat-hit 1 20 (hdTm a1) dq₃ nq
   ▷ λ e → isnsuc a1 e
-  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍7₎ᴸ2 a2 a3 a4 x0ᵢ0 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍7₎ᴸ2 a2 a3 a4 x0ᵢ0 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -399,16 +396,16 @@ cd⟶ordtr₍7₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₈ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₈ᶜ1.CASE j f1 cv1} (PT⟶ordtr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₈ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ1.CASE j f1 cv1} (PT⟶ordtr₈ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ1.CASE j f1 cv1} (PT⟶ordtr₈ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₈ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₈ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₈ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₈ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₈ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₈ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₈ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₈ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₈ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ordtr₍7₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍7₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
   pat-hit 1 20 (hdTm a0) dq₃ nq
   ▷ λ e → isnsuc a0 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍7₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍7₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 p c : RTm ε
     j = dep Γ
@@ -420,11 +417,11 @@ cd⟶ordtr₍7₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ f4 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₈ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₈ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₈ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ordtr₍8₎ᴸ3 : {Γ : Cx} (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x2ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) (nsuc x2ᵢ0) a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) (nsuc x2ᵢ0) a3 a4) ⟶ u
 cd⟶ordtr₍8₎ᴸ3 {Γ} a3 a4 x0ᵢ0 x2ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -449,14 +446,14 @@ cd⟶ordtr₍8₎ᴸ3 {Γ} a3 a4 x0ᵢ0 x2ᵢ0 u {q} dq nq =
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (fst (snd cv2)))))) ∷ (fst (fst (snd (snd cv2)))) ∷ (fst q2) ∷ [])} {as' = (j ∷ c ∷ f3 ∷ a0ᵢ0 ∷ a2ᵢ0 ∷ [])} ⌜ T⟶ordtr₉⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶ordtr₉⁽0⁾-sub (σₗ (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (fst (snd cv2)))))) ∷ (fst (fst (snd (snd cv2)))) ∷ (fst q2) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶ordtr₉⁽0⁾-sub (σₗ (j ∷ c ∷ f3 ∷ a0ᵢ0 ∷ a2ᵢ0 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 3 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((knsuc a0ᵢ0) ∷ (knzero) ∷ (knsuc a2ᵢ0) ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 3))) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 2))) (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0))) ∷ʳ (prj-tup {ws = (a2ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶ordtr₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ordtr₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₉ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₉ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j (knzero) cv1} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE j (knzero) cv1} {u = PT⟶ordtr₉ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ2.CASE j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ2.CASE j (knsuc a2ᵢ0) cv2} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE j (knsuc a2ᵢ0) cv2} {u = ⌜ T⟶ordtr₉ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ2.case-β {j = j} {q = q2} {c = cv2} (atᵍ 1) (atʰ 20)) R₁))))))))
+    R₀ = (⟶*-trans {t = (PT⟶ordtr₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₉ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₉ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) cv1} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) cv1} {u = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) cv2} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) cv2} {u = ⌜ T⟶ordtr₉ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₉⁽0⁾ j c f3 a0ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₉ᶜ2.case-β {q = q𝒮} {j = j} {pl = q2} {c = cv2} (atᵍ 1) (atʰ 20)) R₁))))))))
 
 cd⟶ordtr₍8₎ᴸ2 : {Γ : Cx} (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) a2 a3 a4) ⟶ u
 cd⟶ordtr₍8₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 u {q} dq nq =
   pat-hit 1 20 (hdTm a2) dq₃ nq
   ▷ λ e → isnsuc a2 e
-  ▷ λ { (x2ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍8₎ᴸ3 a3 a4 x0ᵢ0 x2ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x2ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) (nzero {Γ}) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍8₎ᴸ3 a3 a4 x0ᵢ0 x2ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 p c q0 q1 cv0 cv1 cv2 : RTm ε
     j = dep Γ
@@ -473,16 +470,16 @@ cd⟶ordtr₍8₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₉ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE j f2 cv2} (PT⟶ordtr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₉ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE j f2 cv2} (PT⟶ordtr₉ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE j f2 cv2} (PT⟶ordtr₉ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j (knzero) cv1} {v = PT⟶ordtr₉ᶜ2.CASE j f2 cv2} (PT⟶ordtr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE j (knzero) cv1} {u = PT⟶ordtr₉ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE j f2 cv2} (PT⟶ordtr₉ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ2.CASE j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE j f2 cv2} (PT⟶ordtr₉ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₉ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ2.CASE j z cv2))) (quote-hdTm a2) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₉ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₉ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₉ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₉ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) cv1} {v = PT⟶ordtr₉ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (knzero) cv1} {u = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₉ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 19)) (⟶*-trans {t = PT⟶ordtr₉ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ2.CASE q𝒮 j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₉ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₉ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ2.CASE q𝒮 j z cv2))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₉ᶜ2.case-any {j = j} {q = pfTm a2} {c = cv2} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ordtr₍8₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍8₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
   pat-hit 1 19 (hdTm a1) dq₃ nq
   ▷ λ e → isnzero a1 e
-  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍8₎ᴸ2 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍8₎ᴸ2 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -497,16 +494,16 @@ cd⟶ordtr₍8₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₉ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₉ᶜ1.CASE j f1 cv1} (PT⟶ordtr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₉ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ1.CASE j f1 cv1} (PT⟶ordtr₉ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ1.CASE j f1 cv1} (PT⟶ordtr₉ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₉ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₉ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₉ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₉ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₉ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₉ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₉ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₉ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₉ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ordtr₍8₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍8₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
   pat-hit 1 20 (hdTm a0) dq₃ nq
   ▷ λ e → isnsuc a0 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍8₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍8₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 p c : RTm ε
     j = dep Γ
@@ -518,11 +515,11 @@ cd⟶ordtr₍8₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ f4 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₉ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₉ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₉ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ordtr₍9₎ᴸ3 : {Γ : Cx} (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (x2ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) (nsuc x2ᵢ0) a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) (nsuc x2ᵢ0) a3 a4) ⟶ u
 cd⟶ordtr₍9₎ᴸ3 {Γ} a3 a4 x0ᵢ0 x1ᵢ0 x2ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -548,14 +545,14 @@ cd⟶ordtr₍9₎ᴸ3 {Γ} a3 a4 x0ᵢ0 x1ᵢ0 x2ᵢ0 u {q} dq nq =
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 7} {as = (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (fst (snd cv2)))))) ∷ (fst (snd (snd (snd (snd (fst (snd cv2))))))) ∷ (fst (fst (snd (snd cv2)))) ∷ (fst (fst (snd (snd (snd cv2))))) ∷ (fst q2) ∷ [])} {as' = (j ∷ c ∷ f3 ∷ f4 ∷ a0ᵢ0 ∷ a1ᵢ0 ∷ a2ᵢ0 ∷ [])} ⌜ T⟶ordtr₁₀⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ v₆ ⌝ᵗ (T⟶ordtr₁₀⁽0⁾-sub (σₗ (j ∷ (fst cv2) ∷ (fst (snd (snd (snd (fst (snd cv2)))))) ∷ (fst (snd (snd (snd (snd (fst (snd cv2))))))) ∷ (fst (fst (snd (snd cv2)))) ∷ (fst (fst (snd (snd (snd cv2))))) ∷ (fst q2) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (T⟶ordtr₁₀⁽0⁾-sub (σₗ (j ∷ c ∷ f3 ∷ f4 ∷ a0ᵢ0 ∷ a1ᵢ0 ∷ a2ᵢ0 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 3 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((knsuc a0ᵢ0) ∷ (knsuc a1ᵢ0) ∷ (knsuc a2ᵢ0) ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 3))) ∷ʳ (⟶*-trans (prj-mono 4 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((knsuc a0ᵢ0) ∷ (knsuc a1ᵢ0) ∷ (knsuc a2ᵢ0) ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 4))) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 2))) (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 3))) (prj-tup {ws = (a1ᵢ0 ∷ [])} unit (atᶜ 0))) ∷ʳ (prj-tup {ws = (a2ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₁₀ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₁₀ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ2.CASE j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ2.CASE j (knsuc a2ᵢ0) cv2} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE j (knsuc a2ᵢ0) cv2} {u = ⌜ T⟶ordtr₁₀ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ2.case-β {j = j} {q = q2} {c = cv2} (atᵍ 1) (atʰ 20)) R₁))))))))
+    R₀ = (⟶*-trans {t = (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) cv2} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) cv2} {u = ⌜ T⟶ordtr₁₀ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ordtr₁₀⁽0⁾ j c f3 f4 a0ᵢ0 a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ordtr₁₀ᶜ2.case-β {q = q𝒮} {j = j} {pl = q2} {c = cv2} (atᵍ 1) (atʰ 20)) R₁))))))))
 
 cd⟶ordtr₍9₎ᴸ2 : {Γ : Cx} (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) a2 a3 a4) ⟶ u
 cd⟶ordtr₍9₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 x1ᵢ0 u {q} dq nq =
   pat-hit 1 20 (hdTm a2) dq₃ nq
   ▷ λ e → isnsuc a2 e
-  ▷ λ { (x2ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍9₎ᴸ3 a3 a4 x0ᵢ0 x1ᵢ0 x2ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x2ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) (nsuc x1ᵢ0) z a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍9₎ᴸ3 a3 a4 x0ᵢ0 x1ᵢ0 x2ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 a1ᵢ0 p c q0 q1 cv0 cv1 cv2 : RTm ε
     j = dep Γ
@@ -573,16 +570,16 @@ cd⟶ordtr₍9₎ᴸ2 {Γ} a2 a3 a4 x0ᵢ0 x1ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₁₀ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE j f2 cv2} (PT⟶ordtr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE j f2 cv2} (PT⟶ordtr₁₀ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE j f2 cv2} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = PT⟶ordtr₁₀ᶜ2.CASE j f2 cv2} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₁₀ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE j f2 cv2} (PT⟶ordtr₁₀ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ2.CASE j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE j f2 cv2} (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ2.CASE j z cv2))) (quote-hdTm a2) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₁₀ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₁₀ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 2)))) (PT⟶ordtr₁₀ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ2.CASE q𝒮 j z cv2))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₁₀ᶜ2.case-any {j = j} {q = pfTm a2} {c = cv2} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ordtr₍9₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr (nsuc x0ᵢ0) a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍9₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
   pat-hit 1 20 (hdTm a1) dq₃ nq
   ▷ λ e → isnsuc a1 e
-  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍9₎ᴸ2 a2 a3 a4 x0ᵢ0 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (ordtr (nsuc x0ᵢ0) z a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍9₎ᴸ2 a2 a3 a4 x0ᵢ0 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (nsuc x0ᵢ0)) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 a0ᵢ0 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -597,16 +594,16 @@ cd⟶ordtr₍9₎ᴸ1 {Γ} a1 a2 a3 a4 x0ᵢ0 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₁₀ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ1.CASE j f1 cv1} (PT⟶ordtr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ1.CASE j f1 cv1} (PT⟶ordtr₁₀ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ1.CASE j f1 cv1} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₁₀ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 1)))) (PT⟶ordtr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₁₀ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ordtr₍9₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (a4 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ordtr a0 a1 a2 a3 a4) ⟶ u
 cd⟶ordtr₍9₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
   pat-hit 1 20 (hdTm a0) dq₃ nq
   ▷ λ e → isnsuc a0 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍9₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ordtr z a1 a2 a3 a4) ⟶ u) (sym eqv) (cd⟶ordtr₍9₎ᴸ1 a1 a2 a3 a4 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ (quoteTm a4) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 f4 p c : RTm ε
     j = dep Γ
@@ -618,21 +615,21 @@ cd⟶ordtr₍9₎ {Γ} a0 a1 a2 a3 a4 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ f4 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ f4 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ordtr₁₀ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ordtr₁₀ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ordtr₁₀ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶tr₍3₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜base⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜base⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜base⌝ {Γ}) x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜base⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜base⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜base⌝ {Γ}) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍3₎ᴸ2 {Γ} a0 a2 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₄⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₄⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₄⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₄⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₄⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₄⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₄⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₄⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₄⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₄⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₄⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₄⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₄⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -659,14 +656,14 @@ cd⟶tr₍3₎ᴸ2 {Γ} a0 a2 x0ᵢ1 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ [])} ⌜ T⟶tr₄⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶tr₄⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])) v₀ v₁ v₂ v₃) (T⟶tr₄⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcbase) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcbase) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₄ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₄ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE j (kcbase) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE j (kcbase) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE j (kcbase) cv1} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE j (kcbase) cv1} {u = ⌜ T⟶tr₄ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 8)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶tr₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₄ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₄ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE q𝒮 j (kcbase) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE q𝒮 j (kcbase) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE q𝒮 j (kcbase) cv1} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE q𝒮 j (kcbase) cv1} {u = ⌜ T⟶tr₄ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₄⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₄ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 8)) R₁)))))
 
 cd⟶tr₍3₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶tr₍3₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pat-hit 1 8 (hdTm x0ᵢ0) dq₃ nq
   ▷ λ e → iscbase x0ᵢ0 e
-  ▷ λ { eqv → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍3₎ᴸ2 a0 a2 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍3₎ᴸ2 a0 a2 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -680,16 +677,16 @@ cd⟶tr₍3₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₄ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₄ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₄ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₄ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₄ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₄ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₄ᶜ1.CASE j z cv1))) (quote-hdTm x0ᵢ0) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₄ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₄ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₄ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₄ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₄ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₄ᶜ1.CASE q𝒮 j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₄ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₄ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₄ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm x0ᵢ0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₄ᶜ1.case-any {j = j} {q = pfTm x0ᵢ0} {c = cv1} (atᵍ 1) (nhTm x0ᵢ0)))))
 
 cd⟶tr₍3₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a1) dq₃ nq
   ▷ λ e → ishrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍3₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍3₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -699,21 +696,21 @@ cd⟶tr₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₄ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍4₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (x1ᵢ1 : RTm (Γ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Σ⌝ x1ᵢ0 x1ᵢ1) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Σ⌝ x1ᵢ0 x1ᵢ1) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Σ⌝ x1ᵢ0 x1ᵢ1) x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Σ⌝ x1ᵢ0 x1ᵢ1) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Σ⌝ x1ᵢ0 x1ᵢ1) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Σ⌝ x1ᵢ0 x1ᵢ1) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍4₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₅⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₅⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₅⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₅⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₅⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₅⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₅⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₅⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₅⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₅⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₅⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₅⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₅⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -742,14 +739,14 @@ cd⟶tr₍4₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ [])} ⌜ T⟶tr₅⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶tr₅⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])) v₀ v₁ v₂ v₃) (T⟶tr₅⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcSg a1ᵢ0 a1ᵢ1) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcSg a1ᵢ0 a1ᵢ1) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₅ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₅ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₅ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₅ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE j (kcSg a1ᵢ0 a1ᵢ1) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE j (kcSg a1ᵢ0 a1ᵢ1) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE j (kcSg a1ᵢ0 a1ᵢ1) cv1} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE j (kcSg a1ᵢ0 a1ᵢ1) cv1} {u = ⌜ T⟶tr₅ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 10)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶tr₅ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₅ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₅ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE q𝒮 j (kcSg a1ᵢ0 a1ᵢ1) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE q𝒮 j (kcSg a1ᵢ0 a1ᵢ1) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE q𝒮 j (kcSg a1ᵢ0 a1ᵢ1) cv1} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE q𝒮 j (kcSg a1ᵢ0 a1ᵢ1) cv1} {u = ⌜ T⟶tr₅ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₅⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₅ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 10)) R₁)))))
 
 cd⟶tr₍4₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶tr₍4₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pat-hit 1 10 (hdTm x0ᵢ0) dq₃ nq
   ▷ λ e → iscSg x0ᵢ0 e
-  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , eqv)) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍4₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , eqv)) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍4₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -763,16 +760,16 @@ cd⟶tr₍4₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₅ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₅ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₅ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₅ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₅ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₅ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₅ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₅ᶜ1.CASE j z cv1))) (quote-hdTm x0ᵢ0) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₅ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₅ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₅ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₅ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₅ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₅ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₅ᶜ1.CASE q𝒮 j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₅ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₅ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₅ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm x0ᵢ0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₅ᶜ1.case-any {j = j} {q = pfTm x0ᵢ0} {c = cv1} (atᵍ 1) (nhTm x0ᵢ0)))))
 
 cd⟶tr₍4₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a1) dq₃ nq
   ▷ λ e → ishrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍4₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍4₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -782,21 +779,21 @@ cd⟶tr₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₅ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍5₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Unit⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Unit⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Unit⌝ {Γ}) x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Unit⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Unit⌝ {Γ}) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Unit⌝ {Γ}) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍5₎ᴸ2 {Γ} a0 a2 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₆⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₆⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₆⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₆⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₆⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₆⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₆⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₆⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₆⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₆⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₆⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₆⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₆⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -823,14 +820,14 @@ cd⟶tr₍5₎ᴸ2 {Γ} a0 a2 x0ᵢ1 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ [])} ⌜ T⟶tr₆⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶tr₆⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])) v₀ v₁ v₂ v₃) (T⟶tr₆⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcUnit) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcUnit) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₆ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₆ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₆ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₆ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE j (kcUnit) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE j (kcUnit) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE j (kcUnit) cv1} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE j (kcUnit) cv1} {u = ⌜ T⟶tr₆ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 37)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶tr₆ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₆ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₆ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE q𝒮 j (kcUnit) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE q𝒮 j (kcUnit) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE q𝒮 j (kcUnit) cv1} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE q𝒮 j (kcUnit) cv1} {u = ⌜ T⟶tr₆ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₆⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₆ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 37)) R₁)))))
 
 cd⟶tr₍5₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶tr₍5₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pat-hit 1 37 (hdTm x0ᵢ0) dq₃ nq
   ▷ λ e → iscUnit x0ᵢ0 e
-  ▷ λ { eqv → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍5₎ᴸ2 a0 a2 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍5₎ᴸ2 a0 a2 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -844,16 +841,16 @@ cd⟶tr₍5₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₆ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₆ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₆ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₆ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₆ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₆ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₆ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₆ᶜ1.CASE j z cv1))) (quote-hdTm x0ᵢ0) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₆ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₆ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₆ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₆ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₆ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₆ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₆ᶜ1.CASE q𝒮 j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₆ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₆ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₆ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm x0ᵢ0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₆ᶜ1.case-any {j = j} {q = pfTm x0ᵢ0} {c = cv1} (atᵍ 1) (nhTm x0ᵢ0)))))
 
 cd⟶tr₍5₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍5₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a1) dq₃ nq
   ▷ λ e → ishrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍5₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍5₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -863,21 +860,21 @@ cd⟶tr₍5₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₆ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₆ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₆ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍6₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (x1ᵢ1 : RTm (Γ)) (x1ᵢ2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Id⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Id⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Id⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Id⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Id⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Id⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍6₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₇⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₇⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₇⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₇⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₇⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₇⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₇⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₇⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₇⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₇⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₇⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₇⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₇⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -907,14 +904,14 @@ cd⟶tr₍6₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ [])} ⌜ T⟶tr₇⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶tr₇⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])) v₀ v₁ v₂ v₃) (T⟶tr₇⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₇ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₇ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₇ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₇ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {u = ⌜ T⟶tr₇ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 15)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶tr₇ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₇ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₇ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE q𝒮 j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE q𝒮 j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE q𝒮 j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE q𝒮 j (kcId a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {u = ⌜ T⟶tr₇ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₇⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₇ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 15)) R₁)))))
 
 cd⟶tr₍6₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶tr₍6₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pat-hit 1 15 (hdTm x0ᵢ0) dq₃ nq
   ▷ λ e → iscId x0ᵢ0 e
-  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , (x1ᵢ2 , eqv))) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍6₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , (x1ᵢ2 , eqv))) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍6₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -928,16 +925,16 @@ cd⟶tr₍6₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₇ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₇ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₇ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₇ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₇ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₇ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₇ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₇ᶜ1.CASE j z cv1))) (quote-hdTm x0ᵢ0) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₇ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₇ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₇ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₇ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₇ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₇ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₇ᶜ1.CASE q𝒮 j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₇ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₇ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₇ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₇ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm x0ᵢ0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₇ᶜ1.case-any {j = j} {q = pfTm x0ᵢ0} {c = cv1} (atᵍ 1) (nhTm x0ᵢ0)))))
 
 cd⟶tr₍6₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍6₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a1) dq₃ nq
   ▷ λ e → ishrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍6₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍6₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -947,21 +944,21 @@ cd⟶tr₍6₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₇ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₇ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₇ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍7₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (x1ᵢ1 : RTm (Γ)) (x1ᵢ2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜IMu⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜IMu⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜IMu⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜IMu⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜IMu⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜IMu⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍7₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₈⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₈⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₈⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₈⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₈⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₈⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₈⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₈⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₈⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₈⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₈⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₈⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₈⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -991,14 +988,14 @@ cd⟶tr₍7₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ [])} ⌜ T⟶tr₈⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶tr₈⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])) v₀ v₁ v₂ v₃) (T⟶tr₈⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₈ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₈ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₈ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₈ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {u = ⌜ T⟶tr₈ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 35)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶tr₈ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₈ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₈ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE q𝒮 j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE q𝒮 j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE q𝒮 j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE q𝒮 j (kcIMu a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {u = ⌜ T⟶tr₈ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₈⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₈ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 35)) R₁)))))
 
 cd⟶tr₍7₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶tr₍7₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pat-hit 1 35 (hdTm x0ᵢ0) dq₃ nq
   ▷ λ e → iscIMu x0ᵢ0 e
-  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , (x1ᵢ2 , eqv))) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍7₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , (x1ᵢ2 , eqv))) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍7₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -1012,16 +1009,16 @@ cd⟶tr₍7₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₈ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₈ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₈ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₈ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₈ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₈ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₈ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₈ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ1.CASE j z cv1))) (quote-hdTm x0ᵢ0) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₈ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₈ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₈ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₈ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₈ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₈ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₈ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₈ᶜ1.CASE q𝒮 j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₈ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₈ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₈ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₈ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm x0ᵢ0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₈ᶜ1.case-any {j = j} {q = pfTm x0ᵢ0} {c = cv1} (atᵍ 1) (nhTm x0ᵢ0)))))
 
 cd⟶tr₍7₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍7₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a1) dq₃ nq
   ▷ λ e → ishrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍7₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍7₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₈ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1031,21 +1028,21 @@ cd⟶tr₍7₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₈ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₈ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₈ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍8₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Fin⌝ x1ᵢ0) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍8₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₉⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₉⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) v₀) (T⟶tr₉⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₉⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₉⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) v₀) (T⟶tr₉⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₉⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₉⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) v₀) (T⟶tr₉⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₉⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₉⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₉⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₉⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1073,14 +1070,14 @@ cd⟶tr₍8₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ [])} ⌜ T⟶tr₉⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶tr₉⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ [])) v₀ v₁ v₂ v₃) (T⟶tr₉⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcFin a1ᵢ0) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcFin a1ᵢ0) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₉ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₉ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₉ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₉ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE j (kcFin a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE j (kcFin a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE j (kcFin a1ᵢ0) cv1} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE j (kcFin a1ᵢ0) cv1} {u = ⌜ T⟶tr₉ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 36)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶tr₉ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₉ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₉ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE q𝒮 j (kcFin a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE q𝒮 j (kcFin a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE q𝒮 j (kcFin a1ᵢ0) cv1} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE q𝒮 j (kcFin a1ᵢ0) cv1} {u = ⌜ T⟶tr₉ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₉⁽0⁾ j c f0 f2 ⌝ᵗ} (PT⟶tr₉ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 36)) R₁)))))
 
 cd⟶tr₍8₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶tr₍8₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pat-hit 1 36 (hdTm x0ᵢ0) dq₃ nq
   ▷ λ e → iscFin x0ᵢ0 e
-  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍8₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍8₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -1094,16 +1091,16 @@ cd⟶tr₍8₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₉ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₉ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₉ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₉ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₉ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₉ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₉ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₉ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ1.CASE j z cv1))) (quote-hdTm x0ᵢ0) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₉ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₉ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₉ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₉ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₉ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₉ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₉ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₉ᶜ1.CASE q𝒮 j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₉ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₉ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₉ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₉ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm x0ᵢ0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₉ᶜ1.case-any {j = j} {q = pfTm x0ᵢ0} {c = cv1} (atᵍ 1) (nhTm x0ᵢ0)))))
 
 cd⟶tr₍8₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍8₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a1) dq₃ nq
   ▷ λ e → ishrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍8₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍8₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₉ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1113,23 +1110,23 @@ cd⟶tr₍8₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₉ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₉ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₉ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍9₎ᴸ2 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (x1ᵢ1 : RTm (Γ)) (x1ᵢ2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Hom⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Hom⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Hom⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Hom⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl (⌜Hom⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl (⌜Hom⌝ x1ᵢ0 x1ᵢ1 x1ᵢ2) x0ᵢ1) a2) ⟶ u
 cd⟶tr₍9₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₀⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) v₀) (T⟶tr₁₀⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 a1ᵢ0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) v₀) (T⟶tr₁₀⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 a1ᵢ0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₀⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) v₀) (T⟶tr₁₀⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 a1ᵢ0) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) v₀) (T⟶tr₁₀⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 a1ᵢ0) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₀⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) v₀) (T⟶tr₁₀⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 a1ᵢ0) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) v₀) (T⟶tr₁₀⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 a1ᵢ0) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₀⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₁₀⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 a1ᵢ0) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₁₀⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 a1ᵢ0) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (e4 , (_ , (_ , ((de4 , dq5) , (ne4 , nq5))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₀⁽5⁾-sub (single e4) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) (w1 e2) (w1 e3) v₀) (T⟶tr₁₀⁽5⁾-cong (subTm (single e4) (w1 j)) j (subTm (single e4) (w1 c)) c (subTm (single e4) (w1 f0)) f0 (subTm (single e4) (w1 f2)) f2 (subTm (single e4) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e4) (w1 e0)) e0 (subTm (single e4) (w1 e1)) e1 (subTm (single e4) (w1 e2)) e2 (subTm (single e4) (w1 e3)) e3 (subTm (single e4) v₀) e4 (wk-cancel-tm e4 j) (wk-cancel-tm e4 c) (wk-cancel-tm e4 f0) (wk-cancel-tm e4 f2) (wk-cancel-tm e4 a1ᵢ0) (wk-cancel-tm e4 e0) (wk-cancel-tm e4 e1) (wk-cancel-tm e4 e2) (wk-cancel-tm e4 e3) refl))) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₀⁽5⁾-sub (single e4) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a1ᵢ0) (w1 e0) (w1 e1) (w1 e2) (w1 e3) v₀) (T⟶tr₁₀⁽5⁾-cong (subTm (single e4) (w1 j)) j (subTm (single e4) (w1 c)) c (subTm (single e4) (w1 f0)) f0 (subTm (single e4) (w1 f2)) f2 (subTm (single e4) (w1 a1ᵢ0)) a1ᵢ0 (subTm (single e4) (w1 e0)) e0 (subTm (single e4) (w1 e1)) e1 (subTm (single e4) (w1 e2)) e2 (subTm (single e4) (w1 e3)) e3 (subTm (single e4) v₀) e4 (wk-cancel-tm e4 j) (wk-cancel-tm e4 c) (wk-cancel-tm e4 f0) (wk-cancel-tm e4 f2) (wk-cancel-tm e4 a1ᵢ0) (wk-cancel-tm e4 e0) (wk-cancel-tm e4 e1) (wk-cancel-tm e4 e2) (wk-cancel-tm e4 e3) refl))) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1161,14 +1158,14 @@ cd⟶tr₍9₎ᴸ2 {Γ} a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ (fst q1) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ a1ᵢ0 ∷ [])} ⌜ T⟶tr₁₀⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶tr₁₀⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst (fst (snd cv1))) ∷ (fst (snd (snd (fst (snd cv1))))) ∷ (fst q1) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶tr₁₀⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ a1ᵢ0 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (khrefl (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ (prj-tup {ws = (a1ᵢ0 ∷ a1ᵢ1 ∷ a1ᵢ2 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₁₀ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₁₀ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₀ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₀ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {u = ⌜ T⟶tr₁₀ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 11)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶tr₁₀ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₀ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₀ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (kcHom a1ᵢ0 a1ᵢ1 a1ᵢ2) cv1} {u = ⌜ T⟶tr₁₀ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶tr₁₀⁽0⁾ j c f0 f2 a1ᵢ0 ⌝ᵗ} (PT⟶tr₁₀ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 11)) R₁)))))
 
 cd⟶tr₍9₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (hrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶tr₍9₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pat-hit 1 11 (hdTm x0ᵢ0) dq₃ nq
   ▷ λ e → iscHom x0ᵢ0 e
-  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , (x1ᵢ2 , eqv))) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍9₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , (x1ᵢ1 , (x1ᵢ2 , eqv))) → subst (λ z → (tr a0 (hrefl z x0ᵢ1) a2) ⟶ u) (sym eqv) (cd⟶tr₍9₎ᴸ2 a0 a2 x0ᵢ1 x1ᵢ0 x1ᵢ1 x1ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (hrefl z x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a0ᵢ0 a0ᵢ1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -1182,16 +1179,16 @@ cd⟶tr₍9₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     q0 = (a0ᵢ0 ,ₚ a0ᵢ1 ,ₚ unit)
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₁₀ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₀ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₁₀ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₀ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₁₀ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₁₀ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₁₀ᶜ1.CASE j a0ᵢ0 cv1} (PT⟶tr₁₀ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₀ᶜ1.CASE j z cv1))) (quote-hdTm x0ᵢ0) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶tr₁₀ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₀ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = PT⟶tr₁₀ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₀ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₁₀ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₁₀ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) (⟶*-trans {t = PT⟶tr₁₀ᶜ1.CASE q𝒮 j (fst q0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶tr₁₀ᶜ1.CASE q𝒮 j a0ᵢ0 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶tr₁₀ᶜ1.CASE q𝒮 j a0ᵢ0 cv1} (PT⟶tr₁₀ᶜ1.CASE-⟶ᵃ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0))) (PT⟶tr₁₀ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₀ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm x0ᵢ0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₁₀ᶜ1.case-any {j = j} {q = pfTm x0ᵢ0} {c = cv1} (atᵍ 1) (nhTm x0ᵢ0)))))
 
 cd⟶tr₍9₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍9₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a1) dq₃ nq
   ▷ λ e → ishrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍9₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍9₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1201,15 +1198,15 @@ cd⟶tr₍9₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₀ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₀ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₁₀ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍10₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₁ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (lam x0ᵢ0) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₁ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (lam x0ᵢ0) a2) ⟶ u
 cd⟶tr₍10₎ᴸ1 {Γ} a0 a2 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₁⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 f2) v₀) (T⟶tr₁₁⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₁⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 f2) v₀) (T⟶tr₁₁⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   quoteTm-inj a0 v₀ (nf-≅ (quoteTm-normal {Γ = Γ ∙} a0) (quoteTm-normal {Γ = Γ ∙} v₀) (idrefl-decᶜ de0 ne0))
   ▷ λ eqM0 →
@@ -1227,14 +1224,14 @@ cd⟶tr₍10₎ᴸ1 {Γ} a0 a2 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ [])} ⌜ T⟶tr₁₁⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶tr₁₁⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶tr₁₁⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (klam a0ᵢ0) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (klam a0ᵢ0) ∷ f2 ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (klam a0ᵢ0) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₁₁ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₁₁⁽0⁾ j c f0 f1 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₁₁ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₁ᶜ0.CASE j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₁₁⁽0⁾ j c f0 f1 f2 ⌝ᵗ} (PT⟶tr₁₁ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₁ᶜ0.CASE j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶tr₁₁ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶tr₁₁⁽0⁾ j c f0 f1 f2 ⌝ᵗ} (PT⟶tr₁₁ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 1)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶tr₁₁ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₁ᶜ0.CASE q𝒮 j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₁₁⁽0⁾ j c f0 f1 f2 ⌝ᵗ} (PT⟶tr₁₁ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₁ᶜ0.CASE q𝒮 j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶tr₁₁ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶tr₁₁⁽0⁾ j c f0 f1 f2 ⌝ᵗ} (PT⟶tr₁₁ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 1)) R₁))
 
 cd⟶tr₍10₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₁ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₁ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍10₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 1 (hdTm a1) dq₃ nq
   ▷ λ e → islam a1 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍10₎ᴸ1 a0 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₁ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍10₎ᴸ1 a0 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₁ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1244,23 +1241,23 @@ cd⟶tr₍10₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₁₁ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₁ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₁ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₁₁ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶tr₍11₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₂ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (lam x0ᵢ0) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₂ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (lam x0ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 (lam x0ᵢ0) a2) ⟶ u
 cd⟶tr₍11₎ᴸ1 {Γ} a0 a2 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₂⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) v₀) (T⟶tr₁₂⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 a0ᵢ0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) v₀) (T⟶tr₁₂⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 a0ᵢ0) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₂⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) v₀) (T⟶tr₁₂⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 a0ᵢ0) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) v₀) (T⟶tr₁₂⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f2)) f2 (subTm (single e1) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f2) (wk-cancel-tm e1 a0ᵢ0) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (e2 , (_ , (_ , ((de2 , dq3) , (ne2 , nq3))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₂⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) v₀) (T⟶tr₁₂⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 a0ᵢ0) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽3⁾-sub (single e2) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) v₀) (T⟶tr₁₂⁽3⁾-cong (subTm (single e2) (w1 j)) j (subTm (single e2) (w1 c)) c (subTm (single e2) (w1 f0)) f0 (subTm (single e2) (w1 f2)) f2 (subTm (single e2) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e2) (w1 e0)) e0 (subTm (single e2) (w1 e1)) e1 (subTm (single e2) v₀) e2 (wk-cancel-tm e2 j) (wk-cancel-tm e2 c) (wk-cancel-tm e2 f0) (wk-cancel-tm e2 f2) (wk-cancel-tm e2 a0ᵢ0) (wk-cancel-tm e2 e0) (wk-cancel-tm e2 e1) refl))) (⊢conv dq3 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e2) done)))))) done nq3
   ▷ λ { (e3 , (_ , (_ , ((de3 , dq4) , (ne3 , nq4))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₂⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₁₂⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 a0ᵢ0) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽4⁾-sub (single e3) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) (w1 e2) v₀) (T⟶tr₁₂⁽4⁾-cong (subTm (single e3) (w1 j)) j (subTm (single e3) (w1 c)) c (subTm (single e3) (w1 f0)) f0 (subTm (single e3) (w1 f2)) f2 (subTm (single e3) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e3) (w1 e0)) e0 (subTm (single e3) (w1 e1)) e1 (subTm (single e3) (w1 e2)) e2 (subTm (single e3) v₀) e3 (wk-cancel-tm e3 j) (wk-cancel-tm e3 c) (wk-cancel-tm e3 f0) (wk-cancel-tm e3 f2) (wk-cancel-tm e3 a0ᵢ0) (wk-cancel-tm e3 e0) (wk-cancel-tm e3 e1) (wk-cancel-tm e3 e2) refl))) (⊢conv dq4 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e3) done)))))) done nq4
   ▷ λ { (e4 , (_ , (_ , ((de4 , dq5) , (ne4 , nq5))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶tr₁₂⁽5⁾-sub (single e4) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) (w1 e2) (w1 e3) v₀) (T⟶tr₁₂⁽5⁾-cong (subTm (single e4) (w1 j)) j (subTm (single e4) (w1 c)) c (subTm (single e4) (w1 f0)) f0 (subTm (single e4) (w1 f2)) f2 (subTm (single e4) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e4) (w1 e0)) e0 (subTm (single e4) (w1 e1)) e1 (subTm (single e4) (w1 e2)) e2 (subTm (single e4) (w1 e3)) e3 (subTm (single e4) v₀) e4 (wk-cancel-tm e4 j) (wk-cancel-tm e4 c) (wk-cancel-tm e4 f0) (wk-cancel-tm e4 f2) (wk-cancel-tm e4 a0ᵢ0) (wk-cancel-tm e4 e0) (wk-cancel-tm e4 e1) (wk-cancel-tm e4 e2) (wk-cancel-tm e4 e3) refl))) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶tr₁₂⁽5⁾-sub (single e4) (w1 j) (w1 c) (w1 f0) (w1 f2) (w1 a0ᵢ0) (w1 e0) (w1 e1) (w1 e2) (w1 e3) v₀) (T⟶tr₁₂⁽5⁾-cong (subTm (single e4) (w1 j)) j (subTm (single e4) (w1 c)) c (subTm (single e4) (w1 f0)) f0 (subTm (single e4) (w1 f2)) f2 (subTm (single e4) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e4) (w1 e0)) e0 (subTm (single e4) (w1 e1)) e1 (subTm (single e4) (w1 e2)) e2 (subTm (single e4) (w1 e3)) e3 (subTm (single e4) v₀) e4 (wk-cancel-tm e4 j) (wk-cancel-tm e4 c) (wk-cancel-tm e4 f0) (wk-cancel-tm e4 f2) (wk-cancel-tm e4 a0ᵢ0) (wk-cancel-tm e4 e0) (wk-cancel-tm e4 e1) (wk-cancel-tm e4 e2) (wk-cancel-tm e4 e3) refl))) (⊢conv dq5 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e4) done)))))) done nq5
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1286,14 +1283,14 @@ cd⟶tr₍11₎ᴸ1 {Γ} a0 a2 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f2 ∷ a0ᵢ0 ∷ [])} ⌜ T⟶tr₁₂⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶tr₁₂⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶tr₁₂⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f2 ∷ a0ᵢ0 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (klam a0ᵢ0) ∷ f2 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (klam a0ᵢ0) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶tr₁₂ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶tr₁₂⁽0⁾ j c f0 f2 a0ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶tr₁₂ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₂ᶜ0.CASE j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₁₂⁽0⁾ j c f0 f2 a0ᵢ0 ⌝ᵗ} (PT⟶tr₁₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₂ᶜ0.CASE j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶tr₁₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶tr₁₂⁽0⁾ j c f0 f2 a0ᵢ0 ⌝ᵗ} (PT⟶tr₁₂ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 1)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶tr₁₂ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶tr₁₂ᶜ0.CASE q𝒮 j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶tr₁₂⁽0⁾ j c f0 f2 a0ᵢ0 ⌝ᵗ} (PT⟶tr₁₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶tr₁₂ᶜ0.CASE q𝒮 j (klam a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶tr₁₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶tr₁₂⁽0⁾ j c f0 f2 a0ᵢ0 ⌝ᵗ} (PT⟶tr₁₂ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 1)) R₁))
 
 cd⟶tr₍11₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₂ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₂ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (tr a0 a1 a2) ⟶ u
 cd⟶tr₍11₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 1 (hdTm a1) dq₃ nq
   ▷ λ e → islam a1 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍11₎ᴸ1 a0 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₂ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (tr a0 z a2) ⟶ u) (sym eqv) (cd⟶tr₍11₎ᴸ1 a0 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₂ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1303,17 +1300,17 @@ cd⟶tr₍11₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₁₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶tr₁₂ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶tr₁₂ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶tr₁₂ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶hrefl₍2₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF ⌜ T⟶hrefl₃ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) (quoteTm u) ⌝ᵗ) → IsNormal q → (hrefl a0 a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) ⌜ T⟶hrefl₃ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) (quoteTm u) ⌝ᵗ) → IsNormal q → (hrefl a0 a1) ⟶ u
 cd⟶hrefl₍2₎ {Γ} a0 a1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶hrefl₃⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) v₀) (T⟶hrefl₃⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶hrefl₃⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) v₀) (T⟶hrefl₃⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (e1 , (_ , (_ , ((de1 , dq2) , (ne1 , nq2))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶hrefl₃⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 e0) v₀) (T⟶hrefl₃⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f1)) f1 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f1) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶hrefl₃⁽2⁾-sub (single e1) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 e0) v₀) (T⟶hrefl₃⁽2⁾-cong (subTm (single e1) (w1 j)) j (subTm (single e1) (w1 c)) c (subTm (single e1) (w1 f0)) f0 (subTm (single e1) (w1 f1)) f1 (subTm (single e1) (w1 e0)) e0 (subTm (single e1) v₀) e1 (wk-cancel-tm e1 j) (wk-cancel-tm e1 c) (wk-cancel-tm e1 f0) (wk-cancel-tm e1 f1) (wk-cancel-tm e1 e0) refl))) (⊢conv dq2 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e1) done)))))) done nq2
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   unqTm {Γ = Γ ∙} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
@@ -1332,7 +1329,7 @@ cd⟶hrefl₍2₎ {Γ} a0 a1 u {q} dq nq =
     R₀ = R₁
 
 cd⟶hrefl₍3₎ᴸ2 : {Γ : Cx} (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) (nzero {Γ})) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) (nzero {Γ})) ⟶ u
 cd⟶hrefl₍3₎ᴸ2 {Γ} u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1350,14 +1347,14 @@ cd⟶hrefl₍3₎ᴸ2 {Γ} u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv1) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶hrefl₄⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶hrefl₄⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ [])) v₀ v₁) (T⟶hrefl₄⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶hrefl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶hrefl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₄ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₄ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j (knzero) cv1} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE j (knzero) cv1} {u = ⌜ T⟶hrefl₄ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 19)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶hrefl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₄ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₄ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (knzero) cv1} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (knzero) cv1} {u = ⌜ T⟶hrefl₄ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶hrefl₄⁽0⁾ j c ⌝ᵗ} (PT⟶hrefl₄ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 19)) R₁)))))
 
 cd⟶hrefl₍3₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) a1) ⟶ u
 cd⟶hrefl₍3₎ᴸ1 {Γ} a1 u {q} dq nq =
   pat-hit 1 19 (hdTm a1) dq₃ nq
   ▷ λ e → isnzero a1 e
-  ▷ λ { eqv → subst (λ z → (hrefl (⌜Nat⌝ {Γ}) z) ⟶ u) (sym eqv) (cd⟶hrefl₍3₎ᴸ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (hrefl (⌜Nat⌝ {Γ}) z) ⟶ u) (sym eqv) (cd⟶hrefl₍3₎ᴸ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -1368,16 +1365,16 @@ cd⟶hrefl₍3₎ᴸ1 {Γ} a1 u {q} dq nq =
     q0 = unit
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶hrefl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₄ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶hrefl₄ᶜ1.CASE j f1 cv1} (PT⟶hrefl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₄ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₄ᶜ1.CASE j f1 cv1} (PT⟶hrefl₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₄ᶜ1.CASE j f1 cv1} (PT⟶hrefl₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (PT⟶hrefl₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₄ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶hrefl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₄ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶hrefl₄ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶hrefl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₄ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₄ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶hrefl₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₄ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₄ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶hrefl₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (PT⟶hrefl₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₄ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶hrefl₄ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶hrefl₍3₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl a0 a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl a0 a1) ⟶ u
 cd⟶hrefl₍3₎ {Γ} a0 a1 u {q} dq nq =
   pat-hit 1 34 (hdTm a0) dq₃ nq
   ▷ λ e → iscNat a0 e
-  ▷ λ { eqv → subst (λ z → (hrefl z a1) ⟶ u) (sym eqv) (cd⟶hrefl₍3₎ᴸ1 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (hrefl z a1) ⟶ u) (sym eqv) (cd⟶hrefl₍3₎ᴸ1 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 p c : RTm ε
     j = dep Γ
@@ -1386,11 +1383,11 @@ cd⟶hrefl₍3₎ {Γ} a0 a1 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶hrefl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶hrefl₄ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶hrefl₍4₎ᴸ2 : {Γ : Cx} (x1ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) (nsuc x1ᵢ0)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) (nsuc x1ᵢ0)) ⟶ u
 cd⟶hrefl₍4₎ᴸ2 {Γ} x1ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1409,14 +1406,14 @@ cd⟶hrefl₍4₎ᴸ2 {Γ} x1ᵢ0 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv1) ∷ (fst q1) ∷ [])} {as' = (j ∷ c ∷ a1ᵢ0 ∷ [])} ⌜ T⟶hrefl₅⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶hrefl₅⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ (fst q1) ∷ [])) v₀ v₁ v₂) (T⟶hrefl₅⁽0⁾-sub (σₗ (j ∷ c ∷ a1ᵢ0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a1ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶hrefl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶hrefl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₅ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₅ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = ⌜ T⟶hrefl₅ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶hrefl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₅ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₅ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = ⌜ T⟶hrefl₅ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶hrefl₅⁽0⁾ j c a1ᵢ0 ⌝ᵗ} (PT⟶hrefl₅ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) R₁)))))
 
 cd⟶hrefl₍4₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl (⌜Nat⌝ {Γ}) a1) ⟶ u
 cd⟶hrefl₍4₎ᴸ1 {Γ} a1 u {q} dq nq =
   pat-hit 1 20 (hdTm a1) dq₃ nq
   ▷ λ e → isnsuc a1 e
-  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (hrefl (⌜Nat⌝ {Γ}) z) ⟶ u) (sym eqv) (cd⟶hrefl₍4₎ᴸ2 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (hrefl (⌜Nat⌝ {Γ}) z) ⟶ u) (sym eqv) (cd⟶hrefl₍4₎ᴸ2 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -1427,16 +1424,16 @@ cd⟶hrefl₍4₎ᴸ1 {Γ} a1 u {q} dq nq =
     q0 = unit
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶hrefl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₅ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶hrefl₅ᶜ1.CASE j f1 cv1} (PT⟶hrefl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₅ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₅ᶜ1.CASE j f1 cv1} (PT⟶hrefl₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₅ᶜ1.CASE j f1 cv1} (PT⟶hrefl₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (PT⟶hrefl₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₅ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶hrefl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶hrefl₅ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶hrefl₅ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶hrefl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶hrefl₅ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₅ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶hrefl₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 34)) (⟶*-trans {t = PT⟶hrefl₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶hrefl₅ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶hrefl₅ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶hrefl₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1)))) (PT⟶hrefl₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₅ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶hrefl₅ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶hrefl₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl a0 a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (hrefl a0 a1) ⟶ u
 cd⟶hrefl₍4₎ {Γ} a0 a1 u {q} dq nq =
   pat-hit 1 34 (hdTm a0) dq₃ nq
   ▷ λ e → iscNat a0 e
-  ▷ λ { eqv → subst (λ z → (hrefl z a1) ⟶ u) (sym eqv) (cd⟶hrefl₍4₎ᴸ1 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (hrefl z a1) ⟶ u) (sym eqv) (cd⟶hrefl₍4₎ᴸ1 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 p c : RTm ε
     j = dep Γ
@@ -1445,15 +1442,15 @@ cd⟶hrefl₍4₎ {Γ} a0 a1 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶hrefl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶hrefl₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶hrefl₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶hrefl₅ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ap₍3₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ap₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ap a0 a1 (hrefl x0ᵢ0 x0ᵢ1)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ap₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (hrefl x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ap a0 a1 (hrefl x0ᵢ0 x0ᵢ1)) ⟶ u
 cd⟶ap₍3₎ᴸ1 {Γ} a0 a1 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (_ , (_ , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J ⟶F.DF Z)) (trans (T⟶ap₄⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 a0ᵢ0) (w1 a0ᵢ1) v₀) (T⟶ap₄⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e0) (w1 a0ᵢ1)) a0ᵢ1 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 a0ᵢ0) (wk-cancel-tm e0 a0ᵢ1) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-σ (⊢-cast (cong (λ Z → El (dpay Redₘ.J (⟶F.DF q𝒮) Z)) (trans (T⟶ap₄⁽1⁾-sub (single e0) (w1 j) (w1 c) (w1 f0) (w1 f1) (w1 a0ᵢ0) (w1 a0ᵢ1) v₀) (T⟶ap₄⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 c)) c (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 a0ᵢ0)) a0ᵢ0 (subTm (single e0) (w1 a0ᵢ1)) a0ᵢ1 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 c) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 a0ᵢ0) (wk-cancel-tm e0 a0ᵢ1) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   decStkC {Γ = Γ} x0ᵢ0 (⊢conv de0 El-⌜StkC⌝) ne0
   ▷ λ pr0 →
@@ -1472,14 +1469,14 @@ cd⟶ap₍3₎ᴸ1 {Γ} a0 a1 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶ap₄⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶ap₄⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶ap₄⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (khrefl a0ᵢ0 a0ᵢ1) ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (khrefl a0ᵢ0 a0ᵢ1) ∷ [])} unit (atᶜ 1))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶ap₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ap₄⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ap₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ap₄ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ap₄⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ap₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ap₄ᶜ0.CASE j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ap₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ap₄⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ap₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 12)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ap₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ap₄ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ap₄⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ap₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ap₄ᶜ0.CASE q𝒮 j (khrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ap₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ap₄⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ap₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 12)) R₁))
 
 cd⟶ap₍3₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ap₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ap a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ap₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ap a0 a1 a2) ⟶ u
 cd⟶ap₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 12 (hdTm a2) dq₃ nq
   ▷ λ e → ishrefl a2 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (ap a0 a1 z) ⟶ u) (sym eqv) (cd⟶ap₍3₎ᴸ1 a0 a1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ap₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (ap a0 a1 z) ⟶ u) (sym eqv) (cd⟶ap₍3₎ᴸ1 a0 a1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ap₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1489,11 +1486,11 @@ cd⟶ap₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ap₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ap₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ap₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ap₄ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶jsub₍3₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶jsub₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (idrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (idrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (jsub a0 (idrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶jsub₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (idrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (idrefl x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (jsub a0 (idrefl x0ᵢ0 x0ᵢ1) a2) ⟶ u
 cd⟶jsub₍3₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1512,14 +1509,14 @@ cd⟶jsub₍3₎ᴸ1 {Γ} a0 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv0) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ [])} {as' = (j ∷ c ∷ f2 ∷ [])} ⌜ T⟶jsub₄⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶jsub₄⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ [])) v₀ v₁ v₂) (T⟶jsub₄⁽0⁾-sub (σₗ (j ∷ c ∷ f2 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (kidrefl a0ᵢ0 a0ᵢ1) ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶jsub₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶jsub₄⁽0⁾ j c f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶jsub₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶jsub₄ᶜ0.CASE j (kidrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶jsub₄⁽0⁾ j c f2 ⌝ᵗ} (PT⟶jsub₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶jsub₄ᶜ0.CASE j (kidrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶jsub₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶jsub₄⁽0⁾ j c f2 ⌝ᵗ} (PT⟶jsub₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 16)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶jsub₄ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶jsub₄ᶜ0.CASE q𝒮 j (kidrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶jsub₄⁽0⁾ j c f2 ⌝ᵗ} (PT⟶jsub₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶jsub₄ᶜ0.CASE q𝒮 j (kidrefl a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶jsub₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶jsub₄⁽0⁾ j c f2 ⌝ᵗ} (PT⟶jsub₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 16)) R₁))
 
 cd⟶jsub₍3₎ : {Γ : Cx} (a0 : RTm (Γ ∙)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶jsub₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (jsub a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶jsub₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (jsub a0 a1 a2) ⟶ u
 cd⟶jsub₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 16 (hdTm a1) dq₃ nq
   ▷ λ e → isidrefl a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (jsub a0 z a2) ⟶ u) (sym eqv) (cd⟶jsub₍3₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶jsub₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (jsub a0 z a2) ⟶ u) (sym eqv) (cd⟶jsub₍3₎ᴸ1 a0 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶jsub₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1529,11 +1526,11 @@ cd⟶jsub₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶jsub₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶jsub₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶jsub₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶jsub₄ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶natrec₍3₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 (nzero {Γ})) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 (nzero {Γ})) ⟶ u
 cd⟶natrec₍3₎ᴸ1 {Γ} a0 a1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1550,14 +1547,14 @@ cd⟶natrec₍3₎ᴸ1 {Γ} a0 a1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ [])} ⌜ T⟶natrec₄⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶natrec₄⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ [])) v₀ v₁ v₂) (T⟶natrec₄⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (knzero) ∷ [])} unit (atᶜ 0))) ∷ʳ []ʳ)
     R₀ : (PT⟶natrec₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶natrec₄⁽0⁾ j c f0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶natrec₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶natrec₄ᶜ0.CASE j (knzero) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶natrec₄⁽0⁾ j c f0 ⌝ᵗ} (PT⟶natrec₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶natrec₄ᶜ0.CASE j (knzero) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶natrec₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶natrec₄⁽0⁾ j c f0 ⌝ᵗ} (PT⟶natrec₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 19)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶natrec₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶natrec₄ᶜ0.CASE q𝒮 j (knzero) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶natrec₄⁽0⁾ j c f0 ⌝ᵗ} (PT⟶natrec₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶natrec₄ᶜ0.CASE q𝒮 j (knzero) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶natrec₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶natrec₄⁽0⁾ j c f0 ⌝ᵗ} (PT⟶natrec₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 19)) R₁))
 
 cd⟶natrec₍3₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙ ∙)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 a2) ⟶ u
 cd⟶natrec₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 19 (hdTm a2) dq₃ nq
   ▷ λ e → isnzero a2 e
-  ▷ λ { eqv → subst (λ z → (natrec a0 a1 z) ⟶ u) (sym eqv) (cd⟶natrec₍3₎ᴸ1 a0 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (natrec a0 a1 z) ⟶ u) (sym eqv) (cd⟶natrec₍3₎ᴸ1 a0 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1567,11 +1564,11 @@ cd⟶natrec₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶natrec₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶natrec₄ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶natrec₍4₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙ ∙)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nsuc x0ᵢ0)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nsuc x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 (nsuc x0ᵢ0)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nsuc x0ᵢ0)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (nsuc x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 (nsuc x0ᵢ0)) ⟶ u
 cd⟶natrec₍4₎ᴸ1 {Γ} a0 a1 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1589,14 +1586,14 @@ cd⟶natrec₍4₎ᴸ1 {Γ} a0 a1 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ [])} ⌜ T⟶natrec₅⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶natrec₅⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶natrec₅⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (knsuc a0ᵢ0) ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (knsuc a0ᵢ0) ∷ [])} unit (atᶜ 1))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶natrec₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶natrec₅⁽0⁾ j c f0 f1 a0ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶natrec₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶natrec₅ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶natrec₅⁽0⁾ j c f0 f1 a0ᵢ0 ⌝ᵗ} (PT⟶natrec₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶natrec₅ᶜ0.CASE j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶natrec₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶natrec₅⁽0⁾ j c f0 f1 a0ᵢ0 ⌝ᵗ} (PT⟶natrec₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 20)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶natrec₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶natrec₅ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶natrec₅⁽0⁾ j c f0 f1 a0ᵢ0 ⌝ᵗ} (PT⟶natrec₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶natrec₅ᶜ0.CASE q𝒮 j (knsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶natrec₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶natrec₅⁽0⁾ j c f0 f1 a0ᵢ0 ⌝ᵗ} (PT⟶natrec₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 20)) R₁))
 
 cd⟶natrec₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ ∙ ∙)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (natrec a0 a1 a2) ⟶ u
 cd⟶natrec₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 20 (hdTm a2) dq₃ nq
   ▷ λ e → isnsuc a2 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (natrec a0 a1 z) ⟶ u) (sym eqv) (cd⟶natrec₍4₎ᴸ1 a0 a1 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (natrec a0 a1 z) ⟶ u) (sym eqv) (cd⟶natrec₍4₎ᴸ1 a0 a1 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1606,11 +1603,11 @@ cd⟶natrec₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶natrec₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶natrec₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶natrec₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶natrec₅ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ielim₍4₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ielim₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm (con x0ᵢ0)) ,ₚ unit))))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm (con x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ielim a0 a1 a2 (con x0ᵢ0)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ielim₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm (con x0ᵢ0)) ,ₚ unit))))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm (con x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ielim a0 a1 a2 (con x0ᵢ0)) ⟶ u
 cd⟶ielim₍4₎ᴸ1 {Γ} a0 a1 a2 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1629,14 +1626,14 @@ cd⟶ielim₍4₎ᴸ1 {Γ} a0 a1 a2 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ a0ᵢ0 ∷ [])} ⌜ T⟶ielim₅⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶ielim₅⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶ielim₅⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f2 ∷ a0ᵢ0 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ (kcon a0ᵢ0) ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ (kcon a0ᵢ0) ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ (kcon a0ᵢ0) ∷ [])} unit (atᶜ 2))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶ielim₅ᶜ0.CASE q𝒮 j (fst (snd (snd (snd p)))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ielim₅⁽0⁾ j c f0 f1 f2 a0ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ielim₅ᶜ0.CASE q𝒮 j (fst (snd (snd (snd p)))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ielim₅ᶜ0.CASE j (kcon a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ielim₅⁽0⁾ j c f0 f1 f2 a0ᵢ0 ⌝ᵗ} (PT⟶ielim₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 3))) (⟶*-trans {t = PT⟶ielim₅ᶜ0.CASE j (kcon a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ielim₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ielim₅⁽0⁾ j c f0 f1 f2 a0ᵢ0 ⌝ᵗ} (PT⟶ielim₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 22)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ielim₅ᶜ0.CASE q𝒮 j (fst (snd (snd (snd p)))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ielim₅ᶜ0.CASE q𝒮 j (kcon a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ielim₅⁽0⁾ j c f0 f1 f2 a0ᵢ0 ⌝ᵗ} (PT⟶ielim₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 3))) (⟶*-trans {t = PT⟶ielim₅ᶜ0.CASE q𝒮 j (kcon a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ielim₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ielim₅⁽0⁾ j c f0 f1 f2 a0ᵢ0 ⌝ᵗ} (PT⟶ielim₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 22)) R₁))
 
 cd⟶ielim₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ielim₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit))))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ielim a0 a1 a2 a3) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ielim₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit))))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (ielim a0 a1 a2 a3) ⟶ u
 cd⟶ielim₍4₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
   pat-hit 1 22 (hdTm a3) dq₃ nq
   ▷ λ e → iscon a3 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ielim a0 a1 a2 z) ⟶ u) (sym eqv) (cd⟶ielim₍4₎ᴸ1 a0 a1 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ielim₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm z) ,ₚ unit))))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (ielim a0 a1 a2 z) ⟶ u) (sym eqv) (cd⟶ielim₍4₎ᴸ1 a0 a1 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ielim₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm z) ,ₚ unit))))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 p c : RTm ε
     j = dep Γ
@@ -1647,11 +1644,11 @@ cd⟶ielim₍4₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ielim₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 3))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶ielim₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a3) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶ielim₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a3) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ielim₅ᶜ0.case-any {j = j} {q = pfTm a3} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a3)))))
 
 cd⟶dpay₍3₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 (dι {Γ})) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 (dι {Γ})) ⟶ u
 cd⟶dpay₍3₎ᴸ1 {Γ} a0 a1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1668,14 +1665,14 @@ cd⟶dpay₍3₎ᴸ1 {Γ} a0 a1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv0) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶dpay₄⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶dpay₄⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ [])) v₀ v₁) (T⟶dpay₄⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶dpay₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶dpay₄⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶dpay₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dpay₄ᶜ0.CASE j (kdI) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dpay₄⁽0⁾ j c ⌝ᵗ} (PT⟶dpay₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dpay₄ᶜ0.CASE j (kdI) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dpay₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dpay₄⁽0⁾ j c ⌝ᵗ} (PT⟶dpay₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 24)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶dpay₄ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dpay₄ᶜ0.CASE q𝒮 j (kdI) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dpay₄⁽0⁾ j c ⌝ᵗ} (PT⟶dpay₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dpay₄ᶜ0.CASE q𝒮 j (kdI) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dpay₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dpay₄⁽0⁾ j c ⌝ᵗ} (PT⟶dpay₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 24)) R₁))
 
 cd⟶dpay₍3₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 a2) ⟶ u
 cd⟶dpay₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 24 (hdTm a2) dq₃ nq
   ▷ λ e → isdI a2 e
-  ▷ λ { eqv → subst (λ z → (dpay a0 a1 z) ⟶ u) (sym eqv) (cd⟶dpay₍3₎ᴸ1 a0 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (dpay a0 a1 z) ⟶ u) (sym eqv) (cd⟶dpay₍3₎ᴸ1 a0 a1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₄ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1685,11 +1682,11 @@ cd⟶dpay₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dpay₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dpay₄ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶dpay₍4₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 (dσ x0ᵢ0 x0ᵢ1)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 (dσ x0ᵢ0 x0ᵢ1)) ⟶ u
 cd⟶dpay₍4₎ᴸ1 {Γ} a0 a1 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1708,14 +1705,14 @@ cd⟶dpay₍4₎ᴸ1 {Γ} a0 a1 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶dpay₅⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶dpay₅⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶dpay₅⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ [])} unit (atᶜ 1))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶dpay₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶dpay₅⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶dpay₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dpay₅ᶜ0.CASE j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dpay₅⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dpay₅ᶜ0.CASE j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dpay₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dpay₅⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 25)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶dpay₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dpay₅ᶜ0.CASE q𝒮 j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dpay₅⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dpay₅ᶜ0.CASE q𝒮 j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dpay₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dpay₅⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 25)) R₁))
 
 cd⟶dpay₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 a2) ⟶ u
 cd⟶dpay₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 25 (hdTm a2) dq₃ nq
   ▷ λ e → isdS a2 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dpay a0 a1 z) ⟶ u) (sym eqv) (cd⟶dpay₍4₎ᴸ1 a0 a1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dpay a0 a1 z) ⟶ u) (sym eqv) (cd⟶dpay₍4₎ᴸ1 a0 a1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1725,11 +1722,11 @@ cd⟶dpay₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dpay₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dpay₅ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶dpay₍5₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 (dρ x0ᵢ0 x0ᵢ1)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 (dρ x0ᵢ0 x0ᵢ1)) ⟶ u
 cd⟶dpay₍5₎ᴸ1 {Γ} a0 a1 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1748,14 +1745,14 @@ cd⟶dpay₍5₎ᴸ1 {Γ} a0 a1 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶dpay₆⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶dpay₆⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶dpay₆⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ [])} unit (atᶜ 1))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶dpay₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶dpay₆⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶dpay₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dpay₆ᶜ0.CASE j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dpay₆⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dpay₆ᶜ0.CASE j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dpay₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dpay₆⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 26)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶dpay₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dpay₆ᶜ0.CASE q𝒮 j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dpay₆⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dpay₆ᶜ0.CASE q𝒮 j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dpay₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dpay₆⁽0⁾ j c f0 f1 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dpay₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 26)) R₁))
 
 cd⟶dpay₍5₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dpay a0 a1 a2) ⟶ u
 cd⟶dpay₍5₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 26 (hdTm a2) dq₃ nq
   ▷ λ e → isdR a2 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dpay a0 a1 z) ⟶ u) (sym eqv) (cd⟶dpay₍5₎ᴸ1 a0 a1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dpay a0 a1 z) ⟶ u) (sym eqv) (cd⟶dpay₍5₎ᴸ1 a0 a1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1765,11 +1762,11 @@ cd⟶dpay₍5₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dpay₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dpay₆ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dpay₆ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dpay₆ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶dih₍4₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 (dι {Γ}) a3) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 (dι {Γ}) a3) ⟶ u
 cd⟶dih₍4₎ᴸ1 {Γ} a0 a1 a3 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1787,14 +1784,14 @@ cd⟶dih₍4₎ᴸ1 {Γ} a0 a1 a3 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv0) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶dih₅⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶dih₅⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ [])) v₀ v₁) (T⟶dih₅⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶dih₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶dih₅⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶dih₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dih₅ᶜ0.CASE j (kdI) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dih₅⁽0⁾ j c ⌝ᵗ} (PT⟶dih₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dih₅ᶜ0.CASE j (kdI) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dih₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dih₅⁽0⁾ j c ⌝ᵗ} (PT⟶dih₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 24)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶dih₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dih₅ᶜ0.CASE q𝒮 j (kdI) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dih₅⁽0⁾ j c ⌝ᵗ} (PT⟶dih₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dih₅ᶜ0.CASE q𝒮 j (kdI) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dih₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dih₅⁽0⁾ j c ⌝ᵗ} (PT⟶dih₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 24)) R₁))
 
 cd⟶dih₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 a2 a3) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 a2 a3) ⟶ u
 cd⟶dih₍4₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
   pat-hit 1 24 (hdTm a2) dq₃ nq
   ▷ λ e → isdI a2 e
-  ▷ λ { eqv → subst (λ z → (dih a0 a1 z a3) ⟶ u) (sym eqv) (cd⟶dih₍4₎ᴸ1 a0 a1 a3 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (dih a0 a1 z a3) ⟶ u) (sym eqv) (cd⟶dih₍4₎ᴸ1 a0 a1 a3 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 p c : RTm ε
     j = dep Γ
@@ -1805,11 +1802,11 @@ cd⟶dih₍4₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dih₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dih₅ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶dih₍5₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a3 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 (dσ x0ᵢ0 x0ᵢ1) a3) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 (dσ x0ᵢ0 x0ᵢ1) a3) ⟶ u
 cd⟶dih₍5₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1829,14 +1826,14 @@ cd⟶dih₍5₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶dih₆⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶dih₆⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶dih₆⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 3 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 3))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶dih₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶dih₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶dih₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dih₆ᶜ0.CASE j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dih₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶dih₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dih₆ᶜ0.CASE j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dih₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dih₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶dih₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 25)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶dih₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dih₆ᶜ0.CASE q𝒮 j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dih₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶dih₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dih₆ᶜ0.CASE q𝒮 j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dih₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dih₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶dih₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 25)) R₁))
 
 cd⟶dih₍5₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 a2 a3) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 a2 a3) ⟶ u
 cd⟶dih₍5₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
   pat-hit 1 25 (hdTm a2) dq₃ nq
   ▷ λ e → isdS a2 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dih a0 a1 z a3) ⟶ u) (sym eqv) (cd⟶dih₍5₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dih a0 a1 z a3) ⟶ u) (sym eqv) (cd⟶dih₍5₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 p c : RTm ε
     j = dep Γ
@@ -1847,11 +1844,11 @@ cd⟶dih₍5₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dih₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₆ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₆ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dih₆ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶dih₍6₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a3 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 (dρ x0ᵢ0 x0ᵢ1) a3) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 (dρ x0ᵢ0 x0ᵢ1) a3) ⟶ u
 cd⟶dih₍6₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1871,14 +1868,14 @@ cd⟶dih₍6₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 7} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶dih₇⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ v₆ ⌝ᵗ (T⟶dih₇⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (T⟶dih₇⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 3 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 3))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶dih₇ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶dih₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶dih₇ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dih₇ᶜ0.CASE j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dih₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dih₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dih₇ᶜ0.CASE j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dih₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dih₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dih₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 26)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶dih₇ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶dih₇ᶜ0.CASE q𝒮 j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶dih₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dih₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶dih₇ᶜ0.CASE q𝒮 j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶dih₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶dih₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶dih₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 26)) R₁))
 
 cd⟶dih₍6₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 a2 a3) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (dih a0 a1 a2 a3) ⟶ u
 cd⟶dih₍6₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
   pat-hit 1 26 (hdTm a2) dq₃ nq
   ▷ λ e → isdR a2 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dih a0 a1 z a3) ⟶ u) (sym eqv) (cd⟶dih₍6₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (dih a0 a1 z a3) ⟶ u) (sym eqv) (cd⟶dih₍6₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 p c : RTm ε
     j = dep Γ
@@ -1889,11 +1886,11 @@ cd⟶dih₍6₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dih₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶dih₇ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶dih₇ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶dih₇ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶fcase₍3₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (fzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (fzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase (fzero {Γ}) a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (fzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (fzero {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase (fzero {Γ}) a1 a2) ⟶ u
 cd⟶fcase₍3₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1910,14 +1907,14 @@ cd⟶fcase₍3₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ [])} {as' = (j ∷ c ∷ f1 ∷ [])} ⌜ T⟶fcase₄⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶fcase₄⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ [])) v₀ v₁ v₂) (T⟶fcase₄⁽0⁾-sub (σₗ (j ∷ c ∷ f1 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kfzero) ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) ∷ʳ []ʳ)
     R₀ : (PT⟶fcase₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶fcase₄⁽0⁾ j c f1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶fcase₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶fcase₄ᶜ0.CASE j (kfzero) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶fcase₄⁽0⁾ j c f1 ⌝ᵗ} (PT⟶fcase₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶fcase₄ᶜ0.CASE j (kfzero) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶fcase₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶fcase₄⁽0⁾ j c f1 ⌝ᵗ} (PT⟶fcase₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 29)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶fcase₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶fcase₄ᶜ0.CASE q𝒮 j (kfzero) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶fcase₄⁽0⁾ j c f1 ⌝ᵗ} (PT⟶fcase₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶fcase₄ᶜ0.CASE q𝒮 j (kfzero) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶fcase₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶fcase₄⁽0⁾ j c f1 ⌝ᵗ} (PT⟶fcase₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 29)) R₁))
 
 cd⟶fcase₍3₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase a0 a1 a2) ⟶ u
 cd⟶fcase₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 29 (hdTm a0) dq₃ nq
   ▷ λ e → isfzero a0 e
-  ▷ λ { eqv → subst (λ z → (fcase z a1 a2) ⟶ u) (sym eqv) (cd⟶fcase₍3₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (fcase z a1 a2) ⟶ u) (sym eqv) (cd⟶fcase₍3₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1927,11 +1924,11 @@ cd⟶fcase₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶fcase₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶fcase₄ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶fcase₍4₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ ∙)) (x0ᵢ0 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (fsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (fsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase (fsuc x0ᵢ0) a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (fsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm (fsuc x0ᵢ0)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase (fsuc x0ᵢ0) a1 a2) ⟶ u
 cd⟶fcase₍4₎ᴸ1 {Γ} a1 a2 x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1949,14 +1946,14 @@ cd⟶fcase₍4₎ᴸ1 {Γ} a1 a2 x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv0) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ [])} {as' = (j ∷ c ∷ f2 ∷ a0ᵢ0 ∷ [])} ⌜ T⟶fcase₅⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶fcase₅⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ [])) v₀ v₁ v₂ v₃) (T⟶fcase₅⁽0⁾-sub (σₗ (j ∷ c ∷ f2 ∷ a0ᵢ0 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kfsuc a0ᵢ0) ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶fcase₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶fcase₅⁽0⁾ j c f2 a0ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶fcase₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶fcase₅ᶜ0.CASE j (kfsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶fcase₅⁽0⁾ j c f2 a0ᵢ0 ⌝ᵗ} (PT⟶fcase₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶fcase₅ᶜ0.CASE j (kfsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶fcase₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶fcase₅⁽0⁾ j c f2 a0ᵢ0 ⌝ᵗ} (PT⟶fcase₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 30)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶fcase₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶fcase₅ᶜ0.CASE q𝒮 j (kfsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶fcase₅⁽0⁾ j c f2 a0ᵢ0 ⌝ᵗ} (PT⟶fcase₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶fcase₅ᶜ0.CASE q𝒮 j (kfsuc a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶fcase₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶fcase₅⁽0⁾ j c f2 a0ᵢ0 ⌝ᵗ} (PT⟶fcase₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 30)) R₁))
 
 cd⟶fcase₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ ∙)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase a0 a1 a2) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (fcase a0 a1 a2) ⟶ u
 cd⟶fcase₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 1 30 (hdTm a0) dq₃ nq
   ▷ λ e → isfsuc a0 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (fcase z a1 a2) ⟶ u) (sym eqv) (cd⟶fcase₍4₎ᴸ1 a1 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (fcase z a1 a2) ⟶ u) (sym eqv) (cd⟶fcase₍4₎ᴸ1 a1 a2 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTm u) ,ₚ ((quoteTm z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -1966,11 +1963,11 @@ cd⟶fcase₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶fcase₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶fcase₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶fcase₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶fcase₅ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶psplit₍2₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ ∙ ∙)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶psplit₃ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (psplit a0 (x0ᵢ0 ,ₚ x0ᵢ1)) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶psplit₃ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm (x0ᵢ0 ,ₚ x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (psplit a0 (x0ᵢ0 ,ₚ x0ᵢ1)) ⟶ u
 cd⟶psplit₍2₎ᴸ1 {Γ} a0 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -1988,14 +1985,14 @@ cd⟶psplit₍2₎ᴸ1 {Γ} a0 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶psplit₃⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶psplit₃⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶psplit₃⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ (kpair a0ᵢ0 a0ᵢ1) ∷ [])} unit (atᶜ 0))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶psplit₃ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶psplit₃⁽0⁾ j c f0 a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶psplit₃ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶psplit₃ᶜ0.CASE j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶psplit₃⁽0⁾ j c f0 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶psplit₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶psplit₃ᶜ0.CASE j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶psplit₃ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶psplit₃⁽0⁾ j c f0 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶psplit₃ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 3)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶psplit₃ᶜ0.CASE q𝒮 j (fst (snd p)) (c ,ₚ p ,ₚ unit))} {u = PT⟶psplit₃ᶜ0.CASE q𝒮 j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶psplit₃⁽0⁾ j c f0 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶psplit₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1))) (⟶*-trans {t = PT⟶psplit₃ᶜ0.CASE q𝒮 j (kpair a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶psplit₃ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶psplit₃⁽0⁾ j c f0 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶psplit₃ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 3)) R₁))
 
 cd⟶psplit₍2₎ : {Γ : Cx} (a0 : RTm (Γ ∙ ∙)) (a1 : RTm (Γ)) (u : RTm Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶psplit₃ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (psplit a0 a1) ⟶ u
+  ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶psplit₃ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ,ₚ unit))) → IsNormal q → (psplit a0 a1) ⟶ u
 cd⟶psplit₍2₎ {Γ} a0 a1 u {q} dq nq =
   pat-hit 1 3 (hdTm a1) dq₃ nq
   ▷ λ e → ispair a1 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (psplit a0 z) ⟶ u) (sym eqv) (cd⟶psplit₍2₎ᴸ1 a0 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶psplit₃ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (psplit a0 z) ⟶ u) (sym eqv) (cd⟶psplit₍2₎ᴸ1 a0 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶psplit₃ᶜ0.CASE q𝒮 (dep Γ) (fst (snd ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ unit))) ((quoteTm u) ,ₚ ((quoteTm a0) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 p c : RTm ε
     j = dep Γ
@@ -2004,11 +2001,11 @@ cd⟶psplit₍2₎ {Γ} a0 a1 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ unit)
     c = quoteTm u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶psplit₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ [])} unit (atᶜ 1))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J ⟶F.DF (PT⟶psplit₃ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay Redₘ.J (⟶F.DF q𝒮) (PT⟶psplit₃ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶psplit₃ᶜ0.case-any {j = j} {q = pfTm a1} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ᵀEl₍1₎ᴸ1 : {Γ : Cx} (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜base⌝ {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜base⌝ {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜base⌝ {Γ})) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜base⌝ {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜base⌝ {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜base⌝ {Γ})) ⟶ᵀ u
 cd⟶ᵀEl₍1₎ᴸ1 {Γ} u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2023,14 +2020,14 @@ cd⟶ᵀEl₍1₎ᴸ1 {Γ} u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv0) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶ᵀEl₂⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶ᵀEl₂⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ [])) v₀ v₁) (T⟶ᵀEl₂⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₂⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₂ᶜ0.CASE j (kcbase) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₂⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₂ᶜ0.CASE j (kcbase) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₂⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₂ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 8)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₂ᶜ0.CASE q𝒮 j (kcbase) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₂⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₂ᶜ0.CASE q𝒮 j (kcbase) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₂ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₂⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₂ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 8)) R₁))
 
 cd⟶ᵀEl₍1₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍1₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 8 (hdTm a0) dq₃ nq
   ▷ λ e → iscbase a0 e
-  ▷ λ { eqv → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍1₎ᴸ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍1₎ᴸ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2038,11 +2035,11 @@ cd⟶ᵀEl₍1₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₂ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₂ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₂ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍2₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ ∙)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Π⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Π⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Π⌝ x0ᵢ0 x0ᵢ1)) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Π⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Π⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Π⌝ x0ᵢ0 x0ᵢ1)) ⟶ᵀ u
 cd⟶ᵀEl₍2₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2059,14 +2056,14 @@ cd⟶ᵀEl₍2₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶ᵀEl₃⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶ᵀEl₃⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃) (T⟶ᵀEl₃⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₃⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₃ᶜ0.CASE j (kcPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₃⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₃ᶜ0.CASE j (kcPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₃ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₃⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₃ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 9)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₃ᶜ0.CASE q𝒮 j (kcPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₃⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₃ᶜ0.CASE q𝒮 j (kcPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₃ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₃⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₃ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 9)) R₁))
 
 cd⟶ᵀEl₍2₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍2₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 9 (hdTm a0) dq₃ nq
   ▷ λ e → iscPi a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍2₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍2₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2074,11 +2071,11 @@ cd⟶ᵀEl₍2₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₃ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₃ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₃ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍3₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ ∙)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Σ⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Σ⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Σ⌝ x0ᵢ0 x0ᵢ1)) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Σ⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Σ⌝ x0ᵢ0 x0ᵢ1)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Σ⌝ x0ᵢ0 x0ᵢ1)) ⟶ᵀ u
 cd⟶ᵀEl₍3₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2095,14 +2092,14 @@ cd⟶ᵀEl₍3₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶ᵀEl₄⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶ᵀEl₄⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃) (T⟶ᵀEl₄⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₄⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₄ᶜ0.CASE j (kcSg a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₄⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₄ᶜ0.CASE j (kcSg a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₄⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 10)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₄ᶜ0.CASE q𝒮 j (kcSg a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₄⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₄ᶜ0.CASE q𝒮 j (kcSg a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₄ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₄⁽0⁾ j c a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀEl₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 10)) R₁))
 
 cd⟶ᵀEl₍3₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍3₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 10 (hdTm a0) dq₃ nq
   ▷ λ e → iscSg a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍3₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍3₎ᴸ1 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2110,11 +2107,11 @@ cd⟶ᵀEl₍3₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₄ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍4₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x0ᵢ2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Hom⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Hom⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Hom⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Hom⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Hom⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Hom⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ⟶ᵀ u
 cd⟶ᵀEl₍4₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 x0ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2132,14 +2129,14 @@ cd⟶ᵀEl₍4₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 x0ᵢ2 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ (fst (snd (snd q0))) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} ⌜ T⟶ᵀEl₅⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶ᵀEl₅⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ (fst (snd (snd q0))) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶ᵀEl₅⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 2)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₅⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₅ᶜ0.CASE j (kcHom a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₅⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₅ᶜ0.CASE j (kcHom a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₅⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 11)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₅ᶜ0.CASE q𝒮 j (kcHom a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₅⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₅ᶜ0.CASE q𝒮 j (kcHom a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₅⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 11)) R₁))
 
 cd⟶ᵀEl₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍4₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 11 (hdTm a0) dq₃ nq
   ▷ λ e → iscHom a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , (x0ᵢ2 , eqv))) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍4₎ᴸ1 x0ᵢ0 x0ᵢ1 x0ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , (x0ᵢ2 , eqv))) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍4₎ᴸ1 x0ᵢ0 x0ᵢ1 x0ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2147,11 +2144,11 @@ cd⟶ᵀEl₍4₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₅ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍5₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x0ᵢ2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Id⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Id⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Id⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Id⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Id⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Id⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ⟶ᵀ u
 cd⟶ᵀEl₍5₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 x0ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2169,14 +2166,14 @@ cd⟶ᵀEl₍5₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 x0ᵢ2 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ (fst (snd (snd q0))) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} ⌜ T⟶ᵀEl₆⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶ᵀEl₆⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ (fst (snd (snd q0))) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶ᵀEl₆⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 2)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₆⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₆ᶜ0.CASE j (kcId a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₆⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₆ᶜ0.CASE j (kcId a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₆⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 15)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₆ᶜ0.CASE q𝒮 j (kcId a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₆⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₆ᶜ0.CASE q𝒮 j (kcId a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₆⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 15)) R₁))
 
 cd⟶ᵀEl₍5₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍5₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 15 (hdTm a0) dq₃ nq
   ▷ λ e → iscId a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , (x0ᵢ2 , eqv))) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍5₎ᴸ1 x0ᵢ0 x0ᵢ1 x0ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , (x0ᵢ2 , eqv))) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍5₎ᴸ1 x0ᵢ0 x0ᵢ1 x0ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2184,11 +2181,11 @@ cd⟶ᵀEl₍5₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₆ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₆ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍6₎ᴸ1 : {Γ : Cx} (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Nat⌝ {Γ})) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Nat⌝ {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Nat⌝ {Γ})) ⟶ᵀ u
 cd⟶ᵀEl₍6₎ᴸ1 {Γ} u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2203,14 +2200,14 @@ cd⟶ᵀEl₍6₎ᴸ1 {Γ} u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv0) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶ᵀEl₇⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶ᵀEl₇⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ [])) v₀ v₁) (T⟶ᵀEl₇⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₇⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₇ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₇⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₇ᶜ0.CASE j (kcNat) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₇⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 34)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₇ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₇⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₇ᶜ0.CASE q𝒮 j (kcNat) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₇⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 34)) R₁))
 
 cd⟶ᵀEl₍6₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍6₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 34 (hdTm a0) dq₃ nq
   ▷ λ e → iscNat a0 e
-  ▷ λ { eqv → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍6₎ᴸ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍6₎ᴸ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2218,11 +2215,11 @@ cd⟶ᵀEl₍6₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₇ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₇ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍7₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (x0ᵢ2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜IMu⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜IMu⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜IMu⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜IMu⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜IMu⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜IMu⌝ x0ᵢ0 x0ᵢ1 x0ᵢ2)) ⟶ᵀ u
 cd⟶ᵀEl₍7₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 x0ᵢ2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2240,14 +2237,14 @@ cd⟶ᵀEl₍7₎ᴸ1 {Γ} x0ᵢ0 x0ᵢ1 x0ᵢ2 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 5} {as = (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ (fst (snd (snd q0))) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} ⌜ T⟶ᵀEl₈⁽0⁾ v₀ v₁ v₂ v₃ v₄ ⌝ᵗ (T⟶ᵀEl₈⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst q0) ∷ (fst (snd q0)) ∷ (fst (snd (snd q0))) ∷ [])) v₀ v₁ v₂ v₃ v₄) (T⟶ᵀEl₈⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])) v₀ v₁ v₂ v₃ v₄) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ a0ᵢ2 ∷ [])} unit (atᶜ 2)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₈⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₈ᶜ0.CASE j (kcIMu a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₈⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₈ᶜ0.CASE j (kcIMu a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₈ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₈⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₈ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 35)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₈ᶜ0.CASE q𝒮 j (kcIMu a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₈⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₈ᶜ0.CASE q𝒮 j (kcIMu a0ᵢ0 a0ᵢ1 a0ᵢ2) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₈ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₈⁽0⁾ j c a0ᵢ0 a0ᵢ1 a0ᵢ2 ⌝ᵗ} (PT⟶ᵀEl₈ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 35)) R₁))
 
 cd⟶ᵀEl₍7₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍7₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 35 (hdTm a0) dq₃ nq
   ▷ λ e → iscIMu a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , (x0ᵢ2 , eqv))) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍7₎ᴸ1 x0ᵢ0 x0ᵢ1 x0ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , (x0ᵢ2 , eqv))) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍7₎ᴸ1 x0ᵢ0 x0ᵢ1 x0ᵢ2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2255,11 +2252,11 @@ cd⟶ᵀEl₍7₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₈ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₈ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍8₎ᴸ1 : {Γ : Cx} (x0ᵢ0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Fin⌝ x0ᵢ0)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Fin⌝ x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Fin⌝ x0ᵢ0)) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Fin⌝ x0ᵢ0)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Fin⌝ x0ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Fin⌝ x0ᵢ0)) ⟶ᵀ u
 cd⟶ᵀEl₍8₎ᴸ1 {Γ} x0ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2275,14 +2272,14 @@ cd⟶ᵀEl₍8₎ᴸ1 {Γ} x0ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 3} {as = (j ∷ (fst cv0) ∷ (fst q0) ∷ [])} {as' = (j ∷ c ∷ a0ᵢ0 ∷ [])} ⌜ T⟶ᵀEl₉⁽0⁾ v₀ v₁ v₂ ⌝ᵗ (T⟶ᵀEl₉⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst q0) ∷ [])) v₀ v₁ v₂) (T⟶ᵀEl₉⁽0⁾-sub (σₗ (j ∷ c ∷ a0ᵢ0 ∷ [])) v₀ v₁ v₂) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₉⁽0⁾ j c a0ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₉ᶜ0.CASE j (kcFin a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₉⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶ᵀEl₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₉ᶜ0.CASE j (kcFin a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₉ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₉⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶ᵀEl₉ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 36)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₉ᶜ0.CASE q𝒮 j (kcFin a0ᵢ0) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₉⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶ᵀEl₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₉ᶜ0.CASE q𝒮 j (kcFin a0ᵢ0) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₉ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₉⁽0⁾ j c a0ᵢ0 ⌝ᵗ} (PT⟶ᵀEl₉ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 36)) R₁))
 
 cd⟶ᵀEl₍8₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍8₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 36 (hdTm a0) dq₃ nq
   ▷ λ e → iscFin a0 e
-  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍8₎ᴸ1 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , eqv) → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍8₎ᴸ1 x0ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2290,11 +2287,11 @@ cd⟶ᵀEl₍8₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₉ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₉ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₉ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀEl₍9₎ᴸ1 : {Γ : Cx} (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Unit⌝ {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Unit⌝ {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Unit⌝ {Γ})) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm (⌜Unit⌝ {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm (⌜Unit⌝ {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El (⌜Unit⌝ {Γ})) ⟶ᵀ u
 cd⟶ᵀEl₍9₎ᴸ1 {Γ} u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2309,14 +2306,14 @@ cd⟶ᵀEl₍9₎ᴸ1 {Γ} u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv0) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶ᵀEl₁₀⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶ᵀEl₁₀⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ [])) v₀ v₁) (T⟶ᵀEl₁₀⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀEl₁₀⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₁₀ᶜ0.CASE j (kcUnit) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₁₀⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₁₀ᶜ0.CASE j (kcUnit) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₁₀ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₁₀⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₁₀ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 37)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 j (kcUnit) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀEl₁₀⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 j (kcUnit) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀEl₁₀ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀEl₁₀⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀEl₁₀ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 37)) R₁))
 
 cd⟶ᵀEl₍9₎ : {Γ : Cx} (a0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit))) → IsNormal q → (El a0) ⟶ᵀ u
 cd⟶ᵀEl₍9₎ {Γ} a0 u {q} dq nq =
   pat-hit 1 37 (hdTm a0) dq₃ nq
   ▷ λ e → iscUnit a0 e
-  ▷ λ { eqv → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍9₎ᴸ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (El z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀEl₍9₎ᴸ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 p c : RTm ε
     j = dep Γ
@@ -2324,11 +2321,11 @@ cd⟶ᵀEl₍9₎ {Γ} a0 u {q} dq nq =
     p = (f0 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₁₀ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀEl₁₀ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀEl₁₀ᶜ0.case-any {j = j} {q = pfTm a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a0)))))
 
 cd⟶ᵀDIh₍4₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTy (Γ ∙ ∙)) (a3 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 (dι {Γ}) a3) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dι {Γ})) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 (dι {Γ}) a3) ⟶ᵀ u
 cd⟶ᵀDIh₍4₎ᴸ1 {Γ} a0 a1 a3 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2346,14 +2343,14 @@ cd⟶ᵀDIh₍4₎ᴸ1 {Γ} a0 a1 a3 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv0) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶ᵀDIh₅⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶ᵀDIh₅⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ [])) v₀ v₁) (T⟶ᵀDIh₅⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀDIh₅⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀDIh₅ᶜ0.CASE j (kdI) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀDIh₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀDIh₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ᵀDIh₅ᶜ0.CASE j (kdI) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀDIh₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀDIh₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀDIh₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 24)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 j (kdI) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀDIh₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀDIh₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 j (kdI) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀDIh₅ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀDIh₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀDIh₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 24)) R₁))
 
 cd⟶ᵀDIh₍4₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTy (Γ ∙ ∙)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 a2 a3) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 a2 a3) ⟶ᵀ u
 cd⟶ᵀDIh₍4₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
   pat-hit 1 24 (hdTm a2) dq₃ nq
   ▷ λ e → isdI a2 e
-  ▷ λ { eqv → subst (λ z → (DIh a0 a1 z a3) ⟶ᵀ u) (sym eqv) (cd⟶ᵀDIh₍4₎ᴸ1 a0 a1 a3 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (DIh a0 a1 z a3) ⟶ᵀ u) (sym eqv) (cd⟶ᵀDIh₍4₎ᴸ1 a0 a1 a3 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 p c : RTm ε
     j = dep Γ
@@ -2364,11 +2361,11 @@ cd⟶ᵀDIh₍4₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀDIh₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀDIh₅ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ᵀDIh₍5₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTy (Γ ∙ ∙)) (a3 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 (dσ x0ᵢ0 x0ᵢ1) a3) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dσ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 (dσ x0ᵢ0 x0ᵢ1) a3) ⟶ᵀ u
 cd⟶ᵀDIh₍5₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2388,14 +2385,14 @@ cd⟶ᵀDIh₍5₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶ᵀDIh₆⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶ᵀDIh₆⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶ᵀDIh₆⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 3 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdS a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 3))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀDIh₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀDIh₆ᶜ0.CASE j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀDIh₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ᵀDIh₆ᶜ0.CASE j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀDIh₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀDIh₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 25)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀDIh₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 j (kdS a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀDIh₆ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀDIh₆⁽0⁾ j c f0 f1 f3 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 25)) R₁))
 
 cd⟶ᵀDIh₍5₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTy (Γ ∙ ∙)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 a2 a3) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 a2 a3) ⟶ᵀ u
 cd⟶ᵀDIh₍5₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
   pat-hit 1 25 (hdTm a2) dq₃ nq
   ▷ λ e → isdS a2 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (DIh a0 a1 z a3) ⟶ᵀ u) (sym eqv) (cd⟶ᵀDIh₍5₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (DIh a0 a1 z a3) ⟶ᵀ u) (sym eqv) (cd⟶ᵀDIh₍5₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 p c : RTm ε
     j = dep Γ
@@ -2406,11 +2403,11 @@ cd⟶ᵀDIh₍5₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀDIh₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₆ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀDIh₆ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ᵀDIh₍6₎ᴸ1 : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTy (Γ ∙ ∙)) (a3 : RTm (Γ)) (x0ᵢ0 : RTm (Γ)) (x0ᵢ1 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 (dρ x0ᵢ0 x0ᵢ1) a3) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm (dρ x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 (dρ x0ᵢ0 x0ᵢ1) a3) ⟶ᵀ u
 cd⟶ᵀDIh₍6₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2430,14 +2427,14 @@ cd⟶ᵀDIh₍6₎ᴸ1 {Γ} a0 a1 a3 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 7} {as = (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶ᵀDIh₇⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ v₆ ⌝ᵗ (T⟶ᵀDIh₇⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (fst (snd cv0))) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (snd (fst (snd cv0)))))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (T⟶ᵀDIh₇⁽0⁾-sub (σₗ (j ∷ c ∷ f0 ∷ f1 ∷ f3 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅ v₆) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 0))) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 3 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ (kdR a0ᵢ0 a0ᵢ1) ∷ f3 ∷ [])} unit (atᶜ 3))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀDIh₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀDIh₇ᶜ0.CASE j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀDIh₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ᵀDIh₇ᶜ0.CASE j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀDIh₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀDIh₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 1) (atʰ 26)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 j (fst (snd (snd p))) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀDIh₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))) (⟶*-trans {t = PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 j (kdR a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀDIh₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀDIh₇⁽0⁾ j c f0 f1 f3 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀDIh₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 1) (atʰ 26)) R₁))
 
 cd⟶ᵀDIh₍6₎ : {Γ : Cx} (a0 : RTm (Γ)) (a1 : RTy (Γ ∙ ∙)) (a2 : RTm (Γ)) (a3 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 a2 a3) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit))) → IsNormal q → (DIh a0 a1 a2 a3) ⟶ᵀ u
 cd⟶ᵀDIh₍6₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
   pat-hit 1 26 (hdTm a2) dq₃ nq
   ▷ λ e → isdR a2 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (DIh a0 a1 z a3) ⟶ᵀ u) (sym eqv) (cd⟶ᵀDIh₍6₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (DIh a0 a1 z a3) ⟶ᵀ u) (sym eqv) (cd⟶ᵀDIh₍6₎ᴸ1 a0 a1 a3 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm z) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 f3 p c : RTm ε
     j = dep Γ
@@ -2448,11 +2445,11 @@ cd⟶ᵀDIh₍6₎ {Γ} a0 a1 a2 a3 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ f3 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀDIh₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ f3 ∷ [])} unit (atᶜ 2))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀDIh₇ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀDIh₇ᶜ0.case-any {j = j} {q = pfTm a2} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ᵀHom₍3₎ᴸ2 : {Γ : Cx} (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nzero {Γ}) a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nzero {Γ})) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nzero {Γ}) a2) ⟶ᵀ u
 cd⟶ᵀHom₍3₎ᴸ2 {Γ} a2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2471,14 +2468,14 @@ cd⟶ᵀHom₍3₎ᴸ2 {Γ} a2 u {q} dq nq =
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv1) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶ᵀHom₄⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶ᵀHom₄⁽0⁾-sub (σₗ (j ∷ (fst cv1) ∷ [])) v₀ v₁) (T⟶ᵀHom₄⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₄ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE j (knzero) cv1} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE j (knzero) cv1} {u = ⌜ T⟶ᵀHom₄ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 19)) R₁)))))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (knzero) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (knzero) cv1} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (knzero) cv1} {u = ⌜ T⟶ᵀHom₄ j q1 cv1 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₄⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₄ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 19)) R₁)))))
 
 cd⟶ᵀHom₍3₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍3₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
   pat-hit 1 19 (hdTm a1) dq₃ nq
   ▷ λ e → isnzero a1 e
-  ▷ λ { eqv → subst (λ z → (Hom (Nat {Γ}) z a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍3₎ᴸ2 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (Hom (Nat {Γ}) z a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍3₎ᴸ2 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -2490,16 +2487,16 @@ cd⟶ᵀHom₍3₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
     q0 = unit
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₄ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₄ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₄ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₄ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₄ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₄ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₄ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (PT⟶ᵀHom₄ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₄ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₄ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ᵀHom₍3₎ : {Γ : Cx} (a0 : RTy (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 0 7 (hdTy a0) dq₃ nq
   ▷ λ e → isNat a0 e
-  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍3₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍3₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -2509,11 +2506,11 @@ cd⟶ᵀHom₍3₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₄ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₄ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₄ᶜ0.case-any {j = j} {q = pfTy a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 0) (nhTy a0)))))
 
 cd⟶ᵀHom₍4₎ᴸ3 : {Γ : Cx} (x1ᵢ0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) (nzero {Γ})) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nzero {Γ})) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) (nzero {Γ})) ⟶ᵀ u
 cd⟶ᵀHom₍4₎ᴸ3 {Γ} x1ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2535,14 +2532,14 @@ cd⟶ᵀHom₍4₎ᴸ3 {Γ} x1ᵢ0 u {q} dq nq =
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 2} {as = (j ∷ (fst cv2) ∷ [])} {as' = (j ∷ c ∷ [])} ⌜ T⟶ᵀHom₅⁽0⁾ v₀ v₁ ⌝ᵗ (T⟶ᵀHom₅⁽0⁾-sub (σₗ (j ∷ (fst cv2) ∷ [])) v₀ v₁) (T⟶ᵀHom₅⁽0⁾-sub (σₗ (j ∷ c ∷ [])) v₀ v₁) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit nth-z) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₅ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₅ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ2.CASE j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ2.CASE j (knzero) cv2} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE j (knzero) cv2} {u = ⌜ T⟶ᵀHom₅ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ2.case-β {j = j} {q = q2} {c = cv2} (atᵍ 1) (atʰ 19)) R₁))))))))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (knzero) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (knzero) cv2} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (knzero) cv2} {u = ⌜ T⟶ᵀHom₅ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₅⁽0⁾ j c ⌝ᵗ} (PT⟶ᵀHom₅ᶜ2.case-β {q = q𝒮} {j = j} {pl = q2} {c = cv2} (atᵍ 1) (atʰ 19)) R₁))))))))
 
 cd⟶ᵀHom₍4₎ᴸ2 : {Γ : Cx} (a2 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) a2) ⟶ᵀ u
 cd⟶ᵀHom₍4₎ᴸ2 {Γ} a2 x1ᵢ0 u {q} dq nq =
   pat-hit 1 19 (hdTm a2) dq₃ nq
   ▷ λ e → isnzero a2 e
-  ▷ λ { eqv → subst (λ z → (Hom (Nat {Γ}) (nsuc x1ᵢ0) z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍4₎ᴸ3 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (Hom (Nat {Γ}) (nsuc x1ᵢ0) z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍4₎ᴸ3 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a1ᵢ0 p c q0 q1 cv0 cv1 cv2 : RTm ε
     j = dep Γ
@@ -2557,16 +2554,16 @@ cd⟶ᵀHom₍4₎ᴸ2 {Γ} a2 x1ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₅ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = PT⟶ᵀHom₅ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₅ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₅ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ2.CASE j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ2.CASE j z cv2))) (quote-hdTm a2) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₅ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (PT⟶ᵀHom₅ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ2.CASE q𝒮 j z cv2))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₅ᶜ2.case-any {j = j} {q = pfTm a2} {c = cv2} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ᵀHom₍4₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍4₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
   pat-hit 1 20 (hdTm a1) dq₃ nq
   ▷ λ e → isnsuc a1 e
-  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (Hom (Nat {Γ}) z a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍4₎ᴸ2 a2 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (Hom (Nat {Γ}) z a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍4₎ᴸ2 a2 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -2578,16 +2575,16 @@ cd⟶ᵀHom₍4₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
     q0 = unit
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₅ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₅ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₅ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (PT⟶ᵀHom₅ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₅ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ᵀHom₍4₎ : {Γ : Cx} (a0 : RTy (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 0 7 (hdTy a0) dq₃ nq
   ▷ λ e → isNat a0 e
-  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍4₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍4₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -2597,11 +2594,11 @@ cd⟶ᵀHom₍4₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₅ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₅ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₅ᶜ0.case-any {j = j} {q = pfTy a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 0) (nhTy a0)))))
 
 cd⟶ᵀHom₍5₎ᴸ3 : {Γ : Cx} (x1ᵢ0 : RTm (Γ)) (x2ᵢ0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) (nsuc x2ᵢ0)) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm (nsuc x2ᵢ0)) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) (nsuc x2ᵢ0)) ⟶ᵀ u
 cd⟶ᵀHom₍5₎ᴸ3 {Γ} x1ᵢ0 x2ᵢ0 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2624,14 +2621,14 @@ cd⟶ᵀHom₍5₎ᴸ3 {Γ} x1ᵢ0 x2ᵢ0 u {q} dq nq =
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv2) ∷ (fst (fst (snd (snd (snd cv2))))) ∷ (fst q2) ∷ [])} {as' = (j ∷ c ∷ a1ᵢ0 ∷ a2ᵢ0 ∷ [])} ⌜ T⟶ᵀHom₆⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶ᵀHom₆⁽0⁾-sub (σₗ (j ∷ (fst cv2) ∷ (fst (fst (snd (snd (snd cv2))))) ∷ (fst q2) ∷ [])) v₀ v₁ v₂ v₃) (T⟶ᵀHom₆⁽0⁾-sub (σₗ (j ∷ c ∷ a1ᵢ0 ∷ a2ᵢ0 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 0 (prj-tup {ws = (c ∷ p ∷ q0 ∷ q1 ∷ [])} unit (atᶜ 3))) (prj-tup {ws = (a1ᵢ0 ∷ [])} unit (atᶜ 0))) ∷ʳ (prj-tup {ws = (a2ᵢ0 ∷ [])} unit (atᶜ 0)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₆ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₆ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ2.CASE j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ2.CASE j (knsuc a2ᵢ0) cv2} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE j (knsuc a2ᵢ0) cv2} {u = ⌜ T⟶ᵀHom₆ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ2.case-β {j = j} {q = q2} {c = cv2} (atᵍ 1) (atʰ 20)) R₁))))))))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) cv2} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (knsuc a2ᵢ0) cv2} {u = ⌜ T⟶ᵀHom₆ j q2 cv2 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₆⁽0⁾ j c a1ᵢ0 a2ᵢ0 ⌝ᵗ} (PT⟶ᵀHom₆ᶜ2.case-β {q = q𝒮} {j = j} {pl = q2} {c = cv2} (atᵍ 1) (atʰ 20)) R₁))))))))
 
 cd⟶ᵀHom₍5₎ᴸ2 : {Γ : Cx} (a2 : RTm (Γ)) (x1ᵢ0 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) (nsuc x1ᵢ0) a2) ⟶ᵀ u
 cd⟶ᵀHom₍5₎ᴸ2 {Γ} a2 x1ᵢ0 u {q} dq nq =
   pat-hit 1 20 (hdTm a2) dq₃ nq
   ▷ λ e → isnsuc a2 e
-  ▷ λ { (x2ᵢ0 , eqv) → subst (λ z → (Hom (Nat {Γ}) (nsuc x1ᵢ0) z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍5₎ᴸ3 x1ᵢ0 x2ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x2ᵢ0 , eqv) → subst (λ z → (Hom (Nat {Γ}) (nsuc x1ᵢ0) z) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍5₎ᴸ3 x1ᵢ0 x2ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm (nsuc x1ᵢ0)) ,ₚ (quoteTm z) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 a1ᵢ0 p c q0 q1 cv0 cv1 cv2 : RTm ε
     j = dep Γ
@@ -2646,16 +2643,16 @@ cd⟶ᵀHom₍5₎ᴸ2 {Γ} a2 x1ᵢ0 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
     cv2 = (c ,ₚ p ,ₚ q0 ,ₚ q1 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₆ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {v = PT⟶ᵀHom₆ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₆ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₆ᶜ1.case-β {j = j} {q = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ2.CASE j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE j f2 cv2} (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ2.CASE j z cv2))) (quote-hdTm a2) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {v = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (knsuc a1ᵢ0) cv1} {u = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₆ᶜ1.case-β {q = q𝒮} {j = j} {pl = q1} {c = cv1} (atᵍ 1) (atʰ 20)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j (fst (snd (snd (fst (snd cv1))))) ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j f2 ((fst cv1) ,ₚ (fst (snd cv1)) ,ₚ (fst (snd (snd cv1))) ,ₚ q1 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j f2 cv2} (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᵃ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2)))) (PT⟶ᵀHom₆ᶜ2.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 1)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ q0 ∷ [])} unit (atᶜ 2)) ∷ʳ done ∷ʳ []ʳ))))))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ2.CASE q𝒮 j z cv2))) (quote-hdTm a2) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₆ᶜ2.case-any {j = j} {q = pfTm a2} {c = cv2} (atᵍ 1) (nhTm a2)))))
 
 cd⟶ᵀHom₍5₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Nat {Γ}) a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍5₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
   pat-hit 1 20 (hdTm a1) dq₃ nq
   ▷ λ e → isnsuc a1 e
-  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (Hom (Nat {Γ}) z a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍5₎ᴸ2 a2 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x1ᵢ0 , eqv) → subst (λ z → (Hom (Nat {Γ}) z a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍5₎ᴸ2 a2 x1ᵢ0 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Nat {Γ})) ,ₚ (quoteTm z) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c q0 cv0 cv1 : RTm ε
     j = dep Γ
@@ -2667,16 +2664,16 @@ cd⟶ᵀHom₍5₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
     q0 = unit
     cv0 = (c ,ₚ p ,ₚ unit)
     cv1 = (c ,ₚ p ,ₚ q0 ,ₚ unit)
-    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₆ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ0.CASE j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₆ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ1.CASE j f1 cv1} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ1.CASE j z cv1))) (quote-hdTm a1) dq₁
+    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j (kNat) (c ,ₚ p ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₆ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 7)) (⟶*-trans {t = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j (fst (snd (fst (snd cv0)))) ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {u = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j f1 ((fst cv0) ,ₚ (fst (snd cv0)) ,ₚ q0 ,ₚ unit)} {v = PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j f1 cv1} (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᵃ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1)))) (PT⟶ᵀHom₆ᶜ1.CASE-⟶ᶜ (tup-mono {w = unit} ((prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1)) ∷ʳ done ∷ʳ []ʳ)))))))))
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ1.CASE q𝒮 j z cv1))) (quote-hdTm a1) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₆ᶜ1.case-any {j = j} {q = pfTm a1} {c = cv1} (atᵍ 1) (nhTm a1)))))
 
 cd⟶ᵀHom₍5₎ : {Γ : Cx} (a0 : RTy (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍5₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 0 7 (hdTy a0) dq₃ nq
   ▷ λ e → isNat a0 e
-  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍5₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍5₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -2686,11 +2683,11 @@ cd⟶ᵀHom₍5₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₆ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₆ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₆ᶜ0.case-any {j = j} {q = pfTy a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 0) (nhTy a0)))))
 
 cd⟶ᵀHom₍6₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (U {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (U {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (U {Γ}) a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (U {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (U {Γ})) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (U {Γ}) a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍6₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2707,14 +2704,14 @@ cd⟶ᵀHom₍6₎ᴸ1 {Γ} a1 a2 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 4} {as = (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ [])} {as' = (j ∷ c ∷ f1 ∷ f2 ∷ [])} ⌜ T⟶ᵀHom₇⁽0⁾ v₀ v₁ v₂ v₃ ⌝ᵗ (T⟶ᵀHom₇⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ [])) v₀ v₁ v₂ v₃) (T⟶ᵀHom₇⁽0⁾-sub (σₗ (j ∷ c ∷ f1 ∷ f2 ∷ [])) v₀ v₁ v₂ v₃) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kU) ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kU) ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀHom₇⁽0⁾ j c f1 f2 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₇ᶜ0.CASE j (kU) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₇⁽0⁾ j c f1 f2 ⌝ᵗ} (PT⟶ᵀHom₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₇ᶜ0.CASE j (kU) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀHom₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₇⁽0⁾ j c f1 f2 ⌝ᵗ} (PT⟶ᵀHom₇ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 1)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₇ᶜ0.CASE q𝒮 j (kU) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₇⁽0⁾ j c f1 f2 ⌝ᵗ} (PT⟶ᵀHom₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₇ᶜ0.CASE q𝒮 j (kU) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀHom₇ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₇⁽0⁾ j c f1 f2 ⌝ᵗ} (PT⟶ᵀHom₇ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 1)) R₁))
 
 cd⟶ᵀHom₍6₎ : {Γ : Cx} (a0 : RTy (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍6₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 0 1 (hdTy a0) dq₃ nq
   ▷ λ e → isU a0 e
-  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍6₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { eqv → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍6₎ᴸ1 a1 a2 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -2724,11 +2721,11 @@ cd⟶ᵀHom₍6₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₇ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₇ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₇ᶜ0.case-any {j = j} {q = pfTy a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 0) (nhTy a0)))))
 
 cd⟶ᵀHom₍7₎ᴸ1 : {Γ : Cx} (a1 : RTm (Γ)) (a2 : RTm (Γ)) (x0ᵢ0 : RTy (Γ)) (x0ᵢ1 : RTy (Γ ∙)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Π x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Π x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Π x0ᵢ0 x0ᵢ1) a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy (Π x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy (Π x0ᵢ0 x0ᵢ1)) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom (Π x0ᵢ0 x0ᵢ1) a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍7₎ᴸ1 {Γ} a1 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
@@ -2747,14 +2744,14 @@ cd⟶ᵀHom₍7₎ᴸ1 {Γ} a1 a2 x0ᵢ0 x0ᵢ1 u {q} dq nq =
     cv0 = (c ,ₚ p ,ₚ unit)
     R₁ = mono-by {Δ = ε} {n = 6} {as = (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])} {as' = (j ∷ c ∷ f1 ∷ f2 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])} ⌜ T⟶ᵀHom₈⁽0⁾ v₀ v₁ v₂ v₃ v₄ v₅ ⌝ᵗ (T⟶ᵀHom₈⁽0⁾-sub (σₗ (j ∷ (fst cv0) ∷ (fst (snd (fst (snd cv0)))) ∷ (fst (snd (snd (fst (snd cv0))))) ∷ (fst q0) ∷ (fst (snd q0)) ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (T⟶ᵀHom₈⁽0⁾-sub (σₗ (j ∷ c ∷ f1 ∷ f2 ∷ a0ᵢ0 ∷ a0ᵢ1 ∷ [])) v₀ v₁ v₂ v₃ v₄ v₅) (done ∷ʳ (prj-tup {ws = (c ∷ p ∷ [])} unit nth-z) ∷ʳ (⟶*-trans (prj-mono 1 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kPi a0ᵢ0 a0ᵢ1) ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 1))) ∷ʳ (⟶*-trans (prj-mono 2 (prj-tup {ws = (c ∷ p ∷ [])} unit (atᶜ 1))) (prj-tup {ws = ((kPi a0ᵢ0 a0ᵢ1) ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 2))) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 0)) ∷ʳ (prj-tup {ws = (a0ᵢ0 ∷ a0ᵢ1 ∷ [])} unit (atᶜ 1)) ∷ʳ []ʳ)
     R₀ : (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit)) ⟶* ⌜ T⟶ᵀHom₈⁽0⁾ j c f1 f2 a0ᵢ0 a0ᵢ1 ⌝ᵗ
-    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₈ᶜ0.CASE j (kPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₈⁽0⁾ j c f1 f2 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀHom₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₈ᶜ0.CASE j (kPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀHom₈ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₈⁽0⁾ j c f1 f2 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀHom₈ᶜ0.case-β {j = j} {q = q0} {c = cv0} (atᵍ 0) (atʰ 2)) R₁))
+    R₀ = (⟶*-trans {t = (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 j (fst p) (c ,ₚ p ,ₚ unit))} {u = PT⟶ᵀHom₈ᶜ0.CASE q𝒮 j (kPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {v = ⌜ T⟶ᵀHom₈⁽0⁾ j c f1 f2 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀHom₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))) (⟶*-trans {t = PT⟶ᵀHom₈ᶜ0.CASE q𝒮 j (kPi a0ᵢ0 a0ᵢ1) (c ,ₚ p ,ₚ unit)} {u = ⌜ T⟶ᵀHom₈ j q0 cv0 ⌝ᵗ} {v = ⌜ T⟶ᵀHom₈⁽0⁾ j c f1 f2 a0ᵢ0 a0ᵢ1 ⌝ᵗ} (PT⟶ᵀHom₈ᶜ0.case-β {q = q𝒮} {j = j} {pl = q0} {c = cv0} (atᵍ 0) (atʰ 2)) R₁))
 
 cd⟶ᵀHom₍7₎ : {Γ : Cx} (a0 : RTy (Γ)) (a1 : RTm (Γ)) (a2 : RTm (Γ)) (u : RTy Γ) {q : RTm ε} →
-  ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
+  ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit))) → IsNormal q → (Hom a0 a1 a2) ⟶ᵀ u
 cd⟶ᵀHom₍7₎ {Γ} a0 a1 a2 u {q} dq nq =
   pat-hit 0 2 (hdTy a0) dq₃ nq
   ▷ λ e → isPi a0 e
-  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍7₎ᴸ1 a1 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
+  ▷ λ { (x0ᵢ0 , (x0ᵢ1 , eqv)) → subst (λ z → (Hom z a1 a2) ⟶ᵀ u) (sym eqv) (cd⟶ᵀHom₍7₎ᴸ1 a1 a2 x0ᵢ0 x0ᵢ1 u (subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy z) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)))) eqv dq) nq) }
   where
     j f0 f1 f2 p c : RTm ε
     j = dep Γ
@@ -2764,6 +2761,6 @@ cd⟶ᵀHom₍7₎ {Γ} a0 a1 a2 u {q} dq nq =
     p = (f0 ,ₚ f1 ,ₚ f2 ,ₚ unit)
     c = quoteTy u
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₈ᶜ0.CASE-⟶ᵃ (prj-tup {ws = (f0 ∷ f1 ∷ f2 ∷ [])} unit (atᶜ 0))))))
-    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J ⟶ᵀF.DF (PT⟶ᵀHom₈ᶜ0.CASE j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
+    dq₂ = subst (λ z → ◇ ⊢ q ∷ El (dpay RedTₘ.J (⟶ᵀF.DF q𝒮) (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 j z (c ,ₚ p ,ₚ unit)))) (quote-hdTy a0) dq₁
     dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⟶ᵀHom₈ᶜ0.case-any {j = j} {q = pfTy a0} {c = (c ,ₚ p ,ₚ unit)} (atᵍ 0) (nhTy a0)))))
 

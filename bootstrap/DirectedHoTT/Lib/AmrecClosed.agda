@@ -35,20 +35,16 @@ import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Lib.AmrecClosed (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
-private
-  n = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 n wf
-  refs = Entries.refsOK 𝒮 n (λ p → p) wf
 
 open import DirectedHoTT.Spec.Syntax
   using ( ε; _∙; RTy; RTm; U; Nat; natrec; app; subTm; extS )
-open import DirectedHoTT.Spec.Typing 𝒮 n
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
   using ( ◇; _▹_; single; _⊢_∷_; _⊢ty_; _⟶*_ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢[] )
-open import DirectedHoTT.Lib.Strong 𝒮 n using ( reflTm )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢[] )
+open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( reflTm )
 open import DirectedHoTT.Lib.NatVal 𝒮 using ( NatVal; nv-zero; nv-suc )
 open import DirectedHoTT.Lib.NatEval 𝒮 wf using ( natEval )
-open import DirectedHoTT.Lib.Amrec 𝒮 n using ( aStepT; module AmTΠ )
+open import DirectedHoTT.Lib.Amrec 𝒮 (Defs.size 𝒮) using ( aStepT; module AmTΠ )
 
 ------------------------------------------------------------------------
 -- ★★ AT A CLOSED CARRIER, THE UNFOLDING'S PREMISE IS FREE.

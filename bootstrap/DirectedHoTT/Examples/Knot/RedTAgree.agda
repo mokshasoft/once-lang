@@ -13,81 +13,78 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
-module DirectedHoTT.Examples.Knot.RedTAgree (𝒮 : Defs) (wf : WfK 𝒮) where
-
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PwCore as Core₀
+module DirectedHoTT.Examples.Knot.RedTAgree (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-trans )
 open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Red 𝒮 wf using ( El-⌜⟶⌝ )
-open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf using ( K⟶ᵀ )
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core using ( El-⌜⟶⌝ )
+open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core using ( K⟶ᵀ )
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
-open import DirectedHoTT.Examples.Knot.RedAgree 𝒮 wf using ( enRed )
-open import DirectedHoTT.Examples.Knot.RedTConGen 𝒮 wf
+open import DirectedHoTT.Examples.Knot.RedAgree 𝒮 wf core using ( enRed )
+open import DirectedHoTT.Examples.Knot.RedTConGen 𝒮 wf core
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; ⊢q𝒮 )
 
-enRedT : {Γ : Cx} {A B : RTy Γ} → A ⟶ᵀ B → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ᵀ (dep Γ) (quoteTy A) (quoteTy B))
+enRedT : {Γ : Cx} {A B : RTy Γ} → A ⟶ᵀ B → {Θ : Ctx} → Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ K⟶ᵀ q𝒮 (dep Γ) (quoteTy A) (quoteTy B))
 
-enRedT {Γ} (ξ-El {_} {t} {t'} r) = _ , con⟶ᵀEl₁ (⊢dep' Γ) (⊢quoteTm t) (⊢quoteTm t') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-Πˡ {_} {A} {A'} {B} r) = _ , con⟶ᵀPi₁ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy A') (Σ.snd (enRedT r))
-enRedT {Γ} (ξ-Πʳ {_} {A} {B} {B'} r) = _ , con⟶ᵀPi₂ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy B') (Σ.snd (enRedT r))
-enRedT {Γ} (ξ-Σˡ {_} {A} {A'} {B} r) = _ , con⟶ᵀSg₁ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy A') (Σ.snd (enRedT r))
-enRedT {Γ} (ξ-Σʳ {_} {A} {B} {B'} r) = _ , con⟶ᵀSg₂ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy B') (Σ.snd (enRedT r))
-enRedT {Γ} (ξ-Homᵀ {_} {A} {A'} {t} {u} r) = _ , con⟶ᵀHom₁ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTy A') (Σ.snd (enRedT r))
-enRedT {Γ} (ξ-Homˡ {_} {A} {t} {t'} {u} r) = _ , con⟶ᵀHom₂ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm t') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-Homʳ {_} {A} {t} {u} {u'} r) = _ , con⟶ᵀHom₃ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm u') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-Idᵀ {_} {A} {A'} {t} {u} r) = _ , con⟶ᵀId₁ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTy A') (Σ.snd (enRedT r))
-enRedT {Γ} (ξ-Idˡ {_} {A} {t} {t'} {u} r) = _ , con⟶ᵀId₂ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm t') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-Idʳ {_} {A} {t} {u} {u'} r) = _ , con⟶ᵀId₃ (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm u') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-IMuᴵ {_} {I} {I'} {D} {i} r) = _ , con⟶ᵀIMu₁ (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm I') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-IMuᴰ {_} {I} {D} {D'} {i} r) = _ , con⟶ᵀIMu₂ (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm D') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-IMuⁱ {_} {I} {D} {i} {i'} r) = _ , con⟶ᵀIMu₃ (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm i') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-Desc {_} {I} {I'} r) = _ , con⟶ᵀDesc (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm I') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-Fin {_} {n} {n'} r) = _ , con⟶ᵀFin (⊢dep' Γ) (⊢quoteTm n) (⊢quoteTm n') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-DIhᴰ {_} {D} {D'} {C} {p} {M} r) = _ , con⟶ᵀDIh₁ (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm D') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-DIhᴹ {_} {D} {C} {p} {M} {M'} r) = _ , con⟶ᵀDIh₂ (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTy M') (Σ.snd (enRedT r))
-enRedT {Γ} (ξ-DIhᶜ {_} {D} {C} {C'} {p} {M} r) = _ , con⟶ᵀDIh₃ (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm C') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} (ξ-DIhᵖ {_} {D} {C} {p} {p'} {M} r) = _ , con⟶ᵀDIh₄ (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm p') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
-enRedT {Γ} El-⌜base⌝ = _ , con⟶ᵀEl₂ dj
+enRedT {Γ} (ξ-El {_} {t} {t'} r) = _ , con⟶ᵀEl₁ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm t) (⊢quoteTm t') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-Πˡ {_} {A} {A'} {B} r) = _ , con⟶ᵀPi₁ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy A') (Σ.snd (enRedT r))
+enRedT {Γ} (ξ-Πʳ {_} {A} {B} {B'} r) = _ , con⟶ᵀPi₂ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy B') (Σ.snd (enRedT r))
+enRedT {Γ} (ξ-Σˡ {_} {A} {A'} {B} r) = _ , con⟶ᵀSg₁ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy A') (Σ.snd (enRedT r))
+enRedT {Γ} (ξ-Σʳ {_} {A} {B} {B'} r) = _ , con⟶ᵀSg₂ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTy B) (⊢quoteTy B') (Σ.snd (enRedT r))
+enRedT {Γ} (ξ-Homᵀ {_} {A} {A'} {t} {u} r) = _ , con⟶ᵀHom₁ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTy A') (Σ.snd (enRedT r))
+enRedT {Γ} (ξ-Homˡ {_} {A} {t} {t'} {u} r) = _ , con⟶ᵀHom₂ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm t') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-Homʳ {_} {A} {t} {u} {u'} r) = _ , con⟶ᵀHom₃ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm u') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-Idᵀ {_} {A} {A'} {t} {u} r) = _ , con⟶ᵀId₁ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTy A') (Σ.snd (enRedT r))
+enRedT {Γ} (ξ-Idˡ {_} {A} {t} {t'} {u} r) = _ , con⟶ᵀId₂ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm t') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-Idʳ {_} {A} {t} {u} {u'} r) = _ , con⟶ᵀId₃ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTy A) (⊢quoteTm t) (⊢quoteTm u) (⊢quoteTm u') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-IMuᴵ {_} {I} {I'} {D} {i} r) = _ , con⟶ᵀIMu₁ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm I') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-IMuᴰ {_} {I} {D} {D'} {i} r) = _ , con⟶ᵀIMu₂ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm D') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-IMuⁱ {_} {I} {D} {i} {i'} r) = _ , con⟶ᵀIMu₃ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i) (⊢quoteTm i') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-Desc {_} {I} {I'} r) = _ , con⟶ᵀDesc ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm I) (⊢quoteTm I') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-Fin {_} {n} {n'} r) = _ , con⟶ᵀFin ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm n) (⊢quoteTm n') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-DIhᴰ {_} {D} {D'} {C} {p} {M} r) = _ , con⟶ᵀDIh₁ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm D') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-DIhᴹ {_} {D} {C} {p} {M} {M'} r) = _ , con⟶ᵀDIh₂ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTy M') (Σ.snd (enRedT r))
+enRedT {Γ} (ξ-DIhᶜ {_} {D} {C} {C'} {p} {M} r) = _ , con⟶ᵀDIh₃ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm C') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} (ξ-DIhᵖ {_} {D} {C} {p} {p'} {M} r) = _ , con⟶ᵀDIh₄ ⊢q𝒮 (⊢dep' Γ) (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm C) (⊢quoteTm p) (⊢quoteTm p') (⊢conv (Σ.snd (enRed r)) (csymᵀ El-⌜⟶⌝))
+enRedT {Γ} El-⌜base⌝ = _ , con⟶ᵀEl₂ ⊢q𝒮 dj
   where dj = ⊢dep' Γ
-enRedT {Γ} (El-⌜Π⌝ c d) = _ , con⟶ᵀEl₃ dj (⊢quoteTm c) (⊢quoteTm d)
+enRedT {Γ} (El-⌜Π⌝ c d) = _ , con⟶ᵀEl₃ ⊢q𝒮 dj (⊢quoteTm c) (⊢quoteTm d)
   where dj = ⊢dep' Γ
-enRedT {Γ} (El-⌜Σ⌝ c d) = _ , con⟶ᵀEl₄ dj (⊢quoteTm c) (⊢quoteTm d)
+enRedT {Γ} (El-⌜Σ⌝ c d) = _ , con⟶ᵀEl₄ ⊢q𝒮 dj (⊢quoteTm c) (⊢quoteTm d)
   where dj = ⊢dep' Γ
-enRedT {Γ} (El-⌜Hom⌝ c a b) = _ , con⟶ᵀEl₅ dj (⊢quoteTm c) (⊢quoteTm a) (⊢quoteTm b)
+enRedT {Γ} (El-⌜Hom⌝ c a b) = _ , con⟶ᵀEl₅ ⊢q𝒮 dj (⊢quoteTm c) (⊢quoteTm a) (⊢quoteTm b)
   where dj = ⊢dep' Γ
-enRedT {Γ} (El-⌜Id⌝ c a b) = _ , con⟶ᵀEl₆ dj (⊢quoteTm c) (⊢quoteTm a) (⊢quoteTm b)
+enRedT {Γ} (El-⌜Id⌝ c a b) = _ , con⟶ᵀEl₆ ⊢q𝒮 dj (⊢quoteTm c) (⊢quoteTm a) (⊢quoteTm b)
   where dj = ⊢dep' Γ
-enRedT {Γ} El-⌜Nat⌝ = _ , con⟶ᵀEl₇ dj
+enRedT {Γ} El-⌜Nat⌝ = _ , con⟶ᵀEl₇ ⊢q𝒮 dj
   where dj = ⊢dep' Γ
-enRedT {Γ} (El-⌜IMu⌝ {_} {I} {D} {i}) = _ , con⟶ᵀEl₈ dj (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i)
+enRedT {Γ} (El-⌜IMu⌝ {_} {I} {D} {i}) = _ , con⟶ᵀEl₈ ⊢q𝒮 dj (⊢quoteTm I) (⊢quoteTm D) (⊢quoteTm i)
   where dj = ⊢dep' Γ
-enRedT {Γ} (El-⌜Fin⌝ {_} {n}) = _ , con⟶ᵀEl₉ dj (⊢quoteTm n)
+enRedT {Γ} (El-⌜Fin⌝ {_} {n}) = _ , con⟶ᵀEl₉ ⊢q𝒮 dj (⊢quoteTm n)
   where dj = ⊢dep' Γ
-enRedT {Γ} El-⌜Unit⌝ = _ , con⟶ᵀEl₁₀ dj
+enRedT {Γ} El-⌜Unit⌝ = _ , con⟶ᵀEl₁₀ ⊢q𝒮 dj
   where dj = ⊢dep' Γ
-enRedT {Γ} (DIh-ι D M p) = _ , con⟶ᵀDIh₅ dj (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm p)
+enRedT {Γ} (DIh-ι D M p) = _ , con⟶ᵀDIh₅ ⊢q𝒮 dj (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm p)
   where dj = ⊢dep' Γ
-enRedT {Γ} (DIh-σ D M S f p) = _ , con⟶ᵀDIh₆ dj (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm p) (⊢quoteTm S) (⊢quoteTm f)
+enRedT {Γ} (DIh-σ D M S f p) = _ , con⟶ᵀDIh₆ ⊢q𝒮 dj (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm p) (⊢quoteTm S) (⊢quoteTm f)
   where dj = ⊢dep' Γ
-enRedT {Γ} (DIh-ρ D M j C p) = _ , ⊢conv (con⟶ᵀDIh₇ dj (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm p) (⊢quoteTm j) (⊢quoteTm C)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (⟶*-trans (node-1 (iinst-agree j (fst p) M)) (node-2 (⟶*-trans (node-1 (wk-agree-tm D)) (⟶*-trans (node-2 (wk2u-agree M)) (⟶*-trans (node-3 (wk-agree-tm C)) (node-4 (node-1 (wk-agree-tm p))))))))))))
+enRedT {Γ} (DIh-ρ D M j C p) = _ , ⊢conv (con⟶ᵀDIh₇ ⊢q𝒮 dj (⊢quoteTm D) (⊢quoteTy M) (⊢quoteTm p) (⊢quoteTm j) (⊢quoteTm C)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (⟶*-trans (node-1 (iinst-agree j (fst p) M)) (node-2 (⟶*-trans (node-1 (wk-agree-tm D)) (⟶*-trans (node-2 (wk2u-agree M)) (⟶*-trans (node-3 (wk-agree-tm C)) (node-4 (node-1 (wk-agree-tm p))))))))))))
   where dj = ⊢dep' Γ
-enRedT {Γ} (Hom-Nat-z n) = _ , con⟶ᵀHom₄ dj (⊢quoteTm n)
+enRedT {Γ} (Hom-Nat-z n) = _ , con⟶ᵀHom₄ ⊢q𝒮 dj (⊢quoteTm n)
   where dj = ⊢dep' Γ
-enRedT {Γ} (Hom-Nat-sz m) = _ , con⟶ᵀHom₅ dj (⊢quoteTm m)
+enRedT {Γ} (Hom-Nat-sz m) = _ , con⟶ᵀHom₅ ⊢q𝒮 dj (⊢quoteTm m)
   where dj = ⊢dep' Γ
-enRedT {Γ} (Hom-Nat-ss m n) = _ , con⟶ᵀHom₆ dj (⊢quoteTm m) (⊢quoteTm n)
+enRedT {Γ} (Hom-Nat-ss m n) = _ , con⟶ᵀHom₆ ⊢q𝒮 dj (⊢quoteTm m) (⊢quoteTm n)
   where dj = ⊢dep' Γ
-enRedT {Γ} (Hom-U c d) = _ , ⊢conv (con⟶ᵀHom₇ dj (⊢quoteTm c) (⊢quoteTm d)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (node-2 (node-1 (wk-agree-tm d)))))))
+enRedT {Γ} (Hom-U c d) = _ , ⊢conv (con⟶ᵀHom₇ ⊢q𝒮 dj (⊢quoteTm c) (⊢quoteTm d)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (node-2 (node-1 (wk-agree-tm d)))))))
   where dj = ⊢dep' Γ
-enRedT {Γ} (Hom-Π A B f g) = _ , ⊢conv (con⟶ᵀHom₈ dj (⊢quoteTm f) (⊢quoteTm g) (⊢quoteTy A) (⊢quoteTy B)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (node-2 (⟶*-trans (node-2 (node-1 (wk-agree-tm f))) (node-3 (node-1 (wk-agree-tm g)))))))))
+enRedT {Γ} (Hom-Π A B f g) = _ , ⊢conv (con⟶ᵀHom₈ ⊢q𝒮 dj (⊢quoteTm f) (⊢quoteTm g) (⊢quoteTy A) (⊢quoteTy B)) (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-pairʳ (node-2 (⟶*-trans (node-2 (node-1 (wk-agree-tm f))) (node-3 (node-1 (wk-agree-tm g)))))))))
   where dj = ⊢dep' Γ

@@ -23,28 +23,25 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Examples.Knot.QuoteSig (𝒮 : Defs) (wf : WfK 𝒮) where
 
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _⊎_; inj₁; inj₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _⊎_; inj₁; inj₂; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc; _+_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-appˡ )
-open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( toI; fromI )
-open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num; num-sub; ⊢num )
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Lt; lt-z; lt-s )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-appˡ; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ )
+open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( El-homNat )
+open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( toI; fromI )
+open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num; num-sub; ⊢num )
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Lt; lt-z; lt-s )
 open import DirectedHoTT.Lib.SynUnq 𝒮 wf using ( ⌜⌝ˢ-sub )
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf using ( K )
-open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf using ( quoteTy; quoteTm; ⊢quoteTy; ⊢quoteTm )
-open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf using ( toTy; toTm; quote-toTy; quote-toTm )
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf using ( quoteℕ; quoteTy; quoteTm; ⊢quoteTy; ⊢quoteTm )
+open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf using ( toTy; toTm; quote-toTy; quote-toTm; quoteℕ-num )
 open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf
+open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( consistency )
 
 private
   variable
@@ -257,3 +254,70 @@ module _ (𝒯 : Defs) where
       dtabs : Ξ ⊢ pair (⌜types⌝ 𝒯) (⌜bodies⌝ 𝒯) ∷ El ⌜Tabs⌝
       dtabs = ⊢conv (⊢pair (ty-El ⊢⌜Bds⌝) dL (⊢-cast (sym (cong El (⌜Bds⌝-sub (single (⌜types⌝ 𝒯))))) dB))
                     (csymᵀ (credᵀ (El-⌜Σ⌝ ⌜Tys⌝ ⌜Bds⌝)))
+
+------------------------------------------------------------------------
+-- 6. ★ THE AMBIENT SIGNATURE, quoted: the parameter a decoder reads a
+--    closed derivation at (reduction: `q𝒮`; typing, with the bound: `t𝒮`).
+------------------------------------------------------------------------
+
+q𝒮 : RTm Δ
+q𝒮 = quoteDefs 𝒮
+
+t𝒮 : RTm Δ
+t𝒮 = pair q𝒮 (num (Defs.size 𝒮))
+
+⊢q𝒮 : {Ξ : Ctx} → Ξ ⊢ q𝒮 ∷ El ⌜QSig⌝
+⊢q𝒮 = ⊢quoteDefs 𝒮
+
+⊢t𝒮 : {Ξ : Ctx} → Ξ ⊢ t𝒮 ∷ El ⌜TSig⌝
+⊢t𝒮 = ⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) ⊢q𝒮 (toI (⊢num (Defs.size 𝒮)))) (csymᵀ (credᵀ (El-⌜Σ⌝ ⌜QSig⌝ ⌜Nat⌝)))
+
+------------------------------------------------------------------------
+-- 7. The order on names, decoded: a closed proof of `d + 1 ≤ m` (the
+--    kernel's COMPUTING `Hom Nat`) at numerals is `d <ˢ m` — by the
+--    computation and, at `m = 0`, consistency.
+------------------------------------------------------------------------
+
+private
+  z<s : (m : ℕ) → zero <ˢ suc m
+  z<s zero    = <-here
+  z<s (suc m) = <-there (z<s m)
+
+  s<s : {d m : ℕ} → d <ˢ m → suc d <ˢ suc m
+  s<s <-here      = <-here
+  s<s (<-there p) = <-there (s<s p)
+
+homLt : (d m : ℕ) {h : RTm ε} → ◇ ⊢ h ∷ Hom Nat (nsuc (num d)) (num m) → d <ˢ m
+homLt d       zero    dh = ⊥-elim (consistency (⊢conv dh (credᵀ (Hom-Nat-sz (num d)))))
+homLt zero    (suc m) dh = z<s m
+homLt (suc d) (suc m) dh = s<s (homLt d m (⊢conv dh (credᵀ (Hom-Nat-ss (nsuc (num d)) (num m)))))
+
+-- …and back: below the size, `d + 1 ≤ m` COMPUTES to `Unit`
+private
+  lt-pred : {d m : ℕ} → suc d <ˢ m → d <ˢ m
+  lt-pred <-here      = <-there <-here
+  lt-pred (<-there p) = <-there (lt-pred p)
+
+  lt-ss : {d m : ℕ} → suc d <ˢ suc m → d <ˢ m
+  lt-ss <-here      = <-here
+  lt-ss (<-there p) = lt-pred p
+
+homLt⁻ : (d m : ℕ) → d <ˢ m → Hom {Δ} Nat (nsuc (num d)) (num m) ⟶ᵀ* Unit
+homLt⁻ d       zero    ()
+homLt⁻ zero    (suc m) _ = stepᵀ (Hom-Nat-ss nzero (num m)) (stepᵀ (Hom-Nat-z (num m)) doneᵀ)
+homLt⁻ (suc d) (suc m) p = stepᵀ (Hom-Nat-ss (nsuc (num d)) (num m)) (homLt⁻ d m (lt-ss p))
+
+private
+  -- the side condition's code at a quoted name, at numerals
+  homAt : (d : ℕ) (m : RTm Δ) {m' : ℕ} → m ⟶* num m' →
+          El (⌜Hom⌝ ⌜Nat⌝ (nsuc (quoteℕ d)) m) ⟶ᵀ* Hom Nat (nsuc (num d)) (num m')
+  homAt d m r = ⟶ᵀ*-trans (El-homNat _ _)
+                  (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟶*-nsuc (subst (λ z → quoteℕ d ⟶* z) (quoteℕ-num d) done))) (⟶ᵀ*-Homʳ r))
+
+-- ★ a name below the signature's size / the typing bound, as the δ / ⊢ref
+--   rows' side condition at the quoted ambient signature
+⊢below : {Ξ : Ctx} {d : ℕ} → d <ˢ Defs.size 𝒮 → Ξ ⊢ unit ∷ El (⌜Hom⌝ ⌜Nat⌝ (nsuc (quoteℕ d)) (sizeQ q𝒮))
+⊢below {d = d} lt = ⊢conv ⊢unit (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans (homAt d _ (sizeQ-at 𝒮)) (homLt⁻ d _ lt))))
+
+⊢belowT : {Ξ : Ctx} {d : ℕ} → d <ˢ (Defs.size 𝒮) → Ξ ⊢ unit ∷ El (⌜Hom⌝ ⌜Nat⌝ (nsuc (quoteℕ d)) (boundT t𝒮))
+⊢belowT {d = d} lt = ⊢conv ⊢unit (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans (homAt d _ (step (βsnd _ _) done)) (homLt⁻ d _ lt))))

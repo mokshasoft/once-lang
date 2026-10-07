@@ -10,23 +10,22 @@
 --
 --     ⌜Pw⌝ d t u = ⌜IMu⌝ (ref #PwJ) (ref #PwD) (ixPw d t u)
 --
+-- ★ PLAN-REF (D082): a reference is a projection from the AMBIENT
+--   signature, so this module is over any signature that CONTAINS the
+--   core (`core : Kc ⊑ᴰ 𝒮`, `Spec/SigExtend`) — the Knot citing the core
+--   is typed in a context extending it.
+--
 --   · `⌜Pw⌝-sub` is `refl` (references are closed);
---   · `⊢⌜Pw⌝` is `⊢⌜IMu⌝` on the kernel's `⊢ref` of the two entries,
---     typed by the signature's well-formedness (`wf→ok`: the checker's
---     output), the index cast by a certified conversion;
+--   · `⊢⌜Pw⌝` is `⊢⌜IMu⌝` on `⊢ref` — no premise: the name is below the
+--     bound and its declared type is the core's (`core`), the index cast
+--     by a certified conversion;
 --   · `El-⌜Pw⌝` decodes to the Knot's own `KPw`: the core's index and
---     description are CONVERTIBLE with the Knot's (`nbe-sound` on both
---     sides, normal forms decided equal).
+--     description are CONVERTIBLE with the Knot's — decided ONCE, at the
+--     core itself, by NbE (`nbe-sound` at its value table, normal forms
+--     decided equal), and carried to the ambient signature by
+--     monotonicity (`Metatheory/SigExt.ext≅`).
 --
--- Each conversion is proved ONCE on closed terms and weakened.  The
--- Knot's pieces are Agda-opaque, hence the `unfolding`.
---
--- ⚠ Agda costs, measured 2026-10-06: Agda compares two DIFFERENTLY WRITTEN
---   forms of one erased body or type by descending through the erasure,
---   into every body it references (the rows' cascade: >300 s, OOM).  So
---   an entry's typing `wf→ok …` has its type INFERRED (`_`), a reference's
---   body is written exactly as that typing carries it, and implicits
---   hiding a substituted term are pinned (`≅-sub σ {t} {u}`).
+-- The Knot's pieces are Agda-opaque, hence the `unfolding`.
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -34,52 +33,46 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Metatheory.Entries as Entries
-module DirectedHoTT.Examples.Knot.PwCore (𝒮 : Defs) (wf : WfK 𝒮) where
+import DirectedHoTT.Examples.PwCore as P
+module DirectedHoTT.Examples.Knot.PwCore (𝒮 : Defs) (wf : WfK 𝒮) (core : P.Kc ⊑ᴰ 𝒮) where
 
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; ⊤; tt; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
-open import DirectedHoTT.Spec.Signature using ( Sig; <-here; <-there )
-open import DirectedHoTT.Metatheory.Signature using ( wf→ok )
-open import DirectedHoTT.Algorithm.NbE using ( nbe )
-open import DirectedHoTT.Algorithm.NbESound 𝒮 using ( nbe-sound; ≅-sub )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast )
+import DirectedHoTT.Spec.Reduction P.Kc as Rc
+import DirectedHoTT.Metatheory.SigExt P.Kc 𝒮 (_⊑ᴰ_.inc core) (_⊑ᴰ_.body≡ core) as X
+open import DirectedHoTT.Algorithm.NbETable using ( mkTbl; mkTbl-ok )
+open import DirectedHoTT.Algorithm.NbE (mkTbl P.Kc) using ( nbe )
+open import DirectedHoTT.Algorithm.NbESound P.Kc (mkTbl P.Kc) (mkTbl-ok P.Kc) using ( nbe-sound; ≅-sub )
 open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅ᵗ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Tm_ )
-import DirectedHoTT.Examples.PwCore as P
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf using ( K )
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf using ( CP; ixPw; ⊢ixPw; module Pwₘ )
 open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf using ( module PwF; KPw )
 import DirectedHoTT.Examples.Knot.Ren 𝒮 wf as KR
 import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf as JI
-import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok as LS
+import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) as LS
 
 private
   variable
     Δ : Cx
 
-  -- ★ the entries' bodies, typed in the empty context (types INFERRED)
-  okJ : _
-  okJ = wf→ok P.S P.wf {P.#PwJ} (<-there (<-there (<-there <-here)))
+  open _⊑ᴰ_ core
 
-  okD : _
-  okD = wf→ok P.S P.wf {P.#PwD} (<-there <-here)
+  -- the core's index and description, as references
+  Jc Dc : RTm Δ
+  Jc = ref P.#PwJ
+  Dc = ref P.#PwD
 
-  -- the core's index and description, as references — the bodies written
-  --   EXACTLY as the typings carry them: `⊢ref` pins its body both ways,
-  --   and two forms of one body are compared by descending through the
-  --   erasure, into every body it references (the rows: >300 s)
-  Jc : RTm Δ
-  Jc = ref P.#PwJ (Sig.body P.S P.#PwJ)
-  Dc : RTm Δ
-  Dc = ref P.#PwD (Sig.body P.S P.#PwD)
+  ltJ : P.#PwJ <ˢ Defs.size P.Kc
+  ltJ = <-there (<-there (<-there <-here))
+  ltD : P.#PwD <ˢ Defs.size P.Kc
+  ltD = <-there <-here
 
   IsYes : {X : Set} → Dec X → Set
   IsYes (yes _) = ⊤
@@ -87,29 +80,38 @@ private
   fromYes : {X : Set} (p : Dec X) → IsYes p → X
   fromYes (yes p) _ = p
 
-  ≡→≅ : {Γ : Cx} {t u : RTm Γ} → t ≡ u → t ≅ u
-  ≡→≅ refl = crfl
+  ≡→≅ᶜ : {Γ : Cx} {t u : RTm Γ} → t ≡ u → t Rc.≅ u
+  ≡→≅ᶜ refl = Rc.crfl
 
-  -- t ≅ u by their NbE normal forms, decided equal
-  byNbE : {Γ : Cx} (t u : RTm Γ) → IsYes (nbe 100000 t ≟Tm nbe 100000 u) → t ≅ u
-  byNbE t u y = ctrn (nbe-sound 100000 t) (ctrn (≡→≅ (fromYes _ y)) (csym (nbe-sound 100000 u)))
+  -- t ≅ u AT THE CORE, by their NbE normal forms, decided equal
+  byNbE : {Γ : Cx} (t u : RTm Γ) → IsYes (nbe 100000 t ≟Tm nbe 100000 u) → t Rc.≅ u
+  byNbE t u y = Rc.ctrn (nbe-sound 100000 t) (Rc.ctrn (≡→≅ᶜ (fromYes _ y)) (Rc.csym (nbe-sound 100000 u)))
+
+  -- a reference to a core entry, typed at its declared type
+  ⊢core : {Ξ : Ctx} {d : ℕ} → d <ˢ Defs.size P.Kc → Ξ ⊢ ref d ∷ εwkTy (Defs.type P.Kc d)
+  ⊢core {Ξ} {d} lt = ⊢-cast {Ξ} {ref d} {εwkTy (Defs.type 𝒮 d)} {εwkTy (Defs.type P.Kc d)}
+                            (cong εwkTy (sym (type≡ lt))) (⊢ref (inc lt))
 
 opaque
   unfolding PwF.FIBMₒ CP KR.wk JI.⌜Tm⌝ LS.SK
 
-  -- ★ the core's index and description ARE the Knot's (closed terms)
-  cJ₀ : Jc {ε} ≅ Pwₘ.J {ε}
+  -- ★ the core's index and description ARE the Knot's (closed terms, at the core)
+  cJ₀ : Jc {ε} Rc.≅ Pwₘ.J {ε}
   cJ₀ = byNbE _ _ tt
 
-  cD₀ : Dc {ε} ≅ PwF.DF {ε}
+  cD₀ : Dc {ε} Rc.≅ PwF.DF {ε} unit
   cD₀ = byNbE _ _ tt
 
 private
-  cJ : Jc {Δ} ≅ Pwₘ.J {Δ}
-  cJ = ctrn (≅-sub εsub {Jc} {Pwₘ.J} cJ₀) (≡→≅ (Pwₘ.J-sub εsub))
+  ≡→≅ : {Γ : Cx} {t u : RTm Γ} → t ≡ u → t ≅ u
+  ≡→≅ refl = crfl
 
-  cD : Dc {Δ} ≅ PwF.DF {Δ}
-  cD = ctrn (≅-sub εsub {Dc} {PwF.DF} cD₀) (≡→≅ (PwF.DF-sub εsub))
+  -- …in every context, at every signature containing the core
+  cJ : Jc {Δ} ≅ Pwₘ.J {Δ}
+  cJ = ctrn (X.ext≅ (≅-sub εsub {Jc} {Pwₘ.J} cJ₀)) (≡→≅ (Pwₘ.J-sub εsub))
+
+  cD : Dc {Δ} ≅ PwF.DF {Δ} unit
+  cD = ctrn (X.ext≅ (≅-sub εsub {Dc} {PwF.DF unit} cD₀)) (≡→≅ (PwF.DF-sub εsub unit))
 
 opaque
   ⌜Pw⌝ : RTm Δ → RTm Δ → RTm Δ → RTm Δ
@@ -120,7 +122,7 @@ opaque
 
   ⊢⌜Pw⌝ : {Ξ : Ctx} {d t u : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ t ∷ K 1 d → Ξ ⊢ u ∷ K 1 (nsuc d) → Ξ ⊢ ⌜Pw⌝ d t u ∷ U
   ⊢⌜Pw⌝ dd dt du =
-    ⊢⌜IMu⌝ (⊢ref okJ) (⊢ref okD) (⊢conv (⊢ixPw dd dt du) (cong≅ᵗ El ξ-El (csym cJ)))
+    ⊢⌜IMu⌝ (⊢core ltJ) (⊢core ltD) (⊢conv (⊢ixPw dd dt du) (cong≅ᵗ El ξ-El (csym cJ)))
 
   El-⌜Pw⌝ : {d t u : RTm Δ} → El (⌜Pw⌝ d t u) ≅ᵀ KPw d t u
   El-⌜Pw⌝ {d = d} {t} {u} =

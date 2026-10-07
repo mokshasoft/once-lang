@@ -5,13 +5,9 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
-module DirectedHoTT.Examples.Knot.RedTDecode (𝒮 : Defs) (wf : WfK 𝒮) where
-
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PwCore as Core₀
+module DirectedHoTT.Examples.Knot.RedTDecode (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
 ------------------------------------------------------------------------
@@ -30,16 +26,16 @@ private
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody; stkA?; stkC? )
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
 open ᴵRedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; tag; atᶜ; v₀; v₁; v₂; v₃; v₄; v₅; v₆; v₇; _,ₚ_; nth-z; nth-s )
-open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; conₗ; tag; atᶜ; v₀; v₁; v₂; v₃; v₄; v₅; v₆; v₇; _,ₚ_; nth-z; nth-s )
+open import DirectedHoTT.Lib.SynRed 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Lib.Decode 𝒮 wf
 open import DirectedHoTT.Lib.PatDecode 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
@@ -56,63 +52,66 @@ open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.NestIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf
-open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf using ( El-⌜Pw⌝ )
+open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf core using ( El-⌜Pw⌝ )
 open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Red 𝒮 wf
-open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core
+open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
-open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf using ( decPw )
+open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf core using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf
 open import DirectedHoTT.Lib.RowsElim 𝒮 wf
-open import DirectedHoTT.Examples.Knot.RedCompDecode 𝒮 wf
-open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf using ( decRed )
-open import DirectedHoTT.Examples.Knot.Ref 𝒮 wf using ( Tδ )
-open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecᶻ )
+open import DirectedHoTT.Examples.Knot.RedCompDecode 𝒮 wf core
+open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf core using ( decRed )
+open import DirectedHoTT.Examples.Knot.Ref 𝒮 wf using ( Tδ; TδT; TδT-sub )
+open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-appʳ; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ )
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; homLt; sizeQ-at; bodiesQ-at )
+open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( sizeQ; bodiesQ )
+open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( El-homNat )
 
 
 open ᴵRedTDecodeXi
 
-import DirectedHoTT.Examples.Knot.RedTDecodeXi 𝒮 wf as ᴵRedTDecodeXi
+import DirectedHoTT.Examples.Knot.RedTDecodeXi 𝒮 wf core as ᴵRedTDecodeXi
 decRedT : {Γ : Cx} (t : RTy Γ) {u : RTy Γ} {k : RTm ε} →
-  ◇ ⊢ k ∷ IMu RedTₘ.J ⟶ᵀF.DF (ix⟶ᵀ (dep Γ) (quoteTy t) (quoteTy u)) → IsNormal k → t ⟶ᵀ u
+  ◇ ⊢ k ∷ IMu RedTₘ.J (⟶ᵀF.DF q𝒮) (ix⟶ᵀ (dep Γ) (quoteTy t) (quoteTy u)) → IsNormal k → t ⟶ᵀ u
 
-decRedT {Γ} base {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 0} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 0)) dk nrm)
-decRedT {Γ} U {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 1} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 1)) dk nrm)
+decRedT {Γ} base {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 0} {q = q𝒮} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 0)) dk nrm)
+decRedT {Γ} U {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 1} {q = q𝒮} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 1)) dk nrm)
 decRedT {Γ} (Π a0 a1) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (Π a0 a1)) (quoteTy u)} {m = 2} {Cs = ⌜ T⟶ᵀPi₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 2} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 2)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (Π a0 a1)) (quoteTy u)} {m = 2} {Cs = ⌜ T⟶ᵀPi₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀPi₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 2} {q = q𝒮} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 2)) dk nrm)
     (d⟶ᵀPi₍0₎ a0 a1 (decRedT a0) u , (d⟶ᵀPi₍1₎ a0 a1 (decRedT a1) u , tt))
 decRedT {Γ} (Σ' a0 a1) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (Σ' a0 a1)) (quoteTy u)} {m = 2} {Cs = ⌜ T⟶ᵀSg₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 3} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 3)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (Σ' a0 a1)) (quoteTy u)} {m = 2} {Cs = ⌜ T⟶ᵀSg₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀSg₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 3} {q = q𝒮} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 3)) dk nrm)
     (d⟶ᵀSg₍0₎ a0 a1 (decRedT a0) u , (d⟶ᵀSg₍1₎ a0 a1 (decRedT a1) u , tt))
 decRedT {Γ} (El a0) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (El a0)) (quoteTy u)} {m = 10} {Cs = ⌜ T⟶ᵀEl₁ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 4} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 4)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (El a0)) (quoteTy u)} {m = 10} {Cs = ⌜ T⟶ᵀEl₁ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ (PT⟶ᵀEl₂ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₃ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₉ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀEl₁₀ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTm a0) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ unit) ,ₚ unit)) ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 4} {q = q𝒮} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 4)) dk nrm)
     (d⟶ᵀEl₍0₎ a0 u , (cd⟶ᵀEl₍1₎ a0 u , (cd⟶ᵀEl₍2₎ a0 u , (cd⟶ᵀEl₍3₎ a0 u , (cd⟶ᵀEl₍4₎ a0 u , (cd⟶ᵀEl₍5₎ a0 u , (cd⟶ᵀEl₍6₎ a0 u , (cd⟶ᵀEl₍7₎ a0 u , (cd⟶ᵀEl₍8₎ a0 u , (cd⟶ᵀEl₍9₎ a0 u , tt))))))))))
 decRedT {Γ} (Hom a0 a1 a2) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (Hom a0 a1 a2)) (quoteTy u)} {m = 8} {Cs = ⌜ T⟶ᵀHom₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 5} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 5)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (Hom a0 a1 a2)) (quoteTy u)} {m = 8} {Cs = ⌜ T⟶ᵀHom₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀHom₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀHom₃ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ (PT⟶ᵀHom₄ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₅ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₆ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₇ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀHom₈ᶜ0.CASE q𝒮 (dep Γ) (fst ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)) ((quoteTy u) ,ₚ ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ,ₚ unit)) ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 5} {q = q𝒮} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 5)) dk nrm)
     (d⟶ᵀHom₍0₎ a0 a1 a2 (decRedT a0) u , (d⟶ᵀHom₍1₎ a0 a1 a2 u , (d⟶ᵀHom₍2₎ a0 a1 a2 u , (cd⟶ᵀHom₍3₎ a0 a1 a2 u , (cd⟶ᵀHom₍4₎ a0 a1 a2 u , (cd⟶ᵀHom₍5₎ a0 a1 a2 u , (cd⟶ᵀHom₍6₎ a0 a1 a2 u , (cd⟶ᵀHom₍7₎ a0 a1 a2 u , tt))))))))
-decRedT {Γ} Unit {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 6} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 6)) dk nrm)
-decRedT {Γ} Nat {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 7} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 7)) dk nrm)
+decRedT {Γ} Unit {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 6} {q = q𝒮} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 6)) dk nrm)
+decRedT {Γ} Nat {u} dk nrm = ⊥-elim (rows-none (⟶ᵀF.fibF {s = 0} {k = 7} {q = q𝒮} {j = dep Γ} {c = quoteTy u} (atᵍ 0) (atʰ 7)) dk nrm)
 decRedT {Γ} (Id a0 a1 a2) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (Id a0 a1 a2)) (quoteTy u)} {m = 3} {Cs = ⌜ T⟶ᵀId₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 8} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 8)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (Id a0 a1 a2)) (quoteTy u)} {m = 3} {Cs = ⌜ T⟶ᵀId₁ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀId₂ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀId₃ q𝒮 (dep Γ) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 8} {q = q𝒮} {j = dep Γ} {p = ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 8)) dk nrm)
     (d⟶ᵀId₍0₎ a0 a1 a2 (decRedT a0) u , (d⟶ᵀId₍1₎ a0 a1 a2 u , (d⟶ᵀId₍2₎ a0 a1 a2 u , tt)))
 decRedT {Γ} (IMu a0 a1 a2) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (IMu a0 a1 a2)) (quoteTy u)} {m = 3} {Cs = ⌜ T⟶ᵀIMu₁ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 9} {j = dep Γ} {p = ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 9)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (IMu a0 a1 a2)) (quoteTy u)} {m = 3} {Cs = ⌜ T⟶ᵀIMu₁ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₂ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀIMu₃ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 9} {q = q𝒮} {j = dep Γ} {p = ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 9)) dk nrm)
     (d⟶ᵀIMu₍0₎ a0 a1 a2 u , (d⟶ᵀIMu₍1₎ a0 a1 a2 u , (d⟶ᵀIMu₍2₎ a0 a1 a2 u , tt)))
 decRedT {Γ} (Desc a0) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (Desc a0)) (quoteTy u)} {m = 1} {Cs = ⌜ T⟶ᵀDesc q𝒮 (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 10} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 10)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (Desc a0)) (quoteTy u)} {m = 1} {Cs = ⌜ T⟶ᵀDesc q𝒮 (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 10} {q = q𝒮} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 10)) dk nrm)
     (d⟶ᵀDesc₍0₎ a0 u , tt)
 decRedT {Γ} (DIh a0 a1 a2 a3) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (DIh a0 a1 a2 a3)) (quoteTy u)} {m = 7} {Cs = ⌜ T⟶ᵀDIh₁ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)) ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 11} {j = dep Γ} {p = ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 11)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (DIh a0 a1 a2 a3)) (quoteTy u)} {m = 7} {Cs = ⌜ T⟶ᵀDIh₁ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₂ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₃ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ ⌜ T⟶ᵀDIh₄ q𝒮 (dep Γ) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ (PT⟶ᵀDIh₅ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀDIh₆ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)) ∷ (PT⟶ᵀDIh₇ᶜ0.CASE q𝒮 (dep Γ) (fst (snd (snd ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)))) ((quoteTy u) ,ₚ ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ,ₚ unit)) ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 11} {q = q𝒮} {j = dep Γ} {p = ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 11)) dk nrm)
     (d⟶ᵀDIh₍0₎ a0 a1 a2 a3 u , (d⟶ᵀDIh₍1₎ a0 a1 a2 a3 (decRedT a1) u , (d⟶ᵀDIh₍2₎ a0 a1 a2 a3 u , (d⟶ᵀDIh₍3₎ a0 a1 a2 a3 u , (cd⟶ᵀDIh₍4₎ a0 a1 a2 a3 u , (cd⟶ᵀDIh₍5₎ a0 a1 a2 a3 u , (cd⟶ᵀDIh₍6₎ a0 a1 a2 a3 u , tt)))))))
 decRedT {Γ} (RTy.Fin a0) {u} dk nrm =
-  rows-elim (rows-dec {I = RedTₘ.J} {D = ⟶ᵀF.DF} {i = ix⟶ᵀ (dep Γ) (quoteTy (RTy.Fin a0)) (quoteTy u)} {m = 1} {Cs = ⌜ T⟶ᵀFin q𝒮 (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
-    (⟶ᵀF.fibF {s = 0} {k = 12} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 12)) dk nrm)
+  rows-elim (rows-dec {I = RedTₘ.J} {D = (⟶ᵀF.DF q𝒮)} {i = ix⟶ᵀ (dep Γ) (quoteTy (RTy.Fin a0)) (quoteTy u)} {m = 1} {Cs = ⌜ T⟶ᵀFin q𝒮 (dep Γ) ((quoteTm a0) ,ₚ unit) (quoteTy u) ⌝ᵗ ∷ []}
+    (⟶ᵀF.fibF {s = 0} {k = 12} {q = q𝒮} {j = dep Γ} {p = ((quoteTm a0) ,ₚ unit)} {c = quoteTy u} (atᵍ 0) (atʰ 12)) dk nrm)
     (d⟶ᵀFin₍0₎ a0 u , tt)

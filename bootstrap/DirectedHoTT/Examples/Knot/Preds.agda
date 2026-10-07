@@ -15,24 +15,18 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Examples.Knot.Preds (𝒮 : Defs) (wf : WfK 𝒮) where
 
--- ★ PLAN-REF: over a well-formed signature, at all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
-
 
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_; _,ₚ_ )
-open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
-open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( ⊢isuc )
-open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
-open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( Row )
-open import DirectedHoTT.Lib.SynFam 𝒮 𝓃 ok using ( module SynFam )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_; _,ₚ_ )
+open import DirectedHoTT.Lib.SynView 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
+open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( ⊢isuc )
+open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
+open import DirectedHoTT.Lib.SynFib 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Row )
+open import DirectedHoTT.Lib.SynFam 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( module SynFam )
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( rows; ⊢rows )
 open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( defRow )

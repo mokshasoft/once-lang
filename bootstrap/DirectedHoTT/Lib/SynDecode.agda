@@ -25,25 +25,20 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Lib.SynDecode (𝒮 : Defs) (wf : WfK 𝒮) where
 
--- ★ PLAN-REF: at a well-formed signature, all its names
-private
-  𝓃 = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 𝓃 wf
-  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-El; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; red→≅ᵀ; ⟶*-dpayᶜ; ⟶*-pairʳ )
-open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( wk-cancel-tm; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( wk-cancel-tm; ⊢-cast )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( tag; conₗ; Lt; lt-z; lt-s; selF-β; nth-sub )
-open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok using ( ⌜_⌝ᵗ; nth-⌜⌝ )
-open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok using ( nth-⌜⌝ₛₛ )
-open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok using ( fibₛ-β )
-open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( tag; conₗ; Lt; lt-z; lt-s; selF-β; nth-sub )
+open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( ⌜_⌝ᵗ; nth-⌜⌝ )
+open import DirectedHoTT.Lib.TelAt 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( nth-⌜⌝ₛₛ )
+open import DirectedHoTT.Lib.Sorted 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( fibₛ-β )
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Lib.Decode 𝒮 wf
 
 private

@@ -20,19 +20,15 @@ import DirectedHoTT.Metatheory.Entries as Entries
 module DirectedHoTT.Lib.PatDecode (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
-private
-  n = Defs.size 𝒮
-  ok = Entries.sigOK 𝒮 n wf
-  refs = Entries.refsOK 𝒮 n (λ p → p) wf
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
-open import DirectedHoTT.Lib.SynFib 𝒮 n ok using ( Row )
-open import DirectedHoTT.Lib.SynPat 𝒮 n ok using ( rowAt; rowAt-elim; noRow )
+open import DirectedHoTT.Lib.SynFib 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Row )
+open import DirectedHoTT.Lib.SynPat 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( rowAt; rowAt-elim; noRow )
 open import DirectedHoTT.Lib.Decode 𝒮 wf using ( pay-none )
 
 pat-hit : {I D q j pl c p : RTm ε} (s₀ h k : ℕ) {r : Row} →
