@@ -9,20 +9,30 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.ConvHead where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.ConvHead (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( Σ; _,_ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Examples.Knot.Sig using ( K )
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx; ⊢quoteCtx )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tmIx )
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
-open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
-open import DirectedHoTT.Examples.Knot.JudgeConGen
-open import DirectedHoTT.Examples.Knot.RefCon using ( conv⊢ref )
-open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf using ( K )
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( quoteCtx; ⊢quoteCtx )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( JT; tmIx )
+open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf using ( D⊢ )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf using ( ⌜≅ᵀ⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeConGen 𝒮 wf
+open import DirectedHoTT.Examples.Knot.RefCon 𝒮 wf using ( conv⊢ref )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( _,ₚ_ )
 
 ------------------------------------------------------------------------
 -- ★ The Knot's `⊢conv` rows are ONE PER SUBJECT HEAD (`conv⊢…`), so the

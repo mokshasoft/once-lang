@@ -14,32 +14,42 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.RefCon where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.RefCon (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-⌜Id⌝ʳ; ⟶*-natrecᶻ; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Lib.Sugar using ( []; _∷_; conₗ; lt-z; lt-s; atᶜ; v₀; v₁; v₂; v₃; _,ₚ_ )
-open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
-open import DirectedHoTT.Lib.SynRed using ( prj-tup; mono-by; σₗ; _∷ʳ_; []ʳ )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctors using ( ⊢kref )
-open import DirectedHoTT.Examples.Knot.Ren using ( εwkK; ⊢εwkK )
-open import DirectedHoTT.Examples.Knot.RedIx
-open import DirectedHoTT.Examples.Knot.Ctx using ( KCtx; ⌜Ty⌝; ⊢⌜Ty⌝; cε )
-open import DirectedHoTT.Examples.Knot.Lookup using ( toTy )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; ⊢JT; tmIx; ⊢tmIx; ⊢cTm; ⊢tyOf; ⌜Tm⌝; ⊢⌜Tm⌝; ⊢payK )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( toTm; w1 )
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢; ⊢D⊢; fibK )
-open import DirectedHoTT.Examples.Knot.JudgeConv using ( TCVat; ⊢payTCVat )
-open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
-open import DirectedHoTT.Examples.Knot.Red using ( module ⟶F )
-open import DirectedHoTT.Examples.Knot.Ref using ( bodyOf; Tδ; okTδ; allδ; ⊢bodyOf )
-open import DirectedHoTT.Examples.Knot.RefJudge using ( T⊢ref; T⊢ref⁽1⁾; T⊢ref⁽1⁾-sub; okT⊢ref; okT⊢ref⁽1⁾; all⊢ref )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-⌜Id⌝ʳ; ⟶*-natrecᶻ; ⟶*-dpayᶜ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( []; _∷_; conₗ; lt-z; lt-s; atᶜ; v₀; v₁; v₂; v₃; _,ₚ_ )
+open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( ⊢conRowₖ )
+open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok using ( prj-tup; mono-by; σₗ; _∷ʳ_; []ʳ )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctors 𝒮 wf using ( ⊢kref )
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( εwkK; ⊢εwkK )
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( KCtx; ⌜Ty⌝; ⊢⌜Ty⌝; cε )
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( toTy )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( JT; ⊢JT; tmIx; ⊢tmIx; ⊢cTm; ⊢tyOf; ⌜Tm⌝; ⊢⌜Tm⌝; ⊢payK )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( toTm; w1 )
+open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf using ( D⊢; ⊢D⊢; fibK )
+open import DirectedHoTT.Examples.Knot.JudgeConv 𝒮 wf using ( TCVat; ⊢payTCVat )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf using ( ⌜≅ᵀ⌝ )
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf using ( module ⟶F )
+open import DirectedHoTT.Examples.Knot.Ref 𝒮 wf using ( bodyOf; Tδ; okTδ; allδ; ⊢bodyOf )
+open import DirectedHoTT.Examples.Knot.RefJudge 𝒮 wf using ( T⊢ref; T⊢ref⁽1⁾; T⊢ref⁽1⁾-sub; okT⊢ref; okT⊢ref⁽1⁾; all⊢ref )
 
 con⟶δ : {Ξ : Ctx} {j n b : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ n ∷ El ⌜Nat⌝ → Ξ ⊢ b ∷ K 1 nzero →
         Ξ ⊢ conₗ 0 ((idrefl (⌜Tm⌝ j) (εwkK 1 j b)) ,ₚ unit) ∷ IMu Redₘ.J ⟶F.DF (ix⟶ j (kref n b) (εwkK 1 j b))

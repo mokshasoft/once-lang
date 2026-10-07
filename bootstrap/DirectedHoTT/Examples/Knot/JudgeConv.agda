@@ -10,27 +10,38 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.JudgeConv where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.JudgeConv (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; tag-sub; v₀; v₁; v₂; v₃; _,ₚ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢conP )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Lookup using ( hereTy; toTy; I∋; ⊢I∋; I∋-sub; D∋; ⊢D∋; ix∋; ⊢ix∋; K∋ )
-open import DirectedHoTT.Examples.Knot.LookupCon using ( D∋-sub )
-open import DirectedHoTT.Examples.Knot.JudgeIx
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w1-sub; okσJ; wkN; wkK; wkG )
-open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝; ⊢⌜≅ᵀ⌝; ⌜≅ᵀ⌝-sub )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Lib.SynRed using ( mono-by; σₗ; _∷ʳ_; []ʳ )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok as ᴵSugar
+open ᴵSugar using ( tag; conₗ; tag-sub; v₀; v₁; v₂; v₃; _,ₚ_ )
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( PayV; ⊢conP )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( hereTy; toTy; I∋; ⊢I∋; I∋-sub; D∋; ⊢D∋; ix∋; ⊢ix∋; K∋ )
+open import DirectedHoTT.Examples.Knot.LookupCon 𝒮 wf using ( D∋-sub )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1; w1-sub; okσJ; wkN; wkK; wkG )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf using ( ⌜≅ᵀ⌝; ⊢⌜≅ᵀ⌝; ⌜≅ᵀ⌝-sub )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok using ( mono-by; σₗ; _∷ʳ_; []ʳ )
+open ᴵSugar using ( Cons; []; _∷_ )
 
 private
   variable

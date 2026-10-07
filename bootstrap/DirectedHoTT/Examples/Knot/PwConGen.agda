@@ -10,43 +10,55 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.PwConGen where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.PwConGen (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ; v₀; v₁; v₂; v₃; v₄; _,ₚ_ )
-open import DirectedHoTT.Lib.SynFib using ( ⊢conRowₖ )
-open import DirectedHoTT.Lib.SynRed
-open import DirectedHoTT.Lib.NatCode using ( fromI )
-open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Examples.Knot.Ctors
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Lookup using ( toTy; hereTy )
-open import DirectedHoTT.Examples.Knot.Sub using ( sub0; ⊢sub0 )
-open import DirectedHoTT.Examples.Knot.Ren using ( wk; ⊢wkS )
-open import DirectedHoTT.Examples.Knot.SubEnv
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝; ⊢⌜Tm⌝; ⌜Ty⌝; ⊢⌜Ty⌝ )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; hereTm; toTm; wkN; wkK; wkG )
-open import DirectedHoTT.Examples.Knot.GenHelpers
-open import DirectedHoTT.Examples.Knot.Preds using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝ )
-open import DirectedHoTT.Examples.Knot.RedIx
-open import DirectedHoTT.Examples.Knot.NestIx
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⊢payK )
-open import DirectedHoTT.Examples.Knot.Pw
-open import DirectedHoTT.Examples.Knot.PwCore using ( El-⌜Pw⌝ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; tag; conₗ; lt-z; lt-s; nth-z; nth-s; atᶜ; v₀; v₁; v₂; v₃; v₄; _,ₚ_ )
+open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( ⊢conRowₖ )
+open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok
+import DirectedHoTT.Lib.NatCode 𝒮 𝓃 as ᴵNatCode
+open ᴵNatCode using ( fromI )
+open ᴵNatCode using ( ⊢isuc; toI )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Examples.Knot.Ctors 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( toTy; hereTy )
+open import DirectedHoTT.Examples.Knot.Sub 𝒮 wf using ( sub0; ⊢sub0 )
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk; ⊢wkS )
+open import DirectedHoTT.Examples.Knot.SubEnv 𝒮 wf
+import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf as ᴵJudgeIx
+open ᴵJudgeIx using ( ⌜Tm⌝; ⊢⌜Tm⌝; ⌜Ty⌝; ⊢⌜Ty⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1; w2; w3; hereTm; toTm; wkN; wkK; wkG )
+open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.NestIx 𝒮 wf
+open ᴵJudgeIx using ( ⊢payK )
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf
+open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf using ( El-⌜Pw⌝ )
 
 conPwcPi : {Ξ : Ctx} {j f0 f1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 (nsuc j) → 
-  Ξ ⊢ conₗ 0 ((idrefl (⌜Tm⌝ (nsuc j)) f1) ,ₚ unit) ∷ IMu Pwₘ.J PwF.DF (ixPw j (kcPi f0 f1) (f1))
+  Ξ ⊢ conₗ 0 ((idrefl (⌜Tm⌝ (nsuc j)) f1) ,ₚ unit) ∷ IMu Pwₘ.J (PwF.DF unit) (ixPw j (kcPi f0 f1) (f1))
 conPwcPi {Ξ} {j} {f0} {f1} dj df0 df1 =
-  ⊢conRowₖ {Ξ} {1} {0} {Pwₘ.J} {PwF.DF} {ixPw j (kcPi f0 f1) (f1)} {⌜ TPwcPi j p c ⌝ᵗ} {((idrefl (⌜Tm⌝ (nsuc j)) f1) ,ₚ unit)} {⌜ TPwcPi j p c ⌝ᵗ ∷ []} (atᶜ 0) Pwₘ.⊢J PwF.⊢DF (⊢ixPw dj (⊢kcPi dj df0 df1) df1)
-    (PwF.fibF {s = 1} {k = 9} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 9)) (allrPwcPi {j = j} {p = p} {c = c} dj dp dc)
+  ⊢conRowₖ {Ξ} {1} {0} {Pwₘ.J} {(PwF.DF unit)} {ixPw j (kcPi f0 f1) (f1)} {⌜ TPwcPi unit j p c ⌝ᵗ} {((idrefl (⌜Tm⌝ (nsuc j)) f1) ,ₚ unit)} {⌜ TPwcPi unit j p c ⌝ᵗ ∷ []} (atᶜ 0) Pwₘ.⊢J (PwF.⊢DF ⊢u₀) (⊢ixPw dj (⊢kcPi dj df0 df1) df1)
+    (PwF.fibF {s = 1} {k = 9} {q = unit} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 9)) (allrPwcPi {qs = unit} {j = j} {p = p} {c = c} ⊢u₀ dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -60,14 +72,14 @@ conPwcPi {Ξ} {j} {f0} {f1} dj df0 df1 =
     okRest (ok-ρ _ o) = o
     okB : TelOK Ξ Pwₘ.J (TPwcPi⁽0⁾ j (f1) f1)
     okB = (okTPwcPiI {_} {j} {(f1)} {f1} dj df1 df1)
-    dPv : Ξ ⊢ ((idrefl (⌜Tm⌝ (nsuc j)) f1) ,ₚ unit) ∷ El (dpay Pwₘ.J PwF.DF ⌜ TPwcPi⁽0⁾ j (f1) f1 ⌝ᵗ)
-    dPv = (⊢payσ {Ξ} {Pwₘ.J} {PwF.DF} Pwₘ.⊢J PwF.⊢DF {a = (idrefl (⌜Tm⌝ (nsuc j)) f1)} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm df1)) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ (nsuc j)) (f1) (f1))))) (⊢payι {Ξ} {Pwₘ.J} {PwF.DF} Pwₘ.⊢J PwF.⊢DF {unit} ⊢unit))
+    dPv : Ξ ⊢ ((idrefl (⌜Tm⌝ (nsuc j)) f1) ,ₚ unit) ∷ El (dpay Pwₘ.J (PwF.DF unit) ⌜ TPwcPi⁽0⁾ j (f1) f1 ⌝ᵗ)
+    dPv = (⊢payσ {Ξ} {Pwₘ.J} {(PwF.DF unit)} Pwₘ.⊢J (PwF.⊢DF ⊢u₀) {a = (idrefl (⌜Tm⌝ (nsuc j)) f1)} {p = unit} okB (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm df1)) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ (nsuc j)) (f1) (f1))))) (⊢payι {Ξ} {Pwₘ.J} {(PwF.DF unit)} Pwₘ.⊢J (PwF.⊢DF ⊢u₀) {unit} ⊢unit))
 
-conPwcHom : {Ξ : Ctx} {j f0 f1 f2 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ f2 ∷ K 1 j → Ξ ⊢ e0 ∷ K 1 (nsuc j) → Ξ ⊢ r0 ∷ IMu Pwₘ.J PwF.DF (ixPw j f0 e0) → 
-  Ξ ⊢ conₗ 0 (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit) ∷ IMu Pwₘ.J PwF.DF (ixPw j (kcHom f0 f1 f2) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))))
+conPwcHom : {Ξ : Ctx} {j f0 f1 f2 e0 r0 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 j → Ξ ⊢ f2 ∷ K 1 j → Ξ ⊢ e0 ∷ K 1 (nsuc j) → Ξ ⊢ r0 ∷ IMu Pwₘ.J (PwF.DF unit) (ixPw j f0 e0) → 
+  Ξ ⊢ conₗ 0 (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit) ∷ IMu Pwₘ.J (PwF.DF unit) (ixPw j (kcHom f0 f1 f2) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))))
 conPwcHom {Ξ} {j} {f0} {f1} {f2} {e0} {r0} dj df0 df1 df2 de0 dr0 =
-  ⊢conRowₖ {Ξ} {1} {0} {Pwₘ.J} {PwF.DF} {ixPw j (kcHom f0 f1 f2) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))} {⌜ TPwcHom j p c ⌝ᵗ} {(e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} {⌜ TPwcHom j p c ⌝ᵗ ∷ []} (atᶜ 0) Pwₘ.⊢J PwF.⊢DF (⊢ixPw dj (⊢kcHom dj df0 df1 df2) (⊢kcHom (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj)))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj))))))
-    (PwF.fibF {s = 1} {k = 11} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 11)) (allrPwcHom {j = j} {p = p} {c = c} dj dp dc)
+  ⊢conRowₖ {Ξ} {1} {0} {Pwₘ.J} {(PwF.DF unit)} {ixPw j (kcHom f0 f1 f2) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))} {⌜ TPwcHom unit j p c ⌝ᵗ} {(e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} {⌜ TPwcHom unit j p c ⌝ᵗ ∷ []} (atᶜ 0) Pwₘ.⊢J (PwF.⊢DF ⊢u₀) (⊢ixPw dj (⊢kcHom dj df0 df1 df2) (⊢kcHom (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj)))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj))))))
+    (PwF.fibF {s = 1} {k = 11} {q = unit} {j = j} {p = p} {c = c} (atᵍ 1) (atʰ 11)) (allrPwcHom {qs = unit} {j = j} {p = p} {c = c} ⊢u₀ dj dp dc)
     (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))))
   where
     p c : RTm ⌊ Ξ ⌋
@@ -83,6 +95,6 @@ conPwcHom {Ξ} {j} {f0} {f1} {f2} {e0} {r0} dj df0 df1 df2 de0 dr0 =
     okT0 = (Pwₘ.okσ (okCPwcHom_0I {_} {j} dj) (okTPwcHomI {_} {(w1 j)} {(w1 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))))} {(w1 f0)} {(w1 f1)} {(w1 f2)} {v₀} (wkN {t = j} dj) (wkK {s = 1} {d = (nsuc j)} {t = ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))} (⊢kcHom (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj)))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj)))))) (wkK {s = 1} {d = j} {t = f0} df0) (wkK {s = 1} {d = j} {t = f1} df1) (wkK {s = 1} {d = j} {t = f2} df2) (hereTm {m = (nsuc j)})))
     okB : TelOK Ξ Pwₘ.J (TPwcHom⁽1⁾ j ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) f0 f1 f2 e0)
     okB = (okTPwcHomI {_} {j} {((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))} {f0} {f1} {f2} {e0} dj (⊢kcHom (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj)))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj))))) df0 df1 df2 de0)
-    dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit) ∷ El (dpay Pwₘ.J PwF.DF ⌜ TPwcHom⁽0⁾ j ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) f0 f1 f2 ⌝ᵗ)
-    dPv = (⊢payσ {Ξ} {Pwₘ.J} {PwF.DF} Pwₘ.⊢J PwF.⊢DF {a = e0} {p = (r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} (okT0) (toTm de0) (⊢-cast {Ξ} {(r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} {El (dpay Pwₘ.J PwF.DF ⌜ TPwcHom⁽1⁾ j ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) f0 f1 f2 e0 ⌝ᵗ)} {El (dpay Pwₘ.J PwF.DF (subTm (single e0) ⌜ TPwcHom⁽1⁾ (w1 j) (w1 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))) (w1 f0) (w1 f1) (w1 f2) v₀ ⌝ᵗ))} (cong (λ Z → El (dpay Pwₘ.J PwF.DF Z)) (sym (trans (TPwcHom⁽1⁾-sub (single e0) (w1 j) (w1 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))) (w1 f0) (w1 f1) (w1 f2) v₀) (TPwcHom⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))))) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) refl)))) (⊢payρ {Ξ} {Pwₘ.J} {PwF.DF} Pwₘ.⊢J PwF.⊢DF {r = r0} {p = ((idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} okB dr0 (⊢payσ {Ξ} {Pwₘ.J} {PwF.DF} Pwₘ.⊢J PwF.⊢DF {a = (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))} {p = unit} (okRest okB) (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢kcHom (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj)))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj))))))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ (nsuc j)) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))))))) (⊢payι {Ξ} {Pwₘ.J} {PwF.DF} Pwₘ.⊢J PwF.⊢DF {unit} ⊢unit)))))
+    dPv : Ξ ⊢ (e0 ,ₚ r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit) ∷ El (dpay Pwₘ.J (PwF.DF unit) ⌜ TPwcHom⁽0⁾ j ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) f0 f1 f2 ⌝ᵗ)
+    dPv = (⊢payσ {Ξ} {Pwₘ.J} {(PwF.DF unit)} Pwₘ.⊢J (PwF.⊢DF ⊢u₀) {a = e0} {p = (r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} (okT0) (toTm de0) (⊢-cast {Ξ} {(r0 ,ₚ (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} {El (dpay Pwₘ.J (PwF.DF unit) ⌜ TPwcHom⁽1⁾ j ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) f0 f1 f2 e0 ⌝ᵗ)} {El (dpay Pwₘ.J (PwF.DF unit) (subTm (single e0) ⌜ TPwcHom⁽1⁾ (w1 j) (w1 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))) (w1 f0) (w1 f1) (w1 f2) v₀ ⌝ᵗ))} (cong (λ Z → El (dpay Pwₘ.J (PwF.DF unit) Z)) (sym (trans (TPwcHom⁽1⁾-sub (single e0) (w1 j) (w1 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))) (w1 f0) (w1 f1) (w1 f2) v₀) (TPwcHom⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))))) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) refl)))) (⊢payρ {Ξ} {Pwₘ.J} {(PwF.DF unit)} Pwₘ.⊢J (PwF.⊢DF ⊢u₀) {r = r0} {p = ((idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ,ₚ unit)} okB dr0 (⊢payσ {Ξ} {Pwₘ.J} {(PwF.DF unit)} Pwₘ.⊢J (PwF.⊢DF ⊢u₀) {a = (idrefl (⌜Tm⌝ (nsuc j)) (kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero))))} {p = unit} (okRest okB) (⊢conv (⊢idrefl (⊢⌜Tm⌝ (⊢isuc dj)) (toTm (⊢kcHom (⊢isuc dj) de0 (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df1) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj)))) (⊢kapp (⊢isuc dj) (⊢wkS (lt-s lt-z) dj df2) (⊢kvar (⊢isuc dj) (⊢fzero (fromI dj))))))) (csymᵀ (credᵀ (El-⌜Id⌝ (⌜Tm⌝ (nsuc j)) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))) ((kcHom e0 (kapp (wk 1 j f1) (kvar fzero)) (kapp (wk 1 j f2) (kvar fzero)))))))) (⊢payι {Ξ} {Pwₘ.J} {(PwF.DF unit)} Pwₘ.⊢J (PwF.⊢DF ⊢u₀) {unit} ⊢unit)))))
 

@@ -17,30 +17,40 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.PwDecode where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.PwDecode (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; Σ; _,_; _×_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; pwBody )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; atᶜ; v₀; v₁; v₂; v₃; v₄; _,ₚ_; nth-z )
-open import DirectedHoTT.Examples.Knot.Ren using ( wk )
-open import DirectedHoTT.Lib.SynRed
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.Decode
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Unquote using ( unqTm; quoteTm-inj; quoteTm-normal )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( ⌜Tm⌝; El-⌜Tm⌝ )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1 )
-open import DirectedHoTT.Examples.Knot.RedIx
-open import DirectedHoTT.Examples.Knot.Pw
-open import DirectedHoTT.Examples.Knot.PwAgree using ( Xh; Xh-agree )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; atᶜ; v₀; v₁; v₂; v₃; v₄; _,ₚ_; nth-z )
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk )
+open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Decode 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf using ( unqTm; quoteTm-inj; quoteTm-normal )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( ⌜Tm⌝; El-⌜Tm⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1 )
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf
+open import DirectedHoTT.Examples.Knot.PwAgree 𝒮 wf using ( Xh; Xh-agree )
 
 private
   -- the `⌜Hom⌝` row's telescope, read at the payload's values (`PwConGen`'s R₀)

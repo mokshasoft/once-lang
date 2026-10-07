@@ -10,13 +10,23 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.GenHelpers where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.GenHelpers (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_ )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2; w3; w1-sub; w2-sub; w3-sub )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_ )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1; w2; w3; w1-sub; w2-sub; w3-sub )
 
 private
   variable

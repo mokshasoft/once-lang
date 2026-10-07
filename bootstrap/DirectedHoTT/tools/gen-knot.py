@@ -940,6 +940,9 @@ def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import notation
     outs = {fn: notation.notate(txt) for fn, txt in outs.items()}
+    # PLAN-REF: parameterised by the ambient signature (tools/planref.py)
+    import planref
+    outs = {fn: t for fn, t in zip(outs, planref.convert_all({os.path.join(OUTDIR, fn): t for fn, t in outs.items()}).values())}
     for fn, txt in outs.items():
         p = os.path.join(OUTDIR, fn)
         if check:

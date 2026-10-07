@@ -20,32 +20,42 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.Exact where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.Exact (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; pw?; pwBody; stkA?; stkC?; flat?; 𝔹; true )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal; WN )
-open import DirectedHoTT.Metatheory.Fundamental using ( wnorm )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( sr* )
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tyIx; tmIx )
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
-open import DirectedHoTT.Examples.Knot.Lookup using ( K∋; ix∋ )
-open import DirectedHoTT.Examples.Knot.Red using ( K⟶ )
-open import DirectedHoTT.Examples.Knot.RedT using ( K⟶ᵀ )
-open import DirectedHoTT.Examples.Knot.Conv using ( K≅; K≅ᵀ )
-open import DirectedHoTT.Examples.Knot.Pw using ( KPw )
-open import DirectedHoTT.Examples.Knot.Preds using ( KNNC; KStkA; KStkC; KFlat )
-open import DirectedHoTT.Examples.Knot.JudgeDecode using ( decTy; decTm )
-open import DirectedHoTT.Examples.Knot.RedDecode using ( decRed )
-open import DirectedHoTT.Examples.Knot.RedTDecode using ( decRedT )
-open import DirectedHoTT.Examples.Knot.ConvDecode using ( decConv; decConvT )
-open import DirectedHoTT.Examples.Knot.LookupDecode using ( decLk )
-open import DirectedHoTT.Examples.Knot.PwDecode using ( decPw )
-open import DirectedHoTT.Examples.Knot.PredsDecode using ( decNNC; decStkA; decStkC; decFlat )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal; WN )
+open import DirectedHoTT.Metatheory.Fundamental 𝒮 𝓃 ok refs using ( wnorm )
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 𝓃 ok using ( sr* )
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( quoteCtx )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( JT; tyIx; tmIx )
+open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf using ( D⊢ )
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( K∋; ix∋ )
+open import DirectedHoTT.Examples.Knot.Red 𝒮 wf using ( K⟶ )
+open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf using ( K⟶ᵀ )
+open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf using ( K≅; K≅ᵀ )
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf using ( KPw )
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( KNNC; KStkA; KStkC; KFlat )
+open import DirectedHoTT.Examples.Knot.JudgeDecode 𝒮 wf using ( decTy; decTm )
+open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf using ( decRed )
+open import DirectedHoTT.Examples.Knot.RedTDecode 𝒮 wf using ( decRedT )
+open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf using ( decConv; decConvT )
+open import DirectedHoTT.Examples.Knot.LookupDecode 𝒮 wf using ( decLk )
+open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf using ( decPw )
+open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf using ( decNNC; decStkA; decStkC; decFlat )
 
 -- a closed typed term has a closed normal form at the same type
 private

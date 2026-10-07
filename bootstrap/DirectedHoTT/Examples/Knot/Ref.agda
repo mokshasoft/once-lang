@@ -15,22 +15,32 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.Ref where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.Ref (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( []; _∷_; tag; lt-z; lt-s; AllD; []ᵈ; _∷ᵈ_; _,ₚ_ )
-open import DirectedHoTT.Lib.SynView using ( PayV; ⊢natSnd; ⊢clsFst )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynFib using ( Row )
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Lookup using ( ⊢rows )
-open import DirectedHoTT.Examples.Knot.Ren using ( εwkK; ⊢εwkK; εwkK-sub )
-open import DirectedHoTT.Examples.Knot.RedIx using ( module Redₘ; ⊢tgt )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( TelLaw; defRow; ⌜Tm⌝; ⌜Tm⌝-sub; ⊢⌜Tm⌝ )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( toTm )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( []; _∷_; tag; lt-z; lt-s; AllD; []ᵈ; _∷ᵈ_; _,ₚ_ )
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( PayV; ⊢natSnd; ⊢clsFst )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynFib 𝒮 𝓃 ok using ( Row )
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( ⊢rows )
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( εwkK; ⊢εwkK; εwkK-sub )
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf using ( module Redₘ; ⊢tgt )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( TelLaw; defRow; ⌜Tm⌝; ⌜Tm⌝-sub; ⊢⌜Tm⌝ )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( toTm )
 
 private
   variable

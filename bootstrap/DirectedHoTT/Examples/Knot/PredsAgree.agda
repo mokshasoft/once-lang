@@ -12,17 +12,27 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.PredsAgree where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.PredsAgree (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom; stkA?; stkC?; flat? )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; _,ₚ_ )
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Preds using ( KNNC; KStkA; KStkC; KFlat; El-⌜StkA⌝; El-⌜StkC⌝ )
-open import DirectedHoTT.Examples.Knot.PredsCon
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( conₗ; _,ₚ_ )
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( KNNC; KStkA; KStkC; KFlat; El-⌜StkA⌝; El-⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.PredsCon 𝒮 wf
 
 
 nncC : {Γ : Cx} {c : RTm Γ} → NoNatC c → {Θ : Cx} → RTm Θ
@@ -82,7 +92,7 @@ stkAC ⌜Nat⌝ e = conₗ 0 unit
 stkAC (⌜IMu⌝ a0 a1 a2) e = conₗ 0 unit
 stkAC (⌜Fin⌝ a0) e = conₗ 0 unit
 stkAC ⌜Unit⌝ e = conₗ 0 unit
-stkAC (ref a0 a1) ()
+stkAC (ref a0) ()
 ⊢stkAC (var a0) ()
 ⊢stkAC (lam a0) ()
 ⊢stkAC (app a0 a1) ()
@@ -121,7 +131,7 @@ stkAC (ref a0 a1) ()
 ⊢stkAC {Γ} (⌜IMu⌝ a0 a1 a2) e = conStkA⊢cIMu (⊢dep' Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2)
 ⊢stkAC {Γ} (⌜Fin⌝ a0) e = conStkA⊢cFin (⊢dep' Γ) (⊢quoteTm a0)
 ⊢stkAC {Γ} ⌜Unit⌝ e = conStkA⊢cUnit (⊢dep' Γ)
-⊢stkAC (ref a0 a1) ()
+⊢stkAC (ref a0) ()
 
 stkCC : {Γ : Cx} (c : RTm Γ) → stkC? c ≡ true → {Θ : Cx} → RTm Θ
 ⊢stkCC : {Γ : Cx} (c : RTm Γ) (e : stkC? c ≡ true) {Θ : Ctx} → Θ ⊢ stkCC c e ∷ KStkC (dep Γ) (quoteTm c)
@@ -163,7 +173,7 @@ stkCC ⌜Nat⌝ ()
 stkCC (⌜IMu⌝ a0 a1 a2) e = conₗ 0 unit
 stkCC (⌜Fin⌝ a0) e = conₗ 0 unit
 stkCC ⌜Unit⌝ e = conₗ 0 unit
-stkCC (ref a0 a1) ()
+stkCC (ref a0) ()
 ⊢stkCC (var a0) ()
 ⊢stkCC (lam a0) ()
 ⊢stkCC (app a0 a1) ()
@@ -202,7 +212,7 @@ stkCC (ref a0 a1) ()
 ⊢stkCC {Γ} (⌜IMu⌝ a0 a1 a2) e = conStkC⊢cIMu (⊢dep' Γ) (⊢quoteTm a0) (⊢quoteTm a1) (⊢quoteTm a2)
 ⊢stkCC {Γ} (⌜Fin⌝ a0) e = conStkC⊢cFin (⊢dep' Γ) (⊢quoteTm a0)
 ⊢stkCC {Γ} ⌜Unit⌝ e = conStkC⊢cUnit (⊢dep' Γ)
-⊢stkCC (ref a0 a1) ()
+⊢stkCC (ref a0) ()
 
 flatC : {Γ : Cx} (c : RTm Γ) → flat? c ≡ true → {Θ : Cx} → RTm Θ
 ⊢flatC : {Γ : Cx} (c : RTm Γ) (e : flat? c ≡ true) {Θ : Ctx} → Θ ⊢ flatC c e ∷ KFlat (dep Γ) (quoteTm c)
@@ -244,7 +254,7 @@ flatC ⌜Nat⌝ ()
 flatC (⌜IMu⌝ a0 a1 a2) ()
 flatC (⌜Fin⌝ a0) ()
 flatC ⌜Unit⌝ ()
-flatC (ref a0 a1) ()
+flatC (ref a0) ()
 ⊢flatC (var a0) ()
 ⊢flatC (lam a0) ()
 ⊢flatC (app a0 a1) ()
@@ -283,5 +293,5 @@ flatC (ref a0 a1) ()
 ⊢flatC (⌜IMu⌝ a0 a1 a2) ()
 ⊢flatC (⌜Fin⌝ a0) ()
 ⊢flatC ⌜Unit⌝ ()
-⊢flatC (ref a0 a1) ()
+⊢flatC (ref a0) ()
 

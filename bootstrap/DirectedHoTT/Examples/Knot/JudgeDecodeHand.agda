@@ -12,37 +12,47 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.JudgeDecodeHand where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.JudgeDecodeHand (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-natrecⁿ; ⟶*-dρʲ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using () renaming ( wk-sub to wkS )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Metatheory.Canonicity using ( sz )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; atᶜ; v₀; _,ₚ_; nth-z; nth-s )
-open import DirectedHoTT.Lib.SynRed using ( prj-tup )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.Decode
-open import DirectedHoTT.Lib.PatDecode
-open import DirectedHoTT.Lib.Size using ( _<_; <ˡ; <ʳ )
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Ctx using ( quoteCtx; cε; El-⌜Ty⌝ )
-open import DirectedHoTT.Examples.Knot.Unquote
-open import DirectedHoTT.Examples.Knot.Lookup using ( rows )
-open import DirectedHoTT.Examples.Knot.JudgeIx using ( JT; tmIx )
-open import DirectedHoTT.Examples.Knot.JudgeCase using ( w1; w2 )
-open import DirectedHoTT.Examples.Knot.Judge using ( D⊢ )
-open import DirectedHoTT.Examples.Knot.RefJudge using ( T⊢ref; T⊢ref⁽1⁾; T⊢ref⁽1⁾-sub )
-open import DirectedHoTT.Examples.Knot.Ref using ( bodyOf )
-open import DirectedHoTT.Examples.Knot.Ren using ( εwkK )
-open import DirectedHoTT.Examples.Knot.OpAgree using ( εwk-agree-ty )
-open import DirectedHoTT.Examples.Knot.JudgeDecodeBase
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-natrecⁿ; ⟶*-dρʲ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
+open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( sz )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; atᶜ; v₀; _,ₚ_; nth-z; nth-s )
+open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok using ( prj-tup )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Decode 𝒮 wf
+open import DirectedHoTT.Lib.PatDecode 𝒮 wf
+open import DirectedHoTT.Lib.Size 𝒮 wf using ( _<_; <ˡ; <ʳ )
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( quoteCtx; cε; El-⌜Ty⌝ )
+open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( rows )
+open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( JT; tmIx )
+open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1; w2 )
+open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf using ( D⊢ )
+open import DirectedHoTT.Examples.Knot.RefJudge 𝒮 wf using ( T⊢ref; T⊢ref⁽1⁾; T⊢ref⁽1⁾-sub )
+open import DirectedHoTT.Examples.Knot.Ref 𝒮 wf using ( bodyOf )
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( εwkK )
+open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf using ( εwk-agree-ty )
+open import DirectedHoTT.Examples.Knot.JudgeDecodeBase 𝒮 wf
 
 ------------------------------------------------------------------------
 -- ⊢ref : ◇ ⊢ b ∷ A₀ → Γ ⊢ ref d b ∷ εwkTy A₀

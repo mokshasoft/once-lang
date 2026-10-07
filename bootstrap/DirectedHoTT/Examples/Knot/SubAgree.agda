@@ -10,23 +10,33 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.SubAgree where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.SubAgree (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
-open import DirectedHoTT.Lib.SynTrav using ( module Trav )
-open import DirectedHoTT.Lib.SynTravRed
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Sub
-import DirectedHoTT.Examples.Knot.Ren as KR
-open import DirectedHoTT.Examples.Knot.RenAgree using ( RepR; ren-agree-tm; dep-∙ⁿ )
-open import DirectedHoTT.Lib.Sugar using ( _,ₚ_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynRed 𝒮 𝓃 ok using ( _∙ⁿ_ )
+open import DirectedHoTT.Lib.SynTrav 𝒮 𝓃 ok using ( module Trav )
+open import DirectedHoTT.Lib.SynTravRed 𝒮 𝓃 ok
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Sub 𝒮 wf
+import DirectedHoTT.Examples.Knot.Ren 𝒮 wf as KR
+open import DirectedHoTT.Examples.Knot.RenAgree 𝒮 wf using ( RepR; ren-agree-tm; dep-∙ⁿ )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( _,ₚ_ )
 
 private
   variable

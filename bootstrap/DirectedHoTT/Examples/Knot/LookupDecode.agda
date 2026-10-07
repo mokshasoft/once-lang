@@ -15,26 +15,36 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.LookupDecode where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.LookupDecode (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; nth-z; v₀; _,ₚ_ )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Decode
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Ctx
-open import DirectedHoTT.Examples.Knot.Ren using ( wk; wk-sub )
-open import DirectedHoTT.Examples.Knot.Lookup
-open import DirectedHoTT.Examples.Knot.LookupCon using ( fib-here; fib-there )
-open import DirectedHoTT.Examples.Knot.OpAgree using ( wk-agree-ty )
-open import DirectedHoTT.Examples.Knot.Unquote using ( unqTy; quoteTy-inj; quoteTy-normal )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; nth-z; v₀; _,ₚ_ )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Decode 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk; wk-sub )
+open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf
+open import DirectedHoTT.Examples.Knot.LookupCon 𝒮 wf using ( fib-here; fib-there )
+open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf using ( wk-agree-ty )
+open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf using ( unqTy; quoteTy-inj; quoteTy-normal )
 
 private
   -- ⌜A⌝ ≅ wk ⌜B⌝ makes `A` the Spec weakening of `B`

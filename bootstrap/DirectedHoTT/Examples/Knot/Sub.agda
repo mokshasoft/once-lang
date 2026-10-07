@@ -8,19 +8,29 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.Sub where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Examples.Knot.Sub (𝒮 : Defs) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: over a well-formed signature, at all its names
+private
+  𝓃 = Defs.size 𝒮
+  ok = Entries.sigOK 𝒮 𝓃 wf
+  refs = Entries.refsOK 𝒮 𝓃 (λ p → p) wf
+
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import normalizer.Syntax.Types using ( _≡_; refl )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( Lt; lt-z; lt-s; _,ₚ_ )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynSub
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appʳ )
-open import DirectedHoTT.Examples.Knot.Sig
-open import DirectedHoTT.Examples.Knot.Terms
-open import DirectedHoTT.Examples.Knot.Ren using ( KVars )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Lt; lt-z; lt-s; _,ₚ_ )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynSub 𝒮 𝓃 ok
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-appʳ )
+open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( KVars )
 
 open Sub KOK {v = 1} {kv = 0} (atᵍ 1) (atʰ 0) KVars public hiding ( sub0; ⊢sub0 )
 open Sub KOK {v = 1} {kv = 0} (atᵍ 1) (atʰ 0) KVars using () renaming ( sub0 to sub0ᵗ; ⊢sub0 to ⊢sub0ᵗ )
