@@ -18,17 +18,20 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.ConvLazyNbE where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+import DirectedHoTT.Algorithm.NbE.TblOK as TO
+module DirectedHoTT.Algorithm.ConvLazyNbE (𝒮 : KSig) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_; ⌊_⌋ )
-open import DirectedHoTT.Algorithm.ConvLazy using ( cong≅; cong≅ᵗ; cong≅ᵀ )
+open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_; ⌊_⌋ )
+open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅; cong≅ᵗ; cong≅ᵀ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Tm_; _≟Ty_ )
-open import DirectedHoTT.Algorithm.NbE using ( eval; evalᵀ; force; ⌊_⌋; ⌊_⌋ᵀ; ⌊_⌋ᵉ; idEnv; len; lvl )
-open import DirectedHoTT.Algorithm.NbESound using ( S-eval; S-force; idEnv-read; sc-idEnv )
-open import DirectedHoTT.Algorithm.NbESoundTy using ( T-eval )
+open import DirectedHoTT.Algorithm.NbE tbl using ( eval; evalᵀ; force; ⌊_⌋; ⌊_⌋ᵀ; ⌊_⌋ᵉ; idEnv; len; lvl )
+open import DirectedHoTT.Algorithm.NbESound 𝒮 tbl tok using ( S-eval; S-force; idEnv-read; sc-idEnv )
+open import DirectedHoTT.Algorithm.NbESoundTy 𝒮 tbl tok using ( T-eval )
 
 private
   variable

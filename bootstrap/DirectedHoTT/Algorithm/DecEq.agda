@@ -45,9 +45,9 @@ open import DirectedHoTT.Spec.Syntax
 -- re-exports it, so `dec-conv-typed`'s `dec-eq` parameter is exactly `_≟Tm_`.
 ------------------------------------------------------------------------
 
-data Dec (P : Set) : Set where
-  yes : P → Dec P
-  no  : ¬ P → Dec P
+-- (the normaliser prelude's, so the kernel's own decisions — `_<ˢ?_` in
+--  `Spec/Syntax` — are the same type)
+open import normalizer.Syntax.Types public using ( Dec; yes; no )
 
 private
   variable

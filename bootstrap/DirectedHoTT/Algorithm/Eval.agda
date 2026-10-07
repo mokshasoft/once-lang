@@ -39,15 +39,16 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.Eval where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Algorithm.Eval (𝒮 : KSig) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; Σ; _,_; ⊥; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; pw?; stkA?; stkC? )
-open import DirectedHoTT.Metatheory.RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶*-trans; ⟶ᵀ*-trans; red→≅ᵀ )
-open import DirectedHoTT.Metatheory.Injectivity using ( church-rosserᵀ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶*-trans; ⟶ᵀ*-trans; red→≅ᵀ )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮 using ( church-rosserᵀ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Ty_ )
 
 private
@@ -91,6 +92,11 @@ apG : (cB : RTm Γ) (b : RTm (Γ ∙)) (c₁ s : RTm Γ) (x : 𝔹) → stkC? c�
 apG cB b c₁ s true  h = just (_ , ap-J cB b c₁ s h)
 apG cB b c₁ s false h = nothing
 
+-- ★ δ fires exactly on the names of the signature (PLAN-REF)
+refHead : (n : ℕ) → Dec (n <ˢ KSig.size 𝒮) → Maybe (Step (ref {Γ} n))
+refHead n (yes p) = just (_ , δref n p)
+refHead n (no _)  = nothing
+
 head : (t : RTm Γ) → Maybe (Step t)
 head (app (lam b) u)                       = just (_ , β b u)
 head (fst (pair a b))                      = just (_ , βfst a b)
@@ -125,7 +131,7 @@ head (dih D e (dρ j C) p)                  = just (_ , dih-ρ D e j C p)
 head (fcase fzero a b)                     = just (_ , fcase-z a b)
 head (fcase (fsuc t) a b)                  = just (_ , fcase-s t a b)
 head (psplit b (pair x y))                 = just (_ , psplit-β b x y)
-head (ref n b)                             = just (_ , δref n b)
+head (ref n)                               = refHead n (n <ˢ? KSig.size 𝒮)
 head _                                     = nothing
 
 headᵀ : (A : RTy Γ) → Maybe (Stepᵀ A)
@@ -159,6 +165,8 @@ data Nf where
   nf-var    : {x : Var Γ} → Nf (var x)
   nf-lam    : {t : RTm (Γ ∙)} → Nf t → Nf (lam t)
   nf-app    : {f u : RTm Γ} → Nf f → Nf u → head (app f u) ≡ nothing → Nf (app f u)
+  -- a reference beyond the signature: stuck (PLAN-REF)
+  nf-ref    : {d : ℕ} → head (ref {Γ} d) ≡ nothing → Nf (ref {Γ} d)
   nf-pair   : {a b : RTm Γ} → Nf a → Nf b → Nf (pair a b)
   nf-absurd : {c e : RTm Γ} → Nf c → Nf e → Nf (absurd c e)
   nf-ordtr  : {a t u p q : RTm Γ} → Nf a → Nf t → Nf u → Nf p → Nf q →
@@ -250,6 +258,11 @@ private
 nf-irr  : {t v : RTm Γ} → Nf t → t ⟶ v → ⊥
 nf-irrᵀ : {A B : RTy Γ} → Nfᵀ A → A ⟶ᵀ B → ⊥
 
+nf-irr (nf-ref {d = d} h) (δref _ p) = refStuck d p (d <ˢ? KSig.size 𝒮) h
+  where
+  refStuck : (d : ℕ) → d <ˢ KSig.size 𝒮 → (q : Dec (d <ˢ KSig.size 𝒮)) → refHead {Γ} d q ≡ nothing → ⊥
+  refStuck d p (yes _) ()
+  refStuck d p (no ¬p) _ = ¬p p
 nf-irr (nf-app _ _ ()) (β _ _)
 nf-irr (nf-fst _ ()) (βfst _ _)
 nf-irr (nf-snd _ ()) (βsnd _ _)
@@ -573,8 +586,8 @@ eval k (dih D e C p) =
   fld (dih D' e' C') ξ-dihᵖ c3 (eval k p) λ {p'} np c4 →
   fin k (dih D' e' C' p') c4 (nf-dih nD ne nC np)
 eval k fzero = nfd _ done nf-fzero
--- a definition always unfolds: its head is never stuck
-eval k (ref n b) = fin k (ref n b) done (λ ())
+-- a reference unfolds when it names an entry, and is normal otherwise
+eval k (ref n) = fin k (ref n) done nf-ref
 eval k (fsuc t) = fld fsuc ξ-fsuc done (eval k t) λ nt ch → nfd _ ch (nf-fsuc nt)
 eval k (fcase t a b) =
   fld (λ x → fcase x a b) ξ-fcaseᵗ done (eval k t) λ {t'} nt c1 →

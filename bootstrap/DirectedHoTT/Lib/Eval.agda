@@ -39,15 +39,16 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Eval where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Lib.Eval (𝒮 : KSig) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( Σ; _,_; _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; RTm; var; vz; lam; app; pair; fst; snd; subTm; unit )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd; single )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd )
 

@@ -30,15 +30,16 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; _×_; ⊤; tt; ⊥ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; subst; Σ; _,_; _×_; ⊤; tt; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax using ( ε; RTm; nzero )
-open import DirectedHoTT.Spec.Typing using ( c-◇ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.Signature using ( Sig; Entry; ⟨_∣_⟩; len; _▸ˢ_; ∅ˢ )
-open import DirectedHoTT.Metatheory.Signature using ( EntryWf; WfSig; wf→ok )
-open import DirectedHoTT.Metatheory.SigBelow using ( below; belowᵀ )
+open import DirectedHoTT.Spec.Signature using ( Sig; Entry; ⟨_∣_⟩; eBody; len; _▸ˢ_; ∅ˢ; kernel )
+open import DirectedHoTT.Metatheory.Signature using ( EntryWf; WfSig; wf→K )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+import DirectedHoTT.Algorithm.NbE.TblOK as TO
+import DirectedHoTT.Algorithm.NbETable as NT
 open import DirectedHoTT.Algorithm.Surface using ( STy; STm )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟ℕ_ )
 import DirectedHoTT.Spec.TypingA as TA
@@ -88,9 +89,8 @@ module SigExtend (base : Sig) (abase : ℕ → ATm ε) (wbase : WfSig base)
   elabTy i = fromR Unit (elabTyR i)
   elabTm i = fromR nzero (elabTmR i)
 
-  -- ★ the stored body IS the erasure of the elaborated one, over the
-  --   telescope before it
-  entryAt i = ⟨ elabTy i ∣ Era.⌈_⌉ (Sig.body (sigAt i)) (elabTm i) ⟩
+  -- ★ the stored body IS the erasure of the elaborated one
+  entryAt i = ⟨ elabTy i ∣ ⌈ elabTm i ⌉ ⟩
 
   sigAt zero    = base
   sigAt (suc i) = sigAt i ▸ˢ entryAt i
@@ -118,42 +118,57 @@ module SigExtend (base : Sig) (abase : ℕ → ATm ε) (wbase : WfSig base)
   -- ★ NO `with` on the checker's verdicts: each is an ARGUMENT of a helper
   --   (memory: with-over-knot-contexts-ooms).
   private
-    isTrue : {X : Set} (b : Bool) → String → (b ≡ true → R X) → R X
-    isTrue true  m k = k refl
-    isTrue false m k = err m
-
-    module Chk (i : ℕ) (w : WfSig (sigAt i)) where
+    -- ★ PLAN-REF: the value table of the telescope so far, THREADED, so
+    --   every entry is evaluated once per check.  It IS `mkTbl` of the
+    --   prefix's kernel signature — definitionally, so the equation is
+    --   `refl` at every step, and soundness is `mkTbl-ok`'s.
+    module Chk (i : ℕ) (w : WfSig (sigAt i)) (t : Tbl) (teq : t ≡ NT.mkTbl (kernel (sigAt i))) where
       Sᵢ = sigAt i
-      wΓ = wf→ok Sᵢ w
+      wK = wf→K Sᵢ w
+      tok : TO.TblOK (kernel Sᵢ) t
+      tok = subst (TO.TblOK (kernel Sᵢ)) (sym teq) (NT.mkTbl-ok (kernel Sᵢ))
+      open import DirectedHoTT.Spec.Typing (kernel Sᵢ) (Sig.size Sᵢ) using ( c-◇ )
 
-      byBelow : TA._⊢ᴬ_∷_ Sᵢ TA.◇ᴬ (elabTm i) (elabTy i) → R (EntryWf Sᵢ (entryAt i))
-      byBelow d =
-        isTrue (below (len Sᵢ) (elabTm i)) "a reference in the body is not below the entry" λ bb →
-        isTrue (belowᵀ (len Sᵢ) (elabTy i)) "a reference in the type is not below the entry" λ bt →
-        ok (elabTm i , (d , (refl , (bb , bt))))
-
-      byBody : Dec (TA._⊢ᴬ_∷_ Sᵢ TA.◇ᴬ (elabTm i) (elabTy i)) → R (EntryWf Sᵢ (entryAt i))
-      byBody (yes d) = byBelow d
-      byBody (no _)  = err (primStringAppend "the checker rejects the body › " (why-entry i))
+      byBody : TA._⊢tyᴬ_ Sᵢ TA.◇ᴬ (elabTy i) → Dec (TA._⊢ᴬ_∷_ Sᵢ TA.◇ᴬ (elabTm i) (elabTy i)) → R (EntryWf Sᵢ (entryAt i))
+      byBody dA (yes d) = ok (elabTm i , (dA , (d , refl)))
+      byBody dA (no _)  = err (primStringAppend "the checker rejects the body › " (why-entry i))
 
       byType : Dec (TA._⊢tyᴬ_ Sᵢ TA.◇ᴬ (elabTy i)) → R (EntryWf Sᵢ (entryAt i))
-      byType (yes dA) = byBody (CA.checkᴬ Sᵢ wΓ TA.◇ᴬ c-◇ (elabTm i) (elabTy i) (Er.erase-ty Sᵢ wΓ dA))
+      byType (yes dA) = byBody dA (CA.checkᴬ Sᵢ wK t tok TA.◇ᴬ c-◇ (elabTm i) (elabTy i) (Er.erase-ty Sᵢ dA))
       byType (no _)   = err (primStringAppend "the checker rejects the type › " (why-entry i))
 
       entry : R (EntryWf Sᵢ (entryAt i))
-      entry = byType (CA.checkTyᴬ Sᵢ wΓ TA.◇ᴬ c-◇ (elabTy i))
+      entry = byType (CA.checkTyᴬ Sᵢ wK t tok TA.◇ᴬ c-◇ (elabTy i))
 
-    next : (i : ℕ) → WfSig (sigAt i) → R (EntryWf (sigAt i) (entryAt i)) → R (WfSig (sigAt (suc i)))
-    next i w (err w') = err (primStringAppend "entry " (primStringAppend (primShowNat (ix i)) (primStringAppend " › " w')))
-    next i w (ok e)   = ok (w , e)
+    -- a stage of the telescope: its well-formedness and its table
+    record Stage (i : ℕ) : Set where
+      constructor stage
+      field
+        swf  : WfSig (sigAt i)
+        stbl : Tbl
+        steq : stbl ≡ NT.mkTbl (kernel (sigAt i))
 
-    step : (i : ℕ) → R (WfSig (sigAt i)) → R (WfSig (sigAt (suc i)))
-    step i (err w) = err w
-    step i (ok w)  = next i w (Chk.entry i w)
+    next : (i : ℕ) (w : WfSig (sigAt i)) (t : Tbl) → t ≡ NT.mkTbl (kernel (sigAt i)) →
+           R (EntryWf (sigAt i) (entryAt i)) → R (Stage (suc i))
+    next i w t teq (err w') = err (primStringAppend "entry " (primStringAppend (primShowNat (ix i)) (primStringAppend " › " w')))
+    next i w t teq (ok e)   =
+      ok (stage (w , e) (NT.extendAt (len (sigAt i)) t (eBody (entryAt i)))
+                (cong (λ x → NT.extendAt (len (sigAt i)) x (eBody (entryAt i))) teq))
+
+    step : (i : ℕ) → R (Stage i) → R (Stage (suc i))
+    step i (err w)              = err w
+    step i (ok (stage w t teq)) = next i w t teq (Chk.entry i w t teq)
+
+    stageAt : (i : ℕ) → R (Stage i)
+    stageAt zero    = ok (stage wbase (NT.mkTbl (kernel base)) refl)
+    stageAt (suc i) = step i (stageAt i)
 
   wfAt : (i : ℕ) → R (WfSig (sigAt i))
-  wfAt zero    = ok wbase
-  wfAt (suc i) = step i (wfAt i)
+  wfAt i = forget (stageAt i)
+    where
+    forget : R (Stage i) → R (WfSig (sigAt i))
+    forget (err w) = err w
+    forget (ok st) = ok (Stage.swf st)
 
   -- ★ the signature's well-formedness, when it holds — else the reason
   wfSig : R (WfSig S)

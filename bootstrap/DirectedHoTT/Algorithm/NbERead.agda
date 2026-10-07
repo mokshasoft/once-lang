@@ -27,7 +27,7 @@ open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( pwBody; pwShift )
-open import DirectedHoTT.Algorithm.NbE
+open import DirectedHoTT.Algorithm.NbE.Value
 
 private
   variable
@@ -111,7 +111,7 @@ read-cong v⌜Nat⌝ h = refl
 read-cong v⌜Unit⌝ h = refl
 read-cong (v⌜IMu⌝ I D i) h = cong₃ ⌜IMu⌝ (read-cong I h) (read-cong D h) (read-cong i h)
 read-cong (v⌜Fin⌝ t) h = cong ⌜Fin⌝ (read-cong t h)
-read-cong (vref d b) h = refl
+read-cong (vref d) h = refl
 
 ------------------------------------------------------------------------
 -- RENAMING commutes with reading (no scope argument: the level map is
@@ -182,7 +182,7 @@ pwBody-ren r t@⌜Nat⌝ = wk-ren r t
 pwBody-ren r t@(⌜IMu⌝ _ _ _) = wk-ren r t
 pwBody-ren r t@(⌜Fin⌝ _) = wk-ren r t
 pwBody-ren r t@⌜Unit⌝ = wk-ren r t
-pwBody-ren r t@(ref _ _) = wk-ren r t
+pwBody-ren r t@(ref _) = wk-ren r t
 
 ren⌊⌋  : (r : Ren Δ Θ) (v : Val) (L : Lv Δ) → renTm r (⌊ v ⌋ L) ≡ ⌊ v ⌋ (r ᴸ L)
 renᶜ   : (r : Ren Δ Θ) (c : Clo) (L : Lv Δ) → renTm (extR r) (⌊ c ⌋ᶜ L) ≡ ⌊ c ⌋ᶜ (r ᴸ L)
@@ -265,7 +265,7 @@ ren⌊⌋ r v⌜Nat⌝ L = refl
 ren⌊⌋ r v⌜Unit⌝ L = refl
 ren⌊⌋ r (v⌜IMu⌝ I D i) L = cong₃ ⌜IMu⌝ (ren⌊⌋ r I L) (ren⌊⌋ r D L) (ren⌊⌋ r i L)
 ren⌊⌋ r (v⌜Fin⌝ t) L = cong ⌜Fin⌝ (ren⌊⌋ r t L)
-ren⌊⌋ r (vref d b) L = refl
+ren⌊⌋ r (vref d) L = refl
 
 
 ------------------------------------------------------------------------
@@ -332,7 +332,7 @@ Sc n v⌜Nat⌝             = ⊤
 Sc n v⌜Unit⌝            = ⊤
 Sc n (v⌜IMu⌝ I D i)     = Sc n I × (Sc n D × Sc n i)
 Sc n (v⌜Fin⌝ t)         = Sc n t
-Sc n (vref d b)         = ⊤
+Sc n (vref d)           = ⊤
 
 -- scope is monotone in the depth
 Up : ℕ → ℕ → Set
@@ -422,7 +422,7 @@ mono v⌜Nat⌝ h s1 = tt
 mono v⌜Unit⌝ h s1 = tt
 mono (v⌜IMu⌝ I D i) h (s1 , (s2 , s3)) = (mono I h s1 , (mono D h s2 , mono i h s3))
 mono (v⌜Fin⌝ t) h s1 = mono t h s1
-mono (vref d b) h s1 = tt
+mono (vref d) h s1 = tt
 
 up-of-le : (m n : ℕ) → (m < suc n) ≡ true → Up m n
 up-of-le m n mn l p = <-trans≤′ l m n p mn
@@ -534,5 +534,12 @@ agree n v⌜Nat⌝ h s = refl
 agree n v⌜Unit⌝ h s = refl
 agree n (v⌜IMu⌝ I D i) h (s₁ , (s₂ , s₃)) = cong₃ ⌜IMu⌝ (agree n I h s₁) (agree n D h s₂) (agree n i h s₃)
 agree n (v⌜Fin⌝ t) h s = cong ⌜Fin⌝ (agree n t h s)
-agree n (vref d b) h s = refl
+agree n (vref d) h s = refl
 
+------------------------------------------------------------------------
+-- ★ the table's entries are CLOSED (PLAN-REF, E4): forcing a reference
+--   yields one, so scope is preserved through δ
+------------------------------------------------------------------------
+
+TblSc : Tbl → Set
+TblSc t = ∀ d → Sc 0 (lookupT t d)
