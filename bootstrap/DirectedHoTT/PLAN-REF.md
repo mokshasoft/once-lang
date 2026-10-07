@@ -172,3 +172,51 @@ Recorded so a failure is recognised, not explained away:
   not compute (a lookup that is stuck because `Σ` is not in normal form at
   the use site). Use sites instantiate concrete telescopes; `lookupE`
   computes on them.
+
+## 6. Progress
+
+### 2026-10-07 — Spec and Metatheory green (branch `plan-ref`)
+
+- **Spec.** `ref d` has no body; `KSig` and `_<ˢ?_` in `Spec/Syntax`.
+  `Spec/Typing` split three ways so each relation has exactly the
+  parameters it depends on: `Spec/Base` (signature-free: substitutions,
+  `Ctx`, `∋`), `Spec/Reduction 𝒮` (δ reads the body), `Spec/Typing 𝒮 n`
+  (`⊢ref : d <ˢ n → …`, `EntryOK`/`SigOK`). Erasure is signature-free.
+  `Spec/SigWf`: the kernel's context formation (`WfK`, each entry typed at
+  its prefix).
+- **Three module classes.** Reduction-level `(𝒮)`: Confluence,
+  Injectivity, RedCong, the LR, `Fundamental/{Syntactic,Semantic,Indexed}`
+  — ONE relation for every n, which entry reducibility needs. Typing-level
+  `(𝒮)(n)`; above subject reduction `(𝒮)(n)(ok : SigOK)`. Top-level
+  theorems (Canonicity, NormTy) take the single hypothesis `(wf : WfK 𝒮)`
+  and derive `ok`/`refs` themselves.
+- **Mixed modules split**: `TySub`, `SubjectReduction` → a `.Red` part
+  (typing-free definitions, `(𝒮)`) re-exported by the original.
+  `IsNormalᵀ` moved to the LR, `≅ᵀ-Πʳ`/`≅ᵀ-Σˡ` to RedCong.
+- **Confluence got simpler**: the development unfolds a reference ONCE
+  (`refDev`), the body not developed; a reference's only parallel reducts
+  are itself and its unfolding, so the triangle needs no recursion into
+  the signature.
+- **The LR's `⊢ref` case reads an ORACLE** (`Fundamental/Semantic.RefsOK`);
+  `Metatheory/Entries` builds it by induction along the telescope (entry
+  m is `fund` at m on its own derivation, the oracle below m from the IH,
+  one δ expansion). Validity's `⊢ref` case reads `okTy`: context
+  formation carries type formation, as `c-▹` does.
+- **Two generated structural lemmas**: `Metatheory/SigMono` (a derivation
+  moves to a larger name bound) and `Metatheory/SigExt` (reduction,
+  conversion and typing move along a signature extension, §1.4).
+  `Metatheory/Signature.wf→K`: the checker's `WfSig S` is the kernel's
+  `WfK (kernel S)` — each entry erased over its prefix, moved by `SigExt`.
+  `Metatheory/SigBelow` (erasure agreement across bodies) deleted: erasure
+  no longer reads bodies, and `⊢ᴬref` already bounds the names.
+- **Agda module discipline** (found here, applies to every layer): each
+  `open import M args` is a NEW instance, so (a) a parameterised module is
+  instantiated ONCE per file (`import M args as ᴵM` + `open ᴵM …`), and
+  (b) a parameterised module re-exports `public` only its own `.Red` part —
+  otherwise two paths to one module make its names ambiguous.
+- Reflection on a parameterised module's function needs the UNAPPLIED
+  module (`FormerCensus` reads `LR₀.spine?`): the applied copy is a
+  one-clause delegation.
+
+Next: `Algorithm/` (NbE value table, CheckA on `wf→K`, SigBuild without
+the `below` check), then Lib, Examples, the Knot and its generators.

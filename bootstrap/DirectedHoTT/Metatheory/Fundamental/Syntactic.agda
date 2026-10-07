@@ -12,8 +12,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Fundamental.Syntactic where
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.Fundamental.Syntactic (𝒮 : KSig) where
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ren-comm2; ren-comm; ren-comm-ext; pwShift-ren )
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
@@ -32,7 +33,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
         ; cong₄
         ; ref; εwkTm-ren )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( single; nrs; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
         ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz
         ; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ
@@ -53,20 +54,20 @@ open import DirectedHoTT.Spec.Variance
         ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm
         ; pw?-sub; stkC?→stkA?; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk
         ; flat?-sub; eqv; occ-sub; occ-ren-tm; avoids-wk; ren-as-sub )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( ≅ᵀ-sub; sub-comm; wk-sub )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.Confluence 𝒮
   using ( )
-open import DirectedHoTT.Algorithm.DecideConversion
+open import DirectedHoTT.Algorithm.DecideConversion 𝒮
   using ( dec-conv )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( confluentᵀ; church-rosserᵀ; Π-inj; Π-reduct; Σ-reduct; mkΠRed
         ; mkΣRed; Id-reduct )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.SubjectReduction.Red 𝒮
   using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat
         ; pw-El-decode; HomRed; mkHomRed; Hom-to-Hom; homAmb→; HomToΠ; via-U
         ; via-Π; hom-to-Π; U-reduct; ≅ᵀ-Homᵀ; gen-var )
-open import DirectedHoTT.Metatheory.LogicalRelation
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl
         ; hstk?-ren; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
         ; sne-tr; sne-ap; sne-jsub; Ne; ne-var; ne-app; ne-absurd; ne-fst
@@ -401,8 +402,8 @@ sn-anti {t = fcase t₀ a b} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = fcase0 t₀} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = fcase0 t₀} (sn-exp () h)
-sn-anti {Ξ = Ξ} {ρ = ρ} {t = ref n b} (sn-exp snr-δ h) with εwkTm {Γ = Ξ} b | εwkTm-ren ρ b | h
-... | _ | refl | h' = sn-exp snr-δ (sn-anti {ρ = ρ} {t = εwkTm b} h')
+sn-anti {Ξ = Ξ} {ρ = ρ} {t = ref n} (sn-exp (snr-δ p) h) with εwkTm {Γ = Ξ} (KSig.body 𝒮 n) | εwkTm-ren ρ (KSig.body 𝒮 n) | h
+... | _ | refl | h' = sn-exp (snr-δ p) (sn-anti {ρ = ρ} {t = εwkTm (KSig.body 𝒮 n)} h')
 sn-anti {t = psplit b q} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = psplit b q} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
@@ -576,7 +577,7 @@ snr-anti {t = fcase t₀ a b} (snr-fcaseᵗ r) = lift↑ (λ t' → fcase t' a b
 snr-anti {ρ = ρ} {t = psplit b (pair x y)} (snr-psplit-β hx hy) =
   subTm (single2 x y) b
   , (snr-psplit-β (sn-anti hx) (sn-anti hy) , sym (ren-comm2 ρ b x y))
-snr-anti {ρ = ρ} {t = ref n b} snr-δ = εwkTm b , (snr-δ , sym (εwkTm-ren ρ b))
+snr-anti {ρ = ρ} {t = ref n} (snr-δ p) = εwkTm (KSig.body 𝒮 n) , (snr-δ p , sym (εwkTm-ren ρ (KSig.body 𝒮 n)))
 snr-anti {t = psplit b q} (snr-psplitᵍ r) = lift↑ (λ q' → psplit b q') snr-psplitᵍ (λ _ → refl) (snr-anti r)
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Fin⌝ n) s) e} (snr-J-Fin hd hs) =
   e , (snr-J-Fin (sn-anti hd) (sn-anti hs) , refl)
@@ -602,7 +603,7 @@ csr-anti {t = dih _ _ _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = fcase _ _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
-csr-anti {ρ = ρ} {t = ref n b} (csr-here snr-δ) = εwkTm b , (csr-here snr-δ , sym (εwkTm-ren ρ b))
+csr-anti {ρ = ρ} {t = ref n} (csr-here (snr-δ p)) = εwkTm (KSig.body 𝒮 n) , (csr-here (snr-δ p) , sym (εwkTm-ren ρ (KSig.body 𝒮 n)))
 csr-anti {t = psplit _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ielim D i ms t₀} (csr-here r) with snr-anti r
@@ -821,7 +822,7 @@ snr-ren {ρ = ρ} (snr-psplit-β {b = b} {x = x} {y = y} hx hy) =
         (sym (ren-comm2 ρ b x y))
         (snr-psplit-β (sn-ren hx) (sn-ren hy))
 snr-ren (snr-psplitᵍ r) = snr-psplitᵍ (snr-ren r)
-snr-ren {ρ = ρ} (snr-δ {n = n} {b}) = subst (SNRed (ref n b)) (sym (εwkTm-ren ρ b)) snr-δ
+snr-ren {ρ = ρ} (snr-δ {n = n} p) = subst (SNRed (ref n)) (sym (εwkTm-ren ρ (KSig.body 𝒮 n))) (snr-δ p)
 snr-ren (snr-J-Fin hd hs) = snr-J-Fin (sn-ren hd) (sn-ren hs)
 
 csr-ren (csr-here r) = csr-here (snr-ren r)

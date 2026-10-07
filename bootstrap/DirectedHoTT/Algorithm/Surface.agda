@@ -144,7 +144,7 @@ holesTm (R.fsuc x1) = fsuc □ (holesTm x1)
 holesTm (R.fcase x2 x3 x4) = fcase □ □ᵀ (holesTm x2) (holesTm x3) (holesTm x4)
 holesTm (R.fcase0 x1) = fcase0 □ᵀ (holesTm x1)
 holesTm (R.psplit x3 x4) = psplit □ᵀ □ᵀ □ᵀ (holesTm x3) (holesTm x4)
-holesTm (R.ref x0 b) = ref x0
+holesTm (R.ref x0) = ref x0
 
 -- ★ renaming and substitution (holes and ascriptions are inert)
 renTyˢ : {Γ Δ : Cx} → Ren Γ Δ → STy Γ → STy Δ

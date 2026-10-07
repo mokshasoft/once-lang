@@ -35,15 +35,16 @@
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm; NoNatC; flat? )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _≅ᵀ_; _×_; _,,_; single; nrs )
+open import DirectedHoTT.Spec.Base
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _×_; _,,_; single; nrs )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.Signature using ( Sig; _<ˢ_ )
+open import DirectedHoTT.Spec.Signature using ( Sig; _<ˢ_; kernel )
 module DirectedHoTT.Spec.TypingA (S : Sig) where
 open Sig S
-open Era body
-open import DirectedHoTT.Spec.AnnotatedDesc body
+open import DirectedHoTT.Spec.AnnotatedDesc
+-- conversion is the KERNEL's, under the signature's kernel view (PLAN-REF)
+open import DirectedHoTT.Spec.Reduction (kernel S) using ( _≅ᵀ_ )
 
 ------------------------------------------------------------------------
 -- Annotated contexts, and their erasure — MUTUALLY.
@@ -224,7 +225,8 @@ data _⊢ᴬ_∷_ where
   -- ★ S5: a SIGNATURE REFERENCE is typed by its declared type alone — the
   --   body was checked once, in its prefix (`Metatheory/Signature`)
   ⊢ᴬref : ∀ {Γ d} → d <ˢ size → Γ ⊢ᴬ ref d ∷ εwkTyᴬ (type d)
-  -- ★ (c): conversion of ERASURES — δ included: erasure unfolds `ref`
+  -- ★ (c): conversion of ERASURES — δ included: the kernel unfolds `ref`
+  --   from the signature (PLAN-REF)
   ⊢ᴬconv : ∀ {Γ t A B} → Γ ⊢ᴬ t ∷ A → ⌈ A ⌉ᵀ ≅ᵀ ⌈ B ⌉ᵀ → Γ ⊢ᴬ t ∷ B
 
 data _⊢tyᴬ_ where

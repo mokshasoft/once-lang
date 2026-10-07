@@ -27,12 +27,11 @@
 --   `Spec/Syntax`'s `RTm` constructor list): a former missing here is a
 --   generator failure, not a silent row.
 --
--- ★ THE SIGNATURE (PLAN-BIDI §2-bis/§2-ter).  `ref d` names the d-th
---   entry of a global signature of CLOSED definitions.  The kernel's
---   `ref d b` carries its body; the annotated `ref d` only its name, and
---   erasure supplies the signature's body: `module Era (δ : ℕ → RTm ε)`,
---   `⌈ ref d ⌉ = ref d (δ d)`.  Syntax, renaming and substitution are not
---   parameterised (a reference is closed, so they leave it alone).
+-- ★ THE SIGNATURE (PLAN-REF, D082).  `ref d` names the d-th entry of the
+--   signature — the definition context — in BOTH layers: a projection,
+--   with no body.  Erasure keeps the name; δ (`Spec/Reduction`) reads the
+--   body from the signature.  Syntax, renaming, substitution and erasure
+--   are signature-free.
 --
 -- ★ LEVITATION: descriptions are TERMS, so they need no separate annotated
 --   syntax — they are `ATm`s like any other.

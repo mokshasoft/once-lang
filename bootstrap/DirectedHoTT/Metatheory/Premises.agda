@@ -19,17 +19,19 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Premises where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Metatheory.Premises (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( Sub⊢; sub-lemma; sub-ty; Ren⊢; Ren⊢-ext; ren-ty; ∋-cast; ⊢-cast; ⊢wk; wk-ren
         ; wk2-sub-tm; wk2M-sub; DescF-ren; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var; subTy-var )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( _⟶ᵀ*_; ⟶ᵀ*-trans; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El; ⟶ᵀ*-DIhᶜ; ⟶*-dpayᶜ; ⟶*-ren )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 

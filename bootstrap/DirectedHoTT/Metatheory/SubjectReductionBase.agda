@@ -33,7 +33,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.SubjectReductionBase where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.SubjectReductionBase (𝒮 : KSig) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -52,7 +53,7 @@ open import DirectedHoTT.Spec.Variance
 open import DirectedHoTT.Spec.Variance
   using ( pw?; stkC?; stkA?; pwBody; pwShift; pw?-sub; stkC?-sub; stkA?-sub
         ; pwBody-sub )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
         ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
@@ -65,8 +66,7 @@ open import DirectedHoTT.Spec.Typing
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; tr-J-Unit
         ; tr-J-IMu; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ
         ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; _≅ᵀ_; credᵀ
-        ; crflᵀ; csymᵀ; ctrnᵀ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
-        ; _⊢ty_; ty-base; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; El-⌜IMu⌝; ι; dpay-ι
+        ; crflᵀ; csymᵀ; ctrnᵀ; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; El-⌜IMu⌝; ι; dpay-ι
         ; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β
         ; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ
         ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
@@ -382,7 +382,7 @@ sub-comm2 {Γ} σ b x y =
   subst (λ z → fcase (fsuc (subTm σ t)) (subTm σ a) (subTm (extS σ) b) ⟶ z)
         (sym (sub-comm σ b t))
         (fcase-s _ _ _)
-⟶-sub σ (δref d b) = subst (λ z → ref d b ⟶ z) (sym (εwkTm-sub σ b)) (δref d b)
+⟶-sub σ (δref d p) = subst (λ z → ref d ⟶ z) (sym (εwkTm-sub σ (KSig.body 𝒮 d))) (δref d p)
 ⟶-sub σ (psplit-β b x y) =
   subst (λ z → psplit (subTm (extS (extS σ)) b) (pair (subTm σ x) (subTm σ y)) ⟶ z)
         (sym (sub-comm2 σ b x y))
@@ -480,20 +480,3 @@ sub-comm2 {Γ} σ b x y =
 ≅ᵀ-sub σ crflᵀ       = crflᵀ
 ≅ᵀ-sub σ (csymᵀ c)   = csymᵀ (≅ᵀ-sub σ c)
 ≅ᵀ-sub σ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-sub σ c) (≅ᵀ-sub σ d)
-
-------------------------------------------------------------------------
--- Concrete subject reduction: the redex `(λx.x) y` in context `◇ ▹ base`
--- reduces to `y`, and both the redex and the reduct are typed at `base`.
-------------------------------------------------------------------------
-
--- the redex is well-typed (dHoTT-21's `⊢appex`)
-sr-redex : (◇ ▹ base) ⊢ app (lam (var vz)) (var vz) ∷ base
-sr-redex = ⊢app (⊢lam ty-base (⊢var here)) (⊢var here)
-
--- it β-reduces to `y = var vz`
-sr-step : app (lam (var vz)) (var vz) ⟶ var (vz {ε})
-sr-step = β (var vz) (var vz)
-
--- and the reduct is typed at the SAME type — subject reduction, concretely.
-sr-reduct : (◇ ▹ base) ⊢ var vz ∷ base
-sr-reduct = ⊢var here

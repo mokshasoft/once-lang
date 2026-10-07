@@ -31,7 +31,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.FormerCensus where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.FormerCensus (𝒮 : KSig) where
 open import Agda.Builtin.Reflection
 open import Agda.Builtin.List
 open import Agda.Builtin.Bool
@@ -39,7 +40,10 @@ open import Agda.Builtin.Unit
 open import Agda.Builtin.Nat
 open import Agda.Builtin.Equality
 open import DirectedHoTT.Spec.Syntax using ( RTm )
-open import DirectedHoTT.Metatheory.LogicalRelation
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
+-- ★ reflection reads the ORIGINAL clauses: the applied module's `spine?` is
+--   a one-clause copy delegating to them (PLAN-REF parameterised the LR)
+import DirectedHoTT.Metatheory.LogicalRelation as LR₀
   using ( SNe; SN; SNRed; Ne; spine?; stablecd? )
 
 _++_ : {A : Set} → List A → List A → List A
@@ -189,8 +193,8 @@ macro
 --   lam pair ⌜base⌝ ⌜Σ⌝ unit nzero nsuc ⌜Nat⌝ ⌜Unit⌝ ⌜IMu⌝ con, and the new
 --   ⌜Fin⌝ dι dσ dρ fzero fsuc (values of `Fin`/`Desc`, as `nsuc` is of
 --   `Nat`).  Every eliminator of the levitated kernel has its own row.
-_ : catchAllN spine? RTm ≡ 17
+_ : catchAllN LR₀.spine? RTm ≡ 17
 _ = refl
 
-_ : catchAllN stablecd? RTm ≡ 7
+_ : catchAllN LR₀.stablecd? RTm ≡ 7
 _ = refl

@@ -9,13 +9,17 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Fundamental where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
+module DirectedHoTT.Metatheory.Fundamental (𝒮 : KSig) (n : ℕ) (ok : Ty.SigOK 𝒮 n) (refs : Sem.RefsOK 𝒮 n) where
 open import DirectedHoTT.Algorithm.DecEq
   using ( Dec )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶*-trans; red→≅ᵀ; ⟶ᵀ*-El; ⟶ᵀ*-trans
         ; single-mono; subTm-monoˢ )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( MethTy-sub; wk-cancel-tm; subTy-monoˢ; DescF-sub )
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
@@ -34,7 +38,7 @@ open import DirectedHoTT.Spec.Syntax
         ; fzero; fsuc; fcase; fcase0; psplit; cong₃
         ; ref )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( single; nrs; pairS; fsucS; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
         ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz
         ; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ
@@ -59,20 +63,20 @@ open import DirectedHoTT.Spec.Variance
         ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm
         ; pw?-sub; stkC?→stkA?; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk
         ; flat?-sub; eqv; occ-sub; occ-ren-tm; avoids-wk; NoNatC )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( ≅ᵀ-sub; sub-comm; wk-sub; subTy-comm; iinst-sub )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.Confluence 𝒮
   using ( )
-open import DirectedHoTT.Algorithm.DecideConversion
+open import DirectedHoTT.Algorithm.DecideConversion 𝒮
   using ( dec-conv )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( confluentᵀ; church-rosserᵀ; Π-inj; Π-reduct; Σ-reduct; mkΠRed
         ; mkΣRed; Id-reduct; nsuc-inj≅ )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
   using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat
         ; pw-El-decode; HomRed; mkHomRed; Hom-to-Hom; homAmb→; HomToΠ; via-U
         ; via-Π; hom-to-Π; U-reduct; ≅ᵀ-Homᵀ; gen-var )
-open import DirectedHoTT.Metatheory.LogicalRelation
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl
         ; hstk-nopw; hstk-mk; pick-orL; hstk?; hstk?-red*ᶜ; sne→natcstk; sne→natstk; snr-hrefl-Nat-z; snr-hrefl-Nat-s; snr-hreflᵃ
         ; sne-tr; sne-ap; sne-jsub; Ne; ne-var; ne-app; ne-absurd; ne-fst
@@ -113,9 +117,9 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; snr-J-Fin; ⊩₁DIhNe
         ; snr-δ )
 
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic
-open import DirectedHoTT.Metatheory.Fundamental.Semantic
-open import DirectedHoTT.Metatheory.Fundamental.Indexed
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
+open import DirectedHoTT.Metatheory.Fundamental.Semantic 𝒮
+open import DirectedHoTT.Metatheory.Fundamental.Indexed 𝒮
 
 private
   variable
@@ -1913,13 +1917,10 @@ fund (⊢tr dc' da' dv nc hc ha dt du dp de) x₀ ρ =
 
 -- ★ `⊢conv` — no validity premise, no `⊢ty` closed under conversion.  The
 -- relation is already closed under conversion; this is the whole of §4.0.
--- ★ a DEFINITION: its body is related at the empty context (the premise,
---   a structurally smaller derivation), and the relation is closed under
---   the head expansion `ref n b ↦ εwkTm b`
-fund {σ = σ} (⊢ref {d = n} {b = b} {A = A} db) x₀ ρ =
-  subst (λ T → Rel T (ref n b)) (sym (εwk-sub σ A))
-        ( dfst (fund db x₀ ⊩ˢ-ε)
-        , exp₁ (dfst (fund db x₀ ⊩ˢ-ε)) snr-δ (dsnd (fund db x₀ ⊩ˢ-ε)) )
+-- ★ a REFERENCE (PLAN-REF): a projection from the signature, related by
+--   the oracle — its declared type is closed, so the substitution only
+--   weakens it
+fund {σ = σ} (⊢ref {d = d} p) x₀ ρ = relTy (sym (εwk-sub σ (KSig.type 𝒮 d))) (refs p x₀)
 fund {σ = σ} (⊢conv d c) x₀ ρ =
   ( conv₁ (≅ᵀ-sub σ c) (dfst (fund d x₀ ρ))
   , sem-conv (≅ᵀ-sub σ c) (dfst (fund d x₀ ρ))

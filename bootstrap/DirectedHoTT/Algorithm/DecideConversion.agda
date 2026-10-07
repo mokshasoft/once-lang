@@ -36,13 +36,14 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.DecideConversion where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Algorithm.DecideConversion (𝒮 : KSig) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶_; β; ξ-lam; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn )
-open import DirectedHoTT.Metatheory.Confluence using ( church-rosser )
+open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( church-rosser )
 
 private
   variable

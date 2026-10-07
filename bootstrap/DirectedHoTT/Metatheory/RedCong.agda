@@ -34,7 +34,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.RedCong where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.RedCong (𝒮 : KSig) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -52,7 +53,7 @@ open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift; pw?-ren
         ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub
         ; pwBody-sub; pw⊥stk; pw⊥stkA; stkC?→stkA? )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
         ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
         ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
@@ -64,7 +65,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ; tr-J-Unit; tr-J-IMu
         ; El-⌜Nat⌝; El-⌜Unit⌝; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn
         ; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; El-⌜IMu⌝; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
-        ; ξ-Σʳ; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; _≅ᵀ_; crflᵀ
+        ; ξ-Σʳ; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; _≅ᵀ_; crflᵀ; csymᵀ
         ; ctrnᵀ; credᵀ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ
         ; fcase-z; fcase-s; psplit-β; tr-J-Fin; single2; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ
         ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ
@@ -72,7 +73,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; ξ-IMuᴵ; ξ-IMuᴰ
         ; ξ-IMuⁱ; ξ-Desc; ξ-Fin; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ
         ; δref )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub )
 
 private
@@ -513,7 +514,7 @@ ren-comm2 {Γ} ρ b x y =
   subst (λ z → fcase (fsuc (renTm ρ t)) (renTm ρ a) (renTm (extR ρ) b) ⟶ z)
         (sym (ren-comm ρ b t))
         (fcase-s _ _ _)
-⟶-ren ρ (δref d b) = subst (λ z → ref d b ⟶ z) (sym (εwkTm-ren ρ b)) (δref d b)
+⟶-ren ρ (δref d p) = subst (λ z → ref d ⟶ z) (sym (εwkTm-ren ρ (KSig.body 𝒮 d))) (δref d p)
 ⟶-ren ρ (psplit-β b x y) =
   subst (λ z → psplit (renTm (extR (extR ρ)) b) (pair (renTm ρ x) (renTm ρ y)) ⟶ z)
         (sym (ren-comm2 ρ b x y))
@@ -926,7 +927,7 @@ subTm-monoˢ h (fcase t a b) =
   ⟶*-trans (⟶*-fcaseᵗ (subTm-monoˢ h t)) (⟶*-trans (⟶*-fcaseᵃ (subTm-monoˢ h a)) (⟶*-fcaseᵇ (subTm-monoˢ (extS-mono h) b)))
 subTm-monoˢ h (fcase0 t) =
   ⟶*-fcase0 (subTm-monoˢ h t)
-subTm-monoˢ h (ref d b) = done
+subTm-monoˢ h (ref d) = done
 subTm-monoˢ h (psplit b q) =
   ⟶*-trans (⟶*-psplitᵇ (subTm-monoˢ (extS-mono (extS-mono h)) b)) (⟶*-psplitᵍ (subTm-monoˢ h q))
 subTm-monoˢ h (natrec z s n) =
@@ -1063,3 +1064,17 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 red→≅ᵀ : {A B : RTy Γ} → A ⟶ᵀ* B → A ≅ᵀ B
 red→≅ᵀ doneᵀ       = crflᵀ
 red→≅ᵀ (stepᵀ r p) = ctrnᵀ (credᵀ r) (red→≅ᵀ p)
+
+-- conversion congruences at a type former
+≅ᵀ-Πʳ : {Δ : Cx} {A : RTy Δ} {B B' : RTy (Δ ∙)} → B ≅ᵀ B' → Π A B ≅ᵀ Π A B'
+≅ᵀ-Πʳ (credᵀ r)   = credᵀ (ξ-Πʳ r)
+≅ᵀ-Πʳ crflᵀ       = crflᵀ
+≅ᵀ-Πʳ (csymᵀ c)   = csymᵀ (≅ᵀ-Πʳ c)
+≅ᵀ-Πʳ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-Πʳ c) (≅ᵀ-Πʳ d)
+
+≅ᵀ-Σˡ : {Δ : Cx} {A A' : RTy Δ} {B : RTy (Δ ∙)} → A ≅ᵀ A' → Σ' A B ≅ᵀ Σ' A' B
+≅ᵀ-Σˡ (credᵀ r)   = credᵀ (ξ-Σˡ r)
+≅ᵀ-Σˡ crflᵀ       = crflᵀ
+≅ᵀ-Σˡ (csymᵀ c)   = csymᵀ (≅ᵀ-Σˡ c)
+≅ᵀ-Σˡ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-Σˡ c) (≅ᵀ-Σˡ d)
+

@@ -30,40 +30,56 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.NormTy where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
+module DirectedHoTT.Metatheory.NormTy (𝒮 : KSig) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: at the whole signature, its entries typed and its
+--   references reducible — both from its context formation
+private
+  n : ℕ
+  n = KSig.size 𝒮
+  ok : Ty.SigOK 𝒮 n
+  ok = Entries.sigOK 𝒮 n wf
+  refs : Sem.RefsOK 𝒮 n
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; ¬_; ⊥
         ; ⊥-elim )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Variance using () renaming ( true to trueᵇ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ
         ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ
         ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ; ⟶ᵀ*-Desc; ⟶ᵀ*-Fin
         ; ⟶ᵀ*-DIhᴰ; ⟶ᵀ*-DIhᴹ; ⟶ᵀ*-DIhᶜ; ⟶ᵀ*-DIhᵖ; red→≅ᵀ )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; sub-ty; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; ∋-cast; ⟶ᵀ-ren; iinst-wf; wk-cancel-tm; DescF-ren; DescF-sub; ⊢wk; ⊢-cast )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var )
-open import DirectedHoTT.Metatheory.Fundamental.Indexed using ( Walk; w-ne; w-exp; w-ι; w-σ; w-ρ )
-open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( sr; sr*; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝; gen-⌜Id⌝; gen-nsuc; ⊢wk; ⊢-cast; dσ-step; dρ-step )
-open import DirectedHoTT.Metatheory.Validity using ( srᵀ*; wk-app-vz )
-open import DirectedHoTT.Metatheory.LogicalRelation
-  using ( IsNormal; WN; mkWN; dstk?; dstk?-red*; dstk?-ren; sne→dstk; snr→⟶ )
-open import DirectedHoTT.Metatheory.Fundamental using ( wnorm; dih-walk )
-open import DirectedHoTT.Metatheory.Injectivity using ( church-rosserᵀ )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTy-var )
+open import DirectedHoTT.Metatheory.Fundamental.Indexed 𝒮 using ( Walk; w-ne; w-exp; w-ι; w-σ; w-ρ )
+open import DirectedHoTT.Metatheory.Validity 𝒮 n ok using ( srᵀ*; wk-app-vz )
+import DirectedHoTT.Metatheory.LogicalRelation 𝒮 as ᴵLogicalRelation
+open ᴵLogicalRelation using ( IsNormal; WN; mkWN; dstk?; dstk?-red*; dstk?-ren; sne→dstk; snr→⟶ )
+open import DirectedHoTT.Metatheory.Fundamental 𝒮 n ok refs using ( wnorm; dih-walk )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮 using ( church-rosserᵀ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Ty_ )
+open ᴵLogicalRelation using ( IsNormalᵀ )
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
 
 ------------------------------------------------------------------------
 -- 0. Normal types, and a type WITH its normal form.
 ------------------------------------------------------------------------
 
-IsNormalᵀ : {Γ : Cx} → RTy Γ → Set
-IsNormalᵀ A = ∀ {B} → ¬ (A ⟶ᵀ B)
+-- `IsNormalᵀ` is a property of REDUCTION: `Metatheory/LogicalRelation`, beside `IsNormal`
 
 record WNᵀ {Γ : Cx} (A : RTy Γ) : Set where
   constructor mkWNᵀ
@@ -182,7 +198,7 @@ numV ⌜Nat⌝ = numNe (λ ()) (λ _ ())
 numV (⌜IMu⌝ _ _ _) = numNe (λ ()) (λ _ ())
 numV (⌜Fin⌝ _) = numNe (λ ()) (λ _ ())
 numV ⌜Unit⌝ = numNe (λ ()) (λ _ ())
-numV (ref _ _) = numNe (λ ()) (λ _ ())
+numV (ref _) = numNe (λ ()) (λ _ ())
 
 -- `Hom Nat t u` at a stuck `t`, and at `nsuc m` with a stuck `u`, is normal.
 nf-t : {Γ : Cx} {t u : RTm Γ} → (t ≡ nzero → ⊥) → ((k : RTm Γ) → t ≡ nsuc k → ⊥) →
@@ -203,8 +219,10 @@ homNF : {Γ : Ctx} → ⊢ctx Γ → (A : RTy ⌊ Γ ⌋) → Γ ⊢ty A → IsN
         (t u : RTm ⌊ Γ ⌋) → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → IsNormal t → IsNormal u →
         WNᵀ (Hom A t u)
 
--- a definition always δ-steps, so it is never normal
-elNF wΓ (ref n b) dc nc = ⊥-elim (nc (δref n b))
+-- a typed reference names an entry of the signature, so it δ-steps:
+--   never normal
+elNF wΓ (ref m) dc nc with gen-ref dc
+... | p , _ = ⊥-elim (nc (δref m p))
 elNF wΓ ⌜base⌝ dc nc = mkWNᵁ base (stepᵀ El-⌜base⌝ doneᵀ) (λ ()) nu-base
 elNF wΓ (⌜Π⌝ c d) dc nc =
   let (dc₁ , (dd₁ , _)) = gen-⌜Π⌝ dc

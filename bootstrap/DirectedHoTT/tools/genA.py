@@ -63,9 +63,8 @@ TMS = [
  ('fcase', [f(M,0,A), f(T,1,A), f(M), f(M), f(M,1)]),  # fcase [n P] t a b
  ('fcase0', [f(T,1,A), f(M)]),                      # fcase0 [P] t
  ('psplit', [f(T,0,A), f(T,1,A), f(T,1,A), f(M,2), f(M)]),  # psplit [A B P] b q
- # ★ a reference to the d-th entry of the global signature (PLAN-BIDI
- #   §2-ter).  In `RTm` it carries its body (`ref d b`); here only the
- #   NAME — erasure supplies the signature's body.
+ # ★ a reference to the d-th entry of the signature: a PROJECTION, in
+ #   both layers (PLAN-REF, D082) — erasure keeps the name.
  ('ref', [f(N)]),                                   # ref d
 ]
 SIGONLY = set()
@@ -108,7 +107,7 @@ def erase(c, fs, ty):
     me = '⌈ {} ⌉ᵀ' if ty else '⌈ {} ⌉'
     L = lhs(c, fs)
     if fs and fs[0][0] == V: return '⌈ (var x) ⌉ = var x'
-    if c == 'ref': return '⌈ (ref x0) ⌉ = ref x0 (δ x0)'
+    if c == 'ref': return '⌈ (ref x0) ⌉ = ref x0'
     rhs = [c]
     for i, (kind, b, ann) in enumerate(fs):
         if ann: continue
@@ -151,8 +150,8 @@ def generate():
           'subTyᴬ : {Γ Δ : Cx} → Subᴬ Γ Δ → ATy Γ → ATy Δ',
           'subTmᴬ : {Γ Δ : Cx} → Subᴬ Γ Δ → ATm Γ → ATm Δ']
     o += [act('sub', c, fs, True) for c, fs in TYS] + [act('sub', c, fs, False) for c, fs in TMS]
-    e = ['-- ★ ERASURE — drops exactly the annotation fields, and UNFOLDS a',
-         '--   signature reference to its closed body (δ, PLAN-BIDI §2-bis).',
+    e = ['-- ★ ERASURE — drops exactly the annotation fields.  A reference stays',
+         '--   a reference: both layers read it from the signature (PLAN-REF).',
          '⌈_⌉ᵀ : {Γ : Cx} → ATy Γ → RTy Γ', '⌈_⌉ : {Γ : Cx} → ATm Γ → RTm Γ']
     e += [erase(c, fs, True) for c, fs in TYS] + [erase(c, fs, False) for c, fs in TMS]
     e += ['', '-- ★ erasure commutes with renaming',
@@ -170,9 +169,7 @@ def generate():
           'era-subTm : {Γ Δ : Cx} (σ : Subᴬ Γ Δ) (τ : Sub Γ Δ) → (∀ x → ⌈ σ x ⌉ ≡ τ x) →',
           '            (t : ATm Γ) → ⌈ subTmᴬ σ t ⌉ ≡ subTm τ ⌈ t ⌉']
     e += [era('sub', c, fs, True) for c, fs in TYS] + [era('sub', c, fs, False) for c, fs in TMS]
-    o += ['', '-- ★ the erased BODIES of the signature: `δ d` is entry d, erased.',
-          'module Era (δ : ℕ → RTm ε) where', '']
-    o += ['  ' + l if l else l for l in e]
+    o += [''] + e
     return '\n'.join(o) + '\n'
 
 SURF_HEADER = '''-- SPDX-License-Identifier: AGPL-3.0-or-later
@@ -218,7 +215,7 @@ def surface():
     def hole(c, fs, ty):
         me = 'holesTy' if ty else 'holesTm'
         if fs and fs[0][0] == V: return f'{me} (R.var x) = var x'
-        if c == 'ref': return f'{me} (R.ref x0 b) = ref x0'
+        if c == 'ref': return f'{me} (R.ref x0) = ref x0'
         real = [(i, k) for i, (k, b, ann) in enumerate(fs) if not ann]
         lhs_ = f'R.{c}' if not real else '(R.' + c + ' ' + ' '.join(f'x{i}' for i, _ in real) + ')'
         rhs = [c]

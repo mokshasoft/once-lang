@@ -28,30 +28,30 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Fundamental.Indexed where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.Fundamental.Indexed (𝒮 : KSig) where
 
-open import DirectedHoTT.Metatheory.LogicalRelation
-  using ( stablecd? )
+import DirectedHoTT.Metatheory.LogicalRelation 𝒮 as ᴵLogicalRelation
+open ᴵLogicalRelation using ( stablecd? )
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊤ )
 
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
+open import DirectedHoTT.Metatheory.TySub.Red 𝒮
   using ( wk-cancel; wk-cancel-tm; iinst-monoˢ )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.SubjectReduction.Red 𝒮
   using ( meth-inst; ww-cancel; wk2M-cancel )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ )
-open import DirectedHoTT.Metatheory.Injectivity
+open ᴵRedCong using ( red→≅ᵀ )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( Desc-reduct; Σ-reduct; ΣRed; mkΣRed )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( wk-sub )
-open import DirectedHoTT.Metatheory.LogicalRelation
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic
-open import DirectedHoTT.Metatheory.Fundamental.Semantic
+open ᴵLogicalRelation
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
+open import DirectedHoTT.Metatheory.Fundamental.Semantic 𝒮
 
 private
   variable

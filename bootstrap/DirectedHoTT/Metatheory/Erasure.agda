@@ -7,10 +7,10 @@
 --
 --       erase : Γ ⊢ᴬ t ∷ A → ⌈ Γ ⌉ᶜ ⊢ ⌈ t ⌉ ∷ ⌈ A ⌉ᵀ
 --
--- ★ Over a signature: an annotated `ref d` erases to the kernel's
---   `ref d (body d)`, typed by `⊢ref` from the body's derivation.  The
---   hypothesis `SigOK` (each erased body has its erased declared type)
---   comes from `Metatheory/Signature`'s `WfSig`.
+-- ★ Over a signature: an annotated `ref d` erases to the kernel's `ref d`
+--   (both projections from the signature, PLAN-REF), typed by `⊢ref` at
+--   the kernel's view of the signature (`kernel S`).  No hypothesis on the
+--   signature: erasure is syntax; consistency, below, needs it well-formed.
 --
 -- ★ THIS IS THE WHOLE BRIDGE.  Every metatheorem of `RTm` now applies to
 --   the annotated kernel through it — consistency is below, one line.
@@ -28,16 +28,15 @@
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; ⊥ )
 open import Agda.Builtin.Nat using ( zero )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.Signature using ( Sig; SigOK )
-open import DirectedHoTT.Metatheory.TySub using ( sub-lemma )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
-open import DirectedHoTT.Metatheory.Canonicity using ( consistency )
-module DirectedHoTT.Metatheory.Erasure (S : Sig) (ok : SigOK S) where
+open import DirectedHoTT.Spec.Signature using ( Sig; kernel; kernel-type )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+module DirectedHoTT.Metatheory.Erasure (S : Sig) where
 open Sig S
-open Era body
-open import DirectedHoTT.Spec.AnnotatedDesc body
+-- the kernel's view of the signature, at all its names (PLAN-REF)
+open import DirectedHoTT.Spec.Typing (kernel S) size hiding ( _×_ )
+open import DirectedHoTT.Metatheory.TySub (kernel S) size using ( sub-lemma; ⊢-cast )
+open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA S
 
 private
@@ -137,9 +136,9 @@ erase (⊢ᴬnatrec {M = M} {n = n} dM dz ds dn) =
              (⊢-cast (sub1 nzero M) (erase dz))
              (⊢-cast (era-subTy nrsᴬ nrs nrs-era M) (erase ds))
              (erase dn))
--- ★ a reference erases to the kernel's reference WITH the signature's
---   body, typed by that body's derivation (`SigOK`)
-erase (⊢ᴬref {d = d} p) = ⊢-cast (sym (era-εwkTy (type d))) (⊢ref (ok p))
+-- ★ a reference erases to the kernel's reference: both are projections
+--   from the signature, typed by the declaration (PLAN-REF)
+erase (⊢ᴬref {d = d} p) = ⊢-cast (trans (cong εwkTy (kernel-type S d)) (sym (era-εwkTy (type d)))) (⊢ref p)
 erase (⊢ᴬconv d c) = ⊢conv (erase d) c
 
 erase-ty tyᴬ-base = ty-base
@@ -161,5 +160,9 @@ erase-ty (tyᴬ-Hom dA dt du) = ty-Hom (erase-ty dA) (erase dt) (erase du)
 -- ★ The first transferred theorem: the annotated kernel is CONSISTENT.
 ------------------------------------------------------------------------
 
-consistencyᴬ : {t : ATm ε} → ◇ᴬ ⊢ᴬ t ∷ base → ⊥
-consistencyᴬ d = consistency (erase d)
+-- (at a WELL-FORMED signature: consistency is a theorem about one)
+module _ (wf : WfK (kernel S)) where
+  open import DirectedHoTT.Metatheory.Canonicity (kernel S) wf using ( consistency )
+
+  consistencyᴬ : {t : ATm ε} → ◇ᴬ ⊢ᴬ t ∷ base → ⊥
+  consistencyᴬ d = consistency (erase d)
