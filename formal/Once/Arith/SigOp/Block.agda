@@ -48,7 +48,8 @@ import Once.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 
-open import Once.Float.Decimal using (Decimal; sig; exp10; round)
+open import Once.Float.Decimal using (Decimal; round)
+open Once.Float.Decimal.Decimal using (exp10; sig)
 import Once.Float.Arith as FA
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M

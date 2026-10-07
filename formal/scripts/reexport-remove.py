@@ -143,9 +143,18 @@ def report(mods, out, cache=False):
     cmd = ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=5500M", "-p", "MemorySwapMax=2G",
            "--", "env", "LC_ALL=en_US.utf8", "GHCRTS=-M4500m", AGDA, "--library-file=" + STAGE + "/libs",
            "--transliterate", "--name-resolution-report=" + out, "ReportRoot.agda"]
-    r = subprocess.run(cmd, cwd=STAGE + "/formal", capture_output=True, text=True)
-    if r.returncode != 0:
-        return None, r.stdout[-6000:] + r.stderr[-3000:]
+    import time
+    for attempt in range(12):
+        r = subprocess.run(cmd, cwd=STAGE + "/formal", capture_output=True, text=True)
+        if r.returncode == 0: break
+        out = r.stdout + r.stderr
+        # killed (another session's build exhausting memory): no Agda diagnostic — wait, retry
+        if re.search(r": (error|warning): |Heap exhausted", out) and "Heap exhausted" not in out:
+            return None, r.stdout[-6000:] + r.stderr[-3000:]
+        print(f"  (agda killed or out of memory, attempt {attempt + 1}; waiting)", flush=True)
+        time.sleep(300)
+    else:
+        return None, "agda kept being killed\n" + r.stdout[-3000:]
     recs = defaultdict(list)
     want = set(mods)
     for l in open(out, encoding="utf-8"):

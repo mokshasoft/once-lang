@@ -69,7 +69,7 @@ open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
 open import Once.Functor.Translate using (IsConcrete; con-fun; IsBaseType)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)
-open import Once.Float.Decimal using (Decimal; decimalOf)
+open import Once.Float.Decimal using (decimalOf)
 import Once.Float.Decimal as Decimal
 open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; sub-arr; <:-refl)
 open import Once.Type.DecEq using (_≟T_)

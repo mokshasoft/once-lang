@@ -80,7 +80,6 @@ Once/Denotation/SourceDenote.agda 1
 Once/Denotation/Trace.agda 1
 Once/Denotation/TraceMonad.agda 1
 Once/Denotation/ValueDomain.agda 1
-Once/Float/Decimal.agda 1
 Once/Float/Dyadic.agda 1
 Once/IR.agda 2
 Once/Memory/HeapAddress.agda 2

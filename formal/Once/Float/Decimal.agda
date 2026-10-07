@@ -63,7 +63,7 @@ record Decimal : Set where
     sig   : ℤ      -- SIGNED, so `-0.5` is `-5 /10^ 1` and the sign survives
     exp10 : ℕ
 
-open Decimal public
+open Decimal
 
 -- | The whole number `n`.
 fromℕ : ℕ → Decimal

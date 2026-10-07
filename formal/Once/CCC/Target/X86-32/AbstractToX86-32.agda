@@ -45,7 +45,7 @@ open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Float.Dyadic using (binary32)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Float.Decimal using (round)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 32
 
