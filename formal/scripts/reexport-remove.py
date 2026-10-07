@@ -314,8 +314,15 @@ def run(targets):
     # they are left as they are (plan 0.92 §9)
     red = set(os.environ.get("RED", "Once.Allocator.Slab Once.Spike.RelSpike Once.Optimizer.Normal").split())
     # refutation probes (`Once.Probe.*`) target postulates since removed: stale by design
+    # Verify exactly what the gate checks: the modules the island backstop
+    # (EverythingFiltered.agda, green by the gate) imports. Others are islands the
+    # gate does not check either; red ones among them cannot be scope checked.
+    backstop = None
+    if os.path.exists("EverythingFiltered.agda"):
+        backstop = {m for _, m in imports_of("EverythingFiltered.agda")}
     imps = [m for m in importers(facades)
-            if m not in facades and m not in red and not m.startswith("Once.Probe.")] + facades
+            if m not in facades and m not in red and not m.startswith("Once.Probe.")
+            and (backstop is None or m in backstop)] + facades
     # The snapshot checks the UNCHANGED tree, so a module failing it is red already:
     # drop it (and what imports it) and retry.
     for _ in range(10):
@@ -421,6 +428,12 @@ def run(targets):
         if fac not in stmt_of:                       # Agda names it by the importer's alias
             al = re.search(r"import\s+(\S+)\s+as\s+" + re.escape(fac) + r"\b", open(path, encoding="utf-8").read())
             if al: fac = al.group(1)
+        if fac not in stmt_of:                       # a module INSIDE a facade (a record's module)
+            owner = [f for f in stmt_of if fac.startswith(f + ".")]
+            if owner:
+                for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
+                print("AMBIGUOUS-FACADE " + max(owner, key=len))
+                sys.exit("a name of " + fac + " inside a removed facade (tree restored)")
         names = {l.strip().split(" ")[0] for l in m.group(4).splitlines() if l.strip()}
         where = {}
         for n in names:
