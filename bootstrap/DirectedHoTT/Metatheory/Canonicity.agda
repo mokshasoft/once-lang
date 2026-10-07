@@ -38,7 +38,24 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Canonicity where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
+module DirectedHoTT.Metatheory.Canonicity (𝒮 : KSig) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: at the whole signature, its entries typed and its
+--   references reducible — both from its context formation
+private
+  n : ℕ
+  n = KSig.size 𝒮
+  ok : Ty.SigOK 𝒮 n
+  ok = Entries.sigOK 𝒮 n wf
+  refs : Sem.RefsOK 𝒮 n
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_; ⊥; ⊥-elim
         ; _⊎_; inj₁; inj₂; cong₂ )
@@ -57,14 +74,20 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; flat→stk; pw?-ren; occTm; subTm-occ
         ; NoNatC; NoNatHd; nonatc→hd; nonatc-sub; stkC?→stkA?; stkC?→hd )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶-ren; confluent; ⟶*-trans; church-rosser )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( ⟶-ren; confluent; ⟶*-trans; church-rosser )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( ≅ᵀ-sub )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; church-rosserᵀ; red→≅ᵀ
         ; Π-reduct; ΠRed; mkΠRed; Id-reduct; Fin-inj; nzero≇nsuc )
-open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( gen-lam; gen-app; gen-absurd; gen-pair; gen-fst; gen-snd; gen-ap
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
+  using ( base-nf; Unit-nf; Nat-nf; IsNormal; WN; mkWN )
+open import DirectedHoTT.Metatheory.Fundamental 𝒮 n ok refs using ( wnorm )
+open import DirectedHoTT.Algorithm.DecideConversion 𝒮 using ( red→≅ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
+  using ( gen-ref; gen-lam; gen-app; gen-absurd; gen-pair; gen-fst; gen-snd; gen-ap
         ; gen-⌜Id⌝; gen-idrefl; gen-jsub; gen-nsuc; gen-natrec; gen-ordtr
         ; gen-var; gen-hrefl; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝
         ; gen-tr; TrGen; tgC; tgU; TrInv; mkTrInv; TrInvU; mkTrInvU
@@ -74,10 +97,6 @@ open import DirectedHoTT.Metatheory.SubjectReduction
         ; homAmb→; ≅ᵀ-Homᵀ; ⊢[]; sr*; nonathd-red
         ; gen-con; gen-ielim; gen-⌜IMu⌝; gen-dι; gen-dσ; gen-dρ; gen-dpay; gen-dih
         ; gen-fsuc; gen-fcase; gen-fcase0; gen-psplit )
-open import DirectedHoTT.Metatheory.LogicalRelation
-  using ( base-nf; Unit-nf; Nat-nf; IsNormal; WN; mkWN )
-open import DirectedHoTT.Metatheory.Fundamental using ( wnorm )
-open import DirectedHoTT.Algorithm.DecideConversion using ( red→≅ )
 
 ------------------------------------------------------------------------
 -- 0. INERT HEADS.  A type whose head no type-level rule rewrites keeps
@@ -512,7 +531,7 @@ szb (fsuc t)       = sz t
 szb (fcase t a b)  = sz t + sz a + sz b
 szb (fcase0 t)     = sz t
 szb (psplit b q)   = sz b + sz q
-szb (ref n b)      = zero
+szb (ref n)      = zero
 
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
 sz-ren  : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → sz (renTm ρ t) ≡ sz t
@@ -563,7 +582,7 @@ szb-ren ρ (fsuc t)      = sz-ren ρ t
 szb-ren ρ (fcase t a b) = cong₂ _+_ (cong₂ _+_ (sz-ren ρ t) (sz-ren ρ a)) (sz-ren _ b)
 szb-ren ρ (fcase0 t)    = sz-ren ρ t
 szb-ren ρ (psplit b q)  = cong₂ _+_ (sz-ren _ b) (sz-ren ρ q)
-szb-ren ρ (ref n b)     = refl
+szb-ren ρ (ref n)     = refl
 szb-ren ρ (ordtr a t u p q) =
   cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ a) (sz-ren ρ t))
                                   (sz-ren ρ u))
@@ -956,7 +975,8 @@ mutual
   ... | dc , (de , _) with prog m de (≤-trans (≤+ʳ (sz c) (sz e)) (un≤ le))
   ...   | prog-step r = prog-step (ξ-absurdᵉ r)
   ...   | prog-can cn = ⊥-elim (canBase⊥ de cn)
-  prog (suc m) {t = ref n b}     d le = prog-step (δref n b)
+  prog (suc m) {t = ref k}       d le with gen-ref d
+  ... | p , _ = prog-step (δref k p)
   prog (suc m) {t = app f a}     d le with appS m d (un≤ le)
   ... | _ , r = prog-step r
   prog (suc m) {t = fst p}       d le with fstS m d (un≤ le)
@@ -1027,7 +1047,8 @@ mutual
   ...   | prog-step r = u-step (ξ-absurdᵉ r)
   ...   | prog-can cn = ⊥-elim (canBase⊥ de cn)
   -- every eliminator steps (the `prog` rows' workers).
-  usplit (suc m) {c = ref n b} d le = u-step (δref n b)
+  usplit (suc m) {c = ref k} d le with gen-ref d
+  ... | p , _ = u-step (δref k p)
   usplit (suc m) {c = app f a} d le with appS m d (un≤ le)
   ... | _ , r = u-step r
   usplit (suc m) {c = fst p} d le with fstS m d (un≤ le)

@@ -17,15 +17,16 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.NormalShape where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.NormalShape (𝒮 : KSig) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; Σ; _,_; ⊥-elim )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( church-rosserᵀ; Π-reduct; mkΠRed; Σ-reduct; mkΣRed )
-open import DirectedHoTT.Metatheory.NormTy using ( IsNormalᵀ )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormalᵀ )
 
 private
   variable

@@ -25,7 +25,8 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Injectivity where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.Injectivity (𝒮 : KSig) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ ; cong₂; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -37,7 +38,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ⌜Fin⌝; DIh; dι; dσ; dρ; renTy; extR; extS; Ren; cong₄; Sub; subTy
         ; subTm; dpay; dih; fzero; fsuc; fcase; fcase0; psplit
         ; ref )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
         ; ξ-Σʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ
         ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; Hom-Nat-z; Hom-Nat-sz
@@ -51,7 +52,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
         ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
         ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; ξ-Fin; ξ-nsuc; single )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.Confluence 𝒮
   using ( church-rosser; _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl; ptr; ptr-J-base; ptr-J-Σ
         ; ptr-taut; phrefl-pw; phrefl-Nat-z; phrefl-Nat-s; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl
@@ -76,12 +77,12 @@ private
 -- ★ `_⟶ᵀ*_`, its congruences and `red→≅ᵀ` moved to `Metatheory/RedCong`
 --   (they are folds, and `TySub` needs them without the injectivity proof);
 --   re-exported here so this module's own callers are unaffected.
-open import DirectedHoTT.Metatheory.RedCong public
+open import DirectedHoTT.Metatheory.RedCong 𝒮
 -- the levitated `DIh-ρ` rule's type-level development needs typing-free
 --   renaming/substitution facts about `iinst`/`wk2`.
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub.Red 𝒮
   using ( ⟶ᵀ*-sub'; iinst-mono; iinst-monoˢ; ⟶ᵀ*-ren; iinst-ren; wk2-renTy )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( iinst-sub; wk2-subTy; wk-sub )
 
 
@@ -468,7 +469,7 @@ El (fsuc t) ⁺ᵀ      = El (fsuc t ⁺)
 El (fcase t a b) ⁺ᵀ = El (fcase t a b ⁺)
 El (fcase0 t) ⁺ᵀ    = El (fcase0 t ⁺)
 El (psplit b q) ⁺ᵀ  = El (psplit b q ⁺)
-El (ref d b) ⁺ᵀ     = El (ref d b ⁺)
+El (ref d) ⁺ᵀ       = El (ref d ⁺)
 Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
 Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
 -- W2: `Hom` develops by the head of its TYPE argument.  Where the head is

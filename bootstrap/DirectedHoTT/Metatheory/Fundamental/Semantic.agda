@@ -15,8 +15,9 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Fundamental.Semantic where
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Metatheory.Fundamental.Semantic (𝒮 : KSig) where
+open import DirectedHoTT.Metatheory.TySub.Red 𝒮
   using ( wk-cancel-tm )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types
@@ -33,7 +34,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-subTm; subTy-id; subTm-id; renTm-renTm; renTm-cong; IMu; ielim
         ; ⌜IMu⌝; εwkTm; DIh; Fin; con; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero
         ; fsuc; fcase; fcase0; psplit )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( single; nrs; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
         ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz
         ; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ
@@ -55,23 +56,23 @@ open import DirectedHoTT.Spec.Variance
         ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm
         ; pw?-sub; stkC?→stkA?; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk
         ; flat?-sub; eqv; occ-sub; occ-ren-tm; avoids-wk )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( ≅ᵀ-sub; sub-comm; wk-sub )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.Confluence 𝒮
   using ( )
-open import DirectedHoTT.Algorithm.DecideConversion
+open import DirectedHoTT.Algorithm.DecideConversion 𝒮
   using ( dec-conv )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; stkC?-red
         ; stkA?-red )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( confluentᵀ; church-rosserᵀ; Π-inj; Π-reduct; Σ-reduct; mkΠRed
         ; mkΣRed; Id-reduct; IMuRed; mkIMuRed; IMu-reduct )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.SubjectReduction.Red 𝒮
   using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat
         ; pw-El-decode; HomRed; mkHomRed; Hom-to-Hom; homAmb→; HomToΠ; via-U
         ; via-Π; hom-to-Π; U-reduct; ≅ᵀ-Homᵀ; gen-var )
-open import DirectedHoTT.Metatheory.LogicalRelation
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl
         ; sne-tr; sne-ap; sne-jsub; Ne; ne-var; ne-app; ne-absurd; ne-fst
         ; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁; SN; sn-ne; sn-lam
@@ -109,7 +110,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; stablecd?; stableA?; deadmot?; ne-dih; ne-dpay; ne-fcase; ne-fcase0
         ; ne-psplit )
 
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
 
 private
   variable
@@ -1649,3 +1650,18 @@ ne-nostk (ne-fcase _)  = refl
 ne-nostk ne-fcase0     = refl
 ne-nostk (ne-psplit _) = refl
 ne-nostk (ne-ordtr _) = refl
+
+------------------------------------------------------------------------
+-- ★ THE REFERENCE ORACLE (PLAN-REF, D082).  A reference is a projection
+--   from the signature, so its reducibility is not a property of a
+--   subderivation: `fund` reads it from here, at the names below m.
+--   `Metatheory/Entries` builds it from the signature's context formation,
+--   by induction on m (entry m is `fund` at m on its own derivation, with
+--   this oracle below m, then one δ expansion).
+------------------------------------------------------------------------
+
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax using ( εwkTy; ref; Var; Cx )
+
+RefsOK : ℕ → Set
+RefsOK m = ∀ {Ξ : Cx} {d} → d <ˢ m → Var Ξ → Rel (εwkTy {Ξ} (KSig.type 𝒮 d)) (ref d)

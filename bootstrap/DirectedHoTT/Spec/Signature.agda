@@ -2,45 +2,35 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- OCP-0009 · dHoTT — ★ THE GLOBAL SIGNATURE of closed definitions.
---                      (PLAN-BIDI §2-bis, S5 — design (ii), route B)
+-- OCP-0009 · dHoTT — ★ THE SIGNATURE, as the CHECKER sees it.
 --
--- ★ WHAT IT IS.  Entries `0 … size-1`, each a closed annotated body of a
---   declared closed type.  An annotated term names entry `d` by `ref d`.
---   The theory this extends is the kernel's own: extension BY DEFINITIONS.
+-- ★ WHAT IT IS.  Entries `0 … size-1`, each a closed body of a declared
+--   closed type.  The declared types are ANNOTATED (`ATy`): the checker
+--   types `ref d` by them (`Spec/TypingA.⊢ᴬref`).  The bodies are kernel
+--   terms.
 --
---     type d  — the DECLARED type; `ref d` is typed by it alone, so a
---               body is checked once, never at its use sites.
---     body d  — the body, ERASED.  Erasure unfolds `ref d` to it (δ), so
---               conversion in `⊢ᴬ`, which is on erasures, sees through
---               every definition — transparent definitions.
+-- ★ THE KERNEL'S VIEW (PLAN-REF, D082).  `kernel S` erases the declared
+--   types: it is the definition context the kernel reduces and types
+--   under (`Spec/Reduction`, `Spec/Typing`).  A reference is a projection
+--   from it, in both layers.
 --
---   The annotated bodies themselves, and the proof that each is typed in
---   its PREFIX (acyclic, hence δ terminates), are well-formedness data —
---   `Metatheory/Signature`'s `WfSig` — not part of what a use site needs.
---
--- ★ `SigOK`: what the bridge to the kernel needs — every erased body has
---   its erased declared type, in the empty context.  `WfSig` proves it.
+-- ★ A TELESCOPE (D081): entry n is checked over the entries before it;
+--   extending a signature is context extension, so a signature built in
+--   one module is extended in another without re-checking it
+--   (`Metatheory/Signature.WfSig` is the context-formation rule).
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Signature where
-open import normalizer.Syntax.Types using ( ¬_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; ¬_ )
 open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing using ( ◇; _⊢_∷_ )
 open import DirectedHoTT.Spec.Annotated
+open import DirectedHoTT.Spec.Syntax public using ( _<ˢ_; <-here; <-there; <ˢ-zero; _<ˢ?_ )
 
--- ★ A TELESCOPE of entries (2026-10-05; the compiler's D071: the signature
---   is the definition CONTEXT, a reference a projection from it).  Entry n
---   is checked over the entries before it; extending a signature is
---   context extension, so a signature built in one module is extended in
---   another without re-checking it (`Metatheory/Signature.WfSig` is the
---   context-formation rule).  The length is cached, so a lookup is one
---   walk down the telescope.
 record Entry : Set where
   constructor ⟨_∣_⟩
   field
@@ -60,15 +50,15 @@ pickE false x y = y
 
 lookupE : ℕ → Tele → ℕ → Entry
 lookupE (suc n) (T ▸ e) d = pickE (d == n) e (lookupE n T d)
-lookupE zero    _       d = ⟨ Unit ∣ nzero ⟩
-lookupE (suc n) ∅       d = ⟨ Unit ∣ nzero ⟩
+lookupE zero    _       d = ⟨ Unit ∣ unit ⟩
+lookupE (suc n) ∅       d = ⟨ Unit ∣ unit ⟩
 
 record Sig : Set where
   constructor mkSig
   field
     len  : ℕ
     tele : Tele
-  -- what the checker and the erasure consult (`open Sig S`)
+  -- what the checker consults (`open Sig S`)
   size : ℕ
   size = len
   type : ℕ → ATy ε
@@ -85,15 +75,36 @@ _▸ˢ_ : Sig → Entry → Sig
 S ▸ˢ e = mkSig (suc (len S)) (tele S ▸ e)
 infixl 5 _▸ˢ_
 
-infix 4 _<ˢ_
-data _<ˢ_ : ℕ → ℕ → Set where
-  <-here  : ∀ {n} → n <ˢ suc n
-  <-there : ∀ {d n} → d <ˢ n → d <ˢ suc n
 
-<ˢ-zero : ∀ {d} → ¬ (d <ˢ zero)
-<ˢ-zero ()
+------------------------------------------------------------------------
+-- ★ The kernel's signature: the declared types erased.
+------------------------------------------------------------------------
 
--- ★ the bridge's hypothesis: every entry, erased, is a closed kernel term
---   of its erased declared type
-SigOK : Sig → Set
-SigOK S = ∀ {d} → d <ˢ Sig.size S → ◇ ⊢ Sig.body S d ∷ Era.⌈_⌉ᵀ (Sig.body S) (Sig.type S d)
+kEntry : Entry → KEntry
+kEntry e = ⟨ ⌈ eType e ⌉ᵀ ∣ eBody e ⟩
+
+kTele : Tele → KTele
+kTele ∅       = ∅
+kTele (T ▸ e) = kTele T ▸ kEntry e
+
+kernel : Sig → KSig
+kernel S = mkK (len S) (kTele (tele S))
+
+-- a lookup in the kernel's view is the erased lookup
+private
+  pick-k : (b : Bool) (x y : Entry) → pickK b (kEntry x) (kEntry y) ≡ kEntry (pickE b x y)
+  pick-k true  x y = refl
+  pick-k false x y = refl
+
+  lookup-k : (n : ℕ) (T : Tele) (d : ℕ) → lookupK n (kTele T) d ≡ kEntry (lookupE n T d)
+  lookup-k (suc n) (T ▸ e) d with lookupK n (kTele T) d | lookup-k n T d
+  ... | _ | refl = pick-k (d == n) e (lookupE n T d)
+  lookup-k zero    ∅       d = refl
+  lookup-k zero    (T ▸ e) d = refl
+  lookup-k (suc n) ∅       d = refl
+
+kernel-type : (S : Sig) (d : ℕ) → KSig.type (kernel S) d ≡ ⌈ Sig.type S d ⌉ᵀ
+kernel-type S d = cong kType (lookup-k (len S) (tele S) d)
+
+kernel-body : (S : Sig) (d : ℕ) → KSig.body (kernel S) d ≡ Sig.body S d
+kernel-body S d = cong kBody (lookup-k (len S) (tele S) d)

@@ -23,11 +23,10 @@
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Base
   using ( single; single2; pairS; fsucS; iinst; methS; wk2M; MethTy; DescF )
 open import DirectedHoTT.Spec.Annotated
-module DirectedHoTT.Spec.AnnotatedDesc (δ : ℕ → RTm ε) where
-open Era δ
+module DirectedHoTT.Spec.AnnotatedDesc where
 
 private
   variable

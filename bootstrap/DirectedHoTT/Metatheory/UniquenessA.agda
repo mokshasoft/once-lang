@@ -27,16 +27,17 @@
 {-# OPTIONS --safe #-}
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; subst; Σ; _,_; _×_; inj₁; inj₂ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
-open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj; Σ-inj )
-open import DirectedHoTT.Metatheory.Validity using ( ≅ᵀ-Πʳ )
+open import DirectedHoTT.Spec.Signature using ( kernel )
 module DirectedHoTT.Metatheory.UniquenessA (S : Sig) where
 open Sig S
-open Era body
-open import DirectedHoTT.Spec.AnnotatedDesc body
+-- conversion is the kernel's, at the signature's kernel view (PLAN-REF)
+open import DirectedHoTT.Spec.Reduction (kernel S) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.SubjectReductionBase (kernel S) using ( ≅ᵀ-sub )
+open import DirectedHoTT.Metatheory.Injectivity (kernel S) using ( Π-inj; Σ-inj )
+open import DirectedHoTT.Metatheory.RedCong (kernel S) using ( ≅ᵀ-Πʳ )
+open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA S
 open import DirectedHoTT.Metatheory.GenerationA S
 
@@ -63,7 +64,7 @@ uniqᴬ {t = var x} d₁ d₂ =
   via c₁ (subst (λ X → ⌈ X ⌉ᵀ ≅ᵀ _) (sym (∋ᴬ-uniq v₁ v₂)) c₂)
 uniqᴬ {Γ} {t = lam A t} d₁ d₂ =
   let (B₁ , (_ , (dt₁ , c₁))) = genᴬ-lam d₁ in let (B₂ , (_ , (dt₂ , c₂))) = genᴬ-lam d₂ in
-  ctrnᵀ (csymᵀ c₁) (ctrnᵀ (≅ᵀ-Πʳ {Γ = ⌈ Γ ⌉ᶜ} (uniqᴬ dt₁ dt₂)) c₂)
+  ctrnᵀ (csymᵀ c₁) (ctrnᵀ (≅ᵀ-Πʳ {Δ = ⌊ Γ ⌋ᴬ} (uniqᴬ dt₁ dt₂)) c₂)
 uniqᴬ {t = app t u} d₁ d₂ =
   let (A₁ , (B₁ , (dt₁ , (_ , c₁)))) = genᴬ-app d₁ in let (A₂ , (B₂ , (dt₂ , (_ , c₂)))) = genᴬ-app d₂ in
   let (_ , cB) = Π-inj (uniqᴬ dt₁ dt₂) in

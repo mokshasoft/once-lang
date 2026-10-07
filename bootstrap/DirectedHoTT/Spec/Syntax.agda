@@ -40,10 +40,11 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Syntax where
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; cong; cong₂ )
+  using ( _≡_; refl; sym; trans; cong; cong₂; ¬_; Dec; yes; no )
 -- ★ INDUCTIVE-TYPES AXIS: a metalanguage ℕ, used only as a CONSTRUCTOR
 --   TAG.  It is not the object-language `Nat`.
-open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Nat using ( zero; suc; _==_ ) renaming ( Nat to ℕ )
+open import Agda.Builtin.Bool using ( Bool; true; false )
 
 -- ⚠ LOCAL: `normalizer.Syntax.Types` exports `cong₂` but not `cong₃`, and
 --   `Lib/Wk`'s copy is downstream of this module.  Three lines beats an
@@ -201,11 +202,12 @@ data RTm where
   ⌜IMu⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   ⌜Fin⌝  : ∀ {Γ} → RTm Γ → RTm Γ
   ⌜Unit⌝ : ∀ {Γ} → RTm Γ
-  -- ★ A DEFINITION (PLAN-BIDI §2-ter): a name with its CLOSED body.  It
-  --   unfolds by δ (`ref d b ⟶ εwkTm b`); renaming and substitution stop
-  --   at it — the body is closed.  This is what the Knot's `opaque` blocks
-  --   simulated: a big closed code, named, compared without unfolding.
-  ref    : ∀ {Γ} → ℕ → RTm ε → RTm Γ
+  -- ★ A DEFINITION (PLAN-REF, D082): a PROJECTION from the signature —
+  --   the definition context.  It carries no body: δ unfolds it to the
+  --   signature's body (`Spec/Reduction.δref`), and renaming and
+  --   substitution leave it alone.  A reference is O(1) syntax; a body is
+  --   touched only when δ fires.
+  ref    : ∀ {Γ} → ℕ → RTm Γ
 
 private
   variable
@@ -290,7 +292,7 @@ renTm ρ (fsuc t) = fsuc (renTm ρ t)
 renTm ρ (fcase t a b) = fcase (renTm ρ t) (renTm ρ a) (renTm (extR ρ) b)
 renTm ρ (fcase0 t) = fcase0 (renTm ρ t)
 renTm ρ (psplit b q) = psplit (renTm (extR (extR ρ)) b) (renTm ρ q)
-renTm ρ (ref d b) = ref d b
+renTm ρ (ref d) = ref d
 renTm ρ ⌜Unit⌝        = ⌜Unit⌝
 renTm ρ unit          = unit
 renTm ρ nzero         = nzero
@@ -358,7 +360,7 @@ subTm σ (fsuc t) = fsuc (subTm σ t)
 subTm σ (fcase t a b) = fcase (subTm σ t) (subTm σ a) (subTm (extS σ) b)
 subTm σ (fcase0 t) = fcase0 (subTm σ t)
 subTm σ (psplit b q) = psplit (subTm (extS (extS σ)) b) (subTm σ q)
-subTm σ (ref d b) = ref d b
+subTm σ (ref d) = ref d
 subTm σ ⌜Unit⌝        = ⌜Unit⌝
 subTm σ unit          = unit
 subTm σ nzero         = nzero
@@ -527,7 +529,7 @@ renTm-cong h (fcase0 t) =
   cong fcase0 (renTm-cong h t)
 renTm-cong h (psplit b q) =
   cong₂ psplit (renTm-cong (extR-cong (extR-cong h)) b) (renTm-cong h q)
-renTm-cong h (ref d b) = refl
+renTm-cong h (ref d) = refl
 renTm-cong h ⌜Unit⌝     = refl
 renTm-cong h unit      = refl
 renTm-cong h nzero     = refl
@@ -615,7 +617,7 @@ subTm-cong h (fcase0 t) =
   cong fcase0 (subTm-cong h t)
 subTm-cong h (psplit b q) =
   cong₂ psplit (subTm-cong (extS-cong (extS-cong h)) b) (subTm-cong h q)
-subTm-cong h (ref d b) = refl
+subTm-cong h (ref d) = refl
 subTm-cong h ⌜Unit⌝     = refl
 subTm-cong h unit      = refl
 subTm-cong h nzero     = refl
@@ -712,7 +714,7 @@ renTm-renTm {ρ' = ρ'} {ρ} (fcase0 t) =
   cong fcase0 (renTm-renTm t)
 renTm-renTm {ρ' = ρ'} {ρ} (psplit b q) =
   cong₂ psplit (trans (renTm-renTm b) (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) b)) (renTm-renTm q)
-renTm-renTm (ref d b) = refl
+renTm-renTm (ref d) = refl
 renTm-renTm ⌜Unit⌝     = refl
 renTm-renTm unit       = refl
 renTm-renTm nzero      = refl
@@ -813,7 +815,7 @@ subTm-renTm {σ = σ} {ρ} (fcase0 t) =
   cong fcase0 (subTm-renTm t)
 subTm-renTm {σ = σ} {ρ} (psplit b q) =
   cong₂ psplit (trans (subTm-renTm b) (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) b)) (subTm-renTm q)
-subTm-renTm (ref d b) = refl
+subTm-renTm (ref d) = refl
 subTm-renTm ⌜Unit⌝     = refl
 subTm-renTm unit       = refl
 subTm-renTm nzero      = refl
@@ -914,7 +916,7 @@ renTm-subTm {ρ = ρ} {σ} (fcase0 t) =
   cong fcase0 (renTm-subTm t)
 renTm-subTm {ρ = ρ} {σ} (psplit b q) =
   cong₂ psplit (trans (renTm-subTm b) (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) b)) (renTm-subTm q)
-renTm-subTm (ref d b) = refl
+renTm-subTm (ref d) = refl
 renTm-subTm ⌜Unit⌝     = refl
 renTm-subTm unit       = refl
 renTm-subTm nzero      = refl
@@ -1015,7 +1017,7 @@ subTm-subTm {τ = τ} {σ} (fcase0 t) =
   cong fcase0 (subTm-subTm t)
 subTm-subTm {τ = τ} {σ} (psplit b q) =
   cong₂ psplit (trans (subTm-subTm b) (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) b)) (subTm-subTm q)
-subTm-subTm (ref d b) = refl
+subTm-subTm (ref d) = refl
 subTm-subTm ⌜Unit⌝     = refl
 subTm-subTm unit       = refl
 subTm-subTm nzero      = refl
@@ -1108,7 +1110,7 @@ subTm-id (fcase0 t) =
   cong fcase0 (subTm-id t)
 subTm-id (psplit b q) =
   cong₂ psplit (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) b) (subTm-id b)) (subTm-id q)
-subTm-id (ref d b) = refl
+subTm-id (ref d) = refl
 subTm-id ⌜Unit⌝     = refl
 subTm-id unit       = refl
 subTm-id nzero      = refl
@@ -1178,3 +1180,84 @@ subTm-id (ap c b p)    =
 Π-BeckChevalley : {τ : Sub Δ Θ} {σ : Sub Γ Δ} (A : RTy Γ) (B : RTy (Γ ∙)) →
                   subTy τ (subTy σ (Π A B)) ≡ subTy (τ ∘ₛ σ) (Π A B)
 Π-BeckChevalley A B = subTy-subTy (Π A B)
+
+------------------------------------------------------------------------
+-- ★ THE KERNEL SIGNATURE (PLAN-REF, D082): the definition context.  A
+--   telescope of closed entries — a declared type and a body — read by
+--   projection (`ref d`).  Entry d is meant to be typed over the entries
+--   before it (`Spec/Typing`'s `WfSig`); the length is cached, so a lookup
+--   is one walk down the telescope.
+------------------------------------------------------------------------
+
+record KEntry : Set where
+  constructor ⟨_∣_⟩
+  field
+    kType : RTy ε
+    kBody : RTm ε
+open KEntry public
+
+data KTele : Set where
+  ∅   : KTele
+  _▸_ : KTele → KEntry → KTele
+infixl 5 _▸_
+
+-- entry d of a telescope of length n (entries counted from the first);
+-- beyond the length, a junk entry that no well-formed use reaches
+pickK : Bool → KEntry → KEntry → KEntry
+pickK true  x y = x
+pickK false x y = y
+
+lookupK : ℕ → KTele → ℕ → KEntry
+lookupK (suc n) (T ▸ e) d = pickK (d == n) e (lookupK n T d)
+lookupK zero    _       d = ⟨ Unit ∣ unit ⟩
+lookupK (suc n) ∅       d = ⟨ Unit ∣ unit ⟩
+
+record KSig : Set where
+  constructor mkK
+  field
+    len  : ℕ
+    tele : KTele
+  size : ℕ
+  size = len
+  type : ℕ → RTy ε
+  type d = kType (lookupK len tele d)
+  body : ℕ → RTm ε
+  body d = kBody (lookupK len tele d)
+
+∅ᴷ : KSig
+∅ᴷ = mkK 0 ∅
+
+_▸ᴷ_ : KSig → KEntry → KSig
+mkK n T ▸ᴷ e = mkK (suc n) (T ▸ e)
+infixl 5 _▸ᴷ_
+
+-- the names below a bound
+infix 4 _<ˢ_
+data _<ˢ_ : ℕ → ℕ → Set where
+  <-here  : ∀ {n} → n <ˢ suc n
+  <-there : ∀ {d n} → d <ˢ n → d <ˢ suc n
+
+<ˢ-zero : ∀ {d} → ¬ (d <ˢ zero)
+<ˢ-zero ()
+
+-- is name d among the first n?  (δ fires exactly on the names in the
+-- signature, so the development and the evaluators decide it)
+private
+  ≟ℕ : (a b : ℕ) → Dec (a ≡ b)
+  ≟ℕ zero    zero    = yes refl
+  ≟ℕ zero    (suc b) = no λ ()
+  ≟ℕ (suc a) zero    = no λ ()
+  ≟ℕ (suc a) (suc b) = suc≟ (≟ℕ a b)
+    where
+    suc≟ : Dec (a ≡ b) → Dec (suc a ≡ suc b)
+    suc≟ (yes refl) = yes refl
+    suc≟ (no ne)    = no λ { refl → ne refl }
+
+  <ˢ-suc : ∀ {d n} → Dec (d ≡ n) → Dec (d <ˢ n) → Dec (d <ˢ suc n)
+  <ˢ-suc (yes refl) _       = yes <-here
+  <ˢ-suc (no ne)    (yes p) = yes (<-there p)
+  <ˢ-suc (no ne)    (no ¬p) = no λ { <-here → ne refl ; (<-there p) → ¬p p }
+
+_<ˢ?_ : (d n : ℕ) → Dec (d <ˢ n)
+d <ˢ? zero  = no <ˢ-zero
+d <ˢ? suc n = <ˢ-suc (≟ℕ d n) (d <ˢ? n)

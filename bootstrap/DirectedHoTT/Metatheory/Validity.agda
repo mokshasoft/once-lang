@@ -31,23 +31,25 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Metatheory.Validity where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Metatheory.Validity (𝒮 : KSig) (n : ℕ) (ok : Ty.SigOK 𝒮 n) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok
   using ( sr; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝; gen-⌜Id⌝; gen-⌜IMu⌝; gen-⌜Fin⌝; gen-nsuc
         ; ren-ty; sub-ty; sub-lemma; ⊢wk; ⊢single; ⊢[]; ⊢-cast; Sub⊢
         ; wk-cancel; wk-cancel-tm; ⟶ᵀ*-sub'; iinst-wf; conv-ctxᵀ; dσ-step
         ; dρ-step; DescF-step )
-open import DirectedHoTT.Metatheory.SubjectReductionBase
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( ≅ᵀ-sub )
-open import DirectedHoTT.Metatheory.TySub
-  using ( ≅ᵀ-ren )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ; ⟶-ren; ⟶ᵀ*-Fin; ⟶*-nsuc )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong 𝒮
+  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ; ⟶-ren; ⟶ᵀ*-Fin; ⟶*-nsuc; ≅ᵀ-Πʳ; ≅ᵀ-Σˡ )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( church-rosserᵀ; Π-reduct; Σ-reduct; ΠRed; ΣRed; mkΠRed; mkΣRed; Fin-reduct )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
 
 private
   variable
@@ -195,17 +197,7 @@ toΣWf (wf T c dT) with church-rosserᵀ c
 ...   | mkΣRed A'' B'' refl rA rB | ty-Σ dA dB = σwf A'' B'' rA rB dA dB
 
 -- conversion is a congruence under `Π`/`Σ` in each argument
-≅ᵀ-Πʳ : {A : RTy ⌊ Γ ⌋} {B B' : RTy (⌊ Γ ⌋ ∙)} → B ≅ᵀ B' → Π A B ≅ᵀ Π A B'
-≅ᵀ-Πʳ (credᵀ r)   = credᵀ (ξ-Πʳ r)
-≅ᵀ-Πʳ crflᵀ       = crflᵀ
-≅ᵀ-Πʳ (csymᵀ c)   = csymᵀ (≅ᵀ-Πʳ c)
-≅ᵀ-Πʳ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-Πʳ c) (≅ᵀ-Πʳ d)
-
-≅ᵀ-Σˡ : {A A' : RTy ⌊ Γ ⌋} {B : RTy (⌊ Γ ⌋ ∙)} → A ≅ᵀ A' → Σ' A B ≅ᵀ Σ' A' B
-≅ᵀ-Σˡ (credᵀ r)   = credᵀ (ξ-Σˡ r)
-≅ᵀ-Σˡ crflᵀ       = crflᵀ
-≅ᵀ-Σˡ (csymᵀ c)   = csymᵀ (≅ᵀ-Σˡ c)
-≅ᵀ-Σˡ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-Σˡ c) (≅ᵀ-Σˡ d)
+-- `≅ᵀ-Πʳ`/`≅ᵀ-Σˡ` (conversion congruences): `Metatheory/RedCong`
 
 -- ★ S7b step 2: a well-formed type convertible to `Fin n` reduces to
 --   `Fin m` with `n ⟶* m`, and `m` is typed (subject reduction)
@@ -270,8 +262,8 @@ validity wΓ (⊢fsuc dt) with toFinWf (validity wΓ dt)
 validity wΓ (⊢fcase dP dt da db) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢fcase0 dP dt) = exact (sub-ty dP (⊢single dt))
 validity wΓ (⊢psplit dA dB dP dq db) = exact (sub-ty dP (⊢single dq))
--- a definition's type is its body's, valid in the empty context, weakened
-validity wΓ (⊢ref db) with validity c-◇ db
-... | wf A' c dA' = wf (εwkTy A') (≅ᵀ-sub εsub c) (sub-ty dA' (λ ()))
+-- a reference's declared type is well-formed in the empty context (the
+--   signature's context formation, `ok`), weakened
+validity wΓ (⊢ref {d = d} p) = wf (εwkTy (KSig.type 𝒮 d)) crflᵀ (sub-ty (okTy (ok p)) (λ ()))
 validity wΓ (⊢conv d c) with validity wΓ d
 ... | wf A' c' dA' = wf A' (ctrnᵀ (csymᵀ c) c') dA'
