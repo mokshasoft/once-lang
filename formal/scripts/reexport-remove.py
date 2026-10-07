@@ -492,7 +492,49 @@ def candidates():
     for n, p, lines in sorted(rows):
         print(n, " ".join(p + ":" + str(x) for x in lines))
 
+def apex_live(ast_json, root="Once.Certified"):
+    """The apex-live scope (plan 0.92, user 2026-10-07): from the fork's --write-ast
+    dump, the modules holding reachable definitions, the record/local modules
+    whose definitions are reachable, and the apex's static import cone."""
+    d = json.load(open(ast_json, encoding="utf-8"))
+    names = [e["name"] for e in d["reachable"]]
+    defmods = set()
+    for e in d["reachable"]:
+        src = e.get("source") or ""
+        if src.startswith("formal/") and src.endswith(".agda"):
+            defmods.add(modname(src[len("formal/"):]))
+    cone, todo = set(), [root]
+    while todo:
+        m = todo.pop()
+        if m in cone or not os.path.exists(modpath(m)): continue
+        cone.add(m)
+        todo += [x for _, x in imports_of(modpath(m))]
+    return names, defmods, cone
+
+def live_line(path, line, names, defmods, cone):
+    m = modname(path)
+    if m not in cone: return False
+    try:
+        kind, x = classify(path, line)
+    except ValueError:
+        return True                      # parameterised: kept on the S4 list if live
+    if kind == "import":
+        return x in defmods
+    prefix = m + "." + x + "."
+    return any(n.startswith(prefix) for n in names)
+
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "live-candidates":
+        names, defmods, cone = apex_live(sys.argv[2])
+        rows = []
+        for p in all_modules():
+            L = open(p, encoding="utf-8").read().split("\n")
+            lines = [i + 1 for i, l in enumerate(L) if PUB.search(l) and mechanical(p, i, L)
+                     and live_line(p, i + 1, names, defmods, cone)]
+            if lines: rows.append((len(importers([modname(p)])), p, lines))
+        for n, p, lines in sorted(rows):
+            print(n, " ".join(p + ":" + str(x) for x in lines))
+        sys.exit(0)
     if len(sys.argv) == 2 and sys.argv[1] == "candidates":
         candidates(); sys.exit(0)
     if len(sys.argv) >= 3 and sys.argv[1] == "run":
