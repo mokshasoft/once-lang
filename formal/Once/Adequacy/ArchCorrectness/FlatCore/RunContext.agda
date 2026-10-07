@@ -53,7 +53,6 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.IR using (IR; Unit)
-open import Once.CCC.Codegen.IRToTrace o using ()
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
 open import Data.Product using (_×_)

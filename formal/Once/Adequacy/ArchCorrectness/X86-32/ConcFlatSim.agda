@@ -194,7 +194,6 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (readLoc)
-open FrameSemantics FS using ()
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-32.Semantics as X
@@ -220,20 +219,13 @@ open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
         -- already took them; the engine takes the same ones (slice 3).
         ; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract)
-open import Once.CCC.Codegen.IRToTrace o using ()
-open import Once.CCC.Machine.FlatStackSlot FS using ()
 open import Once.CCC.Machine.FlatStackPtr FS using
   ()
 open import Once.CCC.Machine.FlatPtrBounds FS using
   ()
-open import Once.CCC.Codegen.FrameFreeTrace o using ()
-open import Once.CCC.Codegen.AllocMin o using ()
 open import Once.CCC.Codegen.ShapeTable as ST using
   ()
-open ST.Sem FS using ()
-open import Once.CCC.Codegen.LabelScope o using ()
 open import Data.Sum using (_⊎_)
-open import Once.CCC.Codegen.SlotBudget o using ()
 open import Once.CCC.Target.X86-32.Syntax using (slots)
 
 ------------------------------------------------------------------------

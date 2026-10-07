@@ -44,7 +44,7 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
 open import Once.Semantics.Machine using (sem-In; sem-cata)
 open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
-open import Once.Denotation.Meaning using ()
+import Once.Denotation.Meaning
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _∷_; []; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Syntax using (sigOp; Usage)
@@ -86,7 +86,6 @@ open import Once.Denotation.PhaseV using (lookupᵛUsed; restrictᵛ; bindᵛ; b
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; _>>=ᵖ_; returnM; bindM; subM)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; DefMeanings; ImpMeanings; MeaningsOf; EnvRun; sigOpValᴰ; sigOpRefᴰ)
 open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
-open import Once.Adequacy.CataErased fmt (calls σ) using ()
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr; liftFn-apply; liftFn-eff-apply; liftFn-curry-fst)
 import Once.IR as IR
@@ -97,12 +96,10 @@ open import Once.Arith.SigOp.Builders using (value-info;
 import Data.List as L
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
-open import Once.Adequacy.SourceFaithful fmt (calls σ) using ()
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation fmt
   using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; prjB-rel; injB-rel; force-∼ᵖᵈ; embν-∼)
 open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ)
-open import Once.Denotation.GradedDomain using ()
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Functor.Translate using (translateF)
@@ -115,7 +112,7 @@ open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.Adequacy.GradedCataBridge fmt using (cata-bridgeᵍ)
 open import Once.Adequacy.GradedAnaBridge fmt using (ana-bridgeᵍ)
 open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out)
-open import Once.Denotation.ValueDomainLaws using ()
+import Once.Denotation.ValueDomainLaws
 open Once.Denotation.ValueDomainLaws._∼ᵈ_ using (force-∼)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.

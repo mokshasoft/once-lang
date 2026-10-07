@@ -55,7 +55,6 @@ import Once.IR as IR
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Adequacy.SeqRel using (RelF; seqF-rel)
-open import Once.Adequacy.CataErased fmt ρ using ()
 
 ------------------------------------------------------------------------
 -- Reflexivity of `RelV` at base types (funext-free; a private copy so

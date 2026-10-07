@@ -44,7 +44,7 @@ open import Once.Denotation.ValueDomain
 import Once.Denotation.DenotTrace
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.Denotation.TraceMonad using (fmapT)
-open import Once.Denotation.Behavior using ()
+import Once.Denotation.Behavior
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (rewrite-program; rewrite-table; rewrite-fun)

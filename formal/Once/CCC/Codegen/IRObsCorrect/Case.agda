@@ -34,8 +34,6 @@ module Once.CCC.Codegen.IRObsCorrect.Case (o : CanonicalName) (tbl : DL.List IRF
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using ()
-open import Once.CCC.Codegen.LabelRange o using ()
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Nat.Solver using (module +-*-Solver)
 
@@ -58,7 +56,6 @@ module CaseC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open FlatStepsAPI {FS} using ()
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.
   open ShapeC {FS}

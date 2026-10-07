@@ -57,7 +57,6 @@ open import Once.CCC.Codegen.IRToTrace o using (sigop-code)
 module SigOpC {FS : FrameSemantics} where
 
   open Core {FS}
-  open FlatEventTrace {FS} using ()
   open Mach {FS}
   open AbstractExec {FS} using (decode-at; machine-events; events-at-arg; sigop-events; sigop-events-of; exec-sigop-output; res-sv; call-sigop-val; call-sigop-output; call-sigop-ans; call-sigop-ans-at)
 

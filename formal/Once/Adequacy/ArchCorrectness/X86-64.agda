@@ -177,7 +177,6 @@ open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
-open import Once.CCC.Target.X86-64.Syntax using ()
 
 -- (`x86-64-heap-room` is now a module PARAMETER — see
 -- `…X86-64.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)

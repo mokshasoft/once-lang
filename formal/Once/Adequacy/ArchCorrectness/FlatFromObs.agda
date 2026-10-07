@@ -108,7 +108,6 @@ open import Data.List using (_++_; []; _∷_)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
-open import Once.Denotation.TraceMonad using ()
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
@@ -132,12 +131,10 @@ open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesOb
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label; ft-go-prefix; FlatState; flat-exec-instr; floc; falloc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
-open CataIRSlotStable {FS} using ()
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open CataNextSlot {FS} using (AllSlotStable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
-open ClosureWellFormedDef {FS} using ()
 
 -- (plan 0.107: `asm-sem` — the text's meaning — is gone; the file's run is
 -- `ArchSemantics.run-trace`, and the text is its print.)

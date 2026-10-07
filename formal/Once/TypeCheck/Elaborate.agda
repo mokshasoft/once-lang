@@ -32,7 +32,6 @@ open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans)
 
 open import Once.Type
-open Once.Type using ()
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
 -- with Once.Type's (opened above). Hide the IRTy object/functor constructors
 -- from the unqualified open (they stay available as `IR.*`); the surface-type

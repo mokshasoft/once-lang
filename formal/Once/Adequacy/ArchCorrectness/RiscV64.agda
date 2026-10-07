@@ -85,7 +85,6 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 rv64-frame-semantics : FrameSemantics
 rv64-frame-semantics = rv64-frame-semantics-at ι
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace o using ()
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt; compile-trace-cnt-agrees; compile-trace; slot-to-disp)
 open import Once.CCC.Machine.NoNested using (no-nested-of-all; NoNested)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size) renaming (Program to RVProgram)

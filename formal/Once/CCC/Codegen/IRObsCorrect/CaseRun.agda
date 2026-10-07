@@ -34,8 +34,6 @@ module Once.CCC.Codegen.IRObsCorrect.CaseRun (o : CanonicalName) (tbl : DL.List 
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using ()
-open import Once.CCC.Codegen.LabelRange o using ()
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
 open import Data.Nat.Solver using (module +-*-Solver)
 

@@ -50,7 +50,6 @@ open import Once.Parser.Lexer using (isIdentContinue)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once-symbol-own-≢)
 open import Once.CanonicalName using (bare)
-open import Once.TypeCheck.Elaborate using ()
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 open import Once.Type.Rigid using (rigidOf; rigidFree?)

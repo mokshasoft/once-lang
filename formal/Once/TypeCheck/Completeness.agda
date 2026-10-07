@@ -47,7 +47,7 @@ open import Once.Functor.Translate using (WellFormedF)
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
-open import Once.TypeCheck.Classify using ()
+import Once.TypeCheck.Classify
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
@@ -57,7 +57,6 @@ open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Denotation.Realize using ()
 open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Type using (Functor; ⟦_⟧T)
 open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)

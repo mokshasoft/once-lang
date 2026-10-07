@@ -51,7 +51,6 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 open import Once.CCC.Machine.SMCore
-open FrameSemantics FS using ()
 open MemOps {FS}
 open ExecFinal {FS}
 open AbstractExec {FS}

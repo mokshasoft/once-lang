@@ -17,7 +17,6 @@ module Once.CCC.Codegen.IRObsCorrect.Pair.Place (o : CanonicalName) (tbl : DL.Li
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using ()
 open import Data.Nat.Solver using (module +-*-Solver)
 
 import Once.CCC.FrameSemantics
@@ -33,8 +32,6 @@ module PairPlaceC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open FlatStepsAPI {FS} using ()
-  open Resolve {FS} using ()
 
   ----------------------------------------------------------------------
   -- THE RESULT PLACE (cluster PairPlace).

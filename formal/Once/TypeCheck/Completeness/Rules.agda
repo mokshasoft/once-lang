@@ -64,7 +64,6 @@ open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Denotation.Realize using ()
 open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
 open import Once.Type.DecEq using (_≟T_)

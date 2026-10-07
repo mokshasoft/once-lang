@@ -105,9 +105,7 @@ open import Once.Spec.Core.Syntax S
 open import Once.Type.Sub using (pure⊑; sub-arr; <:-refl)
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.DerivedTyping S
-open import Once.Spec.Core.Derived S using ()
 import Once.Adequacy.CoreRenameSem S as RS
-open import Once.Spec.Core.Rename S using ()
 import Once.Denotation.EnvAlgebraV as EA
 
 -- A restriction of a transported environment is any restriction of the original.

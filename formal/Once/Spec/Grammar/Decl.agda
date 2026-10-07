@@ -20,7 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
 open import Once.Parser.Module.Core using (Decl; DTypeSig)
-open import Once.Parser.Module using ()
+import Once.Parser.Module
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.DeclTail using (colDrop1; colonHead)

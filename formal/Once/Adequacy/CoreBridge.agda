@@ -44,7 +44,6 @@ open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.TraceMonad using (Interp; interp; pureHalf)
 open import Once.Spec.Program using (Typed)
 open import Once.Spec.Core.Telescope using (Program; runProgram)
-open import Once.Spec.Core.Translate using ()
 import Once.Spec.Core.Translate as TR
 import Once.Spec.Core.Telescope as Tele
 import Once.Spec.Core.PolyTyping as PT
@@ -53,7 +52,7 @@ open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; mainCall; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB
-open import Once.Denotation.Behavior using ()
+import Once.Denotation.Behavior
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Denotation.DenotTrace using (evalᴰ)

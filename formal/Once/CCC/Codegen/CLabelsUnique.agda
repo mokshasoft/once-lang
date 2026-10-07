@@ -334,7 +334,6 @@ offsets-below Kb ks {w} = toWitness w
 -- The cata skeletons
 ------------------------------------------------------------------------
 
-open import Once.CCC.Codegen.IRToTrace o using ()
 
 CataOK : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) (ab : List (LabelId × ℕ × AbstractTrace)) (lo : ℕ) → Set
 CataOK st bb n1 l1 at ab lo =

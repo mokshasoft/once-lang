@@ -33,7 +33,6 @@ import Once.IRTy as II
 open import Once.IRTy using (⌊_⌋)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
-open import Once.Semantics.ValueIR Carrier Carrier using ()
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
 -- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
 open import Once.Functor.Translate using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)

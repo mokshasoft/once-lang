@@ -18,7 +18,6 @@
 module Once.Memory.HeapAddress where
 
 open import Data.Nat using (ℕ; suc; _+_)
-open import Data.Nat.Properties using ()
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.Nat using (_≟_)

@@ -31,7 +31,6 @@ open import Once.TypeCheck.Judgment
 open import Once.TypeCheck.ModeAgreement
 open import Once.TypeCheck.Route
 import Once.Surface.Context as Surface
-open Surface using ()
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥

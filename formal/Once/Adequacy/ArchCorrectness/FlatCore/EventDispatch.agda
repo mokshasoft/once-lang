@@ -140,7 +140,6 @@ open import Once.CCC.Machine.FlatRegTagWF FS using
 open import Once.CCC.Machine.FlatStackPtr FS using
   (stack-ptr-live; stack-ptr-suc-live)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
-open import Once.CCC.Codegen.IRToTrace o using ()
 open import Once.CCC.Label using (thunk)
 open import Once.CCC.FrameSemantics using (slot-addr; slot-addr-linear)
 open FrameSemantics FS using (Frame)

@@ -34,8 +34,6 @@ module Once.CCC.Codegen.IRObsCorrect.CaseArmR (o : CanonicalName) (tbl : DL.List
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using ()
-open import Once.CCC.Codegen.LabelRange o using ()
 open import Data.Sum using (inj₂)
 open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using () renaming (_+_ to _+ᵀ_)

@@ -95,14 +95,12 @@ open import Once.SigOp.Info using (FFIAnswers)
 
 open import Once.Adequacy.GradedRelation fmt using (RelGT-bind)
 open import Once.Denotation.TraceMonad using (projTrace)
-open import Once.Adequacy.TeleEnvLemmas fmt φ using ()
 import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
 open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
-open import Once.Adequacy.Coherence fmt using ()
 import Once.TypeCheck.Completeness
 import Once.TypeCheck.Elaborate
 open import Once.Denotation.DenotTrace using (evalᴰ)

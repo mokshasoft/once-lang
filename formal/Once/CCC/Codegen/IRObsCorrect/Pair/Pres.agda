@@ -17,7 +17,6 @@ module Once.CCC.Codegen.IRObsCorrect.Pair.Pres (o : CanonicalName) (tbl : DL.Lis
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using ()
 open import Data.Nat.Solver using (module +-*-Solver)
 
 import Once.CCC.FrameSemantics
@@ -33,8 +32,6 @@ module PairPresC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open FlatStepsAPI {FS} using ()
-  open Resolve {FS} using ()
 
   -- The prologue and the mid rows as TOP-LEVEL functions, so that `PairPres`'s
   -- own TELESCOPE can name the states its two induction hypotheses run from

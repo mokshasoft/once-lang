@@ -77,7 +77,7 @@ private
   ⊗-inj : ∀ {f g f′ g′} → f ⊗ g ≡ f′ ⊗ g′ → (f ≡ f′) Data.Product.× (g ≡ g′)
   ⊗-inj refl = refl Data.Product., refl
 
-open import Data.Product using ()
+import Data.Product
 
 mutual
   agree-from : ∀ (θ θ′ : String → Type) (p : PolyType)
