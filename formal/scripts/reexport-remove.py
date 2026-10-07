@@ -243,6 +243,7 @@ def drop_from_directives(path, facade, names):
         if not ((m and m.group(2) == facade) or (not m and mo and mo.group(1) in aliases)): continue
         s, e = statement(L, i)
         text = "\n".join(L[s:e])
+        if re.search(r"\bpublic\b", re.sub(r"--.*", "", text)): continue   # a re-export: its names serve its importers
         def fix(mm):
             items = [t.strip() for t in mm.group(2).split(";") if t.strip()]
             keep = [t for t in items if t not in names]
@@ -256,7 +257,8 @@ def drop_from_directives(path, facade, names):
 # --- the batch -------------------------------------------------------------------------
 
 def signature(recs):
-    return {m: [(r["written"], r["kind"], r["resolved"]) for r in rs if r["kind"] != "module"]
+    return {m: [(r["written"].rsplit(".", 1)[-1] if r.get("qualifier") else r["written"], r["kind"], r["resolved"])
+                for r in rs if r["kind"] != "module"]
             for m, rs in recs.items()}
 
 def applied_importers(facade, imps):
@@ -345,6 +347,7 @@ def run(targets):
     plan = []
     skipped = []
     target_of = defaultdict(set)
+    requal = {}
     for f, ln in spots:
         try:
             kind, x = classify(f, ln)
@@ -362,12 +365,16 @@ def run(targets):
             skipped.append((f, ln, "imported applied by " + ", ".join(ap))); continue
         stmt = ("open import " + (alias_of if kind == "import" and x != alias_of else x)) if kind == "import" else ("open " + fac + "." + x)
         add = defaultdict(lambda: defaultdict(set)); drop = defaultdict(set); why = set()
+        quals = defaultdict(list)
         for m, rs in before.items():
             if m == fac: continue
             for r in rs:
                 c = crossing(r, fac, x)
                 if not c: continue
                 b = base(r["resolved"])
+                if c == "qualified" and r["written"].rsplit(".", 1)[-1] == b and stmt.startswith("open import "):
+                    quals[modpath(m)].append((r, stmt.split()[2]))
+                    continue
                 if c != "unqualified" or r["written"] != b:
                     why.add(c if c != "unqualified" else "renamed"); continue
                 add[modpath(m)][(r["lineage"][0]["line"] - 1, stmt)].add(b)
@@ -376,7 +383,16 @@ def run(targets):
         if why:
             skipped.append((f, ln, ", ".join(sorted(why))))
         else:
+            # check every qualified occurrence's text before committing to the spot
+            for p, occs in quals.items():
+                src = open(p, encoding="utf-8").read().split("\n")
+                for r, x in occs:
+                    if r["line"] != r["endLine"] or src[r["line"] - 1][r["col"] - 1:r["endCol"] - 1] != r["written"]:
+                        why.add("qualified (text differs: operator?)")
+            if why:
+                skipped.append((f, ln, ", ".join(sorted(why)))); continue
             plan.append((f, ln, fac, add, drop, stmt))
+            requal.update({p: requal.get(p, []) + occs for p, occs in quals.items()})
     # PRE-FLIGHT 1: a name an importer lists in a directive of a facade but never
     # uses (no occurrence in its records — the report IS the reachability fact) is
     # a dead import: prune it, rather than move it.
@@ -420,6 +436,33 @@ def run(targets):
         for p, d in add.items():
             for k, ns in d.items(): adds[p][k] |= ns
         for p, ns in drop.items(): drops[p][fac] |= ns
+    for p, occs in requal.items():
+        touch(p)
+        src = open(p, encoding="utf-8").read().split("\n")
+        alias_of = {}
+        for r, x in occs:
+            if x in alias_of: continue
+            al = re.findall(r"import\s+" + re.escape(x) + r"\s+as\s+(\S+)", "\n".join(src))
+            if al: alias_of[x] = al[0]; continue
+            q = x.rsplit(".", 1)[-1]
+            while re.search(r"(?<![\w.])" + re.escape(q) + r"\.", "\n".join(src)) or re.search(r"\bas\s+" + re.escape(q) + r"\b", "\n".join(src)):
+                q += "′"
+            alias_of[x] = q
+            # bind it next to the import that brought the qualifier
+            qual0 = r["written"].rsplit(".", 1)[0]
+            st = next((i for i, l in enumerate(src) if re.match(r"^(open\s+)?import\s+\S+.*\bas\s+" + re.escape(qual0) + r"\b", l)), None)
+            if st is None:
+                tops = [i for i, l in enumerate(src) if re.match(r"^(open\s+)?import\s", l)]
+                if not tops: raise ValueError("no top-level import in " + p)
+                st = tops[-1]
+            _, at = statement(src, st)                 # after that statement (0-based insert index)
+            src.insert(at, "import " + x + " as " + q)
+            for rr, _x in occs:
+                if rr["line"] - 1 >= at: rr["line"] += 1; rr["endLine"] += 1
+        for r, x in sorted(occs, key=lambda o: (-o[0]["line"], -o[0]["col"])):
+            l = src[r["line"] - 1]
+            src[r["line"] - 1] = l[:r["col"] - 1] + alias_of[x] + "." + r["written"].rsplit(".", 1)[-1] + l[r["endCol"] - 1:]
+        open(p, "w", encoding="utf-8").write("\n".join(src))
     for p in adds:
         touch(p)
         for fac, ns in drops[p].items(): drop_from_directives(p, fac, ns)
@@ -467,6 +510,10 @@ def run(targets):
                 ts = set().union(*[v for (f, m2), v in target_of.items() if m2 == n]) or None
             if not ts or len(ts) != 1:
                 for f in backup: open(f, "w", encoding="utf-8").write(backup[f])
+                hit = [(f, ln) for f, ln, fac2, add, drop, stmt in plan
+                       if (stmt.startswith("open import ") and declares(modpath(stmt.split()[2]), n))
+                       or (not stmt.startswith("open import ") and declares(f, n))]
+                for f, ln in hit: print(f"DROP-SPOT {f}:{ln}")
                 print("AMBIGUOUS-FACADE " + fac)
                 sys.exit("cannot place unused directive name " + n + " of " + fac + " (tree restored)")
             where.setdefault(next(iter(ts)), set()).add(n)
