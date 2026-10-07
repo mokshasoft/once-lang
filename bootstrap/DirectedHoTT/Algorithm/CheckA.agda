@@ -85,6 +85,7 @@ open import DirectedHoTT.Algorithm.ConvNbE using ( decConvNbE; nbeNf; NfOf; nbeN
 module DirectedHoTT.Algorithm.CheckA (S : Sig) (ok : SigOK S) where
 open Sig S
 open Era body
+open import DirectedHoTT.Algorithm.EraName body using ( module E₀; by-names )
 open import DirectedHoTT.Spec.AnnotatedDesc body
 open import DirectedHoTT.Spec.TypingA S
 open import DirectedHoTT.Metatheory.Erasure S ok
@@ -309,13 +310,15 @@ decToBy wΓ d B dB nothing        = decToLazy wΓ d B dB
 
 decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
         (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
-decTo {A = A} wΓ d B dB = bySyntax (⌈ A ⌉ᵀ ≟Ty ⌈ B ⌉ᵀ)
+decTo {A = A} wΓ d B dB = bySyntax (E₀.⌈ A ⌉ᵀ ≟Ty E₀.⌈ B ⌉ᵀ)
   where
   -- ★ the inferred and the expected type are most often the SAME syntax
   --   (profiled 2026-10-06: 4844 conversions on Pw's sort-0 rows, each
-  --   normalising both sides) — compared first, linearly
-  bySyntax : Dec (⌈ A ⌉ᵀ ≡ ⌈ B ⌉ᵀ) → Dec (_ ⊢ᴬ _ ∷ B)
-  bySyntax (yes e) = yes (⊢ᴬconv d (subst (λ Z → ⌈ A ⌉ᵀ ≅ᵀ Z) e crflᵀ))
+  --   normalising both sides) — compared first, linearly, and BY NAMES
+  --   (`Algorithm/EraName`): the erasure inlines every reference's body,
+  --   so comparing it walked the signature (~40% of PwCore's checking)
+  bySyntax : Dec (E₀.⌈ A ⌉ᵀ ≡ E₀.⌈ B ⌉ᵀ) → Dec (_ ⊢ᴬ _ ∷ B)
+  bySyntax (yes e) = yes (⊢ᴬconv d (subst (λ Z → ⌈ A ⌉ᵀ ≅ᵀ Z) (by-names A B e) crflᵀ))
   bySyntax (no _)  = decToBy wΓ d B dB (decConvNbE ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ)
 
 -- a check from an inference: a "no" there refutes every typing
