@@ -106,7 +106,7 @@ quoteTm ⌜Nat⌝ = kcNat
 quoteTm (⌜IMu⌝ a0 a1 a2) = kcIMu (quoteTm a0) (quoteTm a1) (quoteTm a2)
 quoteTm (⌜Fin⌝ a0) = kcFin (quoteTm a0)
 quoteTm ⌜Unit⌝ = kcUnit
-quoteTm (ref a0 a1) = kref (quoteℕ a0) (quoteTm a1)
+quoteTm (ref a0) = kref (quoteℕ a0)
 
 ⊢quoteTy : {Γ : Cx} (A : RTy Γ) {Θ : Ctx} → Θ ⊢ quoteTy A ∷ K 0 (dep Γ)
 ⊢quoteTm : {Γ : Cx} (t : RTm Γ) {Θ : Ctx} → Θ ⊢ quoteTm t ∷ K 1 (dep Γ)
@@ -213,5 +213,5 @@ quoteTm (ref a0 a1) = kref (quoteℕ a0) (quoteTm a1)
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcFin} KOK (atᵍ 1) (atʰ 36) (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[])
 ⊢quoteTm {Γ} ⌜Unit⌝ =
   ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kcUnit} KOK (atᵍ 1) (atʰ 37) (⊢dep' Γ) a[]
-⊢quoteTm {Γ} (ref a0 a1) =
-  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kref} KOK (atᵍ 1) (atʰ 38) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) (a-cls (⊢quoteTm a1) a[]))
+⊢quoteTm {Γ} (ref a0) =
+  ⊢conSyn {sg = KSig} {shs = TmShs} {sh = sh-kref} KOK (atᵍ 1) (atʰ 38) (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[])

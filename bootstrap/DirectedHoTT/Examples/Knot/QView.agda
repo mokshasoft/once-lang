@@ -97,4 +97,4 @@ qviewTm {Γ} ⌜Nat⌝ = record { k = 34 ; sh = sh-kcNat ; p = unit ; nh = (atʰ
 qviewTm {Γ} (⌜IMu⌝ a0 a1 a2) = record { k = 35 ; sh = sh-kcIMu ; p = ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ; nh = (atʰ 35) ; eq = refl ; dp = ⊢payK (lt-s lt-z) ok-kcIMu (⊢dep' Γ) (a-rec (⊢quoteTm a0) (a-rec (⊢quoteTm a1) (a-rec (⊢quoteTm a2) a[]))) }
 qviewTm {Γ} (⌜Fin⌝ a0) = record { k = 36 ; sh = sh-kcFin ; p = ((quoteTm a0) ,ₚ unit) ; nh = (atʰ 36) ; eq = refl ; dp = ⊢payK (lt-s lt-z) ok-kcFin (⊢dep' Γ) (a-rec (⊢quoteTm a0) a[]) }
 qviewTm {Γ} ⌜Unit⌝ = record { k = 37 ; sh = sh-kcUnit ; p = unit ; nh = (atʰ 37) ; eq = refl ; dp = ⊢payK (lt-s lt-z) ok-kcUnit (⊢dep' Γ) a[] }
-qviewTm {Γ} (ref a0 a1) = record { k = 38 ; sh = sh-kref ; p = ((quoteℕ a0) ,ₚ (quoteTm a1) ,ₚ unit) ; nh = (atʰ 38) ; eq = refl ; dp = ⊢payK (lt-s lt-z) ok-kref (⊢dep' Γ) (a-nat (⊢quoteℕ a0) (a-cls (⊢quoteTm a1) a[])) }
+qviewTm {Γ} (ref a0) = record { k = 38 ; sh = sh-kref ; p = ((quoteℕ a0) ,ₚ unit) ; nh = (atʰ 38) ; eq = refl ; dp = ⊢payK (lt-s lt-z) ok-kref (⊢dep' Γ) (a-nat (⊢quoteℕ a0) a[]) }

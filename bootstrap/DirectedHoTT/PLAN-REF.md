@@ -137,10 +137,36 @@ substitution of the bodies for the names, by induction on the telescope.
   once against ANY signature: conservativity, read as module structure).
 - **Examples.** Each module instantiates at its segment's concrete `Σ`, so
   δ computes definitionally at use sites.
-- **The Knot.** `kref ⌜d⌝`: no quoted body, the `cls` field kind deleted.
-  The Knot's judgement families take the QUOTED signature as a parameter,
-  mirroring `Spec`; the δ row reads the body from it. `RedAgree` /
-  `TypingAgree` (faithfulness) flag every mismatch.
+- **The Knot** (decided 2026-10-07; the fork resolved by principle, work
+  disregarded). `kref ⌜d⌝`: no quoted body, the `cls` field kind gone. The
+  DESCRIBED signature is an INDEX of the Knot's judgement families, a
+  quoted signature `⌜𝒮⌝` beside the quoted variable context:
+  - the signature IS a context (D081), and the Knot already indexes its
+    judgements by the quoted variable context — the definition context
+    gets the same treatment;
+  - internalising "for all 𝒮" (Spec's meta-parameter) is a family over
+    quoted signatures, so the Knot is ONE object, not a meta-family of
+    Knots, one per signature;
+  - it is what R7 needs: a checker in Once takes the signature as input.
+  ★ REFINED (2026-10-07): a PARAMETER of the families, not an index. The
+  signature is uniform across a judgement's recursive structure (every
+  premise is over the same signature) — the defining property of a
+  parameter. So a family over `q` is `IMu J (D q) i`: its recursive
+  positions refer to the same `D q`, nothing threads `q` through premises,
+  and only the δ/`⊢ref` rows and a family citing another (`⊢conv` cites
+  `≅`) mention it. `λ q. IMu J (D q) i` is ONE code over all signatures
+  (R7). The price: a description is no longer CLOSED but NATURAL in `q`
+  (`FIBM-sub σ q : subTm σ (FIBM q) ≡ FIBM (subTm σ q)`); at every current
+  use site `q = ⌜𝒮⌝` is closed, so the codes there are closed again.
+  The AMBIENT signature (where the Knot's own codes live) is an Agda-level
+  parameter, like Lib's. The rows: δ is `kref n ⟶ εwkK 1 j (body of ⌜𝒮⌝ at
+  n)` under `n < size ⌜𝒮⌝`; `⊢ref` is `kref n : εwkK 0 j (type of ⌜𝒮⌝ at
+  n)` under `n < bound`. The Knot also describes the definition context's
+  FORMATION (`Spec/SigWf.WfK` over quoted signatures). Faithfulness: for
+  every `𝒮`, the Knot at `⌜𝒮⌝` decodes to / encodes from Spec at `𝒮`
+  (`RedAgree`/`TypingAgree` and the decoders); the generators
+  (`gen-knot.py`, `gen-judge.py`) emit the new index and the module
+  parameters, so the generated tree stays the generators' output.
 
 ## 4. Order
 
@@ -264,3 +290,26 @@ Next: Lib, then Examples, then the Knot.
 - Where a file declares its own `n`, the module parameter is `𝓃`.
 - Module discipline extended to LOCAL imports (`where open import M args`):
   they open the file's one top-level instance (`open ᴵM …`).
+
+### The Knot stage — steps
+
+- K1. `Lib/SynFib`, `Lib/SynFam`, `Lib/SynPat`: families with a PARAMETER
+  of code `P`: a row is `R q j p c` (law over `q` too); `Fib₀` takes `P`;
+  `RowOK` assumes `Ξ ⊢ q ∷ El P`; `FIBM q`, `fib-β` at `q`, `FIBM-sub`
+  natural in `q`; `SynFam` gives `DF q`. Parameterless families: `P =
+  ⌜Unit⌝`, rows ignore `q`.
+- K2. `Examples/Knot/QSig`: `⌜QSig⌝ = Σ Nat (Σ (Π Nat ⌜Ty⌝₀) (Π Nat
+  ⌜Tm⌝₀))` (size, declared types, bodies — functions, so no list type is
+  needed); `quoteDefs : Defs → RTm Δ` (each entry quoted, selected by a
+  `natcase` chain); its typing; lookups.
+- K3. Generators (`gen-knot.py`, `gen-judge.py`): rows take `q`; a family
+  citing another passes `q`; module parameters (the ambient signature)
+  and one instance per (module, arguments) emitted by the generators.
+- K4. Hand rows: δ (`Knot/Ref`: `kref n ⟶ εwkK 1 j (bodies q n)` under
+  `n < size q`), `⊢ref` (`Knot/RefJudge`: `kref n : εwkK 0 j (types q n)`
+  under `n < bound`), `Knot/RefCon`; the internal image of `Spec/SigWf`.
+- K5. Decoders and agreement at `q = ⌜𝒮⌝` (`RedDecode`, `JudgeDecodeHand`,
+  `RedAgree`, `TypingAgree`): `n < size` from the `Hom Nat` premise, the
+  body from `quoteTm` injectivity after the lookup computes.
+- K6. The signature-building examples (SigCore, SigMeth, PwCore, the NbE
+  agreement tests) at their `kernel S`; then MEASURE (step 5 of §4).
