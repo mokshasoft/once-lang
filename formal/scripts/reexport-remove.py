@@ -283,6 +283,13 @@ def declares(path, name):
                      r"^\s*(?:field|constructor)\s+" + re.escape(name) + r"\b", re.M)
     return pat.search(open(path, encoding="utf-8").read()) is not None
 
+def declares_top(path, name):
+    """`name` is declared at the module's TOP level (column 0) — a field or a
+    nested module's name is not the module's own export."""
+    if not os.path.exists(path): return False
+    pat = re.compile(r"^(?:data\s+|record\s+)?" + re.escape(name) + r"\s+(?::|where|\{|\()", re.M)
+    return pat.search(open(path, encoding="utf-8").read()) is not None
+
 def directive_names(path, facade):
     """Names listed in using/renaming directives of imports of `facade` in `path`."""
     L = open(path, encoding="utf-8").read().split("\n")
@@ -371,7 +378,7 @@ def run(targets):
             p = modpath(m)
             if m == fac or not os.path.exists(p): continue
             for n in directive_names(p, fac):
-                if (fac, n) in target_of or declares(modpath(fac), n): continue
+                if (fac, n) in target_of or declares_top(modpath(fac), n): continue
                 cands = {st for f, st in sp
                          if st.startswith("open import ") and declares(modpath(st.split()[2]), n)}
                 if len(cands) != 1 and len(sp) == 1: cands = {sp[0][1]}
@@ -402,7 +409,7 @@ def run(targets):
     stmt_of = defaultdict(set)
     for f, ln, fac, add, drop, stmt in plan:
         stmt_of[fac].add(stmt)
-    for _ in range(6):
+    for _ in range(25):
         after, err = report(imps, STAGE + "/after.jsonl")
         if after is not None: break
         m = re.search(r"stage/formal/(Once/[^:\s]+\.agda):(\d+)\.\d+-\S*: warning: -W\[no\]ModuleDoesntExport\s*"

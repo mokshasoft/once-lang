@@ -11,6 +11,9 @@
 module Once.Parser.Module.FunDef.OpDecl where
 
 open import Once.Parser.Module.Core
+open import Once.Parser.Token using (Token)
+open import Data.Nat.Properties using (<-≤-trans; <⇒≤; ≤-<-trans)
+open import Data.List using (List)
 open import Once.Parser.Module.OpName
 open import Once.Parser.Module.FunDef.Def
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1; colDrop1-≤)

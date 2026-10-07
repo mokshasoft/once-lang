@@ -14,6 +14,11 @@ import Data.String
 open import Data.List using (reverse)
 
 open import Once.Parser.Module.Core
+open import Once.Parser.Core using (Parser)
+open import Once.Parser.Token using (TAmpersand; TAt; TDot; TGt; TLParen; TLt; TMinus; TPercent; TPipe; TPlus; TRParen; TSlash; TStar; Token)
+open import Data.Nat.Properties using (<-trans; ≤-refl)
+open import Data.Nat using (s≤s)
+open import Data.List using (List; []; _∷_)
 
 -- | Classifier: an operator-char token to its char, the closing paren, or
 -- neither. Routes `parseOpCharsB` so the bridge dispatches in 3 cases, not 12.

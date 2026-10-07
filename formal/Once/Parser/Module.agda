@@ -18,6 +18,16 @@
 module Once.Parser.Module where
 
 open import Once.Parser.Module.Core public
+open import Once.Parser.Core using (Parser; skipNewlines)
+open import Once.Parser.Token using (TAmpersand; TArrow; TAt; TBang; TCaret0; TCaret1; TCaretW; TColon; TComma; TDot; TEOF; TEqEq; TEquals; TFloat; TGe; TGt; TInt; TLBrace; TLParen; TLambda; TLe; TLt; TMinus; TNeq; TNewline; TPercent; TPipe; TPlus; TRBrace; TRParen; TSemicolon; TSlash; TStar; TString; TWord; Token)
+open import Once.Type using (PolyType)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Nullary using (no; yes)
+open import Induction.WellFounded using (Acc; acc)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Data.Nat.Properties using (<-trans; n≤1+n; ≤-refl; ≤-trans)
+open import Data.Nat using (_<_; _≤_; s≤s)
+open import Data.List using (List; []; _∷_; length)
 open import Once.Parser.Module.Import public
 open import Once.Parser.Module.OpName public
 open import Once.Parser.Module.FunDef public

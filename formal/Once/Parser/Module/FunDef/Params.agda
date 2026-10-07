@@ -11,6 +11,13 @@
 module Once.Parser.Module.FunDef.Params where
 
 open import Once.Parser.Module.Core
+open import Once.Parser.Token using (TEquals; TWord; Token)
+open import Once.TypeCheck.Raw using (RLam; RawExpr)
+open import Induction.WellFounded using (Acc; acc)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Data.Nat.Properties using (<⇒≤; ≤-refl; ≤-trans)
+open import Data.Nat using (_<_; _≤_)
+open import Data.List using (List; []; _∷_; length)
 
 -- | Wrap body in lambdas for each parameter.
 wrapLams : List String → RawExpr → RawExpr

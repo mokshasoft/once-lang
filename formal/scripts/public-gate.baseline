@@ -91,10 +91,10 @@ Once/Memory/Regions.agda 1
 Once/Memory/RuntimeContract.agda 1
 Once/Memory/StackSlots.agda 3
 Once/Optimizer/Normal.agda 2
-Once/Parser.agda 5
+Once/Parser.agda 1
 Once/Parser/Generic/PolyInst.agda 1
 Once/Parser/Module.agda 6
-Once/Parser/Module/Core.agda 20
+Once/Parser/Module/Core.agda 3
 Once/Parser/Module/FunDef.agda 4
 Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1

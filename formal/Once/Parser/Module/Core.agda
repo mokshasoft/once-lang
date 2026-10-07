@@ -12,28 +12,28 @@
 
 module Once.Parser.Module.Core where
 
-open import Data.List using (List; []; _∷_; length) public
+open import Data.List using (List; []; _∷_; length)
 open import Data.Bool using (Bool)
 open import Data.Maybe using (Maybe; just; nothing; is-just) public
 open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax) public
 open import Data.String using (String; _≟_) public
-open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n) public
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n;
                                         <-trans; ≤-<-trans; <-≤-trans;
-                                        <⇒≤; m≤n⇒m≤1+n) public
-open import Data.Nat.Induction using (<-wellFounded) public
-open import Induction.WellFounded using (Acc; acc) public
-open import Relation.Nullary using (yes; no) public
-open import Relation.Binary.PropositionalEquality using (_≡_; refl) public
+                                        <⇒≤; m≤n⇒m≤1+n)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Induction.WellFounded using (Acc; acc)
+open import Relation.Nullary using (yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; PolyType) public
-open import Once.TypeCheck.Raw using (RawExpr; RLam) public
-open import Once.Parser.Token public
-open import Once.Parser.Core public
-open import Once.Parser.Type using (parseType; parseTypeWF; stripType) public
-open import Once.Parser.TypeRelation using (ParsesType-shrinks) public
-open import Once.Parser.Expr using (parseExpr; parseExprWF) public
-open import Once.Parser.ExprRelation using (ParsesExpr-shrinks) public
+open import Once.Type using (Type; PolyType)
+open import Once.TypeCheck.Raw using (RawExpr; RLam)
+open import Once.Parser.Token
+open import Once.Parser.Core
+open import Once.Parser.Type using (parseType; parseTypeWF; stripType)
+open import Once.Parser.TypeRelation using (ParsesType-shrinks)
+open import Once.Parser.Expr using (parseExpr; parseExprWF)
+open import Once.Parser.ExprRelation using (ParsesExpr-shrinks)
 
 ------------------------------------------------------------------------
 -- Module Types
@@ -92,7 +92,7 @@ ParseAtB≤ {A} toks =
 -- ...` version fuses the whole mutual WF-parser case-tree into the
 -- wrapper's generated Haskell (tens of thousands of lines), OOMing
 -- MAlonzo in downstream users.
-open import Once.Parser.Type using (ParseTypeD) public
+open import Once.Parser.Type using (ParseTypeD)
 
 parseTypeB-adapt : ∀ (toks : List Token) → ParseTypeD toks →
                    Maybe (Σ[ a ∈ Type ] Σ[ rest ∈ List Token ]
@@ -104,7 +104,7 @@ parseTypeB : (toks : List Token) → ParseAtB {Type} toks
 parseTypeB toks = parseTypeB-adapt toks
                     (parseTypeWF toks (<-wellFounded (length toks)))
 
-open import Once.Parser.Expr using (ParseExprD) public
+open import Once.Parser.Expr using (ParseExprD)
 
 parseExprB-adapt : ∀ (toks : List Token) → ParseExprD toks →
                    Maybe (Σ[ a ∈ RawExpr ] Σ[ rest ∈ List Token ]

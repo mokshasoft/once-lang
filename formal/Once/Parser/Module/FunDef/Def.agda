@@ -14,6 +14,11 @@
 module Once.Parser.Module.FunDef.Def where
 
 open import Once.Parser.Module.Core
+open import Once.Parser.Core using (Parser)
+open import Once.Parser.Token using (Token)
+open import Data.Nat.Properties using (<-≤-trans)
+open import Data.Nat using (_≤_)
+open import Data.List using (List; length)
 open import Once.Parser.Module.FunDef.Params
 open import Once.Parser.Module.FunDef.Body
 

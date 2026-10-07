@@ -13,6 +13,15 @@ module Once.Parser.Module.Import where
 open import Relation.Nullary using (Dec)
 open import Data.Bool using (Bool; true; false)
 open import Once.Parser.Module.Core
+open import Once.Parser.Core using (Parser)
+open import Once.Parser.Token using (TDot; Token)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Nullary using (no; yes)
+open import Induction.WellFounded using (Acc; acc)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Data.Nat.Properties using (<-trans; <⇒≤; m≤n⇒m≤1+n; ≤-<-trans; ≤-refl)
+open import Data.Nat using (_<_; _≤_)
+open import Data.List using (List; []; _∷_; length)
 
 -- | Drop the first token (used to recurse past a `.` separator). `dropDot-≤`
 -- bounds it. CLASSIFIER-ROUTED (Plan 0.52 bridge-readiness): the head dispatch

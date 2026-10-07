@@ -113,6 +113,10 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 -- Re-export Parser (for module loading)
 open import Once.Parser public
 open import Once.Parser.Module
+open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Type using (Type)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Nullary using (no; yes)
 open FunInfo
 open PolyFunInfo
 

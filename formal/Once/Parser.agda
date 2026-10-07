@@ -31,11 +31,11 @@ open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
 open import Once.Parser.Core using (Parser)
-open import Once.Parser.Type using (parseType; isUpperWord) public
-open import Once.Parser.Expr using (parseExpr) public
+open import Once.Parser.Type using (parseType; isUpperWord)
+open import Once.Parser.Expr using (parseExpr)
 open import Once.Parser.Module public
-open import Once.Parser.Inline public
-open import Once.Parser.TypeAlias public
+open import Once.Parser.Inline
+open import Once.Parser.TypeAlias
 
 -- Parser smoke tests (plan 0.3 G1): pull into the compilation graph
 -- so a regression in parser behaviour fails `make parser`.
