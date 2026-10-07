@@ -223,13 +223,13 @@ def remove_public(path, line):
     return ("local", m.group(1))
 
 def add_imports(path, additions):
-    """additions: {(stmt_line0, target): set(names)} — insert `open import target
-    using (names)` just before the statement that brought them."""
+    """additions: {(stmt_line0, target): set(names)}. Extend an existing
+    `target using (…)` statement of the same module if the file has one;
+    otherwise insert the statement after the one that brought the names.
+    Never emits an empty list."""
     L = open(path, encoding="utf-8").read().split("\n")
     for (line0, target), names in sorted(additions.items(), key=lambda kv: -kv[0][0]):
-        s = statement_start(L, line0)
-        _, e = statement(L, s)              # AFTER it: a local open needs the facade bound
-        ind = L[s][:len(L[s]) - len(L[s].lstrip())]
+        if not names: continue
         mo = re.match(r"open (\S+)\.([^.\s]+)$", target)
         if mo and not target.startswith("open import"):
             fac, sub = mo.groups()
@@ -238,6 +238,22 @@ def add_imports(path, additions):
             plain = re.search(r"import\s+" + re.escape(fac) + r"(?!\s+as\b)(\s|$)", src)
             if al and not plain:
                 target = "open " + al[0] + "." + sub      # the facade is bound only by its alias here
+        # an existing `target using (…)` (top level or same indentation): extend it
+        ex = next((k for k, l in enumerate(L)
+                   if re.match(r"^\s*" + re.escape(target) + r"\s+using\s*\(", l)
+                   and "public" not in " ".join(L[k:statement(L, k)[1]])), None)
+        if ex is not None:
+            st, e = statement(L, ex)
+            text = "\n".join(L[st:e])
+            def ext(mm):
+                items = [t.strip() for t in mm.group(2).split(";") if t.strip()]
+                items += [n for n in sorted(names) if n not in items]
+                return mm.group(1) + "(" + "; ".join(items) + ")"
+            L[st:e] = re.sub(r"(\busing\s*)\(([^()]*)\)", ext, text, count=1).split("\n")
+            continue
+        s = statement_start(L, line0)
+        _, e = statement(L, s)              # AFTER it: a local open needs the facade bound
+        ind = L[s][:len(L[s]) - len(L[s].lstrip())]
         L.insert(e, ind + target + " using (" + "; ".join(sorted(names)) + ")")
     open(path, "w", encoding="utf-8").write("\n".join(L))
 
