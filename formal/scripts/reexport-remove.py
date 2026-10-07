@@ -377,7 +377,20 @@ def run(targets):
             skipped.append((f, ln, ", ".join(sorted(why))))
         else:
             plan.append((f, ln, fac, add, drop, stmt))
-    # PRE-FLIGHT: directive names no record placed (listed, never used)
+    # PRE-FLIGHT 1: a name an importer lists in a directive of a facade but never
+    # uses (no occurrence in its records — the report IS the reachability fact) is
+    # a dead import: prune it, rather than move it.
+    used = {m: {r["written"] for r in rs} | {base(r["resolved"]) for r in rs} for m, rs in before.items()}
+    facs = {fac for _, _, fac, _, _, _ in plan}
+    for fac in facs:
+        for m in imps:
+            p = modpath(m)
+            if m == fac or not os.path.exists(p) or m not in used: continue
+            dead = {n for n in directive_names(p, fac) if n not in used[m]}
+            if dead:
+                touch(p); drop_from_directives(p, fac, dead)
+                print(f"  pruned dead imports {sorted(dead)} of {fac} in {p}", flush=True)
+    # PRE-FLIGHT 2: directive names no record placed (listed, never used)
     by_fac = defaultdict(list)
     for f, ln, fac, add, drop, stmt in plan: by_fac[fac].append((f, stmt))
     for fac, sp in by_fac.items():
