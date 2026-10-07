@@ -8,7 +8,7 @@
 -- other head the table holds `noRow`, whose description has no rule.  So a
 -- closed normal payload at the case's row (`case-any`) FORCES the head:
 --
---     pat-hit : ◇ ⊢ p ∷ El (dpay I D (R (rowAt s₀ h r s₀ k) j q c)) → IsNormal p → k ≡ h
+--     pat-hit : ◇ ⊢ p ∷ El (dpay I D (R (rowAt s₀ h r s₀ k) q j pl c)) → IsNormal p → k ≡ h
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -35,8 +35,8 @@ open import DirectedHoTT.Lib.SynFib 𝒮 n ok using ( Row )
 open import DirectedHoTT.Lib.SynPat 𝒮 n ok using ( rowAt; rowAt-elim; noRow )
 open import DirectedHoTT.Lib.Decode 𝒮 wf using ( pay-none )
 
-pat-hit : {I D j q c p : RTm ε} (s₀ h k : ℕ) {r : Row} →
-          ◇ ⊢ p ∷ El (dpay I D (Row.R (rowAt s₀ h r s₀ k) j q c)) → IsNormal p → k ≡ h
-pat-hit {I} {D} {j} {q} {c} {p} s₀ h k {r} dp np =
-  rowAt-elim (λ ρ → ◇ ⊢ p ∷ El (dpay I D (Row.R ρ j q c)) → IsNormal p → k ≡ h) s₀ h s₀ k
+pat-hit : {I D q j pl c p : RTm ε} (s₀ h k : ℕ) {r : Row} →
+          ◇ ⊢ p ∷ El (dpay I D (Row.R (rowAt s₀ h r s₀ k) q j pl c)) → IsNormal p → k ≡ h
+pat-hit {I} {D} {q} {j} {pl} {c} {p} s₀ h k {r} dp np =
+  rowAt-elim (λ ρ → ◇ ⊢ p ∷ El (dpay I D (Row.R ρ q j pl c)) → IsNormal p → k ≡ h) s₀ h s₀ k
              (λ _ e _ _ → e) (λ d n → ⊥-elim (pay-none d done n)) dp np

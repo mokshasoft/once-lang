@@ -13,8 +13,10 @@
 -- Ford (D077 "Where the target is a constructor pattern, the fibre is
 -- computed by unification, i.e. by case").
 --
---     CASE j a c  =  app (ielim D (tag s₀ , j) PATM a) c
---     case-β   :  CASE j (conₗ h q) c  ⟶*  R j q c
+--     CASE q j a c  =  app (ielim D (tag s₀ , j) (PATM q) a) c
+--     case-β   :  CASE q j (conₗ h p) c  ⟶*  R q j p c
+--
+-- at the parent family's PARAMETER `q` (`Lib/SynFib`; PLAN-REF).
 --
 -- It is `Lib/SynFib`'s `Fib` at the row table `rowAt s₀ h r` (the row at
 -- one position, `noRow` elsewhere), typed ONCE here from the one row's
@@ -69,7 +71,7 @@ look-nth (nthᵍ-s ng) nh = look-nth ng nh
 
 -- the empty fibre
 noRow : Row
-noRow = record { R = λ j p c → dσ (⌜Fin⌝ nzero) (selF []) ; R-sub = λ σ j p c → refl }
+noRow = record { R = λ q j p c → dσ (⌜Fin⌝ nzero) (selF []) ; R-sub = λ σ q j p c → refl }
 
 -- the row `r` at (s₀ , h), none elsewhere
 rowAt : ℕ → ℕ → Row → ℕ → ℕ → Row
@@ -102,6 +104,8 @@ rowAt-hit P (suc s₀) h       x = rowAt-hit P s₀ h x
 ------------------------------------------------------------------------
 
 module Pat {sg : Sig n} (ok : SigOK n sg)
+           (P : {Δ : Cx} → RTm Δ) (P-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (P {Δ}) ≡ P)
+           (⊢P : {Γ : Ctx} → Γ ⊢ P ∷ U)
            (J : {Δ : Cx} → RTm Δ) (J-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (J {Δ}) ≡ J)
            (⊢J : {Γ : Ctx} → Γ ⊢ J ∷ U)
            (C : {Δ : Cx} → RTm (Δ ∙)) (C-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm (extS σ) (C {Δ}) ≡ C)
@@ -109,48 +113,48 @@ module Pat {sg : Sig n} (ok : SigOK n sg)
            (s₀ h : ℕ) (r : Row) where
 
   open Row
-  open Fib ok J J-sub ⊢J C C-sub ⊢C (rowAt s₀ h r) public
+  open Fib ok P P-sub ⊢P J J-sub ⊢J C C-sub ⊢C (rowAt s₀ h r) public
 
   private
     okNo : {s : ℕ} {sh : Shape} → RowOK s sh noRow
-    okNo dj dp dc = ⊢dσ ⊢J (⊢⌜Fin⌝ ⊢nzero) (⊢selF ⊢J []ᵈ)
+    okNo dq dj dp dc = ⊢dσ ⊢J (⊢⌜Fin⌝ ⊢nzero) (⊢selF ⊢J []ᵈ)
 
     okHit : {s k c' : ℕ} {shs : Shapes c'} {sh : Shape} → NthG sg s shs → NthSh shs k sh →
             RowOK s₀ (lookSh sg s₀ h) r → s ≡ s₀ → k ≡ h → RowOK s sh r
     okHit ng nh rok refl refl = subst (λ z → RowOK s₀ z r) (look-nth ng nh) rok
 
   -- ★ the case's method, typed from its ONE row
-  ⊢PATM : {Γ : Ctx} → RowOK s₀ (lookSh sg s₀ h) r → Γ ⊢ FIBM ∷ MethTy (SI n) (SD sg) FM
-  ⊢PATM rok = ⊢FIBM (λ {s} {c'} {k} {shs} {sh} ng nh →
+  ⊢PATM : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} → Γ ⊢ q ∷ El P → RowOK s₀ (lookSh sg s₀ h) r → Γ ⊢ FIBM q ∷ MethTy (SI n) (SD sg) FM
+  ⊢PATM dq rok = ⊢FIBM dq (λ {s} {c'} {k} {shs} {sh} ng nh →
                        rowAt-elim (RowOK s sh) s₀ h s k (okHit ng nh rok) (okNo {s} {sh}))
 
   -- ★ OPAQUE: the case carries the whole fibre method (every row), and a
   --   transparent one is compared by normalisation wherever two syntactic
   --   forms of one context meet (`context-form-mismatch-opaque`)
   opaque
-    CASE : RTm Δ → RTm Δ → RTm Δ → RTm Δ
-    CASE j a c = app (ielim (SD sg) (pair (tag s₀) j) FIBM a) c
+    CASE : RTm Δ → RTm Δ → RTm Δ → RTm Δ → RTm Δ
+    CASE q j a c = app (ielim (SD sg) (pair (tag s₀) j) (FIBM q) a) c
 
-    CASE-sub : (σ : Sub Δ Θ) (j a c : RTm Δ) → subTm σ (CASE j a c) ≡ CASE (subTm σ j) (subTm σ a) (subTm σ c)
-    CASE-sub σ j a c =
-      cong₃' (SD-sub σ sg) (tag-sub σ s₀) (FIBM-sub σ)
+    CASE-sub : (σ : Sub Δ Θ) (q j a c : RTm Δ) → subTm σ (CASE q j a c) ≡ CASE (subTm σ q) (subTm σ j) (subTm σ a) (subTm σ c)
+    CASE-sub σ q j a c =
+      cong₃' (SD-sub σ sg) (tag-sub σ s₀) (FIBM-sub σ q)
       where
         cong₃' : {D D' T T' M M' : RTm _} → D ≡ D' → T ≡ T' → M ≡ M' →
                  app (ielim D (pair T (subTm σ j)) M (subTm σ a)) (subTm σ c) ≡ app (ielim D' (pair T' (subTm σ j)) M' (subTm σ a)) (subTm σ c)
         cong₃' refl refl refl = refl
 
-    -- ★ typed: at any depth, scrutinee of sort s₀, and convoy
-    ⊢CASE : {Ξ : Ctx} {j a c : RTm ⌊ Ξ ⌋} → RowOK s₀ (lookSh sg s₀ h) r → Lt s₀ n →
-            Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ a ∷ SK sg s₀ j → Ξ ⊢ c ∷ El (Cat (pair (tag s₀) j)) → Ξ ⊢ CASE j a c ∷ Desc J
-    ⊢CASE {Ξ} {j} {a} {c} rok lt dj da dc =
-      ⊢-cast {Ξ} {CASE j a c} {subTy (single c) (Desc J)} {Desc J} (cong Desc (J-sub (single c)))
-        (⊢app {Ξ} {El (Cat i)} {Desc J} {ielim (SD sg) i FIBM a} {c}
-              (⊢-cast {Ξ} {ielim (SD sg) i FIBM a} {iinst i a FM} {Π (El (Cat i)) (Desc J)} eI dI) dc)
+    -- ★ typed: at any parameter, depth, scrutinee of sort s₀, and convoy
+    ⊢CASE : {Ξ : Ctx} {q j a c : RTm ⌊ Ξ ⌋} → RowOK s₀ (lookSh sg s₀ h) r → Lt s₀ n → Ξ ⊢ q ∷ El P →
+            Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ a ∷ SK sg s₀ j → Ξ ⊢ c ∷ El (Cat (pair (tag s₀) j)) → Ξ ⊢ CASE q j a c ∷ Desc J
+    ⊢CASE {Ξ} {q} {j} {a} {c} rok lt dq dj da dc =
+      ⊢-cast {Ξ} {CASE q j a c} {subTy (single c) (Desc J)} {Desc J} (cong Desc (J-sub (single c)))
+        (⊢app {Ξ} {El (Cat i)} {Desc J} {ielim (SD sg) i (FIBM q) a} {c}
+              (⊢-cast {Ξ} {ielim (SD sg) i (FIBM q) a} {iinst i a FM} {Π (El (Cat i)) (Desc J)} eI dI) dc)
       where
         i : RTm ⌊ Ξ ⌋
         i = pair (tag s₀) j
-        dI : Ξ ⊢ ielim (SD sg) i FIBM a ∷ iinst i a FM
-        dI = ⊢ielim {Ξ} {SI n} {SD sg} {FM} {FIBM} {i} {a} ⊢SI (⊢SD ok) ⊢FM (⊢PATM rok) (⊢ix lt dj) (⊢SK→IMu {sg = sg} {s = s₀} {d = j} da)
+        dI : Ξ ⊢ ielim (SD sg) i (FIBM q) a ∷ iinst i a FM
+        dI = ⊢ielim {Ξ} {SI n} {SD sg} {FM} {FIBM q} {i} {a} ⊢SI (⊢SD ok) ⊢FM (⊢PATM dq rok) (⊢ix lt dj) (⊢SK→IMu {sg = sg} {s = s₀} {d = j} da)
         eI : iinst i a FM ≡ Π (El (Cat i)) (Desc J)
         eI = trans {x = iinst i a FM} {y = subTy (single a ∘ₛ extS (single i)) FM} {z = Π (El (Cat i)) (Desc J)}
                    (subTy-subTy {τ = single a} {σ = extS (single i)} FM)
@@ -159,20 +163,20 @@ module Pat {sg : Sig n} (ok : SigOK n sg)
                                 (wk-cancel-tm a i)))
 
     -- reduction in the scrutinee and in the convoy
-    CASE-⟶ᵃ : {j a a' c : RTm Δ} → a ⟶* a' → CASE j a c ⟶* CASE j a' c
+    CASE-⟶ᵃ : {q j a a' c : RTm Δ} → a ⟶* a' → CASE q j a c ⟶* CASE q j a' c
     CASE-⟶ᵃ r = ⟶*-appˡ (⟶*-ielimᵗ r)
 
-    CASE-⟶ᶜ : {j a c c' : RTm Δ} → c ⟶* c' → CASE j a c ⟶* CASE j a c'
+    CASE-⟶ᶜ : {q j a c c' : RTm Δ} → c ⟶* c' → CASE q j a c ⟶* CASE q j a c'
     CASE-⟶ᶜ r = ⟶*-appʳ r
 
     -- ★ at ANY head: the row the table holds there (the pattern's, or
     --   `noRow`) — what a decoder (PLAN-FAITHFUL F6) reads a CASE with
-    case-any : {c' k : ℕ} {shs : Shapes c'} {sh : Shape} {j q c : RTm Δ} → NthG sg s₀ shs → NthSh shs k sh →
-               CASE j (conₗ k q) c ⟶* R (rowAt s₀ h r s₀ k) j q c
-    case-any {j = j} {q} {c} ng nh = fib-β {D = SD sg} {j = j} {p = q} {c₀ = c} ng nh
+    case-any : {c' k : ℕ} {shs : Shapes c'} {sh : Shape} {q j pl c : RTm Δ} → NthG sg s₀ shs → NthSh shs k sh →
+               CASE q j (conₗ k pl) c ⟶* R (rowAt s₀ h r s₀ k) q j pl c
+    case-any {q = q} {j = j} {pl} {c} ng nh = fib-β {D = SD sg} {q = q} {j = j} {p = pl} {c₀ = c} ng nh
 
     -- ★ at the pattern's head, the case IS the row
-    case-β : {c' : ℕ} {shs : Shapes c'} {sh : Shape} {j q c : RTm Δ} → NthG sg s₀ shs → NthSh shs h sh →
-             CASE j (conₗ h q) c ⟶* R r j q c
-    case-β {j = j} {q} {c} ng nh =
-      rowAt-hit (λ ρ → CASE j (conₗ h q) c ⟶* R ρ j q c) s₀ h (fib-β {D = SD sg} {j = j} {p = q} {c₀ = c} ng nh)
+    case-β : {c' : ℕ} {shs : Shapes c'} {sh : Shape} {q j pl c : RTm Δ} → NthG sg s₀ shs → NthSh shs h sh →
+             CASE q j (conₗ h pl) c ⟶* R r q j pl c
+    case-β {q = q} {j = j} {pl} {c} ng nh =
+      rowAt-hit (λ ρ → CASE q j (conₗ h pl) c ⟶* R ρ q j pl c) s₀ h (fib-β {D = SD sg} {q = q} {j = j} {p = pl} {c₀ = c} ng nh)
