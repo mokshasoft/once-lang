@@ -13,7 +13,7 @@ open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
 import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
-module DirectedHoTT.Metatheory.Fundamental (𝒮 : KSig) (n : ℕ) (ok : Ty.SigOK 𝒮 n) (refs : Sem.RefsOK 𝒮 n) where
+module DirectedHoTT.Metatheory.Fundamental (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) (refs : Sem.RefsOK 𝒮 n) where
 open import DirectedHoTT.Algorithm.DecEq
   using ( Dec )
 open import DirectedHoTT.Metatheory.RedCong 𝒮

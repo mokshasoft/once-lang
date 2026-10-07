@@ -51,7 +51,7 @@ module DirectedHoTT.Metatheory.Canonicity (𝒮 : KSig) (wf : WfK 𝒮) where
 private
   n : ℕ
   n = KSig.size 𝒮
-  ok : Ty.SigOK 𝒮 n
+  ok : Ty.EntriesOK 𝒮 n
   ok = Entries.sigOK 𝒮 n wf
   refs : Sem.RefsOK 𝒮 n
   refs = Entries.refsOK 𝒮 n (λ p → p) wf

@@ -36,7 +36,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( dfst; dsnd; exp
 moveEntry : (a b : ℕ) → (∀ {d} → d <ˢ a → d <ˢ b) → {e : ℕ} → Ty.EntryOK 𝒮 a e → Ty.EntryOK 𝒮 b e
 moveEntry a b inc (Ty.entryOK t u) = Ty.entryOK (SigMono.monoTy 𝒮 a b inc t) (SigMono.mono 𝒮 a b inc u)
 
-sigOK : (m : ℕ) → WfUpTo 𝒮 m → Ty.SigOK 𝒮 m
+sigOK : (m : ℕ) → WfUpTo 𝒮 m → Ty.EntriesOK 𝒮 m
 sigOK (suc m) (w , e) <-here      = moveEntry m (suc m) <-there e
 sigOK (suc m) (w , e) (<-there p) = moveEntry m (suc m) <-there (sigOK m w p)
 

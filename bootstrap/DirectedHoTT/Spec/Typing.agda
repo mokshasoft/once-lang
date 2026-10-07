@@ -370,5 +370,5 @@ record EntryOK (d : ℕ) : Set where
     okBody : ◇ ⊢ KSig.body 𝒮 d ∷ KSig.type 𝒮 d
 open EntryOK public
 
-SigOK : Set
-SigOK = ∀ {d} → d <ˢ n → EntryOK d
+EntriesOK : Set
+EntriesOK = ∀ {d} → d <ˢ n → EntryOK d
