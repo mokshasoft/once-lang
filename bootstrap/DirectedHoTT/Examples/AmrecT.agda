@@ -55,6 +55,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecT where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 -- ★★ SEVEN LEMMAS DELETED FROM THIS MODULE, 2026-09-20 — they were
 --   already in `Lib`, and four were BYTE-IDENTICAL (statement AND
@@ -62,11 +64,11 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 --   "same type as this declaration, modulo anti-unification".  ⚠ The
 --   module ALREADY imported `Lib.Wk`; it just did not import these
 --   names, which is why the copies were invisible to every reader.
-open import DirectedHoTT.Lib.Wk
+open Lib0.Lib-Wk
   using ( cong₄; ren-sub; ren-w; sub-w; w
         ; wᶠ-nrs; wᶠ²-single; nrs-wTy; ren-wᶠ; wᶠ-single; wᶠ¹-single )
-open import DirectedHoTT.Lib.Rec using ( aIHT-ren )
-import DirectedHoTT.Lib.Wk as W
+open Lib0.Lib-Rec using ( aIHT-ren )
+module W = Lib0.Lib-Wk
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
@@ -75,17 +77,17 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
         ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; idₛ
         ; renTy-subTy; renTm-subTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.TySub
+open Lib0.Metatheory-TySub
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
-open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )
+open Lib0.Lib-Ord using ( ⊢strong-base'; ⊢strong-step )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 
 ------------------------------------------------------------------------
 -- ★ `wᶠ` — weaken a FAMILY under a new binder, keeping the family's own

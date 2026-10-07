@@ -23,24 +23,25 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.OneApp where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; El; Id; RTm; app; ⌜Nat⌝
         ; Ren; renTm; renTy; subTm; subTy; extR; nrs )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( Ren⊢ )
-open import DirectedHoTT.Lib.Rec using ( aIHTat )
-open import DirectedHoTT.Lib.Amrec using ( prvTm; prvOk; StepPW )
-open import DirectedHoTT.Lib.Pair using ( PairT )
+open Lib0.Spec-Typing using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_; wk-single )
+open Lib0.Metatheory-TySub using ( Ren⊢ )
+open Lib0.Lib-Rec using ( aIHTat )
+open Lib0.Lib-Amrec using ( prvTm; prvOk; StepPW )
+open Lib0.Lib-Pair using ( PairT )
 open import DirectedHoTT.Examples.Gcd.Step using ( gcdStp; msr )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
-open import DirectedHoTT.Lib.Amrec using ( module AmTΠ; Prv; wR )
-open import DirectedHoTT.Spec.Typing using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var; here; there )
+open Lib0.Lib-Amrec using ( module AmTΠ; Prv; wR )
+open Lib0.Spec-Typing using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var; here; there )
 open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc; var; vs; vz; Π; Nat )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Pair using ( ⊢PairT )
-open import DirectedHoTT.Spec.Typing using ( ⊢⌜Nat⌝ )
+open Lib0.Lib-Wk using ( w )
+open Lib0.Lib-Pair using ( ⊢PairT )
+open Lib0.Spec-Typing using ( ⊢⌜Nat⌝ )
 open import DirectedHoTT.Examples.Gcd.Step using ( ⊢msr; ⊢gcdStp )
 
 -- the IH type at the carrier, spelled exactly as `StepExt` spells it

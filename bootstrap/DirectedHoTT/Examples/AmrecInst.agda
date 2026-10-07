@@ -58,21 +58,23 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecInst where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Nat; U; Hom
         ; RTm; var; lam; app; nzero; nsuc; ⌜Nat⌝
         ; Π; Sub; subTy; subTm; renTy; renTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single
         ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
         ; ⊢lam; ⊢app; ⊢⌜Nat⌝
         ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom
         ; _⟶_; β; _⟶ᵀ_; El-⌜Nat⌝; ξ-El
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( sub-lemma; Sub⊢ )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
+open Lib0.Metatheory-TySub using ( sub-lemma; Sub⊢ )
 open import DirectedHoTT.Examples.Dogfood
   using ( Γ₄; AStepT; AIHT; aAuxMot; aAuxTm; ⊢aAux )
 

@@ -14,6 +14,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.StepExtL where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Examples.Gcd.StepExt public
 
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym )
@@ -23,31 +25,30 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
         ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS; Id-cong₃
         ; subTy-renTy; renTy-subTy; subTy-cong )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _∋_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢app; ⊢nsuc; ⊢natrec
         ; ⊢fst; ⊢snd; ⊢nzero; ⊢idrefl; natrec-zero; natrec-suc
         ; ⊢conv; _≅ᵀ_; csymᵀ
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; ⊢⌜Nat⌝
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; wk-single )
-open import DirectedHoTT.Metatheory.TySub
+open Lib0.Metatheory-TySub
   using ( ⊢wk; ⊢-cast; ∋-cast; Ren⊢; Ren⊢-ext; ren-ty; ren-lemma; ⊢[] )
-open import DirectedHoTT.Lib.Amrec
+open Lib0.Lib-Amrec
   using ( Prv; prv; prvTm; prvOk; StepExt; StepPW; wR; renren; renTy-idR
         ; subrenTy; aIHTat-ren; aIHTat-sub; idOfRed )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; sub-w³; ren-w )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asP )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( _⟶ᵀ*_; stepᵀ; doneᵀ; red→≅ᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open Lib0.Lib-Wk using ( w; sub-w; sub-w²; sub-w³; ren-w )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT; asP )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open Lib0.Metatheory-RedCong using ( _⟶ᵀ*_; stepᵀ; doneᵀ; red→≅ᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( gcdStp; gcdBody; msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1; ⊢gcdBody
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s; PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ
         ; PAIRˢ; ⊢PAIRˢ; CERTˢ; ⊢CERTˢ )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
 
 
 ------------------------------------------------------------------------

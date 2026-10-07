@@ -15,10 +15,13 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.ScopedDepth where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; Nat; El; ⌜Nat⌝; ielim )
-open import DirectedHoTT.Spec.Typing using ( Ctx; ⌊_⌋; _⊢_∷_; ty-Nat; ⊢⌜Nat⌝; ⊢ielim )
-open import DirectedHoTT.Lib.Sugar using ( methₗ )
-open import DirectedHoTT.Lib.TelFold using ( depthAlg; foldMs; ⊢foldE )
+open Lib0.Spec-Typing using ( Ctx; ⌊_⌋; _⊢_∷_; ty-Nat; ⊢⌜Nat⌝; ⊢ielim )
+open Lib0.Lib-Sugar using ( methₗ )
+open Lib0.Lib-TelFold using ( depthAlg; foldMs; ⊢foldE )
 open import DirectedHoTT.Examples.Scoped using ( TmTs; TmD; ⊢TmD; TmOK; Tm )
 
 dpTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ

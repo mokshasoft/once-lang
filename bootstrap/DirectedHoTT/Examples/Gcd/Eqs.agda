@@ -23,6 +23,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Eqs where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -30,31 +32,27 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; ordtr
         ; vz; vs
         ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; Π; El; ⌜Nat⌝
-        ; _⟶_; _⟶*_; done; step; ⊢conv; csymᵀ; _≅ᵀ_
-        ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[] )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
-open import DirectedHoTT.Lib.Amrec
+open Lib0.Spec-Typing using ( Ctx; ◇; _▹_; ⌊_⌋; single ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; Π; El; ⌜Nat⌝ ; _⟶_; _⟶*_; done; step; ⊢conv; csymᵀ; _≅ᵀ_ ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd; natrec-suc; wk-single )
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast; ⊢[] )
+open Lib0.Lib-Wk using ( w )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans )
+open Lib0.Lib-Amrec
   using ( Prv; prv; prvTm; prvOk; StepExt; module AmTΠ; aStepT; renTm-idR
         ; idToRed; idOfRed )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asN ; msrPair)
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Lib.Ord using ( ⊢strong-step )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT; asN ; msrPair)
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-Ord using ( ⊢strong-step )
+open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( gcdStp; ⊢gcdStp; msr; ⊢msr
         ; RecCall; recCall; recCert; recRed; gcd-gt-term; gcd-le-term )
-open import DirectedHoTT.Lib.Arith using ( plusMonoTm )
-open import DirectedHoTT.Lib.ArithComm using ( plusMonoLTm )
-open import DirectedHoTT.Lib.ArithMonus
+open Lib0.Lib-Arith using ( plusMonoTm )
+open Lib0.Lib-ArithComm using ( plusMonoLTm )
+open Lib0.Lib-ArithMonus
   using ( monusLtTm; ⊢desc-left; ⊢desc-right )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
-open import DirectedHoTT.Spec.Typing using ( ⊢nsuc; ⊢fst; ⊢snd; ⊢pair; ty-Nat; ⊢⌜Nat⌝ )
+open Lib0.Spec-Typing using ( ⊢nsuc; ⊢fst; ⊢snd; ⊢pair; ty-Nat; ⊢⌜Nat⌝ )
 
 module GcdEqAt (Δ : Ctx) where
 

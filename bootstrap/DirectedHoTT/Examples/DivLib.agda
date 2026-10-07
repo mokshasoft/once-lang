@@ -28,27 +28,29 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.DivLib where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat; U
         ; RTm; var; nzero; nsuc; natrec; lam; app; ⌜Nat⌝
         ; Π; renTy; renTm; subTy; subTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ⊢⌜Nat⌝; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π
         ; _≅ᵀ_; csymᵀ; El-⌜Nat⌝ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Lib.Monus
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open Lib0.Metatheory-TySub using ( ⊢wk )
+open Lib0.Lib-Monus
   using ( monusTm; ⊢monus )
 open import DirectedHoTT.Examples.Div
   using ( monusStep; ⊢div-descend )
-open import DirectedHoTT.Lib.Strong using ( reflTm )
-open import DirectedHoTT.Lib.Rec   using ( aIHT )
-open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
+open Lib0.Lib-Strong using ( reflTm )
+open import DirectedHoTT.Lib.Rec ∅ᴷ 0   using ( aIHT )
+open Lib0.Lib-Amrec using ( aStepT; module AmTΠ )
 
 -- the divisor's predecessor, exactly `Γ₃` in NbEPDirDBExamplesDiv
 Γ₃ : Ctx

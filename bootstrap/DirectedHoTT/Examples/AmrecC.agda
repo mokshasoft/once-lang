@@ -37,22 +37,24 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecC where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
-open import DirectedHoTT.Lib.Wk using ( cong₄; nrs-w; ren-w; ren-w²; sub-w; sub-w²; w )
-open import DirectedHoTT.Lib.Rec using ( rec1T; rec1T-ren; rec1T-sub )
+open Lib0.Lib-Wk using ( cong₄; nrs-w; ren-w; ren-w²; sub-w; sub-w²; w )
+open Lib0.Lib-Rec using ( rec1T; rec1T-ren; rec1T-sub )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
         ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
-open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast )
+open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )
+open Lib0.Lib-Ord using ( ⊢strong-base'; ⊢strong-step )
 -- ★ REUSE: the naturality kit built for lexrec is not lexrec-specific.
 --   `rec1T` IS this combinator's IH type, and `sub-w`/`ren-w`/`cong₄` are
 --   the whole toolkit.  Nothing new was needed here.

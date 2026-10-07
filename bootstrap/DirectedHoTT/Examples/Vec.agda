@@ -30,17 +30,20 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Vec where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import normalizer.Syntax.Types using ( _≡_; refl; ⊥; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-nsuc )
-open import DirectedHoTT.Metatheory.Canonicity using ( idEndpoints; zero≇suc )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Lib.Sugar
+open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-nsuc )
+open Lib0.Metatheory-Canonicity using ( idEndpoints; zero≇suc )
+open Lib0.Metatheory-TySub using ( ⊢wk )
+open Lib0.Lib-Sugar
   using ( Cons; []; _∷_; Dₗ; conₗ; methₗ; selF; selF-β; nth-z; nth-s; MethK
         ; PerK; []ₘ; _∷ₘ_; ⊢methₗ )
-open import DirectedHoTT.Lib.Tel
+open Lib0.Lib-Tel
 
 ------------------------------------------------------------------------
 -- 0. The index CODE, and the conversions everything below rides.

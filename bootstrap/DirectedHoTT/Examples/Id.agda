@@ -27,6 +27,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Id where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; subst )
 open import DirectedHoTT.Spec.Syntax
@@ -36,14 +38,14 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; renTy; subTm; ⌜Id⌝-cong₃; ⌜Hom⌝-cong₃ )
 open import DirectedHoTT.Spec.Variance
   using ( occ-ren-tm; avoids-wk )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( single; _⟶_; _⟶*_; done; step
         ; jsub-refl
         ; _⟶ᵀ_; El-⌜Id⌝; El-⌜Hom⌝
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; here
         ; _⊢_∷_; ⊢var; ⊢⌜base⌝; ⊢⌜Id⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢idrefl; ⊢jsub; ⊢conv )
-open import DirectedHoTT.Metatheory.TySub
+open Lib0.Metatheory-TySub
   using ( ⊢wk; wk-cancel-tm; ⊢-cast; ⊢[] )
 
 ------------------------------------------------------------------------

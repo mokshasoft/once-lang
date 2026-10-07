@@ -28,35 +28,37 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.LeEq where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; El; Hom; Nat; Id; RTm; nsuc; pair; fst; snd; ⌜Nat⌝; Ren; renTy
         ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero
         ; renTm; extR; subTm-renTm; subTm-cong; subTm-id )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; single
         ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec; _≅ᵀ_; El-⌜Nat⌝
         ; ⊢nzero; done; ty-Hom )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Lib.Strong
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open Lib0.Lib-Strong
   using ( ⊢le-refl; reflTm; natAsEl; elAsNat )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast )
+open Lib0.Lib-Wk
   using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w; cong₃; sub-w; wfw-single; w²-single )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT ; msrPair)
-open import DirectedHoTT.Lib.Amrec
+open Lib0.Lib-Pair using ( PairT; ⊢PairT ; msrPair)
+open Lib0.Lib-Amrec
   using ( aIHTat-ren; Prv; prv; idToRed; idOfRed )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Lib.ArithComm
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-ArithComm
   using ( plusMonoLTm; plusMonoLTm-sub; congAt; ⊢congAt; IdN )
-open import DirectedHoTT.Lib.ArithMonus
+open Lib0.Lib-ArithMonus
   using ( monusLtTm; monusLtTm-sub; ⊢desc-left; monusLeTm; ⊢monusLe
         ; descLeftTm; descLeftTm-sub; ⊢monusLeAt )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( gcdIH; gcdG; ⊢gcdIH; KS; NS; PAIRˢ; CERTˢ; msr; ⊢msr; gcdStp
         ; gcdIH-ren )
-open import DirectedHoTT.Lib.Natrec using ( ⊢natrec-var; ⊢natrec-var-at )
+open Lib0.Lib-Natrec using ( ⊢natrec-var; ⊢natrec-var-at )
 open import DirectedHoTT.Examples.Gcd.LeMid
   using ( gXx; R1'; W'; R2'; S3'; Z3'; D3'; ⊢W'; Ss-collapse; Zs-collapse
         ; D3-clean; ⊢M3s; ⊢Z3s; midAt; MID; RHSz; gcd-le-prefix; gcd-le-tail )

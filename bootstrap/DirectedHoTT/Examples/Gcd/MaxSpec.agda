@@ -29,20 +29,21 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.MaxSpec where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTm; El; var; fst; snd; app; ⌜Nat⌝; subTm; Nat )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ⌊_⌋; single; _⊢_∷_; ⊢⌜Nat⌝; wk-single )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT )
-open import DirectedHoTT.Lib.Max
+open Lib0.Spec-Typing using ( Ctx; ⌊_⌋; single; _⊢_∷_; ⊢⌜Nat⌝; wk-single )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT )
+open Lib0.Lib-Max
   using ( MaxCode; ⊢MaxCode; MaxCode-sub; MaxT; El-max; ⊢MaxElim )
-open import DirectedHoTT.Lib.Dvd using ( dvdT )
-open import DirectedHoTT.Spec.Typing using ( ⊢conv )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ )
-open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvOk; prv-cast )
-open import DirectedHoTT.Lib.AmrecInd using ( module Concl )
+open Lib0.Lib-Dvd using ( dvdT )
+open Lib0.Spec-Typing using ( ⊢conv )
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ )
+open Lib0.Lib-Amrec using ( Prv; prv; prvOk; prv-cast )
+open Lib0.Lib-AmrecInd using ( module Concl )
 open import DirectedHoTT.Examples.Gcd.Step using ( msr; ⊢msr; gcdStp; ⊢gcdStp )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
 open import DirectedHoTT.Examples.Gcd.Motives using ( maxMotive; module MaxPlumb )

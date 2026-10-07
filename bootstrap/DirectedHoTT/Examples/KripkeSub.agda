@@ -28,12 +28,15 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.KripkeSub where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Lib.NatCode using ( fromI )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; MethK )
-open import DirectedHoTT.Lib.Tel
+open Lib0.Lib-NatCode using ( fromI )
+open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Lib-Sugar using ( conₗ; MethK )
+open Lib0.Lib-Tel
 open import DirectedHoTT.Examples.Scoped
   using ( TmD; ⊢TmD; Tm; lamT; lamOK; fromI; ⊢isuc; tlam; ⊢tlam; tvar; ⊢tvar )
 

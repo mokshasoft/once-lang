@@ -29,18 +29,21 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Scoped where
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
+open Lib0.Metatheory-TySub using ( ⊢wk )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-nsuc )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; methₗ; Dₗ )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.TelFold using ( sizeAlg; foldMs; ⊢foldE; fold-ι )
+open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-nsuc )
+open Lib0.Metatheory-TySub using ( ⊢wk )
+open Lib0.Lib-Sugar using ( conₗ; methₗ; Dₗ )
+open Lib0.Lib-Tel
+open Lib0.Lib-TelFold using ( sizeAlg; foldMs; ⊢foldE; fold-ι )
 
-open import DirectedHoTT.Lib.NatCode public
+open Lib0.Lib-NatCode public
 
 ------------------------------------------------------------------------
 -- 2. THE SYNTAX — telescopes over the index `n` (`var vz`).  No field

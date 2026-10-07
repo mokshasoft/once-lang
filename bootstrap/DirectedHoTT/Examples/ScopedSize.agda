@@ -29,16 +29,19 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.ScopedSize where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; tok₀ )
 open import Agda.Builtin.Nat using ( zero; suc )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
+open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Metatheory-RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶*-trans; ⟶*-nsuc )
-open import DirectedHoTT.Lib.Nat     using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.ArithLe using ( leSumTm; ⊢le-sum )
-open import DirectedHoTT.Lib.Sugar   using ( conₗ )
-open import DirectedHoTT.Lib.Tel     using ( nthᵗ-z; nthᵗ-s )
-open import DirectedHoTT.Lib.TelFold using ( sizeAlg; fold-ι )
+open import DirectedHoTT.Lib.Nat ∅ᴷ 0     using ( plusTm; ⊢plus )
+open Lib0.Lib-ArithLe using ( leSumTm; ⊢le-sum )
+open import DirectedHoTT.Lib.Sugar ∅ᴷ 0 ok₀   using ( conₗ )
+open import DirectedHoTT.Lib.Tel ∅ᴷ 0 ok₀     using ( nthᵗ-z; nthᵗ-s )
+open Lib0.Lib-TelFold using ( sizeAlg; fold-ι )
 open import DirectedHoTT.Examples.Scoped
   using ( TmTs; TmD; INat; Tm; size; ⊢size; msize )
 

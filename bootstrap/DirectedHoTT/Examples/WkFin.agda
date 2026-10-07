@@ -38,11 +38,13 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.WkFin where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( cong )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Lib.NatCode using ( fromI )
+open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Metatheory-TySub using ( ⊢-cast; wk-cancel-tm )
+open Lib0.Lib-NatCode using ( fromI )
 
 -- `El (⌜Fin⌝ n) ≅ᵀ Fin n`
 fromFin : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El (⌜Fin⌝ n) → Γ ⊢ t ∷ Fin n

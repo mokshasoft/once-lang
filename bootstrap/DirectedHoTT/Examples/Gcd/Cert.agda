@@ -30,6 +30,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Cert where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -37,21 +39,21 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
         ; Sub; subTm; subTy; extS; renTm; _∘ₛ_
         ; subTy-subTy; subTy-cong; subTm-subTm )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢natrec; ⊢nzero; ⊢nsuc; ⊢conv; csymᵀ
         ; _⟶*_
         ; ⊢fst; ⊢snd; ⊢pair; ty-Nat; wk-single )
-open import DirectedHoTT.Metatheory.TySub
+open Lib0.Metatheory-TySub
   using ( ⊢wk; ⊢-cast; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; ⊢[] )
-open import DirectedHoTT.Lib.Nat using ( plusTm )
-open import DirectedHoTT.Lib.Monus using ( monusTm )
-open import DirectedHoTT.Lib.ArithComm using ( plusMonoLTm; plusMonoLTm-sub )
-open import DirectedHoTT.Lib.ArithMonus
+open Lib0.Lib-Nat using ( plusTm )
+open Lib0.Lib-Monus using ( monusTm )
+open Lib0.Lib-ArithComm using ( plusMonoLTm; plusMonoLTm-sub )
+open Lib0.Lib-ArithMonus
   using ( monusLtTm; monusLtTm-sub; ⊢desc-left )
-open import DirectedHoTT.Lib.Amrec using ( subren; renren )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT ; msrPair)
-open import DirectedHoTT.Lib.Natrec
+open Lib0.Lib-Amrec using ( subren; renren )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT ; msrPair)
+open Lib0.Lib-Natrec
   using ( na-z; na-s; Sub⊢-∘; ⊢natrec-at; ⊢natrec-var ) public
 open import DirectedHoTT.Examples.Gcd.Step
   using ( recCert; gcd-gt-term; msr; ⊢msr

@@ -28,13 +28,15 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Small where
+import DirectedHoTT.Examples.Lib0 as Lib0
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; ⌜Hom⌝; ⌜Nat⌝; ⌜Unit⌝; absurd
         ; unit; nzero; nsuc )
 open import DirectedHoTT.Spec.Variance using ( NoNatC )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( _⟶ᵀ_
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Hom⌝; ξ-Homᵀ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
@@ -42,7 +44,7 @@ open import DirectedHoTT.Spec.Typing
         ; Ctx; ◇; ⌊_⌋
         ; _⊢_∷_; ⊢conv; ⊢unit; ⊢nzero; ⊢nsuc
         ; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Hom⌝; ⊢absurd )
-open import DirectedHoTT.Metatheory.RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ )
+open Lib0.Metatheory-RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ )
 
 n1 n2 : {Γ : Cx} → RTm Γ
 n1 = nsuc nzero
