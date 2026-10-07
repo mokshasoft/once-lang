@@ -13,19 +13,22 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.SynRen where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.SynRen (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Sugar using ( conₗ; tag; Lt )
-open import DirectedHoTT.Lib.NatCode
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynTrav
-open import DirectedHoTT.Lib.SynTravM
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( conₗ; tag; Lt )
+open import DirectedHoTT.Lib.NatCode 𝒮 𝓃
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynTrav 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynTravM 𝒮 𝓃 ok
 
 private
   variable

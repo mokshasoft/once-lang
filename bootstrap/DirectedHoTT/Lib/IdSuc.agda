@@ -29,20 +29,22 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.IdSuc where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.IdSuc (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; var; vz; vs; nsuc; jsub; El; Id; ⌜Nat⌝; ⌜Id⌝; Nat )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; ⊢var; here; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢jsub
         ; csymᵀ; ctrnᵀ; wk-single; ⊢nsuc )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Strong using ( natAsEl; elAsNat )
-open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; reflN; ⊢reflN; elIdN )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( natAsEl; elAsNat )
+open import DirectedHoTT.Lib.Monus 𝒮 n using ( predTm; ⊢pred; pred-suc )
+open import DirectedHoTT.Lib.ArithComm 𝒮 n using ( IdN; reflN; ⊢reflN; elIdN )
 
 ------------------------------------------------------------------------
 -- 1. `predTm` RESPECTS `IdN` — the same `jsub` call as `symN`, at the

@@ -27,23 +27,30 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.SynTrav where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.SynTrav (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶*-pairˡ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-lemma; sub-lemma; Sub⊢ )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; nth-z; nth-s; []ᵈ; selF; subC; tag; conₗ )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.NatCode
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.Sorted using ( unSortI; σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; SortT; ⊢sortMeth; ⊢methₛ; NthS; nthˢ-z; nthˢ-s )
-open import DirectedHoTT.Lib.SynView
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶*-pairˡ )
+import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 as ᴵTySub
+open ᴵTySub using ( ⊢wk; ⊢-cast; ren-lemma; sub-lemma; Sub⊢ )
+open import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 using ( mot-ren; ⊢wkD )
+import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok as ᴵSugar
+open ᴵSugar using ( Cons; []; _∷_; nth-z; nth-s; []ᵈ; selF; subC; tag; conₗ )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.NatCode 𝒮 𝓃
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok using ( unSortI; σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; SortT; ⊢sortMeth; ⊢methₛ; NthS; nthˢ-z; nthˢ-s )
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok
 open import DirectedHoTT.Spec.Syntax using ( cong₄ )
+import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 as ᴵSubjectReductionBase
+import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 as ᴵSyntactic
 
 private
   variable
@@ -90,16 +97,16 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   Env-sub σ d e =
     cong (Π (Fin (subTm σ d)))
          (trans (Vat-sub (extS σ) (renTm vs e)) (cong (Vat VF) (wk-sub σ e)))
-    where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+    where open ᴵSubjectReductionBase using ( wk-sub )
 
   Env-ren : (ρ : Ren Γ Δ) (d e : RTm Γ) → renTy ρ (Env d e) ≡ Env (renTm ρ d) (renTm ρ e)
   Env-ren ρ d e = trans (sym (subTy-var ρ (Env d e)))
                     (trans (Env-sub ⟨ ρ ⟩ᵣ d e) (cong₂ Env (subTm-var ρ d) (subTm-var ρ e)))
-    where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+    where open ᴵSyntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 
   Vat-ren : (ρ : Ren Γ Δ) (e : RTm Γ) → renTy ρ (Vat VF e) ≡ Vat VF (renTm ρ e)
   Vat-ren ρ e = trans (sym (subTy-var ρ (Vat VF e))) (trans (Vat-sub ⟨ ρ ⟩ᵣ e) (cong (Vat VF) (subTm-var ρ e)))
-    where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+    where open ᴵSyntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 
   ty-Env : {Γ : Ctx} {d e : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ty Env d e
   ty-Env dd de = ty-Π (ty-Fin (fromI dd)) (ty-El (⊢app ⊢VF (⊢wk de)))
@@ -117,34 +124,34 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
     ⊢-cast (trans (Vat-sub (single v) (nsuc (renTm vs e))) (cong (λ z → Vat VF (nsuc z)) (wk-cancel-tm v e)))
       (⊢app (⊢-cast (cong₂ Π (Vat-sub (single e) (var vz)) (Vat-sub (extS (single e)) (nsuc (var (vs vz)))))
                     (⊢app ⊢WK de)) dv)
-    where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
+    where open ᴵTySub using ( wk-cancel-tm )
 
   ⊢NODE· : {Γ : Ctx} {e v : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ El ⌜Nat⌝ → Γ ⊢ v ∷ Vat VF e →
            Γ ⊢ app (app NODE e) v ∷ SK sg vsort e
   ⊢NODE· {e = e} {v = v} de dv =
     ⊢-cast (trans (SK-sub (single v) sg vsort (renTm vs e)) (cong (SK sg vsort) (wk-cancel-tm v e)))
       (⊢app (⊢-cast (cong₂ Π (Vat-sub (single e) (var vz)) (SK-sub (extS (single e)) sg vsort (var (vs vz)))) (⊢app ⊢NODE de)) dv)
-    where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
+    where open ᴵTySub using ( wk-cancel-tm )
 
   ⊢Env· : {Γ : Ctx} {d e f x : RTm ⌊ Γ ⌋} → Γ ⊢ f ∷ Env d e → Γ ⊢ x ∷ Fin d → Γ ⊢ app f x ∷ Vat VF e
   ⊢Env· {e = e} {x = x} df dx =
     ⊢-cast (trans (Vat-sub (single x) (renTm vs e)) (cong (Vat VF) (wk-cancel-tm x e))) (⊢app df dx)
-    where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
+    where open ᴵTySub using ( wk-cancel-tm )
 
   private
     wkc : (a t : RTm Γ) → subTm (single a) (renTm vs t) ≡ t
     wkc = wk-cancel-tm
-      where open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
+      where open ᴵTySub using ( wk-cancel-tm )
 
     -- the two-binder instantiation of a twice-weakened term
     wkc2 : (a b t : RTm Γ) → subTm (single a) (subTm (extS (single b)) (renTm vs (renTm vs t))) ≡ t
     wkc2 a b t = trans (cong (subTm (single a)) (trans (wk-sub (single b) (renTm vs t)) (cong (renTm vs) (wkc b t))))
                        (wkc a t)
-      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+      where open ᴵSubjectReductionBase using ( wk-sub )
 
     wkS : (σ : Sub Γ Δ) (t : RTm Γ) → subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
     wkS = wk-sub
-      where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+      where open ᴵSubjectReductionBase using ( wk-sub )
 
     -- three binders instantiated back: a thrice-weakened term
     wkc3 : (v e t J : RTm Γ) →
@@ -457,7 +464,7 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   ------------------------------------------------------------------------
 
   private
-    open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+    open ᴵSyntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 
 
   -- the motive under any substitution of its two binders
@@ -516,7 +523,7 @@ module Trav {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) where
   tagr4 s = trans (cong (λ z → renTm vs (renTm vs (renTm vs z))) (tag-ren vs s))
               (trans (cong (λ z → renTm vs (renTm vs z)) (tag-ren vs s))
                 (trans (cong (renTm vs) (tag-ren vs s)) (tag-ren vs s)))
-    where open import DirectedHoTT.Lib.Sugar using ( tag-ren )
+    where open ᴵSugar using ( tag-ren )
 
   -- ★ a FIELDS row's method, typed
   ⊢mT-f : {Γ : Ctx} {s k c : ℕ} {shs : Shapes c} {sh : Shape} →

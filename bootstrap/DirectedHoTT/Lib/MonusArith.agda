@@ -26,37 +26,38 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.MonusArith where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.MonusArith (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; El; Id; Nat; U
         ; RTm; var; nzero; nsuc; natrec; jsub; ⌜Id⌝; ⌜Nat⌝; pair; fst; snd
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; csymᵀ; ctrnᵀ; ξ-Idˡ; ξ-Idʳ; natrec-zero; natrec-suc
         ; _⟶*_; step; done; wk-single )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-natrecⁿ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w; nrs-w; sub-w; cong₃ )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; nrs-w; sub-w; cong₃ )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Monus 𝒮 n
   using ( predTm; monusTm; ⊢pred; ⊢monus; monus-zero; monus-suc
         ; pred-zero; pred-suc )
-open import DirectedHoTT.Lib.Mul using ( mulTm; ⊢mul; mul-zero; mulTm-sub; mul-suc; mulTm-ren )
-open import DirectedHoTT.Lib.Dvd using ( dvdT; dvd-intro; dvd-wit; dvd-eq )
-open import DirectedHoTT.Lib.Strong using ( natAsEl )
-open import DirectedHoTT.Lib.Pair using ( asN )
-open import DirectedHoTT.Lib.ArithComm
+open import DirectedHoTT.Lib.Mul 𝒮 n using ( mulTm; ⊢mul; mul-zero; mulTm-sub; mul-suc; mulTm-ren )
+open import DirectedHoTT.Lib.Dvd 𝒮 n using ( dvdT; dvd-intro; dvd-wit; dvd-eq )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( natAsEl )
+open import DirectedHoTT.Lib.Pair 𝒮 n using ( asN )
+open import DirectedHoTT.Lib.ArithComm 𝒮 n
   using ( IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; symN; ⊢symN; transN; ⊢transN
         ; plus0Tm; ⊢plus0; plusSTm; ⊢plusS; commTm; ⊢comm )
-open import DirectedHoTT.Lib.DvdArith using ( congPd; ⊢congPd; pmTm; ⊢pred-monus; zmTm; ⊢zero-monus )
+open import DirectedHoTT.Lib.DvdArith 𝒮 n using ( congPd; ⊢congPd; pmTm; ⊢pred-monus; zmTm; ⊢zero-monus )
 
 ------------------------------------------------------------------------
 -- ★ 0.  CONGRUENCE IN `∸`'s SECOND SLOT.

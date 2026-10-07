@@ -22,15 +22,17 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Rec where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Rec (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; Ren
         ; RTy; El; Hom; Nat
         ; RTm; var; nsuc; app
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
-open import DirectedHoTT.Spec.Typing using ( single )
-open import DirectedHoTT.Lib.Wk
+open import DirectedHoTT.Spec.Typing 𝒮 n using ( single )
+open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; wᶠ; cong₄; sub-w; sub-w²; ren-w; ren-w²; wk-singleTy; wᶠ-single
         ; ren-wTy; ren-wᶠ )
 

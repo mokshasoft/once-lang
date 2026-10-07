@@ -33,27 +33,29 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.ArithComm where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.ArithComm (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Id; Nat; Hom
         ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝; ⌜Hom⌝
         ; renTm; subTy; subTm; Sub; extS )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝; ⊢⌜Hom⌝
         ; ty-Id; ty-El; ty-Nat
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; natrec-zero; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[] )
-open import DirectedHoTT.Lib.Wk using ( w; nrs-w; sub-w; sub-w² )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Strong using ( natAsEl; El-homNat )
-open import DirectedHoTT.Lib.Arith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
-open import DirectedHoTT.Lib.Pair using ( asN )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast; ⊢[] )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; nrs-w; sub-w; sub-w² )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( natAsEl; El-homNat )
+open import DirectedHoTT.Lib.Arith 𝒮 n using ( plusMonoB; plusMonoTm; ⊢plus-mono )
+open import DirectedHoTT.Lib.Pair 𝒮 n using ( asN )
 
 ------------------------------------------------------------------------
 -- `Id` at `Nat`, and its code twin

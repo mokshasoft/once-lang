@@ -23,29 +23,31 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.MonusPlus where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.MonusPlus (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; El; Id; Nat; Π; lam; app; absurd
         ; RTm; var; nzero; nsuc; natrec; ⌜Id⌝; ⌜Nat⌝
         ; subTy; subTm; renTy; renTm; Ren; extS )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ty-Nat; ty-Π
         ; csymᵀ; ξ-Idʳ; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; nrs-w; sub-w; cong₃; ren-w²; ren-w³ )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Monus 𝒮 n
   using ( predTm; monusTm; ⊢pred; ⊢monus; monus-zero; monus-suc )
-open import DirectedHoTT.Lib.ArithComm
+open import DirectedHoTT.Lib.ArithComm 𝒮 n
   using ( IdN; ⊢tyIdN; congS; ⊢congS; symN; ⊢symN; transN; ⊢transN
         ; plus0Tm; ⊢plus0; plusSTm; ⊢plusS )
-open import DirectedHoTT.Lib.DvdArith
+open import DirectedHoTT.Lib.DvdArith 𝒮 n
   using ( zmTm; ⊢zero-monus; pmTm; ⊢pred-monus; noConfTm; exFalsoN )
 
 ------------------------------------------------------------------------

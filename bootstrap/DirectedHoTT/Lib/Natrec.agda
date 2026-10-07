@@ -29,19 +29,21 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Natrec where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Natrec (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; Nat; natrec; var; vz; vs; nzero
         ; Ren; Sub; renTy; renTm; subTy; subTm; extR; extS; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-cong; subTy-subTy )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _⊢ty_; ⊢natrec; ⊢var; here; wk-single; nzero; subTy )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( ⊢-cast; ⊢wk; ren-ty; ren-lemma; Ren⊢-ext
         ; Sub⊢; Sub⊢-ext; sub-ty; sub-lemma; Ren⊢; ∋-cast )
-open import DirectedHoTT.Lib.Wk using ( w; cong₃; sub-w )
-open import DirectedHoTT.Lib.Amrec using ( wR; subren; renren; subrenTy; renTy-idR; rensub; Prv; prv; prvOk )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; cong₃; sub-w )
+open import DirectedHoTT.Lib.Amrec 𝒮 n using ( wR; subren; renren; subrenTy; renTy-idR; rensub; Prv; prv; prvOk )
 
 -- ★ the identity typed renaming — also general, also from an example
 Ren⊢-id : {Γ : Ctx} → Ren⊢ Γ Γ (λ v → v)

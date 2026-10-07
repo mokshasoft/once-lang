@@ -23,10 +23,12 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Nat where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Nat (𝒮 : KSig) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; var; vz; nsuc; natrec; Nat )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢nsuc; ⊢natrec; ty-Nat )
 
 -- Term: `natrec z s n`; `s` has TWO binders (the number, then the IH).

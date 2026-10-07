@@ -39,10 +39,11 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Lkp where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Lib.Lkp (𝒮 : KSig) where
 
 open import DirectedHoTT.Spec.Syntax using ( Cx; Var; vz; vs; RTy; renTy )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Reduction 𝒮
   using ( Ctx; _▹_; ⌊_⌋; _∋_∷_; here; there )
 
 -- the type at a variable, COMPUTED

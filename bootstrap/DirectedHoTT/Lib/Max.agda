@@ -23,31 +23,33 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Max where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Max (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; El; Nat; U; Π; Σ'
         ; RTm; var; app; lam; ⌜Π⌝; ⌜Nat⌝; nzero; nsuc
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS; extR )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢lam; ⊢app
         ; ty-Nat; ty-Π; ⊢⌜Π⌝; ⊢⌜Nat⌝; El-⌜Π⌝; El-⌜Nat⌝; ξ-Πˡ
         ; _≅ᵀ_; csymᵀ; ⊢nzero; ⊢nsuc; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; _⟶*_; step; done; wk-single )
-open import DirectedHoTT.Metatheory.RedCong
-  using ( red→≅ᵀ; stepᵀ; doneᵀ; _⟶ᵀ*_; ⟶ᵀ*-trans; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk
+import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
+open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; _⟶ᵀ*_; ⟶ᵀ*-trans; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n
   using ( w; sub-w; sub-w²; sub-w³; ren-w; ren-w²; ren-w³; cong₃ )
-open import DirectedHoTT.Lib.Pair using ( asN )
-open import DirectedHoTT.Lib.Mul using ( mulTm; mulTm-sub; mulTm-ren )
-open import DirectedHoTT.Lib.Dvd using ( dvdT; ⊢dvdT; dvdCode; ⊢dvdCode )
-open import DirectedHoTT.Lib.DvdArith using ( dvdCode-sub; dvdCode-ren; El-dvd; dvdCode-redN )
-open import DirectedHoTT.Lib.MonusArith using ( ⊢dvd-monus; dvdMonus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-ren )
-open import DirectedHoTT.Lib.ArithComm using ( IdN )
+open import DirectedHoTT.Lib.Pair 𝒮 n using ( asN )
+open import DirectedHoTT.Lib.Mul 𝒮 n using ( mulTm; mulTm-sub; mulTm-ren )
+open import DirectedHoTT.Lib.Dvd 𝒮 n using ( dvdT; ⊢dvdT; dvdCode; ⊢dvdCode )
+open import DirectedHoTT.Lib.DvdArith 𝒮 n using ( dvdCode-sub; dvdCode-ren; El-dvd; dvdCode-redN )
+open import DirectedHoTT.Lib.MonusArith 𝒮 n using ( ⊢dvd-monus; dvdMonus )
+open import DirectedHoTT.Lib.Monus 𝒮 n using ( monusTm; ⊢monus )
+open ᴵRedCong using ( ⟶*-trans; ⟶*-ren )
+open import DirectedHoTT.Lib.ArithComm 𝒮 n using ( IdN )
 
 ------------------------------------------------------------------------
 -- ★ `dvdT`'s naturality — the TYPE twin of `dvdCode-sub`/`-ren`.

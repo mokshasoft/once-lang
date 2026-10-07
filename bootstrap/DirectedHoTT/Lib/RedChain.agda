@@ -32,11 +32,12 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.RedChain where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+module DirectedHoTT.Lib.RedChain (𝒮 : KSig) where
 
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm )
-open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
+open import DirectedHoTT.Spec.Reduction 𝒮 using ( _⟶*_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans )
 
 infixr 5 _»_
 _»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v

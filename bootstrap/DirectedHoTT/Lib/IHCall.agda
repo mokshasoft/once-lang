@@ -39,20 +39,22 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.IHCall where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.IHCall (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; El; Nat; Hom; Π
         ; RTm; var; lam; app; nsuc
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS; extR )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢lam; ⊢app; ⊢nsuc; ty-Π; ty-Hom; ty-Nat; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w )
-open import DirectedHoTT.Lib.Rec using ( aIHTat'; aIHTat )
-open import DirectedHoTT.Lib.Amrec using ( aIHTat-ren )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; sub-w )
+open import DirectedHoTT.Lib.Rec 𝒮 n using ( aIHTat'; aIHTat )
+open import DirectedHoTT.Lib.Amrec 𝒮 n using ( aIHTat-ren )
 
 ------------------------------------------------------------------------
 -- ★ THE SHAPE.

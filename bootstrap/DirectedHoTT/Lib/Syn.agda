@@ -32,21 +32,26 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Syn where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.Syn (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Unit using ( ⊤ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; _⟶ᵀ*_ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Lib.Sugar using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; subC; sel; selF; sel-sub; selF-sub; Dσ; Dσ-sub )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.Sorted
-open import DirectedHoTT.Lib.TelAt
-open import DirectedHoTT.Lib.NatCode using ( ⊢isuc; toI; fromI )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-nsuc; red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Fin; _⟶ᵀ*_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( tag; conₗ; Lt; lt-z; lt-s; Cons; []; _∷_; subC; sel; selF; sel-sub; selF-sub; Dσ; Dσ-sub )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( ⊢isuc; toI; fromI )
+import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 as ᴵPremises
+import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 as ᴵSyntactic
 
 private
   variable
@@ -253,7 +258,7 @@ SI-wks {n = n} (suc k) = trans (cong (renTm vs) (SI-wks k)) (SI-ren vs n)
 ⊢wkDSI : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {D : RTm ⌊ Γ ⌋} → Γ ⊢ D ∷ DescF (SI n) → (Γ ▹ B) ⊢ renTm vs D ∷ DescF (SI n)
 ⊢wkDSI {n = n} {Γ = Γ} {B = B} {D = D} dD =
   subst (λ X → (Γ ▹ B) ⊢ renTm vs D ∷ DescF X) (SI-ren vs n) (⊢wkD dD)
-  where open import DirectedHoTT.Metatheory.Premises using ( ⊢wkD )
+  where open ᴵPremises using ( ⊢wkD )
 
 ⊢wkDescSI : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {C : RTm ⌊ Γ ⌋} → Γ ⊢ C ∷ Desc (SI n) → (Γ ▹ B) ⊢ renTm vs C ∷ Desc (SI n)
 ⊢wkDescSI {n = n} dC = ⊢-cast (cong Desc (SI-ren vs n)) (⊢wk dC)
@@ -456,7 +461,7 @@ SD-sub σ sg =
 
 SD-ren : (ρ : Ren Δ Θ) {sg : Sig n} → renTm ρ (SD {Δ = Δ} sg) ≡ SD sg
 SD-ren ρ {sg} = trans (sym (subTm-var ρ (SD sg))) (SD-sub ⟨ ρ ⟩ᵣ sg)
-  where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
+  where open ᴵSyntactic using ( ⟨_⟩ᵣ; subTm-var )
 
 opaque
   unfolding SK
@@ -469,7 +474,7 @@ opaque
 --   the whole description under `renTm` (measured: 20 s per occurrence)
 SK-ren : (ρ : Ren Δ Θ) (sg : Sig n) (s : ℕ) (d : RTm Δ) → renTy ρ (SK sg s d) ≡ SK sg s (renTm ρ d)
 SK-ren ρ sg s d = trans (sym (subTy-var ρ (SK sg s d))) (trans (SK-sub ⟨ ρ ⟩ᵣ sg s d) (cong (SK sg s) (subTm-var ρ d)))
-  where open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+  where open ᴵSyntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
 
 -- a term of the syntax, one binder further out; the newest variable
 ⊢wkSK : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {sg : Sig n} {s : ℕ} {d t : RTm ⌊ Γ ⌋} →

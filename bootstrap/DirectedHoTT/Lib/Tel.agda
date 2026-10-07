@@ -32,21 +32,24 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Tel where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.Tel (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans; ⟶*-pairʳ; ⟶*-appʳ; ⟶*-dihᶜ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-trans
         ; red→≅ᵀ )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( ⊢wk; Ren⊢; ∋-cast; conv-ctx )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮
   using ( _,ₛ_; subTm-var; ⟨_⟩ᵣ )
-open import DirectedHoTT.Metatheory.Premises
+open import DirectedHoTT.Metatheory.Premises 𝒮 n
   using ( MethG; methSg; mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Lib.Sugar 𝒮 n ok
   using ( Cons; []; _∷_; Nth; nth-z; nth-s; tag; Dₗ; conₗ; selF-β; methₗ; ιₗ
         ; MethK; AllD; []ᵈ; _∷ᵈ_; ⊢Dₗ; ⊢conₗ; ⊢pay-ι; ⊢pay-σλ; ⊢pay-ρ; Dσ
         ; selF-sub; nth-sub; vz-cancel )

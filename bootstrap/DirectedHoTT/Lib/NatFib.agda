@@ -23,25 +23,28 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatFib where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.NatFib (𝒮 : KSig) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-dpayᶜ; ⟶ᵀ*-El; red→≅ᵀ; ⟶*-appˡ )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-dpayᶜ; ⟶ᵀ*-El; red→≅ᵀ; ⟶*-appˡ )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n
   using ( ⊢wk; ⊢-cast; wk-cancel-tm; ren-ty; sub-ty; Ren⊢-ext; ren-lemma; Ren⊢; ∋-cast
         ; conv-ctxᵀ; sub-lemma; Sub⊢; ⊢single )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD; MethTy-wf )
-open import DirectedHoTT.Lib.Sugar using ( sel )
-open import DirectedHoTT.Lib.Sugar
-  using ( Cons; []; _∷_; Nth; subC; Dσ; Dσ-sub; selF; conₗ; tag; selF-β; selF-sub; nth-sub; nth-lt
-        ; AllD; []ᵈ; _∷ᵈ_; ⊢Dσ; ⊢selF; ⊢con-fib; ⊢pay-σ; ⊢tag; subAllD )
-open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
-open import DirectedHoTT.Lib.MethAt
+open import DirectedHoTT.Metatheory.Premises 𝒮 n using ( mot-ren; ⊢wkD; MethTy-wf )
+import DirectedHoTT.Lib.Sugar 𝒮 n ok as ᴵSugar
+open ᴵSugar using ( sel )
+open ᴵSugar using ( Cons; []; _∷_; Nth; subC; Dσ; Dσ-sub; selF; conₗ; tag; selF-β; selF-sub; nth-sub; nth-lt ; AllD; []ᵈ; _∷ᵈ_; ⊢Dσ; ⊢selF; ⊢con-fib; ⊢pay-σ; ⊢tag; subAllD )
+open import DirectedHoTT.Lib.NatNum 𝒮 n using ( num; ⊢num; num-ren; num-sub )
+open import DirectedHoTT.Lib.MethAt 𝒮 n ok
 
+import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 as ᴵSubjectReductionBase
 private
   variable
     Γ Δ Θ : Cx
@@ -162,7 +165,7 @@ fibN-s {cₛ = cₛ} C0 CS m =
 -- 4. ★★ THE ONE METHOD: a `natrec`-case on the index.
 ------------------------------------------------------------------------
 
-open import DirectedHoTT.Lib.Sorted using ( T₀; ⊢T₀ )
+open import DirectedHoTT.Lib.Sorted 𝒮 n ok using ( T₀; ⊢T₀ )
 
 -- the successor case's index substitution
 σS : Sub (Δ ∙) (Δ ∙)
@@ -183,7 +186,7 @@ methN E0 ES = lam (natrec (renTm vs E0) (renTm ρS ES) (var vz))
 methN-sub : {Θ : Cx} (σ : Sub Δ Θ) (E0 : RTm Δ) (ES : RTm (Δ ∙)) →
             subTm σ (methN E0 ES) ≡ methN (subTm σ E0) (subTm (extS σ) ES)
 methN-sub σ E0 ES = cong lam (cong₂ (λ a b → natrec a b (var vz)) (wk-sub σ E0) (ρS-sub σ ES))
-  where open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
+  where open ᴵSubjectReductionBase using ( wk-sub )
 
 private
   Π-cod : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {B : RTy (⌊ Γ ⌋ ∙)} → Γ ⊢ty Π A B → (Γ ▹ A) ⊢ty B
@@ -370,8 +373,8 @@ fibN-s-wk {cₛ = cₛ} C0 CS =
 --    (`Lib/TelAt.HypAt`): constructor `k`'s body at the index `suc m`.
 ------------------------------------------------------------------------
 
-open import DirectedHoTT.Lib.Tel using ( Tel; Tels; ⌜_⌝ᵗ; ⌜_⌝ₛ; NthT; nth-⌜⌝; AllOK; TelOK; ⊢tel; allD )
-open import DirectedHoTT.Lib.TelAt using ( HypAt; ⊢methTσ; nth-OK )
+open import DirectedHoTT.Lib.Tel 𝒮 n ok using ( Tel; Tels; ⌜_⌝ᵗ; ⌜_⌝ₛ; NthT; nth-⌜⌝; AllOK; TelOK; ⊢tel; allD )
+open import DirectedHoTT.Lib.TelAt 𝒮 n ok using ( HypAt; ⊢methTσ; nth-OK )
 
 -- the predecessor's substitution on the successor case's telescopes
 τS : Sub (Δ ∙) (Δ ∙)

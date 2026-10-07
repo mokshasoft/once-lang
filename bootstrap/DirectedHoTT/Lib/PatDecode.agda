@@ -14,16 +14,26 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.PatDecode where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Lib.PatDecode (𝒮 : KSig) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: at a well-formed signature, all its names
+private
+  n = KSig.size 𝒮
+  ok = Entries.sigOK 𝒮 n wf
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( _≡_; refl; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Lib.SynFib using ( Row )
-open import DirectedHoTT.Lib.SynPat using ( rowAt; rowAt-elim; noRow )
-open import DirectedHoTT.Lib.Decode using ( pay-none )
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
+open import DirectedHoTT.Lib.SynFib 𝒮 n ok using ( Row )
+open import DirectedHoTT.Lib.SynPat 𝒮 n ok using ( rowAt; rowAt-elim; noRow )
+open import DirectedHoTT.Lib.Decode 𝒮 wf using ( pay-none )
 
 pat-hit : {I D j q c p : RTm ε} (s₀ h k : ℕ) {r : Row} →
           ◇ ⊢ p ∷ El (dpay I D (Row.R (rowAt s₀ h r s₀ k) j q c)) → IsNormal p → k ≡ h

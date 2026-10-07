@@ -32,21 +32,23 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Dvd where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.Dvd (𝒮 : KSig) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; Σ'; Nat; var; vz; pair; fst; snd; subTy; nzero; nsuc
         ; U; El; Id; ⌜Σ⌝; ⌜Id⌝; ⌜Nat⌝ )
 open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂ )
-open import DirectedHoTT.Lib.Strong using ( natAsEl; elAsNat )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Lib.Strong 𝒮 n using ( natAsEl; elAsNat )
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( ⊢⌜Σ⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; Ctx; ⌊_⌋; _▹_; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢pair; ⊢fst; ⊢snd; ⊢nzero; ty-Nat; ty-Σ; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Mul using ( mulTm; ⊢mul; mulTm-sub )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢tyIdN )
+open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk 𝒮 n using ( w )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Mul 𝒮 n using ( mulTm; ⊢mul; mulTm-sub )
+open import DirectedHoTT.Lib.ArithComm 𝒮 n using ( IdN; ⊢tyIdN )
 
 ------------------------------------------------------------------------
 -- ★ THE PREDICATE.

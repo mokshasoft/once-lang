@@ -20,16 +20,18 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatNum where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Lib.NatNum (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; trans )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; Ren; Sub; renTm; subTm; nzero; nsuc; natrec; var; vz; Nat )
-open import DirectedHoTT.Spec.Typing
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢nzero; ⊢nsuc
         ; _⟶*_; done; step; natrec-zero; natrec-suc )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-nsuc )
-open import DirectedHoTT.Lib.Nat using ( plusTm )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-nsuc )
+open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm )
 
 num : {Γ : Cx} → ℕ → RTm Γ
 num zero    = nzero

@@ -24,28 +24,31 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.Sorted where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.Sorted (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans; ⟶*-dpayᶜ; ⟶ᵀ*-El; red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶*-ren; ⟶*-appˡ; ⟶ᵀ*-Σˡ )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
-open import DirectedHoTT.Metatheory.TySub
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃
   using ( ⊢wk; ⊢-cast; wk-cancel-tm; ren-ty; sub-ty; Ren⊢-ext; ren-lemma; Ren⊢; ∋-cast
         ; conv-ctxᵀ; conv-ctx; sub-lemma; Sub⊢ )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD; MethTy-wf; pairS⊢ )
-open import DirectedHoTT.Metatheory.Validity using ( wk-app-vz )
-open import DirectedHoTT.Lib.Sugar
+open import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 using ( mot-ren; ⊢wkD; MethTy-wf; pairS⊢ )
+open import DirectedHoTT.Metatheory.Validity 𝒮 𝓃 ok using ( wk-app-vz )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok
   using ( Cons; []; _∷_; wkC; subC; Nth; nth-z; nth-s; tag; sel; selF; Dσ; conₗ
         ; sel-sub; sel-β; selF-β; selF-sub; nth-sub; subC-wkC
         ; AllD; []ᵈ; _∷ᵈ_; ⊢sel; ⊢selF; ⊢Dσ; subAllD; ⊢con-fib; ⊢pay-σ; ⊢tag; nth-lt; Lt; lt-z; lt-s
         ; selM; tag-ren; AllQ; []q; _∷q_; castQ; ⊢selG; fsucsS; fsucsS-zero; fsucsS-suc; fsucsS-head; wk-single-tag )
-open import DirectedHoTT.Lib.NatNum using ( num; ⊢num; num-ren; num-sub )
-open import DirectedHoTT.Lib.MethAt
+open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num; ⊢num; num-ren; num-sub )
+open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
 
 private
   variable

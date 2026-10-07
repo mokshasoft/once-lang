@@ -17,25 +17,29 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.SynSub where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.SynSub (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; tag; Lt; nth-z; nth-s; []ᵈ; selF; subC )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.TelAt using ( ⊢payAt )
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.NatFib
-open import DirectedHoTT.Lib.NatCode
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynTrav
-open import DirectedHoTT.Lib.SynTravM
-open import DirectedHoTT.Lib.SynRen
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 using ( mot-ren )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; conₗ; tag; Lt; nth-z; nth-s; []ᵈ; selF; subC )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok using ( ⊢payAt )
+open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.NatFib 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.NatCode 𝒮 𝓃
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynTrav 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynTravM 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynRen 𝒮 𝓃 ok
+import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 as ᴵSyntactic
 
 private
   variable
@@ -60,7 +64,7 @@ module Sub {sg : Sig n} (ok : SigOK n sg) {v kv : ℕ} {shs : Shapes c}
                  (cong (λ X → El (app X (subTm ⟨ vs ⟩ᵣ e))) (VFs-sub ⟨ vs ⟩ᵣ))
            ◾ cong (λ z → El (app VFs z)) (subTm-var vs e)
     where
-      open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
+      open ᴵSyntactic using ( ⟨_⟩ᵣ; subTy-var; subTm-var )
       _◾_ : {A : Set} {a b c : A} → a ≡ b → b ≡ c → a ≡ c
       _◾_ = trans
 

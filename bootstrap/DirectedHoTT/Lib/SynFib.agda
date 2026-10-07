@@ -28,26 +28,29 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.SynFib where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+import DirectedHoTT.Spec.Typing as Ty
+module DirectedHoTT.Lib.SynFib (𝒮 : KSig) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; _×_; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm; sub-lemma; ⊢single )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Metatheory.Premises using ( mot-ren; ⊢wkD )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s; nth-lt; selF; subC; tag; conₗ; tag-ren; Lt; lt-z; ⊢selF; selF-β; ⊢tag; ⊢pay-σ; ⊢con-fib; AllD; []ᵈ; _∷ᵈ_ )
-open import DirectedHoTT.Lib.Tel
-open import DirectedHoTT.Lib.TelAt using ( HypAt; entₛ; nth-⌜⌝ₛₛ; allSD )
-open import DirectedHoTT.Lib.MethAt
-open import DirectedHoTT.Lib.Sorted using ( σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; ⊢sortMeth; ⊢methₛ; SortT; ιₛ-red )
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Syn
-open import DirectedHoTT.Lib.SynView using ( PayV; payV-red; ren-tel )
-open import DirectedHoTT.Lib.SynTravM using ( _+'_; +'-zero )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-appˡ; red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 𝓃 using ( ⊢wk; ⊢-cast; wk-cancel-tm; sub-lemma; ⊢single )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var )
+open import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 using ( mot-ren; ⊢wkD )
+open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; Nth; nth-z; nth-s; nth-lt; selF; subC; tag; conₗ; tag-ren; Lt; lt-z; ⊢selF; selF-β; ⊢tag; ⊢pay-σ; ⊢con-fib; AllD; []ᵈ; _∷ᵈ_ )
+open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok using ( HypAt; entₛ; nth-⌜⌝ₛₛ; allSD )
+open import DirectedHoTT.Lib.MethAt 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok using ( σₛ; ιₛ; ⊢ιₛ; PerS; []ₚ; _∷ₚ_; ⊢sortMeth; ⊢methₛ; SortT; ιₛ-red )
+open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num )
+open import DirectedHoTT.Lib.Syn 𝒮 𝓃 ok
+open import DirectedHoTT.Lib.SynView 𝒮 𝓃 ok using ( PayV; payV-red; ren-tel )
+open import DirectedHoTT.Lib.SynTravM 𝒮 𝓃 ok using ( _+'_; +'-zero )
 
 private
   variable

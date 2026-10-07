@@ -16,7 +16,17 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.RowsElim where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Lib.RowsElim (𝒮 : KSig) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: at a well-formed signature, all its names
+private
+  n = KSig.size 𝒮
+  ok = Entries.sigOK 𝒮 n wf
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
 
 open import normalizer.Syntax.Types using ( Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -25,12 +35,12 @@ open import Agda.Builtin.Unit using ( ⊤ )
 -- the empty handler list (re-exported for the generated dispatchers)
 open import Agda.Builtin.Unit public using ( tt )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; Nth; nth-z; nth-s )
-open import DirectedHoTT.Lib.Decode using ( RowsDec )
-open import DirectedHoTT.Lib.Size using ( _<_; <ᶜ )
-open import DirectedHoTT.Metatheory.Canonicity using ( sz; _≤_ )
+open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
+open import DirectedHoTT.Lib.Sugar 𝒮 n ok using ( Cons; []; _∷_; Nth; nth-z; nth-s )
+open import DirectedHoTT.Lib.Decode 𝒮 wf using ( RowsDec )
+open import DirectedHoTT.Lib.Size 𝒮 wf using ( _<_; <ᶜ )
+open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf using ( sz; _≤_ )
 
 -- one handler per row of the list
 Handlers : (I D : RTm ε) {m : ℕ} → Cons ε m → Set → Set

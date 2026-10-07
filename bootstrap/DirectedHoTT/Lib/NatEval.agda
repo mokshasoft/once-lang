@@ -34,16 +34,26 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Lib.NatEval where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Lib.NatEval (𝒮 : KSig) (wf : WfK 𝒮) where
+
+-- ★ PLAN-REF: at a well-formed signature, all its names
+private
+  n = KSig.size 𝒮
+  ok = Entries.sigOK 𝒮 n wf
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
 open import normalizer.Syntax.Types using ( ⊥-elim )
 open import DirectedHoTT.Spec.Syntax using ( RTm; ε; Nat )
-open import DirectedHoTT.Spec.Typing using ( ◇; _⊢_∷_; c-◇ )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( mkWN )
-open import DirectedHoTT.Metatheory.Fundamental using ( wnorm )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( sr* )
-open import DirectedHoTT.Metatheory.Canonicity
+open import DirectedHoTT.Spec.Typing 𝒮 n using ( ◇; _⊢_∷_; c-◇ )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( mkWN )
+open import DirectedHoTT.Metatheory.Fundamental 𝒮 n ok refs using ( wnorm )
+open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 n ok using ( sr* )
+open import DirectedHoTT.Metatheory.Canonicity 𝒮 wf
   using ( progress; prog-can; prog-step; canNat; ns-zero; ns-suc )
-open import DirectedHoTT.Lib.NatVal using ( NatVal; nv-zero; nv-suc )
+open import DirectedHoTT.Lib.NatVal 𝒮 using ( NatVal; nv-zero; nv-suc )
 
 natEval : {n : RTm ε} → ◇ ⊢ n ∷ Nat → NatVal n
 natEval {n = n} d with wnorm c-◇ d
