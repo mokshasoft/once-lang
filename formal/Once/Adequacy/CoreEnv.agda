@@ -20,42 +20,29 @@ open import Once.Target.Arch using (TargetNum)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; sigOf)
 open import Once.Denotation.TraceMonad using (interp)
-open import Data.List.Membership.Propositional using (_∈_)
 
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreEnv (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Data.Bool using (Bool; true; false; _∧_)
-open import Data.Bool.Properties using (∧-zeroʳ)
-open import Data.Char using (Char)
-open import Data.List using (List; []; _∷_; _++_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
-open import Data.String.Unsafe using (toList-++)
+open import Data.List using ([]; _∷_)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_; proj₂)
+open import Data.String using (String) renaming ()
 import Data.String.Properties as StrProp
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (tt)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Compile as C
-open C.PolyFunInfo using (pfunName; pfunType)
-open import Once.Type using (Type)
+open C.PolyFunInfo using (pfunType)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
-open import Once.Functor.Translate using (IsConcrete; IsConcrete-irrelevant)
-open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
-open import Once.Parser using (validIdentB; validCharsB; allIdentContinue)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings)
-open import Once.Denotation.GradedOps using (sigOpRefᵛ)
-open import Once.Denotation.TraceMonad using (T)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 import Once.Spec.Core.Meaning S as GM
 import Once.Spec.Core.Translate as TR
 open TR using (SigSig; ImpSig; TeleSig; mono-inst; poly-inst; telFind; viewOf) renaming (impAt to impView; sigAt to sigView)
-open import Once.Spec.Elaboration S using (ImportAt; Declared; def)
+open import Once.Spec.Elaboration S using (Declared)
 open import Once.Adequacy.CoreMeaningBridge fmt S using (refSem; impSem; Agree)
 
 ------------------------------------------------------------------------

@@ -23,8 +23,7 @@ open import Once.SigOp.Info using (FFIAnswers)
 -- environment carries.
 module Once.Adequacy.TableCall (fmt : TargetNum) (φ : FFIAnswers) where
 
-open import Data.Bool using (false)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; _∷_)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
@@ -41,7 +40,7 @@ open import Once.IR.Ref using (refIR)
 import Once.Compile as C
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ)
-open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; tableEnv; tableCalls)
+open import Once.Denotation.Program using (IRFun; irFun; fname; tableEnv; tableCalls)
 open import Once.Compile using (irFunOf)
 
 ------------------------------------------------------------------------

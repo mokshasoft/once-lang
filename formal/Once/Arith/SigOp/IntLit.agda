@@ -24,18 +24,16 @@
 
 module Once.Arith.SigOp.IntLit where
 
-open import Data.Integer using (ℤ; ∣_∣)
+open import Data.Integer using (ℤ)
 open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.Nat using (ℕ)
 open import Data.String using (String; _++_)
-open import Data.Unit using (⊤; tt)
 
-open import Once.Type using (Type; Unit; Int)
+open import Once.Type using (Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Functor.Translate using (base-Unit; base-Int)
 open import Once.CanonicalName using (bare)
 import Once.Word as OnceWord
-open import Once.Target.Arch using (TargetNum; int-bits)
+open import Once.Target.Arch using (int-bits)
 
 ------------------------------------------------------------------------
 -- The literal-family builder

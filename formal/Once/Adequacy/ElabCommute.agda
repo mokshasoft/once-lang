@@ -32,28 +32,27 @@ import Data.String
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
 import Once.Type as T
-open T using (Type; mk-kind; Many; pure; eff; μ-type; ν-type; ⟦_⟧T)
-open import Once.Type.Sub using (<:-unique; sub-arr; <:-refl)
+open T using (Type; mk-kind; Many; pure; eff; μ-type; ν-type)
+open import Once.Type.Sub using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)
 import Once.Surface.Context as C
-open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (mkCtx)
 open import Once.TypeCheck.Judgment
 import Once.Spec.Core.Syntax S as G
 import Once.Spec.Core.Typing S as GT
 open GT using (_⊢[_]_∷_!_)
-open import Once.Spec.Core.PolyTy using (_!!_; arity; kinds; type; _⟪_⟫)
+open import Once.Spec.Core.PolyTy using (_!!_; arity)
 import Once.Spec.Core.Rename S as RN
 import Once.Spec.Core.DerivedTyping S as DT
 open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; def; importE; sigE; refE; InstanceOf)
-open RSm Δ τ r using (ρ̂; ρ̂S; ρ̂N; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; lk-just;
-  subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
+open RSm Δ τ r using (ρ̂; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
 import Once.Adequacy.CoreInst S Δ τ r as CI
 open CI using (ρ̂ₜ)
 open CI.WithSG sg

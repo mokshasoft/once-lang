@@ -21,24 +21,17 @@
 
 module Once.Arith.SigOp.Builders where
 
-open import Data.Integer using (ℤ)
 import Data.Integer as ℤ
-open import Data.Nat using (ℕ)
 import Data.Nat as ℕ
-open import Data.Product using (_,_)
-open import Data.String using (String; _++_)
-open import Data.Sum using (_⊎_)
-open import Data.Unit using (⊤)
 
-open import Once.Type using (Type; Unit; Void; Int; _*_; _+_;
-                              ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
+open import Once.Type using (Type; Unit; Void; Int; _*_; _+_; ArrowKind; mk-kind; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info; mk-info'; pureV; primV; emitsV; haltsV; ffiV; callsV; EffectShape; Pure; Halts)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
-open import Once.Arith.Prim using (ArithPrim; p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+open import Once.Arith.Prim using (p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.Functor.Translate using (IsBaseType;
   base-Unit; base-Int; base-Float; base-Prod; base-Sum)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
+open import Once.CanonicalName using (CanonicalName; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Word using (Carrier)
@@ -46,11 +39,10 @@ import Once.Word as OnceWord
 -- PLAN 0.74 J5: `module W = OnceWord.Word64` USED TO BE HERE, and it was the
 -- bug. These descriptors serve all three targets and one of them is 32-bit;
 -- the width now arrives as the `TargetNum` every `semM` takes.
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; int-bits)
 
 -- | This target's modular arithmetic. The ONLY place the width is read.
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-open import Once.Float.Dyadic using (Dyadic)
 import Once.Float.Arith as FA
 import Once.Semantics.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)

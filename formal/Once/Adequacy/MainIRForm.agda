@@ -15,13 +15,13 @@
 module Once.Adequacy.MainIRForm where
 
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Data.Bool using (Bool; false; true)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
-open import Once.CanonicalName using (CanonicalName; bare) renaming (_≟ᶜ_ to _≟cn_)
+open import Data.Bool using (false)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
+open import Data.Empty using (⊥-elim)
+open import Data.Maybe using (Maybe)
+open import Data.List using (List; _∷_)
+open import Once.CanonicalName using (bare) renaming (_≟ᶜ_ to _≟cn_)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -29,12 +29,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Compile using (findMain; findMain-here; isEffUU?)
 
 open import Once.Type
-  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_;
-         μ-type; ν-type; mk-kind; Quantity; Zero; One; Many; Purity; pure; eff)
+  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Zero; One; Many; pure; eff)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Elaborate using (PolyCtx)
 import Once.Compile as C
 open import Once.Parser using (FunInfo)

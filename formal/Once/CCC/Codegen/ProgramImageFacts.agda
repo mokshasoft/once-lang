@@ -20,7 +20,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.Unit using (tt)
@@ -42,7 +42,7 @@ open import Once.CCC.Codegen.SlotSeg using (AllSeg; mkSeg; allseg-++; sb-none; [
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; SegAgree; mention-at; li-none; ls-weaken; segagree-++; segagree-pre; segagree-nolab)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; c-label)
+open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Label using (LabelId)
 import Once.CCC.Codegen.IRToTrace as IT
 

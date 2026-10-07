@@ -22,12 +22,12 @@
 
 module Once.Adequacy.ArchCorrectness.ArithSimX86-32 where
 
-open import Data.Nat using (ℕ; _+_; _*_; suc; _≡ᵇ_)
+open import Data.Nat using (ℕ; _+_; _*_; _≡ᵇ_)
 open import Data.Nat.Properties using (≡⇒≡ᵇ)
 open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
-open import Data.Unit using (⊤; tt)
+open import Data.List using ([]; _∷_)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
@@ -36,10 +36,10 @@ open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch
 import Once.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)
-open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Dyadic using (binary32)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (⟦_⟧S; InputPath; Side; Fst; Snd)
-open import Once.Target.X86-32.PhysReg using (Reg; eax; ecx; edx; edi; esp)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Target.X86-32.PhysReg using (Reg; eax; ecx; esp)
 open import Once.Arith.Backend.X86-32.Emit using (arith-reg)
 import Once.CCC.Target.X86-32.Semantics as X32
 open X32 using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
@@ -58,7 +58,7 @@ import Once.Word as OnceWord
 -- not.
 module W = OnceWord.Width 32
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
-open import Once.Target.Arch using (Arch; x86-32; arch-numerics)
+open import Once.Target.Arch using (x86-32; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
 -- numerics. It used to be applied at 64 for every arch, including this one.
 open ASC.At (arch-numerics x86-32) using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
@@ -341,7 +341,7 @@ open import Once.CCC.Target.X86-32.Layout using (InStack; InHeap; stackAddr-writ
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   InStack InHeap stackAddr-write-preserves-heap def side-off
   using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_)
 
 -- LayoutWF: scratch is in-stack; the input value is heap-resident (frame contract).
 WF : State → Set

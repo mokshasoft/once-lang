@@ -24,44 +24,16 @@ open import Once.Target.Arch using (TargetNum)
 module Once.Adequacy.CoherenceLawsWrap (fmt : TargetNum) where
 
 open import Data.Bool using (true)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Postulates using (extensionality)
-open import Once.Res using (Res; returns; stopped; mapRes)
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; One; Zero;
-  Purity; Quantity; _≤q_; Functor; μ-type; ν-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; <:-trans; <:-unique;
-  _⊑π_; ⊑π-refl)
-open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; _∷_; _,_^_; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_;
-  ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many;
-  lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv;
-  lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; >>=T-assoc; fmapT)
-open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
-open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-id; <:-trans-∘)
-open import Once.Denotation.TraceMonad using (fmapT-id; fmapT-cong; fmapT-∘)
-open import Once.Denotation.DenotTrace using (liftFn)
-open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
-open import Once.Word using (Carrier)
-open import Once.Functor.Translate using (translateF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Type using (K; Id; _⊕_; _⊗_)
-open import Once.Semantics.Functor using (⟦_⟧SF; cataS)
-open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
-open import Data.Empty using (⊥)
-open import Once.Denotation.ValueDomain using (seqF; coerce-functor⁻¹-D)
-open import Once.SigOp.Info using (semM)
-open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
-  fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
-  lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
+open import Once.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; Quantity; _≤q_; μ-type; ⟦_⟧T)
+open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; <:-trans; _⊑π_; ⊑π-refl)
+open import Once.Surface.Syntax using (Expr; Ctx; _∷_; _,_^_; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
+open import Once.Type using ()
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.IR using (IR; ⌊_⌋)
 import Once.IR as IR
-open import Relation.Binary.PropositionalEquality using (subst)
 import Once.Denotation.SourceDenote as SD
-open SD using (⟦_⟧ˢ; calls; cata-ev-algˢ; liftD)
 
 
 -- The raw laws (at `_≈ˢ_`) and `_≈_` itself.

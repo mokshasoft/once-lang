@@ -23,11 +23,11 @@
 module Once.CCC.Target.RiscV64.FrameInstantiation where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n; _∸_)
-open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; ≤-<-trans; m≤m+n; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp)
-open import Data.Product using (_×_; _,_)
+open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp)
+open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
@@ -38,7 +38,7 @@ open import Once.Float.Dyadic using (binary64)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import RISC-V 64 Layout for StackPointer and slot operations
-open import Once.CCC.Target.RiscV64.Layout using (StackPointer; slot-addr; grow-identity; sp-distinct; offset-distinct; frame-below-slot0-disjoint; slot-addr-≥-base; InStack; in-stack)
+open import Once.CCC.Target.RiscV64.Layout using (StackPointer; slot-addr; offset-distinct; slot-addr-≥-base; InStack; in-stack)
 open import Once.CCC.Target.RiscV64.StackGrowth using (word-size)
 open import Once.CCC.Target.RiscV64.Layout using (stack-addr; in-stack; stack-sub-preserves') renaming (addr to sp-addr)
 

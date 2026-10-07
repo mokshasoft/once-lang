@@ -13,11 +13,11 @@
 
 module Once.Adequacy.ImageValid where
 
-open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.List using (List; []; _∷_; map)
 import Data.List
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.List.Relation.Unary.All.Properties using (++⁺; filter⁺; map⁺)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.List.Relation.Unary.All.Properties using (++⁺; filter⁺)
+open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String)
 open import Data.Unit using (tt)
 open import Data.Bool using (true; false; if_then_else_)
@@ -33,13 +33,12 @@ open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Arith.Machine.IR using (ArithBlock)
-open import Once.Denotation.Program using (IRProgram; IRFun; main; table; fbody; irProgram)
+open import Once.Denotation.Program using (IRProgram; IRFun; main; table; fbody)
 open import Once.Target.AsmSymbol using (AsmSym)
 open import Once.Target.SymbolValid using (once-symbol-path-asm; once-symbol-own-asm; once-label-asm; callee-label-asm)
 open import Once.Arith.SigOp.Block using (block-name)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
-open import Once.Compile using (Module; moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks;
-                                lib-program; dedup-go; dedup-blocks; block-symbol; block-syms; calls-of; externs-of; is-extern?)
+open import Once.Compile using (Module; moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; dedup-go; dedup-blocks; block-symbol; block-syms; calls-of; externs-of; is-extern?)
 open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
 
 ------------------------------------------------------------------------

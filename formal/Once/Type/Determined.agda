@@ -11,10 +11,10 @@
 
 module Once.Type.Determined where
 
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; _++_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻)
-open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.List.Relation.Unary.Any using (here)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.String using (String)
 import Data.String as Str
@@ -77,7 +77,7 @@ private
   ⊗-inj : ∀ {f g f′ g′} → f ⊗ g ≡ f′ ⊗ g′ → (f ≡ f′) Data.Product.× (g ≡ g′)
   ⊗-inj refl = refl Data.Product., refl
 
-open import Data.Product using (proj₁; proj₂)
+open import Data.Product using ()
 
 mutual
   agree-from : ∀ (θ θ′ : String → Type) (p : PolyType)

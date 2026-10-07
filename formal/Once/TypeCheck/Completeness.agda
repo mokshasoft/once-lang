@@ -25,67 +25,44 @@
 -- Reference: plans/0.3-frontend-verification-gaps.md, gap G2.
 ------------------------------------------------------------------------
 module Once.TypeCheck.Completeness where
-open import Data.Nat using (ℕ; zero; suc; _⊔_)
-open import Data.String using (String; _++_)
-open import Data.Integer using (ℤ)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Nat using (ℕ)
+open import Data.String using (String)
+open import Data.Maybe using (just; nothing)
 import Data.Maybe
-open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
-open import Data.String.Properties as StrProp using (_≟_)
-open import Once.Type as T using (Type; Unit; Int; Void; Float;
-                                  _*_; _+_; _⇒[_]_; Quantity; _≤q_;
-                                  Zero; One; Many)
+open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Relation.Nullary using (yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
+open import Data.String.Properties as StrProp using ()
+open import Once.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_; Many)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair;
-         ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
-         cls-unit; cls-str; cls-annot; cls-binop)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; bare-NotGenerator; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
+  using (RawExpr; RVar; RResolved; RPair)
+open import Once.CanonicalName using (CanonicalName; gen; own; bare-NotGenerator; NotGenerator)
 open import Once.TypeCheck.ElaborateProofs
-  using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; lookupLocal; lookupImport; inferElabV; checkElabV;
-         embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
-         classifyAppHead; classifyAppHeadView; ahv-other;
-         classifyAppHead-nothing⇒view-other; AppHeadView; inspectWellFormedF;
-         wfv-yes; wfv-no; classifyRPairTarget; rpt-vlift; rpt-other;
-         via; apply-pure; apply-eff)
+  using (NamedCtx; inferElab; checkElab; success; failure; lookupLocal; lookupImport; inferElabV; checkElabV; VerifiedInferResult; classifyAppHead; classifyAppHeadView; ahv-other; classifyAppHead-nothing⇒view-other; AppHeadView)
 open import Once.TypeCheck.Judgment
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
-open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
+open import Once.Functor.Translate using (WellFormedF)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
-open import Once.Type.Rigid using (RigidFree; rigidFree?; rigidFree?-complete)
-open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
-  isConcrete?-complete; isBaseType?-complete)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys;
-  inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; [])
+open import Once.TypeCheck.Classify using ()
+open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
-open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Data.Empty using (⊥)
-open import Once.IR using (IR; Heap)
-open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Realize using ()
-open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
-open import Once.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod; sub-sum)
-open import Once.Type.DecEq using (_≟T_; _≟F_)
-open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
-  inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found;
-  GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr;
-  gv-unit; gv-other)
+open import Once.Surface.Syntax as Srf using (Expr)
+open import Once.Type using (Functor; ⟦_⟧T)
+open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly; GenView; classifyGen)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (
@@ -153,14 +130,13 @@ private
 -- premise, and the elaborator's codomain is the derivation's by determinacy.
 module DPoly where
   open import Once.TypeCheck.Elaborate
-    using (given-var; given-poly; given-poly-g; given-poly-a; given-poly-d; given-poly-m; given-poly-π;
-           isGround-inj₂→¬Ground)
-  open import Once.Type.Match using (instantiate; Subst)
+    using (given-var; given-poly; given-poly-g; given-poly-a; given-poly-m; given-poly-π; isGround-inj₂→¬Ground)
+  open import Once.Type.Match using (instantiate)
   open import Once.Type.Instance using (instantiate-complete; instantiate-sound)
   open import Once.Type.Determined using (codVarsInDom?; cod-determined; arrowSchema?)
   open import Once.Type.Sub using (_⊑π?_)
   open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
-  open import Once.TypeCheck.Classify using (lookupPolyPrefix; PolyCtx)
+  open import Once.TypeCheck.Classify using (lookupPolyPrefix)
   open import Relation.Nullary using (yes; no)
   open import Data.String using (String)
   open import Data.Sum using (inj₂)
@@ -443,21 +419,7 @@ infer-complete-RApp-spine {ctx} f x {X} {B} eqAH eqF eqX eqG
 ------------------------------------------------------------------------
 
 open Once.TypeCheck.ElaborateProofs
-  using (checkElab-fallback-RInt; checkElab-fallback-RFloat;
-         checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
-         checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst;
-         checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-terminalV;
-         checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
-         checkElab-fallback-RVar-inr;
-         checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure;
-         checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer;
-         checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot;
-         checkElab-fallback-RLet;
-         checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
-         checkElab-fallback-RBinOp;
-         checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst;
-         checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out;
-         checkElab-fallback-RApp-generic)
+  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer; checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.

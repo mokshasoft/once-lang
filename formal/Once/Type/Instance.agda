@@ -11,7 +11,7 @@ module Once.Type.Instance where
 
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₂)
 open import Data.String using (String)
 import Data.String as Str
 open import Data.Empty using (⊥; ⊥-elim)

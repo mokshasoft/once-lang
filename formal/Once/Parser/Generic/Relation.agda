@@ -17,7 +17,7 @@ module Once.Parser.Generic.Relation where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _,_)
+open import Data.Product using (Σ-syntax; _,_)
 open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <-≤-trans; <⇒≤; m≤n⇒m≤1+n; n≤1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

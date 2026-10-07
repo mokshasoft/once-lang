@@ -19,7 +19,7 @@
 -- Uses the codebase's accepted `bisimS-to-eq` axiom (as `sem-ana-Out-id` does).
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -31,42 +31,32 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.AnaErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.List using (List; _++_; length)
-open import Data.Nat using (ℕ; zero; _∸_)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst₂; subst-subst-sym; subst-sym-subst)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type as TT
-  using (Functor; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+  using (Functor; _*_; _+_)
 open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
 open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; anaS; sfmapAna; anaLayerS)
-open Once.Semantics.Functor.νS using (unfoldS)
 open import Once.Semantics.Functor.Laws
-  using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq)
+  using (_∼S_; ⟦_⟧SF-rel)
 open Once.Semantics.Functor.Laws._∼S_ using (unfoldS-∼)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; coerce-functor; coh; tF-coh;
-         coerce-full-to-base; base-coh)
+  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; tF-coh; coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
-open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; Res-rel; rel-stopped; rel-returns)
-open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.TraceDenote using (events-F)
+open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
 open import Once.Denotation.TraceMonad using (T; returnT)
 open import Once.Denotation.ValueDomain
-  using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; νᵈ; forgetᵇ; coerce-functor-D)
+  using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
-open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
 -- `sem-ana` factors through the νS-level `anaS`: unfolding the raw functor

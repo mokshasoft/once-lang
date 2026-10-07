@@ -30,22 +30,19 @@ module Once.CCC.Machine.FlatStackSlot (FS : FrameSemantics) where
 
 open import Once.CCC.Label using (LabelId)
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ)
 open import Data.Bool using (Bool; true; false)
-open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.List using (List; []; _∷_)
-open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Data.Product using (proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Machine.SMCore
 import Once.Allocator.AbstractInstance as AI
-open FrameSemantics FS using (Frame)
+open FrameSemantics FS using ()
 open MemOps {FS}
 open ExecFinal {FS}
 open AbstractExec {FS}
-open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 

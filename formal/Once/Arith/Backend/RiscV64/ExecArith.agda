@@ -14,10 +14,10 @@
 
 module Once.Arith.Backend.RiscV64.ExecArith where
 
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (⊤)
 open import Data.Nat using (ℕ; suc; _*_; _+_; _<_)
 open import Data.Nat.Properties using (+-monoʳ-<)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; cong)
 
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)

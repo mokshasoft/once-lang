@@ -31,11 +31,11 @@
 
 module Once.Denotation.Realize where
 
-open import Data.Integer using (-_)   -- the folded payload of `g-neg-int` (plan 0.73 F3)
+open import Data.Integer using ()   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
-open import Once.Type using (Type; Many; _*_; _+_; μ-type; ν-type; ⟦_⟧T; Purity; mk-kind; _⇒[_]_)
+open import Once.Type using (Type; Many; μ-type; ν-type; Purity; mk-kind; _⇒[_]_)
 open import Once.Type.Sub using (sub-arr; <:-refl)
-open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩)
+open import Once.IR as IR using (IR; _∘_)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.TypeCheck.Raw using (RawExpr;
@@ -56,16 +56,9 @@ open import Once.TypeCheck.Judgment
          t-app-spine;
          t-var-poly-instantiate;
          t-var-poly-instantiate-infer; d-poly)
-open import Once.Float.Decimal using (Decimal; decimalOf; negate)
-open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
-open import Once.Surface.Seq using (seq; seq0; embedClosed)
-open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
-  lam; app; effApp; pair; neg; let'; case'; int; float; unit;
-  add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; closed;
-  lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
-open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
-open import Once.Arith.SigOp.Builders using (value-info)
-open import Once.CanonicalName using (bare; own)
+open import Once.Float.Decimal using (decimalOf; negate)
+open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; svar→expr; lam; app; effApp; pair; neg; let'; case'; int; float; unit; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
+open import Once.CanonicalName using (bare)
 open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong; sym)

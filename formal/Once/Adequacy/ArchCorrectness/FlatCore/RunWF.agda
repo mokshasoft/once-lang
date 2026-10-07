@@ -35,13 +35,10 @@
 ------------------------------------------------------------------------
 
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; slot-addr; slot-addr-linear)
+open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
-open import Once.CCC.Machine.SMCore using (AllocState)
-open import Once.CCC.Label using (once; LabelId)
-open import Data.Nat using (ℕ; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
-open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-≤-trans; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
-                                      ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
+open import Once.CCC.Label using (LabelId)
+open import Data.Nat using (ℕ; _<_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
 -- the module's own `FS`/`word-eq` can be threaded into them by Agda's
@@ -53,12 +50,12 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CanonicalName using (CanonicalName)
 
-open import Data.List using (List; []; _∷_; _++_; length; drop)
+open import Data.List using (List; []; _∷_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
-open import Relation.Nullary using (yes; no; Dec)
+open import Relation.Nullary using (yes; no)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
   (o : CanonicalName)
@@ -68,21 +65,21 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
   where
 
 
-open import Data.Maybe using (Maybe; just; nothing; maybe′)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (zero; suc)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 
 open import Once.CCC.Machine.SMCore
-open MemOps {FS} using (writeLoc; writeLocToHeap; writeLoc-halted; readLoc)
+open MemOps {FS} using (readLoc)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.CCC.Machine.FlatStoreWF FS
 open import Once.CCC.Machine.FlatRegTagWF FS
 open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-to-unit)
+open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot
@@ -116,11 +113,7 @@ open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-f
 open import Once.IR using (IR; Unit)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
-open import Once.Type using (fits-int; fits-float)
-open import Once.Word using (Carrier)
-open import Once.Target.Symbol using (once-symbol-path)
-open import Data.Product using (uncurry)
+open import Once.Type using (fits-int)
 
 -- NON-HALTING ⇒ NON-CALL: `call-sym` is the ONLY instruction `matchCall` accepts,
 -- and `execInstr (call-sym _)` always sets `halted := true`. So any step that

@@ -35,7 +35,7 @@ data Arch : Set where
 -- `refl`, so a disagreement is a type error rather than a wrong binary.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc; _<_; s≤s; z≤n)
+open import Data.Nat using (ℕ; suc; _<_; s≤s; z≤n)
 open import Data.Integer using (ℤ)
 open import Data.Product using (Σ; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

@@ -14,10 +14,9 @@
 
 module Once.CCC.Target.X86-64.StackGrowth where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≤_; _≥_)
-open import Data.Nat.Properties using (+-identityʳ; +-comm; *-comm; m≤m+n; +-cancelˡ-≡; *-cancelˡ-≡; ≤-trans)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
-open import Level using (0ℓ)
+open import Data.Nat using (ℕ; zero; _+_; _*_; _≤_; _≥_)
+open import Data.Nat.Properties using (+-identityʳ; m≤m+n; +-cancelˡ-≡; ≤-trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 
 open import Once.Memory.MemoryLayoutSemantics
   using (Addr; StackGrowth)

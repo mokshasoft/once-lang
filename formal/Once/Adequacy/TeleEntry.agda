@@ -17,7 +17,7 @@
 open import Once.Target.Arch using (TargetNum)
 
 open import Once.SigOp.Info using (FFIAnswers)
-open import Once.Denotation.TraceMonad using (Interp; sig; impl; pureHalf)
+open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 
 -- Plan 0.105 (D257 amendment 2): in a world `ι` — its signatures and their
 -- implementation; the IR reads its pure half.
@@ -26,34 +26,22 @@ module Once.Adequacy.TeleEntry (fmt : TargetNum) (ι : Interp) where
 φ : FFIAnswers
 φ = pureHalf ι
 
-open import Data.List using (List; []; _∷_)
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
-open import Data.Bool using (true)
+open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Postulates using (extensionality)
 open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Zero; One; Many; pure;
   μ-type; ν-type; rigid)
-open import Once.Functor.Translate using (IsConcrete; con-base; con-fun)
 open import Once.IRTy using (⌊_⌋)
-open import Once.CanonicalName using (CanonicalName; bare)
-open import Once.Res using (returns; rel-returns)
 import Once.Surface.Syntax as Srf
-open import Once.Surface.Elaborate using (elaborateFull)
 import Once.Compile as C
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; rel-ret)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; ⟦_⟧ᴰᴵ; cohᴰ)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
-open import Once.Denotation.GradedOps using (sigOpRefᵛ)
-open import Once.Denotation.Program using (IRFun; tableEnv)
 open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV; RelGM; RelGT-return)
-open import Once.Adequacy.TableCall fmt φ using (abiT; abi)
-open import Once.Compile using (irFunOf)
-open import Once.IR.Ref using (refIR)
+open import Once.Adequacy.TableCall fmt φ using (abiT)
 import Once.Adequacy.MeaningBridge as MB
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.FaithfulLemmas as FLm

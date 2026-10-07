@@ -51,24 +51,16 @@ open import Data.List using (List; []; _∷_; length; reverse)
 open import Data.Char using (Char)
 import Data.String
 open import Data.String using (String)
-open import Data.Integer using (ℤ)
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; <-trans; ≤-trans; ≤-<-trans;
-                                        <-≤-trans; <⇒≤; n≤1+n; m≤n⇒m≤1+n)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
-open import Relation.Nullary using (yes; no; ¬_)
+open import Data.Nat using (_<_; _≤_; s≤s)
+open import Data.Nat.Properties using (≤-refl; <-trans; ≤-trans; ≤-<-trans; <⇒≤; n≤1+n; m≤n⇒m≤1+n)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
+open import Relation.Nullary using (yes; no)
 open import Data.String.Properties as StrProp using (_≟_)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 
-open import Once.Type using (Type)
-open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam;
-                                       RLet; RPair; RDestruct; RUnit; RInt; RFloat;
-                                       RStringLit; RAnnot; RBinOp; RUnaryOp;
-                                       BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
-                                       OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
-                                       UnaryOp; OpNeg)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
 open import Once.Parser.Token
 open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
 

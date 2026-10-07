@@ -36,19 +36,14 @@
 
 module Once.Parser.PolyType where
 
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using (List; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
-open import Data.String using (String)
-open import Data.String.Properties as StrProp using (_≟_)
-open import Data.Bool using (Bool; true; false; not; _∧_)
-open import Data.Char using (isLower)
+open import Data.String.Properties as StrProp using ()
 import Data.String as StrLib
-open import Relation.Nullary using (yes; no)
 
 open import Once.Type
 open import Once.Parser.Token
-open import Once.Parser.Core using (Parser)
 
 ------------------------------------------------------------------------
 -- Lowercase-identifier test — the lexical distinction between a type
@@ -102,9 +97,9 @@ open import Once.Parser.CharClass public using (isLowerWord)
 -- structural proof.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (_<_; _<?_)
+open import Data.Nat using (_<_)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.Product using (Σ; Σ-syntax)
+open import Data.Product using (Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Parser.Generic.PolyInst
   using (parsePolyTypeP; sound-polyType; ParsesPolyType-shrink)

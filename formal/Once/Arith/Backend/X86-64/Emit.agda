@@ -34,9 +34,8 @@
 
 module Once.Arith.Backend.X86-64.Emit where
 
-open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.Nat using (ℕ; suc; _*_; _∸_)
+open import Data.Nat using (ℕ; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
 open import Once.Float.Decimal using (round)
 open import Once.Float.Dyadic using (binary64)
@@ -49,13 +48,13 @@ open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
-open import Once.Arith.Type using (NumType; NInt; NFloat)
-open import Once.Arith.Machine.IR using (MArithIR; ArithBlock; mk-block)
-open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-kind; block-body)
+open import Once.Arith.Type using (NInt; NFloat)
+open import Once.Arith.Machine.IR using (ArithBlock; mk-block)
+open Once.Arith.Machine.IR.ArithBlock using (block-body)
 open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Target.Symbol using (once-symbol-own)
-open import Once.Target.X86-64.PhysReg using (Reg; r8; r9; r10; r11; showReg; owner)
-open import Once.Target.RegConvention using (RegClass; arith)
+open import Once.Target.X86-64.PhysReg using (Reg; r8; r9; showReg; owner)
+open import Once.Target.RegConvention using (arith)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------

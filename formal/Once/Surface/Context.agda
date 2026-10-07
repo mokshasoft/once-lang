@@ -281,7 +281,6 @@ infixr 5 _⊑∷_
 -- with no enforcement, which is exactly OCP-0005's "prose decisions are
 -- silently violable". Encoding it (rung 1) is what makes it real.
 
-open import Relation.Binary.PropositionalEquality using (cong; trans)
 
 -- NB `*ᵘ-zeroˡ` and `+ᵘ-idʳ` already live in `Once.Surface.Properties`; they
 -- are not restated here. `erase-arg-usage` is stated in terms of them below,

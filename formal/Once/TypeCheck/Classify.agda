@@ -42,8 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 open import Once.Type
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS; _≟ᶜ_;
-  NotGenerator; gen-inj)
+open import Once.CanonicalName using (CanonicalName; canonical; gen; generatorNS; NotGenerator; gen-inj)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Once.TypeCheck.Context using (Ctx; ∅)
 open Once.TypeCheck.Context.Binding using (name)

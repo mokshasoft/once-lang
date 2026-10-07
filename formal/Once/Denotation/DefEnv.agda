@@ -24,7 +24,7 @@ open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String)
 import Data.String.Properties as StrProp
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (⊤)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 

@@ -17,11 +17,10 @@ module Once.CCC.Target.X86-32.Semantics where
 
 open import Once.CCC.Target.X86-32.Syntax
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.String using (String)
 open import Function using (case_of_)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` comes in
 -- re-exported from `Syntax`; the scan needs its boolean equality).

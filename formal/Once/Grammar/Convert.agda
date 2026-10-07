@@ -32,14 +32,13 @@
 
 module Once.Grammar.Convert where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; Σ; Σ-syntax; ∃)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
+open import Data.Product using (_×_; _,_; Σ-syntax)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Type as T
-open T using (Type; Quantity; Zero; One; Many)
+open T using (Type; Zero; One; Many)
 import Once.Grammar as G
 open G using (GType)
 

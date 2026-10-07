@@ -24,7 +24,6 @@
 module Once.Grammar.Printer where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.String using (String)
 
 open import Once.Type using (Quantity; Zero; One; Many)
 import Once.Grammar as G
@@ -86,7 +85,7 @@ printGFunctor (G.GFProd f g) =
 ------------------------------------------------------------------------
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (just)
 open import Data.Product using (_,_)
 open import Once.Grammar.Convert using (parseGType)
 

@@ -23,9 +23,9 @@
 
 module Once.Denotation.GradedDomain where
 
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 

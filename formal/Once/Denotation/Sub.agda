@@ -22,8 +22,6 @@
 
 module Once.Denotation.Sub where
 
-open import Data.Empty using (⊥)
-open import Data.Unit using (⊤)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)

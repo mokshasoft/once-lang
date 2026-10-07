@@ -32,19 +32,14 @@ module Once.TypeCheck.Judgment where
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
 open import Data.Integer using (ℤ)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (tt)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Type
-open Once.Type using (Type; Unit; Int; Void; Float;
-                      _*_; _+_; _⇒_; _⇒[_]_; Quantity;
-                      Functor; μ-type; ν-type; ⟦_⟧T)
-open import Once.Float.Dyadic using (Dyadic)
+open Once.Type using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_; Quantity; Functor; μ-type; ν-type; ⟦_⟧T)
 
-open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-fun)
+open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 -- D134 Phase A removed the decider premises, and with them the last uses of
 -- `Once.Functor.Decide`, `Once.IR` and `Once.TypeCheck.Morph` from the RULES.
 -- The imports outlived them; deleting them shrinks what a reader of the spec
@@ -53,25 +48,18 @@ open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Once.Type.Sub using (_<:_; _⊑π_)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RFloat;
-         RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
-         BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp;
-         ClosedLiftShape)
+  using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
 open import Once.TypeCheck.Classify
-  using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
-         removePoly;
-         ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead)
+  using (NamedCtx; lookupLocal; lookupImport; lookupPolyPrefix; extendNamedCtx; classifyAppHead)
 
 open import Data.String using (_++_)
 
 -- Plan 0.58 (OCP-0006): IR-FREE `Once.Surface.Context` (not `Surface.Syntax`);
 -- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
-open import Data.Fin using (Fin)
 open import Once.Type.Rigid using (KindedInstance; RigidFree)
 open import Once.Surface.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
-  renaming (Ctx to SCtx)
+  renaming ()
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 
 ------------------------------------------------------------------------

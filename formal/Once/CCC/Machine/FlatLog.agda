@@ -19,7 +19,7 @@
 
 module Once.CCC.Machine.FlatLog where
 
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)

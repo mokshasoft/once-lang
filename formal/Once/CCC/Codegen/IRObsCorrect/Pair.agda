@@ -40,7 +40,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
@@ -48,7 +48,6 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl
-open import Data.Nat using (z≤n)
 open import Data.List.Properties using (++-identityʳ)
 
 import Once.CCC.FrameSemantics

@@ -29,13 +29,13 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseShape (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
-open import Once.CCC.Codegen.LabelSeg using (LabelIn; LabelsIn; li-none; li-lab; in-range)
+open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-none; li-lab)
 open import Once.CCC.Codegen.LabelRange o using (label-mono)
 open import Once.CCC.Label using (idx)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
@@ -43,7 +43,6 @@ open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (Σ)
-open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using () renaming (_+_ to _+ᵀ_)
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
@@ -108,10 +107,9 @@ module ShapeC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix; flat-step1;
-                                flat-tag-branch-yes; flat-tag-branch-not; flat-jmp; flat-label)
+  open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
-  open ClosureWellFormedDef {FS} using (SumTag; InlineRep; rep-prim; rep-unit)
+  open ClosureWellFormedDef {FS} using (SumTag; rep-prim; rep-unit)
 
   ----------------------------------------------------------------------
   -- THE SHAPE, and the four premise splits that ride on it.

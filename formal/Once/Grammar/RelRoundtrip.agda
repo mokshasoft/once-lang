@@ -24,10 +24,9 @@ module Once.Grammar.RelRoundtrip where
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
-open import Once.Type using (Type; _*_; _+_; _⇒[_]_; Unit;
-                             Quantity; Zero; One; Many; mk-kind; pure; eff)
+open import Once.Type using (_*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure)
 open import Once.Parser.Token
 import Once.Grammar as G
 open G using (GType)

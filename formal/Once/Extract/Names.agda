@@ -48,13 +48,13 @@ module Once.Extract.Names where
 
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (yes; no)
 
 open import Once.Parser.Module.Core using
-  (Module; Decl; DFunDef; DImport; Import; mkImport)
+  (Module; Decl; DFunDef; DImport; Import)
 open Once.Parser.Module.Core.Module using (decls)
 open Once.Parser.Module.Core.Import using (path; alias)
 

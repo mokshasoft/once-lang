@@ -19,10 +19,8 @@ module Once.Arith.Machine.IR where
 
 open import Data.Integer using (ℤ; +_; ∣_∣; sign; _◃_)
 import Data.Integer as ℤ
-open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Data.Bool using (Bool; not; _∧_; if_then_else_)
-open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
 import Data.Sign as Sign
@@ -32,10 +30,7 @@ open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Float.Decimal using (Decimal)
 import Once.Type as T
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath;
-         Side; Fst; Snd; project; projectF;
-         Path; here-int; here-flt; go-fst; go-snd; LeafVal; readLeaf; ⌊_⌋ᴾ;
-         project-path; projectF-path)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; Path; readLeaf)
 
 ------------------------------------------------------------------------
 -- MArithIR: machine-level arith expression tree

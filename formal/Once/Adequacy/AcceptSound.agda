@@ -22,21 +22,19 @@ open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; Σ-syntax; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (just)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Function using (case_of_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type)
 import Once.Compile as C
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Elaborate as TE using (CheckElabResult; checkElab; ctxWithImportsAndPolys)
+open import Once.TypeCheck.Elaborate as TE using (ctxWithImportsAndPolys)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -49,7 +47,6 @@ open import Once.Type.Honest using (HonestFFI; honest?)
 open import Once.Surface.Context using (zeroUsage)
 import Once.Surface.Context
 open import Data.Maybe using (Maybe; nothing)
-open import Relation.Binary.PropositionalEquality using (subst)
 -- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which
 -- transitively pulls in the still-rotted `ErrorProofs`; soundness needs only
 -- this): `checkElab ctx e T ≡ success … ⇒ ctx ⊢ᶜ e ∶ T ⨾ Ψ`.

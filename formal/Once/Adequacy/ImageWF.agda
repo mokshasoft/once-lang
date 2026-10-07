@@ -25,11 +25,10 @@
 
 module Once.Adequacy.ImageWF where
 
-open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.All using (All)
-open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_)
@@ -43,13 +42,7 @@ open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.NodesOK using (SigLeaves; sigop-syms)
 open import Once.Arith.Machine.IR using (ArithBlock)
-open Once.Arith.Machine.IR.ArithBlock using (block-body)
-open import Once.Arith.SigOp.Block using (block-name)
-open import Once.Target.Symbol using (once-symbol-own)
-open import Once.Target.AsmSymbol using (AsmSym)
-open import Once.Compile using (Module; moduleToIR; moduleTable; image-of; program-blocks; rewrite-program;
-                                lib-image; lib-blocks; lib-program; dedup-blocks; block-symbol; block-syms;
-                                calls-of; externs-of; is-extern?)
+open import Once.Compile using (Module; moduleToIR; moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; block-syms; calls-of; externs-of; is-extern?)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
 open import Once.Denotation.Program using (IRFun)
 open import Data.List.Relation.Unary.All using ([]; _∷_; tabulate)
@@ -61,7 +54,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_)
 import Data.String
-open import Once.CCC.Codegen.ImageSymbols using (heap-symbol; adefs; arefs)
+open import Once.CCC.Codegen.ImageSymbols using (heap-symbol; adefs)
 
 -- What a program's file defines: the heap, `_start`, the image's labels and
 -- entries, the arith blocks.

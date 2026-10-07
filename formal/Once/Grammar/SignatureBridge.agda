@@ -10,22 +10,18 @@
 
 module Once.Grammar.SignatureBridge where
 
-open import Data.Bool using (Bool; true; false)
-open import Data.List using (List; _∷_; length)
-open import Data.Nat using (_<_; _≤_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Data.Bool using (true)
+open import Data.List using (length)
+open import Data.Nat using (_<_)
+open import Data.Maybe using (just)
+open import Data.Product using (Σ-syntax; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (PolyType)
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DSignature; ParseAtB; anyWordB)
+open import Once.Parser.Module.Core using (anyWordB)
 open import Once.Parser.Module.DeclTail
-  using ( parseSignatureB; colonHead; colDrop1; psig-poly; psig-colon
-        )
+  using (parseSignatureB; colonHead; colDrop1)
 open import Once.Parser.PolyType using (parsePolyTypeB)
-open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 open import Once.Spec.Grammar.Signature
   using (ParsesSignature; psig-mk)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)

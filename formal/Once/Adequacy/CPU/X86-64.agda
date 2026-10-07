@@ -44,7 +44,7 @@ import Once.CCC.Target.X86-64.Syntax    as X64S
 import Once.CCC.Target.X86-64.File as RF
 open import Data.Bool using (if_then_else_)
 open import Data.String using (_==_)
-open import Data.Product using (_,_; proj₁)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 -- Plan 0.54 Phase B / Option 2: the emit-and-continue trace over the REAL
@@ -55,7 +55,7 @@ open import Once.Arith.Backend.XInstr.Syntax as XI
 import Once.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)
-open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
@@ -64,7 +64,7 @@ open X64 using (State; readReg; readMem)
 open X64.State using (regs; memory)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
-open import Data.Nat using (_∸_; _*_; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_*_) renaming (_+_ to _+ℕ_)
 open import Data.Maybe using (just; nothing)
 
 ------------------------------------------------------------------------

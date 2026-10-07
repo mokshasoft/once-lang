@@ -16,7 +16,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Memory.MemoryLayoutSemantics
-  using (MemoryLayout; StackGrowth; Addr)
+  using (MemoryLayout; StackGrowth)
 
 module Once.Memory.FrameOps
   (layout : MemoryLayout)

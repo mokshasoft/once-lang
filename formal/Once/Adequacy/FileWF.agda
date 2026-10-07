@@ -44,7 +44,7 @@ open import Once.Adequacy.ImageWF
 open import Once.Adequacy.ImageUnique using (prog-unique; lib-unique)
 open import Once.Adequacy.ImageValid using (prog-defs-valid; lib-defs-valid; externs-valid)
 open import Once.Adequacy.ImageResolved using (prog-resolved; lib-resolved)
-open import Once.CCC.Codegen.ImageSymbols using (adefs; arefs)
+open import Once.CCC.Codegen.ImageSymbols using (arefs)
 open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Machine.FrameFree using (emittable-image)
 open import Once.CCC.Codegen.ProgramImageFacts C.entry-owner using (image-frame-free; fns-frame-free)

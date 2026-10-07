@@ -18,7 +18,7 @@ open import Once.Spec.Core.PolyTy using (Sig; KCtx; GSub; Respects)
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreInst {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
 
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_; ≡-subst-removable)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; ⊆-refl; ⊆-wk)
 open import Data.Fin using (Fin; zero; suc)
@@ -45,7 +45,7 @@ open import Once.Functor.Translate using (WellFormedF)
 open PT using (_⟪_⟫ᶜ; _⟪_⟫ₜ)
 open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; primDom-abs; primCod-abs; absCtx-lookup)
 import Once.TypeCheck.RigidSubst Δ τ r as RS
-open RS using (ρ̂; ρ̂F; ρ̂S; ρ̂-⟦⟧; ρ̂-wf; ρ̂-<:; ρ̂-rf; ρ̂-base; lookup-ρ̂)
+open RS using (ρ̂; ρ̂S; ρ̂-⟦⟧; ρ̂-wf; ρ̂-<:; ρ̂-rf; ρ̂-base; lookup-ρ̂)
 open import Once.Adequacy.CoreAbsSem S using (tr; tr-subst; tr-lam; tr-app; tr-let; tr-unit; tr-pair; tr-fst; tr-snd;
   tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sub-eff; tr-sub-use; tr-ref)
 open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)

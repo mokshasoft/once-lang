@@ -50,7 +50,6 @@ import Once.CCC.Target.RiscV64.Syntax    as RVS
 -- DERIVES `run-trace` from `RV.run`'s step semantics, replacing the old opaque
 -- observable postulate with the real machine + three small named sub-gaps.
 import Once.Arith.Backend.RiscV64.RunTrace as RT
-open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 
 ------------------------------------------------------------------------

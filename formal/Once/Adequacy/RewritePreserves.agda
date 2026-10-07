@@ -26,8 +26,7 @@ open import Once.Postulates using (extensionality)
 import Once.Adequacy.LiftSound
 open import Once.Target.Arch using (TargetNum)
 open import Once.IR
-open import Once.IRTy using (IRTy)
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
@@ -37,8 +36,7 @@ open import Once.Denotation.TraceMonad using (>>=T-identityˡ)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
-open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; irProgram; table; main; tableEnv; tableCalls;
-  tableEnv-at; runIR)
+open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; table; main; tableEnv; tableCalls; tableEnv-at)
 open import Once.Semantics.Machine
 open import Once.Denotation.ValueDomain
 import Once.Denotation.DenotTrace

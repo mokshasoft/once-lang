@@ -24,7 +24,7 @@
 -- clear of `MeaningBridge`'s `⟦_⟧`-mixfix soup, mirroring `CataFold`/`CataRel`.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -35,35 +35,27 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.CataBridge (fmt : TargetNum) (ρ : CallEnv) where
 
-open import Data.Nat using (ℕ)
-open import Data.Unit using (⊤; tt)
-open import Data.List using (List; _++_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
-open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
+open import Once.Type using (⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
-open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F)
-open import Once.Semantics.Functor using (μS; cataS; ⟦_⟧SF)
+open import Once.Semantics.Machine using (coerce-μ-out; ⟦_⟧F)
+open import Once.Semantics.Functor using (⟦_⟧SF)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF)
-open import Once.Denotation.TraceMonad using (T; RelT′; RelT′-bind)
-open import Once.Denotation.DenotTrace using (evalᴰ; coerce-functor⁻¹-D; cata-ev-algᴰ; liftFn)
-open import Once.Denotation.TraceDenote using (events-F)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Denotation.TraceMonad using (T; RelT′-bind)
+open import Once.Denotation.DenotTrace using (coerce-functor⁻¹-D)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
-open import Once.IRTy using (⌊_⌋; eraseF; ⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋)
-open import Relation.Binary.PropositionalEquality using (subst)
 import Once.IR as IR
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Adequacy.SeqRel using (RelF; seqF-rel)
-open import Once.Adequacy.CataErased fmt ρ using (evalᴰ-Cata-erased)
+open import Once.Adequacy.CataErased fmt ρ using ()
 
 ------------------------------------------------------------------------
 -- Reflexivity of `RelV` at base types (funext-free; a private copy so

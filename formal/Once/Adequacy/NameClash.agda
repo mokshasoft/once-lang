@@ -26,14 +26,13 @@ module Once.Adequacy.NameClash where
 
 open import Data.Bool using (Bool; true; false; not; _∧_)
 open import Data.List using (List; []; _∷_; map; _++_)
-open import Data.Char using (Char)
 open import Data.Maybe using (nothing; just)
 open import Data.String using (String; toList)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; subst)
-open import Relation.Nullary using (yes; no; ¬_)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Relation.Nullary using (yes; no)
+open import Data.Empty using (⊥-elim)
 open import Function using (case_of_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -47,11 +46,11 @@ open import Once.Parser using
   ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
 open import Once.Parser.Module.Core using (Module; mkModule)
-open import Once.Parser.Lexer using (isIdentStart; isIdentContinue)
+open import Once.Parser.Lexer using (isIdentContinue)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once-symbol-own-≢)
 open import Once.CanonicalName using (bare)
-open import Once.TypeCheck.Elaborate using (PolyCtx)
+open import Once.TypeCheck.Elaborate using ()
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 open import Once.Type.Rigid using (rigidOf; rigidFree?)

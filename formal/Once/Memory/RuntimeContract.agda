@@ -20,7 +20,7 @@
 
 module Once.Memory.RuntimeContract where
 
-open import Data.Nat using (ℕ; zero; _≤_; _<_; z≤n)
+open import Data.Nat using (ℕ; _≤_; _<_; z≤n)
 open import Data.Nat.Properties using (<-irrefl; ≤-<-trans; <-trans)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -30,7 +30,7 @@ open import Relation.Nullary using (¬_)
 -- Import core types from existing MemoryLayoutSemantics
 -- (keeping compatibility with existing codebase)
 open import Once.Memory.MemoryLayoutSemantics
-  using (Addr; RegionBounds; lower; upper; InRegion)
+  using (Addr; RegionBounds; InRegion)
 
 ------------------------------------------------------------------------
 -- RuntimeContract: Everything the runtime must guarantee

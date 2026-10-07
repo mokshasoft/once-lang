@@ -20,7 +20,7 @@ module Once.Arith.Backend.X86-32.RunTrace where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (suc)
 open import Data.List using (List)
 
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)

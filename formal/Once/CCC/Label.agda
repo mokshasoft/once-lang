@@ -44,15 +44,14 @@ open import Data.Bool using (Bool; true; false; _∧_)
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (yes; no; ¬_)
-open import Relation.Nullary.Decidable using (⌊_⌋; toWitness; fromWitness; fromWitnessFalse)
-open import Once.CanonicalName using (CanonicalName; canonical; parts; _≟ᶜ_)
+open import Relation.Nullary.Decidable using (⌊_⌋; toWitness)
+open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 -- Rendering only: the SAME mangling the function symbol uses, so a label and
 -- its definition are visibly one identity in the object file.
 open import Once.Target.Symbol using (once-symbol-path)
 open import Data.String using () renaming (_++_ to _++ˢ_)
 -- D275: the decimal rendering whose chars are provably digits (`charsInBase`).
 open import Once.Target.Symbol using (showNat)
-open import Data.List using (foldr)
 
 ------------------------------------------------------------------------
 -- THE STRUCTURED LABEL IDENTITY (Plan 0.63, D089).

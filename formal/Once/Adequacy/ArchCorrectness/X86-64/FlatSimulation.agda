@@ -31,17 +31,16 @@
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; shift-base; slot-addr; slot-addr-linear)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
+open import Once.Memory.HeapAddress using (sucHL; heap-ref; ref-id)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.Type using (fits-int)
-open import Once.Word using (Carrier)
 open import Data.Nat using (ℕ; _+_; _∸_; _*_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CanonicalName using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
-open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Dyadic using (binary64)
 open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
@@ -67,13 +66,13 @@ open import Once.CCC.Machine.SMCore
 open import Data.Unit using (tt)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
-open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below; StoreWF; FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh)
+open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below; wf-heap; wf-stack)
 import Once.CCC.Target.X86-64.Semantics as X
 open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
-  renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
+  renaming (readReg to xreadReg; writeReg to xwriteReg)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; rip+sym; r12; sbb; base; base+disp; slots; slot-size; ret; call; call-l)
+  using (rax; rbx; rdi; rsp; r14; r15; Reg; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; lea; rip+label; rip+sym; r12; sbb; base; base+disp; slots; slot-size; ret; call; call-l)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false; if_then_else_)
 import Data.Nat
@@ -83,26 +82,22 @@ open import Relation.Binary.PropositionalEquality using (refl)
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
 module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
 open C using (HeapView; haddr; HDom; hfront)
-open import Once.CCC.Label using (once; thunk; LabelId; callee; e-fn; e-thunk)
+open import Once.CCC.Label using (once; thunk; callee; e-fn; e-thunk)
 -- Plan 0.65 G1c step 2: the register-poke sims take any post-state `SetsRole`
 -- describes; `C.sets-role-x86` is x86-64 exhibiting the one it builds.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
-open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-sbb-rr; nz-val; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-lea-label; step-lea-sym; step-ret; step-call; step-call-l)
+  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd)
+open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-sbb-rr; nz-val; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-lea; step-lea-label; step-lea-sym; step-ret; step-call; step-call-l)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
-open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-assoc; *-suc; *-identityʳ; *-assoc
-                                      ; +-monoʳ-<; *-monoˡ-<
-                                      ; <⇒≢; <-≤-trans; ≤-trans; m∸n≤m; m≤m+n; m∸n+n≡m
-                                      ; m<m+n; ≤-refl; ≤-<-trans; m≤n+m; +-monoʳ-≤)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; +-monoʳ-<; *-monoˡ-<; <⇒≢; <-≤-trans; ≤-trans; m∸n+n≡m; m<m+n; ≤-refl; ≤-<-trans; m≤n+m; +-monoʳ-≤)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; subst₂)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.Type using (fits-float)
-open import Data.Float using () renaming (Float to AgdaFloat)
 
 ------------------------------------------------------------------------
 -- The compiled correspondence = the DATA correspondence (FlatCorr, now

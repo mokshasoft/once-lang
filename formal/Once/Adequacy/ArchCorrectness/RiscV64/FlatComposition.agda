@@ -37,19 +37,16 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (just)
 open import Data.Integer using (+_) renaming (-_ to ℤ-)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Label using (Label; once; thunk; _≡ᵇᴸ_)
+open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.CCC.Target.RiscV64.Syntax as RS
 open import Once.CCC.Target.RiscV64.Syntax
-  using ( Instr; Program
-        ; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr
-        ; j; ret; call; call-sym; nop; unimp; label
-        ; sp; ra; t1; s3; slots )
+  using (Instr; Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label; sp; ra; slots)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------

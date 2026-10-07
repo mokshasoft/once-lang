@@ -23,20 +23,17 @@ module Once.CCC.Codegen.CLabelsUnique (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties
-  using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n; <-≤-trans; ≤-<-trans; +-suc; +-assoc; +-cancelʳ-≡; n<1+n; m≤n⇒m≤1+n; <⇒≤;
-         ≤-reflexive; +-identityʳ; +-comm; +-monoʳ-<; +-monoʳ-≤)
+  using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n; <-≤-trans; +-suc; +-assoc; +-cancelʳ-≡; n<1+n; ≤-reflexive; +-identityʳ; +-comm; +-monoʳ-<; +-monoʳ-≤)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.All using (All; []; _∷_; tabulate; lookup) renaming (map to All-map)
+open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁻ˡ; ++⁻ʳ) renaming (++⁺ to All-++⁺)
-open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
-open import Data.List.Relation.Unary.AllPairs.Properties using () renaming (++⁺ to AP-++⁺)
+open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
-open import Once.CCC.Label using (LabelId; idx; ℓ; e-thunk; e-fn)
+open import Once.CCC.Label using (LabelId; ℓ)
 open import Once.CCC.Machine.SMCore
 
 open import Once.CCC.Codegen.LabelDefs
@@ -83,7 +80,7 @@ case-win {k} {m} {hi} ssk≤m m≤hi wF wG =
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Prod; wf-Sum)
 open import Once.CCC.Codegen.IRToTrace o
-  using (visit-walk; rebuild-walk; lsize; push2; pop2; wrap-sum; resuspend-layer)
+  using (visit-walk; rebuild-walk; lsize; resuspend-layer)
 open import Once.CCC.Codegen.LabelRange o using (resuspend-label-mono)
 
 private
@@ -337,7 +334,7 @@ offsets-below Kb ks {w} = toWitness w
 -- The cata skeletons
 ------------------------------------------------------------------------
 
-open import Once.CCC.Codegen.IRToTrace o using (cata-trace-const; cata-trace-nat; cata-trace-linear; cata-trace-branching)
+open import Once.CCC.Codegen.IRToTrace o using ()
 
 CataOK : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) (ab : List (LabelId × ℕ × AbstractTrace)) (lo : ℕ) → Set
 CataOK st bb n1 l1 at ab lo =

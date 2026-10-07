@@ -40,7 +40,7 @@ showReg ebp = "%ebp"
 showReg esp = "%esp"
 
 open import Once.Target.RegConvention
-  using (RegClass; io; ccc; arith; free; RegConvention)
+  using (RegClass; io; ccc; RegConvention)
 
 owner : Reg → RegClass
 owner ecx = io

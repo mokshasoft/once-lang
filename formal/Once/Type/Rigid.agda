@@ -192,11 +192,11 @@ ground-kinded A g = (λ _ → Unit) , subst-ground _ A g , λ m → ⊥-elim (ft
 -- Deciding a kinded instance (what the elaborator runs at a use)
 ------------------------------------------------------------------------
 
-open import Relation.Nullary using (Dec; ¬_)
+open import Relation.Nullary using (Dec)
 open import Relation.Binary.PropositionalEquality using (sym; trans; subst)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (proj₁; proj₂)
+open import Data.Product using (proj₂)
 open import Once.Type.Match using (instantiate)
 open import Once.Type.Instance using (instantiate-sound; instantiate-complete)
 open import Once.Type.Determined using (agree-from)

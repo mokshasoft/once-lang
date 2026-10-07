@@ -22,7 +22,6 @@
 
 module Once.IR where
 
-open import Data.String using (String)
 open import Once.CanonicalName using (CanonicalName)
 
 open import Once.Float.Decimal using (Decimal)
@@ -44,7 +43,6 @@ open import Once.Type as T using (Type)
 -- link is a machine-validity predicate (now `Once.CCC.Machine.LocMatchesMode`),
 -- not IR syntax. So the IR no longer imports `Once.CCC.Machine.Locations`
 -- (→ `FrameSemantics` → `Memory.*`) and is a pure syntax tier modulo HeapRef.
-open import Once.Memory.HeapAddress using (HeapRef)
 
 -- D054/0.47: `const` carries the literal's machine-carrier value
 -- (`⟦ Carrier , Dyadic ⟧-base A` — the machine `Word` carrier for Int, `Float` for
@@ -56,7 +54,6 @@ open import Once.Memory.HeapAddress using (HeapRef)
 -- from the arch into the modular ops (`norm`/`fromℤ` at codegen/arith,
 -- D059), never baked into this literal's type. Literals are non-negative
 -- (negation is a separate `OpNeg`).
-open import Once.Word using (Carrier)
 
 -- SigOpInfo: the descriptor carried by every signature operation.
 open import Once.SigOp.Info public

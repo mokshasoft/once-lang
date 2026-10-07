@@ -11,7 +11,7 @@
 module Once.Adequacy.CPU.Interface where
 
 open import Data.Fin using (Fin)
-open import Data.List using (List; [])
+open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 open import Data.String using (String)

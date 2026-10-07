@@ -27,30 +27,28 @@ module Once.Arith.Machine.Rewrite where
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _,_; _×_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
-open import Relation.Nullary using (Dec; yes; no)
+open import Data.Product using (Σ-syntax; _,_; _×_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Type using (Type; Unit; Int; _*_; _+_; _⇒[_]_)
+open import Once.Type using (Unit; Int; _*_)
 open import Once.IR
 import Once.IRTy as II
 open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block)
 
-open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-pair)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
-open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
          numtype-as-type;
          ArithBlock; mk-block; shape-as-type)
-open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
-open import Once.Arith.Machine.Recognise using (recognise; recognise-body; recognise-body-float)
+open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
 open import Once.Arith.SigOp.Block using (block-info)
 
 ------------------------------------------------------------------------

@@ -30,35 +30,24 @@
 
 module Once.Parser.Expr where
 
-open import Data.List using (List; []; _∷_; foldr; reverse; length)
+open import Data.List using (List; []; _∷_; reverse; length)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; Σ; Σ-syntax)
+open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Char using (Char)
 open import Data.String using (String)
-open import Data.String.Properties as StrProp using (_≟_)
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans;
-                                        ≤-<-trans; <-≤-trans;
-                                        n<1+n; n≤1+n; <⇒≤; m≤n⇒m≤1+n)
+open import Data.String.Properties as StrProp using ()
+open import Data.Bool using (false)
+open import Data.Unit using (tt)
+open import Data.Nat using (_<_; s≤s)
+open import Data.Nat.Properties using (≤-refl; <-trans; n≤1+n; m≤n⇒m≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
-open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type)
-open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet;
-                                       RPair; RDestruct; RUnit; RInt; RFloat;
-                                       RStringLit; RAnnot; RBinOp; RUnaryOp;
-                                       BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
-                                       OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
-                                       UnaryOp; OpNeg)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.Type using (parseTypeWF)
-open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
 
 ------------------------------------------------------------------------
 -- `isReserved` lives in `Once.Parser.ExprRelation` (to avoid an import

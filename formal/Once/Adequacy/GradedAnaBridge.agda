@@ -18,21 +18,20 @@ open import Once.Target.Arch using (TargetNum)
 
 module Once.Adequacy.GradedAnaBridge (fmt : TargetNum) where
 
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; ν-type; _⇒[_]_; mk-kind; Many; Purity; pure; eff)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF)
-open import Once.Semantics.Machine using (coerce-ν-in; ⟦_⟧F)
+open import Once.Semantics.Machine using (coerce-ν-in)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; forceᵈ; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ; coerce-functor-D)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ; coerce-functor-D)
 open import Once.Denotation.ValueDomainLaws using (CoalgRel; anaᵈ-∼)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; fmapT; fmapT-∘; _>>=T_; RelT′; rel-ret; RelT′-fmap)
-open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; νᵖ; returnM; bindM; bindM-idˡ; toT)
-open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; νᵖ; returnM; bindM-idˡ)
 open import Once.Denotation.GradedOps using (cfᵛ; anaᵖ; mapAnaᵖ; ana-semᵛ)
 open import Once.Adequacy.GradedRelation fmt
   using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; force-∼ᵖᵈ; prjB-rel)

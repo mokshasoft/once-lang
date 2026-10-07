@@ -19,16 +19,15 @@
 
 module Once.CCC.Target.X86-64.Layout where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_; s≤s; z≤n)
+open import Data.Nat using (zero; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_; s≤s; z≤n)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans; <-≤-trans; m<m+n; m∸n≤m)
-open import Data.Product using (_×_; _,_)
-open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; subst)
 
 -- Import types for layout construction
 open import Once.Memory.MemoryLayoutSemantics as MLS
-  using (MemoryLayout; RegionBounds; lower; upper; InRegion)
-open MLS using (Addr; lower; upper)
+  using (MemoryLayout; RegionBounds; lower; upper)
+open MLS using (lower; upper)
 
 -- Import RuntimeContract and the X86-64 instance
 open import Once.Memory.RuntimeContract as RC using (RuntimeContract)
@@ -39,8 +38,6 @@ open import Once.CCC.Target.X86-64.StackGrowth
   using (word-size; x86-stack-growth)
 
 -- Re-export stack layout constants from IR.Stack
-open import Once.CCC.IR.Stack
-  using (pair-slots; closure-slots)
 
 ------------------------------------------------------------------------
 -- X86 Concrete Memory Layout
@@ -89,7 +86,7 @@ open import Once.Memory.FrameOps x86-layout x86-stack-growth public
 
 
 -- Re-export Memory operations
-open import Once.Memory.Memory using (Memory; Word; readMem; writeMem)
+open import Once.Memory.Memory using (Memory; readMem)
 
 ------------------------------------------------------------------------
 -- X86-Specific Properties (lower = 0 is definitional)

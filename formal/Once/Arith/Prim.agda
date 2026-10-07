@@ -16,7 +16,7 @@ module Once.Arith.Prim where
 
 open import Data.Product using (_,_)
 open import Once.Type using (Type; Int; Float; Unit; _*_; _+_)
-open import Data.Bool using (Bool; true; false; not)
+open import Data.Bool using (Bool; true; false)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Once.Arith.CmpOp using (CmpOp)

@@ -10,12 +10,10 @@
 
 module Once.Parser.TypeAlias where
 
-open import Data.List using (List; []; _∷_; length; zip)
+open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_)
-open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
-open import Data.Bool using (if_then_else_)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type; rigid; Unit; Void; Int; Float;

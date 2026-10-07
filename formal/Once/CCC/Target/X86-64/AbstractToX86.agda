@@ -13,8 +13,8 @@
 
 module Once.CCC.Target.X86-64.AbstractToX86 where
 
-open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.Nat using (ℕ; suc) renaming (_*_ to _*ℕ_)
+open import Data.List using ([]; _∷_; _++_)
 
 -- Plan 0.10 Phase B: SigOp dispatch. Plan 0.30 cleanup: the two live
 -- emitters now live in CodeGen.Primitives (decoupled from the dead
@@ -22,28 +22,19 @@ open import Data.List using (List; []; _∷_; _++_)
 import Once.CCC.Target.X86-64.CodeGen.Primitives as CompileX86-64
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Data.Empty using (⊥)
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Nullary using (Dec; yes; no)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
-         Mem; base; base+disp; rip+disp; rip+label; rip+sym;
-         Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; ret; jmp; je; jne; label; ud2;
-         Program; slot-size; slots)
+  using (rax; rbx; rcx; rdi; rbp; rsp; r12; r14; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; ret; jmp; je; label; ud2; Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.CCC.Label using (Label; once; thunk; callee; e-fn)
+open import Once.CCC.Label using (once; callee; e-fn)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion

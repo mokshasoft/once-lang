@@ -37,7 +37,7 @@ module Once.CCC.Machine.FrameFree where
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
 open import Once.CCC.Machine.SMCore

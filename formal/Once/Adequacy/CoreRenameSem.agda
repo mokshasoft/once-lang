@@ -28,25 +28,22 @@ open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreRenameSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (tt)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Data.Sum using (inj₁; inj₂)
 open import Once.Postulates using (extensionality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst-sym-subst)
 
 open import Once.Type using (Type; Quantity; Zero; One; Many)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Surface.Context
-  using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; lookup; singleUse; zeroUsage;
-         _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m;
-         _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+  using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup;
-  thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊔ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)
+open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup; thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)
 open import Once.Spec.Core.Rename S using (ren-⊢; ren-cong; keep-extR)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; subM)
-open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Denotation.EnvAlgebraV using (≤q'-unique; ⊑ᵘ-unique)
+open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; lookupᵛUsed)
+open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 open import Once.Denotation.GradedOps using (ana-semᵛ; fmapM)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
@@ -393,7 +390,7 @@ wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =
 -- A closed term, embedded in any context (`⊢close`), means what it meant.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Core.Rename S using (⊢close; ∅⊆; close)
+open import Once.Spec.Core.Rename S using (⊢close; ∅⊆)
 open import Once.Surface.Thinning using (thin-usage-zeroUsage)
 
 close-sem : ∀ {n} {Γ : Ctx n} {t A π} (d : ∅ ⊢[ zeroUsage ] t ∷ A ! π)

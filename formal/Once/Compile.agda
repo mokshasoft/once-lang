@@ -23,12 +23,11 @@
 module Once.Compile where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using (List; []; _∷_; foldr; foldl)
+open import Data.List using (List; []; _∷_)
 import Data.List as DL
 import Data.Bool.ListAction as BLA
-open import Data.Nat using (ℕ; _⊔_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; ∃-syntax; proj₁; proj₂)
 open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -47,32 +46,12 @@ open import Relation.Nullary.Decidable.Core using (¬?)
 open import Relation.Nullary.Negation.Core using (¬_)
 
 -- Re-export Surface IR
-open import Once.Surface.IR
-  using (SurfaceIR; Let; SigOp)
-  renaming
-    ( id to S-id
-    ; _∘_ to _S-∘_
-    ; fst to S-fst
-    ; snd to S-snd
-    ; ⟨_,_⟩ to S-⟨_,_⟩
-    ; inl to S-inl
-    ; inr to S-inr
-    ; [_,_] to S-[_,_]
-    ; terminal to S-terminal
-    ; initial to S-initial
-    ; curry to S-curry
-    ; apply to S-apply
-    -- OCP-0003: fold/unfold removed in favor of structured recursion
-    ; arr to S-arr
-    )
 
 -- Re-export desugar transformation
-open import Once.Surface.Desugar
-  using (desugar; desugar-default)
 
 -- Re-export optimizer (includes categorical laws + fusion rules)
 open import Once.Optimize
-  using (optimize; optimize-once; optimize-n)
+  using (optimize)
 
 -- Re-export Arith types and IR (OCP-0001: Orthogonal Arithmetic Compiler)
 open import Once.Arith.Type
@@ -89,7 +68,6 @@ open Once.Arith.Machine.IR.ArithBlock using (block-body)
 open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 
-open import Once.CCC.Label using (Label)
 import Once.CCC.Codegen.IRToTrace as IRT
 import Once.CCC.Target.X86-64.File as X64F
 import Once.CCC.Target.X86-32.File as X32F
@@ -104,8 +82,7 @@ import Once.Arith.Backend.X86-64.Emit as X64A
 import Once.Arith.Backend.X86-32.Emit as X32A
 import Once.Arith.Backend.RiscV64.Emit as RVA
 import Once.CCC.Label as Label
-open import Once.CCC.Label using (mkLabelId)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-call-fn)
+open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
 open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main)
 open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
@@ -124,11 +101,11 @@ open PolyFunInfo
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate using (ctxWithImportsAndPolys; PolyCtx; emptyPolyCtx; checkElab)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
-open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
+open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; lookupPolyPrefix; TopCtx; topCtx; emptyTopCtx)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; TopCtx; topCtx; emptyTopCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.String.Properties as SProp
@@ -143,7 +120,7 @@ import Data.Nat
 import Once.TypeCheck.Principal as Principal
 
 -- Surface → IR elaboration
-open import Once.Surface.Elaborate using (elaborate; elaborateFull)
+open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Denotation.Realize using (realize)
 
 ------------------------------------------------------------------------
@@ -517,7 +494,6 @@ open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBa
 -- through `compile` — because warnings do not change what is compiled, and
 -- keeping them a separate OBSERVATION is what stops them leaking into
 -- `correct`. This re-export is also what puts them on the extraction path.
-open import Once.Warnings using (Warning; roundingWarnings; renderWarning; warningsFor)
 open import Data.Nat.Show renaming (show to showNat)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (_∸_)

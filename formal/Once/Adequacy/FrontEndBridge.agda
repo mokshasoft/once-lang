@@ -30,18 +30,17 @@ open import Data.Nat using (_<_; _≤_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using (<-≤-trans)
 open import Induction.WellFounded using (Acc; acc)
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using (List; _∷_; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum using (inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Parser.Token using (Token)
 open import Once.Parser.Module.Core using (Decl; Module; mkModule; ParseAtB)
-open Module using (decls)
 open import Once.Parser.Lexer using (tokenizeString)
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module
@@ -61,8 +60,7 @@ open import Once.Parser
 ------------------------------------------------------------------------
 
 open import Once.Spec.Parsing
-  using (Lexes; ParsesDecl; ParsesDecls; pds-noskip; pds-stop; pds-cons;
-         ParsesModule; ParsesText)
+  using (ParsesDecls; pds-noskip; pds-stop; pds-cons; ParsesModule; ParsesText)
 open import Once.Adequacy.LexerBridge using (lexer-sound; lexer-complete)
 
 ------------------------------------------------------------------------

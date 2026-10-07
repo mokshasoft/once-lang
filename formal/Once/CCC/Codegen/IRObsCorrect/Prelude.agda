@@ -18,7 +18,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Prelude (o : CanonicalName) (tbl : List IRFun) where
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _∸_) public
 open import Data.Nat.Properties using (n<1+n; n≤1+n; ≤-refl; <-≤-trans) public

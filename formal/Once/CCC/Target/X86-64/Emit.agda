@@ -11,14 +11,13 @@
 
 module Once.CCC.Target.X86-64.Emit where
 
-open import Data.Nat using (ℕ)
 open import Data.Nat.Show using () renaming (show to showNat)
 open import Data.String using (String; _++_)
-open import Data.List using (List; []; _∷_; foldr)
+open import Data.List using (foldr)
 
 -- Import X86-64 syntax
 open import Once.CCC.Target.X86-64.Syntax
-open import Once.CCC.Label using (Label; once; sigop; thunk; showLabelId; thunkSym; labelSym)
+open import Once.CCC.Label using (thunkSym; labelSym)
 
 ------------------------------------------------------------------------
 -- Register names

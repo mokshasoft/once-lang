@@ -37,7 +37,7 @@ open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_) renaming (_++_ to _++ᴸ_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 import Relation.Nullary
@@ -45,9 +45,9 @@ import Relation.Nullary
 open import Once.Type
 open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS; _≟ᶜ_)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; BinOp; UnaryOp; isComparisonOp)
+  using (RawExpr; isComparisonOp)
 open import Once.TypeCheck.Classify
-  using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPoly; emptyCtx)
+  using (NamedCtx; Imports; PolyCtx; lookupImport; emptyCtx)
 
 ------------------------------------------------------------------------
 -- Small helpers

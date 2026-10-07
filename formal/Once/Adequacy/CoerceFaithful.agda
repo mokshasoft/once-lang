@@ -23,8 +23,7 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.CoerceFaithful (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
-open import Data.Empty using (⊥)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (⊤)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
@@ -32,7 +31,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Type as Ty using (Type; Zero; One; Many; mk-kind; _⇒[_]_; _*_; _+_; Unit)
 open import Once.Type.Sub
-open import Once.IR as IR using (IR; IRTy; _∘_; ⟨_,_⟩; fst; snd; case; curry; apply; inl; inr; initial; ⌊_⌋)
+open import Once.IR as IR using (IR; IRTy; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; fmapT-id; fmapT-cong)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)

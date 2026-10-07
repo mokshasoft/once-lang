@@ -17,18 +17,18 @@ open import Once.Target.Arch using (TargetNum)
 
 module Once.Adequacy.GradedCataBridge (fmt : TargetNum) where
 
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; subst)
 
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type; K; Id; _⊕_; _⊗_; Purity; pure; eff)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF)
 open import Once.Semantics.Machine using (coerce-μ-out; ⟦_⟧F)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF; coerce-functor⁻¹-D)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind; RelT′-fmap)
+open import Once.Denotation.TraceMonad using (T; returnT; RelT′; rel-ret; RelT′-bind; RelT′-fmap)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
-open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM; _>>=ᵖ_; >>=ᵖ-β)
+open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM; >>=ᵖ-β)
 open import Once.Denotation.GradedOps using (cf⁻¹ᵛ; seqM; cata-semᵛ)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Adequacy.SeqRel using (RelF; seqF-rel)

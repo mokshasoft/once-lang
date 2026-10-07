@@ -30,7 +30,7 @@
 
 module Once.Parser.Module.Resolve where
 
-open import Data.Bool using (Bool; true; false; _∨_; not; T)
+open import Data.Bool using (Bool; true; false; not; T)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++L_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -48,7 +48,7 @@ open import Once.Type using (isGround; extractGround)
 open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
 open import Once.TypeCheck.Principal using (siglessSchema)
-open import Once.CanonicalName using (CanonicalName; canonical; gen; GenWord; genWord?)
+open import Once.CanonicalName using (canonical; gen; GenWord; genWord?)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
          RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna;

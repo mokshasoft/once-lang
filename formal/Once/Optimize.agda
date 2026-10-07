@@ -25,22 +25,13 @@ module Once.Optimize where
 
 open import Once.Type
 open import Once.IR
-open import Once.Float.Decimal using (Decimal; decimalOf; round)
 import Once.IRTy as II
-open import Once.CCC.Machine.SMCore using (_≟H_)
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat.Properties
-open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
-open import Data.String using (String)
-open import Data.String.Properties using () renaming (_≟_ to _≟String_)
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; subst; sym; trans)
-open import Data.Empty using (⊥)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Maybe.Properties using (just-injective)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
 
 ------------------------------------------------------------------------
 -- Equality decision (needed for eta laws)
@@ -52,7 +43,7 @@ open import Data.Maybe.Properties using (just-injective)
 ------------------------------------------------------------------------
 
 -- Plan 0.99: Functor/Type equality is `Once.Type.DecEq`'s — the one copy.
-open import Once.Type.DecEq using (_≟T_; _≟F_)
+open import Once.Type.DecEq using (_≟T_)
 
 ------------------------------------------------------------------------
 -- IR heads (the eta rules below dispatch on them)

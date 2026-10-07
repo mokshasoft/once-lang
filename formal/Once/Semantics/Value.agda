@@ -53,9 +53,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Function using (_∘_)
 
 open import Once.Type
@@ -91,7 +89,7 @@ open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-
 open import Once.Functor.Translate
   using ( base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Functor
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; sfmap; cataS; cataS-cong; sfmapCata; sfmapCata-is-sfmap; anaS; sfmapAna; sfmapAna-is-sfmap; fuseNatS; fuseNatW; fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id)
+  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; ⟨_⟩; outS; νS; sfmap; cataS; cataS-cong; fuseNatS; fuseNatW; cataS-computation)
 open Once.Semantics.Functor.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /

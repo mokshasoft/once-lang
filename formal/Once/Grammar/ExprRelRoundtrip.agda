@@ -19,30 +19,24 @@ module Once.Grammar.ExprRelRoundtrip where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
-open import Data.Integer using (ℤ; +_)
-open import Data.Product using (_×_; _,_)
-open import Data.String using (String)
-open import Data.Bool using (Bool; true; false)
+open import Data.Unit using (tt)
+open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using
-  (_≡_; refl; cong; sym; trans; subst)
+  (_≡_; refl; sym)
 
 import Once.Grammar as G
 open G using (GExpr)
 open import Once.TypeCheck.Raw
 open import Once.Parser.Token
 open import Once.Parser.ExprRelation
-open import Once.Parser.TypeRelation using (ParsesType)
 open import Once.Grammar.ExprPrinter using
   (ConcreteExpr; c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual;
    c-e-lam; c-e-app; c-e-pair; c-e-annot; c-e-binop; c-e-unary; c-e-comp;
    c-e-let1; c-e-destr; printGExpr; binOpToken)
 open import Once.Grammar.ExprConvert using
-  (gexprToRaw; gBinOpToRaw; gUnaryOpToRaw)
-open import Once.Grammar.Printer using (printGType; Concrete)
+  (gexprToRaw; gBinOpToRaw)
+open import Once.Grammar.Printer using (printGType)
 open import Once.Grammar.RelRoundtrip using (rt-type)
-open import Once.Grammar.ParserRelation using (toType)
 
 ------------------------------------------------------------------------
 -- "Quiet" token-prefix predicate — the residual triggers no tail

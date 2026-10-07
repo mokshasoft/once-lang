@@ -9,17 +9,15 @@
 
 module Once.Denotation.EnvAlgebraV where
 
-open import Data.Nat using (ℕ)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
 open import Once.Type using (Type; Quantity; Zero; One; Many)
 open import Once.Surface.Context
-  using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_;
-         _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-refl; ⊑ᵘ-trans)
+  using (Ctx; ∅; _,_^_; Usage; _∷_; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
-open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0)
+open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ)
 
 Env : ∀ {n} → Ctx n → Usage n → Set
 Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ

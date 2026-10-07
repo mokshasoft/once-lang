@@ -16,8 +16,7 @@
 
 module Once.CCC.Target.X86-32.Syntax where
 
-open import Data.Nat using (ℕ; _+_; _*_)
-open import Data.Integer using (ℤ)
+open import Data.Nat using (ℕ; _*_)
 open import Data.List using (List)
 open import Data.String using (String)
 -- Plan 0.63: label PROVENANCE, shared with x86-64 (D082). `Once.CCC.Label` is

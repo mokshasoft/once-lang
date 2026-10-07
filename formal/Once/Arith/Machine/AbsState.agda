@@ -20,12 +20,8 @@
 
 module Once.Arith.Machine.AbsState where
 
-open import Data.Nat using (ℕ; zero; suc; _≟_)
-open import Data.Integer using (ℤ)
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Nat using (ℕ; _≟_)
+open import Data.Maybe using (Maybe; nothing)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

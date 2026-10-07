@@ -10,7 +10,7 @@
 
 module Once.Parser.Generic.Complete where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using (_∷_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

@@ -18,7 +18,6 @@ open import Once.Type
 open import Once.IR as IR using ()
 open import Once.Surface.Syntax
 open import Once.Surface.Properties using (+ᵘ-identityʳ; +ᵘ-identityˡ; *ᵘ-zeroʳ)
-open import Once.Surface.Elaborate using (elaborate)
 
 seq : ∀ {n} {Γ : Ctx n} {Ψa Ψb : Usage n} {A B : Type}
     → Expr Γ Ψa A → Expr Γ Ψb B → Expr Γ (Ψa +ᵘ Ψb) B

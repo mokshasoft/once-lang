@@ -11,13 +11,11 @@
 
 module Once.CCC.IR.Stack where
 
-open import Data.Nat using (ℕ; zero; suc; _≤_; _⊔_; s≤s) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; m≤n+m; m≤m+n; +-monoˡ-≤; +-monoʳ-≤; ⊔-monoˡ-≤; ⊔-lub; *-monoˡ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
+open import Data.Nat using (ℕ; suc; _≤_; _⊔_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (+-assoc)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.IR
-open import Once.IR.Size using (ir-size)
 import Once.CCC.Machine.SMPrimitives as SMP
 
 ------------------------------------------------------------------------

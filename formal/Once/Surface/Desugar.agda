@@ -16,7 +16,7 @@ open import Once.Type
 open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.IR as C
 open import Once.Arith.SigOp.Builders using (generic-info)
-open import Once.Functor.Translate using (IsBaseType; IsConcrete)
+open import Once.Functor.Translate using (IsBaseType)
 open import Once.CanonicalName using (bare)
 
 open import Data.String using (String)

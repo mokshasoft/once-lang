@@ -23,7 +23,7 @@
 -- `FaithfulLemmas.cata-body`/`ana-body`) is discharged.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -37,16 +37,13 @@ module Once.Adequacy.SourceFaithful (fmt : TargetNum) (ρ : CallEnv) where
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Adequacy.CoerceFaithful fmt ρ using (coerce-lift)
 
-open import Data.Nat using (ℕ; _∸_)
 open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _++_; take; length)
+open import Data.List using ([])
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym; subst-sym-subst)
-open import Data.List.Properties using (++-identityʳ; ++-assoc)
-open import Once.Denotation.Trace using (SigOpEvent)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; pure; eff; Quantity; Zero; One; Many)
 open import Once.Functor.Translate using (con-base; con-fun; base-Unit)
@@ -57,20 +54,16 @@ open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧�
 open import Once.Surface.Context using () renaming (_,_ to _,ᶜ_)
 import Once.Surface.Syntax as SrfS
 open import Once.Surface.Properties using (erase-arg-usage)
-open import Once.Surface.Elaborate using (elaborate; elaborateFull; proj; projUsed; distribute; compIR; copairIR; forkIR; curryIR; distribIR;
-                                          envˡ; envʳ; restrictEnv; bindEnv)
+open import Once.Surface.Elaborate using (elaborate; elaborateFull; projUsed; distribute; compIR; copairIR; forkIR; curryIR; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Data.Bool using (Bool; true; false)
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ; fmapT)
-open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
-open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial) renaming (id to idIR)
+open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial) renaming ()
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info;
                                              add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.Adequacy.CataErased fmt ρ using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-∘; liftFn-pair;
                                                   liftFn-terminal)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.CanonicalName using (bare)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; liftFn; cohᴰ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 open import Once.IRTy using (IRTy; ⌊_⌋) renaming (_*_ to _*ᴵ_; _+_ to _+ᴵ_)

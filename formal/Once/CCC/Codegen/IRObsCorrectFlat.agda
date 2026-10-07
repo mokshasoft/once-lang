@@ -42,7 +42,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv; Linked)
+open import Once.Denotation.Program using (IRFun; Linked)
 import Once.Denotation.TraceMonad as TM
 import Once.CCC.FrameSemantics
 module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) (tbl : DL.List IRFun) where

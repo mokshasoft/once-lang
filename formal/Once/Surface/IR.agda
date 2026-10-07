@@ -13,7 +13,7 @@
 module Once.Surface.IR where
 
 open import Once.Type
-open import Once.Functor.Translate using (IsBaseType; IsConcrete)
+open import Once.Functor.Translate using (IsBaseType)
 
 open import Data.String using (String)
 

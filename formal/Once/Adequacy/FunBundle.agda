@@ -23,20 +23,20 @@ module Once.Adequacy.FunBundle where
 
 
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; addImp)
+open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Product using (_×_; Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (⊤)
+open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.String using (String; _==_) renaming (_≟_ to _≟str_)
+open import Data.String using (String; _==_) renaming ()
 open import Once.CanonicalName using (bare) renaming (_≟ᶜ_ to _≟cn_)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Function using (case_of_)
 
 open import Once.IR using (IR)
@@ -48,22 +48,17 @@ open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
-open import Once.Surface.Syntax using (Expr; ∅; Usage)
-open import Once.Surface.Elaborate using (elaborate; elaborateFull)
-open import Once.Denotation.Realize using (realize)
+open import Once.Surface.Syntax using (Expr; Usage)
 open import Once.TypeCheck.Elaborate as TE
-  using (CheckElabResult; checkElab; ctxWithImportsAndPolys; PolyCtx)
-open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
+  using (checkElab; ctxWithImportsAndPolys; PolyCtx)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
-open import Once.Adequacy.MainIRForm using (findMain-skip; bare-injective; compileFun-main-EffUU)
+open import Once.Adequacy.MainIRForm using (bare-injective)
 import Once.Adequacy.ModuleComplete as MC
 
 EffUU : Type

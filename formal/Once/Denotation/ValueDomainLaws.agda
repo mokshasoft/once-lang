@@ -28,9 +28,9 @@
 
 module Once.Denotation.ValueDomainLaws where
 
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ; anaTree)

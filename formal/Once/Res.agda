@@ -27,9 +27,7 @@ module Once.Res where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Bool using (Bool; true; false)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
-open import Data.Product using (Σ; _,_; Σ-syntax)
+open import Data.Product using (_,_; Σ-syntax)
 
 data Res (X : Set) : Set where
   stopped : Res X            -- the program ended; there is NO result

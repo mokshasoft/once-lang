@@ -35,22 +35,16 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.LabelRange (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
+open import Data.Nat using (ℕ; suc; _+_; _≤_)
 open import Data.Nat.Properties using
-  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc)
+  (≤-refl; ≤-trans; n≤1+n; m≤m+n)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List)
 
-open import Once.IR using (IR; AllocMode; Stack; Heap;
-  id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply;
-  In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; Call; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
-  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.CCC.Label using (ℓ)
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.CCC.Machine.SMCore using (LabelId; AbstractInstr; AbstractTrace)
+open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; lsize; resuspend-layer)

@@ -20,11 +20,10 @@
 -- labels. `o` is constant for a whole definition, so it belongs on the module
 -- rather than on every lemma — which is what keeps the statements below
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
-open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Nat using (ℕ)
 
-open import Once.Denotation.TraceMonad using (Interp; interp)
+open import Once.Denotation.TraceMonad using (interp)
 open import Once.Spec.Contract using (ISig; Impl)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
@@ -65,14 +64,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Adequacy
 open import Once.Denotation.Behavior using (Source; Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Denotation.TraceMonad using (Interp)
-open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
 -- wired-not-imported). Importing `Once.Adequacy.CPU` here pulls in the
 -- per-arch instance postulates; that is intentional and confined to
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
-open import Once.Adequacy.CPU using (Byte; arch-semantics)
+open import Once.Adequacy.CPU using (Byte)
 open import Once.Target.Arch using (Arch)
 open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
@@ -98,7 +95,6 @@ import Once.Adequacy.Compile as VCompile
 -- be extracted. It contributes nothing to the theorem below — it is stable
 -- extracted NAMES plus two predicates the hand-written bridge used to compute
 -- by pattern-matching MAlonzo constructors.
-open import Once.Extract.Names using (module-has-main; module-imports)
 
 -- Instantiate the verified pipeline with the concrete per-arch
 -- semantics AND the per-arch backend-correctness witnesses. `VC.compile` /

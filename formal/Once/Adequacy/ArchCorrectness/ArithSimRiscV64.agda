@@ -26,12 +26,12 @@
 
 module Once.Adequacy.ArchCorrectness.ArithSimRiscV64 where
 
-open import Data.Nat using (ℕ; _+_; _*_; suc; _≡ᵇ_)
+open import Data.Nat using (ℕ; _+_; _*_; _≡ᵇ_)
 open import Data.Nat.Properties using (≡⇒≡ᵇ)
 open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
-open import Data.Unit using (⊤; tt)
+open import Data.List using ([]; _∷_)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
@@ -40,16 +40,16 @@ open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch
 import Once.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)
-open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (⟦_⟧S; InputPath; Side; Fst; Snd)
-open import Once.Target.RiscV64.PhysReg using (Reg; a0; a3; a4; sp; t0)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Target.RiscV64.PhysReg using (Reg; a0; sp; t0)
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)
 import Once.CCC.Target.RiscV64.Semantics as RV
 open RV using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
 open RV.State using (regs; memory)
 import Once.Arith.Backend.RiscV64.ExecArith as EA
-open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves)
+open import Once.Arith.Backend.RiscV64.Preserve using (step-of-preserves)
 open Once.Arith.Backend.RiscV64.Preserve.AgreeCCC using (a-sp)
 open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
 import Once.Word as OnceWord
@@ -58,7 +58,7 @@ import Once.Word as OnceWord
 -- THIS target rather than as the default nobody chose (plan 0.74 J5).
 module W = OnceWord.Width 64
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
-open import Once.Target.Arch using (Arch; riscv64; arch-numerics)
+open import Once.Target.Arch using (riscv64; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
 -- numerics. It used to be applied at 64 for every arch, including this one.
 open ASC.At (arch-numerics riscv64) using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
@@ -90,7 +90,7 @@ open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   InStack InHeap stackAddr-write-preserves-heap def side-off
   using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
 
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_)
 
 -- Bridge the (St-based) shared path-load-go to the (bare-memory) region plg
 -- (identical folds; both stuck on the path variable, so a small induction).

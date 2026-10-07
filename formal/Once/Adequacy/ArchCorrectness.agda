@@ -31,7 +31,6 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-open import Data.Nat using (ℕ)
 
 open import Once.Denotation.TraceMonad using (Interp)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
@@ -73,11 +72,9 @@ module Once.Adequacy.ArchCorrectness
 o : CanonicalName
 o = Co.entry-owner
 
-open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 open import Once.Adequacy.Compile using (ArchCorrect)
-open import Data.List using (List; [])
-open import Data.Product using (proj₁)
+open import Data.List using (List)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Denotation.Program using (IRFun; table; main; irProgram; LinkedProgram)
 open import Once.Adequacy.SourceTrace using (rewrite-program-linked)

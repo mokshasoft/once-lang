@@ -14,7 +14,7 @@
 -- `sem-In = ⟨_⟩∘coerce-μ-in`).
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -26,28 +26,22 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.InErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Nat using (ℕ)
-open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
+  using (_≡_; refl; cong; trans; sym; subst; subst-subst-sym)
 
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
-open import Once.Type using (Type; Functor; μ-type; ⟦_⟧T)
+open import Once.Type using (Functor; μ-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF; translateF)
-open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
+open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Semantics.Functor using (μS; ⟨_⟩; ⟦_⟧SF)
-open import Once.Semantics.Machine using (sem-In; coerce-functor; coh; tF-coh; ⟦_⟧; ⟦_⟧F; ⟦μ⟧; coerce-μ-in)
-open import Once.Res using (Res; returns; mapRes)
+open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
 open import Once.Denotation.TraceMonad using (T; returnT)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)
 open import Once.Adequacy.CataErased fmt ρ using (evalᴰ-subst-dom)
 open import Once.Adequacy.AnaErased fmt ρ using (coerce-νin-erase-D; subst-T-returnT)
-open import Once.Postulates using (extensionality)
 import Once.IR as IR
 
 -- `coerce-μ-in G X x` computes structurally, IGNORING the carrier `X`, so it

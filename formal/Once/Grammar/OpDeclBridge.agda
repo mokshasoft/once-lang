@@ -11,27 +11,23 @@
 
 module Once.Grammar.OpDeclBridge where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Char using (Char)
-open import Data.List using (List; []; _∷_; length; reverse)
-open import Data.String using (String) renaming (fromList to strFromList)
+open import Data.List using (List; []; _∷_; length)
+open import Data.String using (String) renaming ()
 open import Data.Nat using (_<_; _≤_)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _,_)
+open import Data.Product using (Σ-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (PolyType)
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DTypeSig; ParseAtB; ParseAtB≤)
 open import Once.Parser.Module.OpName
-  using (OpTok; otClose; otChar; otNone; opTokClass; parseOpCharsB; pocGo; parseOperatorNameB)
+  using (OpTok; otClose; otChar; otNone; opTokClass; parseOpCharsB; pocGo)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB; tryOpDeclAfterB)
 open import Once.Parser.PolyType using (parsePolyTypeB)
-open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
-open import Once.Spec.Grammar.FunDef using (ParsesFunDef)
 open import Once.Grammar.FunDefBridge using (sound-fundef; complete-fundef)
 open import Once.Spec.Grammar.OpDecl
   using (ParsesOpChars; poc-close; poc-char; ParsesOpAfter; poa-sig; poa-fun;

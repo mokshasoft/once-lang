@@ -29,25 +29,17 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseArmR (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using (labels-in)
-open import Once.CCC.Codegen.LabelSeg using (LabelIn; LabelsIn; li-none; li-lab; in-range)
-open import Once.CCC.Codegen.LabelRange o using (label-mono)
-open import Once.CCC.Label using (idx)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
-open import Data.Nat.Properties using (1+n≰n)
-open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
-open import Data.Sum using (inj₁; inj₂)
-open import Data.Product using (Σ)
+open import Once.CCC.Codegen.LabelScope o using ()
+open import Once.CCC.Codegen.LabelRange o using ()
+open import Data.Sum using (inj₂)
 open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using () renaming (_+_ to _+ᵀ_)
-open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
-open +-*-Solver using (solve; _:+_; con; _:=_)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -57,7 +49,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
-open import Once.Res using (Res; stopped; returns; is-stopped; res-returns; res-stopped)
+open import Once.Res using (is-stopped)
 open import Data.Bool using (Bool)
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
@@ -71,8 +63,7 @@ module ArmRC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes; flat-tag-branch-not;
-                                flat-jmp; flat-label)
+  open FlatStepsAPI {FS} using (flat-step1; flat-jmp)
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.
   open ShapeC {FS}

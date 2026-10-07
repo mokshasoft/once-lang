@@ -34,8 +34,8 @@ open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-assoc; +-comm)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
-open import Data.List.Properties using (++-assoc; length-++)
-open import Data.Product using (_×_; _,_; ∃-syntax; proj₁; proj₂)
+open import Data.List.Properties using (++-assoc)
+open import Data.Product using (_×_; _,_; ∃-syntax; proj₁)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -43,14 +43,13 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Bool using (Bool; true; false)
-open import Once.CCC.Label using (≡ᵇᴵ-true)
 
 open import Once.CCC.Machine.SMCore
   using (block-layout; blocks-layout; AbstractTrace; AbstractInstr; LabelId)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Label using (_≡ᵇᴵ_; ≡ᵇᴵ-refl; EntryId; e-thunk; _≡ᵇᴱ_; ≡ᵇᴱ-refl; ≡ᵇᴱ-true)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-entry; c-call-fn)
+open import Once.CCC.Label using (EntryId; e-thunk; _≡ᵇᴱ_; ≡ᵇᴱ-refl; ≡ᵇᴱ-true)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk)
 
 ------------------------------------------------------------------------
 -- Fetch agreement, spelled out (= `Interface.Core.SpanAt`).

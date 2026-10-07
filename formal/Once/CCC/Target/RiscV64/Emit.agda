@@ -11,14 +11,12 @@
 
 module Once.CCC.Target.RiscV64.Emit where
 
-open import Data.Nat using (ℕ)
 open import Data.Nat.Show using () renaming (show to showNat)
-open import Data.Integer using (ℤ; +_)
 open import Data.Integer.Show using () renaming (show to showInt)
 open import Data.String using (String; _++_)
-open import Data.List using (List; []; _∷_; foldr)
+open import Data.List using (foldr)
 
-open import Once.CCC.Label using (showLabelId; thunkSym; labelSym)
+open import Once.CCC.Label using (thunkSym; labelSym)
 open import Once.CCC.Target.RiscV64.Syntax
 
 ------------------------------------------------------------------------

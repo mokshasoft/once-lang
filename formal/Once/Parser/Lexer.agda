@@ -18,20 +18,20 @@
 
 module Once.Parser.Lexer where
 
-open import Data.List using (List; []; _∷_; _++_; reverse; length)
+open import Data.List using (List; []; _∷_; length)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax)
-open import Data.Bool using (Bool; true; false; _∨_; _∧_; not; if_then_else_)
-open import Data.Char using (Char; isAlpha; isDigit; isSpace; isLower) renaming (_≟_ to _≟c_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
+open import Data.Char using (Char; isAlpha; isDigit) renaming (_≟_ to _≟c_)
 open import Relation.Nullary using (does)
-open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _<ᵇ_; _≤_; _<_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _≤_; _<_; s≤s; z≤n)
 -- `+` alone is ℤ's prefix constructor here (Data.Integer is imported below), so
 -- the ℕ addition in `adv` must be qualified.
 import Data.Nat as ℕ
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n; <-trans; m≤n⇒m≤1+n; <⇒≤)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n; m≤n⇒m≤1+n; <⇒≤)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
-open import Data.Integer using (ℤ; +_)
+open import Data.Integer using (+_)
 open import Data.String using (String; fromList; toList)
 open import Agda.Builtin.Char using (primCharEquality; primCharToNat)
 

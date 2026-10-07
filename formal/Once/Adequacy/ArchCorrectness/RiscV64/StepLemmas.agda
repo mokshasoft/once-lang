@@ -29,13 +29,13 @@
 
 module Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _*_; _<ᵇ_)
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Integer using (ℤ; +_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Data.Nat using (suc; _+_; _≡ᵇ_; _<ᵇ_)
+open import Data.Bool using (true; false; if_then_else_)
+open import Data.Maybe using (just; nothing)
+open import Data.Integer using (ℤ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.CCC.Label using (Label; thunk)
+open import Once.CCC.Label using (thunk)
 open import Once.CCC.Target.RiscV64.Syntax
 open import Once.CCC.Target.RiscV64.Semantics
 

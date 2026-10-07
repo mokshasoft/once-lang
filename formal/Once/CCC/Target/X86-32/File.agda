@@ -17,13 +17,13 @@
 
 module Once.CCC.Target.X86-32.File where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.List using (List; []; _∷_; _++_; map; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _<_)
+open import Data.Nat using (ℕ; suc; _<_)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String)
   renaming (_++_ to _++ˢ_)

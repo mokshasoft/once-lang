@@ -18,7 +18,7 @@
 
 open import Data.Nat using (ℕ; _+_)
 open import Data.Maybe using (Maybe)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; cong; trans; subst)
 
 open import Once.Arith.Machine.Shape using (InputPath; Side)

@@ -25,21 +25,21 @@ module Once.TypeCheck.RigidSubst {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Resp
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.List using ([]; _∷_)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Type
 open import Once.Type.Sub using (_<:_; <:-refl; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
-open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; extractGround-rf)
+open import Once.Type.Rigid using (RigidFree; KindedInstance; extractGround-rf)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF)
 open import Once.Spec.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
 open import Once.Spec.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
 import Once.Surface.Context as Surface
-open Surface using (Usage; SVar; svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
+open Surface using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
 open import Once.Type using (One)
 open import Once.TypeCheck.Context using (Binding; mkBinding)
 open Once.TypeCheck.Context.Binding using (quantity)

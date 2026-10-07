@@ -29,22 +29,18 @@
 module Once.Arith.Machine.Recognise where
 
 open import Data.Bool using (Bool; true; false; _∧_)
-open import Data.Integer using (ℤ; +_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; _++_)
-open import Data.String using (String; _≟_)
+open import Data.List using ([]; _∷_)
 open import Data.Product using (_×_; _,_)
-open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.Type using (Type; Unit; Int)
+open import Once.Type using (Unit)
 open import Once.IR
-open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; primV)
+open import Once.SigOp.Info using (SigOpInfo; sem; SigOpSem; primV)
 open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.IRTy using (⌊_⌋)
 import Once.IRTy as II
-open import Once.CanonicalName using (bare; _≟ᶜ_)
 
-open import Once.Arith.Machine.Shape using (InputShape; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; typePath?)
+open import Once.Arith.Machine.Shape using (InputShape; InputPath; Fst; Snd; typePath?)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
@@ -52,9 +48,7 @@ open import Once.Arith.Machine.Shape using (InputShape; shape-int; shape-float; 
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
-         numtype-as-type; ArithBlock;
-         mk-block)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; ArithBlock; mk-block)
 
 ------------------------------------------------------------------------
 -- Projection-path recognition

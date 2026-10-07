@@ -12,9 +12,8 @@ module Once.Parser.Core where
 
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_)
-open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Parser.Token

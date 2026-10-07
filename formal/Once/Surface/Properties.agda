@@ -14,10 +14,8 @@ open import Once.Type
 open import Once.Surface.Syntax
 
 open import Data.Nat using (ℕ)
-open import Data.Fin using (Fin)
-open import Data.Bool using (Bool; true; false; _∧_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
-open import Data.Product using (_×_; _,_)
+open import Data.Bool using (true; _∧_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
 ------------------------------------------------------------------------
 -- Quantity Properties

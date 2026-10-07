@@ -25,24 +25,21 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.OutErased (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
-open import Data.Nat using (ℕ)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (_,_)
+open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T; Purity)
-open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF; IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
 import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Semantics.Machine using (coerce-functor⁻¹; coh; tF-coh; base-coh; ⟦_⟧F; coerce-ν-out)
+open import Once.Semantics.Machine using (tF-coh; base-coh; coerce-ν-out)
 open import Once.Denotation.TraceMonad using (T; fmapT; fmapT-id; fmapT-∘; fmapT-cong; RelT′-refl)
-open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl; _∼ᵈ_)
+open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Data.Empty using (⊥-elim)
 open import Once.Denotation.ValueDomain
@@ -53,7 +50,6 @@ open import Once.Adequacy.CataErased fmt ρ using (subst-T-fmap)
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 open import Once.Adequacy.CataBridge fmt ρ using (base-refl)
 open import Once.Adequacy.AnaErased fmt ρ using (push-⊎fam₁; push-⊎fam₂; push-×fam; push⊎₁; push⊎₂; push×; push⊎₁⁻; push⊎₂⁻; push×⁻)
-open import Once.Postulates using (extensionality)
 import Once.IR as IR
 
 ------------------------------------------------------------------------

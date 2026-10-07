@@ -42,12 +42,10 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunContext (o : CanonicalName)
   (word-eq : frame-word FS ≡ slot-size)
   where
 
-open import Data.Nat using (zero; suc)
-open import Data.Bool using (Bool; true; false)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (false)
+open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥)
-open import Data.Unit using (⊤)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_)
 open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality using (refl)
 
@@ -55,13 +53,11 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.IR using (IR; Unit)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
-open import Once.CCC.Codegen.ShapeTable using (HeapModed)
+open import Once.CCC.Codegen.IRToTrace o using ()
 open import Once.CCC.Codegen.ProgramImage using (program-image)
-open import Once.Denotation.Program using (IRFun; irProgram; fbody; Linked; LinkedProgram)
+open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
 open import Data.Product using (_×_)
 open import Data.List using (List)
-open import Data.List.Relation.Unary.All using (All)
 
 -- A state a program can START in: at the first instruction, running, with nothing
 -- allocated on either side. (The apex's entry state is one — see `entry-run`.)

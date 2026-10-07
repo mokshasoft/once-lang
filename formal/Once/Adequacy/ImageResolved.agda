@@ -22,12 +22,11 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; �
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.Maybe using (just)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Empty using (⊥-elim)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 open import Relation.Nullary using (yes; no)
 
 open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
@@ -37,12 +36,10 @@ open import Once.Type using (Unit)
 open import Once.CCC.Label using (callee; e-fn; labelSym)
 open import Once.SigOp.Info using (sem)
 open import Once.Arith.SigOp.Compare using (cmp-of)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-ctrl; c-entry; c-label; c-jmp;
-                                          blocks-layout; link; link-top; unit)
-open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; irProgram; table; main;
-                                           LinkedAt; LinkedAt-at; LinkedProgram)
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; adefs; arefs; heap-symbol)
-open import Once.CCC.Codegen.NodesOK using (NodesOK; SigLeaves; sigop-syms; nodes-from)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry; c-label; c-jmp; blocks-layout; link-top)
+open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; irProgram; table; main; LinkedAt; LinkedAt-at)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; adefs; arefs)
+open import Once.CCC.Codegen.NodesOK using (SigLeaves; sigop-syms; nodes-from)
 import Once.CCC.Codegen.RefsClosed as RC
 import Once.CCC.Codegen.IRToTrace as IT
 import Once.CCC.Codegen.LabelScope as LS

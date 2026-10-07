@@ -11,30 +11,26 @@
 
 module Once.Grammar.FunDefBridge where
 
-open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n)
+open import Data.Bool using (true; false)
+open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.Nat.Properties using (≤-refl; <-trans; ≤-trans; ≤-<-trans; <-≤-trans; <⇒≤)
-open import Data.List using (List; []; _∷_; length)
-open import Data.String using (String)
-open import Data.Maybe using (Maybe; just; nothing; is-just)
+open import Data.Nat.Properties using (≤-refl)
+open import Data.List using (List; length)
+open import Data.Maybe using (just; nothing; is-just)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; ∃; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Induction.WellFounded using (Acc; acc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst₂)
 
 open import Once.Parser.Token
-open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.Parser.Module.Core using (anyWordB; ParseAtB; Decl; DFunDef; parseExprB-adapt)
+open import Once.Parser.Module.Core using (anyWordB)
 open import Once.Parser.Module.FunDef.Params
-  using (parseParamsB; parseParamsWF; pp-aw; pp-sep; SepK; skEq; skWord; skStop; sepClass; wrapLams)
+  using (parseParamsB; parseParamsWF; skEq; skWord; skStop; sepClass)
 open import Once.Parser.Module.FunDef.Body
-  using (parseFunBodyB; pfb-eq; pfb-body; eqHead; drop1; drop1-≤)
-open import Once.Parser.ExprRelation using (ParsesExpr)
+  using (parseFunBodyB; eqHead; drop1)
 open import Once.Parser.Expr using (parseExprWF)
 open import Once.Grammar.ExprBridge using (complete-exprWFraw)
-open import Once.Parser.Module.FunDef.Def using (parseFunDefB; pfd-params; pfd-body)
-open import Once.Parser.Module.Core using (wordHead)
+open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Grammar.ImportBridge using (anyWordB-inv; ij-false)
 open import Once.Spec.Grammar.FunDef
   using (ParsesParams; pp-eq; pp-cons; pp-stop; pp-noword;

@@ -41,46 +41,37 @@ open import Data.Fin using (zero; suc)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
-open import Data.List.Relation.Unary.Any using (Any; here; there)
-open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
-open import Data.Maybe using (just)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Bool using (Bool; true; false)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+open import Data.Product using (_×_; _,_)
+open import Data.String using () renaming (_≟_ to _≟str_)
+open import Data.Unit using (tt)
+open import Data.Empty using (⊥-elim)
+open import Data.Bool using (false)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.Type using (Type)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.Type.Rigid using (RigidFree; KindedInstance)
-open import Once.Type.Honest using (HonestFFI)
+open import Once.Type.Rigid using (RigidFree)
 open import Once.CanonicalName using (bare)
-open import Once.Functor.Translate using (IsConcrete)
 import Once.Compile as C
-open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
-open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
+open C.FunInfo using (funName)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
 import Once.Surface.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Classify using (Imports)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
-open import Once.Type.Rigid using (rigidOf)
-open import Once.Denotation.Realize using (realize)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun; fname)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
 open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Core.Telescope using (Tele; def; teleSem; runProgram; program; noKinds; noVars; noResp)
-open import Once.Spec.Core.Schema using (schemaOf; kindsOf; kinded-instance)
-open import Once.Spec.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; viewOf;
-  monoHere; monoElab; monoBody; monoSchema; monoSg; polyElab; polyBody; polySg)
+open import Once.Spec.Core.Telescope using (Tele; runProgram; program; noKinds; noVars; noResp)
+open import Once.Spec.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
 import Once.Spec.Core.Abstract as A
 import Once.Spec.Core.Translate as TR
 open import Once.Compile using (irFunOf; tableOf-go; mainCall)
@@ -101,32 +92,25 @@ open import Once.SigOp.Info using (FFIAnswers)
 φ : FFIAnswers
 φ = pureHalf ι
 
-open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGM; RelGT-bind)
-open import Once.Denotation.TraceMonad using (T; projTrace)
-open import Once.Adequacy.TeleEnvLemmas fmt φ using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
-  imprel-transport; calls-same)
+open import Once.Adequacy.GradedRelation fmt using (RelGT-bind)
+open import Once.Denotation.TraceMonad using (projTrace)
+open import Once.Adequacy.TeleEnvLemmas fmt φ using ()
 import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
 open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
-open import Once.Adequacy.Coherence fmt using (realize-invariant)
+open import Once.Adequacy.Coherence fmt using ()
 import Once.TypeCheck.Completeness
 import Once.TypeCheck.Elaborate
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
-open import Once.Parser using (validIdentB)
-open import Once.Denotation.DenotTrace using (evalᴰ; cohᴰ)
+open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Program using (tableEnv)
-open import Once.Adequacy.TableCall fmt φ using (abiT; abi; tableEnv-skip; tableEnv-hit; uncurry-app)
+open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; uncurry-app)
 open import Once.Denotation.Trace using (SigOpEvent)
 import Data.Fin
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 import Relation.Nullary
-open import Once.Denotation.GradedOps using (sigOpRefᵛ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
-open import Once.Functor.Translate using (IsConcrete-irrelevant)
-open import Data.List.Properties using (++-assoc)
 open import Once.Adequacy.TelePosition
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Denotation.TraceMonad using (RelT′-events)

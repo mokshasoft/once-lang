@@ -18,10 +18,9 @@ module Once.Arith.IR where
 
 open import Once.Arith.Type
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.Nat using (ℕ; _+_)
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- Variable context

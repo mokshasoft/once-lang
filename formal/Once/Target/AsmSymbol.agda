@@ -24,7 +24,6 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.Nat using (_≡ᵇ_)
 open import Data.String using (String; toList)
-open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 

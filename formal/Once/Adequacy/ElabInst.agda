@@ -27,15 +27,12 @@ import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Target.Arch using (TargetNum)
-open import Once.Type using (Type; PolyType; pure; Ground)
-open import Data.Unit using (⊤)
-open import Relation.Nullary using (¬_)
+open import Once.Type using (Type; PolyType)
 open import Once.Type.Rigid using (KindedInstance; rigidOf)
 import Once.Surface.Context as C
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects; _⟪_⟫)
-open import Once.Spec.Core.AbsTy using (absTy)
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
-open import Once.TypeCheck.Classify using (Imports; PolyCtx; NamedCtx; ctxWithImportsAndPolys; lookupPolyPrefix; topCtx)
+open import Once.TypeCheck.Classify using (Imports; PolyCtx; NamedCtx; ctxWithImportsAndPolys; topCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 import Once.TypeCheck.RigidSubst as RS
@@ -44,7 +41,7 @@ import Once.Adequacy.CoreInst as CI
 import Once.Spec.Core.PolyTyping S as PT
 open import Once.Spec.Core.Abstract S using (SigGround; abs-⊢)
 import Once.Spec.Core.Meaning S as GM
-open import Once.Spec.Elaboration S using (View; Views; elabᶜ; ImportAt; def)
+open import Once.Spec.Elaboration S using (View; Views; elabᶜ)
 
 ------------------------------------------------------------------------
 -- The view must agree with instantiation: a use at the substituted instance
@@ -115,15 +112,14 @@ poly-instance-sem V sg fmt δ sc nat irf D ki =
 -- The module's view is natural (it builds every instance pointwise).
 ------------------------------------------------------------------------
 
-open import Data.Fin using (Fin)
 open import Data.String using (String)
 import Data.String.Properties as StrProp
 open import Data.Maybe.Properties using (just-injective)
 open import Relation.Nullary using (yes; no)
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Core.PolyTy using (Schema; arity; kinds; type; _!!_)
+open import Once.Spec.Core.PolyTy using (Schema; arity; kinds; type)
 import Once.Compile as Cmp
-open import Once.Spec.Core.Translate using (SigSig; ImpSig; TeleSig; viewOf; telFind; poly-inst; mono-inst; i-def)
+open import Once.Spec.Core.Translate using (SigSig; ImpSig; TeleSig; viewOf; telFind; i-def)
 import Once.Spec.Core.Translate as TR
 
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where

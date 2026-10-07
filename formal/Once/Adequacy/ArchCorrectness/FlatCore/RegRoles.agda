@@ -39,8 +39,6 @@
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RegRoles where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Relation.Nullary using (¬_)
 
 data Role : Set where
   -- the flat machine's own three

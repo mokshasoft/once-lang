@@ -29,11 +29,11 @@ module Once.CCC.Machine.NoNested where
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.List using (List; []; _∷_)
-open import Data.List.Relation.Unary.All using (All) renaming ([] to all-[]; _∷_ to _all∷_)
+open import Data.List using ([]; _∷_)
+open import Data.List.Relation.Unary.All using (All) renaming (_∷_ to _all∷_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
+open import Once.CCC.Machine.FrameFree using (ImageI)
 
 -- `compile-trace` (below) is the plain fold; `compile-trace-cnt` (above) is what
 -- the compiler actually emits (`Once.Target.X86-64`). They differ on EXACTLY two

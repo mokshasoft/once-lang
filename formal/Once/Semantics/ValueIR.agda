@@ -30,7 +30,7 @@ open import Once.Type
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
 open import Once.Functor.Translate using (⟦_,_⟧-base; translateF)
 open import Once.Semantics.Functor using (SK; _S⊕_; _S⊗_; μS; νS)
-open import Once.Semantics.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F; ⟦μ⟧; ⟦ν⟧)
+open import Once.Semantics.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F)
 
 ------------------------------------------------------------------------
 -- The IR-object value domain: the surface domain at the canonical rep.

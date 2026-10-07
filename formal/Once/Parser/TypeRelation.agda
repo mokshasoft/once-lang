@@ -21,7 +21,6 @@
 module Once.Parser.TypeRelation where
 
 open import Data.List using (List; []; _∷_; length)
-open import Data.String using (String)
 open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
                                         n≤1+n)

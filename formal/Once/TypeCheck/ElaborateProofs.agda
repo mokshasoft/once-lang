@@ -18,63 +18,44 @@ open import Data.Unit using (tt; ⊤)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
-open import Once.Type.DecEq using (_≟T_; _≟F_)
+open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-float)
 open import Data.Integer using (+_)
 
-open import Data.String using (String; _++_)
-open import Data.String.Properties as StrProp using (_≟_)
+open import Data.String using (String)
+open import Data.String.Properties as StrProp using ()
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc; _≤?_; _⊔_; _<_; s≤s)
-open import Data.Nat.Properties using (≤-refl)
+open import Data.Nat using (ℕ; suc; _⊔_; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
-open import Data.Nat.Show renaming (show to showℕ)
-open import Data.Fin using (Fin; zero; suc)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Nat.Show renaming ()
+open import Data.Fin using (suc)
+open import Data.Bool using (true)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; length)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Data.List using ([]; _∷_; length)
+open import Relation.Nullary using (yes; no)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj₂)
-open import Once.Type.Instance using (instantiate-complete)
 open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
-open import Once.Type.Match using (instantiate)
-open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (decimalOf)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.Type
-open Once.Type using (showQuantity; showType)
+open Once.Type using ()
 open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Error using (TypeError; renderError;
-  LambdaInInferMode; LambdaRequiresFunctionType;
-  InlInInferMode; InrInInferMode; InitialInInferMode;
-  InlNeedsSumType; InrNeedsSumType;
-  FstNeedsPair; SndNeedsPair; ArrNeedsFunction; NegationNotInt;
-  CaseScrutineeNotSum; CaseBranchMismatch;
-  ApplicationTypeMismatch; TypeMismatch; NotFunction;
-  UsageViolation; BuiltinTypeMismatch;
-  BinOpLeftError; BinOpRightError;
-  UnboundVariable; UnboundQualified; NonConcreteSigOpType)
-open import Once.TypeCheck.Context using (Ctx; ∅)
+open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable)
+open import Once.TypeCheck.Context using (Ctx)
 open Once.TypeCheck.Context.Binding using (name)
-open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_)
-  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
-open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
-open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
-open import Once.Surface.Elaborate as Elab using (elaborate; intLit)
+open import Once.TypeCheck.Context as Context using () renaming ()
+open import Once.Surface.Syntax as Surface using (_+ᵘ_)
+  renaming (Expr to SExpr)
+open import Once.Surface.Elaborate as Elab using ()
 open import Once.TypeCheck.Classify
 import Once.Functor.Translate
-open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; IsBaseType)
-open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
-  isConcrete?-complete; isBaseType?-complete)
-open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
+open import Once.Functor.Translate using (IsConcrete)
+open import Once.Functor.Decide using (wellFormedF?)
 open import Once.TypeCheck.Judgment
 
 ------------------------------------------------------------------------

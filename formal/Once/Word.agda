@@ -59,7 +59,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_; _∧_; T)
 open import Data.Empty using (⊥-elim)
 open import Data.Unit using (tt)
 open import Relation.Nullary using (does)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
 -- | The machine-word carrier, SHARED BY ALL WIDTHS (D054 residue
 -- representation): a value in `[0, 2^bits)`, represented as ℕ. The

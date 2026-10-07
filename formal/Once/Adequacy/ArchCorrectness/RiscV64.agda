@@ -32,7 +32,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 open import Once.Denotation.TraceMonad using (Interp; sig)
 module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
@@ -68,11 +68,10 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior; silent)
+open import Once.Denotation.Behavior using (Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (riscv64)
-open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
@@ -85,7 +84,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 rv64-frame-semantics : FrameSemantics
 rv64-frame-semantics = rv64-frame-semantics-at ι
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace o using ()
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt; compile-trace-cnt-agrees; compile-trace; slot-to-disp)
 open import Once.CCC.Machine.NoNested using (no-nested-of-all; NoNested)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size) renaming (Program to RVProgram)
@@ -96,7 +95,7 @@ open import Once.CCC.Machine.SMCore using (current-frame)
 open import Once.CCC.FrameSemantics using (frame-base)
 open import Data.Empty using (⊥)
 open import Data.Unit using (tt)
-open import Data.Nat using (zero; suc; _+_; _*_; _≤_; z≤n)
+open import Data.Nat using (suc; _+_; _*_; z≤n)
 open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
@@ -115,7 +114,7 @@ open import Once.Memory.StackSlots using (stack-addr)
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
 open IRObsCorrectFlatness {rv64-frame-semantics}
-  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized; BlockRuns)
+  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized)
 
 ------------------------------------------------------------------------
 -- THE ENTRY FRAME — CONSTRUCTED (plan 0.65 G3, 2026-08-17).
@@ -161,9 +160,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   (RBr.lo-fits riscv64-addr-no-wrap)
   (RBr.tag-fits riscv64-lit-fits) (RBr.lit-fits riscv64-lit-fits)
   (RBr.float-fits o ι)
-  using (events-agree; events-agree-start; CompiledCorr
-        ; FlatInv; EntryLike; Reachable; reach-start; RunAt
-        ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
+  using (events-agree-start; CompiledCorr; EntryLike; reach-start; RunAt; mkRunAt)
 
 open FlatMachine {rv64-frame-semantics} using (mkFlat)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
@@ -171,7 +168,7 @@ open FlatEventTrace {rv64-frame-semantics} using (flat-events)
 open import Once.CCC.Machine.FlatStoreWF rv64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF rv64-frame-semantics using (FlatRegTag)
 open import Once.CCC.Machine.SMCore using
-  (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr; AtStack)
+  (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr)
 
 ------------------------------------------------------------------------
 -- THE ENTRY HEAP VIEW. Nothing is allocated yet: the domain is EMPTY, the

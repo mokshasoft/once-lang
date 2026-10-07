@@ -27,8 +27,8 @@ module Once.Arith.Backend.RunTraceCore where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; _⊓_)
-open import Data.List using (List; []; _∷_; _++_; take; length)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
+open import Data.List using (List; []; _++_; take; length)
 open import Data.List.Properties using (length-take)
 open import Data.Nat.Properties using (m⊓n≤m)
 open import Data.Bool using (Bool; true; false; if_then_else_)

@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
-open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Dyadic using (binary64)
 open import Once.Float.Decimal using (Decimal; round)
 
 module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
@@ -55,7 +55,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
 open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_; _≡ᵇ_; _*_)
 open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_; drop; length)
 open import Data.Bool using (false; true; if_then_else_)
 import Data.Nat
@@ -68,7 +68,7 @@ open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure
                              fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero;
                              flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc;
                              enter-call; do-call-sv; do-call-code; do-call-at; find-thunk)
-open import Once.CCC.Label using (once; thunk; LabelId; callee; e-fn; e-thunk)
+open import Once.CCC.Label using (once; thunk; callee; e-fn; e-thunk)
 
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
@@ -78,7 +78,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
   using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; a0; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
@@ -94,8 +94,6 @@ open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-line
 -- predicates and the heap-reference identity (plan 0.65 G2).
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open import Once.Memory.HeapAddress using (heap-ref; ref-id)
-open import Once.Word using (Carrier)
-open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Type using (fits-int; fits-float)
 
 ------------------------------------------------------------------------

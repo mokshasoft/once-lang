@@ -21,7 +21,7 @@
 ------------------------------------------------------------------------
 
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 
@@ -35,35 +35,30 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.ResolveFaithful (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Once.Denotation.Sub using (⟦_⟧<:)
-open import Once.Res using (mapRes)
 
-open import Data.Nat using (ℕ; _<_; _∸_)
+open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.List using (List; []; length)
+open import Data.List using ([]; length)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Bool using (Bool; true; false)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_; proj₁; proj₂)
 open import Induction.WellFounded using (Acc; acc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 
-open import Once.Type using (Type; Int; Float; Unit; _+_; Quantity; Zero; One; Many)
+open import Once.Type using (Type; Int; Float; Unit; _+_; Zero; One; Many)
 import Once.Type as T
 open import Once.Functor.Translate using (IsConcrete; con-fun; con-base)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders
-open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; fmapT; >>=T-identityʳ)
-open import Once.Res using (Res; stopped; returns)
-open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; fmapT)
+open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports;
-  resolvePolyCase; applySplice; checkElab; checkElabV; CheckElabResult; VerifiedCheckResult)
-open import Once.TypeCheck.Classify using (lookupPolyPrefix; lookupImport; ctxWithImportsAndPolys)
-open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports; resolvePolyCase; applySplice; checkElabV; CheckElabResult; VerifiedCheckResult)
+open import Once.TypeCheck.Classify using (lookupPolyPrefix; ctxWithImportsAndPolys)
+open import Once.CanonicalName using (CanonicalName)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------

@@ -25,27 +25,18 @@ module Once.Adequacy.LexerBridge where
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _<_; suc; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; n<1+n; n≤1+n; <⇒≤)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; n<1+n; <⇒≤)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Char using (Char; isDigit)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.String using (String; toList; fromList)
-open import Data.Integer using (+_)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Parser.Token
 open import Once.Parser.Lexer
-  using (adv; tokenize-WF; tok-str; tok-gen; tok-num; tok-nl; tok-op2; tok-lbrace; tok-minus;
-         tok-caret; tok-head; tokenizeString; isIdentStart;
-         collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB;
-         digitsToNat; drop1; drop1-≤;
-         nlIndent; isEqHead; isDashHead; dashClass; caretClass;
-         Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen;
-         HeadK; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
-         hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt;
-         hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK)
+  using (adv; tokenize-WF; tok-str; tok-gen; tok-nl; tok-op2; tok-lbrace; tok-minus; tok-caret; tokenizeString; isIdentStart; collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB; drop1; drop1-≤; nlIndent; isEqHead; isDashHead; dashClass; caretClass; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK)
 
 ------------------------------------------------------------------------
 -- The relation lives in `Once.Spec.Lexing` (Plan 0.84): it is part of what

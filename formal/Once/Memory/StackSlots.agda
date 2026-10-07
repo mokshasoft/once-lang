@@ -23,8 +23,8 @@ module Once.Memory.StackSlots
   (sg : StackGrowth)
   where
 
-open import Data.Nat using (ℕ; zero; suc; _≤_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; subst)
+open import Data.Nat using (ℕ; zero)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; sym; subst)
 
 -- Import Regions for InStack and StackAddr
 open import Once.Memory.Regions layout public

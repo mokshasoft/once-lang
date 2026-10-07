@@ -30,15 +30,13 @@
 
 module Once.Grammar.Roundtrip where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just)
+open import Data.List using ([])
+open import Data.Maybe using (just)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Type using (Type)
 import Once.Grammar as G
 open G using (GType)
-open import Once.Parser.Token using (Token)
 open import Once.Parser.Type using (parseType)
 open import Once.Grammar.Printer using (printGType; Concrete)
 open import Once.Grammar.ParserRelation using (toType)

@@ -25,20 +25,17 @@
 
 module Once.Grammar.ParserBridge where
 
-open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; Σ; Σ-syntax; ∃; ∃-syntax)
-open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
-                                        n≤1+n)
+open import Data.List using (List; []; _∷_; length)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_; ∃)
+open import Data.Nat using (_<_; s≤s)
+open import Data.Nat.Properties using (≤-refl; <-trans; n≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using
-  (_≡_; refl; cong; cong₂; sym; trans; subst)
+  (_≡_; refl; cong)
 
-open import Once.Type using (Type; Unit; _*_; _+_; _⇒[_]_;
-                             Quantity; Zero; One; Many;
-                             Functor; K; Id; _⊕_; _⊗_; μ-type)
+open import Once.Type using (Type; Zero; One; Many)
 open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)

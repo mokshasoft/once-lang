@@ -16,24 +16,23 @@
 module Once.TypeCheck.Elaborate where
 
 open import Data.String using (String; _++_)
-open import Data.String.Properties as StrProp using (_≟_)
+open import Data.String.Properties as StrProp using ()
 open import Data.Integer using (ℤ; -_)
-open import Data.Nat using (ℕ; zero; suc; _≤?_; _⊔_; _<_; s≤s)
-open import Data.Nat.Properties using (≤-refl)
+open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Induction.WellFounded using (Acc; acc)
-open import Data.Nat.Show renaming (show to showℕ)
-open import Data.Fin using (Fin; zero; suc)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Induction.WellFounded using (Acc)
+open import Data.Nat.Show renaming ()
+open import Data.Fin using (zero; suc)
+open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; Σ)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
+open import Data.Product using (_×_; _,_; ∃-syntax)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans)
 
 open import Once.Type
-open Once.Type using (showQuantity; showType)
+open Once.Type using ()
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
 -- with Once.Type's (opened above). Hide the IRTy object/functor constructors
 -- from the unqualified open (they stay available as `IR.*`); the surface-type
@@ -44,8 +43,8 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- codomain), never from a hardcoded name; each is a CONTRACT whose meaning is
 -- the interpretation's (plan 0.105: `ffiV`/`callsV`; `generic-semM` is gone).
 open import Once.Arith.SigOp.Builders using (arrow-info)
-open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; pureV; emitsV; haltsV; ffiV; callsV)
-open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; emitsV; haltsV; ffiV; callsV)
+open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
@@ -60,30 +59,24 @@ open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUnd
   UnboundVariable; UnboundQualified; NonConcreteSigOpType) public
 open import Once.TypeCheck.Context using (Ctx; ∅)
 open Once.TypeCheck.Context.Binding using (name)
-open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_)
-  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.TypeCheck.Context as Context using () renaming ()
+open import Once.Surface.Syntax as Surface using ()
+  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
-open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
-open import Once.Surface.Seq using (seq; seq0; embedClosed)
-open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
-open import Once.Surface.Elaborate as Elab using (elaborate; intLit; floatLit)
+open import Once.Surface.Elaborate as Elab using ()
 
 open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
-open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; IsBaseType)
-open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
-  isConcrete?-complete; isBaseType?-complete)
-open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Functor.Translate using (IsConcrete; con-fun; IsBaseType)
+open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)
 open import Once.Float.Decimal using (Decimal; decimalOf)
 import Once.Float.Decimal as Decimal
 open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; sub-arr; <:-refl)
-open import Once.Type.DecEq using (_≟F_; _≟T_)
+open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
 open import Once.Type.Rigid using (KindedInstance; kindedInstance?; RigidFree; rigidFree?)
-open import Once.Type.Determined using (ArrowView; arrowSchema?; arrow-instance; codVarsInDom?)
+open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.Judgment
 open import Once.TypeCheck.TargetView
@@ -355,7 +348,7 @@ embedOrSubsume ctx e T (success T' Ψ eE d fr , w) = embedOrSubsume-dec ctx e T 
 ------------------------------------------------------------------------
 
 -- Import usage operations from Surface.Syntax
-open Surface using (zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
+open Surface using (zeroUsage)
 
 ------------------------------------------------------------------------
 -- Per-Builtin Body Specializers

@@ -16,35 +16,31 @@
 module Once.Adequacy.ModuleComplete where
 
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Data.Bool using (Bool; false; true)
+open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
-open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Once.CanonicalName using (bare)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Function using (case_of_)
 open import Once.Compile using (findMain; moduleToIR; moduleToIR-aux; mainCall)
 open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU; bare-injective)
 
-open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
+open import Once.Type using (Type; Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Surface.Syntax using (Expr; ∅; Usage; [])
-open import Once.Surface.Elaborate using (elaborate; elaborateFull)
+open import Once.Surface.Syntax using (Usage; [])
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
-open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Spec.Module
-  using (EffUU; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped;
-         MainsEffUU; MainIn; HasValidMain-ef; HasValidMain; ctxOf; addImp)
+  using (EffUU; ModTele; []; ffi; mono; poly; ModuleTyped; MainsEffUU; MainIn; HasValidMain)
 import Once.TypeCheck.Elaborate as TE
 open import Once.Functor.Decide using (isConcrete?-complete)
 open import Once.Type.Honest using (honest?-complete)
@@ -52,12 +48,9 @@ open import Once.Type.Rigid using (rigidFree?-complete)
 
 cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a′ b b′ c c′} → a ≡ a′ → b ≡ b′ → c ≡ c′ → f a b c ≡ f a′ b′ c′
 cong₃ f refl refl refl = refl
-open import Once.Surface.Context using (zeroUsage)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate
-  using (checkElab; ctxWithImportsAndPolys; PolyCtx)
-open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
+  using (ctxWithImportsAndPolys; PolyCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
 import Once.Compile as C

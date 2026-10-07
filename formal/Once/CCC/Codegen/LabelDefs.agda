@@ -12,22 +12,19 @@
 
 module Once.CCC.Codegen.LabelDefs where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat using (ℕ; _≤_; _<_)
 open import Data.Nat.Properties
-  using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n; <-≤-trans; ≤-<-trans; +-suc; +-assoc; +-cancelʳ-≡; n<1+n; m≤n⇒m≤1+n; <⇒≤;
-         ≤-reflexive; +-identityʳ; +-comm; +-monoʳ-<; +-monoʳ-≤)
+  using (≤-trans; <⇒≢; <-≤-trans)
 open import Data.List using (List; []; _∷_; _++_; map)
-open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_; tabulate; lookup) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁻ˡ; ++⁻ʳ) renaming (++⁺ to All-++⁺)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs.Properties using () renaming (++⁺ to AP-++⁺)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 
-open import Once.CCC.Label using (LabelId; idx; ℓ; e-thunk; e-fn)
+open import Once.CCC.Label using (idx; e-thunk; e-fn)
 open import Once.CCC.Machine.SMCore
 
 open import Once.CanonicalName using (CanonicalName)

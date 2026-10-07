@@ -11,7 +11,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Apply (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
@@ -26,7 +26,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
-open import Once.Res using (Res; stopped; returns; is-stopped)
+open import Once.Res using (returns; is-stopped)
 
 module ApplyC {FS : FrameSemantics} where
 

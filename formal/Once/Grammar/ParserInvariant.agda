@@ -22,14 +22,12 @@
 
 module Once.Grammar.ParserInvariant where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just)
-open import Data.Product using (_×_; _,_)
+open import Data.List using (List)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float;
-                             _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff;
-                             Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Type using (Type)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseType; parseTypeAtom)
 open import Once.Parser.TypeRelation

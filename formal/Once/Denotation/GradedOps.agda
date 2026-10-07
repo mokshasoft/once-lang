@@ -16,12 +16,10 @@
 
 module Once.Denotation.GradedOps where
 
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.List using ([])
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_)
+open import Data.Sum using (inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Type
 open import Once.Type.Sub
@@ -33,17 +31,15 @@ import Once.Semantics.Machine as Val
 open import Once.Semantics.Machine using (⟦_⟧F; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Target.Arch using (TargetNum)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Contract using (ISig; Impl; key; valueOf; value-∈; base-contract)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; pureHalf; interp)
+open import Once.Denotation.TraceMonad using (ret; returnT; _>>=T_; fmapT; pureHalf; interp)
 open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; seqF)
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.GradedDomain
 open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
-open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-info)
 
 ------------------------------------------------------------------------

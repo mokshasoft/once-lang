@@ -21,28 +21,20 @@
 
 module Once.TypeCheck.Identities where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Empty using (⊥)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃; ∃-syntax; _,_)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (∃-syntax; _,_)
 open import Data.String using (String)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
-open import Relation.Nullary using (¬_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float;
-                             _*_; _+_; _⇒[_]_; μ-type; ν-type;
-                             Quantity; Zero; One; Many; _≤q_)
-open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
-                                       OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
-                                       isArithmeticOp; isComparisonOp;
-                                       RawExpr; RVar; RResolved)
+open import Once.Type using (Type; Quantity; Zero; One; Many; _≤q_)
+open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
 open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Elaborate
-  using (decideLeq; classifyAppHead;
-         PolyBuiltinApp; pba-id; pba-fst; pba-snd; pba-terminal;
-         pba-inl; pba-inr; pba-initial)
+  using (decideLeq; classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial)
 
 ------------------------------------------------------------------------
 -- classifyAppHead determinism
@@ -235,8 +227,7 @@ all-≤q-Many Many = refl
 ------------------------------------------------------------------------
 
 open import Once.Grammar.Convert
-  using (gtypeToType; typeToGType;
-         typeToGType-gtypeToType; gtypeToType-typeToGType)
+  using (gtypeToType; typeToGType; typeToGType-gtypeToType)
 open import Once.Grammar using (GType)
 
 -- typeToGType is injective on its domain (restricted to grammar-
@@ -434,7 +425,7 @@ open Once.Type using (_+q_; _*q_; _⊔q_)
 -- Usage-vector identities (per-position lifts of quantity laws)
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (zero; suc)
 open import Once.Surface.Syntax using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open Once.Surface.Syntax.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 

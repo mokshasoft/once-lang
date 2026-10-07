@@ -16,23 +16,15 @@
 
 module Once.CCC.Machine.Validity where
 
-open import Data.Nat using (ℕ; zero; suc; _<_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
-open import Induction.WellFounded using (Acc; acc)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.Allocation
 open import Once.Semantics.Machine
-  using (sem-fst; sem-snd; sem-inl; sem-inr; sem-pair)
+  using (sem-pair)
 -- The IRTy value-domain rename is LOCAL to Validity (not re-exported), so it
 -- does not collide with downstream modules' own surface `⟦_⟧` imports.
-open import Once.Semantics.Machine
-  using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 pair = sem-pair
 open import Once.IR
 open import Once.IR.Size

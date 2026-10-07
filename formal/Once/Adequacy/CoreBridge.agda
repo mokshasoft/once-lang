@@ -30,10 +30,8 @@ open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 module Once.Adequacy.CoreBridge (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
-open import Data.Fin using (Fin)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Product using (_,_; proj₁; proj₂; Σ-syntax)
-open import Data.Empty using (⊥-elim)
+open import Data.Product using (_,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IR)
@@ -45,15 +43,13 @@ open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; H
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.TraceMonad using (Interp; interp; pureHalf)
 open import Once.Spec.Program using (Typed)
-open import Once.Spec.Core.Telescope using (Program; program; runProgram; IOUnit; noVars)
-open import Once.Spec.Core.Translate using (toProgram)
+open import Once.Spec.Core.Telescope using (Program; runProgram)
+open import Once.Spec.Core.Translate using ()
 import Once.Spec.Core.Translate as TR
 import Once.Spec.Core.Telescope as Tele
 import Once.Spec.Core.PolyTyping as PT
 import Once.Spec.Core.Meaning as GM
-open import Once.Denotation.Behavior using (Behavior; mkBehavior)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; PrefixFamily; bnd; sat; coh)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
+open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; mainCall; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB
@@ -69,16 +65,13 @@ import Once.Adequacy.TelePosition as TP
 import Once.Spec.Core.Translate as TR
 open import Once.Denotation.Program using (tableEnv; IRFun)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Spec.Module using (EffUU)
-open import Data.List using (List; []; _∷_; map)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List using (List; []; map)
+open import Data.List.Relation.Unary.All using ([])
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (tt)
-open import Data.Bool using (true; false)
 import Once.Parser
-open import Function using (case_of_)
 import Once.Adequacy.NameClash as NC
 open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂; subst)
 

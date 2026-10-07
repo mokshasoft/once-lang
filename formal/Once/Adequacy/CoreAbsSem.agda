@@ -24,9 +24,8 @@ open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreAbsSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Data.Nat using (zero; suc; _<?_)
+open import Data.Nat using (suc; _<?_)
 import Data.Nat
-open import Data.Fin using (Fin)
 open import Data.Unit using (tt)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
@@ -38,8 +37,8 @@ open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irr
 open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M)
 import Once.Surface.Context as C
-open import Once.Surface.Context using (Usage; []; _∷_)
-open import Once.Spec.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; arity; kinds; type)
+open import Once.Surface.Context using ([]; _∷_)
+open import Once.Spec.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; arity; type)
 open import Once.Spec.Core.AbsTy using (absTy; absF; ar-bound; absTy-⟦⟧; absTy-ground; abs-⟪⟫)
 import Once.Spec.Core.Syntax S as G
 import Once.Spec.Core.Typing S as GT
@@ -393,7 +392,7 @@ rt-sem Δ σ r sg {t} {A} D fmt δ =
 -- A MONOMORPHIC ENTRY (`Translate.monoBody`: the abstraction, retyped at the
 -- embedded ground type) read back at arity 0 means its elaboration.
 open import Once.Spec.Core.AbsTy using (absTy-ground)
-open import Once.Spec.Core.PolyTy using (⌈_⌉; ⌈⌉-⟪⟫)
+open import Once.Spec.Core.PolyTy using (⌈⌉-⟪⟫)
 open import Once.Type.Rigid using (RigidFree)
 
 mono-entry-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)

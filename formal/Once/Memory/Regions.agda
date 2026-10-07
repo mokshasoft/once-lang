@@ -16,12 +16,12 @@
 ------------------------------------------------------------------------
 
 open import Once.Memory.MemoryLayoutSemantics
-  using (MemoryLayout; RegionBounds; Addr; lower; upper; InRegion)
+  using (MemoryLayout; RegionBounds; Addr; lower; upper)
 
 module Once.Memory.Regions (layout : MemoryLayout) where
 
-open import Data.Nat using (ℕ; _≤_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; subst)
+open import Data.Nat using (_≤_)
+open import Relation.Binary.PropositionalEquality using (_≢_; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Empty using (⊥)

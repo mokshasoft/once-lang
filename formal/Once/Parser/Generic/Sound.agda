@@ -11,10 +11,9 @@
 module Once.Parser.Generic.Sound where
 
 open import Data.Bool using (true; false)
-open import Data.List using (List; []; _∷_; length)
-open import Data.String using (String) renaming (_≟_ to _≟s_)
+open import Data.List using (List; _∷_; length)
+open import Data.String using () renaming (_≟_ to _≟s_)
 open import Data.Nat using (_<_; s≤s)
-open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using (≤-refl; <-trans; <-≤-trans)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
@@ -23,7 +22,6 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Quantity)
 open import Once.Parser.Token
 open import Once.Parser.Generic.Relation
 import Once.Parser.Generic.Parser as P

@@ -18,8 +18,8 @@ open import Once.Target.Arch using (TargetNum)
 
 module Once.Adequacy.GradedRelation (fmt : TargetNum) where
 
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (_×_; _,_)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
@@ -27,8 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.Type using (Type; Purity; pure; eff; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid;
                              mk-kind; Zero; One; Many)
-open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
 open import Once.Denotation.GradedOps using (prjB; injB; injBᵍ; embν; mapEmbν)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)

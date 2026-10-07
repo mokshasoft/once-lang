@@ -22,18 +22,16 @@
 
 module Once.CCC.Machine.SMCore where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; _>_; _≥_; s≤s)
-open import Data.Nat.Properties using (_≟_; <⇒≢; ≤-trans)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_)
+open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Function using (_∘_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst; inspect; [_])
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans)
 open import Data.List.Properties using (++-assoc)
 open import Relation.Nullary using (Dec; yes; no)
 
@@ -84,8 +82,7 @@ open import Once.Memory.HeapAddress public
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.
 open import Once.CCC.Machine.Locations public
-open import Once.Float.Decimal using (Decimal)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Float.Decimal using (round)
 import Once.Word as Word
 import Data.Nat as ℕ
 

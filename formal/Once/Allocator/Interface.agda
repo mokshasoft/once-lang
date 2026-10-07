@@ -28,7 +28,7 @@
 module Once.Allocator.Interface where
 
 open import Data.Nat using (ℕ; _<_)
-open import Data.Product using (∃; ∃-syntax; proj₁)
+open import Data.Product using (∃-syntax; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 ------------------------------------------------------------------------

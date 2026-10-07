@@ -24,19 +24,19 @@
 
 module Once.Adequacy.ResolveBridge where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁)
+open import Data.Product using (_,_)
 open import Data.String using (String; _≟_)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 
-open import Once.CanonicalName using (CanonicalName; canonical; gen; GenWord)
+open import Once.CanonicalName using (GenWord)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
          RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
@@ -47,9 +47,7 @@ open import Once.Parser.Module.Resolve
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Spec.Resolution
-open import Data.List using (map)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (tt)
 open import Once.Parser.Module.Core using (Module; mkModule; Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames;
   resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux;

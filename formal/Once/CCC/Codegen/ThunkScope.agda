@@ -31,7 +31,7 @@ module Once.CCC.Codegen.ThunkScope (o : CanonicalName) where
 
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Nat using (ℕ; suc; _≤_; _<_; s≤s; z≤n; _+_) renaming (_*_ to _*ℕ_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using ([]; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; m≤m+n; +-suc; +-identityʳ; ≤-reflexive; n≤1+n; +-monoʳ-≤)
@@ -43,8 +43,8 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Once.CCC.Label using (LabelId; idx)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-jmp; c-label)
-open import Once.IRTy using (FitsInRegI; fits-int; fits-float)
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk)
+open import Once.IRTy using (fits-int; fits-float)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.IR using (IR)
 import Once.IR as IRm

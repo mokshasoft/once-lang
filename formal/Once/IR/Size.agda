@@ -11,8 +11,8 @@
 
 module Once.IR.Size where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (m<m+n; m<n+m; n<1+n; m≤m+n; m≤n+m; m≤n⇒m≤1+n)
+open import Data.Nat using (ℕ; suc; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (m<n+m; n<1+n; m≤m+n; m≤n+m; m≤n⇒m≤1+n)
 
 open import Once.IR
 

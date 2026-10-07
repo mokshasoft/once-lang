@@ -20,16 +20,15 @@
 
 module Once.Allocator.AbstractInstance where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; suc; _<_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-irrefl)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁)
+open import Data.Product using (_,_; ∃-syntax; proj₁)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; cong; sym)
 
 open import Once.Memory.HeapAddress
-  using (HeapLocation; HeapRef; heap-loc; mkHeapRef; ref-id; heap-ref;
-         heap-offset; offsetHL)
+  using (HeapLocation; heap-loc; mkHeapRef; ref-id; heap-ref; offsetHL)
 
 open import Once.Allocator.Interface
 

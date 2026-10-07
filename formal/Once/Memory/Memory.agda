@@ -14,10 +14,10 @@
 
 module Once.Memory.Memory where
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Maybe using (Maybe; just)
+open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; _≢_; inspect) renaming ([_] to ⟦_⟧)
 
 ------------------------------------------------------------------------

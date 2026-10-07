@@ -47,10 +47,8 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; instr-call-closure
-        ; lea-slot; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit
-        ; instr-load-const; AbstractInstr; CallI)
-open import Once.CCC.Label using (LabelId; EntryId)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+open import Once.CCC.Label using (EntryId)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; s3; s4; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (_<_)
@@ -59,13 +57,10 @@ open import Once.CCC.Target.RiscV64.FrameInstantiation using () renaming (rv64-f
 
 rv64-frame-semantics : FrameSemantics
 rv64-frame-semantics = rv64-frame-semantics-at ι
-open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Dyadic using (binary64)
 open import Once.Float.Decimal using (Decimal; round; round-fits)
 open import Data.Integer using (ℤ)
-open import Data.Nat.Properties using (<-≤-trans; ^-monoʳ-≤; n≤1+n)
-open import Data.Float using () renaming (Float to AgdaFloat)
 -- …and riscv64's ENGINE INTERFACES (plan 0.65 G2). Imported here for the same
 -- reason this module's own siblings are: nothing else reaches them, and an
 -- unimported module is invisible to the four clusters. The instantiation pins

@@ -19,11 +19,11 @@
 
 module Once.Denotation.TraceDenote where
 
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using (List; []; _++_)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Denotation.Trace using (SigOpEvent)
 

@@ -33,8 +33,8 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.LabelsUnique (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _≤_; _<_; _+_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n; m≤n⇒m≤1+n)
+open import Data.Nat using (ℕ; suc; _≤_; _<_; _+_) renaming (_*_ to _*ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
@@ -42,7 +42,7 @@ open import Data.List.Relation.Unary.All.Properties renaming (++⁺ to All-++⁺
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs.Properties renaming (++⁺ to AP-++⁺)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
@@ -52,26 +52,18 @@ open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F)
-open import Once.Type using (Functor)
-open import Once.IRTy using (FitsInRegI; fits-int; fits-float)
+open import Once.IRTy using (fits-int; fits-float)
 open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
-         strat-const; strat-nat; strat-linear; strat-branching; lsize;
-         cata-body; cata-call-setup; cata-call;
-         cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃;
-         cata-br-I₁; cata-br-I₂; fsize; resuspend-layer)
-open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of)
+  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃; cata-br-I₁; cata-br-I₂; fsize)
+open import Once.CCC.Codegen.LabelRange o using (label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-label; c-start; block-layout;
-         mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap;
-         load-from-slot; store-indirect; store-indirect-suc; c-jmp; c-branch-tag-zero;
-         load-indirect-suc)
+  using (AbstractTrace; instr-ctrl; c-ret; c-label; c-start; block-layout; mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap; load-from-slot; store-indirect; store-indirect-suc; c-jmp; c-branch-tag-zero; load-indirect-suc)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ThunkScope o using (module Scope)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)

@@ -32,7 +32,7 @@
 module Once.Adequacy.Compile where
 
 
-open import Once.Spec.Module using (HasValidMain; ModuleTyped; moduleSig)
+open import Once.Spec.Module using (ModuleTyped; moduleSig)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
@@ -40,20 +40,19 @@ open import Data.Maybe using (Maybe; just; nothing; map)
 open import Data.Maybe.Relation.Binary.Pointwise as PW using (Pointwise)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Data.List using ([]; take)
+  using (_≡_; refl; sym; trans; cong; subst)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
+open import Once.Type using (Unit)
 
 open import Once.Denotation.Behavior using (Source; Behavior; behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Spec.Core.Telescope using (runProgram)
-open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
+open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 open import Once.Adequacy.RewritePreserves using (rewrite-program-preserves)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
-open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Linked; LinkedProgram)
+open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -61,12 +60,10 @@ open import Once.Denotation.Program using (IRProgram; irProgram; table; main; Li
 -- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
 -- `check-complete` (the proven typechecker-completeness witness).
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; Interp; sig; interp)
+open import Once.Denotation.TraceMonad using (Interp; sig; interp)
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Surface.Syntax as Srf2 using (Expr; ∅; Usage)
-open import Once.TypeCheck.Completeness using (check-complete)
-open import Data.Unit using (tt)
+open import Once.Surface.Syntax as Srf2 using ()
 -- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.
@@ -84,7 +81,6 @@ open import Function using (case_of_)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 open import Once.Target.Arch using (Arch)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
-open import Data.List.Relation.Unary.All using (All)
 import Once.Word as OnceWord
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
@@ -96,7 +92,6 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser using (parseStrict)
 -- Stage 1 adapter, now a real structural conversion (discharges the
 -- former `gmoduleToModule` postulate).
-open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 
 -- Plan 0.107: the per-arch CPU instances, read CONCRETELY — a file's type, its
 -- well-formedness and its execution are the arch's own.

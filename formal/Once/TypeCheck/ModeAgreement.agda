@@ -29,13 +29,10 @@ open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List.Relation.Unary.All using (_∷_)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Type as T using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type;
-  PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF;
-  PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PInt; PFloat; PTVar;
-  PK; PId; _P⊕_; _P⊗_)
-open import Once.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
+open import Once.Type as T using (Type; _*_; _+_; _⇒[_]_; μ-type; ν-type; PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PInt; PFloat; PTVar; PK; PId; _P⊕_; _P⊗_)
+open import Once.Type.Sub using (_⊑π_; ⊑-pure)
 open import Once.Type.Determined using (cod-determined)
 open import Data.String using (String)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
@@ -43,7 +40,7 @@ open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
 import Once.Surface.Context as Surface
-open Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 
 ------------------------------------------------------------------------
 -- Small facts

@@ -29,11 +29,9 @@
 
 module Once.Type.Sub where
 
-open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Type using (Type; rigid; Functor; Quantity; Purity; pure; eff; mk-kind;
-                             Unit; Void; Int; Float; _*_; _+_; _⇒[_]_;
-                             μ-type; ν-type; _≟q_)
+open import Once.Type using (Type; rigid; Purity; pure; eff; mk-kind; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; _≟q_)
 open import Once.Type.DecEq using (_≟F_; _≟T_)
 
 ------------------------------------------------------------------------

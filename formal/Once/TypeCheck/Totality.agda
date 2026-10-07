@@ -32,10 +32,9 @@
 module Once.TypeCheck.Totality where
 
 open import Data.Nat using (ℕ)
-open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -45,7 +44,7 @@ open import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.Error using (TypeError)
 
 open import Once.Surface.Syntax as Surface using ()
-  renaming (Expr to SExpr; Ctx to SCtx; Usage to SUsage)
+  renaming (Expr to SExpr; Ctx to SCtx)
 
 ------------------------------------------------------------------------
 -- Success / failure witnesses

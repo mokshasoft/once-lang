@@ -35,23 +35,20 @@ open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using (0∸n≡0)
 open import Data.List using (List; []; _∷_; _++_; length; take; [_])
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
-open import Data.Product using (Σ; ∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
+open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Postulates using (extensionality)
-open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Type using (Type; _⇒[_]_; mk-kind; Zero; One; Many; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
+open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
+open import Once.Type using (Type; isUnit?) renaming (Unit to UnitT)
 import Once.Type as Ty
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
-open import Data.String using (String) renaming (_≟_ to _≟ˢ_)
-open import Once.Type.DecEq using (_≟T_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.Definitions using (DecidableEquality)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Functor.Translate using (base-Unit)
@@ -59,7 +56,7 @@ open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 open import Once.SigOp.Info using (FFIAnswers)
-open import Once.Spec.Contract using (Key; key; kname; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
+open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
 
 ------------------------------------------------------------------------
 -- The operations: one universal signature, keyed by the SigOp's identity

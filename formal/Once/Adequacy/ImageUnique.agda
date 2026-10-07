@@ -21,7 +21,7 @@
 
 module Once.Adequacy.ImageUnique where
 
-open import Data.List using (List; []; _∷_; _++_; map; concatMap)
+open import Data.List using (List; []; _∷_; _++_; map)
 import Data.List
 import Data.List.Relation.Unary.All
 import Data.String
@@ -30,19 +30,18 @@ import Data.Digit
 import Data.List.Properties
 import Once.Arith.Machine.IR
 open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
-open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
+open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming ()
 open import Data.List.Relation.Unary.All.Properties using () renaming (++⁺ to All-++⁺)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Nat using (ℕ)
 import Data.Maybe
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Sum.Base using () renaming ([_,_]′ to either)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.CanonicalName using (CanonicalName; canonical)
-open import Once.CCC.Label using (Label; once; callee; e-thunk; e-fn; labelSym; idx)
+open import Once.CCC.Label using (Label; once; callee; e-thunk; e-fn; labelSym)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; adefs)
 open import Once.CCC.Codegen.LabelDefs using (Dst; clab-of; cl-at; clabs; fdef-of; fdefs)
@@ -324,11 +323,11 @@ adefs-unique t dc df =
 -- THE IMAGE: its units sit in disjoint windows of the one counter.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (suc; _≤_; _<_)
+open import Data.Nat using (suc; _≤_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n)
 open import Once.Denotation.Program using (IRFun; fname; fbody; IRProgram; table; main)
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; top-done; program-image)
-open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; fresh-above; clabs-++; NoFn; nf)
+open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; fresh-above; clabs-++; nf)
 import Once.CCC.Codegen.CLabelsUnique as CLU
 import Once.CCC.Codegen.IRToTrace as IT
 import Once.CCC.Codegen.LabelRange as LR
@@ -421,12 +420,12 @@ image-fdefs o q =
 -- The table's entries: distinct symbols, each an identifier's (D249 guard).
 ------------------------------------------------------------------------
 
-open import Data.Bool using (true; false; _∧_; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_)
 import Data.Bool
 
 open import Data.Maybe using (nothing)
 open import Data.List using (reverse)
-open import Data.List.Properties using (unfold-reverse; reverse-++)
+open import Data.List.Properties using (unfold-reverse)
 open import Data.List.Relation.Unary.AllPairs.Properties using () renaming (++⁺ to AP-++⁺)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -496,18 +495,16 @@ ap-reverse {x ∷ xs} (px ∷ pxs) =
 open import Data.Char using (Char; isDigit)
 open import Data.String using (toList) renaming (_++_ to _++ˢ_)
 open import Data.String.Unsafe using (toList-++)
-open import Data.String.Properties using (toList-injective) renaming (_≟_ to _≟ˢ_)
+open import Data.String.Properties using () renaming (_≟_ to _≟ˢ_)
 open import Data.Nat.Show using (charsInBase)
 open import Data.Digit using (toDigits)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary using (yes; no)
 open import Data.Product using (Σ-syntax)
-open import Once.CCC.Label using (LabelId; thunkSym; showLabelId)
+open import Once.CCC.Label using (LabelId; showLabelId)
 open import Once.Target.Symbol using (once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective
-  using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; mangL; toList-mangle;
-         ValidIdentChars)
-open import Once.Parser.Lexer using (isIdentContinue)
+  using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; toList-mangle; ValidIdentChars)
 open import Once.CCC.Codegen.ImageSymbols using (heap-symbol)
 
 private
@@ -622,7 +619,7 @@ own≢block x d vx eq = not-valid (subst ValidIdentChars tl≡ vx)
 
 open import Once.Arith.Machine.IR using (ArithBlock)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
-open import Once.Arith.SigOp.Block using (block-name; block-digest)
+open import Once.Arith.SigOp.Block using (block-digest)
 import Data.Bool.ListAction as BLA
 
 BlockSym : String → Set

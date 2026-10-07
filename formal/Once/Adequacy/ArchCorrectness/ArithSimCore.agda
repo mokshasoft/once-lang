@@ -36,13 +36,12 @@ module Once.Adequacy.ArchCorrectness.ArithSimCore where
 
 open import Data.Nat using (ℕ; _≟_; _+_; _*_; NonZero)
 open import Data.Nat.Properties using (*-cancelˡ-≡; +-cancelˡ-≡)
-open import Data.Integer using (ℤ)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
+open import Data.Product using (_×_; _,_; proj₁; Σ-syntax)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 open import Relation.Nullary using (¬_; yes; no)
@@ -50,15 +49,15 @@ open import Data.Empty using (⊥; ⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch; mk-scratch)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
-open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
-open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project; projectF; Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
-open import Once.Arith.Machine.AbsInstr using (AbstractInstr; load-input; load-finput; load-imm; load-fimm; add-rrr; sub-rrr; mul-rrr; div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri; neg-rr; spill; reload; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
+open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath)
+open import Once.Arith.Machine.AbsState using (ArithAbsState; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
+open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
+open import Once.Arith.Machine.AbsInstr using (AbstractInstr; spill; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
 import Once.Arith.Backend.Correct as Correct
 -- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
 -- scratch registers (`XR0`/`XR1`); a float block needs its own register file
 -- and has no correspondence here yet. Stated in the type so the gate sees it.
-open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit; emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; compile-go; mul-op; div-op; rem-op; mul-choose; div-choose; div-instr; rem-instr; pow2?; safe-divisor?)

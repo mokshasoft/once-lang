@@ -15,9 +15,9 @@
 
 module Once.CCC.Target.RiscV64.Syntax where
 
-open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Integer using (ℤ)
-open import Data.List using (List; []; _∷_; foldr)
+open import Data.List using (List; foldr)
 open import Data.String using (String)
 -- Plan 0.63: label PROVENANCE, shared with x86-64 (D082). `Once.CCC.Label` is
 -- arch-agnostic; naming code addresses the same way on every target is what

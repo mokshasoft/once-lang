@@ -28,7 +28,7 @@ open import Data.Nat using (ℕ)
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 open import Once.Denotation.TraceMonad using (Interp; sig)
 module Once.Adequacy.ArchCorrectness.X86-32
   (o : CanonicalName) (tbl : List IRFun)
@@ -52,7 +52,7 @@ module Once.Adequacy.ArchCorrectness.X86-32
   -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
   (x86-32-lit-fits : RB.LitFits o ι) where
 
-open import Data.Nat using (ℕ; _+_; s≤s; z≤n; suc)
+open import Data.Nat using (ℕ; _+_; z≤n; suc)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
@@ -60,8 +60,8 @@ open import Data.List using ([]; take)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; heap-offset)
-open import Once.CCC.Machine.SMCore using (AllocState; current-frame)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; heap-offset)
+open import Once.CCC.Machine.SMCore using (current-frame)
 open import Once.CCC.FrameSemantics using (frame-base)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-32.Syntax using (slot-size)
@@ -85,11 +85,10 @@ import Once.CCC.Target.X86-32.Semantics as X
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior; silent)
+open import Once.Denotation.Behavior using (Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (x86-32)
-open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
@@ -104,7 +103,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 x86-32-frame-semantics : FrameSemantics
 x86-32-frame-semantics = x86-32-frame-semantics-at ι
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
 open import Once.CCC.Target.X86-32.AbstractToX86-32
   using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees)
 open import Data.Empty using (⊥)
@@ -121,7 +120,7 @@ import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 -- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
-open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized; BlockRuns)
+open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
 
 -- The FlatFromObs bundle at the x86-32 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -184,9 +183,7 @@ open FlatEventTrace {x86-32-frame-semantics} using (flat-events)
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-32.RunContext as RCx
-open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap)
-open import Once.CCC.Target.X86-32.Syntax using (slots)
-open import Data.Nat using (_≤_)
+open import Once.CCC.Target.X86-32.Syntax using ()
 
 -- (`x86-32-heap-room` is now a module PARAMETER — see
 -- `…X86-32.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)
@@ -197,12 +194,10 @@ open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   (RB.ret-no-wrap x86-32-addr-no-wrap) (RB.count-no-wrap x86-32-addr-no-wrap)
   (RB.tag-fits x86-32-lit-fits) (RB.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
   (RB.lo-fits x86-32-addr-no-wrap)
-  using (events-agree; events-agree-start; CompiledCorr; HeapView
-        ; FlatInv; EntryLike; Reachable; reach-start; RunAt
-        ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
+  using (events-agree-start; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-32-frame-semantics using (FlatRegTag)
-open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr; AtStack)
+open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
 -- `instr-alloc-heap` (the fresh block lands at the concrete `%esi` frontier), so

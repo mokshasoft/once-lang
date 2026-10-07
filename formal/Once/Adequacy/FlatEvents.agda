@@ -41,19 +41,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- `fits-int`/`fits-float` must be IMPORTED, not just written: out of scope
 -- they parse as variable patterns and `decode-arg`'s scalar clauses silently
 -- stop refining `SV-Lit`'s index.
-open import Once.Type using (Int; Float; fits-int; fits-float)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.SigOp.Info using (SigOpInfo; name; baseA; effect; EffectShape; Pure; Emits; Halts)
-open import Once.Functor.Translate using (IsBaseType; base-Int; base-Float)
 -- The observable's value domain — the same `⟦_⟧` the event carries.
-open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; halted; regs; readReg; Input1; module AbstractExec;
-         StoredValue; SV-Lit;
-         AbstractTrace; AbstractInstr; instr-sigop)
+  using (LocState; module LocState; halted; module AbstractExec; AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.Denotation.Trace using (SigOpEvent; mk-event)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.CCC.Machine.FlatLog using (LogFree)
 import Once.CCC.Machine.FlatLog
 import Once.CCC.Machine.SMCore as SMC

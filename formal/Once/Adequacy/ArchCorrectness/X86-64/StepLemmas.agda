@@ -28,10 +28,10 @@
 module Once.Adequacy.ArchCorrectness.X86-64.StepLemmas where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<_; s≤s; z≤n)
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (true; false; if_then_else_)
+open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 
 open import Once.CCC.Label using (thunk)
 open import Once.CCC.Target.X86-64.Syntax

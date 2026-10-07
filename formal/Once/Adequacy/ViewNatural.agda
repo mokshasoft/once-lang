@@ -13,8 +13,7 @@ open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.ViewNatural {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Data.Product using (_,_; proj₁; proj₂)
-open import Data.Unit using (⊤)
+open import Data.Product using (_,_; proj₁)
 import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)

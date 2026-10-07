@@ -36,20 +36,16 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret
-  ; instr-call-closure; instr-reg-op; scratch-dec; count-inc
-  ; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.Syntax using (sp; s3; s4; slots) renaming (Reg to Reg')
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_)
-open import Once.CCC.Label using (LabelId; EntryId)
-open import Once.Word using (Carrier)
+open import Once.CCC.Label using (EntryId)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Float.Dyadic using (binary32; binary64)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Float.Dyadic using (binary64)
+open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
-open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.Maybe using (just)
 
 open import Data.Sum using (_⊎_)
@@ -169,17 +165,15 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   where
 
 open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; _∷_; [])
+open import Data.List using (List)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; uncurry)
 open import Data.Maybe.Properties using (just-injective)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Target.RiscV64.Syntax using
-  ( Reg; Instr; Program; label
-  ; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret
-  ; call; call-sym; nop; unimp )
+  (Reg; Instr; label; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp)
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
@@ -356,7 +350,7 @@ open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (event-of)
-open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; Internal; External)
+open import Once.SigOp.Info using (SigOpInfo; sem; Internal; External)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Data.Product using (Σ)
 -- (`zero` is BOTH a riscv64 register and `ℕ`'s constructor; the register is

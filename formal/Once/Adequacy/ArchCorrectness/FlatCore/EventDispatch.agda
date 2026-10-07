@@ -44,23 +44,19 @@
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; _<_; _⊓_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; _++_; drop)
-open import Data.String using (String)
+open import Data.List using (List; []; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
-open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; sigop-owner; Internal; External; internal-pure)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; instr-sigop)
+open import Once.SigOp.Info using (SigOpInfo; sem; sigop-owner; Internal; External; internal-pure)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.CCC.Label using (Label; LabelId; _≡ᵇᴸ_)
+open import Once.CCC.Label using (LabelId)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.Denotation.Trace using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Float.Decimal using (Decimal)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
   (o : CanonicalName)
@@ -84,22 +80,17 @@ open EI.Machine   {FS} {Reg} {E} M
 open EI.TraceLoop {FS} {Reg} {E} {M} T
 
 
-open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂; uncurry)
-open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-≤-trans; <-irrefl; m≤m+n; m≤n+m
-                                      ; m∸n≤m; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ
-                                      ; +-assoc; +-comm)
-open import Once.Word using (Carrier)
+open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
+open import Data.Nat.Properties using (≤-reflexive; ≤-trans; m≤n+m; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Maybe using (maybe′)
-open import Data.Maybe.Properties using (just-injective)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.CCC.Machine.FlatLog using (LogFree)
 import Once.CCC.Machine.FlatLog
 open import Once.CCC.Machine.SMCore using (LocState)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
 ------------------------------------------------------------------------
 -- THE THREE LAYERS THIS SITS ON, instantiated here rather than passed in.
@@ -120,13 +111,13 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
 -- already binds). Same application, hence the same types.
-open CFC using (HeapView; HDom; slots; haddr; hfront; lo; caddr)
+open CFC using (HeapView; slots; haddr; hfront; lo)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
 -- the same application of `RunTraceCore.RunTrace`.
 ------------------------------------------------------------------------
-open RegRoles roles using (in1-reg; sp-reg; scratch-reg; count-reg; out-reg)
+open RegRoles roles using (in1-reg; sp-reg; scratch-reg; out-reg)
 
 -- unqualified, as `CompiledCorrespondence` imports it: `halted`/`regs`/… are
 -- `LocState` fields that `Machine.Flat` itself picks up this way.
@@ -141,17 +132,16 @@ open FlatMachine {FS} using
   (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr; find-thunk
   ; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; flat-halt; fret; flink)
   renaming (find-label to flat-find-label)
-open MemOps {FS} using (readLoc; writeLoc; writeLocToHeap; writeLoc-halted)
+open MemOps {FS} using (readLoc; writeLoc-halted)
 open import Once.CCC.Machine.FlatStoreWF FS using
-  (FlatWF; flat-wf-step; cl-step; sv-below; svm-below; wf-regs; wf-heap; wf-stack; wf-fresh)
+  (FlatWF; flat-wf-step; cl-step; sv-below; wf-regs; wf-heap; wf-stack; wf-fresh)
 open import Once.CCC.Machine.FlatRegTagWF FS using
-  (FlatRegTag; flat-regtag-step; flat-scratch-is-tag; flat-count-is-tag; scratch-tag)
+  (FlatRegTag; flat-regtag-step; flat-scratch-is-tag; flat-count-is-tag)
 open import Once.CCC.Machine.FlatStackPtr FS using
   (stack-ptr-live; stack-ptr-suc-live)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
-open import Once.SigOp.Info using (EffectShape; Emits; Halts; Answers)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
-open import Once.CCC.Label using (once; thunk)
+open import Once.CCC.Codegen.IRToTrace o using ()
+open import Once.CCC.Label using (thunk)
 open import Once.CCC.FrameSemantics using (slot-addr; slot-addr-linear)
 open FrameSemantics FS using (Frame)
 
@@ -163,8 +153,7 @@ open FrameSemantics FS using (Frame)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
   public
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch
-                              ; event-of; flat-events-halted)
+open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of)
 
 ------------------------------------------------------------------------
 -- NO UNSPILLED RETURN AT A CALL OR A RETURN (plan 0.65 G2, 2026-08-16).

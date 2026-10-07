@@ -16,19 +16,18 @@ module Once.Target.SymbolValid where
 
 open import Data.Bool using (Bool; true; false; _∨_; T)
 open import Data.Char using (Char; isAlpha; isDigit; toℕ)
-open import Data.List using (List; []; _∷_; _++_; map; concatMap)
+open import Data.List using (List; []; _∷_; _++_; map)
 import Data.List
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Nat using (ℕ; _≡ᵇ_)
 open import Data.Nat.Show using (charsInBase)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥-elim)
+open import Data.Product using (_,_)
+open import Data.Unit using (tt)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
 open import Data.String.Unsafe using (toList-++; toList∘fromList)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (yes; no)
 open import Data.Char.Properties using (_≟_)
 
 open import Once.CanonicalName using (CanonicalName; parts; canonical)
@@ -37,9 +36,8 @@ open import Once.Target.Symbol
   using (z-encode-char; z-encode-char-aux; symbol-char?; showNat; once-symbol-path; once-symbol-own; once-prefix;
          mangle-component; join-us)
 open import Once.Target.SymbolInjective
-  using (zencL; mangL; joinUsL'; withSep; toList-mangle; toList-joinUs; body-rel; charsInBase-all-digits)
-open import Once.CCC.Label using (LabelId; owner; path; idx; showLabelId; showPath; labelSym; thunkSym; entrySym;
-                                  Label; once; callee; sigop; EntryId; e-thunk; e-fn)
+  using (zencL; mangL; joinUsL'; withSep; toList-joinUs; body-rel; charsInBase-all-digits)
+open import Once.CCC.Label using (LabelId; owner; path; idx; showLabelId; showPath; labelSym; thunkSym; entrySym; once; callee; EntryId; e-thunk; e-fn)
 
 ------------------------------------------------------------------------
 -- Chars that continue a symbol.

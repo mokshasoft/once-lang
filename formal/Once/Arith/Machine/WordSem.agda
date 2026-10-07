@@ -17,13 +17,11 @@
 module Once.Arith.Machine.WordSem where
 
 open import Data.Nat using (ℕ)
-open import Data.Integer using (+_)
-open import Data.Maybe using (just; nothing)
 import Once.Word as W
-open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
+open import Once.Arith.Machine.Shape using (⟦_⟧S; readLeaf)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
-open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Float.Dyadic using (FloatFormat)
 open import Once.Float.Decimal using (round)
 import Once.Float.Arith as FA

@@ -33,8 +33,6 @@ module Once.TypeCheck.Error where
 
 open import Data.String using (String; _++_)
 open import Once.Type using (Type; Quantity; showQuantity; showType)
-open import Data.Nat using (ℕ)
-open import Data.Nat.Show using () renaming (show to showNatE)
 
 ------------------------------------------------------------------------
 -- Structured error categories

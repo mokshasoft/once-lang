@@ -9,29 +9,26 @@
 
 module Once.Grammar.TypeAliasBridge where
 
-open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s)
+open import Data.Bool using (true; false)
+open import Data.Nat using (_<_; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <-≤-trans)
-open import Data.List using (List; []; _∷_; length; reverse)
+open import Data.Nat.Properties using (≤-refl)
+open import Data.List using (List; []; _∷_; length)
 open import Data.String using (String)
-open import Data.Maybe using (Maybe; just; nothing; is-just)
+open import Data.Maybe using (just; nothing; is-just)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ; Σ-syntax; _,_; ∃; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _,_)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (anyWordB; ParseAtB; Decl; DTypeAlias; parseTypeB-adapt)
+open import Once.Parser.Module.Core using (anyWordB)
 open import Once.Parser.Module.DeclTail
-  using (goTypeAliasB; goTypeAliasWF; gta-aw; gta-eq; gta-type; gta-sub;
-         parseTypeAliasB; pta-aw; pta-go; taEqHead; taDrop1; taDrop1-≤)
-open import Once.Parser.TypeRelation using (ParsesType)
+  using (goTypeAliasB; goTypeAliasWF; parseTypeAliasB; taEqHead; taDrop1)
 open import Once.Spec.Grammar.TypeAlias
   using (ParsesTypeAlias; gta-eq-r; gta-word-r; ParsesTypeAliasDecl; pta-mk)
 open import Once.Parser.Type using (parseTypeWF)
 open import Once.Grammar.ParserBridge using (complete-typeWFraw)
-open import Once.Parser.Module.Core using (wordHead)
 open import Once.Grammar.ImportBridge using (anyWordB-inv; ij-false)
 
 ------------------------------------------------------------------------

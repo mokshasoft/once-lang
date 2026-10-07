@@ -23,27 +23,24 @@
 
 module Once.Arith.SigOp.Block where
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; cmp-bit)
-open import Data.Integer using (ℤ; +_; -[1+_]) renaming (_<?_ to _<ℤ?_)
+open import Data.Integer using (ℤ; +_; -[1+_]) renaming ()
 import Data.Integer as ℤ
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (suc)
 open import Data.Nat.Show using () renaming (show to showℕ)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.String using (String; _++_)
-open import Data.Product using (_,_; _×_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Maybe using (Maybe; just; nothing)
 
-open import Once.Type using (Type; Int)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
+open import Once.Type using (Int)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
 open import Once.CanonicalName using (bare)
 
-open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
-         numtype-as-type;
-         shape-as-type; ArithBlock; mk-block)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; numtype-as-type; shape-as-type)
 import Once.Word as OnceWord
 -- PLAN 0.74 J5: was `module W = OnceWord.Word64`. `block-semM` is the
 -- definitional modular-`Word` evaluator an arith BLOCK denotes, and a block
@@ -51,7 +48,6 @@ import Once.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 
-open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (Decimal; sig; exp10; round)
 import Once.Float.Arith as FA
 open import Once.Arith.Type using (NumType; NInt; NFloat)

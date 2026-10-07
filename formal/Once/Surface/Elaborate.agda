@@ -21,11 +21,8 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Surface.Properties using (erase-arg-usage)
 -- coerceIRArrow eliminated: curry/apply are now quantity-polymorphic
 
-open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
-open import Data.Integer using (ℤ; ∣_∣)
-open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.String using (String; _++_)
+open import Data.Integer using (ℤ)
 
 ------------------------------------------------------------------------
 -- Arithmetic IR Primitives
@@ -41,10 +38,9 @@ open import Data.String using (String; _++_)
 -- (name + per-layer semantic function). See
 --   `Once.Arith.SigOp.IntLit` — integer-literal family
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
-open import Once.Arith.SigOp.IntLit using (lit-int-info)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
-open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; WellFormedF)
+open import Once.Functor.Translate using (con-base; con-fun; base-Unit; WellFormedF)
 
 -- Literals: constant morphisms that ignore input environment.
 --

@@ -11,31 +11,24 @@
 
 module Once.Grammar.DeclBridge where
 
-open import Data.Bool using (Bool; true; false)
-open import Data.List using (List; []; _∷_; length)
-open import Data.String using (String) renaming (_≟_ to _≟s_)
+open import Data.Bool using (true; false)
+open import Data.List using (_∷_; length)
+open import Data.String using () renaming (_≟_ to _≟s_)
 open import Data.Nat using (_<_)
-open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _,_)
+open import Data.Maybe using (just)
+open import Data.Product using (Σ-syntax; _,_)
 open import Data.Empty using (⊥-elim)
-open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (PolyType)
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DTypeSig)
 open import Once.Parser.Module using (parseDeclB; colonHead; colDrop1; eqHead)
 open import Once.Parser.Module.Import using (parseImportB)
 open import Once.Parser.Module.DeclTail using (parseTypeAliasB; parseSignatureB)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
-open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB)
 open import Once.Parser.PolyType using (parsePolyTypeB)
-open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 open import Once.Spec.Grammar.Decl
-  using (ParsesDecl; pd-import; pd-typealias; pd-signature; pd-typesig;
-         pd-fundef; pd-opdecl;
-         ParsesImport; ParsesTypeAliasDecl; ParsesSignature; ParsesFunDef;
-         ParsesOpDecl)
+  using (ParsesDecl; pd-import; pd-typealias; pd-signature; pd-typesig; pd-fundef; pd-opdecl)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
 open import Once.Grammar.ImportBridge using (sound-import; complete-import)
 open import Once.Grammar.TypeAliasBridge using (sound-typealias; complete-typealias)

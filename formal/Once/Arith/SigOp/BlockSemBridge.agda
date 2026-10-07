@@ -21,29 +21,24 @@
 
 module Once.Arith.SigOp.BlockSemBridge where
 
-open import Data.Nat using (ℕ)
-open import Data.Integer using (ℤ; +_)
-open import Data.Unit using (⊤; tt)
-open import Data.Product using (_×_; _,_)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_)
 open import Data.List using ([]; _∷_)
-open import Data.Maybe using (Maybe; just; nothing) renaming (map to mapMaybe)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
+open import Data.Maybe using () renaming (map to mapMaybe)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym)
 
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd; project; projectF;
-         Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Fst; Snd; project; projectF; Path; here-int; here-flt; go-fst; go-snd; readLeaf)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
-         numtype-as-type; shape-as-type)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; shape-as-type)
 open import Once.Arith.Machine.WordSem using (module Sem)
-open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Type using (NInt; NFloat)
 import Once.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 
 import Once.Word as OnceWord
-open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
-open import Once.Arith.SigOp.Block using (block-semM; projectM; maybe-zeroM; readLeafM)
+open import Once.Arith.SigOp.Block using (block-semM; projectM; readLeafM)
 
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 

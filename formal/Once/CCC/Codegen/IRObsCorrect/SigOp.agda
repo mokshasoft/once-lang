@@ -24,7 +24,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
@@ -42,7 +42,7 @@ import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
-open import Once.Res using (Res; stopped; returns; returns-inj)
+open import Once.Res using (returns; returns-inj)
 open import Data.Product using (Σ)
 open import Once.Spec.Contract using (key; yes-of; _∈K?_)
 open import Relation.Nullary using (Dec; yes; no)
@@ -50,15 +50,14 @@ open import Once.Type using (isUnit?)
 open import Once.Denotation.Program using (Declared; Declared-at)
 open import Once.CanonicalName using (showCanonical)
 open import Once.Res using (is-stopped)
-open import Once.SigOp.Info using (SigOpSem; sem; effect-of; semM; baseA; conB; name;
-                                   pureV; primV; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpSem; sem; effect-of; baseA; conB; name; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code)
 
 module SigOpC {FS : FrameSemantics} where
 
   open Core {FS}
-  open FlatEventTrace {FS} using (ev-of-loc)
+  open FlatEventTrace {FS} using ()
   open Mach {FS}
   open AbstractExec {FS} using (decode-at; machine-events; events-at-arg; sigop-events; sigop-events-of; exec-sigop-output; res-sv; call-sigop-val; call-sigop-output; call-sigop-ans; call-sigop-ans-at)
 

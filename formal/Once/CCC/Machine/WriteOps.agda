@@ -10,11 +10,11 @@
 
 module Once.CCC.Machine.WriteOps where
 
-open import Data.Nat using (ℕ; suc; _<_)
+open import Data.Nat using (ℕ; suc)
 open import Data.Nat.Properties using (<⇒≢; m<n⇒m<1+n)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym)
 open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)

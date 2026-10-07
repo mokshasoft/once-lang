@@ -19,7 +19,7 @@ import Once.SigOp.Info
 open import Data.Bool using (true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
@@ -27,12 +27,12 @@ open import Once.IR
 import Once.IRTy as II
 open import Once.Denotation.Program using (IRFun; Linked; Declared)
 open import Once.Spec.Contract using (ISig)
-open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Type using (NInt; NFloat)
 
 private variable σ : ISig
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op; bare-at)
 open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
-open import Once.Arith.Machine.IR using (ArithBlock; MArithIR; shape-as-type; numtype-as-type)
+open import Once.Arith.Machine.IR using (ArithBlock; MArithIR; shape-as-type)
 open import Once.Arith.SigOp.Block using (block-info)
 
 private

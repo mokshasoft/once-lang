@@ -22,7 +22,7 @@ module Once.CCC.Codegen.ImageSymbols where
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String)
 
-open import Once.CCC.Label using (Label; once; callee; labelSym; thunkSym; e-fn)
+open import Once.CCC.Label using (once; callee; labelSym; thunkSym; e-fn)
 open import Once.SigOp.Info using (name)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Machine.SMCore

@@ -14,12 +14,11 @@
 module Once.Arith.Backend.X86-64.Preserve where
 
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; _≢_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.Arith.Backend.X86-64.Confine using (writes; confined; NotCCC)
-open import Once.CCC.Target.X86-64.Semantics using (RegFile; readReg; writeReg; Word)
-open import Once.Target.X86-64.PhysReg using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15; owner)
-open import Once.Target.RegConvention using (ccc)
+open import Once.CCC.Target.X86-64.Semantics using (RegFile; readReg; writeReg)
+open import Once.Target.X86-64.PhysReg using (rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15)
 
 ------------------------------------------------------------------------
 -- BASE: agreement on the 7 CCC-owned registers (a RECORD so `AgreeCCC-trans`

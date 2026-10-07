@@ -42,9 +42,7 @@ module Once.Warnings where
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 open import Data.Nat.Show using () renaming (show to showNat)
-open import Data.Nat.DivMod using (_/_)
-open import Data.Nat.Properties using (m^n≢0)
-open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
+open import Data.Integer using (ℤ; +_; -[1+_])
 import Data.Integer as ℤ
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.List using (List; []; _∷_; _++_)
@@ -52,13 +50,12 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Bool using (Bool; true; false)
 open import Data.String using (String; length) renaming (_++_ to _<>_)
-open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Target.Arch using (Arch; arch-float-format)
 open import Once.Float.Dyadic using (FloatFormat; binary32; binary64)
 open import Once.Float.Decimal
-  using (Decimal; _/10^_; decimalOf; round; roundSig; storedExp; maxFiniteExp)
+  using (decimalOf; round; roundSig; storedExp; maxFiniteExp)
 open import Once.TypeCheck.Raw using
   ( RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct
   ; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna )

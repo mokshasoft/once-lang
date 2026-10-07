@@ -26,15 +26,14 @@
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Machine.ValidAtWFHalted (o : CanonicalName) (tbl : List IRFun) where
 
-open import Data.Nat using (ℕ)
 open import Data.Bool using (Bool)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (LocState; halted; ValueLocation; sucLoc; module MemOps)
+open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; sucLoc; module MemOps)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)

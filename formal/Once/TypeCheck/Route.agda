@@ -25,20 +25,13 @@
 
 module Once.TypeCheck.Route where
 
-open import Data.Bool using (true)
-open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List.Relation.Unary.All using (_∷_)
-open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Purity; Quantity)
-open import Once.Type.Sub using (_<:_; _⊑π_; ⊑-pure)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; BinOp; isArithmeticOp; isComparisonOp)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx)
+open import Once.TypeCheck.Raw as Raw using (RawExpr)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx)
 open import Once.TypeCheck.Judgment
 open import Once.TypeCheck.ModeAgreement
-open import Once.TypeCheck.ModeSub using (arrow-at)
 import Once.Surface.Context as Surface
 
 private

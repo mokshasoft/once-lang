@@ -33,14 +33,14 @@ module Once.CCC.Codegen.LabelResolve (o : CanonicalName) where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using ([]; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.Nat using (_≤_; _<_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
 
 open import Once.CCC.Label using (LabelId; idx; _≡ᵇᴵ_; ≡ᵇᴵ-true; ≡ᵇᴵ-refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -49,7 +49,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.SMCore as SM using ()
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
-open import Once.CCC.Codegen.LabelSeg using (LabelIn; once-label-of; LabelsIn; in-range)
+open import Once.CCC.Codegen.LabelSeg using (once-label-of; LabelsIn; in-range)
 
 module Resolve {FS : FrameSemantics} where
   open FlatMachine {FS}

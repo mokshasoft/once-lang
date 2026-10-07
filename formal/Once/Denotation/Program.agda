@@ -21,23 +21,21 @@ module Once.Denotation.Program where
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.Unit using (tt)
-open import Data.Product using (_,_; _×_)
+open import Data.Product using (_×_)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; gen; showCanonical)
+open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; showCanonical)
 open import Once.IR using (IR; IRTy; Unit)
 open Once.IR.IR
-open import Once.IRTy using (_≟IRTy_; ⌈_⌉)
+open import Once.IRTy using (_≟IRTy_)
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.TraceMonad using (T; halt; haltOp; unlinkedT)
+open import Once.Denotation.TraceMonad using (T; unlinkedT)
 open import Once.SigOp.Info using (FFIAnswers; SigOpInfo; SigOpSem; sem; name; pureV; primV; ffiV; callsV; emitsV; haltsV)
 open import Once.Spec.Contract using (ISig; key; valueKeys; answerKeys)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Functor.Translate using (base-Unit)
-open import Once.Type using () renaming (Unit to UnitT)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; ⟦_⟧ᴰᴵ)
 
 ------------------------------------------------------------------------

@@ -21,7 +21,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; Σ-syntax; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _,_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Functor.Decide using (isConcrete?)
@@ -39,7 +39,7 @@ import Once.Compile as C
 import Once.CanonicalName
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
+open import Once.TypeCheck.Elaborate as TE using ()
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P

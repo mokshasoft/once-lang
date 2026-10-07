@@ -18,15 +18,14 @@
 module Once.Adequacy.SeqRel where
 
 open import Data.Empty using (⊥)
-open import Data.Unit using (⊤; tt)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Data.Product using (_×_; _,_)
+open import Data.Sum using (inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Denotation.TraceMonad
-  using (T; returnT; fmapT; _>>=T_; RelT′; rel-ret; RelT′-bind; RelT′-fmap)
+  using (T; RelT′; rel-ret; RelT′-bind; RelT′-fmap)
 open import Once.Denotation.ValueDomain using (seqF)
 
 ------------------------------------------------------------------------

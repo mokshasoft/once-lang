@@ -20,7 +20,7 @@ open import Once.Type using (PolyType)
 open import Once.Type.Rigid using (KindedInstance; rigidOf)
 import Once.Surface.Context as C
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
-open import Once.TypeCheck.Classify using (Imports; PolyCtx; ctxWithImportsAndPolys; TopCtx)
+open import Once.TypeCheck.Classify using (PolyCtx; ctxWithImportsAndPolys; TopCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.TypeCheck.RigidSubst as RS
 

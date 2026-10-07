@@ -20,7 +20,7 @@
 module Once.Parser.AccIrrelevant where
 
 open import Induction.WellFounded using (Acc; acc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 open import Once.Postulates using (extensionality)
 
 -- | Propositional irrelevance for `Acc R x` at Set-level.

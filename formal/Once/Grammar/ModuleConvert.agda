@@ -24,13 +24,13 @@
 module Once.Grammar.ModuleConvert where
 
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing) renaming (map to mapMaybe)
+open import Data.Maybe using (Maybe; just; nothing) renaming ()
 open import Data.String using (String)
 
 open import Once.Grammar as G
   using ( GExpr; GType; GDecl; GModule; ELam )
 open import Once.Parser.Module.Core as P
-  using ( Decl; Module; Import; mkImport; mkModule )
+  using (Decl; Module; mkImport; mkModule)
 open import Once.Type
   using ( Type; PolyType; PolyFunctor
         ; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PInt; PFloat; PTVar; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; pure )

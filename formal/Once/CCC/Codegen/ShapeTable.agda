@@ -32,12 +32,12 @@
 module Once.CCC.Codegen.ShapeTable where
 
 open import Data.Nat using (ℕ; suc; zero; _≟_; _+_)
-open import Data.Bool using (Bool; true; false; _∧_; if_then_else_)
+open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (Σ; ∃; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float;
   _*_; _⇛_; μ-type; ν-type; K; Id; _⊕_; _⊗_)
@@ -49,16 +49,7 @@ open import Once.IR using (⟦_⟧TI; IR; AllocMode; Heap; Stack;
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input;
-   load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
-   store-indirect; store-indirect-suc; lea-slot; restore-input;
-   lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-push-frame;
-   instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init;
-   worklist-push; worklist-pop; worklist-check; instr-sigop;
-   instr-load-const; instr-load-code-addr; instr-save-closure-reg;
-   instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag;
-   instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
-   c-branch-tag-zero; c-thunk; c-entry; c-start; c-call-fn; c-ret)
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag; instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret)
 open import Once.CCC.Label using (LabelId)
 open import Once.SigOp.Info using (SigOpInfo; EffectShape; Pure; effect)
 open import Once.Type using (FitsInReg; fits-in-reg?)
@@ -638,16 +629,14 @@ module Sem (FS : FrameSemantics) where
   open import Once.Type using ()
     renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
   open import Once.CCC.Machine.SMCore as SM using
-    (LocState; ValueLocation; StoredValue; SV-Ptr; SV-Tag; SV-Lit; SV-Code;
-     AtStack; AtDynamic; sucLoc; regs; readReg; Input1; Output;
-     stackMem; heapMem; current-frame; AllocState; next-heap-ref)
+    (LocState; ValueLocation; StoredValue; SV-Ptr; SV-Tag; SV-Lit; AtStack; AtDynamic; sucLoc; regs; readReg; Input1; Output; stackMem; heapMem; current-frame; AllocState; next-heap-ref)
   open import Once.Memory.HeapAddress
-    using (HeapLocation; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; sucHL)
-  open import Data.Nat using (suc; zero; _<_; s≤s; z≤n)
+    using (HeapLocation; heap-ref; heap-offset; ref-id; sucHL)
+  open import Data.Nat using (suc; zero; _<_)
   open import Data.Nat.Properties using (≤-refl)
   open SM.MemOps {FS} using (readLoc)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fetch; fpc)
+  open FlatMachine {FS} using (FlatState; floc; falloc; fetch)
   open import Once.CCC.Machine.ShapeAt FS using
     (ShapeAt; TagAt; tag-at-read;
      shape-unit; shape-pair; shape-closure; shape-inl; shape-inr;

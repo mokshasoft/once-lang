@@ -31,8 +31,8 @@
 
 module Once.CCC.Machine.SMPrimitives where
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.Bool using (true; false)
+open import Data.List using ([]; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-≤-trans; <⇒≢)
@@ -40,9 +40,9 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Function using (_∘_; case_of_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂; inspect; [_]; ≢-sym)
-open import Relation.Nullary using (¬_; Dec; yes; no)
+open import Function using (case_of_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; ≢-sym)
+open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.SigOp.Info using (SigOpInfo)

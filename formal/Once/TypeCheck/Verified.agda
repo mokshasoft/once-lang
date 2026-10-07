@@ -33,11 +33,11 @@
 
 module Once.TypeCheck.Verified where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _,_; _×_; ∃; ∃-syntax)
+open import Data.List using (_∷_)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_; _×_; ∃-syntax)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type)
 open import Once.Functor.Translate using (IsConcrete)
@@ -47,7 +47,7 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; extendNamedCtx; lookupImport; lookupLocal)
-open import Data.Maybe using (Maybe; nothing)
+open import Data.Maybe using (nothing)
 
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
@@ -62,16 +62,11 @@ import Once.TypeCheck.Completeness as Cmp
 import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
-open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_)
-open import Once.TypeCheck.Error using (TypeError; renderError;
-  LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
-  UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair;
-  NegationNotInt; CaseScrutineeNotSum; CaseBranchMismatch;
-  ApplicationTypeMismatch; TypeMismatch; UsageViolation;
-  BinOpLeftError; BinOpRightError)
+open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
+open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
 open import Once.Type.Rigid using (RigidFree)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
+open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Once.CanonicalName using (gen; GenWord)
 open import Data.String using (String)
 import Once.Grammar.Convert       as Conv

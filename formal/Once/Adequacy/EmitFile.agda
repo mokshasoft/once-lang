@@ -11,10 +11,9 @@
 
 module Once.Adequacy.EmitFile where
 
-open import Data.List using (List; [])
+open import Data.List using (List)
 open import Data.Bool using (false)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_,_)
+open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
@@ -27,10 +26,7 @@ open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Target.Arch using (Arch)
 open import Once.Compile
-  using ( Module; Entry; CompiledFun; Heap; compileFileFromModule; cfm-file-ef; cfm-file-gated
-        ; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope
-        ; extractFunctions; extractAliases; compileResolvedModule; compileResolvedModule-aux
-        ; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; findMain )
+  using (Module; Entry; CompiledFun; Heap; compileFileFromModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; extractFunctions; extractAliases; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
 
 private
   inj₂-inj : ∀ {A B : Set} {x y : B} → inj₂ {A = A} x ≡ inj₂ y → x ≡ y

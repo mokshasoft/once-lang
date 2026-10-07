@@ -13,16 +13,16 @@
 module Once.Adequacy.ElaborateLinked where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.String using (String)
 open import Data.Fin using (Fin)
 import Data.Fin as Fin
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Type using (Type; Zero; One; Many; mk-kind; _⇒[_]_)
+open import Once.Type using (Type; Zero; One; Many; mk-kind)
 open import Once.Type.Sub
 open import Once.CanonicalName using (CanonicalName; bare; _≟ᶜ_; showCanonical)
 open import Once.IR using (IR)

@@ -54,10 +54,10 @@
 
 module Once.Float.Arith where
 
-open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; NonZero)
+open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 open import Data.Nat.DivMod using (_/_; _%_)
 open import Data.Nat.Properties using (m^n≢0)
-open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
+open import Data.Integer using (ℤ; +_; ∣_∣)
 import Data.Integer as ℤ
 import Data.Integer.Properties as ℤ
 open import Data.Bool using (Bool; true; false; if_then_else_)

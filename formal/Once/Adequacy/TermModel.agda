@@ -20,24 +20,23 @@ open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
-open import Data.Fin using (Fin; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
+open import Data.Fin using (suc)
+open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
 open import Once.Type using (Type; Quantity; Zero; One; Many; Purity; pure)
 open import Once.Type.Sub using (pure⊑)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Surface.Context
-  using (Ctx; _,_^_; _,_; lookup; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_; o≤o; o≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; bindM-idˡ)
+  using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Denotation.GradedDomain using (bindM-idˡ)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-≡)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
-open import Once.Spec.Core.Subst S using (SubTy; sub-⊢; single-ty; singleΦ; single-usage; subst-⊢)
-open SubTy using (row)
+open import Once.Spec.Core.Subst S using (SubTy; sub-⊢; single-ty; single-usage; subst-⊢)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Core.TermModel S using (TermModel)
 open import Once.Adequacy.CoreSubstSem S
-  using (Live; l-one; l-many; l-suc; look; env-ext; look-bind; zero⊑; ≡⊑; subst-restr; ⟦retype⟧; single-⊑; module Rows)
+  using (Live; l-one; l-many; l-suc; look; env-ext; look-bind; subst-restr; ⟦retype⟧; single-⊑; module Rows)
 
 module _ (fmt : TargetNum) (δ : GM.DefSem) where
   open Rows fmt δ

@@ -22,11 +22,10 @@ open import Once.CCC.Target.RiscV64.Syntax
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _<ᵇ_; _≟_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
-open import Data.Bool using (Bool; true; false; if_then_else_; not; _∧_; _∨_)
-open import Data.List using (List; []; _∷_)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Function using (_∘_; case_of_)
+open import Function using (case_of_)
 open import Relation.Nullary using (yes; no)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` arrives
 -- re-exported from `Syntax`; the scan needs its boolean equality).

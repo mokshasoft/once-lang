@@ -14,37 +14,20 @@ open import Once.CCC.Label using (LabelId; ℓ)
 module Once.CCC.Codegen.SlotSeg where
 
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using
-  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc; +-suc;
-   *-suc; *-monoʳ-≤; m≤n⇒m≤1+n)
+  (≤-refl; ≤-trans)
 open import Data.Bool using (Bool; true; false; _∧_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
-open import Once.IR using (IR; AllocMode; Stack; Heap;
-  id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply;
-  In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; Call; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
-  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; Slot; lea-slot;
-   mov-to-output; mov-to-input; store-at-slot; load-from-slot;
-   store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
-   instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; c-label; c-jmp;
-   restore-input; load-indirect; load-indirect-suc; instr-load-code-addr;
-   c-branch-tag-zero)
+  (AbstractInstr; AbstractTrace; Slot; lea-slot; instr-ctrl; c-thunk; c-entry; c-start; c-ret; c-label)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 
 

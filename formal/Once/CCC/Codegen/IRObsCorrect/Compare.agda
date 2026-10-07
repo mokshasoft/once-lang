@@ -24,7 +24,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Compare (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
@@ -32,7 +32,7 @@ open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
 open import Once.Type using () renaming (Unit to Unitᵀ; Int to Intᵀ; _*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Prod; base-Sum)
 open import Function using () renaming (id to idᶠ)
-open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
+open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
 open import Once.Res using (returns; returns-inj)
 open import Once.Denotation.Program using (Declared)
 open import Once.SigOp.Info using (SigOpSem; sem; baseA; conB;

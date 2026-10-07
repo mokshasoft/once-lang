@@ -39,7 +39,7 @@ import Data.String.Properties as StrProp
 import Relation.Nullary
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)

@@ -47,7 +47,6 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label)
 open import Once.CanonicalName using (CanonicalName)
 
-open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
@@ -101,7 +100,7 @@ open FlatMachine {FS} using (floc; fetch)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
 open import Data.Nat using (zero; suc; _+_; _*_; _∸_; _≤_; _<_)
 open import Data.Nat.Properties using (<-irrefl; <-≤-trans; ≤-trans; m≤m+n)
-open import Data.List using (List; []; _∷_; drop)
+open import Data.List using ([]; _∷_; drop)
 open import Data.List.Properties using (drop-[])
 open import Data.Maybe using (nothing)
 open import Data.Maybe.Properties using (just-injective)
@@ -112,7 +111,6 @@ open import Once.CCC.Label using (LabelId; thunk)
 -- (arch-free, parameterised by `FS`) and the two literal shapes.
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Word using (Carrier)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC

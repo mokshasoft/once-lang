@@ -16,16 +16,15 @@
 
 module Once.CCC.Machine.Allocation where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (_∷_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; <⇒≤; +-monoʳ-≤)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Nat.Properties using (≤-trans; n≤1+n)
+open import Data.Maybe using (just)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore public

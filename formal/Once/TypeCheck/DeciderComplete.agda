@@ -26,21 +26,18 @@
 
 module Once.TypeCheck.DeciderComplete where
 
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Maybe using (just)
+open import Data.Product using (∃-syntax; _,_)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
+open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; subst)
 
-open import Once.Type using (PolyType; PolyFunctor; Ground; GroundF; isGround; isGroundF;
-  both-ground;
-  PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff;
-  Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
+open import Once.Type using (PolyType; PolyFunctor; Ground; GroundF; isGround; isGroundF; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   WellFormedF-irrelevant)
-open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isBaseType?-complete)
+open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete)
 
 ------------------------------------------------------------------------
 -- `wellFormedF?` is complete for `WellFormedF` (the `isBaseType?-complete`

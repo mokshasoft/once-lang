@@ -30,12 +30,12 @@ module Once.Adequacy.CoreSubstSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Product using (proj₁; proj₂) renaming (_,_ to _,ₚ_)
+open import Data.Product using () renaming (_,_ to _,ₚ_)
 open import Data.Unit using (tt)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Once.Postulates using (extensionality)
-open import Once.Type using (Type; Quantity; Zero; One; Many; Purity; pure)
+open import Once.Type using (Type; Quantity; Zero; One; Many)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Surface.Context
   using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_;
@@ -47,11 +47,11 @@ open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookup
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-irr; restrict-refl; restrict-∘; restrict-≡; restrict-bind)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
-open import Once.Spec.Core.Subst S using (SubTy; rows; tailᴿ; ext-ty; retype)
+open import Once.Spec.Core.Subst S using (SubTy; tailᴿ; ext-ty; retype)
 open SubTy using (row)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Adequacy.CoreRenameSem S using (wk-sem; bindC)
-open import Once.Denotation.GradedDomain using (M; bindM; subM)
+open import Once.Denotation.GradedDomain using (bindM; subM)
 open import Once.Denotation.GradedOps using (fmapM; ana-semᵛ)
 open import Once.Spec.Core.Subst S using (sub-⊢)
 open import Once.Surface.GradeMatrix using (⋆-zero; ⋆-+; ⋆-*; ⋆-single)

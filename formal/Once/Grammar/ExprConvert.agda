@@ -20,17 +20,11 @@
 
 module Once.Grammar.ExprConvert where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Integer using (ℤ; +_)
-open import Data.Product using (_×_; _,_)
-open import Data.String using (String)
+open import Data.Integer using (+_)
 
 import Once.Grammar as G
 open G using (GExpr)
 open import Once.TypeCheck.Raw
-open import Once.Type using (Type)
-open import Once.Grammar.Printer using (Concrete)
-open import Once.Grammar.Convert using (gtypeToType)
 open import Once.Grammar.ExprPrinter using
   (ConcreteExpr; c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual;
    c-e-lam; c-e-app; c-e-pair; c-e-annot; c-e-binop; c-e-unary; c-e-comp;
@@ -62,9 +56,6 @@ gUnaryOpToRaw G.OpNeg = OpNeg
 -- a structural witness-based conversion.
 ------------------------------------------------------------------------
 
-open import Once.Grammar.Printer using
-  (c-unit; c-void; c-int; c-float;
-   c-prod; c-sum; c-fun; c-eff)
 open import Once.Grammar.ParserRelation using (toType)
 
 ------------------------------------------------------------------------

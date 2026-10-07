@@ -8,23 +8,18 @@
 -- `SegAgree` has to be one predicate, not one per owner.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.LabelSeg where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; s≤s)
 open import Data.Nat.Properties using
-  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-monoˡ-≤
-  ; +-comm; +-assoc; +-identityʳ; m≤n⇒m≤1+n; m<n⇒m<1+n; <-≤-trans; ≤-<-trans; +-suc)
-open import Data.Bool using (Bool; true; false)
-open import Data.Unit using (⊤; tt)
+  (≤-trans; m≤m+n; +-monoʳ-≤; +-suc)
+open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using ([]; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
 open import Once.CCC.Machine.SMCore

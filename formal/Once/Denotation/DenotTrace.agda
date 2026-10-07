@@ -27,26 +27,20 @@
 
 module Once.Denotation.DenotTrace where
 
-open import Data.Nat using (ℕ; zero; suc; _∸_)
-open import Data.List using (List; []; _∷_; _++_; take; length)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Sum using (inj₁; inj₂)
 
 open import Once.Type
-  using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type;
-         Int; Float; Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
+  using (Type; Unit; _*_; μ-type; ν-type)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.IR
   using (IR; IRTy; Call; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; SigOp; Cata; In; Out; Ana; in-ν;
          out-μ; const)
 open import Once.IRTy
-  using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_; IRFunctor; WellFormedFI;
-         fits-int; fits-float; FitsInRegI; ⟦_,_⟧-baseI)
-open import Once.Float.Decimal using (round; Decimal)
-open import Data.Integer using (ℤ)
+  using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; WellFormedFI; fits-int; fits-float)
+open import Once.Float.Decimal using (round)
 import Once.Word as OnceWord
 -- plan 0.98: `eval` is NO LONGER IMPORTED. The Spec's meaning is `evalᴰ`, and
 -- after the enumeration above nothing in it routes through the pure model.
@@ -63,18 +57,12 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)   -- pure
 open import Once.SigOp.Info
   using (SigOpInfo; SigOpSem; sem; name; baseA; conB; pureV; primV; emitsV; haltsV; ffiV; callsV; FFIAnswers)
 open import Once.Arith.Prim using (primSem)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Functor.Translate using (WellFormedF)
+open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-ana; sem-In; sem-Out;
-         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh; coerce-ν-out;
-         coerce-ν-in)
+  using (sem-cata; sem-In; sem-Out; ⟦_⟧F; coerce-ν-out; coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
-open import Once.Res using (Res; returns; stopped; mapRes)
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
-open import Data.Bool using (false)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here

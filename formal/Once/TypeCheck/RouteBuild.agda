@@ -21,20 +21,17 @@ open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List.Relation.Unary.All using (_∷_)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Type as T using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
-open import Once.Type.Sub using (_<:_; _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
-open import Once.CanonicalName using (gen)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Once.Type as T using (Type; _+_; _⇒[_]_)
+open import Once.Type.Sub using (_<:_; _⊑π_)
+open import Once.TypeCheck.Raw as Raw using (BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; classifyAppHead)
-open import Data.Maybe using (Maybe)
 open import Once.TypeCheck.Judgment
 open import Once.TypeCheck.ModeAgreement
-open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.TypeCheck.Route
 import Once.Surface.Context as Surface
-open Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open Surface using ()
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥

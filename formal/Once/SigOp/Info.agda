@@ -32,23 +32,20 @@
 
 module Once.SigOp.Info where
 
-open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ)
-open import Data.Unit using (⊤; tt)
-open import Data.String using (String; _≟_)
+open import Data.Unit using (tt)
 open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym)
+open import Relation.Nullary using (Dec)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Type using (Type; Unit; Void)
-open import Once.Res using (Res; stopped; returns; is-stopped; mapRes)
+open import Once.Res using (Res; stopped; returns)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
-open import Once.Functor.Translate using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
@@ -57,7 +54,6 @@ open import Once.Functor.Translate using (IsBaseType; IsConcrete; base-Unit; bas
 open import Once.Word using (Carrier)
 -- Plan 0.74 J5 (D059): a SigOp's machine semantics is TARGET-RELATIVE.
 open import Once.Target.Arch using (TargetNum)
-open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Arith.Prim using (ArithPrim; primSem)
 

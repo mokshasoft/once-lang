@@ -26,12 +26,10 @@ module Once.TypeCheck.ErrorProofs where
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using ()
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Nat using (ℕ)
-open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; t-unit)
+open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_; yes; no)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁)
+open import Data.Product using (∃-syntax; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Type; Unit; Void; Int)
@@ -39,8 +37,8 @@ open import Once.CanonicalName using (gen)
 import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
-open import Once.Type.DecEq using (_≟T_; _≟F_)
-open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; sub-int; sub-unit)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.Type.Sub using (_<:?_; sub-int; sub-unit)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult; VerifiedInferResult;
          success; failure; lookupLocal; lookupImport;
@@ -59,16 +57,9 @@ open import Once.TypeCheck.Elaborate
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error
-  using (TypeError;
-         LambdaInInferMode; LambdaRequiresFunctionType;
-         InlInInferMode; InrInInferMode;
-         InitialInInferMode; InlNeedsSumType; InrNeedsSumType;
-         FstNeedsPair; SndNeedsPair; NegationNotInt;
-         CaseScrutineeNotSum; CaseBranchMismatch;
-         ApplicationTypeMismatch; TypeMismatch;
-         UnboundVariable; UnboundQualified)
+  using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; InlNeedsSumType; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UnboundVariable; UnboundQualified)
 import Once.Surface.Syntax
-open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
+open import Once.Surface.Syntax as Surface using () renaming ()
 
 ------------------------------------------------------------------------
 -- Unconditional-failure paths (now trivial after refactor)

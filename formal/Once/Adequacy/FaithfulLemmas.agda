@@ -14,7 +14,7 @@
 --                           values). Induction on the type.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -25,43 +25,33 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.FaithfulLemmas (fmt : TargetNum) (ρ : CallEnv) where
 
-open import Data.Unit using (⊤; tt)
-open import Data.List using (List; []; _++_; length)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Nat using (ℕ; zero; suc; _∸_)
-open import Data.Nat.Properties using (0∸n≡0)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-sym-subst; subst-subst-sym)
 
-open import Once.Type using (Type; Unit; Void; Int; Float;
-                              _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T;
-                              Purity; mk-kind; Zero; One; Many)
+open import Once.Type using (Type; _*_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T; Purity; mk-kind; Many)
 import Once.Semantics.Machine as Val
-open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; curry; terminal; id; snd; Cata; Ana; ⌊_⌋)
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; snd; Cata; Ana; ⌊_⌋)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉)
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
-open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
+open import Once.Denotation.Meaning using (cata-sem)
 open import Once.Adequacy.CataErased fmt ρ using (evalᴰ-Cata-erased; pairᴰ-subst⁻; subst-T-fmap)
-open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘; liftFn-terminal)
+open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘)
 open import Once.Adequacy.AnaErased fmt ρ using (VE0ᴰ; coerce-νin-erase-D)
 open import Once.Semantics.Machine using
-  (sem-cata; sem-ana; coerce-functor; coerce-functor⁻¹; sem-fmap; coh; coerce-ν-in; tF-coh; ⟦_⟧F)
-open import Once.Semantics.Functor using (νS; ⟦_⟧SF; SFunctor)
+  (coerce-ν-in; tF-coh; ⟦_⟧F)
+open import Once.Semantics.Functor using (⟦_⟧SF; SFunctor)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Elaborate using (elaborate; cataM; anaM)
 import Once.Compile as C
-open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc; fmapT; fmapT-∘; fmapT-cong)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D; coerce-functor-D; liftFn; cohᴰ; anaFᵈ; anaᵈ-erase-full; subst-νᵈ-cong; νᵈ)
-open import Once.Denotation.TraceDenote using (events-F)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; coerce-functor-D; liftFn; cohᴰ; anaFᵈ; anaᵈ-erase-full; subst-νᵈ-cong)
 import Once.Denotation.SourceDenote as SD
 
 -- Plan 0.103 phase 1c: these lemmas relate the surface meaning to the

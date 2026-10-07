@@ -27,18 +27,17 @@
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List; [])
-open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Machine.ClosureWellFormed (o : CanonicalName) (tbl : List IRFun) where
 
-open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ; m≤n+m; +-monoʳ-≤; +-comm)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Product using (_,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)

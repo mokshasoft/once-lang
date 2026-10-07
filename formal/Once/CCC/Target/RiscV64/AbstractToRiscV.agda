@@ -33,25 +33,20 @@
 
 module Once.CCC.Target.RiscV64.AbstractToRiscV where
 
-open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_*_ to _*ℕ_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Integer using (+_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using ([]; _∷_; _++_)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import RISC-V syntax
-open import Once.Float.Dyadic using (binary32; binary64)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Float.Dyadic using (binary64)
+open import Once.Float.Decimal using (round)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
-  using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
-         s1; s2; s3; s4; t0; t1; t2; t3; t4;
-         Instr; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv;
-         beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
-         Label; once; thunk; callee; e-fn;
-         Program; slot-size; slots)
+  using (zero; ra; sp; fp; a0; s1; s2; s3; s4; t0; t1; ld; sd; add; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; unimp; label; once; callee; e-fn; Program; slot-size; slots)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)

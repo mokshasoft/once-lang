@@ -20,9 +20,7 @@
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
 ------------------------------------------------------------------------
 
-open import Data.Unit using (⊤; tt)
-open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; rel-stopped; rel-returns)
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -33,34 +31,25 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.CataErased (fmt : TargetNum) (ρ : CallEnv) where
 
-open import Data.Nat using (ℕ)
-open import Data.List using (List; _++_; take)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym)
 
-open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; fmapT-id; RelT′; RelT′-bind; RelT′-≡; ≡-RelT′)
+open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
+open import Once.Denotation.TraceMonad using (T; fmapT; fmapT-id; RelT′; RelT′-bind; RelT′-≡; ≡-RelT′)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
 open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; sem-cata; sem-fmap; coerce-μ-out; tF-coh; base-coh; coh)
-open import Once.Denotation.Trace using (SigOpEvent)
+  using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
-open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Functor.Translate using (WellFormedF; translateF)
 open import Once.Denotation.DenotTrace using (liftFn; cohᴰ; seqF; sigOpT; ffiE)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ)
 open import Once.SigOp.Info using (SigOpInfo; baseA; conB)
-open import Once.Semantics.Machine using (coerce-base-to-full)
-open import Once.Functor.Translate using (⟦_,_⟧-base)
-open import Once.IRTy.WF using (base-⌈⌉; base-⌊⌋)
-open import Once.Denotation.TraceDenote using (events-F)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)

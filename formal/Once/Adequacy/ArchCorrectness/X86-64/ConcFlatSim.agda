@@ -21,17 +21,13 @@
 -- supplied once, at the point this feeds `conc-flat-sim`.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; slot-addr; slot-addr-linear)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractInstr; CallI)
-open import Once.CCC.Label using (once; LabelId; EntryId)
+open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.Memory.HeapAddress using (sucHL)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
+open import Once.CCC.Label using (once; EntryId)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx; r14
-  ; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym
-  ; ret; push; pop; nop; ud2; syscall; label; call-l )
-open import Data.Nat using (ℕ; suc; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
-open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-≤-trans; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
-                                      ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
+  (slot-size; slots; Instr; Reg; reg; imm; mem; base; base+disp; rsp; rax; rdi; rbx; r14; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; syscall; label; call-l)
+open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
 -- the module's own `FS`/`word-eq` can be threaded into them by Agda's
@@ -41,15 +37,11 @@ open import Data.Maybe using (just)
 -- …and the pieces the LITERAL parameters' types need (phase D), likewise
 -- imported before the module header.
 open import Once.Type using (fits-int; fits-float)
-open import Once.Word using (Carrier)
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Float.Dyadic using (binary32; binary64)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Float.Dyadic using (binary64)
+open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; instr-call-closure
-        ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack
-        ; instr-load-tag-lit; instr-load-const)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
@@ -194,15 +186,14 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
            → FC.lo hv < X.W.modulus)
   where
 
-open import Data.Maybe using (Maybe; just; nothing; maybe′)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Nat using (zero)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Data.Bool using (true; false)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Machine.SMCore
-open MemOps {FS} using (writeLoc; writeLocToHeap; writeLoc-halted; readLoc)
-open FrameSemantics FS using (Frame)
+open MemOps {FS} using (readLoc)
+open FrameSemantics FS using ()
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
@@ -215,9 +206,9 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt
         ; pc-off; ret-eq; x86-64-block-steps; x86-64-link-claim; xrreg
         ; module C; module CompiledCorr ) public
 open import Once.CCC.Machine.FlatStoreWF FS using
-  (FlatWF; flat-wf-step; cl-step; wf-regs; wf-heap; wf-stack; wf-fresh; sv-below; svm-below)
+  ()
 open import Once.CCC.Machine.FlatRegTagWF FS using
-  (FlatRegTag; flat-regtag-step; flat-scratch-is-tag; flat-count-is-tag; scratch-tag)
+  ()
 open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
@@ -227,32 +218,22 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
         -- scan's four laws plus the lowering enumeration. `FlatComposition`
         -- already took them; the engine takes the same ones (slice 3).
         ; is-label?; skip-law; label-hit; label-miss; headView)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
-open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT; EmittableI; frame-free-emittable)
-open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
-open import Once.CCC.Machine.InstrSlot using (slot-of)
-open import Once.CCC.Machine.FlatStackSlot FS using (flat-same-frames; sf-slots; sf-saved; sf-ret)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
+open import Once.CCC.Codegen.IRToTrace o using ()
+open import Once.CCC.Machine.FlatStackSlot FS using ()
 open import Once.CCC.Machine.FlatStackPtr FS using
-  (StackPtrWF; StackPtrOK; StackPtrOK?; stack-ptr-frame; stack-ptr-live; stack-ptr-suc-live
-  ; flat-stack-ptr)
+  ()
 open import Once.CCC.Machine.FlatPtrBounds FS using
-  (PtrBoundsWF; PtrB; PtrB?; ptr-bounds-cell; ptr-bounds-suc; flat-ptr-bounds
-  ; mkPtrBounds; pb-regs; pb-heap; pb-stack)
-open import Once.CCC.Codegen.FrameFreeTrace o using (fetch-frame-free; ir-to-trace-frame-free)
-open import Once.CCC.Codegen.AllocMin o using (AllocMinI; fetch-alloc-min)
+  ()
+open import Once.CCC.Codegen.FrameFreeTrace o using ()
+open import Once.CCC.Codegen.AllocMin o using ()
 open import Once.CCC.Codegen.ShapeTable as ST using
-  (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
-   HeapModed; e-in1)
-open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written)
-open import Once.CCC.Codegen.LabelScope o using (emitted-jump-in-segment)
-open import Once.CCC.Codegen.LabelSeg using (mention-at; mention-of; once-label-of)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.CCC.Codegen.SlotBudget o using (emitted-slot-seg)
-open import Once.CCC.Codegen.SlotSeg using (trace-lookup; seg-at; seg-at-suc)
-open import Once.CCC.Codegen.SlotSeg using (below; pair-below; SegState; mkSeg; cur; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail; seg-step; saved)
-open import Once.IR using (IR; Unit)
-open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
+  ()
+open ST.Sem FS using ()
+open import Once.CCC.Codegen.LabelScope o using ()
+open import Data.Sum using (_⊎_)
+open import Once.CCC.Codegen.SlotBudget o using ()
+open import Once.CCC.Target.X86-64.Syntax using (slots)
 
 ------------------------------------------------------------------------
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
@@ -265,11 +246,9 @@ open import Once.Denotation.Program using (IRProgram)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.CCC.Machine.SMCore using (LocState)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Unit using (⊤; tt)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; sem; Internal; External)
+open import Data.Empty using (⊥)
+open import Once.SigOp.Info using (SigOpInfo; sem; Internal; External)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Word using (Carrier)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith)
@@ -365,7 +344,7 @@ private
 -- flat-machine theorem — no per-block-step obligation. The apex exhibits the
 -- entry witness of each.
 ------------------------------------------------------------------------
-open import Data.List using ([])   -- for `EntryLike`'s empty frame stack
+open import Data.List using ()   -- for `EntryLike`'s empty frame stack
 
 ------------------------------------------------------------------------
 -- THE RUN CONTEXT (2026-07-30, the vacuity fix).
@@ -513,9 +492,8 @@ open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-
 -- events on both sides (events-running, the per-instruction step).
 ------------------------------------------------------------------------
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-events-halted)
-open import Data.List using (List; []; _∷_; _++_; drop)
-open import Once.Denotation.Trace using (SigOpEvent)
+open FlatEventTrace {FS} using (event-of)
+open import Data.List using (List)
 
 -- fetch prog k ≡ nothing (k past the trace) ⇒ dropping k blocks leaves []. The
 -- abstract-side ingredient for the program-end boundary.

@@ -15,14 +15,12 @@
 
 module Once.Parser.Tests where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using ([]; _∷_)
+open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Unit; Void; Int; Float;
-                             _*_; _+_; _⇒[_]_; mk-kind; pure; eff;
-                             Zero; One; Many)
+open import Once.Type using (Unit; Void; Int; Float; _*_; _⇒[_]_; mk-kind; pure; Zero; One; Many)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseType)
 

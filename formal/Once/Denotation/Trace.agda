@@ -22,19 +22,12 @@
 
 module Once.Denotation.Trace where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
-open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Int)
+open import Once.Type using (Type)
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.SigOp.Info using (SigOpInfo; name; baseA)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value Carrier Carrier as M
 
 ------------------------------------------------------------------------

@@ -32,7 +32,7 @@ open import Data.List.Relation.Unary.All using (All)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
-open import Once.Target.RegConvention using (RegConvention; RegClass; ccc)
+open import Once.Target.RegConvention using (RegConvention; ccc)
 
 ------------------------------------------------------------------------
 -- Field ① — CCC-confinement of the arith emit (generic over RegConvention).

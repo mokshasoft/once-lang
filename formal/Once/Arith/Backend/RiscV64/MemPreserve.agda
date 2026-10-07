@@ -19,7 +19,7 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; _≢_)
 
-open import Once.CCC.Target.RiscV64.Semantics using (Memory; readMem; writeMem)
+open import Once.CCC.Target.RiscV64.Semantics using (readMem; writeMem)
 
 -- BASE: a write to a different address preserves a read.
 readMem-writeMem-other : ∀ m addr val a → a ≢ addr →

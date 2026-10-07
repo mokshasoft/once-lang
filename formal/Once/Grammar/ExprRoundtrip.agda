@@ -34,10 +34,10 @@
 
 module Once.Grammar.ExprRoundtrip where
 
-open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_)
-open import Data.Integer using (ℤ; +_)
+open import Data.List using ([]; _∷_)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_)
+open import Data.Integer using (+_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -46,8 +46,7 @@ open G using (GExpr)
 open import Once.TypeCheck.Raw
 open import Once.Parser.Token
 open import Once.Parser.Expr using (parseExpr)
-open import Once.Grammar.ExprPrinter using (printGExpr; ConcreteExpr;
-  c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual)
+open import Once.Grammar.ExprPrinter using (printGExpr; ConcreteExpr; c-e-unit; c-e-int; c-e-string)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
 
 ------------------------------------------------------------------------
@@ -185,11 +184,8 @@ round-trip-EApp-two-args = refl
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Data.Bool using (false; true; if_then_else_)
-open import Once.Grammar.ExprPrinter using (ConcreteExpr; c-e-unit;
-  c-e-int; c-e-string; c-e-var; c-e-qual)
+open import Once.Grammar.ExprPrinter using (ConcreteExpr; c-e-unit; c-e-int; c-e-string)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
-open import Once.Parser.Expr using (isReserved)
 
 -- EInt: every integer round-trips.
 round-trip-EInt :

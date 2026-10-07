@@ -18,31 +18,29 @@
 
 open import Once.Target.Arch using (TargetNum)
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
+open import Once.Spec.Core.PolyTy using (Sig; sigOf)
 
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreMeaningBridge (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
-open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Type using (Type; PolyType; Ground; extractGround)
+open import Once.Type using (Type; Ground; extractGround)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Functor.Translate using (IsConcrete)
-open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical; NotOwn)
-open import Data.List using ([]; _∷_)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Unit using (⊤)
+open import Once.CanonicalName using (bare; showCanonical)
+open import Data.List using (_∷_)
+open import Data.Empty using (⊥-elim)
 open import Data.String using (_++_)
 open import Once.Postulates using (extensionality)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; >>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
 open import Once.Denotation.TraceMonad using (T; interp; sig; impl)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix; ctxWithImportsAndPolys; Imports; PolyCtx)
+open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
 open import Data.String using (String)
 open import Once.TypeCheck.Judgment
 open import Once.Denotation.DefEnv using (defAt; impAt)
@@ -50,7 +48,7 @@ open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; M
 open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
 open import Once.Denotation.GradedOps using (sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Core.Meaning S as GM
-open import Once.Spec.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE; lift1; closeE)
+open import Once.Spec.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE)
 open View
 
 ------------------------------------------------------------------------
@@ -95,7 +93,7 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
 ------------------------------------------------------------------------
 
 open import Once.Surface.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
-open import Once.Type using (Quantity; Zero; One; _*_; _+_; Functor; ⟦_⟧T; μ-type; ν-type)
+open import Once.Type using (Quantity; Zero; One; _*_; Functor; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Surface.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ)
@@ -107,9 +105,9 @@ open import Once.Spec.Core.Syntax S
 open import Once.Type.Sub using (pure⊑; sub-arr; <:-refl)
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.DerivedTyping S
-open import Once.Spec.Core.Derived S using (seqᶜ; initialᶜ)
+open import Once.Spec.Core.Derived S using ()
 import Once.Adequacy.CoreRenameSem S as RS
-open import Once.Spec.Core.Rename S using (⊢close)
+open import Once.Spec.Core.Rename S using ()
 import Once.Denotation.EnvAlgebraV as EA
 
 -- A restriction of a transported environment is any restriction of the original.
@@ -306,9 +304,8 @@ module Comb {δ : GM.DefSem} where
 -- The bridge
 ------------------------------------------------------------------------
 
-open import Once.Denotation.Meaning using (EnvRun; seqᴰ)
+open import Once.Denotation.Meaning using (EnvRun)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Denotation.TraceMonad using (fmapT)
 open import Once.Surface.Context using (zeroUsage)
 
 -- The monad laws are equalities of trees (plan 0.105).

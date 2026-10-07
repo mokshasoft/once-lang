@@ -21,7 +21,7 @@
 open import Once.CanonicalName using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Chain (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
@@ -31,7 +31,7 @@ open import Once.CCC.Label using (idx)
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
-open +-*-Solver using (solve; _:+_; con; _:=_)
+open +-*-Solver using (solve; _:+_; con)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -41,7 +41,6 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
-open import Once.Res using (Res; stopped; returns; is-stopped; res-returns; res-stopped)
 
 module PairC {FS : FrameSemantics} where
 

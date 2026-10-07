@@ -32,30 +32,24 @@
 
 module Once.Adequacy.SourceTrace where
 
-open import Data.Bool using (Bool; false; true)
-open import Data.Nat using (ℕ; suc; _<_; z≤n)
-open import Data.List using (List; []; _∷_; take; length)
+open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; Σ-syntax; proj₂)
+open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Unit using (tt)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
-open import Once.CanonicalName using (CanonicalName; bare) renaming (_≟ᶜ_ to _≟cn_)
+open import Data.String using (String) renaming ()
+open import Once.CanonicalName using (CanonicalName) renaming (_≟ᶜ_ to _≟cn_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Type using (Type; Unit)
-open import Once.Spec.Module using (EffUU)
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Type using (Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C
 -- plan 0.107: the program is the COMPILER's (one walk) — defined in
 -- `Once.Compile` beside the emitter, and read from there.
-open import Once.Compile using (isEffUU?; mainCall; findMain-here; findMain; moduleToIR-aux; moduleToIR;
-  irFunOf; tableOf-go; tableOf; tableOfResult; moduleTable; programAt; moduleToProgram;
-  rewrite-fun; rewrite-table; rewrite-program)
+open import Once.Compile using (moduleToIR; moduleToProgram; rewrite-fun; rewrite-table; rewrite-program)
 import Once.Parser.Module.Core as P
 -- D165: the arith-block lifting the BACKEND runs before codegen. Imported here
 -- so the IR the emitter actually compiles can be NAMED (`moduleToIR-emitted`).
@@ -70,15 +64,13 @@ open import Data.Product using (proj₁)
 open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
 open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent)
-open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Denotation.DenotTrace using (evalᴰ)
 -- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are
 -- recursive and a parameterised module stops reducing at a variable instance.
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.TraceMonad
   using (projTrace; PrefixFamily; bnd; sat; coh; projTrace-pf; Interp; pureHalf)
-open import Once.Denotation.Program using (IRFun; irFun; fname; fdom; fcod; fbody; IRProgram; irProgram; table; main; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
+open import Once.Denotation.Program using (IRFun; fname; fdom; fcod; fbody; IRProgram; table; main; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.Spec.Contract using (ISig)
 import Once.IR as I

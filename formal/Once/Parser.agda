@@ -15,11 +15,10 @@ open import Once.Type.Honest using (HonestFFI; honest?)
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁)
+open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_; _++_; toList)
 open import Data.Char using (Char)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Nat using (ℕ)
 open import Relation.Nullary using (Dec; yes; no; does)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -31,8 +30,7 @@ open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
 open import Once.Parser.Core using (Parser)
-open import Once.Parser.Type using (parseType; isUpperWord)
-open import Once.Parser.Expr using (parseExpr)
+open import Once.Parser.Type using (isUpperWord)
 open import Once.Parser.Module public
 open import Once.Parser.Inline
 open import Once.Parser.TypeAlias

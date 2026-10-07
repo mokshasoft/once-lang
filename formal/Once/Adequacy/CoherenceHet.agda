@@ -18,21 +18,21 @@ open import Once.Target.Arch using (TargetNum)
 module Once.Adequacy.CoherenceHet (fmt : TargetNum) where
 
 open import Data.Bool using (true)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just)
 open import Data.Nat using (ℕ)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
 open import Once.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Many;
   Purity; Quantity; _≤q_; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; <:-unique; _⊑π_; ⊑-pure; ⊑π-refl)
+open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; <:-refl; _⊑π_; ⊑-pure; ⊑π-refl)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.CanonicalName using (CanonicalName; NotGenerator; showCanonical)
+open import Once.CanonicalName using (NotGenerator; showCanonical)
 open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
 open import Once.TypeCheck.Judgment
@@ -40,8 +40,7 @@ open import Once.TypeCheck.ModeAgreement using (extractGround-irr; dpoly-det)
 open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.Functor.Translate using (IsConcrete; IsConcrete-irrelevant; WellFormedF; WellFormedF-irrelevant)
 import Once.Surface.Context as Surface
-open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; _∷_; _,_^_; zeroUsage; _+ᵘ_; _*ᵘ_;
-  pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; lam; coerce; poly; lift-morphism)
+open import Once.Surface.Syntax using (Expr; Ctx; Usage; _∷_; _,_^_; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; lam; coerce; poly)
 import Once.IR as IR
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD

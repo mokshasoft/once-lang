@@ -16,11 +16,10 @@
 
 module Once.Grammar.ConcreteDec where
 
-open import Data.Bool using (Bool; true; false)
-open import Data.List using (List; []; _∷_)
+open import Data.Bool using (true; false)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_)
-open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Grammar as G
   using ( GExpr; GType

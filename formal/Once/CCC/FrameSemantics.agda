@@ -33,7 +33,7 @@
 
 module Once.CCC.FrameSemantics where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _∸_; _*_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; _<_; _+_; _∸_; _*_; s≤s; z≤n)
 open import Data.Nat.Properties using (*-mono-≤)
 open import Data.Empty using (⊥)
 open import Data.Sum using (_⊎_)

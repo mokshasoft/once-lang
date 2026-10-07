@@ -50,7 +50,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
-open import Once.CCC.Label using (Label; once; thunk; callee; LabelId; EntryId; _≡ᵇᴸ_; _≡ᵇᴵ_; _≡ᵇᴱ_)
+open import Once.CCC.Label using (Label; once; callee; LabelId; EntryId; _≡ᵇᴸ_; _≡ᵇᴵ_; _≡ᵇᴱ_)
 open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)

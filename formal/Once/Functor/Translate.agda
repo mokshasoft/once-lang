@@ -17,10 +17,8 @@ module Once.Functor.Translate where
 
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
-open import Data.Product using (_×_; _,_)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Data.String using (String)
+open import Data.Product using (_×_)
+open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Type

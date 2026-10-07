@@ -20,15 +20,13 @@
 module Once.Float.Dyadic where
 
 import Data.Nat
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n; _≡ᵇ_; _<ᵇ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; +-comm; m≤m+n; m≤n+m; *-comm)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-trans; +-comm)
 open import Data.Nat.DivMod using (_/_; _%_; m%n<n)
 import Data.Integer as ℤ
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.Nat.Properties using (m^n≢0)
 open import Data.Nat.Properties using (m^n>0)
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
@@ -134,7 +132,7 @@ combine-bound {e} {m} k j e< m< = lemma
   where
     open import Data.Nat.Properties
       using (+-monoʳ-<; *-monoˡ-≤; ^-distribˡ-+-*; +-comm; <-≤-trans; ≤-reflexive)
-    open import Relation.Binary.PropositionalEquality using (sym; trans; cong)
+    open import Relation.Binary.PropositionalEquality using (sym)
 
     step1 : e * (2 ^ j) + m < e * (2 ^ j) + 2 ^ j
     step1 = +-monoʳ-< (e * (2 ^ j)) m<

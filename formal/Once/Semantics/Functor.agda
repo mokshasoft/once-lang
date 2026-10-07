@@ -16,14 +16,11 @@
 
 module Once.Semantics.Functor where
 
-open import Level using (Level; 0ℓ; suc)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
-open import Once.Res using (Res; stopped; returns; mapRes; Res-rel)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
+open import Once.Res using (Res; stopped; returns; mapRes)
 
 ------------------------------------------------------------------------
 -- Semantic Functor (Set-level)

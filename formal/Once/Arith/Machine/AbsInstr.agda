@@ -23,7 +23,7 @@
 
 module Once.Arith.Machine.AbsInstr where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ; +_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)

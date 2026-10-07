@@ -11,8 +11,8 @@
 
 module Once.CCC.Target.X86-32.FileSymbols where
 
-open import Data.List using (List; []; _∷_; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
+open import Data.List using ([]; _∷_; _++_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs)

@@ -46,18 +46,13 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.Word as W64
 module W = W64.Width 64
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-start; c-call-fn; c-ret; instr-call-closure
-        ; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const
-        ; AbstractInstr; CallI)
-open import Once.CCC.Label using (LabelId; EntryId)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+open import Once.CCC.Label using (EntryId)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Dyadic using (binary64)
 open import Once.Float.Decimal using (Decimal; round; round-fits)
 open import Data.Integer using (ℤ)
-open import Data.Nat.Properties using (<-≤-trans; ^-monoʳ-≤; n≤1+n)
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp; rbx; r14; Reg)
+open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; rsp; rbx; r14; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.FrameInstantiation using () renaming (x86-64-frame-semantics to x86-64-frame-semantics-at)
 

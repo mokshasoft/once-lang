@@ -12,9 +12,8 @@
 
 module Once.CCC.Target.X86-64.Syntax where
 
-open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Fin using (Fin)
-open import Data.List using (List; []; _∷_; foldr)
+open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.List using (List; foldr)
 open import Data.String using (String)
 open import Once.CCC.Label using (LabelId; Label)
 

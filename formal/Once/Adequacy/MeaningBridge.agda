@@ -12,7 +12,7 @@
 -- lemma + the `RelEnv` it inducts over; the case discharges follow.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -30,13 +30,10 @@ module Once.Adequacy.MeaningBridge (fmt : TargetNum) (σ : DefsSem) where
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′; _⊎_)
 open import Data.Unit using (⊤; tt)
-open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Integer using (ℤ)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥-elim)
-open import Data.List using ([]; _∷_; _++_)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
@@ -44,43 +41,31 @@ open import Once.Type using (Type; Purity; Quantity; mk-kind; Zero; One; Many; p
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
   IsConcrete; con-base; con-fun)
-open import Once.Functor.Decide using (wellFormedF?)
-open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata)
-open import Once.IRTy using (eraseF; ⌊⟧T-commute; IRTy)
-open import Once.IRTy.WF using (wf-⌊⌋)
+open import Once.Semantics.Machine using (sem-In; sem-cata)
+open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
-open import Once.Denotation.Meaning using (out-sem)
-open import Once.Postulates using (extensionality)
-open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar; _↾_;
-                                        singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_;
-                                        z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _∷_; [];
-                                        _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ;
-                                        ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Denotation.Meaning using ()
+open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _∷_; []; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Surface.Syntax using (sigOp; poly; Expr; Usage; morph-app; unit)
+open import Once.Surface.Syntax using (sigOp; Usage)
 import Once.Surface.Syntax as Surface
-open import Once.Surface.Seq using (seq; seq0; embedClosed; closed-usage-eq)
-open import Once.Surface.Properties using (+ᵘ-identityʳ)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forceᵈ)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; >>=T-identityʳ; fmapT; RelT′; rel-ret; RelT′-fmap; RelT′-refl; Interp; sig; impl; pures; pureHalf; pureHalf-at; resT)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-identityʳ; fmapT; rel-ret; RelT′-fmap; RelT′-refl; Interp; sig; impl; pures; pureHalf; pureHalf-at; resT)
 import Once.Denotation.TraceMonad as TM
 open import Once.Spec.Contract using (key; valueOf-at; value-∈; _∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns; mapRes)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; cohᴰ; sigOpT; ffiE)
 open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
 open import Once.IR.Ref using (refIR)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
-open import Once.Type using (Ground; extractGround)
+open import Once.Type using (extractGround)
 import Data.String.Properties as StrProp
 open import Relation.Nullary using (yes; no)
 open import Once.Type.Sub
 open import Once.Denotation.Sub using (⟦_⟧<:)
-open import Once.TypeCheck.Raw using (BinOp;
-  OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.SigOp.Info using (FFIAnswers)
+open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
@@ -98,42 +83,38 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-var-poly-instantiate-infer; d-poly)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Once.Denotation.PhaseV using (lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0) renaming (env0 to env0ᵛ)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; _>>=ᵖ_; >>=ᵖ-β; returnM; bindM; subM)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; seqᴰ; DefMeanings; ImpMeanings; MeaningsOf; lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; _>>=ᵖ_; returnM; bindM; subM)
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; DefMeanings; ImpMeanings; MeaningsOf; EnvRun; sigOpValᴰ; sigOpRefᴰ)
 open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
-open import Once.Adequacy.CataErased fmt (calls σ) using (liftFn-SigOp)
+open import Once.Adequacy.CataErased fmt (calls σ) using ()
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
-  (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
-   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply; liftFn-eff-apply; liftFn-curry-fst)
+  (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr; liftFn-apply; liftFn-eff-apply; liftFn-curry-fst)
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 import Data.List as L
-open import Once.CanonicalName using (CanonicalName; canonical; own; bare; showCanonical)
-open import Once.Denotation.Realize using (realize; realize-infer; realize-d; poly-usage-eq)
-open import Once.Adequacy.SourceFaithful fmt (calls σ) using (faithful)
-open import Once.Surface.Elaborate using (elaborate)
+open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
+open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
+open import Once.Adequacy.SourceFaithful fmt (calls σ) using ()
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret;
-         prjB-rel; injB-rel; injBᵍ-rel; _∼ᵖᵈ_; force-∼ᵖᵈ; embν-∼)
+  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; prjB-rel; injB-rel; force-∼ᵖᵈ; embν-∼)
 open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ)
 open import Once.Denotation.GradedDomain using ()
-open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Semantics.Functor using (⟦_⟧SF)
-open import Once.SigOp.Info using (SigOpInfo; semP; int-prim; int-pure)
+open import Once.SigOp.Info using (semP; int-prim)
 import Once.Semantics.Machine as Val
 open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.Adequacy.GradedCataBridge fmt using (cata-bridgeᵍ)
 open import Once.Adequacy.GradedAnaBridge fmt using (ana-bridgeᵍ)
-open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out; out-rel)
+open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out)
 open import Once.Denotation.ValueDomainLaws using ()
 open Once.Denotation.ValueDomainLaws._∼ᵈ_ using (force-∼)
 

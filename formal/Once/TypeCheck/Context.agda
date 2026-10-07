@@ -14,14 +14,14 @@ module Once.TypeCheck.Context where
 
 open import Data.String using (String; _≟_)
 open import Data.List using (List; []; _∷_; length)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; suc)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (_,_)
+open import Relation.Nullary using (yes; no)
+open import Relation.Binary.PropositionalEquality using (refl)
 
-open import Once.Type using (Type; Quantity; Zero; One; Many)
+open import Once.Type using (Type; Quantity; Many)
 
 ------------------------------------------------------------------------
 -- Bindings

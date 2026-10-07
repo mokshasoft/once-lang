@@ -22,13 +22,11 @@
 module Once.Grammar.ExprPrinter where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Nat using (ℕ)
-open import Data.Integer using (ℤ; +_)
+open import Data.Integer using (+_)
 open import Data.Product using (_×_; _,_)
-open import Data.String using (String)
 
 import Once.Grammar as G
-open G using (GExpr; GType; LowerIdent)
+open G using (GExpr; LowerIdent)
 open import Once.Parser.Token
 open import Once.Grammar.Printer using (printGType)
 
@@ -141,7 +139,7 @@ printLetBindings ((n , e) ∷ more@(_ ∷ _)) =
 --    (semicolon-separated bindings) and require a distinct proof.
 ------------------------------------------------------------------------
 
-open import Data.Bool using (Bool; false)
+open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 -- Re-export reserved-word check from the parser for the var case.

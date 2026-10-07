@@ -12,14 +12,14 @@
 module Once.Parser.Generic.Parser where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.List using (List; []; _∷_)
-open import Data.String using (String) renaming (_≟_ to _≟s_)
+open import Data.List using (List; _∷_)
+open import Data.String using () renaming (_≟_ to _≟s_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Quantity; One; Zero; Many)
+open import Once.Type using (Many)
 open import Once.Parser.Token
 open import Once.Parser.Generic.Relation
 

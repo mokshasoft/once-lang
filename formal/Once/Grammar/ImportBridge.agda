@@ -19,25 +19,23 @@
 module Once.Grammar.ImportBridge where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <-≤-trans; <⇒≤; m≤n⇒m≤1+n)
+open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans)
 open import Data.List using (List; []; _∷_; length)
 open import Data.String using (String) renaming (_≟_ to _≟s_)
 open import Data.Maybe using (Maybe; just; nothing; is-just)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Product using (Σ-syntax; _,_)
+open import Data.Empty using (⊥-elim)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Nullary using (¬_; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (ParseAtB; ParseAtB≤; anyWordB; wordHead; Decl; DImport; Import; mkImport)
+open import Once.Parser.Module.Core using (ParseAtB; anyWordB; wordHead)
 open import Once.Parser.Module.Import
-  using (parseModulePath-WFB; pmp-aw; pmp-tail; pmp-dot; parseModulePathB;
-         dropDot; dropDot-≤; dotHead;
-         parseImportAliasB; pia-head; pia-as; pia-w; parseImportB; pib-path; pib-alias)
+  using (parseModulePath-WFB; pmp-tail; pmp-dot; parseModulePathB; dropDot; dropDot-≤; dotHead; parseImportAliasB; parseImportB)
 open import Once.Spec.Grammar.Import
   using (ParsesModulePath; pmp-cons; pmp-dotfail; pmp-nodot;
          ParsesImportAlias; pia-alias-r; pia-neq-r; pia-nonword-r;

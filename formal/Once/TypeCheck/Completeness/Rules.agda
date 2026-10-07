@@ -27,31 +27,23 @@
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
 module Once.TypeCheck.Completeness.Rules where
-open import Data.Nat using (ℕ; zero; suc; _⊔_)
+open import Data.Nat using (ℕ)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
-open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
-open import Data.String.Properties as StrProp using (_≟_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
+open import Data.String.Properties as StrProp using ()
 open import Once.Type as T using (Type; Unit; Int; Void; Float;
                                   _*_; _+_; _⇒[_]_; Quantity; _≤q_;
                                   Zero; One; Many)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair;
-         ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
-         cls-unit; cls-str; cls-annot; cls-binop)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
+  using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
-  using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; lookupLocal; lookupImport; inferElabV; checkElabV;
-         embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
-         classifyAppHead; classifyAppHeadView; ahv-other;
-         classifyAppHead-nothing⇒view-other; AppHeadView; inspectWellFormedF;
-         wfv-yes; wfv-no; classifyRPairTarget; rpt-vlift; rpt-other;
-         via; apply-pure; apply-eff)
+  using (NamedCtx; inferElab; checkElab; success; lookupLocal; lookupImport; inferElabV; checkElabV; VerifiedInferResult; classifyAppHead; classifyAppHeadView; ahv-other; classifyAppHead-nothing⇒view-other; AppHeadView; via; apply-pure; apply-eff)
 open import Once.TypeCheck.Judgment
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
@@ -59,37 +51,25 @@ open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
-  using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
+  using (wellFormedF?-complete-at)
 open import Once.Type.Rigid using (RigidFree; rigidFree?; rigidFree?-complete)
-open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
-  isConcrete?-complete; isBaseType?-complete)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys;
-  inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; [])
+open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
+open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Data.Empty using (⊥)
-open import Once.IR using (IR; Heap)
-open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Realize using ()
-open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
+open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod; sub-sum)
-open import Once.Type.DecEq using (_≟T_; _≟F_)
-open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
-  inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found;
-  GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr;
-  gv-unit; gv-other)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-open import Once.TypeCheck.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (
   checkCaseGo; VerifiedCheckResult; checkElab-fallback-RUnaryOp-sub; checkElab-fallback-RApp-apply-infer;
   elabGivenV; elabGivenLeaf; elabGivenApp; given-infer; given-cata; checkCompose-g; checkCompose-f;

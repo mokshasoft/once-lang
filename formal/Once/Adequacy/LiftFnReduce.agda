@@ -14,7 +14,7 @@
 -- `⟦_⟧ᴰ`). Match-to-refl + `subst-T-returnT`/`subst-arrowᴰ`/`pair-subst⁻`.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -27,9 +27,8 @@ module Once.Adequacy.LiftFnReduce (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
-open import Data.Unit using (⊤; tt)
-open import Data.Nat using (ℕ)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 

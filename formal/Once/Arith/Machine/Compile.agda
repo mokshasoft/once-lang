@@ -24,13 +24,13 @@ module Once.Arith.Machine.Compile where
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _^_; _≡ᵇ_)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Bool using (Bool; true; false; if_then_else_; T)
+open import Data.Bool using (Bool; true; false; T)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Unit using (tt)
 open import Data.Nat.Properties using (≡ᵇ⇒≡)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong; trans; sym; subst)
 
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
@@ -41,7 +41,7 @@ open import Once.Arith.Machine.AbsInstr
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
-open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Machine.Shape using (⌊_⌋ᴾ)

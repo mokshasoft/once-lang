@@ -26,36 +26,28 @@
 
 module Once.TypeCheck.Soundness where
 
-open import Data.Nat using (ℕ; zero; suc; _⊔_)
-open import Data.String using (String; _++_)
+open import Data.Nat using (ℕ)
+open import Data.String using (String)
 open import Data.Integer using (ℤ)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃; ∃-syntax; _,_; _×_; proj₁; proj₂)
+open import Data.Maybe using (nothing)
+open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
+  using (_≡_; refl)
 
-open import Once.Type as T using (Type; Unit; Int; Void; Float;
-                                  _*_; _+_; _⇒[_]_; Quantity)
-open import Data.Bool using (Bool; true; false)
-open import Once.CanonicalName using (gen; NotGenerator; bare-NotGenerator)
+open import Once.Type as T using (Type; Int; _⇒[_]_; Quantity)
+open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
-open import Data.String using (_++_)
+  using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
 import Data.String.Properties
-open import Relation.Nullary using (yes; no; ¬_)
-open import Data.Empty using (⊥-elim)
 import Once.Type.DecEq
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; lookupLocal; lookupImport; extendNamedCtx)
+  using (NamedCtx; inferElab; checkElab; success; failure; lookupLocal; lookupImport; extendNamedCtx)
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.ElaborateProofs
 open import Once.TypeCheck.Judgment
 
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Surface.Syntax as Surface using ()
   renaming (Expr to SExpr)
-open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 
 ------------------------------------------------------------------------
 -- Soundness of `inferElab` (partial coverage)

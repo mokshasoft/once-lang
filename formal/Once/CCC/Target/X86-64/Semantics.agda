@@ -28,14 +28,11 @@ open import Once.CCC.Label using (Label; _≡ᵇᴸ_; idx; thunk)
 import Once.Word as W64
 module W = W64.Width 64
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String)
-open import Function using (_∘_; case_of_)
-open import Relation.Nullary using (yes; no)
+open import Function using (case_of_)
 
 ------------------------------------------------------------------------
 -- Machine State

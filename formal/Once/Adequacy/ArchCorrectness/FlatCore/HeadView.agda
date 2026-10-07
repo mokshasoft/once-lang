@@ -24,9 +24,9 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr)
-open import Once.CCC.Label using (Label; once; thunk; callee; LabelId; _≡ᵇᴵ_; EntryId; _≡ᵇᴱ_)
+open import Once.CCC.Label using (Label; once; callee; LabelId; _≡ᵇᴵ_; EntryId; _≡ᵇᴱ_)
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (suc)
 open import Data.List using (List; []; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 

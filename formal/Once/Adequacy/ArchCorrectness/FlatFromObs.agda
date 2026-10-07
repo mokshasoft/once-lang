@@ -30,7 +30,7 @@
 -- is literally `valid-unit-wf`; the rest is loader/initial-frame plumbing.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; _<_; suc)
+open import Data.Nat using (ℕ; suc)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Target.Arch using (Arch)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -44,7 +44,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv; irProgram; Linked; LinkedProgram; fname; fbody)
+open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedProgram; fname; fbody)
 open import Once.Spec.Contract using (ISig)
 import Once.Denotation.TraceMonad as TM
 import Once.CCC.FrameSemantics
@@ -81,36 +81,33 @@ open import Data.Bool using (false)
 open import Data.List using (List; []; take)
 open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
-open import Data.Product using (proj₁; proj₂)
-open import Data.String using (String)
+open import Data.Product using (proj₁)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.IR using (IR; Unit; AllocMode; Stack)
-open import Once.IR.Size using (ir-size)
+open import Once.IR using (IR; Unit; Stack)
 open import Once.Denotation.Behavior using (Behavior; behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
-open import Once.Compile using (moduleToIR)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next; top-done)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Product using (_×_; _,_)
 open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label; ir-to-unit)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
-open Layout {FS} using (MissBefore; NoThunks; missBefore-from; blocks-at; Span)
+open Layout {FS} using (NoThunks; missBefore-from; blocks-at)
 open import Data.List using (_++_; []; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; link-top; blocks-layout; block-layout; AbstractTrace; e-thunk)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk)
 open import Data.List.Properties using (++-assoc)
-open import Data.List.Properties using (++-identityʳ; take-all)
-open import Once.Denotation.TraceMonad using (projTrace; bnd)
+open import Data.List.Properties using (++-identityʳ)
+open import Once.Denotation.TraceMonad using ()
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
@@ -130,16 +127,16 @@ import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 
-open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks)
+open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label; ft-go-prefix; FlatState; flat-exec-instr; floc; falloc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
-open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
+open CataIRSlotStable {FS} using ()
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open CataNextSlot {FS} using (AllSlotStable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
-open ClosureWellFormedDef {FS} using (ValidAtWF; valid-unit-wf)
+open ClosureWellFormedDef {FS} using ()
 
 -- (plan 0.107: `asm-sem` — the text's meaning — is gone; the file's run is
 -- `ArchSemantics.run-trace`, and the text is its print.)

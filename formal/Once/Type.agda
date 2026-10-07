@@ -10,7 +10,6 @@
 
 module Once.Type where
 
-open import Level using (Level)
 open import Data.Nat using (ℕ)
 import Data.Nat
 import Data.Nat.Show
@@ -18,7 +17,7 @@ open import Data.String using (String; _++_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- Quantitative Type Theory: Usage Grades

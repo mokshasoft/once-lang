@@ -16,30 +16,27 @@
 
 module Once.Adequacy.LabelSymbols where
 
-open import Data.Bool using (true; false)
+open import Data.Bool using (true)
 open import Data.Char using (Char; isDigit)
 open import Data.Char.Properties using (_≟_)
-open import Data.List using (List; []; _∷_; _++_; reverse; _∷ʳ_)
+open import Data.List using (List; []; _∷_; _++_; reverse)
 import Data.List
 import Once.CanonicalName
-open import Data.List.Properties using (++-assoc; reverse-++; unfold-reverse; reverse-involutive; ∷-injective)
+open import Data.List.Properties using (++-assoc; reverse-++; unfold-reverse; reverse-involutive)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using () renaming (++⁺ to All-++⁺)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Nat using (ℕ)
-open import Data.Nat.Show using (charsInBase)
 open import Data.Nat.Show.Properties using (charsInBase-injective)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
 open import Data.String.Unsafe using (toList-++)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.CanonicalName using (CanonicalName)
-open import Once.CCC.Label using (Label; once; callee; sigop; LabelId; idx; owner; path; e-thunk; e-fn;
-                                  labelSym; thunkSym; showLabelId; showPath)
+open import Once.CCC.Label using (Label; once; callee; sigop; LabelId; idx; owner; path; e-thunk; e-fn; labelSym; showLabelId; showPath)
 open import Once.Target.Symbol using (showNat; once-symbol-path; once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective using (toList-showNat; charsInBase-all-digits)
 

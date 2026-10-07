@@ -26,11 +26,10 @@
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Machine.ShapeAt (FS : FrameSemantics) where
 
 open import Data.Nat using (ℕ)
-open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 

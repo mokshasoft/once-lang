@@ -15,17 +15,16 @@
 module Once.CCC.Target.X86-64.CodeGen.Primitives where
 
 open import Data.Nat using (ℕ)
-open import Data.List using (List; []; _∷_; length)
-open import Data.String using (String)
+open import Data.List using ([]; _∷_; length)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; reg; imm; mov; ud2; call-sym; Program)
+  using (rax; reg; imm; mov; call-sym; Program)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
-open import Once.Float.Dyadic using (binary32; binary64)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Float.Dyadic using (binary64)
+open import Once.Float.Decimal using (round)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.Semantics.Machine using (LitPayload)

@@ -18,7 +18,7 @@
 -- this yields the plain `Behavior` equality `bridgeᵈ` needs — funext-free.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -28,19 +28,16 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.MeaningRelation (fmt : TargetNum) where
 
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (_×_; _,_)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ; _∸_)
-open import Data.List using (_++_; length)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              mk-kind; Zero; One; Many)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind)
-open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 

@@ -32,24 +32,19 @@ module Once.Parser.Type where
 
 open import Data.List using (List; []; _∷_; length)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; Σ; Σ-syntax)
+open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.String using (String)
 open import Data.String.Properties as StrProp using (_≟_)
-open import Data.Bool using (Bool; true; false; _∧_; not)
+open import Data.Bool using (Bool; false; _∧_; not)
 open import Data.Char using (isAlpha; isLower)
-open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans;
-                                        ≤-<-trans; <-≤-trans;
-                                        n<1+n; m≤n⇒m≤1+n;
-                                        n≤1+n; <⇒≤)
+open import Data.Nat using (_<_; s≤s)
+open import Data.Nat.Properties using (≤-refl; <-trans; n≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float;
-                             _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff;
-                             Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Zero; One; Many; mk-kind; pure; eff; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.TypeRelation

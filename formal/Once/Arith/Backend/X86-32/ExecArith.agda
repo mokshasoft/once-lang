@@ -24,14 +24,14 @@
 
 module Once.Arith.Backend.X86-32.ExecArith where
 
-open import Data.Nat using (ℕ; suc; _*_; _+_)
+open import Data.Nat using (suc; _*_; _+_)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Product using (_×_; _,_)
 
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.X86-32.Emit using (arith-reg)
 open import Once.CCC.Target.X86-32.Semantics
-  using (State; mkstate; RegFile; Memory; readReg; writeReg; readMem; writeMem; Word)
+  using (State; mkstate; RegFile; Memory; readReg; writeReg; writeMem; Word)
 open import Once.Target.X86-32.PhysReg using (Reg; eax; esp)
 open State
 

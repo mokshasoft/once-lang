@@ -21,13 +21,13 @@ module Once.Arith.Backend.BlockValueSemM where
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; trans; cong)
 
-open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S)
+open import Once.Arith.Machine.Shape using (⟦_⟧S)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
-open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Type using (NInt)
 open import Once.Arith.Machine.IR using (MArithIR)
 open import Once.Arith.Machine.AbsState using (init; output-of)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)

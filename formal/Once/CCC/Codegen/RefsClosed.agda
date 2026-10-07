@@ -38,20 +38,18 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
-open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.CCC.Label using (LabelId; Label; once; callee; e-fn; labelSym; thunkSym; ℓ)
-open import Once.SigOp.Info using (SigOpInfo; sem; name)
-open import Once.Target.Symbol using (once-symbol-path)
+open import Once.CCC.Label using (LabelId; once; labelSym; thunkSym; ℓ)
+open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; arefs)
 import Once.CCC.Codegen.NodesOK
 open Once.CCC.Codegen.NodesOK using (sigop-syms)
 open import Once.CCC.Codegen.IRToTrace o using
