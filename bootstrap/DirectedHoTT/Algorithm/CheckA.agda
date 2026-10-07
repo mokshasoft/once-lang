@@ -58,37 +58,50 @@ open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; flat?; NoNatC; nnc-base; nnc-Unit; nnc-Fin
         ; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.Signature using ( Sig; SigOK; _<ˢ_; <-here; <-there; <ˢ-zero )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Spec.Signature using ( Sig; kernel; _<ˢ_; <-here; <-there; <ˢ-zero )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+import DirectedHoTT.Algorithm.NbE.TblOK as TO
+import DirectedHoTT.Metatheory.Entries as Entries
+-- ★ S5: one checker per signature.  PLAN-REF: its hypothesis is the
+--   kernel's context formation (`WfK`, from `WfSig` by
+--   `Metatheory/Signature.wf→K`), and NbE's value table of the signature
+--   comes as an ARGUMENT (`Algorithm/NbETable.mkTbl`), so one table is
+--   shared by the whole check
+module DirectedHoTT.Algorithm.CheckA (S : Sig) (wfK : WfK (kernel S))
+  (tbl : Tbl) (tok : TO.TblOK (kernel S) tbl) where
+open Sig S
+
+private
+  𝒮 : KSig
+  𝒮 = kernel S
+  ok : _
+  ok = Entries.sigOK 𝒮 size wfK
+
+open import DirectedHoTT.Spec.Typing 𝒮 size hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.TySub 𝒮 size
   using ( ⊢-cast; ⊢single; sub-ty; Sub⊢; ⊢[]; ⊢wk; wk-cancel-tm )
-open import DirectedHoTT.Metatheory.Validity
+open import DirectedHoTT.Metatheory.Validity 𝒮 size ok
   using ( validity; WfUpTo; wf; srᵀ* )
-open import DirectedHoTT.Metatheory.NormTy
-  using ( normTy; mkWNᵀ; decConvᵀ; IsNormalᵀ )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.NormTy 𝒮 wfK
+  using ( normTy; mkWNᵀ; decConvᵀ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( red→≅ᵀ; _⟶ᵀ*_ )
 open import DirectedHoTT.Algorithm.DecEq
   using ( Dec; yes; no; _≟Ty_ )
-open import DirectedHoTT.Metatheory.Premises
+open import DirectedHoTT.Metatheory.Premises 𝒮 size
   using ( MethTy-wf; pairS⊢; fsucS⊢; ⊢wkD )
-open import DirectedHoTT.Metatheory.NormalShape using ( nf-Π; nf-Σ )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
-open import DirectedHoTT.Metatheory.Injectivity using ( Π-inj; church-rosserᵀ )
-open import DirectedHoTT.Algorithm.Eval
+open import DirectedHoTT.Metatheory.NormalShape 𝒮 using ( nf-Π; nf-Σ )
+open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal; IsNormalᵀ )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮 using ( Π-inj; church-rosserᵀ )
+open import DirectedHoTT.Algorithm.Eval 𝒮
   using ( Nfᵀ; nfdᵀ; outᵀ; evalᵀ; decConvFast; nf-irrᵀ; nf-stuckᵀ )
-open import DirectedHoTT.Algorithm.ConvLazy using ( convTy )
-open import DirectedHoTT.Algorithm.ConvNbE using ( decConvNbE; nbeNf; NfOf; nbeNfv )
--- ★ S5: one checker per signature; `ok` (from `WfSig`, Metatheory/Signature)
---   is what erasure — the bridge to the kernel's validity — needs
-module DirectedHoTT.Algorithm.CheckA (S : Sig) (ok : SigOK S) where
-open Sig S
-open Era body
-open import DirectedHoTT.Algorithm.EraName body using ( module E₀; by-names )
-open import DirectedHoTT.Spec.AnnotatedDesc body
+open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( convTy )
+open import DirectedHoTT.Algorithm.ConvNbE 𝒮 tbl tok using ( decConvNbE; nbeNf; NfOf; nbeNfv )
+open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA S
-open import DirectedHoTT.Metatheory.Erasure S ok
+open import DirectedHoTT.Metatheory.Erasure S
   using ( erase; erase-ty; motCtx-era )
 open import DirectedHoTT.Metatheory.GenerationA S
 open import DirectedHoTT.Metatheory.UniquenessA S using ( uniqᴬ )
@@ -168,10 +181,11 @@ liftTm (fsuc x0) = fsuc nzero (liftTm x0)
 liftTm (fcase x0 x1 x2) = fcase nzero base (liftTm x0) (liftTm x1) (liftTm x2)
 liftTm (fcase0 x0) = fcase0 base (liftTm x0)
 liftTm (psplit x0 x1) = psplit base base base (liftTm x0) (liftTm x1)
-liftTm (ref d b) = ref d
+liftTm (ref d) = ref d
 
--- ★ only for NORMAL forms — which never contain a definition (it would
---   δ-step); each subterm's normality comes through its congruence rule
+-- ★ only for NORMAL forms; each subterm's normality comes through its
+--   congruence rule (a reference is a name in both layers: it lifts and
+--   erases to itself)
 era-liftTy : {Γ : Cx} (A : RTy Γ) → IsNormalᵀ A → ⌈ liftTy A ⌉ᵀ ≡ A
 era-liftTm : {Γ : Cx} (t : RTm Γ) → IsNormal t → ⌈ liftTm t ⌉ ≡ t
 era-liftTy base n = refl
@@ -224,7 +238,7 @@ era-liftTm fzero n = refl
 era-liftTm (fsuc x0) n = cong1 (λ a0 → fsuc a0) (era-liftTm x0 (λ s → n (ξ-fsuc s)))
 era-liftTm (fcase x0 x1 x2) n = cong3 (λ a0 a1 a2 → fcase a0 a1 a2) (era-liftTm x0 (λ s → n (ξ-fcaseᵗ s))) (era-liftTm x1 (λ s → n (ξ-fcaseᵃ s))) (era-liftTm x2 (λ s → n (ξ-fcaseᵇ s)))
 era-liftTm (fcase0 x0) n = cong1 (λ a0 → fcase0 a0) (era-liftTm x0 (λ s → n (ξ-fcase0 s)))
-era-liftTm (ref d b) n = ⊥-elim (n (δref d b))
+era-liftTm (ref d) n = refl
 era-liftTm (psplit x0 x1) n = cong2 (λ a0 a1 → psplit a0 a1) (era-liftTm x0 (λ s → n (ξ-psplitᵇ s))) (era-liftTm x1 (λ s → n (ξ-psplitᵍ s)))
 
 ------------------------------------------------------------------------
@@ -310,15 +324,14 @@ decToBy wΓ d B dB nothing        = decToLazy wΓ d B dB
 
 decTo : {t : ATm ⌊ Γ ⌋ᴬ} {A : ATy ⌊ Γ ⌋ᴬ} → ⊢ctx ⌈ Γ ⌉ᶜ → Γ ⊢ᴬ t ∷ A →
         (B : ATy ⌊ Γ ⌋ᴬ) → ⌈ Γ ⌉ᶜ ⊢ty ⌈ B ⌉ᵀ → Dec (Γ ⊢ᴬ t ∷ B)
-decTo {A = A} wΓ d B dB = bySyntax (E₀.⌈ A ⌉ᵀ ≟Ty E₀.⌈ B ⌉ᵀ)
+decTo {A = A} wΓ d B dB = bySyntax (⌈ A ⌉ᵀ ≟Ty ⌈ B ⌉ᵀ)
   where
   -- ★ the inferred and the expected type are most often the SAME syntax
   --   (profiled 2026-10-06: 4844 conversions on Pw's sort-0 rows, each
-  --   normalising both sides) — compared first, linearly, and BY NAMES
-  --   (`Algorithm/EraName`): the erasure inlines every reference's body,
-  --   so comparing it walked the signature (~40% of PwCore's checking)
-  bySyntax : Dec (E₀.⌈ A ⌉ᵀ ≡ E₀.⌈ B ⌉ᵀ) → Dec (_ ⊢ᴬ _ ∷ B)
-  bySyntax (yes e) = yes (⊢ᴬconv d (subst (λ Z → ⌈ A ⌉ᵀ ≅ᵀ Z) (by-names A B e) crflᵀ))
+  --   normalising both sides) — compared first, linearly.  A reference
+  --   is a NAME in the erasure (PLAN-REF), so this is linear in the type
+  bySyntax : Dec (⌈ A ⌉ᵀ ≡ ⌈ B ⌉ᵀ) → Dec (_ ⊢ᴬ _ ∷ B)
+  bySyntax (yes e) = yes (⊢ᴬconv d (subst (λ Z → ⌈ A ⌉ᵀ ≅ᵀ Z) e crflᵀ))
   bySyntax (no _)  = decToBy wΓ d B dB (decConvNbE ⌈ A ⌉ᵀ ⌈ B ⌉ᵀ)
 
 -- a check from an inference: a "no" there refutes every typing
@@ -619,22 +632,7 @@ sndStep {p = p} wΓ dp with viewΣ wΓ dp
 ... | inj₂ ¬Σ = no (λ { (_ , w) → let (A , (B , (dp' , _))) = genᴬ-snd w in ¬Σ (A , (B , dp')) })
 ... | inj₁ (σv A B dp') = yes (subTyᴬ (singleᴬ (fst p)) B , ⊢ᴬsnd dp')
 
--- ★ S5: is `d` an entry of the signature?
-eqℕ : (a b : ℕ) → Dec (a ≡ b)
-eqℕ zero    zero    = yes refl
-eqℕ zero    (suc b) = no λ ()
-eqℕ (suc a) zero    = no λ ()
-eqℕ (suc a) (suc b) with eqℕ a b
-... | yes refl = yes refl
-... | no ne    = no λ { refl → ne refl }
-
-_<ˢ?_ : (d n : ℕ) → Dec (d <ˢ n)
-d <ˢ? zero = no <ˢ-zero
-d <ˢ? suc n with eqℕ d n
-... | yes refl = yes <-here
-... | no d≢n with d <ˢ? n
-...   | yes p = yes (<-there p)
-...   | no ¬p = no λ { <-here → d≢n refl ; (<-there p) → ¬p p }
+-- ★ S5: is `d` an entry of the signature?  `_<ˢ?_` (Spec/Syntax)
 
 
 inferᴬ   : (Γ : ACtx) → ⊢ctx ⌈ Γ ⌉ᶜ → (t : ATm ⌊ Γ ⌋ᴬ) → Dec (Inf Γ t)

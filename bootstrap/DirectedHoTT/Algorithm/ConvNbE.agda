@@ -23,18 +23,22 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.ConvNbE where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; Σ; _,_; _×_ )
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+import DirectedHoTT.Algorithm.NbE.TblOK as TO
+module DirectedHoTT.Algorithm.ConvNbE (𝒮 : KSig) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.Injectivity using ( church-rosserᵀ )
+open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮 using ( church-rosserᵀ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Ty_ )
-open import DirectedHoTT.Algorithm.Eval using ( Step; Stepᵀ; head; headᵀ; Nf; Nfᵀ; nf-stuckᵀ )
-open import DirectedHoTT.Algorithm.Eval
-open import DirectedHoTT.Algorithm.NbE using ( nbeᵀ )
-open import DirectedHoTT.Algorithm.NbESoundTy using ( nbeᵀ-sound )
+import DirectedHoTT.Algorithm.Eval 𝒮 as ᴵEval
+open ᴵEval using ( Step; Stepᵀ; head; headᵀ; Nf; Nfᵀ; nf-stuckᵀ )
+open ᴵEval
+open import DirectedHoTT.Algorithm.NbE tbl using ( nbeᵀ )
+open import DirectedHoTT.Algorithm.NbESoundTy 𝒮 tbl tok using ( nbeᵀ-sound )
 
 private
   variable
@@ -64,6 +68,11 @@ private
 -- 1. Normality, CHECKED (one clause per `Nf` constructor; `ref` is a
 --    δ-redex, so never normal).
 ------------------------------------------------------------------------
+
+-- a reference is normal exactly when it names no entry (PLAN-REF)
+refNf : {Γ : Cx} (d : ℕ) (q : Dec (d <ˢ KSig.size 𝒮)) → (d <ˢ? KSig.size 𝒮) ≡ q → Maybe (Nf (ref {Γ} d))
+refNf d (yes _) _ = nothing
+refNf d (no _)  e = just (nf-ref (cong (refHead d) e))
 
 nf?  : (t : RTm Γ) → Maybe (Nf t)
 nfᵀ? : (A : RTy Γ) → Maybe (Nfᵀ A)
@@ -110,7 +119,7 @@ nf? (fsuc t)         = nf? t >>= λ x → just (nf-fsuc x)
 nf? (fcase t a b)    = nf? t >>= λ x → nf? a >>= λ y → nf? b >>= λ z → hd (fcase t a b) >>= λ h → just (nf-fcase x y z h)
 nf? (fcase0 t)       = nf? t >>= λ x → just (nf-fcase0 x)
 nf? (psplit b q)     = nf? b >>= λ x → nf? q >>= λ y → hd (psplit b q) >>= λ h → just (nf-psplit x y h)
-nf? (ref d b)        = nothing
+nf? (ref d)          = refNf d (d <ˢ? KSig.size 𝒮) refl
 
 nfᵀ? base          = just nf-base
 nfᵀ? U             = just nf-U

@@ -23,22 +23,25 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.NbESoundTy where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+import DirectedHoTT.Algorithm.NbE.TblOK as TO
+module DirectedHoTT.Algorithm.NbESoundTy (𝒮 : KSig) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; _×_; _,_; ⊤; tt )
 open import Agda.Builtin.Nat using ( zero; suc; _<_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_; ⌊_⌋ )
-open import DirectedHoTT.Metatheory.TySub using ( wk-cancel; wk-cancel-tm; ⟶ᵀ-ren )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ )
-open import DirectedHoTT.Metatheory.Fundamental.Syntactic using ( ⟨_⟩ᵣ; subTm-var )
-open import DirectedHoTT.Metatheory.Confluence using ( single-⟹; ⟶→⟹ )
-open import DirectedHoTT.Metatheory.Injectivity using ( ⟹ᵀ-sub; ⟹ᵀ-refl; ⟹ᵀ→⟶ᵀ* )
-open import DirectedHoTT.Algorithm.ConvCong using ( ≅app )
-open import DirectedHoTT.Algorithm.NbE
+open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_; ⌊_⌋ )
+open import DirectedHoTT.Metatheory.TySub.Red 𝒮 using ( wk-cancel; wk-cancel-tm; ⟶ᵀ-ren )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ )
+open import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 using ( ⟨_⟩ᵣ; subTm-var )
+open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( single-⟹; ⟶→⟹ )
+open import DirectedHoTT.Metatheory.Injectivity 𝒮 using ( ⟹ᵀ-sub; ⟹ᵀ-refl; ⟹ᵀ→⟶ᵀ* )
+open import DirectedHoTT.Algorithm.ConvCong 𝒮 using ( ≅app )
+open import DirectedHoTT.Algorithm.NbE tbl
 open import DirectedHoTT.Algorithm.NbERead
-open import DirectedHoTT.Algorithm.NbEScope
-open import DirectedHoTT.Algorithm.NbESound
+open import DirectedHoTT.Algorithm.NbEScope tbl (TO.tblSc 𝒮 tbl tok)
+open import DirectedHoTT.Algorithm.NbESound 𝒮 tbl tok
   using ( ≡→≅; _⨾_; S-eval; S-force; S-inst; S-vApp; S-vFst; S-vSnd; S-rb
         ; bind-here; bind-wk; sub-vz-wk; idEnv-read; sc-idEnv )
 

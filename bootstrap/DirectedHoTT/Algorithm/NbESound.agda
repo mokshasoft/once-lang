@@ -24,24 +24,27 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.NbESound where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+import DirectedHoTT.Algorithm.NbE.TblOK as TO
+module DirectedHoTT.Algorithm.NbESound (𝒮 : KSig) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _×_; _,_; ⊤; tt )
 open import Agda.Builtin.Nat using ( zero; suc; _<_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_; ⌊_⌋ )
+open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_; ⌊_⌋ )
 open import DirectedHoTT.Spec.Variance using ( pw?; stkA?; stkC?; pwBody; pwShift; 𝔹; true; false )
-open import DirectedHoTT.Metatheory.TySub using ( wk-cancel-tm )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub; ⟶-sub )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶-ren; ⟶*-trans )
-open import DirectedHoTT.Metatheory.Confluence using ( church-rosser; ⟹-sub; ⟹-refl; ⟹→⟶*; ⟶→⟹; single-⟹; single2-⟹; pwBody-⟹; pw?-⟹ )
+open import DirectedHoTT.Metatheory.TySub.Red 𝒮 using ( wk-cancel-tm )
+open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub; ⟶-sub )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶-ren; ⟶*-trans )
+open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( church-rosser; ⟹-sub; ⟹-refl; ⟹→⟶*; ⟶→⟹; single-⟹; single2-⟹; pwBody-⟹; pw?-⟹ )
 open import DirectedHoTT.Spec.Variance using ( pw?-sub; pwBody-sub )
-open import DirectedHoTT.Algorithm.ConvLazy using ( cong≅; red→≅ )
-open import DirectedHoTT.Algorithm.ConvCong
-open import DirectedHoTT.Algorithm.NbE
+open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅; red→≅ )
+open import DirectedHoTT.Algorithm.ConvCong 𝒮
+open import DirectedHoTT.Algorithm.NbE tbl
 open import DirectedHoTT.Algorithm.NbERead
-open import DirectedHoTT.Algorithm.NbEScope
+open import DirectedHoTT.Algorithm.NbEScope tbl (TO.tblSc 𝒮 tbl tok)
 
 private
   variable
@@ -561,15 +564,16 @@ S-eval k n ρ (⌜Fin⌝ t)         L s = ≅⌜Fin⌝ (S-eval k n ρ t L s)
 
 S-eval k n ρ ⌜Unit⌝            L s = crfl
 
-S-eval k n ρ (ref d b)         L s = crfl
+S-eval k n ρ (ref d)           L s = crfl
 
 -- ★ δ: a reference unfolds to its (closed) body, evaluated at depth 0
 S-force zero    v L = crfl
 
 S-force (suc k) v L = S-forceR k (refV v) L
 
-S-forceR k (isRef d b) L =
-  ⟶≅ (δref d b) ⨾ (≡→≅ (subTm-cong (λ ()) b) ⨾ (S-eval k 0 [] b L tt ⨾ S-force k _ L))
+-- ★ a reference forces to its table entry, which reads as its unfolding
+--   (the table is sound, `tok`)
+S-forceR k (isRef d) L = TO.tblReads 𝒮 tbl tok L d ⨾ S-force k (lookupT tbl d) L
 
 S-forceR k (notRef v)  L = crfl
 
@@ -1097,13 +1101,13 @@ S-rb₂ u (suc k) Γ c s =
 
 S-rb u k Γ (vvar l) s = crfl
 
-S-rb false k       Γ (vref d b) s = crfl
+S-rb false k       Γ (vref d) s = crfl
 
-S-rb true  zero    Γ (vref d b) s = crfl
+S-rb true  zero    Γ (vref d) s = crfl
 
-S-rb true  (suc k) Γ (vref d b) s =
-  ⟶≅ (δref d b) ⨾ (≡→≅ (subTm-cong (λ ()) b) ⨾ (S-eval k 0 [] b (lvl Γ) tt
-  ⨾ S-rb true k Γ (eval k 0 [] b) (mono (eval k 0 [] b) (up-zero (len Γ)) (sc-eval k 0 [] b tt))))
+S-rb true  (suc k) Γ (vref d) s =
+  TO.tblReads 𝒮 tbl tok (lvl Γ) d
+  ⨾ S-rb true k Γ (lookupT tbl d) (mono (lookupT tbl d) (up-zero (len Γ)) (TO.tblSc 𝒮 tbl tok d))
 
 S-rb u k Γ (vlam c) s0 = S-rbL u k Γ c s0
 

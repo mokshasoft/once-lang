@@ -44,9 +44,11 @@ open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import Agda.Builtin.String using ( String; primStringAppend )
 open import DirectedHoTT.Algorithm.Result
 open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs; extR )
-open import DirectedHoTT.Spec.Typing using ( ⊢ctx_; _⊢ty_; c-◇ )
 open import DirectedHoTT.Spec.Annotated
-open import DirectedHoTT.Spec.Signature using ( Sig; SigOK )
+open import DirectedHoTT.Spec.Signature using ( Sig; kernel )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+import DirectedHoTT.Algorithm.NbE.TblOK as TO
 import DirectedHoTT.Algorithm.Surface as S
 open S using ( STy; STm )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no )
@@ -55,8 +57,7 @@ open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no )
 -- evaluation (the checker re-validates everything); `fuel` bounds it
 module DirectedHoTT.Algorithm.Elab (Sg : Sig) (abody : ℕ → ATm ε) (fuel : ℕ) where
 open Sig Sg
-open Era body
-open import DirectedHoTT.Spec.AnnotatedDesc body
+open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA Sg using ( ACtx; ◇ᴬ; _▹ᴬ_; ⌊_⌋ᴬ; ⌈_⌉ᶜ; _⊢ᴬ_∷_; _⊢tyᴬ_; nrsᴬ )
 
 private
@@ -487,9 +488,10 @@ el e (S.psplit A B P b q) mT = at "psplit" (
 -- 4. ★ Elaborate, then CHECK: the result is CheckA's derivation.
 ------------------------------------------------------------------------
 
-module Checked (sok : SigOK Sg) where
-  import DirectedHoTT.Algorithm.CheckA Sg sok as CA
-  import DirectedHoTT.Metatheory.Erasure Sg sok as Er
+module Checked (wfK : WfK (kernel Sg)) (tbl : Tbl) (tok : TO.TblOK (kernel Sg) tbl) where
+  import DirectedHoTT.Algorithm.CheckA Sg wfK tbl tok as CA
+  import DirectedHoTT.Metatheory.Erasure Sg as Er
+  open import DirectedHoTT.Spec.Typing (kernel Sg) (Sig.size Sg) using ( ⊢ctx_; _⊢ty_; c-◇ )
 
   -- the derivation, when the elaborated term checks; otherwise the reason
   -- (an elaboration failure, or CheckA's certified "no")

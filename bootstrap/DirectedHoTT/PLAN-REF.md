@@ -220,3 +220,33 @@ Recorded so a failure is recognised, not explained away:
 
 Next: `Algorithm/` (NbE value table, CheckA on `wf→K`, SigBuild without
 the `below` check), then Lib, Examples, the Knot and its generators.
+
+### 2026-10-07 — Algorithm green
+
+- **E4, the value table.** `Algorithm/NbE/Value` holds the values, the
+  readings `⌊_⌋`, the type values, and `Tbl` (a telescope of entry values,
+  `lookupT`; a name beyond the table is its own, stuck, value) — all
+  table-free. `Algorithm/NbE (tbl : Tbl)` is the evaluator: `vref d`
+  forces to `lookupT tbl d`. `Algorithm/NbE/TblOK (𝒮)(tbl)`: the table is
+  sound — every entry closed (`TblSc`) and read as `ref d` (`TblReads`);
+  the soundness stack (`NbESound`, `NbESoundTy`, `ConvNbE`, `ConvLazyNbE`)
+  takes it as a parameter, and `S-forceR`/`S-rb` at a reference are one
+  line each. `Algorithm/NbETable`: `mkTbl : KSig → Tbl` (entry m evaluated
+  at the table of the entries before it, the prefix passed as an argument)
+  and `mkTbl-ok`, along the telescope.
+- **The table is SHARED.** `CheckA (S)(wfK)(tbl)(tok)` takes it as a
+  parameter; `SigBuild` THREADS it along the telescope (`Stage`), each
+  stage carrying `t ≡ mkTbl (kernel Sᵢ)` — `refl` at every step, because
+  `mkTbl` of an extended signature unfolds to `extendAt` of the old table
+  (the construction is signature-free for exactly this reason). So each
+  entry is evaluated once per segment check.
+- `Algorithm/Eval`: `head (ref n)` fires δ exactly on the signature's
+  names (`refHead`, by `_<ˢ?_`); a reference beyond is normal (`nf-ref`,
+  as `nf-app`: its head does not step). One `Dec` (the prelude's; DecEq
+  re-exports it).
+- `EraName` deleted: erasure keeps the name, so `decTo` compares erasures
+  directly and linearly. `CheckA`'s `era-liftTm (ref d)` is `refl`.
+- `SigBuild`: `EntryWf` carries the type's derivation; the `below` checks
+  are gone (`⊢ᴬref` bounds the names); the kernel hypothesis is `wf→K`.
+
+Next: Lib, then Examples, then the Knot.

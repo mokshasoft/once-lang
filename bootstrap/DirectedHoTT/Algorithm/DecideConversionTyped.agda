@@ -17,15 +17,25 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.DecideConversionTyped where
+open import DirectedHoTT.Spec.Syntax using ( KSig )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+import DirectedHoTT.Metatheory.Entries as Entries
+module DirectedHoTT.Algorithm.DecideConversionTyped (𝒮 : KSig) (wf : WfK 𝒮) where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing
+
+-- ★ PLAN-REF: at a well-formed signature (all its names)
+private
+  n = KSig.size 𝒮
+  ok = Entries.sigOK 𝒮 n wf
+  refs = Entries.refsOK 𝒮 n (λ p → p) wf
+
+open import DirectedHoTT.Spec.Typing 𝒮 n
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _≅_; ⊢ctx_; c-◇; c-▹
         ; ⊢var; ⊢lam; ⊢app; here; there; ty-base; ⊢appex )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Tm_ )
-open import DirectedHoTT.Metatheory.Fundamental using ( dec-conv-typed )
+open import DirectedHoTT.Metatheory.Fundamental 𝒮 n ok refs using ( dec-conv-typed )
 
 private
   variable

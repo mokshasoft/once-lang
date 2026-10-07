@@ -15,13 +15,15 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.NbEScope where
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+open import DirectedHoTT.Algorithm.NbERead using ( TblSc )
+module DirectedHoTT.Algorithm.NbEScope (tbl : Tbl) (tsc : TblSc tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_; ⊤; tt )
 open import Agda.Builtin.Nat using ( zero; suc; _<_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Algorithm.NbE
+open import DirectedHoTT.Algorithm.NbE tbl
 open import DirectedHoTT.Algorithm.NbERead
 
 private
@@ -144,12 +146,12 @@ sc-eval k n ρ ⌜Nat⌝             s = tt
 sc-eval k n ρ (⌜IMu⌝ I D i)     s = sc-eval k n ρ I s , (sc-eval k n ρ D s , sc-eval k n ρ i s)
 sc-eval k n ρ (⌜Fin⌝ t)         s = sc-eval k n ρ t s
 sc-eval k n ρ ⌜Unit⌝            s = tt
-sc-eval k n ρ (ref d b)         s = tt
+sc-eval k n ρ (ref d)           s = tt
 
 sc-force zero    n v s = s
 sc-force (suc k) n v s = sc-forceR k n (refV v) s
 -- a reference's body is closed: scoped below 0, so below any n
-sc-forceR k n (isRef d b) s = mono (force k (eval k 0 [] b)) (up-zero n) (sc-force k 0 _ (sc-eval k 0 [] b tt))
+sc-forceR k n (isRef d) s = mono (force k (lookupT tbl d)) (up-zero n) (sc-force k 0 _ (tsc d))
 sc-forceR k n (notRef v)  s = s
 
 sc-inst zero    n c                v sc sv = sc , sv

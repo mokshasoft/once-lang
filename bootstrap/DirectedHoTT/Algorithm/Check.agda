@@ -38,18 +38,20 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Algorithm.Check where
+open import DirectedHoTT.Spec.Syntax using ( KSig; _<ˢ_; _<ˢ?_ )
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Algorithm.Check (𝒮 : KSig) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Spec.Typing 𝒮 n
+open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ
         ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; ⟶ᵀ*-IMu; ⟶ᵀ*-IMuᴵ; ⟶ᵀ*-IMuᴰ; ⟶ᵀ*-Desc
         ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; red→≅ᵀ )
-open import DirectedHoTT.Lib.Eval using ( evN )
+open import DirectedHoTT.Lib.Eval 𝒮 using ( evN )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Ty_ )
 
 private
