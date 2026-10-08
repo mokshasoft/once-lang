@@ -237,6 +237,29 @@ one pass over the resolution log the scope checker already keeps.
 
 ---
 
+## Tooling lineage
+
+Plan 0.92 needed new features in the Agda fork (branch `dead-code-2.8.0`) to
+clean up the formalisation's imports. Each one reconstructs information Agda's
+module system does not keep visible, which is why each was hard (lineages
+through interfaces, applied copies, chains of re-exports). Under this OCP the
+same information sits in the header, so each tool shrinks to a check the
+compiler runs anyway, or disappears:
+
+| Fork tool (Agda) | In Once under OCP-0010 |
+|---|---|
+| `--name-resolution-report`: where a name came from, via its lineage | trivial: the answer is always one header line (R1) |
+| `--dead-imports` / `--remove-dead-imports` | a compile error (R5): rot cannot accumulate |
+| latent-ambiguity warning (planned) | an error at the import, naming both sources (R5) |
+| `--sort-imports` (planned) | the canonical form (R6), enforced by `once fmt` |
+| `--repair-reexports` | not needed: no re-exports; a `facade` lists every name (R4) |
+| `--dead-code`, `--write-ast` (liveness from an entry point) | still useful: whole-program liveness is not a scope question |
+
+The fork tools remain the reference for what Once's compiler must check, and
+their goldens are a ready test list.
+
+---
+
 ## Alternatives
 
 * **Agda's model with linting** (warnings for unused imports, a sorter). Rejected:
