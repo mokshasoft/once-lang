@@ -135,6 +135,10 @@ An importer of a facade still sees, in the facade's header, exactly where each
 name comes from (one hop, written down). A facade defines nothing and cannot
 export another facade's names without listing them.
 
+`facade` is part of the design from the start, not added when the Spec is
+written in Once (decided 2026-10-08): retrofitting an aggregate onto a module
+system without one is how `public` re-exports arise.
+
 ### R5. Import rot is a compile error
 
 * an imported module none of whose names is used;
@@ -151,6 +155,9 @@ and a warning is how D139's rot started.
 The compiler (or `once fmt`, which the build runs in check mode) enforces one
 order: imports sorted by module path, one per module, name lists sorted. Diffs
 then never contain import noise, and two authors write the same header.
+
+Operators follow the same rule: `import D.Arith as A (_+_)` makes `a + b`
+available, and the qualified form `a +@A b` always works. No exemption.
 
 ### R7. Proofs get no extra scope constructs
 
@@ -170,6 +177,15 @@ separate question for OCP-0009; they are visible in the type signature on the
 line that declares them, and so do not break R1. Instance search does: the
 argument is chosen from whatever happens to be in scope, which is exactly a
 non-local fact.
+
+### R8. An import is not a grant (OCP-0007)
+
+Importing a module, an Interpretation included, brings NAMES into scope,
+never AUTHORITY. The capabilities an operation needs are discharged only at a
+grant site descending from `main`'s root capability (OCP-0007 §5), so scope
+and authority stay orthogonal: what a line can name is read off the header,
+what it may do is read off its grade and the grant structure. Capability
+labels are names and follow R1–R5 (qualified, imported in the header).
 
 ---
 
@@ -239,12 +255,16 @@ one pass over the resolution log the scope checker already keeps.
 
 - Should the unqualified name list (R2) exist at all, or should every use be
   qualified (`swap@S`)? Qualified-only is the strictest form of R1.
-- `facade` (R4): is it needed before the Spec is written in Once, or does the
-  Spec stay in the Agda formalisation for now?
-- Operator names imported unqualified (OCP-0002 infix operators): same rule, or
-  are operators always unqualified to keep expressions readable?
-- Interaction with OCP-0007 capabilities: is an Interpretation import a scope
-  import, or a capability grant? (R1 says either way it is a header line.)
+- **Inferred grades vs. local readability.** OCP-0007 infers a computation's
+  needed capabilities and makes annotations optional (§6); D072 infers types
+  of signature-less definitions. Neither breaks R1 (which is about where NAMES
+  come from), but both mean a line like `f = g >>> h` does not show its own
+  type or capabilities: they are read off other lines' signatures. The
+  stronger form of the principle would make top-level signatures, grade
+  included, mandatory. To be decided with OCP-0007.
+
+Resolved (2026-10-08): `facade` is designed now (R4); operators follow R2
+(R4/R2 notes); imports never grant authority (R8).
 
 ---
 
