@@ -31,3 +31,6 @@ For smaller decisions, use the [Decision Log](../compiler/decision-log.md) inste
 | 0005 | [Decision State & Invariant Encoding](OCP-0005-decision-state-and-invariant-encoding.md) | Draft |
 | 0006 | [Once Spec Language Definition](OCP-0006-once-spec-language-definition.md) | Draft |
 | 0007 | [Capability-Graded Effects](OCP-0007-capability-graded-effects.md) | Draft |
+| 0008 | [Eliminators over `with`](OCP-0008-eliminators-over-with.md) | Draft |
+| 0009 | [Decidable Dependent Types](OCP-0009-decidable-dependent-types.md) | Draft |
+| 0010 | [Locally Readable Scope](OCP-0010-locally-readable-scope.md) | Draft |
