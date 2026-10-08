@@ -26,6 +26,7 @@ FORMAL = os.getcwd()
 STAGE = os.environ.get("STAGE") or sys.exit("STAGE unset")
 AGDA = os.environ.get("AGDA_PATCHED") or sys.exit("AGDA_PATCHED unset")
 STDLIB = os.path.expanduser("~/_stdlib-cache/standard-library.agda-lib")
+GONE = "\x00public-removed"
 PUB = re.compile(r"(^|\s)public\s*$")
 
 def modname(path):
@@ -209,7 +210,7 @@ def remove_public(path, line):
         if PUB.search(L[j]):
             L[j] = PUB.sub("", L[j]).rstrip()
             if L[j].strip() == "":
-                del L[j]
+                L[j] = GONE           # dropped after all edits: records' lines must not shift
             break
     else:
         raise ValueError("no `public` in the statement at " + path + ":" + str(line))
@@ -437,19 +438,9 @@ def run(targets):
                 skipped.append((f, ln, ", ".join(sorted(why)))); continue
             plan.append((f, ln, fac, add, drop, stmt))
             requal.update({p: requal.get(p, []) + occs for p, occs in quals.items()})
-    # PRE-FLIGHT 1: a name an importer lists in a directive of a facade but never
-    # uses (no occurrence in its records — the report IS the reachability fact) is
-    # a dead import: prune it, rather than move it.
-    used = {m: {r["written"] for r in rs} | {base(r["resolved"]) for r in rs} for m, rs in before.items()}
-    facs = {fac for _, _, fac, _, _, _ in plan}
-    for fac in facs:
-        for m in imps:
-            p = modpath(m)
-            if m == fac or not os.path.exists(p) or m not in used: continue
-            dead = {n for n in directive_names(p, fac) if n not in used[m]}
-            if dead:
-                touch(p); drop_from_directives(p, fac, dead)
-                print(f"  pruned dead imports {sorted(dead)} of {fac} in {p}", flush=True)
+    # (PRE-FLIGHT 1, pruning directive names the importer never uses, is gone:
+    # Agda's own --remove-dead-imports does it exactly, before a batch; doing it
+    # here shifted the lines the snapshot's records point at.)
     # PRE-FLIGHT 2: directive names no record placed (listed, never used)
     by_fac = defaultdict(list)
     for f, ln, fac, add, drop, stmt in plan: by_fac[fac].append((f, stmt))
@@ -481,6 +472,10 @@ def run(targets):
             for k, ns in d.items(): adds[p][k] |= ns
         for p, ns in drop.items(): drops[p][fac] |= ns
     for p, occs in requal.items():
+        # one occurrence can be claimed by two spots: shift and rewrite it once
+        seen_r = {}
+        for r, x in occs: seen_r.setdefault(id(r), (r, x))
+        occs = list(seen_r.values())
         touch(p)
         src = open(p, encoding="utf-8").read().split("\n")
         alias_of = {}
@@ -504,6 +499,8 @@ def run(targets):
             for rr, _x in occs:
                 if rr["line"] - 1 >= at: rr["line"] += 1; rr["endLine"] += 1
         for r, x in sorted(occs, key=lambda o: (-o[0]["line"], -o[0]["col"])):
+            if r["line"] - 1 >= len(src):
+                sys.exit(f"requalify: {p} has {len(src)} lines, record at {r['line']}: {r['written']}")
             l = src[r["line"] - 1]
             src[r["line"] - 1] = l[:r["col"] - 1] + alias_of[x] + "." + r["written"].rsplit(".", 1)[-1] + l[r["endCol"] - 1:]
         open(p, "w", encoding="utf-8").write("\n".join(src))
@@ -511,6 +508,10 @@ def run(targets):
         touch(p)
         for fac, ns in drops[p].items(): drop_from_directives(p, fac, ns)
         add_imports(p, adds[p])
+    for p in backup:
+        t = open(p, encoding="utf-8").read()
+        if GONE in t:
+            open(p, "w", encoding="utf-8").write("\n".join(l for l in t.split("\n") if l != GONE))
     # A name listed in an importer's directive but never used is not in the report
     # (directive names are not looked up); Agda names it, so move it and re-run.
     stmt_of = defaultdict(set)
