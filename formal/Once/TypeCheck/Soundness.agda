@@ -27,14 +27,13 @@
 module Once.TypeCheck.Soundness where
 
 open import Data.Nat using (ℕ)
-open import Data.String using (String)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (nothing)
 open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl)
 
-open import Once.Type as T using (Type; Int; _⇒[_]_; Quantity)
+open import Once.Type as T using (Type; Quantity)
 open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)

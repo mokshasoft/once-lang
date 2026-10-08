@@ -22,41 +22,25 @@ module Once.CCC.Codegen.CallsLinked (o : CanonicalName) (tbl : List IRFun) where
 -- carries are any.
 private variable σ : ISig
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n; _*_)
-open import Data.Unit using (⊤; tt)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Nat using (ℕ; suc; _+_; _*_)
+open import Data.Unit using (tt)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 
-open import Once.IR using (IR; AllocMode; Stack; Heap;
-  id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply;
-  In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; Call; const)
-open import Once.IRTy using (IRTy; fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
-  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
-open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap; instr-ctrl; c-call-fn
-  ; blocks-layout; blocks-layout-++; LabelId; link-top
-  ; restore-input; load-indirect-suc; store-at-slot; mov-to-input
-  ; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
-open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap; blocks-layout; blocks-layout-++; LabelId; link-top; restore-input; load-indirect-suc; store-at-slot; mov-to-input; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
-   CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
-   cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
-   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
-   -- D099 / C1: the called-algebra blocks.
-   cata-body; cata-call-setup; cata-call; cata-trace-const;
-   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-nat; strat-linear; strat-branching; cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 open import Once.CCC.Codegen.CallOK using (CallOKI)

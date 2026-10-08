@@ -63,7 +63,6 @@ open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-labe
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 open import Once.CCC.Label using (ℓ)
-open import Data.List.Relation.Unary.All.Properties using (++⁺)
 
 module Scope {FS : FrameSemantics} where
   open FlatMachine {FS} using (thunk-of?)

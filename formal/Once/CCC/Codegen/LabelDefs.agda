@@ -15,7 +15,7 @@ module Once.CCC.Codegen.LabelDefs where
 open import Data.Nat using (ℕ; _≤_; _<_)
 open import Data.Nat.Properties
   using (≤-trans; <⇒≢; <-≤-trans)
-open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_; tabulate; lookup) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁻ˡ; ++⁻ʳ) renaming (++⁺ to All-++⁺)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)

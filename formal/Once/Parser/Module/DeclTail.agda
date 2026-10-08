@@ -23,7 +23,6 @@ open import Data.Nat.Properties using (<-trans; <-≤-trans; m≤n⇒m≤1+n; �
 open import Data.Nat using (_<_; _≤_)
 open import Data.List using (List; []; _∷_; length)
 open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
-open import Data.Nat.Properties using (<-≤-trans)
 
 -- Local head classifier + `taDrop1` (Plan 0.52 bridge-readiness).
 taEqHead : List Token → Bool

@@ -128,7 +128,6 @@ once-symbol-own name = once-symbol-path (canonical (name ∷ []))
 -- Format checks (the clash-free + asm-safe scheme, by example).
 private
   open import Relation.Binary.PropositionalEquality using (refl)
-  open import Once.CanonicalName using (canonical)
   -- module Cars.All, fn foo
   _ : once-symbol-path (canonical ("Cars" ∷ "All" ∷ "foo" ∷ [])) ≡ "once_4Cars_3All_3foo"
   _ = refl

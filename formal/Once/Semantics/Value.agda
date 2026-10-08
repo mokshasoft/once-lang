@@ -89,7 +89,7 @@ open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-
 open import Once.Functor.Translate
   using ( base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Functor
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; ⟨_⟩; outS; νS; sfmap; cataS; cataS-cong; fuseNatS; fuseNatW; cataS-computation)
+  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; ⟨_⟩; outS; sfmap; cataS; cataS-cong; fuseNatS; fuseNatW; cataS-computation)
 open Once.Semantics.Functor.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /

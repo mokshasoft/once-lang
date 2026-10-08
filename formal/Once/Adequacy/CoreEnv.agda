@@ -24,10 +24,10 @@ open import Once.Denotation.TraceMonad using (interp)
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreEnv (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Data.List using ([]; _∷_)
+open import Data.List using (_∷_)
 open import Data.Maybe using (just)
 open import Data.Product using (_,_; proj₂)
-open import Data.String using (String) renaming ()
+ renaming ()
 import Data.String.Properties as StrProp
 open import Data.Unit using (tt)
 open import Relation.Nullary using (yes; no)

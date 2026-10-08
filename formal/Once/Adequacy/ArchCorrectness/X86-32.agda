@@ -23,7 +23,6 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
 
@@ -107,7 +106,6 @@ open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFl
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
 open import Once.CCC.Target.X86-32.AbstractToX86-32
   using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees)
-open import Data.Empty using (⊥)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded

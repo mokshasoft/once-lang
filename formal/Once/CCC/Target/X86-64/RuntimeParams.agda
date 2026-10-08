@@ -23,6 +23,3 @@ open import Once.Memory.RuntimeContract
 
 postulate
   x86-64-runtime : RuntimeContract
-
--- Re-export fields for convenience
-open RuntimeContract x86-64-runtime public

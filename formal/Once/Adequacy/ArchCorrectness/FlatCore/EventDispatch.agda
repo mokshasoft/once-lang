@@ -49,10 +49,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
-open import Once.CCC.Machine.SMCore using (AbstractInstr; instr-sigop)
 open import Once.SigOp.Info using (SigOpInfo; sem; sigop-owner; Internal; External; internal-pure)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.CCC.Label using (LabelId)
 open import Once.CanonicalName using (CanonicalName)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
@@ -74,7 +72,6 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   o FS slot-size word-eq Reg roles modulus E M T
-  public
 open EI.Emitter   {FS} {Reg} E
 open EI.Machine   {FS} {Reg} {E} M
 open EI.TraceLoop {FS} {Reg} {E} {M} T
@@ -111,7 +108,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
 -- already binds). Same application, hence the same types.
-open CFC using (HeapView; slots; haddr; hfront; lo)
+open CFC using (HeapView; slots; haddr)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
@@ -129,8 +126,7 @@ open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the
   -- CONCRETE program's scan, and the flat machine's is the abstract one. Two
   -- different functions over two different types — see `bs-c-jmp`'s comment.
-  (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr; find-thunk
-  ; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; flat-halt; fret; flink)
+  (fpc; falloc; floc; fclosure; fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; fret)
   renaming (find-label to flat-find-label)
 open MemOps {FS} using (readLoc; writeLoc-halted)
 open import Once.CCC.Machine.FlatStoreWF FS using
@@ -139,7 +135,6 @@ open import Once.CCC.Machine.FlatRegTagWF FS using
   (FlatRegTag; flat-regtag-step; flat-scratch-is-tag; flat-count-is-tag)
 open import Once.CCC.Machine.FlatStackPtr FS using
   (stack-ptr-live; stack-ptr-suc-live)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
 open import Once.CCC.Label using (thunk)
 open import Once.CCC.FrameSemantics using (slot-addr; slot-addr-linear)
 open FrameSemantics FS using (Frame)
@@ -150,7 +145,6 @@ open FrameSemantics FS using (Frame)
 -- `slot-read-in-frame`, `load-indirect-target-wf`, `stack-ptr-current`,
 -- `frame-op-absurd`, `call-site-shape`, `ret-site-owes`, …
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  public
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of)
 

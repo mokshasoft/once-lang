@@ -36,25 +36,16 @@
 
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
-open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ; _<_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
 -- the module's own `FS`/`word-eq` can be threaded into them by Agda's
 -- telescoping (`RC.RunAt o FS word-eq …`) — a parameter's type is elaborated
 -- before the body, where the applied `open import … FS word-eq` has not run.
-open import Data.Maybe using (just)
-open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-entry; c-call-fn; instr-call-closure)
-open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.List using (List; []; _∷_)
-open import Data.Bool using (Bool; true; false)
-open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Relation.Nullary using (yes; no)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
@@ -77,7 +68,6 @@ open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.CCC.Machine.FlatStoreWF FS
-open import Once.CCC.Machine.FlatRegTagWF FS
 open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
@@ -86,14 +76,11 @@ open import Once.CCC.Machine.InstrSlot
 open import Once.CCC.Machine.FlatStackSlot FS
 open import Once.CCC.Machine.FlatStackPtr FS
 open import Once.CCC.Machine.FlatPtrBounds FS
-open import Once.CCC.Codegen.FrameFreeTrace o
 open import Once.CCC.Codegen.AllocMin o
 open import Once.CCC.Codegen.ShapeTable as ST
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written; site-out-word)
-open import Once.CCC.Codegen.LabelScope o
 open import Once.CCC.Codegen.LabelSeg
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.CCC.Codegen.SlotBudget o
 open import Once.CCC.Codegen.SlotSeg
 import Once.CCC.Codegen.SlotBudget as SB
 import Once.CCC.Codegen.FrameFreeTrace as FFT
@@ -103,7 +90,7 @@ import Once.CCC.Codegen.CallsLinked as CLk
 open import Once.CCC.Codegen.CallOK using (CallOKI)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
-open import Once.CCC.Label using (EntryId; e-fn; _≡ᵇᴱ_; _≟ᴱ_)
+open import Once.CCC.Label using (_≡ᵇᴱ_; _≟ᴱ_)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram)

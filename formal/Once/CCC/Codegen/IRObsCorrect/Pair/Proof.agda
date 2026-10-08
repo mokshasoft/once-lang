@@ -45,7 +45,6 @@ module Once.CCC.Codegen.IRObsCorrect.Pair.Proof (o : CanonicalName) (tbl : DL.Li
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
 open import Data.Nat using (z≤n)
 
@@ -64,7 +63,6 @@ module PairProofC {FS : FrameSemantics} where
   open Core  {FS}
   open Mach  {FS}
   open PairC {FS}
-  open PairPlaceC {FS}
   open PairPresC {FS}
 
   ----------------------------------------------------------------------

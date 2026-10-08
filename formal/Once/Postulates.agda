@@ -28,8 +28,6 @@ module Once.Postulates where
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Type
-open import Once.Semantics.Machine
 
 ------------------------------------------------------------------------
 -- Postulate P1: Function Extensionality

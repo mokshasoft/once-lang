@@ -40,7 +40,7 @@ open import Once.Memory.MemoryLayoutSemantics using (Addr)
 -- Import RISC-V 64 Layout for StackPointer and slot operations
 open import Once.CCC.Target.RiscV64.Layout using (StackPointer; slot-addr; offset-distinct; slot-addr-≥-base; InStack; in-stack)
 open import Once.CCC.Target.RiscV64.StackGrowth using (word-size)
-open import Once.CCC.Target.RiscV64.Layout using (stack-addr; in-stack; stack-sub-preserves') renaming (addr to sp-addr)
+open import Once.CCC.Target.RiscV64.Layout using (stack-addr; stack-sub-preserves') renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
 -- RISC-V 64 Frame Type

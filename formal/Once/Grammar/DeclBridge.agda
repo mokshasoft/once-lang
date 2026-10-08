@@ -24,7 +24,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Parser.Token
 open import Once.Parser.Module using (parseDeclB)
 open import Once.Parser.Module.FunDef.Body using (eqHead)
-open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.DeclTail using (colDrop1; colonHead)
 open import Once.Parser.Module.Import using (parseImportB)
 open import Once.Parser.Module.DeclTail using (parseTypeAliasB; parseSignatureB)

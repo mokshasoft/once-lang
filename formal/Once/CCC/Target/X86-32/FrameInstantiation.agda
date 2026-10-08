@@ -40,7 +40,7 @@ open import Once.Memory.MemoryLayoutSemantics using (Addr)
 -- Import x86-32 Layout for StackPointer and slot operations
 open import Once.CCC.Target.X86-32.Layout using (StackPointer; slot-addr; offset-distinct; slot-addr-≥-base; InStack; in-stack)
 open import Once.CCC.Target.X86-32.StackGrowth using (word-size)
-open import Once.CCC.Target.X86-32.Layout using (stack-addr; in-stack; stack-sub-preserves') renaming (addr to sp-addr)
+open import Once.CCC.Target.X86-32.Layout using (stack-addr; stack-sub-preserves') renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
 -- x86-32 Frame Type

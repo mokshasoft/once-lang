@@ -18,12 +18,11 @@ module Once.CCC.Machine.Allocation where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (_∷_)
-open import Data.Nat.Properties using (≤-trans; n≤1+n)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
 open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -38,7 +37,6 @@ open import Once.CCC.Machine.SMPrimitives public
 ------------------------------------------------------------------------
 
 module StackAllocation {FS : FrameSemantics} where
-  open FrameSemantics FS
 
   -- Allocate n slots, returning base location
   -- Capacity check is the caller's responsibility (Dispatcher verifies this)
@@ -215,7 +213,6 @@ module WriteOps {FS : FrameSemantics} where
 
 module FrontierInvariant {FS : FrameSemantics} where
   open FrameSemantics FS
-  open MemOps {FS}
   open import Data.Nat.Properties using (≤-trans; m≤m+n; n≤1+n; <⇒≢)
 
   ------------------------------------------------------------------------

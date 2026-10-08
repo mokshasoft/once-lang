@@ -40,7 +40,6 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Data.Sum using (_⊎_)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; Internal; External)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)

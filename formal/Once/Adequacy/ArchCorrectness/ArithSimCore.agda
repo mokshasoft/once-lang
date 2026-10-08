@@ -51,7 +51,7 @@ open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch
 open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath)
 open import Once.Arith.Machine.AbsState using (ArithAbsState; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
-open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
+open import Once.Arith.Machine.Shape using (Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
 open import Once.Arith.Machine.AbsInstr using (AbstractInstr; spill; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
 import Once.Arith.Backend.Correct as Correct
 -- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER

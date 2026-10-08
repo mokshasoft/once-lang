@@ -27,11 +27,9 @@ import Once.Adequacy.LiftSound
 open import Once.Target.Arch using (TargetNum)
 open import Once.IR
 open import Once.CanonicalName using (_≟ᶜ_)
-open import Once.IRTy using (_≟IRTy_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift; bare-at)
-open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Denotation.TraceMonad using (>>=T-identityˡ)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
 open import Once.SigOp.Info using (FFIAnswers)

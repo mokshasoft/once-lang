@@ -74,48 +74,25 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.IRToTrace (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; zero; suc; _⊔_; _*_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc; _⊔_; _*_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
-open import Data.Product using (_×_; _,_; proj₂)
+open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_; _++_)
 
 open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
-open import Once.CCC.Label using (LabelId; mkLabelId; ℓ)
-open SigOpInfo using (name)
+open import Once.CCC.Label using (LabelId; ℓ)
 
-open import Once.IR using (IR; AllocMode; Stack; Heap;
-  id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply;
-  In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
-  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.Type as Ty
 
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace;
-         -- D159/Phase B: the program type AND its placement live with the
-         -- machine — `exec-flat` runs a unit, so both must be visible below
-         -- this module.
-         CompUnit; unit; entry-budget; entry; blocks;
-         block-layout; blocks-layout; link;
-         mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot;
-         store-at-slot; store-indirect; store-indirect-suc;
-         lea-slot; restore-input;
-         instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-reclaim-to;
-         instr-push-frame; instr-pop-frame; instr-call-closure;
-         instr-sigop; instr-load-const; instr-load-code-addr;
-         instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag;
-         instr-loop; instr-reg-op;
-         instr-ctrl; c-label; c-jmp; c-thunk; c-entry; c-call-fn; c-ret; c-branch-scratch-zero; c-branch-tag-zero;
-         scratch-one; scratch-zero; scratch-dec; scratch-load-count; out-nz;
-         count-zero; count-inc)
+  using (AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-scratch-zero; c-branch-tag-zero; scratch-one; scratch-zero; scratch-dec; scratch-load-count; out-nz; count-zero; count-inc)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing

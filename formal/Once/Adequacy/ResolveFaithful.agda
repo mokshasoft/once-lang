@@ -38,7 +38,7 @@ open import Once.Denotation.Sub using (⟦_⟧<:)
 
 open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.List using ([]; length)
+open import Data.List using (length)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)

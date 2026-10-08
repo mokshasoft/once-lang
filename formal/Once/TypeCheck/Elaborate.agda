@@ -21,7 +21,6 @@ open import Data.Integer using (ℤ; -_)
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc)
-open import Data.Nat.Show renaming ()
 open import Data.Fin using (zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -42,7 +41,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- codomain), never from a hardcoded name; each is a CONTRACT whose meaning is
 -- the interpretation's (plan 0.105: `ffiV`/`callsV`; `generic-semM` is gone).
 open import Once.Arith.SigOp.Builders using (arrow-info)
-open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpSem; mk-info'; emitsV; haltsV; ffiV; callsV)
 open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -56,8 +55,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUnd
   UsageViolation; BuiltinTypeMismatch;
   BinOpLeftError; BinOpRightError;
   UnboundVariable; UnboundQualified; NonConcreteSigOpType) public
-open import Once.TypeCheck.Context using (Ctx; ∅)
-open Once.TypeCheck.Context.Binding using (name)
+import Once.TypeCheck.Context
 open import Once.TypeCheck.Context as Context using () renaming ()
 open import Once.Surface.Syntax as Surface using ()
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅)
@@ -347,7 +345,6 @@ embedOrSubsume ctx e T (success T' Ψ eE d fr , w) = embedOrSubsume-dec ctx e T 
 ------------------------------------------------------------------------
 
 -- Import usage operations from Surface.Syntax
-open Surface using (zeroUsage)
 
 ------------------------------------------------------------------------
 -- Per-Builtin Body Specializers

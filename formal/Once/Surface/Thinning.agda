@@ -17,7 +17,7 @@
 module Once.Surface.Thinning where
 
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Nat as Nat using (_+_)
+open import Data.Nat as Nat using ()
 open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym)

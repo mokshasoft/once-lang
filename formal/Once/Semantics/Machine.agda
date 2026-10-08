@@ -39,7 +39,7 @@ open import Once.Semantics.ValueIR Carrier Carrier public
 -- The LITERAL PAYLOAD (plan 0.73, D113)
 ------------------------------------------------------------------------
 
-open import Once.Type using (FitsInReg; fits-int; fits-float; Int)
+open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 

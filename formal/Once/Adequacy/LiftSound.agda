@@ -18,8 +18,8 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 
 module Once.Adequacy.LiftSound (fmt : TargetNum) (ρ : CallEnv) where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤_; s≤s)
-open import Data.Nat.Properties using (≤-trans; <-trans; m≤m+n; m≤n+m; ≤-refl)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; s≤s)
+open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-refl)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
@@ -30,7 +30,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IR hiding (_+_; _*_)
 import Once.IRTy as II
-open import Once.IRTy using (⌊_⌋)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
@@ -51,7 +50,7 @@ open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-throug
   recognise-body; recognise-binop; recognise-prim; binop-at; rb-at; rb-view; RBView; v-reassoc; v-sigop; v-cint; v-cflt; v-other;
   recognise-body-float; recognise-binop-float; recognise-prim-float; binop-at-float; rbf-at;
   lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-other; pair-of)
-open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV)
+open import Once.SigOp.Info using (SigOpSem; mk-info'; primV)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 import Once.Type as Ty
 open import Once.Target.Arch using (int-bits; float-format)

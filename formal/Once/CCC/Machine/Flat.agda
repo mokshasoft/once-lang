@@ -34,7 +34,6 @@ open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 -- for `flink-pres`'s two excluded writers (plan 0.65 G2)
-open import Data.Empty using (⊥)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (sucHL)
@@ -1538,7 +1537,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- takes the decision value (halted / fetched instr) explicitly and is
   -- stated for an arbitrary `fs`, never a concrete construction.
   ----------------------------------------------------------------------
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+  open import Relation.Binary.PropositionalEquality using (refl)
   open import Data.Nat.Properties using (+-suc; +-identityʳ)
   open import Data.Product using (Σ; _×_; _,_)
   open import Data.List.Relation.Unary.All using (All; []; _∷_)

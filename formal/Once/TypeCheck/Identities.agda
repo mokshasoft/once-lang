@@ -26,7 +26,7 @@ open import Data.Empty using (⊥)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (∃-syntax; _,_)
 open import Data.String using (String)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 

@@ -11,7 +11,7 @@
 
 module Once.Type.Determined where
 
-open import Data.List using (List; _++_)
+open import Data.List using (_++_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻)
 open import Data.List.Relation.Unary.Any using (here)

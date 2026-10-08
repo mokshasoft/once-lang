@@ -33,11 +33,9 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseArmR (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Data.Sum using (inj₂)
 open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using () renaming (_+_ to _+ᵀ_)
-open import Data.Nat.Solver using (module +-*-Solver)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -60,7 +58,6 @@ module ArmRC {FS : FrameSemantics} where
 
 
   open Core {FS}
-  open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-jmp)
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.

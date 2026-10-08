@@ -164,7 +164,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < RS.W.modulus)
   where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List)
@@ -183,7 +183,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas using (execInstr-ld
 open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; block-env; call-at-riscv64)
 import Once.Compile as Cmp
 open import Data.String using (String)
-open import Data.Product using (Σ; _×_)
+open import Data.Product using (Σ)
 open import Once.Denotation.Program using (IRProgram)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.CCC.Machine.SMCore using (LocState)
@@ -345,14 +345,13 @@ open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
 open import Once.CCC.Machine.SMCore hiding (Instr)
-open FlatMachine {FS} using (FlatState; fpc; floc; fetch; find-label; flat-exec-instr)
+open FlatMachine {FS} using (fpc; floc; fetch; find-label; flat-exec-instr)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (event-of)
 open import Once.SigOp.Info using (SigOpInfo; sem; Internal; External)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Data.Product using (Σ)
 -- (`zero` is BOTH a riscv64 register and `ℕ`'s constructor; the register is
 -- renamed so the two never collide in this module.)
 open import Once.CCC.Target.RiscV64.Syntax using (a0; t0; t1; s3) renaming (zero to rzero)

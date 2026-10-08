@@ -19,7 +19,6 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Machine.Allocation
 
 ------------------------------------------------------------------------

@@ -38,7 +38,7 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Target.X86-64.Syntax
-  using (Instr; Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; syscall; label; reg; imm; rsp; slots)
+  using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; syscall; label; reg; imm; rsp; slots)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------

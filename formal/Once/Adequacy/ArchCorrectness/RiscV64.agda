@@ -23,10 +23,8 @@
 -- labels. `o` is constant for a whole definition, so it belongs on the module
 -- rather than on every lemma — which is what keeps the statements below
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
-open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CanonicalName using (CanonicalName)
 
-open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr

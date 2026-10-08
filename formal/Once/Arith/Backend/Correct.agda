@@ -20,7 +20,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Once.Float.Dyadic using (FloatFormat)
 module Once.Arith.Backend.Correct (bits : ℕ) (F : FloatFormat) where
 
-open import Data.Nat using (_≟_; _+_; _*_; _∸_; _%_)
+open import Data.Nat using (_≟_; _+_; _∸_; _%_)
 open import Data.Nat.Properties using (+-comm; *-comm)
 open import Data.Nat.DivMod using (%-distribˡ-+; m%n%n≡m%n)
 open import Data.Integer using (ℤ)
@@ -45,8 +45,8 @@ open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
-open import Once.Arith.Type using (NumType; NInt; NFloat)
-open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
+open import Once.Arith.Type using (NInt)
+open import Once.Arith.Machine.IR using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; acmp)
 open import Once.Arith.Machine.Compile
   using (compile-go; compile-abs; mul-op; mul-choose; div-op; div-choose; rem-op;
          div-instr; rem-instr; safe-divisor?; pow2?)

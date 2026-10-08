@@ -32,7 +32,7 @@ open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookup
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-≡)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
-open import Once.Spec.Core.Subst S using (SubTy; sub-⊢; single-ty; single-usage; subst-⊢)
+open import Once.Spec.Core.Subst S using (sub-⊢; single-ty; single-usage; subst-⊢)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Core.TermModel S using (TermModel)
 open import Once.Adequacy.CoreSubstSem S

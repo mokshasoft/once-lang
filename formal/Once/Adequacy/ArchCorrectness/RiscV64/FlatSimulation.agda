@@ -64,16 +64,13 @@ open import Once.CCC.Machine.SMCore
 open import Data.Unit using (tt)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
-open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr;
-                             fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero;
-                             flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc;
-                             enter-call; do-call-sv; do-call-code; do-call-at; find-thunk)
-open import Once.CCC.Label using (once; thunk; callee; e-fn; e-thunk)
+open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc; enter-call; do-call-sv; do-call-code; do-call-at)
+open import Once.CCC.Label using (once; thunk; callee)
 
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
 module C = FC FS word-eq
-open C using (HeapView; haddr; HDom; hfront)
+open C using (HeapView; haddr; HDom)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
@@ -93,7 +90,6 @@ open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-line
 -- …and what `block-step-alloc-heap`'s premise list needs: the store-WF
 -- predicates and the heap-reference identity (plan 0.65 G2).
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
-open import Once.Memory.HeapAddress using (heap-ref; ref-id)
 open import Once.Type using (fits-int; fits-float)
 
 ------------------------------------------------------------------------
@@ -104,7 +100,7 @@ open import Once.Type using (fits-int; fits-float)
 -- duplicated four-field record is now one statement.
 ------------------------------------------------------------------------
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; Program) renaming (slot-size to rv-slot-size)
+open import Once.CCC.Target.RiscV64.Syntax using (Program) renaming (slot-size to rv-slot-size)
 open R.State using () renaming (halted to rhalted)
 
 rreg' : R.State → Reg → ℕ

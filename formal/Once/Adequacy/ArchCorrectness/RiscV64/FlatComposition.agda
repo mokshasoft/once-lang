@@ -46,7 +46,7 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.RiscV64.Semantics as R
 import Once.CCC.Target.RiscV64.Syntax as RS
 open import Once.CCC.Target.RiscV64.Syntax
-  using (Instr; Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label; sp; ra; slots)
+  using (Program; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label; sp; ra; slots)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------

@@ -20,14 +20,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.CCC.Machine.Allocation
 open import Once.Semantics.Machine
   using (sem-pair)
 -- The IRTy value-domain rename is LOCAL to Validity (not re-exported), so it
 -- does not collide with downstream modules' own surface `⟦_⟧` imports.
 pair = sem-pair
-open import Once.IR
-open import Once.IR.Size
 
 ------------------------------------------------------------------------
 -- ValidAt: Inductive Validity Predicate with Frontier Tracking

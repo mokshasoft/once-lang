@@ -22,7 +22,6 @@
 
 open import Once.Target.Arch using (TargetNum)
 
-open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 
 -- Plan 0.105: at an interpretation `ι`.
 -- Plan 0.105 (D257, D061): no fixed world — a typed module's meaning is
@@ -48,7 +47,7 @@ import Once.Spec.Core.Translate as TR
 import Once.Spec.Core.Telescope as Tele
 import Once.Spec.Core.PolyTyping as PT
 import Once.Spec.Core.Meaning as GM
-open import Once.Denotation.Behavior using (Behavior)
+import Once.Denotation.Behavior
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; mainCall; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB

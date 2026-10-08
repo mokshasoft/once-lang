@@ -339,7 +339,6 @@ record PrefixFamily (tr : ℕ → List SigOpEvent) : Set where
     bnd : Bounded tr
     sat : Saturating tr
     coh : Coherent tr
-open PrefixFamily
 
 take-pf : ∀ (xs : List SigOpEvent) → PrefixFamily (λ n → take n xs)
 take-pf xs = prefixFamily (λ k → length-take-≤ k xs) (λ k → take-sat k xs) (λ k → take-coh k xs)

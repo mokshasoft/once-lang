@@ -45,7 +45,6 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; subM)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 open import Once.Denotation.GradedOps using (ana-semᵛ; fmapM)
-open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 import Once.Spec.Core.Meaning S as GM
 
@@ -391,7 +390,6 @@ wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =
 ------------------------------------------------------------------------
 
 open import Once.Spec.Core.Rename S using (⊢close; ∅⊆)
-open import Once.Surface.Thinning using (thin-usage-zeroUsage)
 
 close-sem : ∀ {n} {Γ : Ctx n} {t A π} (d : ∅ ⊢[ zeroUsage ] t ∷ A ! π)
               (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ zeroUsage)

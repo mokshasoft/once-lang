@@ -38,7 +38,6 @@ record AgreeCCC (rf rf' : RegFile) : Set where
     a-t2 : readReg rf t2 ≡ readReg rf' t2
     a-t3 : readReg rf t3 ≡ readReg rf' t3
     a-t4 : readReg rf t4 ≡ readReg rf' t4
-open AgreeCCC
 
 agree-refl-ccc : ∀ rf → AgreeCCC rf rf
 agree-refl-ccc rf = mkAgree refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl

@@ -29,7 +29,6 @@ open import Data.Nat.Properties using (<-trans; n≤1+n; ≤-refl; ≤-trans)
 open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.List using (List; []; _∷_; length)
 open import Once.Parser.Module.Import
-open import Once.Parser.Module.OpName
 open import Once.Parser.Module.FunDef public
 open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
@@ -37,7 +36,6 @@ open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.DeclTail
 open import Once.Parser.Module.Resolve public
 open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
-open import Once.Parser.Module.DeclTail using (colonHead; colDrop1; colDrop1-≤)
 open import Relation.Nullary using (Dec)
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat.Properties using (<⇒≤; <-≤-trans)

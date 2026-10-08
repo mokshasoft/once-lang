@@ -684,11 +684,9 @@ instr-writes-mem (instr-loop _)           s alloc = nothing -- writes only fresh
 -- Instruction primitives in parameterized module
 module InstrPrimitives {FS : FrameSemantics} where
   open MemOps {FS}
-  open ExecFinal {FS}
-  open ExecLemmas {FS}
   open AbstractExec {FS}
   open MemoryOps {FS}
-  open FrameSemantics FS using (_≟F_; _≺_)
+  open FrameSemantics FS using (_≺_)
   -- (A) DETERMINISM
   -- If two states agree on what an instruction reads (memory and registers),
   -- executing the instruction produces the same result.
@@ -1454,7 +1452,6 @@ trace-slot-reads-below-mono n m (i ∷ t) n≤m tr with instr-reads-slot i
 ------------------------------------------------------------------------
 
 module TraceComposition {FS : FrameSemantics} where
-  open MemOps {FS}
   open AbstractExec {FS}
 
   -- When halted, exec-trace returns immediately
@@ -2933,10 +2930,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   open MemOps {FS}
   open AbstractExec {FS}
   open TracePrimitives {FS}
-  open InstrPrimitives {FS}
-  open MemoryOps {FS}
   open TraceComposition {FS}
-  open import Data.Empty using (⊥-elim)
 
   private
     RSFrame : Set

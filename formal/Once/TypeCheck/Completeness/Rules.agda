@@ -44,7 +44,6 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; success; lookupLocal; lookupImport; inferElabV; checkElabV; VerifiedInferResult; classifyAppHead; classifyAppHeadView; ahv-other; classifyAppHead-nothing⇒view-other; AppHeadView; via; apply-pure; apply-eff)
-open import Once.TypeCheck.Judgment
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
 open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
@@ -64,23 +63,11 @@ open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Surface.Syntax as Srf using (Expr)
-open import Once.Type using (Functor; μ-type; ⟦_⟧T)
+open import Once.Surface.Syntax as Srf using ()
 open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other)
+open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-open import Once.TypeCheck.ElaborateProofs using (
-  checkCaseGo; VerifiedCheckResult; checkElab-fallback-RUnaryOp-sub; checkElab-fallback-RApp-apply-infer;
-  elabGivenV; elabGivenLeaf; elabGivenApp; given-infer; given-cata; checkCompose-g; checkCompose-f;
-  inferSpine; VerifiedGivenResult; inferElabV-RVar-fail-bridge;
-  inspectWellFormedF; wfv-no; wfv-yes;
-  checkCataGo; cata-go-canonical; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success;
-  checkAnaGo; checkAnaGo-J; checkAnaGoV-J; checkAnaGo-just-success;
-  inferOutGo; inferOutGo-J;
-  checkCata-eff-strong-hlp;
-  -- the literal view the negation dispatch takes (plan 0.74 J6 step 3 for
-  -- `RInt`, plan 0.73 F3 for `RFloat`)
-  NegOperandView; nov-int; nov-float; nov-other; negOperandView)
+open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J; nov-int; nov-float; nov-other; negOperandView)
 
 ------------------------------------------------------------------------
 -- Leaf-case completeness

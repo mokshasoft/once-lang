@@ -218,4 +218,4 @@ instr-consumed-slots (label _)       = 0
 -- | Total stack slots consumed by a program
 program-consumed-slots : Program → ℕ
 program-consumed-slots prog = foldr _+ℕ_ 0 (Data.List.map instr-consumed-slots prog)
-  where open import Data.List using (map)
+  where open import Data.List using ()

@@ -40,8 +40,7 @@ open import Once.Spec.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; ba
 open import Once.Spec.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
 import Once.Surface.Context as Surface
 open Surface using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
-open import Once.Type using (One)
-open import Once.TypeCheck.Context using (Binding; mkBinding)
+open import Once.TypeCheck.Context using (mkBinding)
 open Once.TypeCheck.Context.Binding using (quantity)
 open Once.TypeCheck.Context.Binding using (name; type)
 import Once.TypeCheck.Context as NC

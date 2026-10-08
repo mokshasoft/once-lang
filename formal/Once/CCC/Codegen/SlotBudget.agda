@@ -39,50 +39,31 @@ open import Once.CCC.Label using (LabelId; ℓ)
 
 module Once.CCC.Codegen.SlotBudget (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
+open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc; +-suc;
    *-suc; *-monoʳ-≤; m≤n⇒m≤1+n)
-open import Data.Bool using (Bool; true; false; _∧_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.Bool using (true)
+open import Data.Unit using (tt)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
-open import Once.IR using (IR; AllocMode; Stack; Heap;
-  id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply;
-  In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; Call; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
-  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; Slot; lea-slot;
-   mov-to-output; mov-to-input; store-at-slot; load-from-slot;
-   store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
-   instr-ctrl; c-thunk; c-entry; c-call-fn; c-ret; c-label; c-jmp;
-   restore-input; load-indirect; load-indirect-suc; instr-load-code-addr;
-   c-branch-tag-zero)
+  (AbstractInstr; AbstractTrace; Slot; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from;
-   ir-to-unit; sigop-budget; sigop-code;
-   CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
-   cata-strategy; cata-dispatch; fsize; lsize;
-   push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer
-   ; cata-br-I₁; cata-br-I₂
-   -- D099 / C1: the called-algebra blocks.
-   ; cata-body; cata-call-setup; cata-call; cata-trace-const)
+  (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from; ir-to-unit; sigop-budget; sigop-code; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching; cata-strategy; cata-dispatch; fsize; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body)
 
 -- the o-independent segment machinery (`SlotBelow`, `SegState`, `AllSeg`,
 -- `SegOK`, …), split out so a program image shares one `AllSeg`

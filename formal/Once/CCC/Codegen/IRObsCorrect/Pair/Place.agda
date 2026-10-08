@@ -16,8 +16,6 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Place (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Data.Nat.Solver using (module +-*-Solver)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

@@ -503,7 +503,7 @@ open import Data.Digit using (toDigits)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Data.Product using (Σ-syntax)
-open import Once.CCC.Label using (LabelId; showLabelId)
+open import Once.CCC.Label using (showLabelId)
 open import Once.Target.Symbol using (once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective
   using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; toList-mangle; ValidIdentChars)
@@ -697,7 +697,6 @@ blocks-sym bs = fsts (C.dedup-blocks (Data.List.map tag bs)) (dedup-⊆ [] (Data
 -- function entry's.
 ------------------------------------------------------------------------
 
-open import Data.List.Relation.Unary.Any using (Any)
 import Data.List.Relation.Unary.Any.Properties as AnyP
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺; ∈-map⁻)
 open import Data.List.Relation.Unary.All using (tabulate; lookup)
@@ -734,7 +733,6 @@ open import Data.List.Properties using (map-∘)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
-open import Data.Maybe using (Maybe; just)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
 

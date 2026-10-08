@@ -40,7 +40,7 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
-  using (Instr; Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; label; mov-code; jmp-l; reg; imm; esp; slots)
+  using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; label; mov-code; jmp-l; reg; imm; esp; slots)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------

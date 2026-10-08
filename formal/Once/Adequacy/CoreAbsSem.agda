@@ -391,8 +391,6 @@ rt-sem Δ σ r sg {t} {A} D fmt δ =
 
 -- A MONOMORPHIC ENTRY (`Translate.monoBody`: the abstraction, retyped at the
 -- embedded ground type) read back at arity 0 means its elaboration.
-open import Once.Spec.Core.AbsTy using (absTy-ground)
-open import Once.Spec.Core.PolyTy using (⌈⌉-⟪⟫)
 open import Once.Type.Rigid using (RigidFree)
 
 mono-entry-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)

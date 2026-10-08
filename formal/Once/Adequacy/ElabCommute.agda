@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
 import Once.Type as T
-open T using (Type; mk-kind; Many; pure; eff; μ-type; ν-type)
+open T using (mk-kind; Many; pure; eff; μ-type; ν-type)
 open import Once.Type.Sub using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)

@@ -18,7 +18,6 @@ open import Once.Spec.Core.PolyTy using (Sig; KCtx; GSub; Respects)
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreInst {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
 
-open import Data.Product using (_,_)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_; ≡-subst-removable)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; ⊆-refl; ⊆-wk)
 open import Data.Fin using (Fin; zero; suc)
@@ -481,7 +480,7 @@ module WithSG (sg : SigGround) where
 
   -- The combinators with arms.
   module _ {n} {Γ : C.Ctx n} where
-    open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-identityˡ; +ᵘ-identityʳ)
+    open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-identityˡ)
 
     c-compose : ∀ {Ψ₁ Ψ₂ A B C′ π f g}
                   (a : Γ ⊢[ Ψ₁ ] f ∷ B T.⇒[ mk-kind Many π ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π ] B ! pure)

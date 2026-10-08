@@ -28,7 +28,7 @@ open import Once.Type.Rigid using (RigidFree)
 import Once.Compile as C
 open C.FunInfo using (funName)
 open C.PolyFunInfo using (pfunName)
-open import Once.TypeCheck.Classify using (Imports; NamedCtx)
+open import Once.TypeCheck.Classify using (Imports)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.Classify

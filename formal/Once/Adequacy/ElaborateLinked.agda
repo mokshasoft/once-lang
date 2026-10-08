@@ -32,7 +32,7 @@ import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Surface.Syntax hiding (_,_; _,_^_)
-open import Once.Surface.Context using (_,_^_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Surface.Context using (_,_^_)
 open import Once.Surface.CoerceIR using (runCoe; runCoe-dec; voidFree?; VoidFree; coeIR; erase-eq)
 open import Once.Surface.Elaborate
 import Once.Surface.Properties

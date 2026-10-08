@@ -25,11 +25,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; c
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
-open import Once.SigOp.Info
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; returnT; fmapT; _>>=T_)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Word using (Carrier)
-open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS)
+open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Functor.Translate using (translateF; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum;
   WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Machine using (coerce-ν-in)

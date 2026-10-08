@@ -24,7 +24,6 @@ Byte : Set
 Byte = Fin 256
 
 -- Supported architectures — the single shared enum (re-exported).
-open import Once.Target.Arch
 
 -- The portable per-arch interface.
 record ArchSemantics : Set₁ where

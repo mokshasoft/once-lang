@@ -50,10 +50,7 @@ open import Once.Functor.Decide using (isConcrete?)
 open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.CanonicalName using (canonical; gen; GenWord; genWord?)
 open import Once.TypeCheck.Raw
-  using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
-         RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna;
-         ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
-         cls-unit; cls-str; cls-annot; cls-binop)
+  using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-str; cls-annot; cls-binop)
 
 ------------------------------------------------------------------------
 -- ModuleMap: path → resolved Module

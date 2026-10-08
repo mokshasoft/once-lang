@@ -55,7 +55,6 @@ open FlatMachine {FS}
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
-open import Data.Product using (_×_)
 open import Data.List using (List)
 
 -- A state a program can START in: at the first instruction, running, with nothing

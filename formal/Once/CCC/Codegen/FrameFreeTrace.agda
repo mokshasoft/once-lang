@@ -43,7 +43,7 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.CCC.Codegen.FrameFreeTrace (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _+_; _*_)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Once.CCC.Label using (ℓ)
 open import Data.List using (List; []; _∷_; _++_)
@@ -52,35 +52,23 @@ open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.IR using (IR; AllocMode; Stack; Heap;
-  id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply;
-  In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; Call; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (blocks-layout; link-top; instr-ctrl; c-label; c-jmp)
+open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using (LabelId)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; load-indirect-suc; mov-to-input;
-   restore-input; store-indirect-suc; load-from-slot;
-   store-at-slot; instr-alloc-heap; instr-load-tag-lit; store-indirect)
+  (AbstractTrace; load-indirect-suc; mov-to-input; restore-input; store-indirect-suc; load-from-slot; store-at-slot; instr-alloc-heap; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.FrameFree using
-  (FrameFreeI; FrameFreeT; frame-free-nest; EmittableI)
+  (EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
+open import Once.CCC.Codegen.ShapeTable using (HeapModed)
 open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit;
-   CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
-   cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
-   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
-   -- D099 / C1: the three shared blocks of the called-algebra shape.
-   cata-body; cata-call-setup; cata-call; cata-trace-const;
-   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-nat; strat-linear; strat-branching; cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own

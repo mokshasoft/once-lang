@@ -46,7 +46,6 @@ module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) (tbl : DL.List IRF
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl
 open import Data.List.Properties using (++-identityʳ)
 
@@ -65,7 +64,6 @@ module PairAsm {FS : FrameSemantics} where
   open Mach  {FS}
   open PairC {FS}
   open PairPlaceC {FS}
-  open PairPresC {FS}
 
   open PairProofC {FS}
 

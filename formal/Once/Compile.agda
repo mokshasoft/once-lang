@@ -54,9 +54,6 @@ open import Once.Optimize
   using (optimize)
 
 -- Re-export Arith types and IR (OCP-0001: Orthogonal Arithmetic Compiler)
-open import Once.Arith.Type
-open import Once.Arith.IR
-  hiding (_⊕_)  -- Avoid clash with Once.Type._⊕_ (Functor sum)
 
 -- Plan 0.20 Phase G: import the IR rewrite pass that lifts maximal
 -- arith subtrees to opaque `arith.block.<digest>` SigOps. Codegen
@@ -100,23 +97,21 @@ open FunInfo
 open PolyFunInfo
 
 -- Type checking / elaboration
-open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate using (ctxWithImportsAndPolys; PolyCtx; emptyPolyCtx; checkElab)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; NamedCtx; TopCtx; topCtx; emptyTopCtx)
+open import Once.TypeCheck.Classify using (NamedCtx; TopCtx; topCtx; emptyTopCtx)
 open import Once.TypeCheck.Error using (renderError)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
 open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
 open import Once.Type.DecEq using (_≟T_)
-open import Relation.Binary.PropositionalEquality using (_≡_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
 import Once.TypeCheck.Principal as Principal
@@ -499,7 +494,6 @@ open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBa
 open import Data.Nat.Show renaming (show to showNat)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (_∸_)
-open import Relation.Nullary using (Dec; yes; no)
 open import Data.Integer.Show renaming (show to showℤ)
 
 -- (Plan 0.107: the per-function TEXT walk that stood here — `archTarget`,
@@ -526,7 +520,6 @@ isEffUU? T with T ≟T EffUU
 ... | yes e = just e
 ... | no _  = nothing
 
-open CompiledFun using (cfName; cfType; cfIR)
 
 -- D253: `main` is an entry like any other; the program's own `main` is the CALL
 -- of it.

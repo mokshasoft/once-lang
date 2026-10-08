@@ -27,10 +27,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- Import types for layout construction
 open import Once.Memory.MemoryLayoutSemantics as MLS
   using (MemoryLayout; RegionBounds; lower; upper)
-open MLS using (lower; upper)
 
 -- Import RuntimeContract and the RISC-V64 instance
-open import Once.Memory.RuntimeContract as RC using (RuntimeContract)
+open import Once.Memory.RuntimeContract as RC using ()
 import Once.CCC.Target.RiscV64.RuntimeParams as RP
 
 -- Import and re-export RISC-V 64 stack growth
@@ -86,7 +85,7 @@ open import Once.Memory.FrameOps rv64-layout rv64-stack-growth public
 
 
 -- Re-export Memory operations
-open import Once.Memory.Memory using (Memory; readMem)
+open import Once.Memory.Memory using (readMem)
 
 ------------------------------------------------------------------------
 -- RiscV64-Specific Properties (lower = 0 is definitional)
@@ -142,7 +141,6 @@ frame-below-slot0-disjoint : ∀ (frame1 frame2 : StackPointer) k →
 frame-below-slot0-disjoint frame1 frame2 k frame1<frame2 eq =
   Data.Nat.Properties.<⇒≢ slot0<slot-k slot0≡slot-k
   where
-    open import Data.Nat.Properties using (<⇒≢)
     slot0-eq : slot-addr frame1 0 ≡ addr frame1
     slot0-eq = grow-identity (addr frame1)
 

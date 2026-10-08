@@ -33,9 +33,7 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Case (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Nat.Solver using (module +-*-Solver)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -46,8 +44,6 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
-open import Once.CCC.Codegen.IRObsCorrect.CaseRun o tbl
 open import Once.CCC.Codegen.IRObsCorrect.CaseArmR o tbl
 open import Once.CCC.Codegen.IRObsCorrect.CaseArmL o tbl
 
@@ -55,12 +51,9 @@ module CaseC {FS : FrameSemantics} where
 
 
   open Core {FS}
-  open Mach {FS}
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.
-  open ShapeC {FS}
   ----------------------------------------------------------------------
-  open RunC {FS}
   open ArmRC {FS}
   open ArmLC {FS}
 

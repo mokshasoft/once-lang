@@ -32,7 +32,6 @@ open import Once.Arith.Machine.AbsState
 open import Once.Arith.Machine.Shape
 open import Once.Word using (module Width)
 open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
-open import Once.Arith.Machine.Shape using (projectF)
 open import Once.Float.Dyadic using (FloatFormat)
 open import Once.Float.Decimal using (Decimal; round)
 import Once.Float.Arith as FA

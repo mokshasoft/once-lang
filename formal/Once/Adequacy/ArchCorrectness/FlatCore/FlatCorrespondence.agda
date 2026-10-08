@@ -47,13 +47,10 @@
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
-open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.Word using (Carrier)
-open import Once.Type using (Int; fits-int; fits-float)
-open import Once.CCC.Machine.SMCore using (AllocState)
-open import Once.CCC.Label using (LabelId)
-open import Data.Nat using (ℕ; _*_; NonZero; _<_; suc; zero; s≤s; z≤n)
-open import Data.Bool using (Bool; if_then_else_)
+open import Once.Type using (fits-int; fits-float)
+open import Data.Nat using (ℕ; _*_; NonZero; _<_; suc; s≤s; z≤n)
+open import Data.Bool using (Bool)
 open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
@@ -99,9 +96,9 @@ nz⇒pos (suc _) = s≤s z≤n
 slot-size>0 : 0 < slot-size
 slot-size>0 = nz⇒pos slot-size
 
-open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _≤_; z≤n)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; m≤m+n; <-irrefl; ≤-<-trans; <-≤-trans; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans; m<n⇒m<1+n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n; +-identityʳ; m∸n≤m; *-identityˡ; <⇒≤)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no; Dec; ¬_)
@@ -147,7 +144,7 @@ open FrameSemantics FS using (shift-frame)
 
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open AbstractExec {FS} using (exec-abstract; lit-value; exec-load-from-slot-with-value; exec-restore-input-with-value)
-open FrameSemantics FS using (Frame; frame-base; slot-addr; slot-addr-linear; shift-base; frame-word)
+open FrameSemantics FS using (Frame; frame-base; slot-addr; slot-addr-linear; shift-base)
 
 ------------------------------------------------------------------------
 -- THE CARRIED HEAP INJECTION (`HeapView`).

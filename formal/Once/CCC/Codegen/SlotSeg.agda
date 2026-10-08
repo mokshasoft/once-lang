@@ -9,7 +9,7 @@
 -- one `AllSeg` per owner, all different types. Here it is one.
 ------------------------------------------------------------------------
 
-open import Once.CCC.Label using (LabelId; ℓ)
+open import Once.CCC.Label using (LabelId)
 
 module Once.CCC.Codegen.SlotSeg where
 

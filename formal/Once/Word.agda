@@ -49,7 +49,6 @@ open import Data.Nat.Properties using
    ∸-monoʳ-≤; ∸-monoʳ-<)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_; -_)
 import Data.Integer as ℤ
-open import Data.Integer.Properties using (_≤?_)
 open import Data.Product using (_×_; _,_)
 open import Relation.Nullary.Decidable using (Dec; _×-dec_)
 open import Data.Integer.Properties using (_<?_; m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive;

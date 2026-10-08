@@ -31,7 +31,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
-open import Once.Type as T using (Type; Functor; ArrowKind; Quantity; Zero; One; Many; Purity)
+open import Once.Type as T using (Type; Functor; Quantity; Zero; One; Many; Purity)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)

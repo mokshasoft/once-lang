@@ -38,8 +38,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Machine.SMCore
 import Once.Allocator.AbstractInstance as AI
-open MemOps {FS}
-open ExecFinal {FS}
 open AbstractExec {FS}
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Machine.Flat

@@ -24,7 +24,6 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Once.Type using (Type; PolyType)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Token
-open import Once.Parser.Core
 open import Once.Parser.Type using (parseTypeWF)
 open import Once.Parser.TypeRelation using (ParsesType-shrinks)
 open import Once.Parser.Expr using (parseExprWF)

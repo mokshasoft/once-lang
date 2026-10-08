@@ -99,7 +99,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
-  open StackAllocation {FS}
   open AbstractExec {FS}
   open TracePrimitives {FS}
   open FrameSemantics FS

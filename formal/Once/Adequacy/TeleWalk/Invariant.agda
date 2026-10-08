@@ -89,7 +89,6 @@ open import Once.Adequacy.TeleEnvLemmas fmt φ using (σW; callSD-later; refs-sk
 import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
-open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
 open import Once.Adequacy.Coherence fmt using (realize-invariant)

@@ -33,7 +33,6 @@ open import Once.Res using (Res; stopped; returns; is-stopped)
 module CompC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
 

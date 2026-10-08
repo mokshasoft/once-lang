@@ -354,7 +354,7 @@ writeReg r Output v = record r { output = v }
 writeReg r Scratch v = record r { scratch = v }
 writeReg r Count v = record r { count = v }
 
-  where open import Data.Nat using (_∸_)
+  where open import Data.Nat using ()
 
 -- Key lemma: writing to one register preserves others
 writeReg-preserves : ∀ {FS} (regs : Registers FS) dst r v →
@@ -1541,7 +1541,6 @@ module AbstractExec {FS : FrameSemantics} where
   open FrameSemantics FS
   open MemOps {FS}
   open ExecFinal {FS}
-  open ExecLemmas {FS}
 
   ------------------------------------------------------------------------
   -- Helper functions for instructions that read from memory

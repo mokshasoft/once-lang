@@ -42,7 +42,6 @@ open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰ to ⟦_⟧
 open import Once.CCC.Machine.SMCore
   hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-open import Once.CCC.Label using (LabelId)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.IR using (AllocMode; Stack; Heap)

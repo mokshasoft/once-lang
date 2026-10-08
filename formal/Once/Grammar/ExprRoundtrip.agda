@@ -44,7 +44,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Grammar as G
 open G using (GExpr)
 open import Once.TypeCheck.Raw
-open import Once.Parser.Token
 open import Once.Parser.Expr using (parseExpr)
 open import Once.Grammar.ExprPrinter using (printGExpr; ConcreteExpr; c-e-unit; c-e-int; c-e-string)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
@@ -184,8 +183,6 @@ round-trip-EApp-two-args = refl
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Grammar.ExprPrinter using (ConcreteExpr; c-e-unit; c-e-int; c-e-string)
-open import Once.Grammar.ExprConvert using (gexprToRaw)
 
 -- EInt: every integer round-trips.
 round-trip-EInt :

@@ -33,11 +33,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([]; _∷_)
 open import Data.Product using (_×_; _,_)
 
-open import Once.Type using (Unit)
 open import Once.IR
-open import Once.SigOp.Info using (SigOpInfo; sem; SigOpSem; primV)
+open import Once.SigOp.Info using (sem; SigOpSem; primV)
 open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
-open import Once.IRTy using (⌊_⌋)
 import Once.IRTy as II
 
 open import Once.Arith.Machine.Shape using (InputShape; InputPath; Fst; Snd; typePath?)

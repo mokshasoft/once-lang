@@ -37,7 +37,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.IR as IR
-open import Once.IR using (IR; _∘_; ⟨_,_⟩; fst; snd; case; curry; terminal; apply)
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; fst; snd; case; terminal; apply)
 open import Once.Postulates using (extensionality)
 
 private

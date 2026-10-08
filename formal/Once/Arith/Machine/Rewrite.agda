@@ -30,10 +30,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ-syntax; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Type using (Unit; Int; _*_)
 open import Once.IR
 import Once.IRTy as II
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block)
 

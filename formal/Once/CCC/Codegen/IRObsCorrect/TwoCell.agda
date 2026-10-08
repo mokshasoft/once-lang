@@ -33,7 +33,6 @@ open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl
 module TwoCellC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
 
   curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
                    {x : ⟦ A ⟧} (s : LocState FS)

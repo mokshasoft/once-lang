@@ -21,7 +21,6 @@
 -- rather than on every lemma — which is what keeps the statements below
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 
-open import Data.Nat using (ℕ)
 
 open import Once.Denotation.TraceMonad using (interp)
 open import Once.Spec.Contract using (ISig; Impl)

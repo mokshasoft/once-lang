@@ -31,12 +31,12 @@
 
 module Once.CCC.Codegen.ShapeTable where
 
-open import Data.Nat using (ℕ; suc; zero; _≟_; _+_)
+open import Data.Nat using (ℕ; suc; zero; _≟_)
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (Σ; ∃; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float;

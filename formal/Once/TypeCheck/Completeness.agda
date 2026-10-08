@@ -33,12 +33,12 @@ open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj�
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Data.String.Properties as StrProp using ()
-open import Once.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_; Many)
+open import Once.Type as T using (Type; Unit; _*_)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RResolved; RPair)
+  using (RawExpr; RVar; RResolved)
 open import Once.CanonicalName using (CanonicalName; gen; own; bare-NotGenerator; NotGenerator)
 open import Once.TypeCheck.ElaborateProofs
-  using (NamedCtx; inferElab; checkElab; success; failure; lookupLocal; lookupImport; inferElabV; checkElabV; VerifiedInferResult; classifyAppHead; classifyAppHeadView; ahv-other; classifyAppHead-nothing⇒view-other; AppHeadView)
+  using (NamedCtx; inferElab; checkElab; success; failure; lookupLocal; lookupImport; inferElabV; checkElabV; VerifiedInferResult; classifyAppHeadView; ahv-other; classifyAppHead-nothing⇒view-other; AppHeadView)
 open import Once.TypeCheck.Judgment
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
@@ -57,25 +57,14 @@ open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Surface.Syntax as Srf using (Expr)
+open import Once.Surface.Syntax as Srf using ()
 open import Once.Type using (Functor; ⟦_⟧T)
 open import Once.Type.Sub using (_<:_; _<:?_; <:-refl; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly; GenView; classifyGen)
+open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ModeAgreement using (mode-agree-ic; mode-agree-dc)
-open import Once.TypeCheck.ElaborateProofs using (
-  checkCaseGo; VerifiedCheckResult; checkElab-fallback-RUnaryOp-sub; checkElab-fallback-RApp-apply-infer;
-  elabGivenV; elabGivenLeaf; elabGivenApp; given-infer; given-cata; checkCompose-g; checkCompose-f;
-  inferSpine; VerifiedGivenResult; inferElabV-RVar-fail-bridge;
-  inspectWellFormedF; wfv-no; wfv-yes;
-  checkCataGo; cata-go-canonical; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success;
-  checkAnaGo; checkAnaGo-J; checkAnaGoV-J; checkAnaGo-just-success;
-  inferOutGo; inferOutGo-J;
-  checkCata-eff-strong-hlp;
-  -- the literal view the negation dispatch takes (plan 0.74 J6 step 3 for
-  -- `RInt`, plan 0.73 F3 for `RFloat`)
-  NegOperandView; nov-int; nov-float; nov-other; negOperandView)
+open import Once.TypeCheck.ElaborateProofs using (checkCaseGo; elabGivenV; elabGivenLeaf; elabGivenApp; given-infer; given-cata; checkCompose-g; checkCompose-f; VerifiedGivenResult; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success)
 
 
 -- The per-rule lemmas (split for the 30 s per-module check budget).
@@ -129,7 +118,7 @@ private
 -- premise, and the elaborator's codomain is the derivation's by determinacy.
 module DPoly where
   open import Once.TypeCheck.Elaborate
-    using (given-var; given-poly; given-poly-g; given-poly-a; given-poly-m; given-poly-π; isGround-inj₂→¬Ground)
+    using (given-poly; given-poly-g; given-poly-a; given-poly-m; given-poly-π; isGround-inj₂→¬Ground)
   open import Once.Type.Match using (instantiate)
   open import Once.Type.Instance using (instantiate-complete; instantiate-sound)
   open import Once.Type.Determined using (codVarsInDom?; cod-determined; arrowSchema?)

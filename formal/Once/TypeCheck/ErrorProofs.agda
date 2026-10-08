@@ -36,24 +36,11 @@ open import Once.Type using (Type; Unit; Void; Int)
 open import Once.CanonicalName using (gen)
 import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RLam; RQualified)
+  using (RawExpr; RLam; RQualified)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Sub using (_<:?_; sub-int; sub-unit)
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult; VerifiedInferResult;
-         success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV;
-         inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux;
-         -- the negation dispatch's literal view (plan 0.74 J6 step 3 for
-         -- `RInt`, plan 0.73 F3 for `RFloat`) — the CONSTRUCTORS have to be
-         -- listed, the qualified name alone does not bring them into pattern
-         -- position.
-         NegOperandView; nov-int; nov-float; nov-other; negOperandView;
-         -- Plan 0.58 / D071: the infer-mode poly-fallback stages (for the
-         -- unbound-error normalization proof below).
-         lookupPoly;
-         inferElabV-RVar-poly-aux; inferElabV-RVar-poly-lookup-aux;
-         inferElabV-RVar-poly-ground-aux)
+  using (NamedCtx; inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; lookupLocal; lookupImport; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; lookupPoly; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error

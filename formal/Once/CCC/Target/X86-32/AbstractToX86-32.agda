@@ -25,21 +25,15 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.Nat using (ℕ; suc) renaming (_*_ to _*ℕ_)
+open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
-  using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp;
-         Mem; base; base+disp; label-rel; abs-sym;
-         Operand; reg; mem; imm;
-         Instr; mov; lea; add; sub; sbb; cmp; test; push; pop; call; call-sym; ret; jmp; jne; je; nop; ud2; label; call-l;
-         mov-code; jmp-l;
-         Label; once; thunk; callee; e-fn;
-         Program; slot-size; slots)
+  using (eax; ebx; ecx; edx; esi; edi; ebp; esp; base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; ud2; label; call-l; mov-code; jmp-l; once; callee; e-fn; Program; slot-size; slots)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
@@ -51,20 +45,7 @@ module IntW = OnceWord.Width 32
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; Slot;
-         mov-to-output; mov-to-input;
-         load-indirect; load-indirect-suc;
-         load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
-         lea-slot; restore-input; lea-indexed;
-         instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack;
-         instr-push-frame; instr-pop-frame; instr-call-closure;
-         worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr;
-         instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
-         -- Plan 0.53: RegOp + FlatCtrl constructors for reg-op / flat-control lowering
-         scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz;
-         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret; c-entry; c-call-fn; c-start)
+  using (AbstractInstr; AbstractTrace; Slot; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl; scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start)
 open import Once.CCC.Machine.NoNested
 
 ------------------------------------------------------------------------

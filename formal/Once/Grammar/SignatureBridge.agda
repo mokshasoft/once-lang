@@ -17,7 +17,6 @@ open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Parser.Token
 open import Once.Parser.Module.Core using (anyWordB)
 open import Once.Parser.Module.DeclTail
   using (parseSignatureB; colonHead; colDrop1)

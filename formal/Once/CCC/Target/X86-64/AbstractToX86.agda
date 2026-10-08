@@ -34,7 +34,7 @@ open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.CCC.Label using (once; callee; e-fn)
+open import Once.CCC.Label using (once; callee)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion

@@ -30,12 +30,12 @@
 -- is literally `valid-unit-wf`; the rest is loader/initial-frame plumbing.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (suc)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Target.Arch using (Arch)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Target.Arch using (arch-numerics)
-open import Relation.Binary.PropositionalEquality using (_≡_; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
 -- labels. `o` is constant for a whole definition, so it belongs on the module
@@ -80,7 +80,7 @@ module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List
 
 open import Data.Bool using (false)
 open import Data.List using (List; []; take)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 import Data.Maybe
 open import Data.Product using (proj₁)
 open import Data.Unit using (tt)
@@ -104,13 +104,12 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (NoThunks; missBefore-from; blocks-at)
-open import Data.List using (_++_; []; _∷_)
+open import Data.List using (_++_; _∷_)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
-open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
 open import Data.Nat.Properties using (+-identityʳ; +-comm)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
@@ -121,7 +120,6 @@ open import Once.CCC.Machine.Allocation
   using (AllocState; mkAllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are

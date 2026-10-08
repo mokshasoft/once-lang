@@ -304,7 +304,6 @@ module Comb {δ : GM.DefSem} where
 
 open import Once.Denotation.Meaning using (EnvRun)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Surface.Context using (zeroUsage)
 
 -- The monad laws are equalities of trees (plan 0.105).
 open import Once.Denotation.TraceMonad using (returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ)

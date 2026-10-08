@@ -21,7 +21,7 @@ module Once.Float.Dyadic where
 
 import Data.Nat
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-trans; +-comm)
+open import Data.Nat.Properties using (≤-trans)
 open import Data.Nat.DivMod using (_/_; _%_; m%n<n)
 import Data.Integer as ℤ
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)

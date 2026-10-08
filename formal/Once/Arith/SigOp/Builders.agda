@@ -24,7 +24,7 @@ module Once.Arith.SigOp.Builders where
 import Data.Integer as ℤ
 import Data.Nat as ℕ
 
-open import Once.Type using (Type; Unit; Void; Int; _*_; _+_; ArrowKind; mk-kind; pure; eff; isUnit?; isVoid?)
+open import Once.Type using (Unit; Void; Int; _*_; _+_; ArrowKind; mk-kind; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)

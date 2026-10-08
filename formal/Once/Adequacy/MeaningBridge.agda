@@ -62,7 +62,6 @@ open import Once.IR.Ref using (refIR)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Type using (extractGround)
 import Data.String.Properties as StrProp
-open import Relation.Nullary using (yes; no)
 open import Once.Type.Sub
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)

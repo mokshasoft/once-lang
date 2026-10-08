@@ -112,7 +112,6 @@ poly-instance-sem V sg fmt δ sc nat irf D ki =
 -- The module's view is natural (it builds every instance pointwise).
 ------------------------------------------------------------------------
 
-open import Data.String using (String)
 import Data.String.Properties as StrProp
 open import Data.Maybe.Properties using (just-injective)
 open import Relation.Nullary using (yes; no)

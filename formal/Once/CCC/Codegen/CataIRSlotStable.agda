@@ -31,8 +31,7 @@ module Once.CCC.Codegen.CataIRSlotStable (o : CanonicalName) where
 open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Bool.Properties using (∧-assoc)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥-elim)
+open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; _∷_; []; _++_)
 open import Data.List.Relation.Unary.All using (All) renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
@@ -42,21 +41,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.IR
 open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
+open import Once.Type using (K; Id; _⊕_; _⊗_; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
-open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr;
-         mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
-         store-indirect; store-indirect-suc; lea-slot; restore-input;
-         instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
-         instr-push-frame; instr-pop-frame; instr-call-closure;
-         worklist-init; worklist-push; worklist-pop; worklist-check;
-         instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg;
-         instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop;
-         instr-reg-op; instr-ctrl; lea-indexed;
-         module AbstractExec)
+open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; instr-ctrl; lea-indexed)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
@@ -71,7 +60,6 @@ open import Once.CCC.Codegen.IRToTrace o
 module CataIRSlotStable {FS : FrameSemantics} where
   open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
   open CataNextSlot {FS} using (SlotStable; SlotStableT; AllSlotStable)
-  open AbstractExec {FS} using (AllI)
 
   -- the trace component of `ir-to-trace'`'s 4-tuple (proj-trace is private
   -- in IRToTrace; this is the same extraction, definitionally).

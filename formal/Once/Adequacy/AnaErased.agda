@@ -43,7 +43,7 @@ open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
 open import Once.Semantics.Functor
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; anaS; sfmapAna; anaLayerS)
+  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; anaS; sfmapAna; anaLayerS)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel)
 open Once.Semantics.Functor.Laws._∼S_ using (unfoldS-∼)

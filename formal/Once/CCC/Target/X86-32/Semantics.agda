@@ -24,7 +24,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Function using (case_of_)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` comes in
 -- re-exported from `Syntax`; the scan needs its boolean equality).
-open import Once.CCC.Label using (_≡ᵇᴸ_; thunk)
+open import Once.CCC.Label using (_≡ᵇᴸ_)
 -- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR (D054), at THIS
 -- target's width — 32, which is the whole reason `Once.Word` is parameterised
 -- by `bits` rather than fixed at 64.

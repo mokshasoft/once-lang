@@ -37,7 +37,7 @@ open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Type
-open Once.Type using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_; Quantity; Functor; μ-type; ν-type; ⟦_⟧T)
+open Once.Type using (Type; Unit; Int; Void; Float; _*_; _+_; Quantity; Functor; μ-type; ν-type; ⟦_⟧T)
 
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 -- D134 Phase A removed the decider premises, and with them the last uses of
@@ -58,7 +58,7 @@ open import Data.String using (_++_)
 -- Plan 0.58 (OCP-0006): IR-FREE `Once.Surface.Context` (not `Surface.Syntax`);
 -- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
 open import Once.Type.Rigid using (KindedInstance; RigidFree)
-open import Once.Surface.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open import Once.Surface.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming ()
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 

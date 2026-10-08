@@ -22,11 +22,10 @@
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
-open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
 open import Once.CCC.Label using (once; EntryId)
 open import Once.CCC.Target.X86-32.Syntax using
-  (slot-size; slots; Instr; Reg; reg; imm; mem; base; base+disp; esp; eax; ecx; edx; edi; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l)
+  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; esp; eax; ecx; edx; edi; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -212,12 +211,7 @@ open import Once.CCC.Machine.FlatRegTagWF FS using
 open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
-  using (blk-len; blk-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
-        ; find-label-none-corr; fetch-block-2nd; find-thunk-corr
-        -- …and the ISA VIEW this arch supplies to the generic layers: the label
-        -- scan's four laws plus the lowering enumeration. `FlatComposition`
-        -- already took them; the engine takes the same ones (slice 3).
-        ; is-label?; skip-law; label-hit; label-miss; headView)
+  using (fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract)
 open import Once.CCC.Machine.FlatStackPtr FS using
   ()
@@ -225,8 +219,6 @@ open import Once.CCC.Machine.FlatPtrBounds FS using
   ()
 open import Once.CCC.Codegen.ShapeTable as ST using
   ()
-open import Data.Sum using (_⊎_)
-open import Once.CCC.Target.X86-32.Syntax using (slots)
 
 ------------------------------------------------------------------------
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
@@ -234,10 +226,8 @@ open import Once.CCC.Target.X86-32.Syntax using (slots)
 open import Once.Adequacy.CPU.X86-32 using (ev-x86-32; block-env; call-at-x86-32)
 import Once.Compile as Cmp
 open import Data.String using (String)
-open import Data.Product using (Σ; _×_)
 open import Once.Denotation.Program using (IRProgram)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
-open import Once.CCC.Machine.SMCore using (LocState)
 -- `val-x86-32` is the concrete XInstr arith interpreter and lives with the arith
 -- simulation, not with the CPU instance (x86-64 re-exports its own from the CPU
 -- module; this arch does not).
@@ -245,7 +235,6 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 import Once.Arith.Backend.X86-32.RunTrace as RTx
 open import Data.Empty using (⊥)
 open import Once.SigOp.Info using (SigOpInfo; sem; Internal; External)
-open import Once.Type using (fits-int; fits-float)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Arith.Backend.X86-32.Dispatch using (dispatch-arith)
@@ -496,7 +485,6 @@ open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-
 ------------------------------------------------------------------------
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (event-of)
-open import Data.List using (List)
 
 -- fetch prog k ≡ nothing (k past the trace) ⇒ dropping k blocks leaves []. The
 -- abstract-side ingredient for the program-end boundary.

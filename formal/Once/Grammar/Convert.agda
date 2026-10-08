@@ -38,7 +38,7 @@ open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Type as T
-open T using (Type; Zero; One; Many)
+open T using (Type; One)
 import Once.Grammar as G
 open G using (GType)
 

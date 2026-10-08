@@ -34,7 +34,6 @@ import Once.Denotation.TraceMonad as TM
 module CallC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
 
   obs-correct-call : ∀ {A B} (f : CanonicalName) → LinkedAt tbl f A B → IRObsCorrectF (Once.IR.Call {A} {B} f)
   obs-correct-call {A} {B} f lk n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k = record

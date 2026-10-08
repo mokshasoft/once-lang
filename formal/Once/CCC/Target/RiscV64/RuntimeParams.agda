@@ -23,6 +23,3 @@ open import Once.Memory.RuntimeContract
 
 postulate
   rv64-runtime : RuntimeContract
-
--- Re-export fields for convenience
-open RuntimeContract rv64-runtime public

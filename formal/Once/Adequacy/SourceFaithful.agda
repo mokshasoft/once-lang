@@ -39,7 +39,6 @@ open import Once.Adequacy.CoerceFaithful fmt ρ using (coerce-lift)
 
 open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using ([])
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)

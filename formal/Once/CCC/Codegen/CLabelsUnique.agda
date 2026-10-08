@@ -233,7 +233,6 @@ open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Data.Nat using (_≟_; _<?_)
 open import Relation.Nullary.Decidable using (toWitness; ¬?; True)
 open import Data.Nat.Properties using (+-monoˡ-<; m≤n+m)
-open import Data.Nat using (z≤n; s≤s)
 
 Facts : List ℕ → List ℕ → Set
 Facts T Bl = Dst T × Dst Bl × Dj T Bl
@@ -639,7 +638,6 @@ frag-dst ir n l = dst-++ (proj₁ (proj₁ (frag ir n l))) (proj₁ (proj₂ (pr
 -- ever a table entry's head (`ProgramImage.fn-image`), never inside a unit.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
 
 private
   nf-bl : ∀ (xs ys : List (LabelId × ℕ × AbstractTrace))

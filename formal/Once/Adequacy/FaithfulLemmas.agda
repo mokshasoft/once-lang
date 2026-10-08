@@ -29,9 +29,9 @@ open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-sym-subst; subst-subst-sym)
 
-open import Once.Type using (Type; _*_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T; Purity; mk-kind; Many)
+open import Once.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T; Purity; mk-kind; Many)
 import Once.Semantics.Machine as Val
-open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; snd; Cata; Ana; ⌊_⌋)
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; Ana; ⌊_⌋)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉)
 import Once.IRTy as II
@@ -50,7 +50,6 @@ import Once.Compile as C
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc; fmapT; fmapT-∘; fmapT-cong)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
-open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; coerce-functor-D; liftFn; cohᴰ; anaFᵈ; anaᵈ-erase-full; subst-νᵈ-cong)
 import Once.Denotation.SourceDenote as SD
 

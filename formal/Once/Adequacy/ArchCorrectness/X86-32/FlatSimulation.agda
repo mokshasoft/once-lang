@@ -31,8 +31,6 @@
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; shift-base; slot-addr; slot-addr-linear)
-open import Once.Memory.HeapAddress using (sucHL; heap-ref; ref-id)
-open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-32.Syntax using (slot-size)
 open import Once.Type using (fits-int)
 open import Data.Nat using (ℕ; _+_; _∸_; _*_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n)
@@ -66,7 +64,7 @@ open import Once.CCC.Machine.SMCore
 open import Data.Unit using (tt)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
-open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below; wf-heap; wf-stack)
+open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 import Once.CCC.Target.X86-32.Semantics as X
 open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg)
@@ -81,8 +79,8 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FC
 module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
-open C using (HeapView; haddr; HDom; hfront)
-open import Once.CCC.Label using (once; thunk; callee; e-fn; e-thunk)
+open C using (HeapView; haddr; HDom)
+open import Once.CCC.Label using (once; thunk; callee)
 -- Plan 0.65 G1c step 2: the register-poke sims take any post-state `SetsRole`
 -- describes; `C.sets-role-x86` is x86-32 exhibiting the one it builds.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles

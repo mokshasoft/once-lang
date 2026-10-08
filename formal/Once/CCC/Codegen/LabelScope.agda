@@ -36,25 +36,20 @@ module Once.CCC.Codegen.LabelScope (o : CanonicalName) where
 open import Once.CCC.Label using (LabelId; idx; ℓ)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
-  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-monoˡ-≤
-  ; +-comm; +-assoc; +-identityʳ; m≤n⇒m≤1+n; m<n⇒m<1+n; <-≤-trans; ≤-<-trans; +-suc)
-open import Data.Bool using (Bool; true; false)
-open import Data.Unit using (⊤; tt)
+  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; +-monoʳ-≤; +-assoc; m≤n⇒m≤1+n; <-≤-trans; +-suc)
+open import Data.Bool using (true)
+open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.List.Properties using (++-assoc; ++-identityʳ)
+open import Data.List.Properties using (++-assoc)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
-open import Once.IR using (IR; AllocMode; Stack; Heap;
-  id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply;
-  In; out-μ; Cata; Out; in-ν; Ana;
-  SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -65,14 +60,7 @@ open import Once.SigOp.Info using (SigOpInfo; sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label
-  ; CataStrategy; strat-const; strat-nat; strat-linear
-  ; strat-branching; cata-strategy; cata-dispatch; lsize
-  ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
-  ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend
-  ; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃
-  -- D099 / C1: the called-algebra blocks.
-  ; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃; cata-body; cata-call-setup; cata-call; fsize; resuspend-layer)
 open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono;
   resuspend-label-mono)
 open import Once.CCC.Codegen.SlotBudget o using (visit-idle; rebuild-idle; slots-below; budget-of; bodies-of)

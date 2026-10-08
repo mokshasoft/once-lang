@@ -19,7 +19,6 @@ open import Once.Parser.Module.FunDef.Def
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1; colDrop1-≤)
 open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat.Properties using (<-≤-trans)
 
 -- | After parsing an operator name, decide: type sig or fun def.
 -- Weak shrink: residual ≤ input. The TColon case produces a type

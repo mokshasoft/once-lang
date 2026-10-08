@@ -35,7 +35,7 @@ open import Data.Integer using ()   -- the folded payload of `g-neg-int` (plan 0
 open import Data.String using (_++_)
 open import Once.Type using (Type; Many; μ-type; ν-type; Purity; mk-kind; _⇒[_]_)
 open import Once.Type.Sub using (sub-arr; <:-refl)
-open import Once.IR as IR using (IR; _∘_)
+open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.TypeCheck.Raw using (RawExpr;

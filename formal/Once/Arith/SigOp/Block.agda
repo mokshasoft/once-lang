@@ -33,7 +33,6 @@ open import Data.String using (String; _++_)
 open import Data.Product using (_,_)
 open import Data.Maybe using (Maybe; just; nothing)
 
-open import Once.Type using (Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
 open import Once.CanonicalName using (bare)

@@ -98,7 +98,6 @@ open import Once.Denotation.TraceMonad using (projTrace)
 import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
-open import Once.Type.Rigid using (RigidFree)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
 import Once.TypeCheck.Completeness
@@ -111,7 +110,6 @@ import Data.Fin
 import Relation.Nullary
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 open import Once.Adequacy.TelePosition
-open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Denotation.TraceMonad using (RelT′-events)
 open import Once.Denotation.Program using (tableCalls)
 open import Data.List using (take)

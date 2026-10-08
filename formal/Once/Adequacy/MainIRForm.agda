@@ -35,8 +35,6 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate using (PolyCtx)
 import Once.Compile as C
-open import Once.Parser using (FunInfo)
-open FunInfo
 
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
