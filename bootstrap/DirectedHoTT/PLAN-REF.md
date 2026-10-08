@@ -293,25 +293,25 @@ Next: Lib, then Examples, then the Knot.
 
 ### The Knot stage — steps
 
-- K1. `Lib/SynFib`, `Lib/SynFam`, `Lib/SynPat`: families with a PARAMETER
+- ✅ K1. `Lib/SynFib`, `Lib/SynFam`, `Lib/SynPat`: families with a PARAMETER
   of code `P`: a row is `R q j p c` (law over `q` too); `Fib₀` takes `P`;
   `RowOK` assumes `Ξ ⊢ q ∷ El P`; `FIBM q`, `fib-β` at `q`, `FIBM-sub`
   natural in `q`; `SynFam` gives `DF q`. Parameterless families: `P =
   ⌜Unit⌝`, rows ignore `q`.
-- K2. `Examples/Knot/QSig`: `⌜QSig⌝ = Σ Nat (Σ (Π Nat ⌜Ty⌝₀) (Π Nat
+- ✅ K2. `Examples/Knot/QSig`: `⌜QSig⌝ = Σ Nat (Σ (Π Nat ⌜Ty⌝₀) (Π Nat
   ⌜Tm⌝₀))` (size, declared types, bodies — functions, so no list type is
   needed); `quoteDefs : Defs → RTm Δ` (each entry quoted, selected by a
   `natcase` chain); its typing; lookups.
-- K3. Generators (`gen-knot.py`, `gen-judge.py`): rows take `q`; a family
+- ✅ K3. Generators (`gen-knot.py`, `gen-judge.py`): rows take `q`; a family
   citing another passes `q`; module parameters (the ambient signature)
   and one instance per (module, arguments) emitted by the generators.
-- K4. Hand rows: δ (`Knot/Ref`: `kref n ⟶ εwkK 1 j (bodies q n)` under
+- 🟡 K4 (✅ δ, ⊢ref, RefCon; ⬜ the SigWf image). Hand rows: δ (`Knot/Ref`: `kref n ⟶ εwkK 1 j (bodies q n)` under
   `n < size q`), `⊢ref` (`Knot/RefJudge`: `kref n : εwkK 0 j (types q n)`
   under `n < bound`), `Knot/RefCon`; the internal image of `Spec/SigWf`.
-- K5. Decoders and agreement at `q = ⌜𝒮⌝` (`RedDecode`, `JudgeDecodeHand`,
+- 🟡 K5 (written, not yet checked; HANDOFF-2026-10-08). Decoders and agreement at `q = ⌜𝒮⌝` (`RedDecode`, `JudgeDecodeHand`,
   `RedAgree`, `TypingAgree`): `n < size` from the `Hom Nat` premise, the
   body from `quoteTm` injectivity after the lookup computes.
-- K6. The signature-building examples (SigCore, SigMeth, PwCore, the NbE
+- 🟡 K6 (✅ SigCore/SigMeth/PwCore). The signature-building examples (SigCore, SigMeth, PwCore, the NbE
   agreement tests) at their `kernel S`; then MEASURE (step 5 of §4).
 
 ### 2026-10-07 — Knot stage: K2 done, K3 underway
