@@ -421,7 +421,7 @@ Built-in encodings: `Utf8`, `Utf16`, `Ascii`. Users can add more.
 ## D012: Allocation Annotation in Implementation
 
 **Date**: 2025-12-09
-**Status**: Accepted
+**Status**: Superseded by D142 (2026-09; allocation is mechanical — no surface annotation, no IR mode, no flag). Status updated 2026-10-09 (plan 0.113 E).
 
 ### Context
 Buffer allocation strategy (stack, heap, pool, arena) needs to be expressible. We needed to decide where this annotation goes.
@@ -463,7 +463,7 @@ This aligns with D007: signatures verify but don't change meaning.
 ## D013: Allocation Only Applies to Outputs
 
 **Date**: 2025-12-09
-**Status**: Accepted
+**Status**: Superseded by D142 (2026-09; allocation is mechanical — no surface annotation, no IR mode, no flag). Status updated 2026-10-09 (plan 0.113 E).
 
 ### Context
 When annotating allocation, should it apply to inputs, outputs, or both?
@@ -489,7 +489,7 @@ A function reading a buffer doesn't care where it came from. A function producin
 ## D014: Allocation Strategy Compiler Flag
 
 **Date**: 2025-12-09
-**Status**: Accepted
+**Status**: Superseded by D142 (2026-09; allocation is mechanical — no surface annotation, no IR mode, no flag). Status updated 2026-10-09 (plan 0.113 E).
 
 ### Context
 Not every function needs explicit allocation annotation. We needed a way to set defaults.
@@ -1175,7 +1175,7 @@ parseAndValidate = bindResult validatePositive . parseNumber
 ## D026: IO is a Monad
 
 **Date**: 2025-12-11
-**Status**: Accepted
+**Status**: Superseded by D032 (effects are ARROWS `Eff A B`; the monad lives in the semantics — `T`, D257 — not in the surface language). Status updated 2026-10-09 (plan 0.113 E).
 
 ### Context
 Once needs a way to handle input/output and other effects. We needed to decide how to represent IO and whether to be explicit about its mathematical nature.
@@ -12041,6 +12041,240 @@ codegen — the identity of an EXTERNAL symbol resolved from
 `Strata/Interpretations/<mod>.<arch>` at link time, which no Agda type reaches.
 Those are the remaining crossings, by the same test.
 
+## D162 — THE BRIDGE STOPS MIRRORING AGDA'S SHAPES; A CHECK FOR WHAT IT CAN'T STOP (2026-09-08)
+
+**Relates**: D161 (the emitter's second `link`), D165, D170 (same fault class, per D170's
+entry); commit 87413ccbc; `formal/Once/Extract/Names.agda`, `formal/scripts/check-extraction-sync.sh`.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 87413ccbc (and
+be34479a8, 2d44e1b75, `Compiler.agda`, `check-extraction-sync.sh`) but never written.
+
+### Context
+`Bridge.hs` computed `moduleHasMain` and `moduleImports` by pattern-matching MAlonzo
+constructors (`C_DFunDef` with three fields when the constructor has two). Such a mirror fails
+loudly only when a field COUNT changes; a changed field MEANING with the count intact would
+compile and silently misread the AST.
+
+### Decision
+* Both predicates move into `Once.Extract.Names` as ordinary total Agda; the bridge calls them.
+  `Compiler.agda`: "It contributes nothing to the theorem below — it is stable extracted NAMES
+  plus two predicates the hand-written bridge used to compute by pattern-matching MAlonzo
+  constructors."
+* Stable names via `COMPILE GHC … as` were rejected: `--safe` (`make denot-safe`) forbids the
+  pragmas in that cone, and the pragma needs a Haskell binding for every type in the signature,
+  i.e. an unchecked Agda↔Haskell representation correspondence — "a new axiom in all but name".
+* The remaining MAlonzo serial names stay, as a COST that can only fail at compile time;
+  `make check-extraction-sync` reports them, plus `once.cabal`'s module list against what is
+  actually extracted (both had drifted unnoticed for 84 commits).
+
+### Consequences
+`Bridge.hs` destructures no Agda datatype. Behaviour unchanged (43/62 exit tests before and
+after — the branch's arith regression was D163's, not this commit's).
+
+## D163 — ARITH RECOGNITION SEES TERMS UP TO THE CCC LAWS (2026-09-08)
+
+**Relates**: plan 0.86 (QTT `restrictEnv` wrappers), D161, D164–D167 (the follow-up gap
+closures), D165, D255 (later: primitives matched by meaning); commit 6d5c66166.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 6d5c66166 (and
+`Recognise.agda`, `EmittedWF.agda`, `SourceTrace.agda`, 8a9d1aabe, eb95c9e76, plan 0.108) but
+never written.
+
+### Context
+Branch at 43/62 exit tests, 119/737 cabal tests, every failure `undefined reference to
+once_1?arithzd{add,sub,div,mod}zd{int,float}`. QTT wraps every operand in `envˡ`/`envʳ`
+(`fst`, or `⟨ … ∘ fst , snd ⟩`) and `effApp` composes another on top. The recogniser matched
+SYNTACTIC normal forms, so no `ArithBlock` was built and the bare `arith.<op>` SigOp reached
+the emitter.
+
+### Decision
+Recognition works up to the CCC laws, each a law rather than a special case (`Recognise.agda`:
+"recognition must see terms UP TO THE CCC LAWS, because the elaborator no longer hands it
+normal forms"):
+* re-association `(f ∘ g) ∘ h ≡ f ∘ (g ∘ h)`, applied first;
+* product beta `fst ∘ ⟨a,b⟩ ≡ a`, via `recognise-path-through m p` (also fixes
+  multi-variable contexts);
+* distribution `⟨a,b⟩ ∘ h ≡ ⟨ a ∘ h , b ∘ h ⟩`;
+* terminality `terminal ∘ h ≡ terminal`.
+Float twins for all four.
+
+### Consequences
+62/62 exit tests (= master), 737/737 cabal tests. Recorded as NOT fixed: `rewrite-ir` had no
+soundness proof and the model and the emitted program differed by this pass, which is why a
+recogniser that stopped firing broke no theorem — taken up by D165 and D166/D167.
+
+## D164 — CLOSE `EmittedWF`'S CATCH-ALLS; RECORD THE SIGOP GAP (2026-09-08)
+
+**Relates**: D100 (`labels-resolvable`), D163, D166 (the gap written down here is stated
+there); commit 408cb3c2b; `formal/Once/CCC/Codegen/EmittedWF.agda`.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 408cb3c2b (and
+`EmittedWF.agda`, 8a9d1aabe) but never written.
+
+### Context
+`labels-def-i` and `labels-ref-i` each ended in a catch-all returning `[]`, so a new or retired
+constructor silently got the verdict "defines nothing, references nothing".
+
+### Decision
+* Both walks enumerate all 31 `AbstractInstr` and all 6 `FlatCtrl` constructors. Code comment:
+  "D164: ENUMERATED, not a catch-all. A new instruction must now be given a verdict here rather
+  than silently defining nothing."
+* `instr-sigop` is deliberately NOT added to `labels-ref`: it lowers to `call
+  <once-symbol-path (name si)>`, a `.globl` symbol, while `labels-def` collects only `c-label` /
+  `c-thunk`; listing it would make `labels-resolvable` false rather than useful. The needed
+  obligation is a SIBLING over `CanonicalName`s with its own resolution rule, and it did not
+  exist anywhere — "exactly what let D163's regression ship a `call` to a symbol nothing
+  defined".
+
+### Consequences
+Behaviour unchanged. The gap is recorded where it is skipped; at this commit `EmittedWF` had
+zero consumers and `<arch>-loader-faithful` covered only `as`'s "already defined" half.
+
+## D165 — THE TOOLCHAIN AXIOM STOPS CERTIFYING THE ARITH PASS (2026-09-08)
+
+**Status**: the split-out residual was later PROVED (plan 0.103, 8cc5daff2:
+`rewrite-program-preserves`, restated at the meaning — `Adequacy/RewritePreserves.agda`); the
+loader axiom itself was deleted by D262.
+**Relates**: D161 (same fault one level down), D163, D255, D261/D262; commit f23c5c431.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from f23c5c431 (and many
+later entries, plans 0.107/0.108/0.111, `SourceTrace.agda`, `Compile.agda`, `LiftSound.agda`,
+`RewritePreserves.agda`) but never written.
+
+### Context
+`ArchCorrect.asm-trace-correct` equated `asm-sem asm n` (text generated from
+`rewrite-ir (directCallIR ir)`) with `flat-trace (moduleToIR m) n` (the RAW IR). A toolchain
+axiom was thereby also asserting that arith-block lifting preserves meaning — compiler logic,
+invisible and uncounted. That is how D163 shipped through a green apex.
+
+### Decision
+* `moduleToIR-emitted` (with `map-rewrite`) names the IR the backend actually compiles (at
+  `main`, `directCallIR` is the identity, so the difference is `rewrite-ir`).
+* `asm-trace-correct`'s RHS is that program; the axiom trusts only the assembler / loader /
+  printer round trip. Each `<arch>-loader-faithful` speaks about the emitted IR.
+* `rewrite-preserves` is split out as a NAMED RESIDUAL (deferred proof): the block's VALUE must
+  equal the subtree's, since an arith result can reach an observable SigOp's argument.
+* The spec stays the RAW IR: "a specification may not depend on the optimiser."
+
+### Consequences
+`codegen-asm-correct` becomes three steps; apex theorem unchanged; residual count +1,
+deliberately ("the assumption was always there, and is now countable"). "No compiler logic
+inside a toolchain axiom" (D161/D165) became a cited rule (D261, D262, plans 0.107, 0.111).
+
+## D166 — THE `ld` HALF, STATED: WHICH SIGOP SYMBOLS THIS MODULE OWES (2026-09-08)
+
+**Status**: justification CORRECTED the same day (b058bb939); the list itself unchanged.
+Wired by D167.
+**Relates**: D061/D071 (a SigOp is a closed contract), D163, D164, D167; commits 8a9d1aabe,
+b058bb939; `EmittedWF.agda` (`syms-ref`).
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 8a9d1aabe and
+b058bb939 (and `EmittedWF.agda`) but never written.
+
+### Context
+`EmittedWF` covered `.L` locals and `DistinctSymbols` the "already defined" half for `.globl`;
+the `.globl` "undefined reference" half existed nowhere.
+
+### Decision
+`syms-ref` collects the symbols the emitted text CALLS that this module must DEFINE, filtered by
+`sem`'s three-way split: `pureV` SigOps are owed by this module (their only implementation is
+the `arith.block.<digest>` body); `emitsV`/`haltsV` are resolved by `ld` against a linked
+interpretation. Enumerated over all 31 `AbstractInstr` constructors (`instr-call-closure` names
+no symbol; `instr-load-code-addr` is a local label, already in `labels-ref`).
+
+Correction (b058bb939): the first justification ("`pureV` means nothing links it") was a
+LINKING story, restating the confusion D071 corrects. Per D061 a SigOp carries a contract
+(`semM` + `EffectShape` + `impl ⊨ semM`) with exactly two producers: an interpretation
+(discharged off-line) or the compiler itself (arith SigOps, discharged by `rewrite-ir` lifting
+into a block). "The undefined symbol is the SYMPTOM, not the fault." Recorded assumption:
+"pureV ⇒ ours" holds only because interpretation contracts are always `emitsV`/`haltsV`; a pure
+external would require carrying the discharge owner explicitly (`Linkage`, D071).
+
+### Consequences
+Not wired at this commit (no `SymbolsResolvable` yet); comment-only correction, apex unaffected.
+
+## D167 — WIRE THE `ld` HALF: THE EMITTED TEXT MUST LINK (2026-09-08)
+
+**Status**: superseded by D262 (2026-10-04): the `<arch>-loader-faithful` postulates and their
+text-level preconditions are gone; `SymbolClash.agda` was deleted, and the property is now part
+of the PROVED `file-wf` obligation (`Compile.agda`: "D100/D167 were its postulated halves").
+**Relates**: D061/D071, D100, D163, D166, D169, D262, plan 0.64; commit eb95c9e76.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from eb95c9e76 (and
+5cdba1c3d, D261, D262, plan 0.89, plan 0.107, `Adequacy/Compile.agda`) but never written.
+
+### Context
+`ld`'s rejection of a call to an undefined symbol was stated at neither level; D163 shipped such
+a call (`once_15arithzddivzdint`) through a green apex.
+
+### Decision
+* `Once.Compile.moduleSymRefs` / `moduleSymDefs`, read off the SAME `ir'` the backend compiles
+  (`directCallIR` then `rewrite-ir`), as `moduleLabels` is.
+* `Once.Adequacy.SymbolClash.SymbolsResolvable` + named residual `program-symbols-resolvable`,
+  sibling of `program-labels-distinct`.
+* Threaded as a third precondition of `asm-trace-correct` and each `<arch>-loader-faithful`,
+  supplied at the apex, so `correct` gains no hypothesis.
+* Framed per D061/D071: the predicate is the checkable CONSEQUENCE of a compiler SigOp's
+  contract being discharged by lifting; a named definition is a context projection and never
+  appears in `syms-ref`.
+
+### Consequences
+`syms-ref` went from 0 consumers to 4. The residual is true today; its proof would be the
+recogniser's completeness, turning a recogniser regression into a type error.
+
+## D168 — `link-correct`: A BLOCK RUNS WHERE IT IS PLACED (2026-09-08)
+
+**Status**: landed as plan 0.89 Phase D1. Plan 0.91 S2 (ca6931261) predicted the machinery was
+"demanded after all" for `entry-blocks`; that prediction was WRONG (94ffb4105, a6b5702b6):
+`blocks-placed` goes through by direct induction, and `link-block-steps` still has no consumer.
+**Relates**: plan 0.89 D1, D155 (`exec-flat-reloc`'s unsatisfiable hypothesis), D157, D159
+(bodies as named blocks), D170; commits daedb6725, d848c5255.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from daedb6725 and
+d848c5255 (and D170, D173 era commits, plans 0.89/0.91, `FlatStepLemmas.agda`, `SMCore.agda`,
+`ClosureWellFormed.agda`, `FlatFromObs.agda`) but never written; only the subheading
+"D168 is demanded after all" existed.
+
+### Context
+After D159 a closure body is a named block in `link u = entry ++ c-ret ∷ blocks-layout bs`, i.e.
+a MIDDLE fragment. Plan 0.89 D1 asked for ONE global `link-correct` lemma instead of a
+per-composition side condition.
+
+### Decision
+* `link-block-split` (SMCore, pure list algebra): `blocks u ≡ before ++ (lbl , b , t) ∷ after
+  → link u ≡ link-pre u before lbl b ++ (t ++ link-post after b)` — the offset is read off the
+  presentation.
+* `link-block-steps` (FlatStepLemmas): `FlatSteps t k fs fs' → FlatSteps (link u) k (shift d
+  fs) (shift d fs')`, `d = length link-pre`.
+* Built on chain-level lemmas (`FlatSteps-prefix` + `FlatSteps-reloc`) with PER-INSTRUCTION
+  side conditions, NOT on `exec-flat-reloc`, whose `∀ tg` hypothesis is unsatisfiable once the
+  prefix defines a label (D155) — and the entry always does.
+
+### Consequences
+D170's `apply` story relies on it in prose (a closure's body found by label and relocated);
+the `entry-blocks` proof did not need it.
+
+## D169 — THE `ld` HALF FOR LOCAL LABELS TOO: THE PAIR IS COMPLETE (2026-09-08)
+
+**Status**: superseded by D262 (2026-10-04): `LabelClash.agda` and the loader axioms are gone;
+the text-level residuals were consolidated into the proved `file-wf`.
+**Relates**: D100 (`labels-resolvable`, unconsumed since), D159, D160, D167, D262; commit
+bdc230dc3.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from bdc230dc3 (and
+5b6b9193c, D262, plan 0.89, the 0.91 closure entry) but never written.
+
+### Context
+`EmittedWF.labels-resolvable` had stated "local labels resolve" since D100 with no consumer.
+
+### Decision
+Wire it, completing the 2×2 table of the toolchain's rejections:
+
+              as: "already defined"          ld: "undefined reference"
+    .globl    DistinctSymbols (NameClash)    SymbolsResolvable  (D167)
+    .L        DistinctLabels  (D100)         LabelsResolvable   (D169)
+
+`moduleLabelRefs` is read off the same `ir'` as `moduleLabels`/`moduleSymRefs`; the residual is
+supplied at the apex (no new hypothesis on `correct`), so `<arch>-loader-faithful` is false only
+for programs the emitter should never produce. Not idle: before D159 the `c-thunk` named by
+`instr-load-code-addr` lived in inlined text, and `AbstractToRiscV.agda` records "the `lla`
+referenced an undefined symbol — a link failure … invisible to the proofs".
+
+### Consequences
+`labels-ref` 0 → 2 consumers. D160's `linked-agree`/`scope-ok` named as the proof's input.
+
 ## D170
 
 **A CLOSURE VALUE CARRIES ITS CODE'S NAME, NOT ITS CODE'S BEHAVIOUR.
@@ -12166,6 +12400,37 @@ state. If it carries a proof about what happens when the value is USED, the
 predicate has absorbed an execution obligation, and the first symptom is a
 mutual block that needs a positivity escape hatch. Carry the NAME, and look the
 behaviour up where it is used.
+
+## D171 — THE FLAT LAYER'S STORE READ-BACK IS THE SHARED FOUNDATION (2026-09-09)
+
+**Relates**: plan 0.89 Phase E2, D170 (`valid-closure-wf` drops `BodyCorrect`), D172 (retracted;
+D171 stands independently), D174 (builds the heap half); commit e2e60dd1c.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from e2e60dd1c (and
+ea02c8305, 9b0f0ae7b, the D172 entry, `IRObsCorrect/{Prelude,Simple}.agda`) but never written.
+
+### Context
+Every discharged `obs-correct-*` clause touched at most `mov-to-output`; none handled
+`store-at-slot`. So `obs-correct-{pair,inl,inr,curry}` — the clauses that write memory — shared
+ONE missing foundation, not four difficulties. Store reasoning existed only in the
+machine↔machine correspondence layer.
+
+### Decision
+Write the bridge from `flat-exec-instr` to `SMCore.writeLoc`, all three `refl` because
+`store-at-slot` routes through `flat-step-straight`:
+
+    flat-store-floc   : floc   (flat-exec-instr (store-at-slot slot) prog fs)
+                      ≡ writeLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)
+                                 (readReg (regs (floc fs)) Output)
+    flat-store-falloc : falloc (…) ≡ falloc fs
+    flat-store-fpc    : fpc    (…) ≡ suc (fpc fs)
+
+"The foundation was free; nobody had written it down."
+
+### Consequences
+With `curry-denot-[]`, `obs-correct-curry` reduces to state tracking through five instructions.
+The follow-up (e20c7c4a9, comment tagged D171 in `Simple.agda`) found the `in-reg` residence a
+spec question — resolved: the emitter is right, and `valid-inl-reg-wf` (0.86 F) already
+expressed it.
 
 ## D172 — RAISED AND RETRACTED THE SAME DAY (2026-09-09)
 
@@ -12312,6 +12577,132 @@ after the language stops having one.
 So the obstacle is not a proof gap to be closed where it appears; it is an
 UNFINISHED MIGRATION showing through. The order is: finish 0.86 for
 `inl`/`inr`/`curry`, then discharge.
+
+## D174 — DISCHARGE `obs-correct-inl`: PLAN 0.88'S NUMBER MOVES, 17 → 16 (2026-09-11)
+
+**Relates**: plan 0.88 (metric: count of `obs-correct-*` postulates), D171, D173 (blocked on
+`AllocMode`), plan 0.86 stage G, D176, D177, D178; commit 1c4d6fe17.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 1c4d6fe17 (and
+573aca30a, da4a9710e, 108ba3efa, b0be58fd6, plan 0.88, `IRObsCorrect/{Interface,Machine,Prelude,Sum}.agda`)
+but never written.
+
+### Context
+Plan 0.88 counts progress only as `obs-correct-*` postulates removed. D173's obstacle (a Stack
+result at a frontier nothing bumps) dissolved when 0.86 stage G removed `AllocMode`.
+
+### Decision
+`obs-correct-inl` becomes a DEFINITION: the ten-instruction run, `traces-agree`, all `halted` and
+`InstrWF` obligations, and `place` over all three residences; `in-reg`/`in-unit` postulate-free.
+One named residual, `inl-mem-pres` (caller-nameable locations unchanged), for `in-loc`.
+Thirteen REUSABLE machine lemmas (`store-ind-*`, `load-slot-*`, `heap-read-*`,
+`heap-untouched`, `sucHL-≢`, …) — the heap read-after-write vocabulary `SMCore` ships none of by
+design. Rule recorded: "only a TYPE error moving forward is evidence of progress; a scope error
+is evidence of nothing but a missing name" (two lines earlier marked "typechecked" never were).
+
+### Consequences
+The flat layer claims `SpanAt prog base (emitted n l ir)`, immune to what killed the `*WF`
+layer (D176). The lemmas are reused by D177 and cited by plan 0.88 for `pair`; `inl-mem-pres`
+is no longer a postulate in the current tree.
+
+## D175 — DELETE THE `!!` HATCH: EVERY OBLIGATION IS A NAMED POSTULATE (2026-09-11)
+
+**Relates**: D061 (`sigop-preserves-halted`), D176 (used this naming), D269/D270 (later fate of
+the named postulates); commit 37e2e41cb; `SMPrimitives.agda`.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 37e2e41cb (and
+`SMPrimitives.agda`, D176's commit) but never written.
+
+### Context
+`postulate !! : ∀ {ℓ} {A : Set ℓ} → A` existed twice (`Once.ProofObligation`, a clone in
+`SMPrimitives`), with ~105 uses.
+
+### Decision
+Both definitions deleted; every use became a named postulate with its own type (~60 created).
+`SMPrimitives.agda`: "an anonymous `!!` reachable from everywhere is one node, which is no ledger
+at all … Removing the definition is what keeps it gone: no future proof can reach for `!!`
+without declaring what it is assuming."
+
+### Consequences
+* No `!!` was ever on the apex path; the apex ledger is unchanged. What the hatch hid were the
+  OFF-PATH obligations.
+* Naming separated kinds: `ASSUMED-trace-is-ir-to-trace` (the `*WF` cluster's load-bearing
+  claim, 9 sites); two `REFUTABLE-…` assumptions false at `instr-alloc-heap`, supplied in
+  argument position (later deleted, D269); `sigop-preserves-halted`, an interface obligation
+  (later an `InstrWF` premise, D270).
+* Verdict: "the WF layer proves nothing the apex postulates" — input to D176. Edits inside the
+  then-red `*WF` modules were not typechecked (stated in the commit).
+
+## D176 — DELETE THE STRUCTURED-MACHINE `*WF` CLUSTER: D141 REDONE, ON MEASUREMENT (2026-09-11)
+
+**Relates**: D141 (deleted then retracted in part, 2026-09-02), D159, D175, plan 0.64 group M,
+plan 0.88; commit 997e647b5; 108ba3efa (template index).
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 997e647b5 (and
+1c4d6fe17, d044739a9, 108ba3efa, plan 0.88) but never written.
+
+### Context
+D141's earlier deletion was retracted ("it is the discharge route"). This decision re-takes it
+with four independent checks.
+
+### Decision
+Delete 16 modules, 7061 lines: ApplyWF, PairWF, SumRecWF, ComposeWF, SimpleWF, CurryWF,
+SumInl/InrAllocWF, LambekValidity, RecSchemePostulates, plus the tail they alone kept alive
+(DispatcherArithmeticLemma, FrontierLemma, SMPrimitives/Heap, SizeBoundLemma, TraceEvaluator,
+Memory/TypeSlots). Checks: (1) reachability — zero apex declarations, no outside importers;
+(2) content — the layer reaches the 17 `obs-correct-*` only via `trace-is-ir-to-trace`, assumed
+at 9 sites and refuted at the 2 that try; (3) structural — after D159 the structured machine
+cannot execute a linked image (`instr-ctrl` is a no-op, no `fpc`); (4) termination — no
+`TERMINATING` in the obs layer, and the WF size-bound device already migrated to
+`IRObsCorrectF`. `ClosureWellFormed` stays.
+
+### Consequences
+Not cascaded: `MuSize`/`MuValidity`, `Optimizer/*`, `Fusion/Correct` etc. each want their own
+verdict. 108ba3efa later indexed the 386 proved internal lemmas (recoverable via
+`git show 997e647b^:…`) as the template for flat discharges; the verdict stands.
+
+## D177 — DISCHARGE `obs-correct-inr`: 0.88 AT 15, THE FOUNDATION PROVES ITSELF (2026-09-11)
+
+**Relates**: D174 (the mirrored proof and its lemmas), plan 0.88; commit 185766096.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from 185766096 but
+never written.
+
+### Context
+`inr` is `inl`'s mirror: the same ten-instruction heap build with `instr-load-tag-lit 1`.
+
+### Decision
+Discharge by RENAME alone (`inl`→`inr`, tag 0→1, `valid-inl-*`→`valid-inr-*`,
+`inl-mem-pres`→`inr-mem-pres`); the only manual step was importing `valid-inr-wf` /
+`valid-inr-reg-wf`. Residual `inr-mem-pres` mirrors `inl-mem-pres`. Metric 17 → 16 → 15.
+
+### Consequences
+Evidence D174's thirteen lemmas are MACHINE lemmas: `inr` used all of them untouched. Scripting
+rule recorded: the safety property is LOCAL VERIFICATION — a whole-block copy plus total rename
+in one file, typechecked immediately, vs the stage-G failure (a shape-guessing regex across many
+files). Also recorded: class G (`Para`, `in-ν`, `Ana`, `Hylo`, `Fuse`) compile to `[]` and are
+REFUTABLE when the denotation emits; they need a design decision, not a proof.
+
+## D178 — DISCHARGE `obs-correct-fst` AND `-snd`: 0.88 AT 13 (2026-09-11)
+
+**Relates**: D174, D177, plan 0.88 (class ordering); commit a1b5270c4;
+`IRObsCorrect/Simple.agda`.
+**Note**: back-filled 2026-10-09 (plan 0.113 E) — the number was cited from a1b5270c4 (and
+`IRObsCorrect/Simple.agda`) but never written.
+
+### Context
+`fst`/`snd` are one instruction each (`load-indirect`, `load-indirect-suc`); `valid-pair-wf`
+already carries the component pointer, `BeforeFrontier` and `ValidAtWF`.
+
+### Decision
+Discharge both (`decomposePairWF` supplies `at-loc`; the other residences are absurd). Recorded:
+* Class A (reads: `fst`/`snd`/`In`/`id`/`out-μ`) is CHEAPER than class B — the witness is
+  derived from the input, zero new lemmas. `pair`/`curry` are not the easy half of B: they
+  splice sub-IR traces and need IHs, nearer `case` in difficulty.
+* A result's MODE is the destructured component's (`PairValidWF.mA`), not the input's.
+* When the run depends on the residence, the whole `ValueRealized` record is per-clause.
+* `InstrWF s alloc load-indirect` ignores `alloc`, so `load-indirect-twf`'s `{alloc}` is
+  caller-supplied.
+* "a mirror is rename-only; if it needs a structural edit, read the target's signature".
+
+### Consequences
+Metric 15 → 13. `Simple.agda`: "`fst` / `snd` — DISCHARGED (D178)".
 
 ## D179 — `Behavior` IS A RECORD: the three laws travel with the family (2026-09-12)
 
@@ -12595,6 +12986,18 @@ fetches come from the clause's `span`, not from this module), the call step,
 the block's own run relocated by `link-block-steps` (D168), the `c-ret`, and
 the result place. All of it is gated on the one fact D183 named.
 
+## D186 — UNUSED NUMBER (2026-09-12)
+
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+No decision was ever recorded under D186. `git grep D186` finds it only in plan 0.113's own
+to-do list, and `git log --all --grep D186` / `-S D186` find no commit that uses it: the series
+went from D185 (`apply`'s seventeen obligations, e926ae1c0) straight to D187 (a compound's cell
+holds a pointer or the component, c0dae6203), both 2026-09-12. The number is skipped, not lost;
+this placeholder exists so that a gap in the sequence is not mistaken for a missing entry.
+
+---
+
 ## D187 — A COMPOUND'S CELL HOLDS A POINTER **OR** THE COMPONENT (2026-09-12)
 
 `valid-pair-wf` demanded `SV-Ptr` in both cells. `apply` is where that became
@@ -12849,6 +13252,8 @@ runs an unfold, and that needs the `ana` term as well (D192).
 
 ## D192 (PARKED, one site short) — surface `ana`, and the ν row of `RelV`
 
+**Status (2026-10-09)**: CLOSED by D193 (the effectful ν gets its bisimulation); the PARKED in the title is historical.
+
 D191 made a ν type writable. This entry is the term: `ana coalg` in check mode
 at `A -> Nu F`. **Nine of its ten sites are done and green; it is parked on the
 tenth, and the tenth is a finding rather than a chore.** The work is kept as
@@ -12958,6 +13363,8 @@ with `F` read from the annotation D191 made writable, elaborates to
 half of the language is reachable from source for the first time.
 
 ## D194 (PARKED, one lemma short) — surface `Out`, the ν's eliminator
+
+**Status (2026-10-09)**: CLOSED by D197 (`Out` lands). The parked patch `docs/compiler/D194-surface-out.patch` is deleted (plan 0.113 E); it is in git history.
 
 D193 made `ana` writable end to end. This entry is what it exposed: **a ν can
 now be BUILT but not OBSERVED.** `"Out"` has been a reserved `genWord` all
@@ -13167,6 +13574,43 @@ codegen had never executed anywhere else.
 
 Exit tests 64 passed / 0 failed / 0 SKIPPED. `cabal test` 743 passed (737 + the
 six new: two programs × three arches). `make certified` green.
+
+## D198 — `CalleeRun` IS INDEXED BY ANY IR; THE ν's CODE CELL GETS ITS OWN PREMISE, `CoalgRuns` (2026-09-13)
+
+**Relates**: D188 (`CalleeRun`, `apply`'s callee premise), D197 (`Out` lands), D199 (landed
+in the same commit, 1393d1e72, which amends this premise), D273 (the seed becomes `(e , a)`).
+**Note**: back-filled 2026-10-09 (plan 0.113 E). The number was cited in D199 and in
+`IRObsCorrect/Interface.agda` but never written.
+
+### Context
+`Out` forces a ν by calling the code cell its suspension holds. `apply` already had a premise
+for "the called block runs" (`CalleeRuns` / the record `CalleeRun`, D188), but the record was
+indexed by a closure BODY `IR (E * A) B` and its packed argument.
+
+### Decision
+Two changes, both stated in `Interface.agda`:
+
+> D198: indexed by ANY `IR A B` and any input, not by a body-of-a-closure. Nothing in the
+> fields ever used the `E * A` shape — they mention only `evalᴰ ir inp` and `B` — and the ν
+> force needs the same record at a COALGEBRA `IR A (⟦F⟧TI A)` called on a bare seed. `apply`
+> instantiates this at `E * A` and is otherwise unchanged.
+
+> D198: the ν analogue of `CalleeRuns`, and a SIBLING rather than an instance because the two
+> block kinds are called differently BY CONSTRUCTION: `apply` packs an `(env , arg)` pair on
+> the heap and points `Input1` at it, while `Out` puts the SEED in `Input1` directly. That is
+> what makes a ν's code cell a coalgebra rather than a closure body, so one premise cannot
+> serve both.
+
+`CoalgRuns prog`: for a valid ν whose code cell holds label `ℓ`, `find-thunk prog ℓ` resolves,
+and running from there with the seed in `Input1` is a `CalleeRun`.
+
+### Consequences
+- D199 (same commit) re-indexed `CalleeRun` by the COMPUTATION (`B` explicit) and changed what
+  `CoalgRuns` says the block computes: the forced layer `evalᴰ (Out wf) ν`, not `coalg`, since
+  the block now ends with the re-suspension pass.
+- `callee-runs` became `block-runs : BlockRuns`, covering both block kinds (later D213/D218).
+
+---
 
 ## D199 — `Out` DOES NOT RE-SUSPEND, AND `obs-correct-Out` IS FALSE (2026-09-13)
 
@@ -13426,6 +13870,37 @@ proof that looked easy because the relation had been weakened to let it be.
 Exit tests 65 passed / 0 failed / 0 skipped. `cabal test` 746 passed.
 `Once/Compiler.agda` and `Once/Certified.agda` typecheck.
 
+## D202 — `obs-correct-pair` TAKES ITS INDUCTION HYPOTHESES (2026-09-14)
+
+**Relates**: D152 (the same fix for composition, `comp-obs-correct`), D200 (the star-shaped
+`IRObsCorrect` split), D203, D204/D206/D207/D209/D211 (the pair discharge).
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit da4a9710e.
+
+### Context
+`ir-obs-correct ⟨ f , g ⟩ = obs-correct-pair f g` passed the sub-IRs, not their correctness
+proofs. But the emitted code splices both sub-runs:
+
+    mov-to-output ∷ store-at-slot backup ∷
+    ft ++ store-at-slot fst ∷ restore-input backup ∷
+    gt ++ <nine-instruction heap pair build>
+
+so, exactly like `g ∘ f`, the clause could not be proved without them. It was "unprovable in
+principle, not merely unproved".
+
+### Decision
+The hypotheses arrive as ARGUMENTS (`IRObsCorrectF f → IRObsCorrectF g → …`), the way
+`comp-obs-correct` takes them, and `ir-obs-correct` passes `ir-obs-correct f` / `… g`. The D200
+star shape survives: no clause calls back into `ir-obs-correct`.
+
+### Consequences
+- Still an axiom at the time, "but a strictly weaker one — it now asks for more".
+- Recorded for the discharge: the VALUE half is the backup/restore argument plus D174's
+  heap-build lemmas; the TRACE half is the same `projTrace`/`>>=T` event-concatenation step
+  as `comp-traces-agree` (done once, in D203).
+- `obs-correct-pair` became a proof in D211. `case` got the same fix later (DN5).
+
+---
+
 ## D203 — `comp-traces-agree` DISCHARGED; the event-concatenation step (2026-09-14)
 
 The postulate's own comment said it "looks PROVABLE now" and was "left as an
@@ -13579,6 +14054,8 @@ hypothesis when a clause resists: before grinding, check that the obligation
 actually says enough to be true.
 
 ## D204b — THE STRENGTHENING LANDED: two fields, and one design correction (2026-09-14)
+
+**Note (2026-10-09)**: numbered as a continuation of D204 (its amendment), not a separate decision.
 
 `ValueRealized` and `CalleeRun` now say what a run does to memory and to the
 allocator. Every clause supplies both; the apex axiom `block-runs` assumes them
@@ -13842,6 +14319,37 @@ adds one more to a list of six — marginal.
 
 Root typechecks. Exit tests 65/0/0; `cabal test` 746 passed.
 
+## D209 — ONE HEAP BUILD OVER ANY START STATE (`NineStepPres`); PAIR's SPAN SPLITS IN FOUR (2026-09-15)
+
+**Relates**: D202, D207 (backup survives `f`'s run), D211 (`obs-correct-pair` a proof),
+D212 (removed `PairTail`, the defective instance introduced here).
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from aa4471383, 0b5821e87, 472a71d8e.
+
+### Context
+`inl`, `inr`, `curry`, `Ana` and `⟨ f , g ⟩` all end with the same nine instructions
+(`store-at-slot n ∷ instr-alloc-heap 2 ∷ … ∷ load-from-slot (suc n) ∷ []`). `TenStepPres`
+hardwired the start state to `entry-flat … ` one `mov-to-output` in, so `pair`, which starts
+the nine wherever `g`'s run settled, could not use it; the alternative was a fourth inlined
+copy (~370 lines).
+
+### Decision
+- `NineStepPres` (`IRObsCorrect/Machine.agda`) takes the START STATE as a parameter, plus two
+  facts relating its allocator to the caller's frontier (`heapref-u1`, `cf-u1`).
+  `TenStepPres` becomes a wrapper that supplies `t1` and re-exports every field; `mem-pres-from`
+  is relative to the start state. "No argument is duplicated."
+- `pair`'s text decomposes as `pre ++ ft ++ mid ++ gt ++ (store-at-slot snd-stash ∷ tail)`;
+  `shape` proves it by `refl` ("the emitter's own `let`, spelled out"), and `span-f` / `span-g`
+  split `SpanAt` mechanically. The `g` index re-association (`g-shift`) is discharged by the
+  ring solver, after hand-written `trans` chains failed three times.
+
+### Consequences
+- `PairTail` instantiated the build at pair's stashes; its `heapref-gs` premise turned out to
+  be unsatisfiable whenever a sub-run allocates (D212 deleted it; the clusters instantiate
+  `NineStepPres` directly).
+- `NineStepPres.heapref-u1` is stated with `≡` where `pair` needs `≤` (recorded at D211).
+
+---
+
 ## D210 — `frame-pres`: the fourth thing the obligation did not say (2026-09-15)
 
 Found by scouting `⟨ f , g ⟩` STRICTLY top-down — the clause was written as a
@@ -13970,6 +14478,387 @@ always stated at.
 
 `Once/Compiler.agda` and `Once/Certified.agda` typecheck. Exit tests 65/0/0;
 `cabal test` 746 passed.
+
+## D212 — DELETE THE ISLANDS THE AST DUMP FOUND; REACHABILITY, NOT IMPORTS, DECIDES (2026-09-16)
+
+**Relates**: MERGE.md §4b (the reachability gate, DN2, cb09647ca), D201 (corrected here),
+D209 (`PairTail`), D214 (the same dump confirms `ir-size` dead).
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit a6e5dbcbc.
+
+### Context
+MERGE.md §4b (2026-09-10) made the apex's AST/trust-base dump (`run-ast-dumps.v2.sh`, not
+tracked in the repo) a merge gate. Its first use on the branch compared the D211 tree against
+the plan 0.89 ancestor dump ("both new-format; master's is old-format and NOT comparable").
+
+### Decision
+Three constructs reachable from nothing were deleted:
+- `PairTail` — 0 reachable names; its `heapref-gs` premise is unsatisfiable once either
+  sub-run allocates, so no caller could instantiate it (introduced by D209).
+- `fetch-drop2` — written for the span splits, never used by them.
+- the ν-erasure cluster in `AnaErased` (`sem-ana-anaS`, `anaS-subst-nat`, `events-F-erase`,
+  `sem-ana-erase-coh′`, `sem-ana-erase-full`), orphaned when D201 rerouted the ana bridge
+  through `anaᵈ-∼`.
+
+Kept, with reasons: `SFRel`/`coerce-SFRel` (imported by `FaithfulLemmas`; the dump showed only
+its where-block internals dying — a misreading caught before deleting); `bisimS-to-eq` (its four
+remaining consumers are the pure ν's Lambek/round-trip laws — deleting them is "a separate
+decision"); `LabelScope`'s `curry-bl-*` losses (deferred to plan 0.89).
+
+### Consequences
+- **Correction to D201**: "the pure side's `bisimS-to-eq` stays: its six uses produce real
+  equalities" was true of the source text and false of the reachability graph —
+  `sem-ana-anaS` was its last reachable consumer, so the axiom had already left the trust base.
+- Method fixed for later entries: deletions are judged against `reachable`, never against
+  imports (§4b).
+
+---
+
+## DN1 — WARNINGS ARE ERRORS: `-W error` IN `Once.agda-lib`, REACHED THROUGH A RATCHET (2026-10-05)
+
+**Relates**: plan 0.109 (closed), plan 0.92 §7 (the incident), D242 / `pragma-gate.sh` (the
+ratchet pattern), MERGE.md §4d. Commits 3843d1d09 (S0), 1382f5e38 (S1–S4), 8cc88893b (S5).
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Plan 0.92 removed a `public` re-export; one module then reached `Arch`'s constructors only
+through it, so in `arch-semantics x86-32 = …` the out-of-scope `x86-32` became a pattern
+VARIABLE, the first clause a catch-all, and every arch got x86-64's semantics. Agda reported only
+warnings. Plan 0.109 §0: this is "meaning drift, not inconsistency", harmless in implementation
+code but not in the Spec, the trusted model, or a definition shared by both sides of a
+correspondence. Agda 2.8 has no per-warning error switch. Measured (correcting §1's first
+draft): `PatternShadowsConstructor` fires for a constructor of the variable's TYPE even when it is
+out of scope, so the incident did warn. That warning was lost among the other warnings.
+
+### Decision
+1. S0: a census of the apex/compiler closure, 678 warnings (354 deprecations, 298 exact-split,
+   16 stale `using`, 7 unreachable, 7 no-op `rewrite`, 1 useless `private`), and a ratchet
+   (`scripts/warning-gate.sh` + baseline, `make warning-gate`): a count may only go down.
+   Warm checks suffice because Agda replays stored warnings from interfaces.
+2. Fix every warning, behaviour-preserving first. Exact-split catch-alls are marked
+   `{-# CATCHALL #-}` (≈340 clauses) when they are deliberate fallbacks. The 7 unreachable
+   clauses were read before deletion. One was `Fusion.fusion-once arr`, a retired constructor
+   captured as a variable, whose shadowed clauses were all identities, so deleting it changed
+   nothing.
+3. S5: `-W error` in `Once.agda-lib`; the ratchet is deleted. MERGE.md §4d states the rule:
+   fix the cause, `CATCHALL` only for an intended fallback, per-module options need a reason.
+
+### Consequences
+- The flip's cold check found a class the replay misses: `InversionDepthReached`
+  (`SlotBudget` gets `--inversion-max-depth=100`, with its reason). `make malonzo` passes
+  `--no-main`. No behaviour moved: exit tests 76/0/0 ×3, cabal test 775/775.
+- §6a follow-up: of 19 "small" CATCHALL sites, 13 enumerated, 6 kept with reasons. The other
+  376 marked clauses stay, because enumerating one is a per-site judgement (it can break
+  downstream reductions).
+
+---
+
+## DN2 — THE MERGE GATE CHECKS REACHABILITY FROM THE APEX (MERGE.md §4b) (2026-09-10)
+
+**Relates**: D212 (first use), D214, plan 0.64 (the content test), MERGE.md §4e (D277).
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit cb09647ca.
+
+### Context
+"A green `certified` cannot see a proof falling out of use, and nothing else in the build
+performs that check." Two failures on the branch: seven `Once/Optimizer/*` modules had been
+unbuildable since `fold`/`unfold`/`arr` were retired (2026-07-14, 90b430de7), yet two later
+migrations edited them; and the parked `*WF` cluster accrued D159 rot because nothing builds it.
+
+### Decision
+MERGE.md gains §4b: dump the AST and trust base reachable from the apex for BOTH refs
+(`run-ast-dumps.v2.sh`) and compare, with three checks in order of severity:
+- the trust base must not grow without a decision (a postulate SPLITTING, +1/−1, is fine; a
+  postulate APPEARING owes a residual entry);
+- a module must not LEAVE `reachable` unremarked ("removing the last consumer of a proof is a
+  real event; it should be intentional");
+- deletions are checked against `reachable`, never against imports, and an orphan is
+  classified before cutting: superseded, unwired prize (plan 0.64's content test), or never wired.
+
+### Consequences
+- The counting trap is recorded: `counts` are DECLARATIONS. 202 `terminating-pragma` entries
+  in one dump were 22 source pragmas (one pragma covers a mutual block; generated `-invert*`
+  helpers inherit it). Declaration counts detect change; source counts state size.
+- Placed after the extraction gate (it wants the final tree), started during step 1 because it
+  runs tens of minutes per ref.
+
+---
+
+## DN3 — THE IR LOSES `free-heap`: AN UNIMPLEMENTED STUB IS REMOVED, NOT PROVED (2026-09-18)
+
+**Relates**: plan 0.93 S3 (its `RelIR` clause, written the same day, deleted with it), D276 (the
+compiler does not free; GC-freedom "with releases at discards").
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit 692ecde1f.
+
+### Context
+The constructor was "unimplemented at BOTH ends":
+- no pass constructs one: every right-hand-side occurrence rebuilds one just matched
+  (`fusion-once (free-heap h) = free-heap h`, …); nothing in Surface/ or TypeCheck/ elaborates
+  to it;
+- its codegen freed nothing: `ir-to-trace' n l (free-heap _)` emitted `mov-to-output`;
+- the escape analysis its doc comment credited does not exist (`EscapeInterface.agda` is
+  imported by nothing; `CanFreeHeap` is consumed nowhere);
+- the AST dump found it reachable only because the obligations must be total over the IR.
+
+### Decision
+Remove it: "an IR containing `free-heap` claimed an effect the compiler does not perform …
+the constructor was misleading, not merely idle." Removed: the constructor, ~20 one-line clauses
+in total functions over the IR, `Optimize`'s `h-free-heap` head with its tag and injectivity
+case, and Simple.agda's postulate-free `obs-correct-free-heap`. "A postulate-free proof deleted
+rather than discharged, because the thing it was about should not exist."
+
+### Consequences
+- Plan 0.93 S3's count became 5 of 13 (not 6 of 14).
+- `EscapeInterface.agda` left alone: deleting the design side is a separate decision.
+- Stale mentions of `free-heap` remain in comments (`IR.agda` header, `IRToTrace.agda`,
+  `IRObsCorrect/Simple.agda` line ~171 "DISCHARGED", `IRObsCorrectFlat.agda`); no code.
+
+---
+
+## DN4 — SPEC CHANGE: `in-ν` HAS ITS OWN DENOTATION; FORCING IT YIELDS THE LAYER AS GIVEN (2026-09-18)
+
+**Relates**: D179 (`Ana` builds a suspension and emits nothing), D189 (the `in-ν` emitter),
+plan 0.93 §12 ("the spec change, taken FIRST and top-down"), plan 0.98 C (dfadfb394: `evalᴰ`
+enumerated, the catch-all gone).
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit faf76fd23. **This changes the
+specification** (`evalᴰ`, the meaning the correctness theorem is about).
+
+### Context
+`in-ν` had no native `evalᴰ` clause and fell to the catch-all
+
+    evalᴰ fmt ir a = λ n → (rec-trace-D fmt ir (forget a) n , inject (eval fmt ir (forget a)))
+
+`forget` is lossy at `ν-type F`: `forgetν` reads each child at budget ZERO and drops its events.
+So a ν built by `in-ν` over an EMITTING child was specified as silent. The machine leaves the
+child's suspension pointer untouched, so its events would still occur at a later force. "THE
+SPEC WAS WRONG, NOT THE COMPILER."
+
+### Decision
+Add the introduction form the value domain was missing (`Denotation/ValueDomain.agda`):
+
+    in-νᵈ : ∀ {F} → ⟦ F ⟧SF (νᵈ F) → νᵈ F
+    forceᵈ (in-νᵈ layer) = λ _ → ([] , layer)      -- today: `ret layer`
+
+and give `in-ν` a native `evalᴰ` clause (`DenotTrace.agda`) returning `in-νᵈ` of the coerced
+layer. `injectν` could not be reused: it maps itself over the children, whose events (from the
+pure `νS`) are already gone, which is right for `inject` and wrong for `in-ν`.
+
+### Consequences
+- Change in meaning: a ν built by `in-ν` emits nothing when BUILT (unchanged), and forcing it
+  yields its children AS GIVEN, so an emitting child's events now appear at that child's own
+  `Out`. The old meaning had dropped them.
+- Symmetric with `Ana` and simpler: no recursion, no guardedness obligation, and
+  `Out ∘ in-ν ≡ id` holds definitionally.
+- Why nothing caught it: the tests check the binary, this was a defect in the spec, and
+  `in-ν` had no surface syntax. Plan 0.93 §12: for a spec change "a test movement here is
+  EVIDENCE THE FIX IS REAL, not a regression". Root typechecked with nothing broken, "which is
+  itself the finding".
+
+---
+
+## DN5 — `obs-correct-case` TAKES ITS INDUCTION HYPOTHESES, AND EVERY JUMP HAS A STATED DESTINATION (`LabelsAt`) (2026-09-21)
+
+**Relates**: D152 (composition), D202 (pair — this is its `case` analogue), D204 ("pair and case
+are blocked on missing facts"), plan 0.88. Commits 6b351778c, 0cd7111c9, 532d3d3b8 (plan record).
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Plan 0.88 had `obs-correct-case` as the last label-bearing postulate. Two of its three recorded
+obstacles turned out to be defects in the STATEMENT:
+- `obs-correct-case f g : IRObsCorrectF (case f g)` took no sub-witnesses — "not a weak
+  statement, an unprovable one: `case f g` is correct BECAUSE `f` and `g` are".
+- `c-branch-tag-zero (ℓ o l)` becomes `do-jump (find-label prog (ℓ o l))`, a scan of the WHOLE
+  program, and nothing among `SpanAt`, `AllSlotStable`, `BlockRuns`, `BlocksAt` said that scan
+  lands in the fragment: "an earlier `c-label (ℓ o l)` anywhere in `prog` would have taken it".
+
+### Decision
+1. As D202: `ir-obs-correct (case f g) … = obs-correct-case (ir-obs-correct f lf)
+   (ir-obs-correct g lg)` — structural, both arguments subterms.
+2. A new premise of `IRObsCorrectF`, `SpanAt`'s dual (`Interface.agda`):
+
+       LabelsAt prog base t =
+         ∀ m j → find-label t m ≡ just j → find-label prog m ≡ just (j + base)
+
+   "`SpanAt` says the program FETCHES what the fragment's own text does. A branch does not
+   fetch, it RESOLVES." `Comp` and `Pair` split it (`fl-go-prefix`, `fl-go-skip`, new
+   `found-in-window` in `LabelResolve`); the entry instance is free (the entry trace is a
+   prefix of the linked image).
+
+### Consequences
+- The third obstacle ("the branch correspondence has no model") needed none: `flat-read-tag`
+  reads the cell `Input1` points at, and `valid-inl-wf`/`valid-inr-wf` already carry it.
+- `obs-correct-case` was discharged 2026-09-22 (plan 0.88 17 → 7): five modules (~1500 lines,
+  zero postulates), split because one module cost 4.8 GB to typecheck.
+
+---
+
+## DN6 — THE MACHINE RELATION IS A FUNCTION ON TYPES, NOT A DATATYPE (plan 0.93) (2026-09-17)
+
+**Relates**: D170, D213, D214, D216, D217 (the refuted designs), D218 (`BlockRuns` as hypothesis
+pending this plan), `Adequacy/MeaningRelation.agda` (the template). Commits 7bc6ddf9c (plan),
+a537d2b86 (S0 gate).
+**Note**: back-filled 2026-10-09 (plan 0.113 E). D216/D217 only alluded to this decision.
+
+### Context
+Four replacements for the false `block-runs` were refuted (D213, D216's `CodeResolves`, `CodeWF`,
+the `BlockAt` NO-GO). Plan 0.93 §2 names the common cause:
+
+    data ValidAtWF : AllocMode → AllocState {FS} →
+         {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set
+
+"A data constructor can only ASSERT facts; it cannot RECURSE ON THE INDEX", so a closure witness
+cannot pin the function it denotes (D217: one cell, two denotations).
+
+### Decision
+Rebuild the machine relation in the shape of `MeaningRelation`, one layer down: `RelV`/`RelT`
+mutual, by recursion on the TYPE; the arrow clause a Π over related inputs ("entering block ℓ
+behaves"); the computation relation indexed by the EVENT BUDGET; recursion stopping at μ/ν (hence
+no `TERMINATING`). `apply` then discharges FROM the arrow clause and `curry` ESTABLISHES it from
+its IH on `body`. Labels stay labels; where a block sits is a separate, state-free layout lemma.
+Rejected: an earlier draft lowering labels to addresses ("lowering belongs in the assembler").
+
+### Consequences
+- S0 stop gate PASSED (`Once/Spike/RelSpike.agda`, 857 lines, zero pragmas/postulates/holes):
+  Agda accepts the type recursion, and `apply` discharges definitionally
+  (`evalᴰ fmt apply p = proj₁ p (proj₂ p)` is the arrow clause's conclusion). Forced corrections:
+  four types not three; the arrow clause carries `find-thunk prog lbl ≡ just j`; heap-only; `RelT`
+  carries a resume pc and return stack; `RelV` takes the allocator.
+- Found: `do-thunk` uses `grow-frame`, which does not reset `next-slot`, so a `next-slot ≤ n`
+  premise makes `curry`'s IH unprovable.
+- Status at back-fill: S1 and part of S3 landed in the spike (8 of 13 clauses, §12); `ValidAtWF`
+  is still the `data` in `ClosureWellFormed.agda`; 0.91 S4/S5 were superseded by 0.93 S5/S4.
+
+---
+
+## DN7 — `let` AND `def` ARE INTERDERIVABLE; A DEFINED NAME UNFOLDS AND FOLDS (plan 0.94) (2026-10-05)
+
+**Relates**: plan 0.94 (closed), D131, D265 (`cata` captures), D273 (`ana` captures), plan 0.101,
+plan 0.102 (`let-β`, DN8). Commits 5ab0a0d33 (D1, 2026-09-26), 0c00c23ef (D2, 2026-09-26),
+9c2b85f92 (converse, 2026-10-05).
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Plan 0.94 §0: "`let x = e in b` and a top-level `x ≝ e` used in `b` must be interderivable … A type
+system in which a definition and its definiens are not interchangeable is … stating facts about the
+spelling of the program." Measured 2026-09-19: the same `u` typechecked as a top-level name and
+failed as a `let`.
+
+### Decision
+Both properties are theorems, postulate-free, in all three judgments (`⊢ᵢ`, `⊢ᶜ`, `⊢ᵈ`):
+- **D1, `Once.TypeCheck.LetIsDef`**: `(Γ , x ∶ A) ⊢ b ∶ B ⨾ (q ∷ Ψ) ⟺ Γ ⟨x ≝ e⟩ ⊢ b ∶ B ⨾ Ψ`
+  (⟸ for some `q`). Premises are those a top-level definition needs anyway: `e` types with no
+  locals, `x` is fresh, `A` is a ground signature. The let's usage slot is DROPPED. One mutual
+  induction carries a relation `LD` between the two contexts.
+- **def ⇒ let** was FALSE while `cata`/`ana` algebras could not capture locals; after plan 0.101
+  it is `def⇒let*` (`LD` run backwards; `ld-top` deleted).
+- **D2, `Once.TypeCheck.Unfold`**: `Γ⟨x ≝ e : A⟩ ⊢ b ⟺ Γ ⊢ b[(e : A)/x]` (`unfold`/`fold`). The
+  name unfolds to the ANNOTATED definiens (a bare `e` such as `inl 1` need not synthesize).
+  Substitution follows lexical scoping, and capture is excluded by a premise (the variable
+  convention, `NC`/`Fr`), not by renaming.
+
+### Consequences
+- Moved out, not dropped: the `Void`-narrowing gate (to plan 0.102), phase E `classifyAppHead`
+  (to plan 0.50). Open: α-invariance of typing, which would drop the variable-convention premise.
+
+---
+
+## DN8 — THE TERM MODEL IS A GRADED CATEGORY; ⟦_⟧ PRESERVES COMPOSITION (2026-10-06)
+
+**Relates**: D276 (affine grades, sub-usaging, which make substitution exact), D250 (pure is
+referential transparency), plan 0.102 §4 B, §7, §8; DN7. Commit 595f4680a.
+**Note**: back-filled 2026-10-09 (plan 0.113 E). D276 states the reason; this records what the
+apex now carries.
+
+### Decision
+A new Spec module, `Once.Spec.Core.TermModel` (a statement; proof `Once.Adequacy.TermModel`),
+carried by `Once.Certified` as the new `CertifiedBuild.language` field:
+
+> Objects are contexts, a morphism is a typed term, the identity is a variable and COMPOSITION
+> IS SUBSTITUTION.
+
+- `subst-⊢`: composition is DEFINED. Substituting a pure `u` for a variable used `q` times types
+  at `Ψₜ +ᵘ q *ᵘ Ψᵤ`, "the exact QTT substitution lemma; it holds because grades are affine (D276)".
+- `let-β`: ⟦_⟧ PRESERVES composition. `⟦ subst-⊢ dt du ⟧ ≡ ⟦ ⊢let (⊢sub-eff … du) dt ⟧`, which
+  for a pure `u` is referential transparency.
+
+Built from `Surface.GradeMatrix` (`_⋆ Φ` a monotone linear map, quantity laws by verified
+enumeration), `Spec.Core.Subst` (simultaneous `sub-⊢`, one law of `_⋆ Φ` per rule shape;
+`⊢sub-use` makes it exact), and `Adequacy.CoreSubstSem` (`sub-sem` via environment extensionality).
+
+### Consequences
+- Deliberately not stated (§8), for lack of a consumer: identity/associativity of substitution,
+  the rows of the equality judgment (β/η), syntactic uniqueness for μ/ν, initiality.
+- Narrowing to `Void` is now `subst-⊢`/`let-β` at `coerce`; no consumer states it yet.
+- Gate: `Once.Certified` and the island backstop green; no postulates added.
+
+---
+
+## DN9 — THE BRANCHING `cata` FOLDS IN PRODUCT ORDER: `seqF` IS SPEC, THE MACHINE WAS WRONG (plan 0.95 B) (2026-09-19)
+
+**Relates**: D221 (the finding: the machine folded right-to-left), D211 (pair proved left-first),
+D056, plan 0.95. Commits dad5830d2 (B1 verdict), c95f6a2b2 (the fix), fedf45670 (observed),
+5f700172d (tests that can fail).
+**Note**: back-filled 2026-10-09 (plan 0.113 E). This is the decision that answers D221.
+
+### Context
+The Tier-2 branching cata (flatten-then-rebuild over two linked stacks) emitted the exact mirror
+of `seqF`'s order at every measured shape (`[1,2,3,4] → [4,3,2,1]`). `visit-walk` at `F ⊗ G`
+visited G then F, `rebuild-walk` F then G, while `rebuild-walk`'s own comment said "LEFT-to-RIGHT".
+
+### Decision
+**The machine is wrong, not the spec.** "An effectful cata needs a TRAVERSAL of F over T, a
+traversal of a product must choose an order, and `seqF` is that choice — so it is spec, not
+derived." The spec is coherent (the same `⊗` is left-first in `seqF` and in `evalᴰ ⟨f,g⟩`, proved
+to match its emitter, D211). Changing `seqF` would falsify D211 and contradict D056.
+
+The fix swaps BOTH product clauses (`IRToTrace.agda`):
+
+> D221: the two walks are ONE INVERSION APART, and that inversion is what makes the data pairing
+> correct against a LIFO stack — it must survive. What changed is the GLOBAL order: `visit-walk`
+> now pushes LEFT-to-RIGHT, so the todo LIFO pops right-first, the visit order is right-first,
+> and the fold order (which is `reverse` of it …) is LEFT-FIRST — the order `seqF (G ⊗ H)`
+> specifies.
+
+### Consequences
+- The rebuilt layer is unchanged; six companion proofs reordered (SlotBudget's slot witnesses changed).
+- Observed after re-extraction: all four shapes now match the spec; the single-position list
+  control `[5, 3]` did not move. The cata-emit tests now assert the trace against the
+  byte-writing interpretation and fail on the old order on all three arches.
+- `cata-correct` went from FALSE to OPEN. Nested products, `⊕` under `⊗` and three or more
+  recursive positions are not yet measured.
+
+---
+
+## DN10 — THE ARITH RECOGNISER ABSORBS, NAVIGATES AND DISTRIBUTES ONLY OVER PLUMBING (2026-10-01)
+
+**Relates**: plan 0.20 (the recogniser), plan 0.54 (arith lowering), D163 (`terminal ∘ envʳ`
+literals), D250 (pure = no event). Commit bedcfa27b.
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Lifting an arithmetic subtree to one pure block drops whatever events its other parts would emit.
+Three clauses of `Once.Arith.Machine.Recognise` accepted parts the block then ignored:
+- a literal's right-hand side `terminal ∘ g`, for any `g`;
+- reading an input path through `⟨ a , b ⟩`, for any untaken component;
+- distributing `⟨ a , b ⟩ ∘ h` into `⟨ a ∘ h , b ∘ h ⟩`, which runs `h` twice.
+
+### Decision
+Each now requires ENVIRONMENT PLUMBING, `plumbing? : IR X Y → Bool` (`id`/`fst`/`snd`/`terminal`,
+pairing and composition of them):
+
+> ENVIRONMENT PLUMBING: projections, pairing, `terminal` and their composites. Its meaning is a
+> value and no event, so a literal may absorb it.
+
+> A pair is navigated only when the component NOT taken is plumbing … …and only when `h` is
+> plumbing: distributing runs `h` twice, which means the same only when `h`'s meaning is a value
+> and no event.
+
+> D163: `terminal ∘ h` IS `terminal` when `h` is environment plumbing (… in the Kleisli meaning
+> terminality holds only for such an `h`) … An arbitrary `h` is refused: lifting would drop its
+> events.
+
+### Consequences
+- "This is the precondition under which a lifted block means the subtree it replaced."
+- Nothing the elaborator produces is lost: its literal and operand shapes (QTT's environment
+  restrictions) are plumbing, so its output lifts as before. The float twin gets the same rule.
 
 ## D213 — `block-runs` AND `entry-size` ARE FALSE (2026-09-16)
 
@@ -14658,6 +15547,8 @@ SigOps — a different mechanism with the same symptom), D143 (grade-aware
 meaning; `q = Zero` erases the bound expression), plan 0.93 §13.
 
 ## D221 — `cata-correct` IS FALSE: THE MACHINE FOLDS RIGHT-TO-LEFT (2026-09-19)
+
+**Status (2026-10-09)**: the finding stood until the machine was fixed — plan 0.95 B1 made the fold product-order (code: c95f6a2b2; verdict dad5830d2; D286); `cata-correct` is now an open obligation (plan 0.88), not a false one.
 
 A false postulate, hidden by a vacuous test. This is the defect the whole
 verification effort exists to catch, and it survived because the only test that
@@ -16392,6 +17283,8 @@ names). x86-32's Linux interpretation gained `fd_dup`.
 
 ## D260 — PLANS 0.97, 0.98, 0.99, 0.103 AND 0.104 CLOSE AT THE D259 GATE (2026-10-04)
 
+**Status (2026-10-09)**: its "sub-usage (QTT q ≤ q′) out of scope" is superseded by D276 (affine grades, `⊢sub-use`).
+
 **Relates**: D259 (the gate), D227 (0.99 E), D228 (0.94 b′, which closed 0.99 §8), D246/D256
 (0.103), D250/D251 (0.104).
 
@@ -16555,6 +17448,8 @@ lemma, and `RewritePreserves.bare-sound` is the monad's left identity. Lifting t
 
 ## D265 — A `cata` ALGEBRA MAY CAPTURE LOCALS (plan 0.101, the `cata` half) (2026-10-05)
 
+**Status (2026-10-09)**: the `ana` half it leaves open is closed by D273.
+
 **Relates**: plan 0.101, plan 0.94 §0 (`let x = e in b` and a top-level `x = e` used in `b` are
 interderivable), D131 (the algebra is obtained once), D127, plan 0.76 risk 3 (which deferred this
 widening to its own entry — this one), D192/D179 (ana).
@@ -16711,6 +17606,8 @@ Apex green.
 Apex green.
 
 ## D272 — FINDING: THE TOOLCHAIN AXIOM `as-faithful-<arch>` IS ⊥ AS STATED; FIX BELONGS TO THE SYMBOL-NAMESPACE DESIGN (2026-10-05)
+
+**Status (2026-10-09)**: RESOLVED by D274/D275 (one FFI identity; a total symbol encoding) — `as-faithful-<arch>` is no longer ⊥.
 
 **Relates**: plan 0.100 P0 audit (D266–D271), plan 0.107 phase d (§7, blocked on the
 symbol-namespace design), `Adequacy/CPU/<arch>.as-faithful-<arch>`, `CCC/Target/<arch>/File.agda`.
@@ -16914,6 +17811,8 @@ below the arrow's grade. D003's text and the rules disagree.
 
 ## D277 — RE-EXPORTS ARE FOR INSTANCE SHARING AND THE SPEC DOOR ONLY; REMOVALS AND DEAD IMPORTS ARE MACHINE-VERIFIED (2026-10-07)
 
+**Amended 2026-10-09 (plan 0.92 closed, 366 → 164)**: what stays is listed in plan 0.92 §11 — the Spec door, islands, and re-exports of APPLIED / parameterised modules (including record opens inside them, whose importers use the names through the applied copy). The import discipline this aims at is OCP-0010 (one import form, no re-exports but a declared `facade`).
+
 **Relates**: plan 0.92 (all of it), MERGE.md §1 (the Spec is a re-export closure) and §4e,
 the fork's `--name-resolution-report` (a2e94f6c53) and `--write-ast` (`run-ast-dumps.sh`).
 
@@ -16942,4 +17841,619 @@ listed but never used.
   instance copies (importers apply the facade), and parameterised re-exports (S4, measured).
 - A proposal for the general tool, `--dead-imports`, lives in the Agda fork
   (`DEAD_IMPORTS_PLAN.local.md`).
+
+## D278 — WARNINGS ARE ERRORS: `-W error` IN `Once.agda-lib`, REACHED THROUGH A RATCHET (2026-10-05)
+
+**Relates**: plan 0.109 (closed), plan 0.92 §7 (the incident), D242 / `pragma-gate.sh` (the
+ratchet pattern), MERGE.md §4d. Commits 3843d1d09 (S0), 1382f5e38 (S1–S4), 8cc88893b (S5).
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Plan 0.92 removed a `public` re-export; one module then reached `Arch`'s constructors only
+through it, so in `arch-semantics x86-32 = …` the out-of-scope `x86-32` became a pattern
+VARIABLE, the first clause a catch-all, and every arch got x86-64's semantics. Agda reported only
+warnings. Plan 0.109 §0: this is "meaning drift, not inconsistency", harmless in implementation
+code but not in the Spec, the trusted model, or a definition shared by both sides of a
+correspondence. Agda 2.8 has no per-warning error switch. Measured (correcting §1's first
+draft): `PatternShadowsConstructor` fires for a constructor of the variable's TYPE even when it is
+out of scope, so the incident did warn. That warning was lost among the other warnings.
+
+### Decision
+1. S0: a census of the apex/compiler closure, 678 warnings (354 deprecations, 298 exact-split,
+   16 stale `using`, 7 unreachable, 7 no-op `rewrite`, 1 useless `private`), and a ratchet
+   (`scripts/warning-gate.sh` + baseline, `make warning-gate`): a count may only go down.
+   Warm checks suffice because Agda replays stored warnings from interfaces.
+2. Fix every warning, behaviour-preserving first. Exact-split catch-alls are marked
+   `{-# CATCHALL #-}` (≈340 clauses) when they are deliberate fallbacks. The 7 unreachable
+   clauses were read before deletion. One was `Fusion.fusion-once arr`, a retired constructor
+   captured as a variable, whose shadowed clauses were all identities, so deleting it changed
+   nothing.
+3. S5: `-W error` in `Once.agda-lib`; the ratchet is deleted. MERGE.md §4d states the rule:
+   fix the cause, `CATCHALL` only for an intended fallback, per-module options need a reason.
+
+### Consequences
+- The flip's cold check found a class the replay misses: `InversionDepthReached`
+  (`SlotBudget` gets `--inversion-max-depth=100`, with its reason). `make malonzo` passes
+  `--no-main`. No behaviour moved: exit tests 76/0/0 ×3, cabal test 775/775.
+- §6a follow-up: of 19 "small" CATCHALL sites, 13 enumerated, 6 kept with reasons. The other
+  376 marked clauses stay, because enumerating one is a per-site judgement (it can break
+  downstream reductions).
+
+---
+
+## D279 — THE MERGE GATE CHECKS REACHABILITY FROM THE APEX (MERGE.md §4b) (2026-09-10)
+
+**Relates**: D212 (first use), D214, plan 0.64 (the content test), MERGE.md §4e (D277).
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit cb09647ca.
+
+### Context
+"A green `certified` cannot see a proof falling out of use, and nothing else in the build
+performs that check." Two failures on the branch: seven `Once/Optimizer/*` modules had been
+unbuildable since `fold`/`unfold`/`arr` were retired (2026-07-14, 90b430de7), yet two later
+migrations edited them; and the parked `*WF` cluster accrued D159 rot because nothing builds it.
+
+### Decision
+MERGE.md gains §4b: dump the AST and trust base reachable from the apex for BOTH refs
+(`run-ast-dumps.v2.sh`) and compare, with three checks in order of severity:
+- the trust base must not grow without a decision (a postulate SPLITTING, +1/−1, is fine; a
+  postulate APPEARING owes a residual entry);
+- a module must not LEAVE `reachable` unremarked ("removing the last consumer of a proof is a
+  real event; it should be intentional");
+- deletions are checked against `reachable`, never against imports, and an orphan is
+  classified before cutting: superseded, unwired prize (plan 0.64's content test), or never wired.
+
+### Consequences
+- The counting trap is recorded: `counts` are DECLARATIONS. 202 `terminating-pragma` entries
+  in one dump were 22 source pragmas (one pragma covers a mutual block; generated `-invert*`
+  helpers inherit it). Declaration counts detect change; source counts state size.
+- Placed after the extraction gate (it wants the final tree), started during step 1 because it
+  runs tens of minutes per ref.
+
+---
+
+## D280 — THE IR LOSES `free-heap`: AN UNIMPLEMENTED STUB IS REMOVED, NOT PROVED (2026-09-18)
+
+**Relates**: plan 0.93 S3 (its `RelIR` clause, written the same day, deleted with it), D276 (the
+compiler does not free; GC-freedom "with releases at discards").
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit 692ecde1f.
+
+### Context
+The constructor was "unimplemented at BOTH ends":
+- no pass constructs one: every right-hand-side occurrence rebuilds one just matched
+  (`fusion-once (free-heap h) = free-heap h`, …); nothing in Surface/ or TypeCheck/ elaborates
+  to it;
+- its codegen freed nothing: `ir-to-trace' n l (free-heap _)` emitted `mov-to-output`;
+- the escape analysis its doc comment credited does not exist (`EscapeInterface.agda` is
+  imported by nothing; `CanFreeHeap` is consumed nowhere);
+- the AST dump found it reachable only because the obligations must be total over the IR.
+
+### Decision
+Remove it: "an IR containing `free-heap` claimed an effect the compiler does not perform …
+the constructor was misleading, not merely idle." Removed: the constructor, ~20 one-line clauses
+in total functions over the IR, `Optimize`'s `h-free-heap` head with its tag and injectivity
+case, and Simple.agda's postulate-free `obs-correct-free-heap`. "A postulate-free proof deleted
+rather than discharged, because the thing it was about should not exist."
+
+### Consequences
+- Plan 0.93 S3's count became 5 of 13 (not 6 of 14).
+- `EscapeInterface.agda` left alone: deleting the design side is a separate decision.
+- Stale mentions of `free-heap` remain in comments (`IR.agda` header, `IRToTrace.agda`,
+  `IRObsCorrect/Simple.agda` line ~171 "DISCHARGED", `IRObsCorrectFlat.agda`); no code.
+
+---
+
+## D281 — SPEC CHANGE: `in-ν` HAS ITS OWN DENOTATION; FORCING IT YIELDS THE LAYER AS GIVEN (2026-09-18)
+
+**Relates**: D179 (`Ana` builds a suspension and emits nothing), D189 (the `in-ν` emitter),
+plan 0.93 §12 ("the spec change, taken FIRST and top-down"), plan 0.98 C (dfadfb394: `evalᴰ`
+enumerated, the catch-all gone).
+**Note**: back-filled 2026-10-09 (plan 0.113 E), from commit faf76fd23. **This changes the
+specification** (`evalᴰ`, the meaning the correctness theorem is about).
+
+### Context
+`in-ν` had no native `evalᴰ` clause and fell to the catch-all
+
+    evalᴰ fmt ir a = λ n → (rec-trace-D fmt ir (forget a) n , inject (eval fmt ir (forget a)))
+
+`forget` is lossy at `ν-type F`: `forgetν` reads each child at budget ZERO and drops its events.
+So a ν built by `in-ν` over an EMITTING child was specified as silent. The machine leaves the
+child's suspension pointer untouched, so its events would still occur at a later force. "THE
+SPEC WAS WRONG, NOT THE COMPILER."
+
+### Decision
+Add the introduction form the value domain was missing (`Denotation/ValueDomain.agda`):
+
+    in-νᵈ : ∀ {F} → ⟦ F ⟧SF (νᵈ F) → νᵈ F
+    forceᵈ (in-νᵈ layer) = λ _ → ([] , layer)      -- today: `ret layer`
+
+and give `in-ν` a native `evalᴰ` clause (`DenotTrace.agda`) returning `in-νᵈ` of the coerced
+layer. `injectν` could not be reused: it maps itself over the children, whose events (from the
+pure `νS`) are already gone, which is right for `inject` and wrong for `in-ν`.
+
+### Consequences
+- Change in meaning: a ν built by `in-ν` emits nothing when BUILT (unchanged), and forcing it
+  yields its children AS GIVEN, so an emitting child's events now appear at that child's own
+  `Out`. The old meaning had dropped them.
+- Symmetric with `Ana` and simpler: no recursion, no guardedness obligation, and
+  `Out ∘ in-ν ≡ id` holds definitionally.
+- Why nothing caught it: the tests check the binary, this was a defect in the spec, and
+  `in-ν` had no surface syntax. Plan 0.93 §12: for a spec change "a test movement here is
+  EVIDENCE THE FIX IS REAL, not a regression". Root typechecked with nothing broken, "which is
+  itself the finding".
+
+---
+
+## D282 — `obs-correct-case` TAKES ITS INDUCTION HYPOTHESES, AND EVERY JUMP HAS A STATED DESTINATION (`LabelsAt`) (2026-09-21)
+
+**Relates**: D152 (composition), D202 (pair — this is its `case` analogue), D204 ("pair and case
+are blocked on missing facts"), plan 0.88. Commits 6b351778c, 0cd7111c9, 532d3d3b8 (plan record).
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Plan 0.88 had `obs-correct-case` as the last label-bearing postulate. Two of its three recorded
+obstacles turned out to be defects in the STATEMENT:
+- `obs-correct-case f g : IRObsCorrectF (case f g)` took no sub-witnesses — "not a weak
+  statement, an unprovable one: `case f g` is correct BECAUSE `f` and `g` are".
+- `c-branch-tag-zero (ℓ o l)` becomes `do-jump (find-label prog (ℓ o l))`, a scan of the WHOLE
+  program, and nothing among `SpanAt`, `AllSlotStable`, `BlockRuns`, `BlocksAt` said that scan
+  lands in the fragment: "an earlier `c-label (ℓ o l)` anywhere in `prog` would have taken it".
+
+### Decision
+1. As D202: `ir-obs-correct (case f g) … = obs-correct-case (ir-obs-correct f lf)
+   (ir-obs-correct g lg)` — structural, both arguments subterms.
+2. A new premise of `IRObsCorrectF`, `SpanAt`'s dual (`Interface.agda`):
+
+       LabelsAt prog base t =
+         ∀ m j → find-label t m ≡ just j → find-label prog m ≡ just (j + base)
+
+   "`SpanAt` says the program FETCHES what the fragment's own text does. A branch does not
+   fetch, it RESOLVES." `Comp` and `Pair` split it (`fl-go-prefix`, `fl-go-skip`, new
+   `found-in-window` in `LabelResolve`); the entry instance is free (the entry trace is a
+   prefix of the linked image).
+
+### Consequences
+- The third obstacle ("the branch correspondence has no model") needed none: `flat-read-tag`
+  reads the cell `Input1` points at, and `valid-inl-wf`/`valid-inr-wf` already carry it.
+- `obs-correct-case` was discharged 2026-09-22 (plan 0.88 17 → 7): five modules (~1500 lines,
+  zero postulates), split because one module cost 4.8 GB to typecheck.
+
+---
+
+## D283 — THE MACHINE RELATION IS A FUNCTION ON TYPES, NOT A DATATYPE (plan 0.93) (2026-09-17)
+
+**Relates**: D170, D213, D214, D216, D217 (the refuted designs), D218 (`BlockRuns` as hypothesis
+pending this plan), `Adequacy/MeaningRelation.agda` (the template). Commits 7bc6ddf9c (plan),
+a537d2b86 (S0 gate).
+**Note**: back-filled 2026-10-09 (plan 0.113 E). D216/D217 only alluded to this decision.
+
+### Context
+Four replacements for the false `block-runs` were refuted (D213, D216's `CodeResolves`, `CodeWF`,
+the `BlockAt` NO-GO). Plan 0.93 §2 names the common cause:
+
+    data ValidAtWF : AllocMode → AllocState {FS} →
+         {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set
+
+"A data constructor can only ASSERT facts; it cannot RECURSE ON THE INDEX", so a closure witness
+cannot pin the function it denotes (D217: one cell, two denotations).
+
+### Decision
+Rebuild the machine relation in the shape of `MeaningRelation`, one layer down: `RelV`/`RelT`
+mutual, by recursion on the TYPE; the arrow clause a Π over related inputs ("entering block ℓ
+behaves"); the computation relation indexed by the EVENT BUDGET; recursion stopping at μ/ν (hence
+no `TERMINATING`). `apply` then discharges FROM the arrow clause and `curry` ESTABLISHES it from
+its IH on `body`. Labels stay labels; where a block sits is a separate, state-free layout lemma.
+Rejected: an earlier draft lowering labels to addresses ("lowering belongs in the assembler").
+
+### Consequences
+- S0 stop gate PASSED (`Once/Spike/RelSpike.agda`, 857 lines, zero pragmas/postulates/holes):
+  Agda accepts the type recursion, and `apply` discharges definitionally
+  (`evalᴰ fmt apply p = proj₁ p (proj₂ p)` is the arrow clause's conclusion). Forced corrections:
+  four types not three; the arrow clause carries `find-thunk prog lbl ≡ just j`; heap-only; `RelT`
+  carries a resume pc and return stack; `RelV` takes the allocator.
+- Found: `do-thunk` uses `grow-frame`, which does not reset `next-slot`, so a `next-slot ≤ n`
+  premise makes `curry`'s IH unprovable.
+- Status at back-fill: S1 and part of S3 landed in the spike (8 of 13 clauses, §12); `ValidAtWF`
+  is still the `data` in `ClosureWellFormed.agda`; 0.91 S4/S5 were superseded by 0.93 S5/S4.
+
+---
+
+## D284 — `let` AND `def` ARE INTERDERIVABLE; A DEFINED NAME UNFOLDS AND FOLDS (plan 0.94) (2026-10-05)
+
+**Relates**: plan 0.94 (closed), D131, D265 (`cata` captures), D273 (`ana` captures), plan 0.101,
+plan 0.102 (`let-β`, D285). Commits 5ab0a0d33 (D1, 2026-09-26), 0c00c23ef (D2, 2026-09-26),
+9c2b85f92 (converse, 2026-10-05).
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Plan 0.94 §0: "`let x = e in b` and a top-level `x ≝ e` used in `b` must be interderivable … A type
+system in which a definition and its definiens are not interchangeable is … stating facts about the
+spelling of the program." Measured 2026-09-19: the same `u` typechecked as a top-level name and
+failed as a `let`.
+
+### Decision
+Both properties are theorems, postulate-free, in all three judgments (`⊢ᵢ`, `⊢ᶜ`, `⊢ᵈ`):
+- **D1, `Once.TypeCheck.LetIsDef`**: `(Γ , x ∶ A) ⊢ b ∶ B ⨾ (q ∷ Ψ) ⟺ Γ ⟨x ≝ e⟩ ⊢ b ∶ B ⨾ Ψ`
+  (⟸ for some `q`). Premises are those a top-level definition needs anyway: `e` types with no
+  locals, `x` is fresh, `A` is a ground signature. The let's usage slot is DROPPED. One mutual
+  induction carries a relation `LD` between the two contexts.
+- **def ⇒ let** was FALSE while `cata`/`ana` algebras could not capture locals; after plan 0.101
+  it is `def⇒let*` (`LD` run backwards; `ld-top` deleted).
+- **D2, `Once.TypeCheck.Unfold`**: `Γ⟨x ≝ e : A⟩ ⊢ b ⟺ Γ ⊢ b[(e : A)/x]` (`unfold`/`fold`). The
+  name unfolds to the ANNOTATED definiens (a bare `e` such as `inl 1` need not synthesize).
+  Substitution follows lexical scoping, and capture is excluded by a premise (the variable
+  convention, `NC`/`Fr`), not by renaming.
+
+### Consequences
+- Moved out, not dropped: the `Void`-narrowing gate (to plan 0.102), phase E `classifyAppHead`
+  (to plan 0.50). Open: α-invariance of typing, which would drop the variable-convention premise.
+
+---
+
+## D285 — THE TERM MODEL IS A GRADED CATEGORY; ⟦_⟧ PRESERVES COMPOSITION (2026-10-06)
+
+**Relates**: D276 (affine grades, sub-usaging, which make substitution exact), D250 (pure is
+referential transparency), plan 0.102 §4 B, §7, §8; D284. Commit 595f4680a.
+**Note**: back-filled 2026-10-09 (plan 0.113 E). D276 states the reason; this records what the
+apex now carries.
+
+### Decision
+A new Spec module, `Once.Spec.Core.TermModel` (a statement; proof `Once.Adequacy.TermModel`),
+carried by `Once.Certified` as the new `CertifiedBuild.language` field:
+
+> Objects are contexts, a morphism is a typed term, the identity is a variable and COMPOSITION
+> IS SUBSTITUTION.
+
+- `subst-⊢`: composition is DEFINED. Substituting a pure `u` for a variable used `q` times types
+  at `Ψₜ +ᵘ q *ᵘ Ψᵤ`, "the exact QTT substitution lemma; it holds because grades are affine (D276)".
+- `let-β`: ⟦_⟧ PRESERVES composition. `⟦ subst-⊢ dt du ⟧ ≡ ⟦ ⊢let (⊢sub-eff … du) dt ⟧`, which
+  for a pure `u` is referential transparency.
+
+Built from `Surface.GradeMatrix` (`_⋆ Φ` a monotone linear map, quantity laws by verified
+enumeration), `Spec.Core.Subst` (simultaneous `sub-⊢`, one law of `_⋆ Φ` per rule shape;
+`⊢sub-use` makes it exact), and `Adequacy.CoreSubstSem` (`sub-sem` via environment extensionality).
+
+### Consequences
+- Deliberately not stated (§8), for lack of a consumer: identity/associativity of substitution,
+  the rows of the equality judgment (β/η), syntactic uniqueness for μ/ν, initiality.
+- Narrowing to `Void` is now `subst-⊢`/`let-β` at `coerce`; no consumer states it yet.
+- Gate: `Once.Certified` and the island backstop green; no postulates added.
+
+---
+
+## D286 — THE BRANCHING `cata` FOLDS IN PRODUCT ORDER: `seqF` IS SPEC, THE MACHINE WAS WRONG (plan 0.95 B) (2026-09-19)
+
+**Relates**: D221 (the finding: the machine folded right-to-left), D211 (pair proved left-first),
+D056, plan 0.95. Commits dad5830d2 (B1 verdict), c95f6a2b2 (the fix), fedf45670 (observed),
+5f700172d (tests that can fail).
+**Note**: back-filled 2026-10-09 (plan 0.113 E). This is the decision that answers D221.
+
+### Context
+The Tier-2 branching cata (flatten-then-rebuild over two linked stacks) emitted the exact mirror
+of `seqF`'s order at every measured shape (`[1,2,3,4] → [4,3,2,1]`). `visit-walk` at `F ⊗ G`
+visited G then F, `rebuild-walk` F then G, while `rebuild-walk`'s own comment said "LEFT-to-RIGHT".
+
+### Decision
+**The machine is wrong, not the spec.** "An effectful cata needs a TRAVERSAL of F over T, a
+traversal of a product must choose an order, and `seqF` is that choice — so it is spec, not
+derived." The spec is coherent (the same `⊗` is left-first in `seqF` and in `evalᴰ ⟨f,g⟩`, proved
+to match its emitter, D211). Changing `seqF` would falsify D211 and contradict D056.
+
+The fix swaps BOTH product clauses (`IRToTrace.agda`):
+
+> D221: the two walks are ONE INVERSION APART, and that inversion is what makes the data pairing
+> correct against a LIFO stack — it must survive. What changed is the GLOBAL order: `visit-walk`
+> now pushes LEFT-to-RIGHT, so the todo LIFO pops right-first, the visit order is right-first,
+> and the fold order (which is `reverse` of it …) is LEFT-FIRST — the order `seqF (G ⊗ H)`
+> specifies.
+
+### Consequences
+- The rebuilt layer is unchanged; six companion proofs reordered (SlotBudget's slot witnesses changed).
+- Observed after re-extraction: all four shapes now match the spec; the single-position list
+  control `[5, 3]` did not move. The cata-emit tests now assert the trace against the
+  byte-writing interpretation and fail on the old order on all three arches.
+- `cata-correct` went from FALSE to OPEN. Nested products, `⊕` under `⊗` and three or more
+  recursive positions are not yet measured.
+
+---
+
+## D287 — THE ARITH RECOGNISER ABSORBS, NAVIGATES AND DISTRIBUTES ONLY OVER PLUMBING (2026-10-01)
+
+**Relates**: plan 0.20 (the recogniser), plan 0.54 (arith lowering), D163 (`terminal ∘ envʳ`
+literals), D250 (pure = no event). Commit bedcfa27b.
+**Note**: back-filled 2026-10-09 (plan 0.113 E).
+
+### Context
+Lifting an arithmetic subtree to one pure block drops whatever events its other parts would emit.
+Three clauses of `Once.Arith.Machine.Recognise` accepted parts the block then ignored:
+- a literal's right-hand side `terminal ∘ g`, for any `g`;
+- reading an input path through `⟨ a , b ⟩`, for any untaken component;
+- distributing `⟨ a , b ⟩ ∘ h` into `⟨ a ∘ h , b ∘ h ⟩`, which runs `h` twice.
+
+### Decision
+Each now requires ENVIRONMENT PLUMBING, `plumbing? : IR X Y → Bool` (`id`/`fst`/`snd`/`terminal`,
+pairing and composition of them):
+
+> ENVIRONMENT PLUMBING: projections, pairing, `terminal` and their composites. Its meaning is a
+> value and no event, so a literal may absorb it.
+
+> A pair is navigated only when the component NOT taken is plumbing … …and only when `h` is
+> plumbing: distributing runs `h` twice, which means the same only when `h`'s meaning is a value
+> and no event.
+
+> D163: `terminal ∘ h` IS `terminal` when `h` is environment plumbing (… in the Kleisli meaning
+> terminality holds only for such an `h`) … An arbitrary `h` is refused: lifting would drop its
+> events.
+
+### Consequences
+- "This is the precondition under which a lifted block means the subtree it replaced."
+- Nothing the elaborator produces is lost: its literal and operand shapes (QTT's environment
+  restrictions) are plumbing, so its output lifts as before. The float twin gets the same rule.
+
+## D288 — PLAN 0.101 CLOSED: BOTH RECURSION SCHEMES CAPTURE; THE LAST `let ≠ def` DIFFERENCE IS GONE (2026-10-05)
+
+**Relates**: D265 (`cata`), D273 (`ana`), D284 (0.94: `LetIsDef`, `def⇒let*`, `Unfold`), D131,
+plan 0.94 §0/§15. Commits bf9b3962b, 8de7b78db, 9b27fb4f7 (gate), 8c0eef0b1.
+**Note**: closure record written 2026-10-09 (plan 0.113 E).
+
+### Closure
+- Both halves landed: `cata` (D265, 2026-10-04) and `ana` (D273, 2026-10-05). Gate at D273:
+  MAlonzo re-extracted, exit tests 76/0/0 ×3 (`cata-capture` 67, `ana-capture` 41), cabal test
+  775/775, apex and island backstop green.
+- §3's metatheory gate is met: with no algebra position clearing the context, plan 0.94's converse
+  `def⇒let*` holds (D284), `LetIsDef`'s `ld-top` is deleted, and `Unfold`'s algebra-position scope
+  flag, constant `false` after D273, was dropped (8c0eef0b1).
+- Risk 2 (heap `curry`'s allocation leaving the algebra path; `CurryAllocWF` losing a consumer) is
+  moot: the `*WF` cluster was deleted (D176) before this plan ran.
+- The core needed no change: `⊢fold`/`⊢unfold` already took the (co)algebra as an ordinary term in
+  context (plan 0.102 §9). So this was a surface/IR/codegen widening only. The Spec hunks are the
+  two rules plus the meaning read at `dγ` (D265/D273).
+
+---
+
+## D289 — PLAN 0.102 CLOSED: PHASE E RE-EVALUATED, THE OCP-0009 HAND-OFF MAPPING (2026-10-06)
+
+**Relates**: D231 (A), D246/D256/D259/D260 (C, D via plans 0.103/0.104), D276 + D285 (B: affine
+grades, the term model), D284 (0.94), OCP-0009. Commits 595f4680a (B), 87ff23d0c (close), 6cb98abb3 (gate).
+**Note**: closure record written 2026-10-09 (plan 0.113 E).
+
+### Phase E, re-evaluated (nothing retired)
+- `LetIsDef`/`Unfold` STAY. They are facts about the SURFACE judgment (what the checker accepts).
+  `let-β` is a meaning fact about the core. Neither implies the other, and §3 keeps the set of
+  accepted programs fixed, so the surface lemmas remain the evidence for plan 0.94's property.
+- The A′ ex falso rules (D229) STAY. Removing them would change which programs are accepted. Narrowing
+  no longer needs them: it is `subst-⊢`/`let-β` at `coerce` (D285).
+- Plan 0.101 as a core change was already true (`⊢fold`/`⊢unfold` take a term in context).
+
+**The equality judgment waits for a consumer.** The `≈` rows (β/η per former) are unwritten. The first consumer they would have is the optimizer's
+normalization postulates (`Optimizer.Normal`, 8 postulates, IR-level, a RED island off the apex,
+plan 0.64 Group O). Write the rows when that chain is repaired and wired, not before.
+
+### Phase F: the hand-off (the mapping lives only in the deleted plan §10; summarized)
+OCP-0009's dependent kernel must EXTEND `Spec.Core`'s `Γ ⊢[ Ψ ] t ∷ A ! π`, never add a second
+kernel. The rows: POC `RTm`/`RTy` ↔ `Tm n` + closed `Once.Type` (types become `RTy n`); Π/Σ/U/El/
+Hom/Id/IMu are added as rules that carry Ψ and π. `⊢conv` is new. The deferred `≈` is the term half
+of `_≅_`, and the NbE decision procedure stays outside the Spec. The graded substitution
+`Ψₜ + q·Ψᵤ` (`TermModel`) is the statement subject reduction must keep. Erasure is D143's `Γ ↾ Ψ`.
+`Mult` adopts D276's affine order (`NbEPLinCore`'s `drop`/`lcase` = `⊢sub-use`/one-usage `⊢case`).
+`μ-type F` over `Functor` becomes a description code. Only `pure` terms may occur in types.
+Open for OCP-0009: the grade of a dependent Π's domain; whether `Hom`/`Id` read terms at 𝟘.
+**Action**: copy plan 0.102 §10's table into `docs/proposals/OCP-0009-…md` (it does not mention
+0.102 today) before the plan file is deleted.
+
+---
+
+## D290 — PLAN 0.107 CLOSED: `as` IS THE ONLY TRANSLATION TRUSTED, AND `file-wf` IS A THEOREM (2026-10-06)
+
+**Relates**: D262 (phases a–c), D272 (`as-faithful` ⊥ → true), D274 (FFI extends Σ; oracle
+addendum), D275 (total symbol encoding), D009 (amended), D261, plan 0.89 D4, plans 0.110/0.111.
+Commits e83f23698, 2aad95cf3, 5cd12605a, 9e1fbf6b1 (gate).
+**Note**: closure record written 2026-10-09 (plan 0.113 E).
+
+### What closed it (beyond D262/D274/D275)
+- `ImageWF`'s last two postulates `prog-unique`/`lib-unique` are PROOFS, as four lemma modules:
+  `CCC.Codegen.LabelDefs` (owner-free label lists, windows, disjointness), `CCC.Codegen.
+  CLabelsUnique.frag` (each unit's counter labels are distinct and lie in its window, all four cata
+  strategies; `fns-cl` chains windows across the table), `Adequacy.LabelSymbols.sym-key` (equal
+  symbols of defined labels have equal keys), and `Adequacy.ImageUnique` (D249's name guard read back,
+  `dedup-blocks`, an entry is never a block, `heap≢osp`). `lib-resolved` is proved
+  (`ImageResolved.Lib`/`.Fns`). `Adequacy.EntriesValid` (the pre-D274 detour) is deleted.
+- §8 step 3 (re-keying imported definitions) DISSOLVED. After D274, `resolveImports` brings only
+  signatures, so the table holds only own definitions, each already `own x`.
+- Regression probe: re-introducing D261's entry-style riscv64 prologue is a TYPE ERROR
+  (`RiscV64/FlatComposition.agda:181`, the `c-entry` step lemma).
+
+### What stays trusted (plan §2), and where its leftovers went
+`as-faithful-<arch>` (the assembler + `print`), the ISA model, and the loader's `initialState`.
+The start state's over-assumption (every register except `sp` starts at 0, so `_start`'s heap `lea`
+is decorative) → plan 0.110. The CLI's `objcopy --redefine-sym` rename of interpretation symbols
+is trusted Haskell on the D061 boundary → plan 0.111 (interpretation ABI).
+Gate: apex + backstop green, cabal 776/776, exit tests 76/0/0 ×3.
+
+---
+
+## D291 — PLAN 0.108 CLOSED: COMPARISONS; ONE RESIDENCE AMBIGUITY LEFT IN `arith-sigop-contract` (2026-10-04)
+
+**Relates**: D263 (meaning: Bool = 1 + 1, true = inr), D264 (lowering, proof, link; bare-primitive
+addendum), D262. Commits ec76b1ec8, c9c84f0f6, 282935276, 6c0f24a00.
+**Note**: closure record written 2026-10-09 (plan 0.113 E).
+
+### Closure
+All of phases A–E landed (D263/D264). Comparisons no longer reach `obs-correct-sigop-rest`, and
+`FileWF.file-wf` is true for them (it is now a theorem, plan 0.107).
+
+### The finding not yet logged
+D264 records why `bool-of` is not an IR morphism: an `Int` input may be LOCATION-resident
+(`in-loc`), and no machine step can tell a pointer from a word. Plan 0.108 §6 noted that
+**arith blocks have the same ambiguity**, hidden in the postulated per-arch `arith-sigop-contract`
+(e.g. `X86-64/ConcFlatSim.agda` ~669–700, still a postulate). It claims a block's dispatch
+on whatever `Input1` holds. Discharging that contract must therefore pin the input's residence (a
+register-resident word) or the contract is false at a boxed `Int`. Comparisons avoid it only
+because `out-nz` reads `Output`, which the block itself just wrote.
+
+---
+
+## D292 — PLAN 0.109 CLOSED: WHAT THE `-W error` FLIP LEFT BEHIND (2026-10-05)
+
+**Relates**: D278 (the decision and census), MERGE.md §4d, plan 0.92 §7. Commits 3843d1d09,
+1382f5e38, d33ae8044, 8cc88893b, da7c868dc, b7fd7996d.
+**Note**: closure record written 2026-10-09 (plan 0.113 E). The decision itself is D278.
+
+### Closure facts
+- Closed 2026-10-05. The whole non-island tree checks COLD with zero warnings, and nothing behaved
+  differently: extraction OK, exit tests 76/0/0 ×3, cabal 775/775.
+- One `ModuleDoesntExport` cause is a pattern to watch: three imports had a one-line import WEDGED
+  before their continuation `using`. The `using` then attached to the wrong module, while the
+  intended one was opened wholesale. Only the warning showed it.
+- `{-# CATCHALL #-}` is accepted under `--safe`, so the ≈395 marked clauses are not a safety hole.
+  They are a known hazard: a NEW constructor silently falls into the fallback (memory
+  `feedback_retired_ctor_catchall_trap`). Census of the marked clauses: small 19, large 71,
+  multi 86, with 72, shape 92, otherpos 14, type 41. 13 small ones were enumerated. 6 were kept with
+  reasons (the `DecEq` catch-all-first helpers, `ShapeTable.load-snd` whose fallback is the weakest
+  claim `e-any`, and `LabelScope.go`'s index-dependent diagonal). 376 remain, each a per-site judgement.
+- Islands are outside the cold check; `-W error` bites them only when they are next built.
+
+---
+
+## D293 — PLAN 0.94 CLOSED: WHAT DID NOT TRANSFER, AND WHERE IT WENT (2026-10-05)
+
+**Relates**: D284 (`LetIsDef` incl. `def⇒let*`, `Unfold`), D228–D230 (C′, B, C), D229 + amendments
+(A′), D276 (affine grades), plan 0.102, plan 0.50, plan 0.80. Commit 9c2b85f92 (close).
+**Note**: closure record written 2026-10-09 (plan 0.113 E).
+
+### Two negative results worth keeping
+- **The general substitution lemma is FALSE on the algorithmic judgment** (§4b). `t-case` concludes
+  `Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ)`, and with the definiens' usage `[One]` the two sides compute `[One]` vs `[Many]`
+  (counterexample in §4b). Repairing it needs usage weakening, which the surface judgment lacks. Hence
+  §4c's context-transfer statement (D284), and later D276's sub-usaging in the core, where the exact
+  QTT lemma holds (D285).
+- **The A′ `Void`-narrowing gate is FALSE as stated under (a)**: `t-app` CHECKS its argument against
+  the head's domain, so a head narrowed to `Void` leaves a checked-only argument (a lambda) nothing to
+  check against. It also collides with `t-app-void` through the spine. The A′ rules stay (D229).
+
+### Where the moved-out items went
+- The narrowing gate → plan 0.102 phase B. Closed there as `subst-⊢`/`let-β` at `coerce`, with no
+  consumer stating it yet (D285).
+- Phase E, removing `classifyAppHead` (still a premise, `TypeCheck/Judgment.agda` ~496) → plan 0.50.
+  **Gap**: `plans/0.50-named-defs-are-morphisms.md` does not mention it. Add the row there.
+- §7's structural guard (the Spec judgment must not import a computation on `RawExpr` from
+  `Classify`) was not built. `Judgment.agda` still imports `Once.TypeCheck.Classify`. It goes with
+  `classifyAppHead`.
+- Open, not needed by anything: α-invariance of typing (would drop `Unfold`'s variable-convention premise).
+
+---
+
+## D294 — PLAN 0.95 CLOSED: `apply` AT AN EFFECTFUL CLOSURE IS A NEW RULE; THE EFFECT TESTS CAN FAIL (2026-09-21)
+
+**Relates**: D219, D220, D221, D222 (phase A), D286 (phase B: the fold fix). The plan was deleted
+in b486a4750. Commits 99ac70ef6 (A), c0b4ea864 (A′), 5f700172d (C-P0/1/3), c9f8cb225 (C-P4), b486a4750.
+**Note**: closure record written 2026-10-09 (plan 0.113 E). Its commit message named D219–D222 as
+the plan's home. A′ and phase C were in none of them.
+
+### A′ — `t-apply-eff-app-infer` (c0b4ea864)
+Phase A made a curried effectful closure buildable but not eliminable (`t-apply-*` fixed to `pure`).
+A free `π` cannot state the fix. Effects live on arrows, so at an eff closure `apply` concludes
+the SUSPENSION `Unit ⇒[eff] B`, not `B`. That is a different conclusion shape, so it needs a new
+constructor, mirroring `t-effApp`. No new `Expr` former: `IR.curry (apply ∘ fst)` over the ungraded
+`_⇛_` is what `morph-app` already wants.
+- The meaning bridge caught a trace-order error: suspending the pair's evaluation with the
+  application typechecks but disagrees with `morph-app`, which builds the pair eagerly. Only
+  REQUIRING the two sides to agree exposes when the pair's events appear.
+- **A green module can be falsified by editing another**: `RealizeAgrees` carried an absurd row
+  sound only while the elaborator rejected eff closures. Absurd rows encode what the elaborator
+  currently rejects, so only a whole-cone check finds this.
+- Gate: `apply-eff-closure{,-snd}.once` (`fst` emits the captured value, `snd` the applied one; swapping
+  the expectations fails both, on three arches).
+
+### Phase C — the tests can fail
+`buildAndRunTraceFile` + `traceCases` build a `.once` FILE against the byte-writing interpretation
+(before, no harness did). The cata-emit tests now assert the ORDERED trace and fail on the pre-fix
+order on all three arches. C-P2: the four `float-emit-*` tests emitted nothing (an unforced `let`);
+moved onto `main`'s chain, they now reach x86-32's `emitF`, the case the D109 `ud2` regression needed.
+C-P6: 16 of 17 orphan fixtures did not build (`main : Int -> Int`), and the nine `depth-*` tests
+asserted a depth limit that exists nowhere in the compiler. Deleted. One (`layer4-id-inline`) was wired.
+Exit tests 71/0/0 ×3, cabal 755/755.
+
+## D295 — AN ELIMINATOR'S METHODS ARE ω-USED: `cata`/`ana` SCALE THEIR ALGEBRA'S USAGE BY `Many` (2026-10-09)
+
+**Relates**: D232 (standard QTT for `compose`/`effApp`), D265/D273 (algebras capture), D276 (affine grades), plan 0.113 B1 (43d189085)
+
+### Context
+The 2026-10-09 merge analysis found `t-cata-check`, `t-ana-check`, `d-cata` and the core's `⊢fold`/`⊢unfold` concluding with the algebra's usage `Ψ` unscaled. Since D265/D273 an algebra may capture locals, and the fold applies it once per node (the unfold once per forced layer). An affine (`^1`) capture inside an algebra was therefore duplicated by any structure with two nodes — D232's own argument for `compose`, applied to the recursors.
+
+### Decision
+QTT's eliminator rule: the methods of a recursor sit under ω. The conclusion's usage is `Many *ᵘ Ψ` (core: `(Many *ᵘ Ψa) +ᵘ Ψt`). QTT counts uses of a closure, not evaluations: D131's "the algebra is evaluated once, applied per layer" is about effects, and each application reuses what the closure captured.
+
+### Consequences
+- Only AFFINE captures inside algebras become errors; `Many *q Many = Many`, so unrestricted captures are unaffected.
+- Everywhere else the pattern is D232's: the algebra reads its environment through the `⊑ᵘ-*Many` restriction (`restrictEnv`, `restrictᴰ`/`restrictᵛ`, `rel-restrict`); usage transports via `thin-usage-*ᵘ`, `⋆-*`, `drop-*`, `up-*`. `⊢cataᶜ`/`⊢anaᶜ` conclude at `Many *ᵘ Ψ` — the `let` inside `cataᶜ` already charged ω once its variable is used per node.
+- Tests: QttSpec (a linear capture in a cata algebra rejected; an unrestricted one accepted).
+
+## D296 — QUANTITY AND PURITY ARE INDEPENDENT: AN EFFECTFUL OPERATION WITH AN ERASED ARGUMENT IS A CALL (2026-10-09)
+
+**Relates**: D143 (erased arrows), D250 (pure = referentially transparent), D257 (contracts), plan 0.113 A3 (50e6d19bb), plan 0.114 (self-validating definitions)
+
+### Context
+Every layer treated `A ⇒[0, π] B` as a VALUE whatever `π`: `Spec.Contract.contractOf`, the elaborator (`value-info` at every erased arrow), `SourceDenote.⟦ sigOp ⟧ˢ`, and the meanings (`sigOpRefᵛ`, `sigOpRefᴰ`). `now : 0 Unit ⇒[eff] Int` would have been a constant — no event, no history — contradicting D250. No proof caught it because all four sides made the same choice (both categorical reviews of the merge analysis found it independently).
+
+### Decision
+The QUANTITY decides the key's domain (`Zero` erases the argument: `Unit`, D143); the PURITY decides value versus effect. `Zero, pure` stays a value contract / `value-info`; `Zero, eff` is `contract-eff c Unit B` and elaborates to `arrow-info (mk-kind Zero eff) name base-Unit` — a call with the erased slot `tt`, whose codomain then decides call / emit / halt like every effectful SigOp.
+
+### Consequences
+- Codegen change (extracted): an effectful FFI symbol at an erased arrow now emits a call.
+- A runtime test needs an interpretation declaring such an operation (plan 0.113 D, open).
+
+## D297 — HALTING AND EMITTING ARE INITIAL/TERMINAL UP TO ISOMORPHISM: AN HONEST FFI CODOMAIN IS SKELETAL (2026-10-09)
+
+**Relates**: D225/D227 (the codomain decides), D231 (honest FFI), plan 0.113 B2 (b619751d5), plan 0.112 G1 (the general form)
+
+### Context
+Emit/halt is decided everywhere by syntactic `B ≡ Unit` / `B ≡ Void` (`contract-eff`, `arrow-sem-eff`, `ext-resolved-sem`). "Halts" means the codomain is empty (initial), "emits" that it is a singleton (terminal) — properties up to isomorphism. `Eff Int (Void * Int)` was an ANSWERING contract with an empty answer type: no implementation of the signature exists (`Impl Σ` empty), so the correctness theorem was vacuous for such a program.
+
+### Decision
+A skeleton: an honest FFI declaration writes an empty codomain as `Void` and a singleton one as `Unit`. `Type.Honest` gains `NotEmpty` / `NotSingleton`, structural on the first-order codomains an FFI signature can have (IsConcrete: the ABI). A data codomain must be inhabited (pure); an effectful one must also not be a singleton. Non-first-order codomains (μ, ν, rigid) are not honest. With the skeleton the syntactic dispatch is correct, not accidentally so.
+
+### Consequences
+- `Type.HonestSound.inhabited`: a `NotEmpty` type is inhabited (outside the Spec closure); the theorem it feeds — an honest signature admits an implementation — is open (plan 0.112 G1).
+- Every declaration in use is unaffected. Tests: PuritySpec (four cases).
+
+## D298 — THE SPEC'S MEANING IS THE GRADED ONE, AND THE SPEC CLOSURE IS PROOF-FREE (2026-10-09)
+
+**Relates**: D140 (proof-free closure), D250 (graded meaning), D257 (interaction trees), D277 (the Spec door), plan 0.113 B4 (491e3eee3) and A1 (4c1f3c079)
+
+### Context
+`Once.Spec.Meaning` re-exported the purity-blind Kleisli domain `⟦_⟧ᴰ` (every arrow `A → T B`) and the surface derivation meaning over it; the meaning the apex uses — `M π` / `⟦_⟧ᵛ`, the schemes, `T` with `Interp`/`run`, the core derivation meaning `⟦_⟧` — was not exported. Separately the branch had put proofs into closure modules (`Type.Sub`, `Denotation.Behavior`, `Spec.Module`, `Spec.Contract`).
+
+### Decision
+The Spec exports the graded meaning (`TraceMonad`, `GradedDomain`, `GradedOps`, `Spec.Core.Meaning.⟦_⟧`); `ValueDomain` and `Denotation.Meaning` leave the closure (now 32 modules). Every proof moves to a `…Laws` companion outside it (`TraceMonadLaws`, `GradedDomainLaws`, `SubLaws`, `BehaviorLaws`, `ContractLaws`, `ModuleLaws`). What stays in the closure is definitions and decision procedures (`_≟q_`, `isVoid?`, `_<:?_`, …), `pure⊑` (a total function to a derivation, used computationally), and `Raw.closedLiftShape?-just` (predates the branch).
+
+### Consequences
+- The Spec door's `public` baseline rose by 2 (D277).
+- A closure module may import a `…Laws` module non-publicly when a lemma is used computationally (`GradedOps` uses `value-∈` for a membership witness).
+
+## D299 — `layer-rel` IS A THEOREM AGAIN (2026-10-09)
+
+**Relates**: D179 (computation carrier), plan 0.113 A2 (60d045698), the residual ledger
+
+### Context
+Master PROVED the fold's layer lemma in two halves (`layer-events`, `layer-z`). D179 merged them into `layer-rel` over `RelT′` and left it a POSTULATE ("discharged below" — it was not), undocumented, on the `Once.Certified` path: a proved theorem downgraded silently.
+
+### Decision
+Prove it. `seqF` is a traversal, so the relation reduces per functor case to a VALUE step over arbitrary related values (master's `layer-z` cases restated): `K` via `base-z` (ported to `injectᵇ`), `Id` by mapping the relation (`RelT′-mono`), sums by `RelT′-fmap`, products by `RelT′-bind` twice.
+
+### Consequences
+- One fewer postulate on the certified path; no assumption replaces it.
+- Rule (for MERGE.md §1's postulate delta): replacing a proof by a postulate needs a decision entry naming why; "discharged below" must be true.
+
+## D300 — THE SPEC BORROWS COMPILER FUNCTIONS IN FOUR PLACES: RECORDED, FIXED BY PLAN 0.114 (2026-10-09)
+
+**Relates**: D137, D140, D249, D274, plan 0.59, plan 0.114, memory "pin self-validating definitions"
+
+### Context
+The merge analysis found the Spec calling compiler functions: `Spec.Module`'s `mono` takes a definition's type from `C.resolveFunType`; `Spec.Core.Translate` builds on `Compile.FunCtx`, `Parser.FunInfo`, `Classify.lookupImport` and picks "the first `main`, exactly as `findMain`"; `⟦_⟧ˢ` becomes a `Behavior` through the compiler IR and `moduleToIR-complete`; `t-var-own` carries a negative premise only to stay disjoint from `t-var-resolved`.
+
+### Decision
+Not a vacuity (accepted programs exist; soundness ties them to the Spec) but a SELF-VALIDATION hole: a bug in a shared function moves both sides together, invisible to every proof, and completeness becomes partly tautological there. Recorded here; removed by plan 0.114 (one borrowing at a time, after this branch merges).
+
+### Consequences
+- Until 0.114 lands, MERGE.md's Spec review reads `Classify`, `Compile`'s `resolveFunType`/`findMain` and `Parser.extractFunctions` as part of the Spec.
 

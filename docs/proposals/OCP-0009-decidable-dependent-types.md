@@ -1079,3 +1079,26 @@ This appendix says "where Once *does* want the feature, take it as a *modality i
 composes*, not a *pass it runs*." Both keep the checker's core small and the proofs
 compositional — the same discipline that made totality cheap (this OCP) and effects
 clean (arrows).
+
+## Appendix — the compiler-side hand-off (from plan 0.102 §10, 2026-10-06; plan deleted 2026-10-09, closure D289)
+
+
+The dependent kernel (`origin/ocp-0009-nbe-sound`, `bootstrap/DirectedHoTT/`) lands by
+EXTENDING `Spec.Core`'s judgment `Γ ⊢[ Ψ ] t ∷ A ! π`, never as a second kernel:
+
+| POC (`bootstrap/DirectedHoTT/…`) | compiler core (`formal/Once/Spec/Core/…`) | how they meet |
+|---|---|---|
+| `Spec/Syntax`: well-scoped de Bruijn `RTm Γ`/`RTy Γ` (mutual, `El`) | `Syntax`: `Tm n`; types are `Once.Type` (closed) | types become `RTy n`; today's `Type` is the closed, term-free fragment |
+| `Spec/Typing` `_⊢_∷_` (ungraded, effect-free) | `Typing` `_⊢[_]_∷_!_` (usage Ψ, effect π) | add Π/Σ/U/El/Hom/Id/IMu as rules carrying Ψ and π |
+| `⊢conv` with `_≅ᵀ_` | none (`⊢coerce` + `<:` is subtyping, not conversion) | add `⊢conv`; the deferred `≈` (§8) is the term half of `_≅_` |
+| conversion decided by NbE (`nbe-sound`, `ConvNbE`) | — | implementation, outside the Spec (§1's table) |
+| `Metatheory/SubjectReduction` (single substitution) | `Subst.sub-⊢`/`subst-⊢`, `TermModel` | the graded statement `Ψₜ + q·Ψᵤ` is the one R5 must keep |
+| `Metatheory/Erasure`, `NbEPQTTErase` | D143: meaning over `Γ ↾ Ψ` | the same phase distinction (𝟘 slots absent) |
+| `NbEPQTT` `Mult = {𝟘,𝟙,ω}` (ordered semiring) | `Quantity`, ORDER fixed by D276 (affine) | R5 adopts D276's order |
+| `NbEPLinCore` `drop`/`dup`, `lcase` over one context | `⊢sub-use` (meaning `restrictᵛ`), `⊢case` at one usage | the same structure (D276 rationale) |
+| `IMu` over levitated descriptions (one former) | `μ-type F` over the closed `Functor` syntax | `Functor` becomes a description code |
+| directed `Hom`, `Id = core(Hom)` | — | new formers; the core is non-dependent |
+| effect-free kernel | effects on arrows (D032), `pure` = value (D250) | only `pure` terms may occur in types — the grade already marks them |
+
+Open for OCP-0009 (not this plan's): QTT's rule for a dependent Π's domain grade, and whether the
+types of `Hom`/`Id` read terms at grade 𝟘 (erased), as `NbEPQTTErase`'s phase distinction suggests.
