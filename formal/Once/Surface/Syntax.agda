@@ -315,9 +315,12 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- π = eff is the effect-emitting fold.
   -- PLAN 0.101 (D265): the algebra is an ordinary term IN CONTEXT — it may
   -- capture locals — and is obtained once, where the cata term is evaluated.
+  -- Plan 0.113 B1 (standard QTT, D232's argument): the fold APPLIES its algebra
+  -- once per node, so everything the algebra captures is used ω times — the
+  -- usage is `Many *ᵘ Ψ`, as an eliminator's methods are in QTT.
   cata : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π : Purity}
        → WellFormedF F → Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
-       → Expr Γ Ψ (μ-type F ⇒[ mk-kind Many π ] A)
+       → Expr Γ (Many *ᵘ Ψ) (μ-type F ⇒[ mk-kind Many π ] A)
 
   -- Anamorphism (dual of `cata`): given a coalgebra `A → F(A)`, produce the
   -- unfold `A → νF`. This is the PRODUCTIVE / corecursive scheme — `νF` is
@@ -331,7 +334,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- capture locals — obtained once, as `cata`'s algebra is.
   ana : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π₀ π : Purity}
       → WellFormedF F → Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)
-      → Expr Γ Ψ (A ⇒[ mk-kind Many π₀ ] ν-type F π)
+      → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many π₀ ] ν-type F π)   -- B1: once per layer
 
 
 

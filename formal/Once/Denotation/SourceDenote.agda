@@ -323,8 +323,10 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- re-ran it per layer; an algebra that emits while being BUILT then emitted
 -- once per layer. Binding it here is the same rule every other combinator arm
 -- follows (D130) and matches both `⟦_⟧ᶜ` and the elaboration (`cataM ∘ ealg`).
-⟦ cata {Γ = Γ} {F = F} {A = A} wf alg ⟧ˢ fmt σ dγ =
-  ⟦ alg ⟧ˢ fmt σ dγ >>=T λ valg →
+-- Plan 0.113 B1: the algebra's usage is scaled by ω; it reads the environment
+-- through the `⊑ᵘ-*Many` restriction (as D232's scaled arms do).
+⟦ cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf alg ⟧ˢ fmt σ dγ =
+  ⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ valg →
   returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x)
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
@@ -338,8 +340,8 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- D273: the coalgebra lives in the context and is bound ONCE, here, exactly as
 -- `cata`'s algebra is — and as the elaboration (`anaM ∘ ecoalg`) does; every
 -- forced layer applies the same closure.
-⟦ ana {Γ = Γ} {F = F} {A = A} wf coalg ⟧ˢ fmt σ dγ =
-  ⟦ coalg ⟧ˢ fmt σ dγ >>=T λ clo →
+⟦ ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf coalg ⟧ˢ fmt σ dγ =
+  ⟦ coalg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ clo →
   returnT (λ a → returnT (anaFᵈ F
             (λ a' → fmapT (coerce-functor-D wf A) (clo a'))
             a))

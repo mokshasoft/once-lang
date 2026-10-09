@@ -44,8 +44,9 @@ open import Once.Semantics.Machine using
   (coerce-ν-in; tF-coh; ⟦_⟧F)
 open import Once.Semantics.Functor using (⟦_⟧SF; SFunctor)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; anaFᵈ; coerce-functor-D; subst-νᵈ-cong; anaᵈ-erase-full)
-open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_)
-open import Once.Surface.Elaborate using (elaborate; cataM; anaM)
+open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
+open import Once.Denotation.Phase using (restrictᴰ)
+open import Once.Surface.Elaborate using (elaborate; cataM; anaM; restrictEnv)
 import Once.Compile as C
 import Once.IR as IR
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc; fmapT; fmapT-∘; fmapT-cong)
@@ -184,37 +185,41 @@ cataM-fold {F} {A} {π} wfF c =
 -- so this is a bind-congruence over a shared computation plus one per-closure
 -- fold equality. PLAN 0.101 (D265): the algebra lives in the context, so its
 -- own faithfulness (`ih`) is at the SAME environment `dγ`.
+-- Plan 0.113 B1: the cata's usage is `Many *ᵘ Ψ`; the algebra reads the
+-- environment through `⊑ᵘ-*Many` on both sides (`restrictEnv` / `restrictᴰ`), so
+-- the hypothesis is about that COMPOSITE — `SourceFaithful` discharges it with
+-- `liftFn-restrictEnv` and the algebra's own faithfulness.
 cata-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-              (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
-              (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate IR.Heap alg) dγ
-                    ≡ SD.⟦ alg ⟧ˢ fmt σ₀ dγ)
-            → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+              (dγ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
+              (ih : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
+                      (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ
+                    ≡ SD.⟦ alg ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))
+            → liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
                 (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
 cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ ih =
   trans split fold-step
   where
-    ealg   = elaborate IR.Heap alg
+    ealg   = elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)
+    dγ′    = restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ
     cataM' = cataM {F} {A} wf IR.Heap
     -- `liftFn`'s surface implicits cannot be inferred through `⌊_⌋`, so pin
     -- them once here.
     liftCataM = liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
                            {μ-type F ⇒[ mk-kind Many π ] A} cataM'
 
-    -- The composition splits; the left factor is the algebra's own
-    -- denotation, which the IH identifies with its surface meaning.
-    split : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+    split : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
                    (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ
-          ≡ (SD.⟦ alg ⟧ˢ fmt σ₀ dγ >>=T liftCataM)
-    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ Ψ ⟧ᶜ} cataM' ealg))
+          ≡ (SD.⟦ alg ⟧ˢ fmt σ₀ dγ′ >>=T liftCataM)
+    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} cataM' ealg))
                   (cong (λ t → t >>=T liftCataM) ih)
 
     -- Per obtained closure the fold agrees — `cataM-fold`.
-    fold-step : (SD.⟦ alg ⟧ˢ fmt σ₀ dγ >>=T liftCataM)
+    fold-step : (SD.⟦ alg ⟧ˢ fmt σ₀ dγ′ >>=T liftCataM)
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
-    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt σ₀ dγ >>=T g)
+    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt σ₀ dγ′ >>=T g)
                      (extensionality (λ c → cataM-fold {F} {A} {π} wf c))
 
 ------------------------------------------------------------------------
@@ -443,29 +448,31 @@ anaM-unfold {F} {A} {π₀} {π} wf c =
 ana-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π₀ π : Purity}
              (wf : WellFormedF F)
              (coalg : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
-             (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
-             (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate IR.Heap coalg) dγ
-                   ≡ SD.⟦ coalg ⟧ˢ fmt σ₀ dγ)
-           → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
+             (dγ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
+             (ih : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
+                     (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ
+                   ≡ SD.⟦ coalg ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))
+           → liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
                (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
              ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ
 ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg dγ ih =
   trans split unfold-step
   where
-    ecoalg = elaborate IR.Heap coalg
+    ecoalg = elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)
+    dγ′    = restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ
     anaM'  = anaM {F} {A} {π} wf IR.Heap
     liftAnaM = liftFn fmt ρ {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
                             {A ⇒[ mk-kind Many π₀ ] ν-type F π} anaM'
 
-    split : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
+    split : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
                    (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
-          ≡ (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ >>=T liftAnaM)
+          ≡ (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ′ >>=T liftAnaM)
     split = trans (cong (λ h → h dγ) (liftFn-∘ {B = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
                                                 {C = A ⇒[ mk-kind Many π₀ ] ν-type F π}
-                                                {A = ⟦ Γ ↾ Ψ ⟧ᶜ} anaM' ecoalg))
+                                                {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} anaM' ecoalg))
                   (cong (λ t → t >>=T liftAnaM) ih)
 
-    unfold-step : (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ >>=T liftAnaM)
+    unfold-step : (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ′ >>=T liftAnaM)
                 ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ
-    unfold-step = cong (λ g → SD.⟦ coalg ⟧ˢ fmt σ₀ dγ >>=T g)
+    unfold-step = cong (λ g → SD.⟦ coalg ⟧ˢ fmt σ₀ dγ′ >>=T g)
                        (extensionality (λ c → anaM-unfold {F} {A} {π₀} {π} wf c))

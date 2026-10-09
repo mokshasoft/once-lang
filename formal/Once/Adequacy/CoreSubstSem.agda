@@ -337,15 +337,18 @@ module Rows (fmt : TargetNum) (δ : GM.DefSem) where
 
     sub-sem (⊢absurd {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢roll {π = π} wf d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
+    -- plan 0.113 B1: the algebra's part is ω-scaled; `⋆` is linear (`⋆-*`).
     sub-sem {Φ = Φ} (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} wf da dt) h x =
-      trans (⟦retype⟧ (sym (⋆-+ Ψa Ψt Φ)) _ fmt δ x)
-            (bindC {π} (ih da h _ (sym (sym (⋆-+ Ψa Ψt Φ))) _ x)
-                   (λ valg → bindC {π} (ih dt h _ (sym (sym (⋆-+ Ψa Ψt Φ))) _ x) (λ _ → refl)))
+      trans (⟦retype⟧ (sym E) _ fmt δ x)
+            (bindC {π} (ih da h _ (sym (sym E)) _ x)
+                   (λ valg → bindC {π} (ih dt h _ (sym (sym E)) _ x) (λ _ → refl)))
+      where E = trans (⋆-+ (Many *ᵘ Ψa) Ψt Φ) (cong (_+ᵘ (Ψt ⋆ Φ)) (⋆-* Many Ψa Φ))
     sub-sem {Φ = Φ} (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π′ = π′} wf dc ds) h x =
-      trans (⟦retype⟧ (sym (⋆-+ Ψc Ψs Φ)) _ fmt δ x)
+      trans (⟦retype⟧ (sym E) _ fmt δ x)
             (cong₂ (λ m c → bindM π′ m (λ s → ana-semᵛ π π′ wf c s))
-                   (ih ds h _ (sym (sym (⋆-+ Ψc Ψs Φ))) _ x)
-                   (ih dc h _ (sym (sym (⋆-+ Ψc Ψs Φ))) _ x))
+                   (ih ds h _ (sym (sym E)) _ x)
+                   (ih dc h _ (sym (sym E)) _ x))
+      where E = trans (⋆-+ (Many *ᵘ Ψc) Ψs Φ) (cong (_+ᵘ (Ψs ⋆ Φ)) (⋆-* Many Ψc Φ))
     sub-sem (⊢out {π = π} wf d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢coerce {π = π} p d) h x = cong (fmapM π _) (sub-sem d h x)
     sub-sem {Δ = Δ} {Φ = Φ} ⊢lit-int h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) ⊢lit-int fmt δ x

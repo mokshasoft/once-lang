@@ -303,7 +303,7 @@ given-cata-dec : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (�
                         ≡ (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A))
                → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Type.μ-type F) π
 given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (yes refl) =
-  success A Ψ (Surface.cata wfF algE) (suc d) fr , d-cata wfF w
+  success A (Once.Type.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr , d-cata wfF w
 given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (no _) = failure (BuiltinTypeMismatch "cata") , tt
 
 given-cata : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (π : Once.Type.Purity)

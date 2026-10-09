@@ -366,8 +366,8 @@ module Weaken (imps : Imports) (sg : Imports) (P : PolyCtx) where
     W-c wk ((_ , f₁) , f₂) (t-case-copair-check df dg) = cᶜ (sym (up-+ wk _ _)) (t-case-copair-check (W-c wk f₁ df) (W-c wk f₂ dg))
     W-c wk ((_ , f₁) , f₂) (t-pair-morph-check df dg) = cᶜ (sym (up-+ wk _ _)) (t-pair-morph-check (W-c wk f₁ df) (W-c wk f₂ dg))
     W-c wk (_ , fr) (t-curry-check d) = t-curry-check (W-c wk fr d)
-    W-c wk (_ , fr) (t-cata-check wf dalg) = t-cata-check wf (W-c wk fr dalg)
-    W-c wk (_ , fr) (t-ana-check wf dco) = t-ana-check wf (W-c wk fr dco)
+    W-c wk (_ , fr) (t-cata-check wf dalg) = cᶜ (sym (up-* wk T.Many _)) (t-cata-check wf (W-c wk fr dalg))
+    W-c wk (_ , fr) (t-ana-check wf dco) = cᶜ (sym (up-* wk T.Many _)) (t-ana-check wf (W-c wk fr dco))
     W-c wk fr (t-sub d p) = t-sub (W-i wk fr d) p
     W-c wk fb (t-lam {x = y} {A = B} leq body) = t-lam leq (W-c (wk-under y B wk) fb body)
     W-c wk (f₁ , f₂) (t-pair-lit-check d₁ d₂) = cᶜ (sym (up-+ wk _ _)) (t-pair-lit-check (W-c wk f₁ d₁) (W-c wk f₂ d₂))
@@ -390,7 +390,7 @@ module Weaken (imps : Imports) (sg : Imports) (P : PolyCtx) where
     W-d wk _ d-initial = cᵈ (sym (up-zero wk)) d-initial
     W-d wk ((_ , f₁) , f₂) (d-case df dg) = cᵈ (sym (up-+ wk _ _)) (d-case (W-d wk f₁ df) (W-d wk f₂ dg))
     W-d wk ((_ , f₁) , f₂) (d-pair df dg) = cᵈ (sym (up-+ wk _ _)) (d-pair (W-d wk f₁ df) (W-d wk f₂ dg))
-    W-d wk (_ , fr) (d-cata wf dalg) = d-cata wf (W-i wk fr dalg)
+    W-d wk (_ , fr) (d-cata wf dalg) = cᵈ (sym (up-* wk T.Many _)) (d-cata wf (W-i wk fr dalg))
 
 ------------------------------------------------------------------------
 -- The substitution.

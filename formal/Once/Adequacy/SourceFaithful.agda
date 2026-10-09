@@ -44,7 +44,7 @@ open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym; subst-sym-subst)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; pure; eff; Quantity; Zero; One; Many)
+open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; mk-kind; pure; eff; Quantity; Zero; One; Many)
 open import Once.Functor.Translate using (con-base; con-fun; base-Unit)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅;
                                        _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m;
@@ -1709,10 +1709,26 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
             (trans (cong (λ w → subst T (cohᴰ C) (evalᴰ fmt ρ RR w))
                          (sym (pair-subst⁻ (cohᴰ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ) (cohᴰ B) Eall b)))
                    ((RR-lift b)))
-faithful {Γ = Γ} (cata wf alg) dγ = FL.cata-body {Γ = Γ} wf alg dγ (faithful alg dγ)
+-- Plan 0.113 B1: the algebra reads the environment through `⊑ᵘ-*Many`; its
+-- composite with `restrictEnv` is faithful by `liftFn-restrictEnv` + its own IH.
+faithful {Γ = Γ} (cata {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg) dγ =
+  FL.cata-body {Γ = Γ} wf alg dγ
+    (trans (cong (λ t → t dγ)
+                 (liftFn-∘ {B = ⟦ Γ ↾ Ψ ⟧ᶜ} {C = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ}
+                           (elaborate IR.Heap alg) (restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))))
+       (trans (cong (_>>=T liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate IR.Heap alg))
+                    (liftFn-restrictEnv {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))
+              (faithful alg (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))))
 -- ana: dual of cata; reduces to the same closure-bridge via `ana-body`
 -- (+ the `ana-ev-bridge` trace lemma).
-faithful {Γ = Γ} (ana {π₀ = π₀} {π = π} wf coalg) dγ = FL.ana-body {Γ = Γ} {π₀ = π₀} {π = π} wf coalg dγ (faithful coalg dγ)
+faithful {Γ = Γ} (ana {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg) dγ =
+  FL.ana-body {Γ = Γ} {π₀ = π₀} {π = π} wf coalg dγ
+    (trans (cong (λ t → t dγ)
+                 (liftFn-∘ {B = ⟦ Γ ↾ Ψ ⟧ᶜ} {C = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ}
+                           (elaborate IR.Heap coalg) (restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))))
+       (trans (cong (_>>=T liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate IR.Heap coalg))
+                    (liftFn-restrictEnv {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))
+              (faithful coalg (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))))
 
 ------------------------------------------------------------------------
 -- D143: faithfulness at the EMPTY context, stated for `elaborateFull`.

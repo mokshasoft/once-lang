@@ -107,6 +107,31 @@ qttTests = testGroup "QTT / linearity"
       result <- typeCheckSource source
       assertBool "Should reject duplicating a linear argument through an effectful arrow" (isLeft result)
 
+  -- Plan 0.113 B1 (QTT's eliminator rule): the fold applies its algebra once
+  -- per node, so whatever the algebra captures is used ω times. A linear
+  -- capture would be duplicated by any list with two leaves.
+  , testCase "linear (^1) parameter captured by a cata algebra is rejected" $ do
+      let source = T.unlines
+            [ "addPair : Int * Int -> Int"
+            , "addPair p = fst p + snd p"
+            , ""
+            , "f : Int^1 -> (Mu (K Unit + (K Int * Id)) -> Int)"
+            , "f k = cata (case (\\_ -> k) addPair)"
+            ]
+      result <- typeCheckSource source
+      assertBool "Should reject a linear capture in a cata algebra" (isLeft result)
+
+  , testCase "unrestricted parameter captured by a cata algebra is accepted" $ do
+      let source = T.unlines
+            [ "addPair : Int * Int -> Int"
+            , "addPair p = fst p + snd p"
+            , ""
+            , "f : Int -> (Mu (K Unit + (K Int * Id)) -> Int)"
+            , "f k = cata (case (\\_ -> k) addPair)"
+            ]
+      result <- typeCheckSource source
+      result @?= Right ()
+
   , testCase "examples/qtt-test-basic.once type-checks" $ do
       -- A small QTT sampler (id/const/dup/compose/let) that ships in examples/
       -- but had no driving test.

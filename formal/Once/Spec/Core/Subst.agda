@@ -93,9 +93,11 @@ sub-⊢ {Φ = Φ} (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {A = A}
 sub-⊢ (⊢absurd d) h = ⊢absurd (sub-⊢ d h)
 sub-⊢ (⊢roll wf d) h = ⊢roll wf (sub-⊢ d h)
 sub-⊢ {Φ = Φ} (⊢fold {Ψa = Ψa} {Ψt = Ψt} wf da dt) h =
-  retype (sym (⋆-+ Ψa Ψt Φ)) (⊢fold wf (sub-⊢ da h) (sub-⊢ dt h))
+  retype (sym (trans (⋆-+ (Many *ᵘ Ψa) Ψt Φ) (cong (_+ᵘ (Ψt ⋆ Φ)) (⋆-* Many Ψa Φ))))   -- plan 0.113 B1
+         (⊢fold wf (sub-⊢ da h) (sub-⊢ dt h))
 sub-⊢ {Φ = Φ} (⊢unfold {Ψc = Ψc} {Ψs = Ψs} wf dc ds) h =
-  retype (sym (⋆-+ Ψc Ψs Φ)) (⊢unfold wf (sub-⊢ dc h) (sub-⊢ ds h))
+  retype (sym (trans (⋆-+ (Many *ᵘ Ψc) Ψs Φ) (cong (_+ᵘ (Ψs ⋆ Φ)) (⋆-* Many Ψc Φ))))
+         (⊢unfold wf (sub-⊢ dc h) (sub-⊢ ds h))
 sub-⊢ (⊢out wf d) h = ⊢out wf (sub-⊢ d h)
 sub-⊢ (⊢coerce p d) h = ⊢coerce p (sub-⊢ d h)
 sub-⊢ {Φ = Φ} ⊢lit-int h = retype (sym (⋆-zero Φ)) ⊢lit-int

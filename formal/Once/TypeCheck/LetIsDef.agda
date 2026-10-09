@@ -258,8 +258,8 @@ module Transfer
     tr-c ld (t-case-copair-check df dg) = cᶜ (sym (drop-+ ld _ _)) (t-case-copair-check (tr-c ld df) (tr-c ld dg))
     tr-c ld (t-pair-morph-check df dg) = cᶜ (sym (drop-+ ld _ _)) (t-pair-morph-check (tr-c ld df) (tr-c ld dg))
     tr-c ld (t-curry-check d) = t-curry-check (tr-c ld d)
-    tr-c ld (t-cata-check wf dalg) = t-cata-check wf (tr-c ld dalg)
-    tr-c ld (t-ana-check wf dco) = t-ana-check wf (tr-c ld dco)
+    tr-c ld (t-cata-check wf dalg) = cᶜ (sym (drop-* ld T.Many _)) (t-cata-check wf (tr-c ld dalg))
+    tr-c ld (t-ana-check wf dco) = cᶜ (sym (drop-* ld T.Many _)) (t-ana-check wf (tr-c ld dco))
     tr-c ld (t-sub d p) = t-sub (tr-i ld d) p
     tr-c ld (t-lam {x = y} {A = B} leq body) = t-lam leq (tr-c (ld-under y B ld) body)
     tr-c ld (t-pair-lit-check d₁ d₂) = cᶜ (sym (drop-+ ld _ _)) (t-pair-lit-check (tr-c ld d₁) (tr-c ld d₂))
@@ -282,7 +282,7 @@ module Transfer
     tr-d ld d-initial = cᵈ (sym (drop-zero ld)) d-initial
     tr-d ld (d-case df dg) = cᵈ (sym (drop-+ ld _ _)) (d-case (tr-d ld df) (tr-d ld dg))
     tr-d ld (d-pair df dg) = cᵈ (sym (drop-+ ld _ _)) (d-pair (tr-d ld df) (tr-d ld dg))
-    tr-d ld (d-cata wf dalg) = d-cata wf (tr-i ld dalg)
+    tr-d ld (d-cata wf dalg) = cᵈ (sym (drop-* ld T.Many _)) (d-cata wf (tr-i ld dalg))
 
   ----------------------------------------------------------------------
   -- THE CONVERSE (plan 0.94 §12): a def-side derivation transfers back. The
@@ -409,6 +409,12 @@ module Transfer
     rzM (mkR W e d) f =
       mkR (zeroUsage +ᵘ (T.Many *ᵘ W)) (trans (drop-z+M ld W) (cong (λ V → zeroUsage +ᵘ (T.Many *ᵘ V)) e)) (f d)
 
+    -- plan 0.113 B1: a cata/ana's usage is the algebra's, ω-scaled.
+    rM : ∀ {J K : Usage nL → Set} {U}
+       → R ld J U → (∀ {W} → J W → K (T.Many *ᵘ W))
+       → R ld K (T.Many *ᵘ U)
+    rM (mkR W e d) f = mkR (T.Many *ᵘ W) (trans (drop-* ld T.Many W) (cong (T.Many *ᵘ_) e)) (f d)
+
     r+* : ∀ {J₁ J₂ K : Usage nL → Set} {U₁ U₂} (q : Quantity)
         → R ld J₁ U₁ → R ld J₂ U₂ → (∀ {W₁ W₂} → J₁ W₁ → J₂ W₂ → K (W₁ +ᵘ (q *ᵘ W₂)))
         → R ld K (U₁ +ᵘ (q *ᵘ U₂))
@@ -482,8 +488,8 @@ module Transfer
     tr⁻-c ld (t-case-copair-check df dg) = r+ (tr⁻-c ld df) (tr⁻-c ld dg) t-case-copair-check
     tr⁻-c ld (t-pair-morph-check df dg) = r+ (tr⁻-c ld df) (tr⁻-c ld dg) t-pair-morph-check
     tr⁻-c ld (t-curry-check d) = r1 (tr⁻-c ld d) t-curry-check
-    tr⁻-c ld (t-cata-check wf dalg) = r1 (tr⁻-c ld dalg) (t-cata-check wf)
-    tr⁻-c ld (t-ana-check wf dco) = r1 (tr⁻-c ld dco) (t-ana-check wf)
+    tr⁻-c ld (t-cata-check wf dalg) = rM (tr⁻-c ld dalg) (t-cata-check wf)
+    tr⁻-c ld (t-ana-check wf dco) = rM (tr⁻-c ld dco) (t-ana-check wf)
     tr⁻-c ld (t-sub d p) = r1 (tr⁻-i ld d) (λ d′ → t-sub d′ p)
     tr⁻-c ld (t-lam {x = y} {A = B} leq body) = r1 (under (tr⁻-c (ld-under y B ld) body)) (t-lam leq)
     tr⁻-c ld (t-pair-lit-check d₁ d₂) = r+ (tr⁻-c ld d₁) (tr⁻-c ld d₂) t-pair-lit-check
@@ -509,7 +515,7 @@ module Transfer
     tr⁻-d ld d-initial = rz d-initial
     tr⁻-d ld (d-case df dg) = r+ (tr⁻-d ld df) (tr⁻-d ld dg) d-case
     tr⁻-d ld (d-pair df dg) = r+ (tr⁻-d ld df) (tr⁻-d ld dg) d-pair
-    tr⁻-d ld (d-cata wf dalg) = r1 (tr⁻-i ld dalg) (d-cata wf)
+    tr⁻-d ld (d-cata wf dalg) = rM (tr⁻-i ld dalg) (d-cata wf)
 
 
 ------------------------------------------------------------------------

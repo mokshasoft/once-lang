@@ -228,13 +228,13 @@ module _ {n} {Γ : Ctx n} where
 
   cata-congˢ : ∀ {Ψ F A π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
-  cata-congˢ {F = F} {A} wf = cong (λ X σ dγ → X σ dγ >>=T λ valg →
+  cata-congˢ {Ψ} {F = F} {A} wf = cong (λ X σ dγ → X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ valg →   -- plan 0.113 B1
     returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x))
 
   -- D273: the coalgebra lives in the context and is bound once, as `cata`'s.
   ana-congˢ : ∀ {Ψ F A π₀ π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} wf g ≈ˢ ana wf g′
-  ana-congˢ {F = F} {A} wf = cong (λ X σ dγ → X σ dγ >>=T λ clo →
+  ana-congˢ {Ψ} {F = F} {A} wf = cong (λ X σ dγ → X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ clo →
     returnT (λ a → returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A) (clo a')) a)))
 
   let-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B}
@@ -454,10 +454,10 @@ module _ {n} {Γ : Ctx n} where
                   (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
               → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
                 ≈ˢ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
-  cata-coerceˢ wf d p g alg = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ alg ⟧ˢ fmt σ dγ) _)
-     (trans (bind-congʳ (⟦ alg ⟧ˢ fmt σ dγ) λ valg → cong returnT (extensionality λ x → cata-core wf d p g valg x))
-            (sym (fmap-bind _ (⟦ alg ⟧ˢ fmt σ dγ) _)))
+  cata-coerceˢ {Ψ} wf d p g alg = extensionality λ σ → extensionality λ dγ →
+    trans (bind-fmap _ (⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ)) _)
+     (trans (bind-congʳ (⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ)) λ valg → cong returnT (extensionality λ x → cata-core wf d p g valg x))
+            (sym (fmap-bind _ (⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ)) _)))
 
 -- The same laws at `_≈_` live in `CoherenceLawsWrap` (split for the 30 s
 -- per-module check budget).

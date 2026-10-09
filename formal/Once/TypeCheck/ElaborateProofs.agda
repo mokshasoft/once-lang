@@ -1281,7 +1281,7 @@ checkCataGo-just-success :
               alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
       ≡ (success Ψ algE d fr , w)
   → checkCataGo ctx alg F A π (just wfF) eqW
-      ≡ (success Ψ (Surface.cata wfF algE) (suc d) fr
+      ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
 checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
   with checkElabV ctx
@@ -1322,7 +1322,7 @@ checkAnaGo-just-success :
               coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
       ≡ (success Ψ coalgE d fr , w)
   → checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
-      ≡ (success Ψ (Surface.ana wfF coalgE) (suc d) fr
+      ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.ana wfF coalgE) (suc d) fr
           , t-ana-check wfF w)
 checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV
   with checkElabV ctx
@@ -1348,11 +1348,11 @@ checkCata-eff-strong-hlp :
     (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
            (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A))
   → checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl ≡ r
-  → r ≡ (success Ψ (Surface.cata wfF algE) (suc d) fr
+  → r ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
               (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-      ≡ (success Ψ (Surface.cata wfF algE) (suc d) fr
+      ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
 checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr , w) eqr eqStrong
   rewrite eqr = eqStrong

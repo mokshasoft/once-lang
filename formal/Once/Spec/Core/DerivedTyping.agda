@@ -142,18 +142,21 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢cataᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π : Purity} {alg}
        → WellFormedF F
        → Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure
-       → Γ ⊢[ Ψ ] cataᶜ alg ∷ μ-type F ⇒[ mk-kind Many π ] A ! pure
+       → Γ ⊢[ Many *ᵘ Ψ ] cataᶜ alg ∷ μ-type F ⇒[ mk-kind Many π ] A ! pure
+-- Plan 0.113 B1: inside the body the algebra's variable is used ω times (the
+-- fold applies it per node), so the `let` charges `Many *ᵘ Ψ` — the surface rule.
 ⊢cataᶜ {Γ = Γ} {Ψ} {π = π} wf da =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
-        (trans (cong₂ _+ᵘ_ (+ᵘ-identityˡ zeroUsage) (*ᵘ-identityˡ Ψ)) (+ᵘ-identityˡ Ψ))
+        (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
+               (+ᵘ-identityˡ (Many *ᵘ Ψ)))
         (⊢let da (⊢lam refl (⊢fold wf (⊢var′ (suc zero) π) (⊢var′ zero π))))
 
 ⊢anaᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π : Purity} {c}
       → WellFormedF F
       → Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure
-      → Γ ⊢[ Ψ ] anaᶜ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
+      → Γ ⊢[ Many *ᵘ Ψ ] anaᶜ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
 ⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} wf dc =
-  ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ Ψ)
+  ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
                    (⊢unfold wf (⊢sub-eff (pure⊑ π₀) (wk-⊢′ A dc)) (⊢var′ zero π₀)))
 
 ------------------------------------------------------------------------

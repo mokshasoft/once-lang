@@ -124,7 +124,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → WellFormedF F
         → Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π
         → Γ ⊢[ Ψt ] t ∷ μ-type F ! π
-        → Γ ⊢[ Ψa +ᵘ Ψt ] fold alg t ∷ A ! π
+        → Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold alg t ∷ A ! π   -- plan 0.113 B1: ω-use of the algebra
 
   -- ν F: its coalgebra structure `out` and its (non-dependent) introduction.
   -- `unfold` builds the ν LAZILY, so building it costs only evaluating its
@@ -134,7 +134,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
           → WellFormedF F
           → Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! π′
           → Γ ⊢[ Ψs ] s ∷ A ! π′
-          → Γ ⊢[ Ψc +ᵘ Ψs ] unfold c s ∷ ν-type F π ! π′
+          → Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold c s ∷ ν-type F π ! π′   -- B1
   ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {F : Functor} {t}
        → WellFormedF F
        → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π

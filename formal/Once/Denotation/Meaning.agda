@@ -291,9 +291,10 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
 -- PLAN 0.101 (D265, D273): the algebra / coalgebra is typed in the ambient
 -- context, so it reads the term's own environment `dγ`.
 ⟦_⟧ᶜ {ctx = ctx} (t-cata-check {π = π} wfF dalg) fmt ρ dγ =
-  (⟦ dalg ⟧ᶜ fmt ρ) dγ >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
+  -- plan 0.113 B1: the algebra's usage is ω-scaled; it reads `dγ` restricted.
+  (⟦ dalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
 ⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {π = π} wfF dcoalg) fmt ρ dγ =
-  λ a → ana-semᵛ π π₀ wfF (returnM π₀ ((⟦ dcoalg ⟧ᶜ fmt ρ) dγ)) a
+  λ a → ana-semᵛ π π₀ wfF (returnM π₀ ((⟦ dcoalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ))) a
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
 ⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt ρ dγ = fmapᵖ ⟦ p ⟧<:ᵛ ((⟦ d ⟧ᵢ fmt ρ) dγ)
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives
@@ -517,4 +518,4 @@ seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T 
   (⟦ df ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ vg →
   λ a → bindM π (vf a) λ b → bindM π (vg a) λ c → returnM π (b , c)
 ⟦_⟧ᵈ {ctx = ctx} (d-cata {π = π} wfF dalg) fmt ρ dγ =
-  (⟦ dalg ⟧ᵢ fmt ρ) dγ >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
+  (⟦ dalg ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v

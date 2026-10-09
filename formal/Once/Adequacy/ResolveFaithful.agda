@@ -551,17 +551,17 @@ resolveExpr-faithful polys imps userFns fresh
 -- same continuation and the whole clause is ONE `cong` over the algebra
 -- denotation (the IH at the same environment — plan 0.101, the algebra lives
 -- in the context).
-resolveExpr-faithful polys imps userFns fresh (Srf.cata {F = F} {A = A} wf alg) dγ =
+resolveExpr-faithful polys imps userFns fresh (Srf.cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf alg) dγ =
   cong (λ ac → (ac >>=T λ valg →
                   returnT (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (returnT valg)) x)))
-       (( resolveExpr-faithful polys imps userFns fresh alg dγ))
+       (( resolveExpr-faithful polys imps userFns fresh alg (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-*Many Ψ) dγ)))   -- plan 0.113 B1
 -- ana: dual of cata (D273) — the coalgebra is BOUND once at the same
 -- environment, so the clause is ONE `cong` over the coalgebra denotation.
-resolveExpr-faithful polys imps userFns fresh (Srf.ana {F = F} {A = A} wf coalg) dγ =
+resolveExpr-faithful polys imps userFns fresh (Srf.ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf coalg) dγ =
   cong (λ ac → (ac >>=T λ clo →
                   returnT (λ a → returnT (anaFᵈ F
                     (λ a' → fmapT (coerce-functor-D wf A) (clo a')) a))))
-       (( resolveExpr-faithful polys imps userFns fresh coalg dγ))
+       (( resolveExpr-faithful polys imps userFns fresh coalg (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-*Many Ψ) dγ)))
 -- sigOp: D246 — the resolver passes it through, and a SigOp reads no environment.
 resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s conc) dγ =
   sigOp-σ-irrel {Γ = Γ} {A = A} ρ _ _ s conc dγ

@@ -700,7 +700,7 @@ mutual
                  → ctx ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Ψ
                  → ctx ⊢ᶜ RApp (RResolved (gen "cata")) alg
                          ∶ ((μ-type F) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
-                         ⨾ Ψ
+                         ⨾ (Once.Type.Many Surface.*ᵘ Ψ)   -- plan 0.113 B1: the algebra runs per node
 
     -- D192: `ana coalg` in check mode at `A ⇒ ν-type F` — `t-cata-check`'s
     -- DUAL, and stated as its exact mirror so the two schemes cannot drift.
@@ -722,7 +722,7 @@ mutual
                 → ctx ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (⟦ F ⟧T A)) ⨾ Ψ
                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg
                         ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] (ν-type F π))
-                        ⨾ Ψ
+                        ⨾ (Once.Type.Many Surface.*ᵘ Ψ)   -- B1: the coalgebra runs per layer
 
     -- | THE MODE SWITCH, with subsumption (D226 / plan 0.99). A term whose type
     -- is INFERRED checks at any supertype. Inference reports the least
@@ -946,7 +946,7 @@ mutual
                    {Ψ : Surface.Usage (NamedCtx.size ctx)}
                → WellFormedF F
                → ctx ⊢ᵢ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Ψ
-               → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ Ψ
+               → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ (Once.Type.Many Surface.*ᵘ Ψ)
 
 _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
          → Surface.Usage (NamedCtx.size ctx) → Set

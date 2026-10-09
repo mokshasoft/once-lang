@@ -302,7 +302,7 @@ given-cata-complete : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Ty
     (wfF : WellFormedF F) {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
     (r : VerifiedInferResult ctx alg)
   → proj₁ r ≡ success (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
-  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A Ψ eE′ d′ f′
+  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′   -- plan 0.113 B1
 given-cata-complete {F = F} {A} {π} wfF (success _ _ _ _ _ , _) refl
   with (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A)
 ... | yes refl = _ , _ , _ , refl

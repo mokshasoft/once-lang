@@ -103,10 +103,12 @@ ren-⊢ θ (⊢absurd d) = ⊢absurd (ren-⊢ θ d)
 ren-⊢ θ (⊢roll wf d) = ⊢roll wf (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {alg = alg} {t = t} wf da dt) =
   subst (λ U → Δ ⊢[ U ] fold (ren (thin-var θ) alg) (ren (thin-var θ) t) ∷ _ ! _)
-    (sym (thin-usage-+ᵘ θ Ψa Ψt)) (⊢fold wf (ren-⊢ θ da) (ren-⊢ θ dt))
+    (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψa) Ψt) (cong (_+ᵘ thin-usage θ Ψt) (thin-usage-*ᵘ θ Many Ψa))))
+    (⊢fold wf (ren-⊢ θ da) (ren-⊢ θ dt))
 ren-⊢ {Δ = Δ} θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {c = c} {s = sd} wf dc ds) =
   subst (λ U → Δ ⊢[ U ] unfold (ren (thin-var θ) c) (ren (thin-var θ) sd) ∷ _ ! _)
-    (sym (thin-usage-+ᵘ θ Ψc Ψs)) (⊢unfold wf (ren-⊢ θ dc) (ren-⊢ θ ds))
+    (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))))
+    (⊢unfold wf (ren-⊢ θ dc) (ren-⊢ θ ds))
 ren-⊢ θ (⊢out wf d) = ⊢out wf (ren-⊢ θ d)
 ren-⊢ θ (⊢coerce p d) = ⊢coerce p (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ ⊢lit-int   = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) ⊢lit-int

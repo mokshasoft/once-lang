@@ -305,20 +305,24 @@ ren-sem θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π = π} {l =
   where E = thin-usage-+ᵘ θ Ψs Ψ
 ren-sem θ (⊢absurd {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢roll {π = π} wf d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
+-- plan 0.113 B1: the algebra's part is ω-scaled (left of the sum), as `app`'s
+-- argument is (right of its sum) — the same transport, mirrored.
 ren-sem θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} wf da dt) fmt δ x =
-  trans (⟦⟧-substΨ (sym (thin-usage-+ᵘ θ Ψa Ψt)) _ fmt δ x)
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
         (bindC {π} (trans (ren-sem θ da fmt δ _)
-                      (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψa Ψt) (sym (sym (thin-usage-+ᵘ θ Ψa Ψt))) _ x)))
+                      (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) (sym (sym E)) _ x)))
                (λ valg → bindC {π} (trans (ren-sem θ dt fmt δ _)
-                                      (cong (GM.⟦ dt ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψa Ψt) (sym (sym (thin-usage-+ᵘ θ Ψa Ψt))) _ x)))
+                                      (cong (GM.⟦ dt ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) (sym (sym E)) _ x)))
                                (λ _ → refl)))
+  where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψa) Ψt) (cong (_+ᵘ thin-usage θ Ψt) (thin-usage-*ᵘ θ Many Ψa))
 ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π′ = π′} wf dc ds) fmt δ x =
-  trans (⟦⟧-substΨ (sym (thin-usage-+ᵘ θ Ψc Ψs)) _ fmt δ x)
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
         (cong₂ (λ m c → bindM π′ m (λ s → ana-semᵛ π π′ wf c s))
           (trans (ren-sem θ ds fmt δ _)
-                 (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψc Ψs) (sym (sym (thin-usage-+ᵘ θ Ψc Ψs))) _ x)))
+                 (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (sym (sym E)) _ x)))
           ((trans (ren-sem θ dc fmt δ _)
-                   (cong (GM.⟦ dc ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψc Ψs) (sym (sym (thin-usage-+ᵘ θ Ψc Ψs))) _ x)))))
+                   (cong (GM.⟦ dc ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) (sym (sym E)) _ x)))))
+  where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))
 ren-sem θ (⊢out {π = π} wf d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x

@@ -220,13 +220,13 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
         → WFFun Δ F
         → Δ ⊩ Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π
         → Δ ⊩ Γ ⊢[ Ψt ] t ∷ μ-type F ! π
-        → Δ ⊩ Γ ⊢[ Ψa +ᵘ Ψt ] fold alg t ∷ A ! π
+        → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold alg t ∷ A ! π
 
   ⊢unfold : ∀ {n} {Γ : PCtx m n} {Ψc Ψs : Usage n} {π π′ : Purity} {F : Fun m} {A c s}
           → WFFun Δ F
           → Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π′
           → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π′
-          → Δ ⊩ Γ ⊢[ Ψc +ᵘ Ψs ] unfold c s ∷ ν-type F π ! π′
+          → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold c s ∷ ν-type F π ! π′
   ⊢out : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {F : Fun m} {t}
        → WFFun Δ F
        → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν-type F π ! π

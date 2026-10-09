@@ -590,14 +590,16 @@ elaborate {Γ = Γ} m (morph-app {Ψ = Ψ} morph x) =
 -- layer (a heap-mode `curry` allocates) and, for an algebra whose build
 -- emits, re-emitted per layer — disagreeing with `⟦ cata alg ⟧ᶜ`, which binds
 -- the algebra once like every other combinator arm (D130).
-elaborate m (cata {F = F} {A = A} wfF alg) =
-  cataM wfF m ∘ elaborate m alg
+-- Plan 0.113 B1: the algebra's usage is scaled by ω (it runs per node), so it
+-- reads its environment through the same `⊑ᵘ-*Many` restriction as `envʳω`.
+elaborate m (cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wfF alg) =
+  cataM wfF m ∘ (elaborate m alg ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
 
 -- Anamorphism (dual of cata, D273): the coalgebra is an ordinary term in
 -- context, producing the coalgebra CLOSURE once; `anaM` is a closed morphism
 -- from that closure to the unfold — exactly `cata`'s `cataM ∘ ealg`.
-elaborate m (ana {F = F} {A = A} {π = π} wfF coalg) =
-  anaM {π = π} wfF m ∘ elaborate m coalg
+elaborate m (ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wfF coalg) =
+  anaM {π = π} wfF m ∘ (elaborate m coalg ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
 
 -- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
 --   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`
