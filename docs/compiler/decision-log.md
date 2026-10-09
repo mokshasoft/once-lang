@@ -14486,7 +14486,7 @@ D209 (`PairTail`), D214 (the same dump confirms `ir-size` dead).
 **Note**: back-filled 2026-10-09 (plan 0.113 E), from commit a6e5dbcbc.
 
 ### Context
-MERGE.md §4b (2026-09-10) made the apex's AST/trust-base dump (`run-ast-dumps.v2.sh`, not
+MERGE.md §4b (2026-09-10) made the apex's AST/trust-base dump (`run-ast-dumps.sh`, not
 tracked in the repo) a merge gate. Its first use on the branch compared the D211 tree against
 the plan 0.89 ancestor dump ("both new-format; master's is old-format and NOT comparable").
 
@@ -14565,7 +14565,7 @@ migrations edited them; and the parked `*WF` cluster accrued D159 rot because no
 
 ### Decision
 MERGE.md gains §4b: dump the AST and trust base reachable from the apex for BOTH refs
-(`run-ast-dumps.v2.sh`) and compare, with three checks in order of severity:
+(`run-ast-dumps.sh`) and compare, with three checks in order of severity:
 - the trust base must not grow without a decision (a postulate SPLITTING, +1/−1, is fine; a
   postulate APPEARING owes a residual entry);
 - a module must not LEAVE `reachable` unremarked ("removing the last consumer of a proof is a
@@ -17894,7 +17894,7 @@ migrations edited them; and the parked `*WF` cluster accrued D159 rot because no
 
 ### Decision
 MERGE.md gains §4b: dump the AST and trust base reachable from the apex for BOTH refs
-(`run-ast-dumps.v2.sh`) and compare, with three checks in order of severity:
+(`run-ast-dumps.sh`) and compare, with three checks in order of severity:
 - the trust base must not grow without a decision (a postulate SPLITTING, +1/−1, is fine; a
   postulate APPEARING owes a residual entry);
 - a module must not LEAVE `reachable` unremarked ("removing the last consumer of a proof is a

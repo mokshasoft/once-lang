@@ -220,8 +220,11 @@ edits a function definition in an extracted module IS a codegen change.
 
 Dump the AST and trust base reachable from the apex for BOTH refs and compare:
 
-    ./run-ast-dumps.v2.sh                 # master and the branch
-    HEAP=6G COMPACT=-c20 ./run-ast-dumps.v2.sh <ref>   # if a module OOMs
+    ./run-ast-dumps.sh                 # master and the branch
+    HEAP=6G COMPACT=-c20 ./run-ast-dumps.sh <ref>   # if a module OOMs
+
+It needs the Agda fork with `--write-ast` (https://github.com/mokshasoft/agda, branch
+`dead-code-2.8.0`); the script's header says how to build it and where it looks for it.
 
 It is slow (tens of minutes per ref) and resumes from cached interfaces, so
 start it during step 1 and read it here. Three checks, in order of severity:
