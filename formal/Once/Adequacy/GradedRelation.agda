@@ -32,12 +32,14 @@ import Once.Semantics.Machine as Val
 open import Once.Denotation.GradedOps using (prjB; injB; injBᵍ; embν; mapEmbν)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; RelT′; rel-ret)
+open import Once.Denotation.TraceMonadLaws using (RelT′-bind)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; forgetᵇ; injectᵇ; module νᵈ)
 open νᵈ using (forceᵈ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 open Once.Denotation.ValueDomainLaws._∼ᵈ_ using (force-∼)
-open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; νᵖ; toT; bindM; returnM; _>>=ᵖ_; >>=ᵖ-β)
+open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; νᵖ; toT; bindM; returnM; _>>=ᵖ_)
+open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
 
 ------------------------------------------------------------------------

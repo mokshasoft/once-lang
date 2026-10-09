@@ -48,7 +48,8 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
 open import Once.Semantics.Machine using (coerce-μ-out; ⟦_⟧F)
 open import Once.Semantics.Functor using (⟦_⟧SF)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF; coerce-functor⁻¹-D)
-open import Once.Denotation.TraceMonad using (T; RelT′-bind)
+open import Once.Denotation.TraceMonad using (T)
+open import Once.Denotation.TraceMonadLaws using (RelT′-bind)
 open import Once.Denotation.DenotTrace using ()
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
 import Once.IR as IR

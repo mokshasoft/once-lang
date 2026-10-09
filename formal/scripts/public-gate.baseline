@@ -56,7 +56,7 @@ Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1
 Once/Spec/Contract.agda 2
 Once/Spec/Core/Meaning.agda 1
-Once/Spec/Meaning.agda 7
+Once/Spec/Meaning.agda 9
 Once/Spec/Parsing.agda 1
 Once/Spec/Syntax.agda 1
 Once/Spec/Type.agda 2

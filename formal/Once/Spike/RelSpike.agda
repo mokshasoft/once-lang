@@ -165,6 +165,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Interface o
 
 import Once.CCC.FrameSemantics
 import Once.Denotation.TraceMonad as TM
+import Once.Denotation.TraceMonadLaws as TML
 import Data.List.Relation.Unary.All as All
 
 open import Data.Unit using (⊤)
@@ -3058,7 +3059,7 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
               -- D203's step, unchanged: the residual budget cannot tell
               -- whether the prefix was truncated.
               budget-eq : bud ∸ length (take bud dEvF) ≡ kg
-              budget-eq = TM.minus-take bud dEvF
+              budget-eq = TML.minus-take bud dEvF
 
               tail-eq : take (bud ∸ length (take bud mEvF)) mEvG
                       ≡ take (bud ∸ length (take bud dEvF)) dEvG
@@ -3076,6 +3077,6 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
                      ≡ take bud (projTrace (evalᴰ (g ∘ f) x) bud)
               traces =
                 trans (cong (take bud) events-split)
-                (trans (TM.take-++-threaded bud mEvF mEvG)
+                (trans (TML.take-++-threaded bud mEvF mEvG)
                 (trans (cong₂ _++_ tf tail-eq)
-                       (sym (TM.take-++-threaded bud dEvF dEvG))))
+                       (sym (TML.take-++-threaded bud dEvF dEvG))))

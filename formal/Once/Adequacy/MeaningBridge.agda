@@ -51,7 +51,8 @@ open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; _↾_; si
 open import Once.Surface.Syntax using (sigOp; Usage)
 import Once.Surface.Syntax as Surface
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-identityʳ; fmapT; rel-ret; RelT′-fmap; RelT′-refl; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; rel-ret; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
+open import Once.Denotation.TraceMonadLaws using (>>=T-identityʳ; RelT′-fmap; RelT′-refl)
 open Interp using (impl; sig)
 import Once.Denotation.TraceMonad as TM
 open import Once.Spec.Contract using (key; valueOf-at; value-∈; _∈K?_)

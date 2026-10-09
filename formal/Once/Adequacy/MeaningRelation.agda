@@ -37,7 +37,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type using (Type; Unit; Void; Int; Float;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              mk-kind; Zero; One; Many)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; rel-ret; RelT′-bind)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; RelT′; rel-ret)
+open import Once.Denotation.TraceMonadLaws using (RelT′-bind)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 

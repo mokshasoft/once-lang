@@ -37,7 +37,8 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym)
 
 open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; fmapT; fmapT-id; RelT′; RelT′-bind; RelT′-≡; ≡-RelT′)
+open import Once.Denotation.TraceMonad using (T; fmapT; RelT′)
+open import Once.Denotation.TraceMonadLaws using (fmapT-id; RelT′-bind; RelT′-≡; ≡-RelT′)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (evalᴰ; cata-ev-algᴰ)

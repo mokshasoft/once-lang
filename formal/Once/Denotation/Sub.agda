@@ -30,7 +30,8 @@ open import Once.Type using (Type; Zero; One; Many; mk-kind; _⇒[_]_; Void)
 open import Once.Type.Sub
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 -- `fmapT` is a functor and congruent: the tree's laws (plan 0.105).
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; fmapT; _>>=T_; fmapT-id; fmapT-∘; fmapT-cong)
+open import Once.Denotation.TraceMonad using (T; ret; call; halt; fmapT; _>>=T_)
+open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-∘; fmapT-cong)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------

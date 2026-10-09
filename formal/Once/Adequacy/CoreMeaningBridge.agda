@@ -38,7 +38,8 @@ open import Data.List using (_∷_)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (_++_)
 open import Once.Postulates using (extensionality)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; >>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_)
+open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
 open import Once.Denotation.TraceMonad using (T; interp; module Interp)
 open Interp using (sig; impl)
 open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
@@ -310,7 +311,8 @@ open import Once.Denotation.Meaning using (EnvRun)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 
 -- The monad laws are equalities of trees (plan 0.105).
-open import Once.Denotation.TraceMonad using (returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ)
+open import Once.Denotation.TraceMonad using (returnT; _>>=T_)
+open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityʳ)
 
 assocT : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z) → ((m >>=T f) >>=T g) ≡ (m >>=T (λ x → f x >>=T g))
 assocT m f g = >>=T-assoc m f g

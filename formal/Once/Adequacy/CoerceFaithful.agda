@@ -34,7 +34,8 @@ open import Once.Type.Sub
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; fmapT-id; fmapT-cong)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
+open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-cong)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Surface.CoerceIR

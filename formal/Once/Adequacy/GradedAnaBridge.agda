@@ -30,8 +30,10 @@ open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ; coerce-functor-D)
 open import Once.Denotation.ValueDomainLaws using (CoalgRel; anaᵈ-∼)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; fmapT; fmapT-∘; _>>=T_; RelT′; rel-ret; RelT′-fmap)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; returnM; bindM-idˡ)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; fmapT; _>>=T_; RelT′; rel-ret)
+open import Once.Denotation.TraceMonadLaws using (fmapT-∘; RelT′-fmap)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; returnM)
+open import Once.Denotation.GradedDomainLaws using (bindM-idˡ)
 open import Once.Denotation.GradedOps using (cfᵛ; anaᵖ; mapAnaᵖ; ana-semᵛ)
 open import Once.Adequacy.GradedRelation fmt
   using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; prjB-rel; module _∼ᵖᵈ_)

@@ -59,7 +59,8 @@ open TargetNum using (int-bits; float-format)
 import Once.Word as OnceWord
 import Once.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-open import Once.Denotation.TraceMonad using (>>=T-assoc; >>=T-identityˡ)
+open import Once.Denotation.TraceMonad using ()
+open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityˡ)
 
 ------------------------------------------------------------------------
 -- (a) Plumbing means a value and no event.

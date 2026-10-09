@@ -124,37 +124,14 @@ haltT o a = halt o a
 -- The monad laws: EQUALITIES of computations.
 ------------------------------------------------------------------------
 
->>=T-identityˡ : ∀ {X Y : Set} (x : X) (f : X → T Y) → (returnT x >>=T f) ≡ f x
->>=T-identityˡ x f = refl
 
->>=T-identityʳ : ∀ {X : Set} (m : T X) → (m >>=T returnT) ≡ m
->>=T-identityʳ (ret x)      = refl
->>=T-identityʳ (call o a k) = cong (call o a) (extensionality λ b → >>=T-identityʳ (k b))
->>=T-identityʳ (halt o a)   = refl
 
->>=T-assoc : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z)
-           → ((m >>=T f) >>=T g) ≡ (m >>=T λ x → f x >>=T g)
->>=T-assoc (ret x)      f g = refl
->>=T-assoc (call o a k) f g = cong (call o a) (extensionality λ b → >>=T-assoc (k b) f g)
->>=T-assoc (halt o a)   f g = refl
 
->>=T-cong : ∀ {X Y : Set} (m : T X) {f g : X → T Y} → (∀ x → f x ≡ g x) → (m >>=T f) ≡ (m >>=T g)
->>=T-cong m h = cong (m >>=T_) (extensionality h)
 
-fmapT-id : ∀ {X} (m : T X) → fmapT (λ x → x) m ≡ m
-fmapT-id = >>=T-identityʳ
 
-fmapT-∘ : ∀ {X Y Z} (g : Y → Z) (f : X → Y) (m : T X) → fmapT g (fmapT f m) ≡ fmapT (λ x → g (f x)) m
-fmapT-∘ g f m = >>=T-assoc m _ _
 
-fmapT-cong : ∀ {X Y} {f g : X → Y} → (∀ x → f x ≡ g x) → (m : T X) → fmapT f m ≡ fmapT g m
-fmapT-cong h m = >>=T-cong m λ x → cong ret (h x)
 
-fmapT->>=T : ∀ {X Y Z : Set} (g : X → Y) (m : T X) (f : Y → T Z) → (fmapT g m >>=T f) ≡ (m >>=T λ x → f (g x))
-fmapT->>=T g m f = >>=T-assoc m _ f
 
->>=T-fmapT : ∀ {X Y Z : Set} (g : Y → Z) (m : T X) (f : X → T Y) → fmapT g (m >>=T f) ≡ (m >>=T λ x → fmapT g (f x))
->>=T-fmapT g m f = >>=T-assoc m f _
 
 ------------------------------------------------------------------------
 -- Running against an interpretation
@@ -309,20 +286,8 @@ stoppedT ι m = is-stopped (resultT ι m)
 -- is a cap of one finite list.
 ------------------------------------------------------------------------
 
-length-take-≤ : ∀ k (xs : List SigOpEvent) → length (take k xs) ≤ k
-length-take-≤ zero    _        = z≤n
-length-take-≤ (suc _) []       = z≤n
-length-take-≤ (suc k) (_ ∷ xs) = s≤s (length-take-≤ k xs)
 
-take-sat : ∀ k (xs : List SigOpEvent) → length (take k xs) < k → take (suc k) xs ≡ take k xs
-take-sat (suc _) []       _        = refl
-take-sat (suc k) (x ∷ xs) (s≤s lt) = cong (x ∷_) (take-sat k xs lt)
 
-take-coh : ∀ k (xs : List SigOpEvent) → ∃[ rest ] (take (suc k) xs ≡ take k xs ++ rest)
-take-coh zero    []       = [] , refl
-take-coh (suc k) []       = [] , refl
-take-coh zero    (x ∷ xs) = [ x ] , refl
-take-coh (suc k) (x ∷ xs) = proj₁ (take-coh k xs) , cong (x ∷_) (proj₂ (take-coh k xs))
 
 Bounded : (ℕ → List SigOpEvent) → Set
 Bounded tr = ∀ k → length (tr k) ≤ k
@@ -340,11 +305,7 @@ record PrefixFamily (tr : ℕ → List SigOpEvent) : Set where
     sat : Saturating tr
     coh : Coherent tr
 
-take-pf : ∀ (xs : List SigOpEvent) → PrefixFamily (λ n → take n xs)
-take-pf xs = prefixFamily (λ k → length-take-≤ k xs) (λ k → take-sat k xs) (λ k → take-coh k xs)
 
-projTrace-pf : ∀ {X} (ι : Interp) (m : T X) → PrefixFamily (projTrace ι m)
-projTrace-pf ι m = take-pf (eventsT ι m)
 
 ------------------------------------------------------------------------
 -- Results
@@ -358,8 +319,6 @@ resVal : ∀ {X} (r : Res X) → Returns? r → X
 resVal (returns x) _ = x
 resVal stopped     ()
 
-resVal-returns : ∀ {X} (r : Res X) (p : Returns? r) → r ≡ returns (resVal r p)
-resVal-returns (returns x) _ = refl
 
 -- A computation's result run MID-PROGRAM: against the interpretation, after
 -- the calls `h` already made. An answering call's answer depends on `h`, so a
@@ -391,80 +350,16 @@ data RelT′ {X Y : Set} (R : X → Y → Set) : T X → T Y → Set where
            → (∀ b → RelT′ R (k b) (k′ b)) → RelT′ R (call o a k) (call o a k′)
   rel-halt : ∀ {o a} → RelT′ R (halt o a) (halt o a)
 
-RelT′-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
-             {m : T X} {m′ : T X′} {f : X → T Y} {f′ : X′ → T Y′}
-           → RelT′ R m m′ → (∀ x x′ → R x x′ → RelT′ S (f x) (f′ x′))
-           → RelT′ S (m >>=T f) (m′ >>=T f′)
-RelT′-bind R S (rel-ret r)  hf = hf _ _ r
-RelT′-bind R S (rel-call h) hf = rel-call λ b → RelT′-bind R S (h b) hf
-RelT′-bind R S rel-halt     hf = rel-halt
 
-RelT′-fmap : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
-             {g : X → Y} {g′ : X′ → Y′} {m : T X} {m′ : T X′}
-           → (∀ x x′ → R x x′ → S (g x) (g′ x′))
-           → RelT′ R m m′ → RelT′ S (fmapT g m) (fmapT g′ m′)
-RelT′-fmap R S hg rm = RelT′-bind R S rm λ x x′ r → rel-ret (hg x x′ r)
 
-RelT′-refl : ∀ {X : Set} {R : X → X → Set} → (∀ x → R x x) → (m : T X) → RelT′ R m m
-RelT′-refl hr (ret x)      = rel-ret (hr x)
-RelT′-refl hr (call o a k) = rel-call λ b → RelT′-refl hr (k b)
-RelT′-refl hr (halt o a)   = rel-halt
 
--- At a functional relation, relatedness IS an equation.
-RelT′-≡ : ∀ {X Y : Set} (g : X → Y) {m : T X} {m′ : T Y}
-        → RelT′ (λ x y → g x ≡ y) m m′ → fmapT g m ≡ m′
-RelT′-≡ g (rel-ret refl) = refl
-RelT′-≡ g (rel-call h)   = cong (call _ _) (extensionality λ b → RelT′-≡ g (h b))
-RelT′-≡ g rel-halt       = refl
 
-≡-RelT′ : ∀ {X Y : Set} (g : X → Y) (m : T X) {m′ : T Y}
-        → fmapT g m ≡ m′ → RelT′ (λ x y → g x ≡ y) m m′
-≡-RelT′ g m refl = to-fmap m
-  where
-    to-fmap : (m : T _) → RelT′ (λ x y → g x ≡ y) m (fmapT g m)
-    to-fmap (ret x)      = rel-ret refl
-    to-fmap (call o a k) = rel-call λ b → to-fmap (k b)
-    to-fmap (halt o a)   = rel-halt
 
--- Related computations RUN alike: against any interpretation, from any
--- history, they make the same calls and end relatedly.
-RelT′-events : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
-             → RelT′ R m m′ → proj₁ (run ι h m) ≡ proj₁ (run ι h m′)
-RelT′-events ι h (rel-ret _)  = refl
-RelT′-events ι h (rel-call {o} {a} hk) = go (callAnswer ι h o a)
-  where go : (mb : Maybe M.⟦ ccod o ⟧) → proj₁ (run-call ι h o a _ mb) ≡ proj₁ (run-call ι h o a _ mb)
-        go (just b) = cong (callEvent o a ∷_) (RelT′-events ι (h ++ [ callEvent o a ]) (hk b))
-        go nothing  = refl
-RelT′-events ι h rel-halt     = refl
 
-RelT′-result : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
-             → RelT′ R m m′ → RelRes R (resultAt ι h m) (resultAt ι h m′)
-RelT′-result ι h (rel-ret r)  = rel-returns r
-RelT′-result ι h (rel-call {o} {a} hk) = go (callAnswer ι h o a)
-  where go : (mb : Maybe M.⟦ ccod o ⟧) → RelRes _ (proj₂ (run-call ι h o a _ mb)) (proj₂ (run-call ι h o a _ mb))
-        go (just b) = RelT′-result ι (h ++ [ callEvent o a ]) (hk b)
-        go nothing  = rel-stopped
-RelT′-result ι h rel-halt     = rel-stopped
 
 ------------------------------------------------------------------------
 -- List arithmetic the observable proofs use
 ------------------------------------------------------------------------
 
-take-++-split : ∀ {A : Set} (k : ℕ) (as bs : List A)
-              → take k (as ++ bs) ≡ take k as ++ take (k ∸ length as) bs
-take-++-split zero    as       bs = sym (cong (λ m → take m bs) (0∸n≡0 (length as)))
-take-++-split (suc k) []       bs = refl
-take-++-split (suc k) (a ∷ as) bs = cong (a ∷_) (take-++-split k as bs)
 
-minus-take : ∀ {A : Set} (k : ℕ) (as : List A)
-           → k ∸ length (take k as) ≡ k ∸ length as
-minus-take zero    as       = sym (0∸n≡0 (length as))
-minus-take (suc k) []       = refl
-minus-take (suc k) (a ∷ as) = minus-take k as
 
-take-++-threaded : ∀ {A : Set} (k : ℕ) (as bs : List A)
-                 → take k (as ++ bs)
-                   ≡ take k as ++ take (k ∸ length (take k as)) bs
-take-++-threaded k as bs =
-  trans (take-++-split k as bs)
-        (cong (λ m → take k as ++ take m bs) (sym (minus-take k as)))

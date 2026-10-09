@@ -23,8 +23,10 @@
 --     SigOp trace (programs do not return). D179: a RECORD — the depth-indexed
 --     family PLUS the three laws that make it canonical (`extends`, `bounded`,
 --     `saturates`), so pointwise equality of behaviours IS trace equality.
---   * `Once.Denotation.Meaning` — `⟦_⟧ᶜ`/`⟦_⟧ᵢ`: the typing derivation's
---     denotation, defined by direct induction on `_⊢ᶜ_`/`_⊢ᵢ_`.
+--   * THE GRADED MEANING (D250, plan 0.113 B4): `M π` / `⟦_⟧ᵛ`
+--     (`Denotation.GradedDomain`), the schemes (`Denotation.GradedOps`), the
+--     interaction-tree monad `T` with `Interp`/`run` (`Denotation.TraceMonad`,
+--     D257), and the core derivation meaning `⟦_⟧` (`Spec.Core.Meaning`).
 --   * PLAN 0.103 6a — THE PROGRAM MEANING IS THE CORE'S. A typed module IS a
 --     core program (`Once.Spec.Core.Translate.toProgram`: the module telescope,
 --     every definition typed once, a reference meaning its entry — D239, D243,
@@ -65,13 +67,24 @@ open import Once.Denotation.Admissible public
 open import Once.Denotation.Trace public
   using ( SigOpEvent ; mkEvent )
 
-open import Once.Denotation.ValueDomain public
-  using ( ⟦_⟧ᴰ ; ⟦_⟧ᴰᴵ ; cohᴰ ; coerce-functor⁻¹-D )
 open import Once.Denotation.Behavior public
   using (Behavior; Source)
-open import Once.Denotation.Meaning public
-  using ( ⟦_⟧ᵢ ; ⟦_⟧ᶜ ; Env ; lookupᴰ ; svarᴰ ; sigOpValᴰ ; sigOpRefᴰ
-        ; in-value ; named-sem ; cata-sem ; cata-ev-algᴰ-D )
+-- Plan 0.113 B4: THE MEANING IS THE GRADED ONE (D250), so that is what the Spec
+-- exports. A computation at grade `π` lives in `M π` — the value itself when
+-- `pure` (referentially transparent), an interaction tree `T` when `eff` (D257:
+-- calls answered by an interpretation `Interp`, observed through `run`); a type
+-- denotes `⟦_⟧ᵛ`. The core derivation meaning `⟦_⟧` (one clause per rule) and the
+-- recursion schemes are stated over them. The purity-blind Kleisli domain
+-- (`ValueDomain.⟦_⟧ᴰ`, every arrow `A → T B`) and the surface derivation meaning
+-- over it are implementation (the IR side's), no longer exported as the Spec's.
+open import Once.Denotation.TraceMonad public
+  using ( T ; returnT ; _>>=T_ ; callT ; haltT ; Interp ; Run ; run ; atT ; projTrace )
+open import Once.Denotation.GradedDomain public
+  using ( M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT )
+open import Once.Denotation.GradedOps public
+  using ( fmapM ; seqM ; in-valueᵛ ; cata-semᵛ ; ana-semᵛ ; out-semᵛ ; sigOpRefᵛ )
+open import Once.Spec.Core.Meaning public
+  using ( ⟦_⟧ )
 open import Once.Spec.Core.Telescope public
   using ( Program ; program ; runProgram ; Tele ; teleSem )
 open import Once.Spec.Core.Translate public

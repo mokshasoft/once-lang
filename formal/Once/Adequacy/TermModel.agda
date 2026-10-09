@@ -27,7 +27,8 @@ open import Once.Type.Sub using (pure⊑)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Surface.Context
   using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
-open import Once.Denotation.GradedDomain using (bindM-idˡ)
+open import Once.Denotation.GradedDomain using ()
+open import Once.Denotation.GradedDomainLaws using (bindM-idˡ)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-≡)
 open import Once.Spec.Core.Syntax S

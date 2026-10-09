@@ -25,7 +25,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Denotation.TraceMonad
-  using (T; RelT′; rel-ret; RelT′-bind; RelT′-fmap)
+  using (T; RelT′; rel-ret)
+open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
 open import Once.Denotation.ValueDomain using (seqF)
 
 ------------------------------------------------------------------------

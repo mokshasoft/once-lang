@@ -55,19 +55,7 @@ opaque
   _>>=ᵖ_ : ∀ {X Y : Set} → X → (X → Y) → Y
   m >>=ᵖ k = k m
 
-opaque
-  unfolding _>>=ᵖ_
-  >>=ᵖ-β : ∀ {X Y : Set} (m : X) (k : X → Y) → (m >>=ᵖ k) ≡ k m
-  >>=ᵖ-β m k = refl
 
-opaque
-  unfolding _>>=ᵖ_
-  >>=ᵖ-assoc : ∀ {X Y Z : Set} (m : X) (f : X → Y) (g : Y → Z)
-             → ((m >>=ᵖ f) >>=ᵖ g) ≡ (m >>=ᵖ λ x → f x >>=ᵖ g)
-  >>=ᵖ-assoc m f g = refl
-
-  >>=ᵖ-idʳ : ∀ {X : Set} (m : X) → (m >>=ᵖ λ x → x) ≡ m
-  >>=ᵖ-idʳ m = refl
 
 
 infixl 1 bindM
@@ -86,11 +74,6 @@ subM ⊑-pe   m = returnT m
 returnM : ∀ π {X} → X → M π X
 returnM π x = subM (pure⊑ π) x
 
--- Left identity at every grade: definitional at `eff` (T's bind on a unit), the
--- β-law of the opaque bind at `pure`.
-bindM-idˡ : ∀ π {X Y} (x : X) (k : X → M π Y) → bindM π (returnM π x) k ≡ k x
-bindM-idˡ pure x k = >>=ᵖ-β x k
-bindM-idˡ eff  x k = refl
 
 -- Every grade embeds into the trace monad (what compilation erases a grade to).
 toT : ∀ π {X} → M π X → T X
