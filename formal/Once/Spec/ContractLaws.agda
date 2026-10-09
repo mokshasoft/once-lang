@@ -26,8 +26,8 @@ open import Once.Denotation.Trace using (SigOpEvent)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Spec.Contract
-open Key public
-open Impl public
+open Key
+open Impl
 
 -- A decision on a membership that holds is `yes` (of the decided proof).
 yes-of : ∀ {k ks} → k ∈ ks → Σ (k ∈ ks) (λ p₀ → (k ∈K? ks) ≡ yes p₀)
