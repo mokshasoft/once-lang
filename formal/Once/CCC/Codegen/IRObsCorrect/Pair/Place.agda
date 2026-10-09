@@ -10,6 +10,7 @@
 
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -19,7 +20,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; current-frame; readReg; regs; Output; load-from-slot; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; store-indirect-suc; LocState; sucLoc; StoredValue; SV-Ptr; writeReg-same; sv-as-loc; Input1)
 open import Once.IRTy using (IRTy; _*_)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 
@@ -84,9 +85,9 @@ module PairPlaceC {FS : FrameSemantics} where
     -- what the two mid rows and `g`'s run leave alone …
     (mem-F→G : ∀ (loc : ValueLocation FS)
              → BeforeFrontier (falloc fsF) loc
-             → MemOps.readLoc (floc gs) loc ≡ MemOps.readLoc (floc fsF) loc)
+             → SMCore.MemOps.readLoc (floc gs) loc ≡ SMCore.MemOps.readLoc (floc fsF) loc)
     -- … and that `f`'s result is still in its stash when `g` is done
-    (fst-cell-gs : MemOps.readLoc (floc gs)
+    (fst-cell-gs : SMCore.MemOps.readLoc (floc gs)
                      (AtStack (current-frame alloc) (suc n))
                  ≡ just (readReg (regs (floc fsF)) Output))
     where
@@ -145,11 +146,11 @@ module PairPlaceC {FS : FrameSemantics} where
     -- running allocator's.
     slot-below-at : ∀ (j k : ℕ) (st : LocState FS) (aa : AllocState {FS})
                   → current-frame aa ≡ current-frame alloc → j < k
-                  → MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st aa)) (AtStack FR j)
-                    ≡ MemOps.readLoc st (AtStack FR j)
+                  → SMCore.MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st aa)) (AtStack FR j)
+                    ≡ SMCore.MemOps.readLoc st (AtStack FR j)
     slot-below-at j k st aa cf j<k =
-      subst (λ fr → MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st aa)) (AtStack fr j)
-                    ≡ MemOps.readLoc st (AtStack fr j))
+      subst (λ fr → SMCore.MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st aa)) (AtStack fr j)
+                    ≡ SMCore.MemOps.readLoc st (AtStack fr j))
             cf (store-at-slot-preserves-below j k st aa j<k)
 
     -- ── the heap frontier ────────────────────────────────────────────────
@@ -205,7 +206,7 @@ module PairPlaceC {FS : FrameSemantics} where
     out-u4 : readReg (regs (floc u4)) Output ≡ SV-Ptr pair-loc
     out-u4 =
       trans (cong (λ r → readReg r Output)
-                  (MemOps.writeLoc-regs (floc u3)
+                  (SMCore.MemOps.writeLoc-regs (floc u3)
                      (AtStack (current-frame (falloc u3)) pair-stash) pv))
             out-u3
 
@@ -217,7 +218,7 @@ module PairPlaceC {FS : FrameSemantics} where
 
     -- Row 6 reads `fst-stash`. What is there is `f`'s result: rows 2-5 write
     -- `snd-stash`, the heap, `pair-stash` and a register.
-    fst-u5 : MemOps.readLoc (floc u5) (AtStack FR fst-stash) ≡ just fv
+    fst-u5 : SMCore.MemOps.readLoc (floc u5) (AtStack FR fst-stash) ≡ just fv
     fst-u5 =
       trans (exec-abstract-preserves-stack-slot mov-to-input (floc u4) (falloc u4)
                FR fst-stash nhw-mov-to-input refl)
@@ -229,7 +230,7 @@ module PairPlaceC {FS : FrameSemantics} where
 
     wf-load-fst : InstrWF (floc u5) (falloc u5) (load-from-slot fst-stash)
     wf-load-fst =
-      fv , subst (λ fr → MemOps.readLoc (floc u5) (AtStack fr fst-stash) ≡ just fv)
+      fv , subst (λ fr → SMCore.MemOps.readLoc (floc u5) (AtStack fr fst-stash) ≡ just fv)
                  (sym cf-u5) fst-u5
 
     rdi-u6 : sv-as-loc (readReg (regs (floc u6)) Input1) ≡ just pair-loc
@@ -242,18 +243,18 @@ module PairPlaceC {FS : FrameSemantics} where
     out-u6 = load-slot-result fst-stash (floc u5) (falloc u5) fv (proj₂ wf-load-fst)
 
     -- CELL 0, written by `store-indirect` at row 7.
-    cell0-u7 : MemOps.readLoc (floc u7) pair-loc ≡ just fv
+    cell0-u7 : SMCore.MemOps.readLoc (floc u7) pair-loc ≡ just fv
     cell0-u7 = trans (store-ind-result (floc u6) (falloc u6) hl rdi-u6)
                      (cong just out-u6)
 
     -- Row 8 reads `snd-stash`, which row 2 wrote with `g`'s result.
-    snd-u2 : MemOps.readLoc (floc u2) (AtStack FR snd-stash) ≡ just gv
+    snd-u2 : SMCore.MemOps.readLoc (floc u2) (AtStack FR snd-stash) ≡ just gv
     snd-u2 =
-      subst (λ fr → MemOps.readLoc (floc u2) (AtStack fr snd-stash) ≡ just gv)
+      subst (λ fr → SMCore.MemOps.readLoc (floc u2) (AtStack fr snd-stash) ≡ just gv)
             cf-gs
-            (MemOps.writeLoc-read-same-stack (floc gs) (current-frame (falloc gs)) snd-stash gv)
+            (SMCore.MemOps.writeLoc-read-same-stack (floc gs) (current-frame (falloc gs)) snd-stash gv)
 
-    snd-u7 : MemOps.readLoc (floc u7) (AtStack FR snd-stash) ≡ just gv
+    snd-u7 : SMCore.MemOps.readLoc (floc u7) (AtStack FR snd-stash) ≡ just gv
     snd-u7 =
       trans (store-ind-preserves-slot (floc u6) (falloc u6) hl snd-stash rdi-u6)
      (trans (exec-abstract-preserves-stack-slot (load-from-slot fst-stash) (floc u5) (falloc u5)
@@ -267,7 +268,7 @@ module PairPlaceC {FS : FrameSemantics} where
 
     wf-load-snd : InstrWF (floc u7) (falloc u7) (load-from-slot snd-stash)
     wf-load-snd =
-      gv , subst (λ fr → MemOps.readLoc (floc u7) (AtStack fr snd-stash) ≡ just gv)
+      gv , subst (λ fr → SMCore.MemOps.readLoc (floc u7) (AtStack fr snd-stash) ≡ just gv)
                  (sym cf-u7) snd-u7
 
     rdi-u7 : sv-as-loc (readReg (regs (floc u7)) Input1) ≡ just pair-loc
@@ -285,33 +286,33 @@ module PairPlaceC {FS : FrameSemantics} where
     out-u8 = load-slot-result snd-stash (floc u7) (falloc u7) gv (proj₂ wf-load-snd)
 
     -- CELL 1, written by `store-indirect-suc` at row 9.
-    cell1-u9 : MemOps.readLoc (floc u9) (sucLoc pair-loc) ≡ just gv
+    cell1-u9 : SMCore.MemOps.readLoc (floc u9) (sucLoc pair-loc) ≡ just gv
     cell1-u9 = trans (store-ind-suc-result (floc u8) (falloc u8) hl rdi-u8)
                      (cong just out-u8)
 
     -- …and both cells carried to the end: the only writes left are the OTHER
     -- cell of the same block and two register-only loads.
-    cell0-u10 : MemOps.readLoc (floc u10) pair-loc ≡ just fv
+    cell0-u10 : SMCore.MemOps.readLoc (floc u10) pair-loc ≡ just fv
     cell0-u10 =
       trans (heap-untouched (load-from-slot pair-stash) (floc u9) (falloc u9) hl nhw-load-from-slot)
      (trans (store-ind-suc-preserves-heap (floc u8) (falloc u8) hl hl rdi-u8 (sucHL-≢ hl))
      (trans (heap-untouched (load-from-slot snd-stash) (floc u7) (falloc u7) hl nhw-load-from-slot)
             cell0-u7))
 
-    cell1-u10 : MemOps.readLoc (floc u10) (sucLoc pair-loc) ≡ just gv
+    cell1-u10 : SMCore.MemOps.readLoc (floc u10) (sucLoc pair-loc) ≡ just gv
     cell1-u10 =
       trans (heap-untouched (load-from-slot pair-stash) (floc u9) (falloc u9)
                (sucHL hl) nhw-load-from-slot)
             cell1-u9
 
     -- THE RESULT POINTER: row 10 loads the stashed node pointer.
-    pair-u4 : MemOps.readLoc (floc u4) (AtStack FR pair-stash) ≡ just pv
+    pair-u4 : SMCore.MemOps.readLoc (floc u4) (AtStack FR pair-stash) ≡ just pv
     pair-u4 =
-      subst (λ fr → MemOps.readLoc (floc u4) (AtStack fr pair-stash) ≡ just pv)
+      subst (λ fr → SMCore.MemOps.readLoc (floc u4) (AtStack fr pair-stash) ≡ just pv)
             cf-u3
-            (MemOps.writeLoc-read-same-stack (floc u3) (current-frame (falloc u3)) pair-stash pv)
+            (SMCore.MemOps.writeLoc-read-same-stack (floc u3) (current-frame (falloc u3)) pair-stash pv)
 
-    pair-u9 : MemOps.readLoc (floc u9) (AtStack FR pair-stash) ≡ just pv
+    pair-u9 : SMCore.MemOps.readLoc (floc u9) (AtStack FR pair-stash) ≡ just pv
     pair-u9 =
       trans (store-ind-suc-preserves-slot (floc u8) (falloc u8) hl pair-stash rdi-u8)
      (trans (exec-abstract-preserves-stack-slot (load-from-slot snd-stash) (floc u7) (falloc u7)
@@ -325,7 +326,7 @@ module PairPlaceC {FS : FrameSemantics} where
 
     wf-load-pair : InstrWF (floc u9) (falloc u9) (load-from-slot pair-stash)
     wf-load-pair =
-      pv , subst (λ fr → MemOps.readLoc (floc u9) (AtStack fr pair-stash) ≡ just pv)
+      pv , subst (λ fr → SMCore.MemOps.readLoc (floc u9) (AtStack fr pair-stash) ≡ just pv)
                  (sym cf-u9) pair-u9
 
     out-u10 : readReg (regs (floc u10)) Output ≡ SV-Ptr pair-loc
@@ -339,7 +340,7 @@ module PairPlaceC {FS : FrameSemantics} where
     -- frontier (the allocation advanced it), and the `BeforeFrontier`s.
     ------------------------------------------------------------------------
     tail-pres : ∀ (loc : ValueLocation FS) → BeforeFrontier a' loc
-              → MemOps.readLoc (floc u10) loc ≡ MemOps.readLoc (floc gs) loc
+              → SMCore.MemOps.readLoc (floc u10) loc ≡ SMCore.MemOps.readLoc (floc gs) loc
     tail-pres = NSP.mem-pres-from nhw-load-from-slot refl nhw-load-from-slot refl
                   ≤-refl rdi-u6 rdi-u8
 
@@ -358,11 +359,11 @@ module PairPlaceC {FS : FrameSemantics} where
         ≤-refl
 
     mem-F→u10 : ∀ (loc : ValueLocation FS) → BeforeFrontier (falloc fsF) loc
-              → MemOps.readLoc (floc u10) loc ≡ MemOps.readLoc (floc fsF) loc
+              → SMCore.MemOps.readLoc (floc u10) loc ≡ SMCore.MemOps.readLoc (floc fsF) loc
     mem-F→u10 loc bf = trans (tail-pres loc (bf-weaken-F loc bf)) (mem-F→G loc bf)
 
     mem-G→u10 : ∀ (loc : ValueLocation FS) → BeforeFrontier (falloc gs) loc
-              → MemOps.readLoc (floc u10) loc ≡ MemOps.readLoc (floc gs) loc
+              → SMCore.MemOps.readLoc (floc u10) loc ≡ SMCore.MemOps.readLoc (floc gs) loc
     mem-G→u10 loc bf = tail-pres loc (bf-weaken-G loc bf)
 
     transF : ∀ {m'} {E : IRTy} (w : ⟦ E ⟧) (lc : ValueLocation FS)
@@ -413,7 +414,7 @@ module PairPlaceC {FS : FrameSemantics} where
     ------------------------------------------------------------------------
     cell-of : ∀ {D : IRTy} {v : ⟦ D ⟧} {m : AllocMode} {aS ca : AllocState {FS}}
                 (src : LocState FS) (cl : ValueLocation FS)
-              → MemOps.readLoc (floc u10) cl ≡ just (readReg (regs src) Output)
+              → SMCore.MemOps.readLoc (floc u10) cl ≡ just (readReg (regs src) Output)
               → (∀ {m'} {E : IRTy} (w : ⟦ E ⟧) (lc : ValueLocation FS)
                  → BeforeFrontier aS lc
                  → ValidAtWF m' aS {E} w lc src

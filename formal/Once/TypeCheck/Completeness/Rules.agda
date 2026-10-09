@@ -43,7 +43,8 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
-  using (inferElab; checkElab; success; inferElabV; checkElabV; VerifiedInferResult; via; apply-pure; apply-eff)
+  using (via; apply-pure; apply-eff)
+open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQualified-aux; inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
 import Once.TypeCheck.Classify as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
@@ -68,7 +69,7 @@ open import Once.Surface.Syntax as Srf using ()
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J; nov-int; nov-float; nov-other; negOperandView)
+open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J)
 
 ------------------------------------------------------------------------
 -- Leaf-case completeness
@@ -119,8 +120,7 @@ infer-complete-RQualified :
 -- deciders to `just` via completeness (`rewrite`), so the success branch fires.
 infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
   where
-    open Once.TypeCheck.ElaborateProofs using (inferElabV-RQualified-aux;
-      inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux)
+    open Once.TypeCheck.ElaborateProofs using ()
     helper : ∀ (lhs : Maybe Type)
            → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
            → inferElabV-RQualified-aux ctx name alias
@@ -199,7 +199,7 @@ inferElabV-RResolved-J :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) (gv : GenView cn)
   → classifyGen cn ≡ gv
   → inferElab ctx (RResolved cn)
-      ≡ proj₁ (Once.TypeCheck.ElaborateProofs.inferElabV-RResolved-dispatch ctx cn gv)
+      ≡ proj₁ (E.inferElabV-RResolved-dispatch ctx cn gv)
 inferElabV-RResolved-J ctx cn .(classifyGen cn) refl = refl
 
 -- The VIEW-PARAMETERISED body. Taking `classifyGen cn ≡ gv` as an argument is
@@ -225,8 +225,7 @@ infer-complete-RResolved-view gv-unit     _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ
 infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
   go T conc eq
   where
-    open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
-      inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux)
+    open Once.TypeCheck.ElaborateProofs using ()
     helper : ∀ (lhs : Maybe Type)
            → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ lhs)
            → inferElabV-RResolved-aux ctx cn ng'
@@ -300,8 +299,7 @@ infer-complete-RResolved-own :
       inferElab ctx (RResolved (own x)) ≡ success T zeroUsage eE d f
 infer-complete-RResolved-own {ctx} {x} {T} ns eq conc = view (classifyGen (own x)) refl
   where
-    open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
-      inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux)
+    open Once.TypeCheck.ElaborateProofs using ()
     h1 : ∀ (ng : NotGenerator (own x)) (lhs : Maybe Type) (e′ : lookupImport (Classify.NamedCtx.sig ctx) x ≡ lhs)
        → inferElabV-RResolved-aux ctx (own x) ng (lookupImport (Classify.NamedCtx.sig ctx) x) refl
          ≡ inferElabV-RResolved-aux ctx (own x) ng lhs e′
@@ -563,7 +561,7 @@ infer-complete-RVar-local :
 infer-complete-RVar-local {ctx} x {A} {Ψ} {eE'} eqLoc
   = _ , _ , _ , cong proj₁ (helper _ eqLoc)
   where
-    open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux)
+    open Once.TypeCheck.ElaborateProofs using ()
     helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
            → (eq' : lookupLocal ctx x ≡ lhs)
            → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
@@ -587,8 +585,7 @@ infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc
                         (helperImpVal _ (proj₂ (genWord?-no x ¬gw))
                                      _ (proj₂ (isConcrete?-complete conc))))
   where
-    open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux;
-      inferElabV-RVar-import-value-aux)
+    open Once.TypeCheck.ElaborateProofs using ()
     helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
               → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
@@ -775,7 +772,7 @@ infer-complete-RBinOp-cmp {ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-R
 
 decideLeq-just : ∀ q' q → (q' ≤q q) ≡ true
                → ∃ λ (eq : (q' ≤q q) ≡ true)
-               → Once.TypeCheck.ElaborateProofs.decideLeq q' q ≡ just eq
+               → E.decideLeq q' q ≡ just eq
 decideLeq-just Zero Zero refl = refl , refl
 decideLeq-just Zero One  refl = refl , refl
 decideLeq-just Zero Many refl = refl , refl
@@ -798,7 +795,7 @@ check-complete-RLam :
 check-complete-RLam ctx x body A q q' B leqEq eqC
   with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqC
 ... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
-    with Once.TypeCheck.ElaborateProofs.decideLeq q' q | decideLeq-just q' q leqEq
+    with E.decideLeq q' q | decideLeq-just q' q leqEq
 ...   | just _ | _ , refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
@@ -866,7 +863,7 @@ infer-complete-RApp-generic :
       inferElab ctx (Raw.RApp f x)
         ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
 open Once.TypeCheck.ElaborateProofs
-  using (inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
+  using ()
 viewBridge : ∀ {ctx f x} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
            → inferElabV-RApp-dispatch ctx f x (classifyAppHeadView f) refl
              ≡ inferElabV-RApp-dispatch ctx f x vw eq

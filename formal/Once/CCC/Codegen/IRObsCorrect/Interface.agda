@@ -28,13 +28,15 @@ open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedAt
 module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
+open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
+import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; halted; current-frame; readReg; regs; Input1; SV-Ptr; sucLoc; SV-Code)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -83,7 +85,7 @@ module Core {FS : FrameSemantics} where
                    (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl)
 
   runAt : ∀ {X} → LocState FS → TM.T X → TM.Run X
-  runAt s m = TM.run ιᶠ (LocState.ev-log s) m
+  runAt s m = TM.run ιᶠ (SMCore.ev-log s) m
 
   -- …its calls, how it ends, and whether it stopped.
   eventsAt : ∀ {X} → LocState FS → TM.T X → DL.List SigOpEvent
@@ -97,16 +99,16 @@ module Core {FS : FrameSemantics} where
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
-          → LocState.ev-log st ≡ LocState.ev-log st′ → m ≡ m′ → runAt st m ≡ runAt st′ m′
+          → SMCore.ev-log st ≡ SMCore.ev-log st′ → m ≡ m′ → runAt st m ≡ runAt st′ m′
   runAt-≡ h e = cong₂ (TM.run ιᶠ) h e
 
   -- A fragment that makes no call leaves the log as it found it.
-  log-pure : ∀ {s : LocState FS} → LocState.ev-log s ≡ LocState.ev-log s DL.++ DL.[]
+  log-pure : ∀ {s : LocState FS} → SMCore.ev-log s ≡ SMCore.ev-log s DL.++ DL.[]
   log-pure = sym (Data.List.Properties.++-identityʳ _)
 
   -- One call-free step of the structured machine leaves the log alone.
   log-abstract : ∀ (i : AbstractInstr) → LogFree i → ∀ (s : LocState FS) alloc
-               → LocState.ev-log (proj₁ (AbstractExec.exec-abstract {FS} i s alloc)) ≡ LocState.ev-log s
+               → SMCore.ev-log (proj₁ (SMCore.AbstractExec.exec-abstract {FS} i s alloc)) ≡ SMCore.ev-log s
   log-abstract = LP.exec-abstract-log
 
   -- The value of a computation that RETURNS AT ONCE (`ret v`: a constructor,
@@ -129,7 +131,7 @@ module Core {FS : FrameSemantics} where
 
   -- …and one call-free flat step is such a fragment (`FlatLog`).
   log-step : ∀ (i : AbstractInstr) → LogFree i → ∀ prog (fs : FlatState)
-           → LocState.ev-log (floc (flat-exec-instr i prog fs)) ≡ LocState.ev-log (floc fs) DL.++ DL.[]
+           → SMCore.ev-log (floc (flat-exec-instr i prog fs)) ≡ SMCore.ev-log (floc fs) DL.++ DL.[]
   log-step i lf prog fs = trans (LP.flat-exec-instr-log i lf prog fs) (log-pure {floc fs})
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
@@ -169,14 +171,14 @@ module Core {FS : FrameSemantics} where
   -- log by its events, so a clause's `log` follows from its `traces-agree`.
   log-of : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
          → ∀ {es} → chain-events r ≡ es
-         → LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) DL.++ es
-  log-of {fs = fs} r nn eq = trans (chain-log r nn) (cong (LocState.ev-log (floc fs) DL.++_) eq)
+         → SMCore.ev-log (floc fs′) ≡ SMCore.ev-log (floc fs) DL.++ es
+  log-of {fs = fs} r nn eq = trans (chain-log r nn) (cong (SMCore.ev-log (floc fs) DL.++_) eq)
 
   -- …in particular a SILENT chain (the emitter's own rows) leaves it alone.
   log-silent : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
              → chain-events r ≡ DL.[]
-             → LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
-  log-silent {fs = fs} r nn eq = trans (log-of r nn eq) (Data.List.Properties.++-identityʳ (LocState.ev-log (floc fs)))
+             → SMCore.ev-log (floc fs′) ≡ SMCore.ev-log (floc fs)
+  log-silent {fs = fs} r nn eq = trans (log-of r nn eq) (Data.List.Properties.++-identityʳ (SMCore.ev-log (floc fs)))
   open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; r-rigid; readable?; readable-base; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
@@ -385,7 +387,7 @@ module Core {FS : FrameSemantics} where
       -- `FlatSteps`: the retired nested instructions (`instr-case-on-tag`,
       -- `instr-loop`) grow the log without an `event-of`, and a chain does not
       -- know it was emitted.
-      log        : LocState.ev-log (floc settle) ≡ LocState.ev-log s DL.++ eventsAt s (evalᴰ ir x)
+      log        : SMCore.ev-log (floc settle) ≡ SMCore.ev-log s DL.++ eventsAt s (evalᴰ ir x)
       -- D179: the value comes from `evalᴰ`, not the pure `eval`. While it was
       -- `eval ir x` the value half refined a DIFFERENT semantics from the
       -- trace half — the same two-models category error this codebase retired
@@ -460,15 +462,15 @@ module Core {FS : FrameSemantics} where
       -- PERMANENT. Slots below the fragment's own frontier are untouched.
       stack-pres : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
                  → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
-                 → MemOps.readLoc (floc settle) (AtStack fr j)
-                   ≡ MemOps.readLoc s (AtStack fr j)
+                 → SMCore.MemOps.readLoc (floc settle) (AtStack fr j)
+                   ≡ SMCore.MemOps.readLoc s (AtStack fr j)
 
       -- CONTINGENT on the bump encoding; to be restated as 0.35 M2's liveness
       -- property when the allocator is wired.
       heap-pres  : ∀ (hl : HeapLocation)
                  → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
-                 → MemOps.readLoc (floc settle) (AtDynamic hl)
-                   ≡ MemOps.readLoc s (AtDynamic hl)
+                 → SMCore.MemOps.readLoc (floc settle) (AtDynamic hl)
+                   ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
 
       -- D210: THE FRAME DOES NOT MOVE.
       --
@@ -506,8 +508,8 @@ module Core {FS : FrameSemantics} where
               → (vr : ValueRealized prog base n l ir x s alloc cl k)
               → ∀ (loc : ValueLocation FS)
               → BeforeFrontier (record alloc { next-slot = n }) loc
-              → MemOps.readLoc (floc (ValueRealized.settle vr)) loc
-                ≡ MemOps.readLoc s loc
+              → SMCore.MemOps.readLoc (floc (ValueRealized.settle vr)) loc
+                ≡ SMCore.MemOps.readLoc s loc
   vr-mem-pres vr (AtStack fr j) bf = ValueRealized.stack-pres vr fr j bf
   vr-mem-pres vr (AtDynamic hl) bf = ValueRealized.heap-pres  vr hl bf
 
@@ -646,7 +648,7 @@ module Core {FS : FrameSemantics} where
       -- Plan 0.105: exact, and the log grows by them — see
       -- `ValueRealized.log`/`traces-agree`.
       events     : chain-events run ≡ eventsAt (floc fs) comp
-      log        : LocState.ev-log (floc settle) ≡ LocState.ev-log (floc fs) DL.++ eventsAt (floc fs) comp
+      log        : SMCore.ev-log (floc settle) ≡ SMCore.ev-log (floc fs) DL.++ eventsAt (floc fs) comp
       -- D204: WHAT THE CALL LEAVES ALONE — the call half of the same fact
       -- `ValueRealized.mem-pres` states for a straight-line fragment.
       --
@@ -672,7 +674,7 @@ module Core {FS : FrameSemantics} where
       mem-pres   : ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
                  → ∀ (loc : ValueLocation FS)
                  → BeforeFrontier (record pre { next-slot = m }) loc
-                 → MemOps.readLoc (floc settle) loc ≡ MemOps.readLoc (floc fs) loc
+                 → SMCore.MemOps.readLoc (floc settle) loc ≡ SMCore.MemOps.readLoc (floc fs) loc
       -- D210: …and the call's. `enter-call` SHIFTS the frame, so the claim is
       -- against the caller's `pre`, which is what a returning callee restores.
       frame-pres : ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
@@ -700,7 +702,7 @@ module Core {FS : FrameSemantics} where
       {m : AllocMode} {alloc' : AllocState {FS}}
       {cloc : ValueLocation FS} {st : LocState FS}
     → ValidAtWF m alloc' {A IRTy′.⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
-    → MemOps.readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
+    → SMCore.MemOps.readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
     → ∃[ j ]
         ( (find-thunk prog ℓ ≡ just j)
         -- The argument's residence is stated at the CALLER's frontier, and the
@@ -729,7 +731,7 @@ module Core {FS : FrameSemantics} where
       {vloc : ValueLocation FS} {st : LocState FS}
     → ValidAtWF m alloc' {ν-type F}
         (retVal (evalᴰ (Ana wf coalg) seed)) vloc st
-    → MemOps.readLoc st (sucLoc vloc) ≡ just (SV-Code ℓ)
+    → SMCore.MemOps.readLoc st (sucLoc vloc) ≡ just (SV-Code ℓ)
     → ∃[ j ]
         ( (find-thunk prog ℓ ≡ just j)
         × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})

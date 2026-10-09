@@ -57,7 +57,9 @@ open import Once.Arith.SigOp.Builders
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; fmapT)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice; checkElabV; CheckElabResult; VerifiedCheckResult)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice)
+open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV)
+import Once.TypeCheck.Elaborate as Elaborate
 open import Once.TypeCheck.Classify using (lookupPolyPrefix; ctxWithImportsAndPolys)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Postulates using (extensionality)
@@ -119,8 +121,8 @@ splice-ctx-indep :
     (r : VerifiedCheckResult (ctxWithImportsAndPolys (imps x) prefix) body A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
   → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ dγ
       ≡ SD.⟦ applySplice {Γ = Srf.∅} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ tt
-splice-ctx-indep polys pAcc imps userFns fresh x polyEq (CheckElabResult.failure _ , _) dγ = refl
-splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (CheckElabResult.success Srf.[] eE _ _ , _) dγ = refl
+splice-ctx-indep polys pAcc imps userFns fresh x polyEq (Elaborate.CheckElabResult.failure _ , _) dγ = refl
+splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (Elaborate.CheckElabResult.success Srf.[] eE _ _ , _) dγ = refl
 
 poly-ctx-indep :
   ∀ {n} {Γ : Srf.Ctx n} {A : Type}

@@ -94,6 +94,7 @@ open import Once.Target.Arch using (x86-32)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
+import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
@@ -436,7 +437,7 @@ ir-flat-correct-x86-32 brs = FFOx.ir-flat-correct-main ir-obs-correct brs
 -- entry, pc 0, which is the start.
 file-flat-x86-32 :
   ∀ (brs : BlockRunsHyp-x86-32) (m : P.Module) (F : RF.Image)
-  → C.compileFileFromModule C.Heap false x86-32 m ≡ inj₂ F
+  → C.compileFileFromModule IR.Heap false x86-32 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
   → (oq : o ≡ C.entry-owner)
   → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))

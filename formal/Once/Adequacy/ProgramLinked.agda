@@ -53,8 +53,10 @@ open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.IR.Ref using (refIR)
 import Once.Compile as C
-open C.FunInfo using (funName)
-open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
+import Once.IR as IR′
+import Once.Parser as Parser
+open Parser.FunInfo using (funName)
+open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 import Once.Parser.Module.Core as P
 import Once.Surface.Context as Ctx
 open import Once.Surface.Syntax hiding (_,_; _,_^_)
@@ -467,13 +469,13 @@ linv-entry {σ = σ} {csc} {pre} x ty ir g lb inv = record
 -- A definition's body, checked in its scope, compiles to linked IR.
 body-linked : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
                 {se : _} {d f : ℕ}
-            → C.compileFun C.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
+            → C.compileFun IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
             → (ce : Once.TypeCheck.Elaborate.checkElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty
                       ≡ success Usage.[] se d f)
             → Linked σ pre irFun
 body-linked {σ = σ} {csc} {pre} inv x ty {body} cf ce =
   subst (Linked σ pre) (sym (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body cf ce))
-    (elaborate-linked pre C.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))
+    (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))
       (resolve-refs pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
          (LInv.tel-ok inv (C.declImps (C.CScope.ctele csc)) (LInv.iself inv))
          (<-wellFounded (length (C.cpolys csc))) uf 0 (realize D′)
@@ -497,7 +499,7 @@ private
             → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (spliceWith {Γ = Γ} pre ac I uf fresh x A cr)
   splice-at tbl pre ac I uf fresh x A (success Usage.[] _ _ _ , w) refl r = r
 
-linv-poly : ∀ {csc pre} {pfi : C.PolyFunInfo} {Ψ : Usage 0}
+linv-poly : ∀ {csc pre} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0}
           → ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
           → All (pfunName pfi ≢_) (scopeNames csc)
           → LInv σ csc pre → LInv σ (C.addEntry csc pfi) pre
@@ -554,15 +556,15 @@ link-walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle cs
           → (∀ {d} → d ∈ teleSig mt → d ∈ σ)
           → All (λ e → Linked σ (tableOf-go (FB.bundle→compiled b) pre) (fbody e)) (tableOf-go (FB.bundle→compiled b) pre)
 link-walk [] FB.bnil pre inv fr u = LInv.ent-ok inv
-link-walk {csc = csc} {es = C.e-fun fi ∷ es} (ffi {ty = ty} ep et c h g rest) (FB.bffi {ty = ty′} ep′ et′ ec eh eg rest-b) pre inv fr u
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h g rest) (FB.bffi {ty = ty′} ep′ et′ ec eh eg rest-b) pre inv fr u
   with just-injective (trans (sym et) et′)
 ... | refl = link-walk rest rest-b pre (linv-sig (funName fi) ty g (u (here refl)) inv)
                (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m))
-link-walk (ffi {fi = C.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf eg ce cf rest-b) pre inv fr u
-link-walk {csc = csc} {es = C.e-poly pfi ∷ es} (poly D rest) (FB.bpoly ce rest-b) pre inv fr u =
-  link-walk rest rest-b pre (linv-poly D (fresh-head {csc = csc} {e = C.e-poly pfi} {es = es} fr) inv)
+link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf eg ce cf rest-b) pre inv fr u
+link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly D rest) (FB.bpoly ce rest-b) pre inv fr u =
+  link-walk rest rest-b pre (linv-poly D (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
             (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u
-link-walk {csc = csc} {es = C.e-fun fi ∷ es} (mono {ty = ty} refl er g D rest)
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er g D rest)
           (FB.bcons {ty = ty′} {Ψ = Usage.[]} {irFun = irFun} refl rf eg ce cf rest-b) pre inv fr u
   with inj₂-injective (trans (sym er) rf)
 ... | refl = link-walk rest rest-b _

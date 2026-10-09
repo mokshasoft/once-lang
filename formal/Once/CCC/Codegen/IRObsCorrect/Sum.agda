@@ -10,6 +10,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -19,7 +20,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (next-heap-ref; next-slot)
+open import Once.CCC.Machine.SMCore using (next-heap-ref; next-slot; instr-load-tag-lit; load-from-slot; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; store-indirect-suc; sv-as-loc; readReg; regs; Input1; current-frame; StoredValue; Output; halted; SV-Tag; writeReg-same; sucLoc; SV-Ptr)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL)
 
 import Once.CCC.FrameSemantics
@@ -122,12 +123,12 @@ module SumC {FS : FrameSemantics} where
       pv : StoredValue FS
       pv = readReg (regs (floc fs1)) Output
 
-      read-payload-fs2 : MemOps.readLoc (floc fs2)
+      read-payload-fs2 : SMCore.MemOps.readLoc (floc fs2)
                            (AtStack (current-frame (falloc fs1)) payload-stash) ≡ just pv
       read-payload-fs2 =
-        MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) payload-stash pv
+        SMCore.MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) payload-stash pv
 
-      read-payload-fs7 : MemOps.readLoc (floc fs7)
+      read-payload-fs7 : SMCore.MemOps.readLoc (floc fs7)
                            (AtStack (current-frame (falloc fs1)) payload-stash) ≡ just pv
       read-payload-fs7 =
         trans (store-ind-preserves-slot (floc fs6) (falloc fs6) sum-hl payload-stash rdi-fs6)
@@ -142,7 +143,7 @@ module SumC {FS : FrameSemantics} where
 
       wf-load-payload : InstrWF (floc fs7) (falloc fs7) (load-from-slot payload-stash)
       wf-load-payload =
-        pv , subst (λ f → MemOps.readLoc (floc fs7) (AtStack f payload-stash) ≡ just pv)
+        pv , subst (λ f → SMCore.MemOps.readLoc (floc fs7) (AtStack f payload-stash) ≡ just pv)
                    (sym cf-fs7) read-payload-fs7
 
       -- Row 8: the pointer must SURVIVE the first indirect store and the slot
@@ -173,12 +174,12 @@ module SumC {FS : FrameSemantics} where
       sv : StoredValue FS
       sv = readReg (regs (floc fs3)) Output
 
-      read-sum-fs4 : MemOps.readLoc (floc fs4)
+      read-sum-fs4 : SMCore.MemOps.readLoc (floc fs4)
                        (AtStack (current-frame (falloc fs3)) sum-stash) ≡ just sv
       read-sum-fs4 =
-        MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) sum-stash sv
+        SMCore.MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) sum-stash sv
 
-      read-sum-fs9 : MemOps.readLoc (floc fs9)
+      read-sum-fs9 : SMCore.MemOps.readLoc (floc fs9)
                        (AtStack (current-frame (falloc fs3)) sum-stash) ≡ just sv
       read-sum-fs9 =
         trans (store-ind-suc-preserves-slot (floc fs8) (falloc fs8) sum-hl sum-stash rdi-fs8)
@@ -193,7 +194,7 @@ module SumC {FS : FrameSemantics} where
 
       wf-load-sum : InstrWF (floc fs9) (falloc fs9) (load-from-slot sum-stash)
       wf-load-sum =
-        sv , subst (λ f → MemOps.readLoc (floc fs9) (AtStack f sum-stash) ≡ just sv)
+        sv , subst (λ f → SMCore.MemOps.readLoc (floc fs9) (AtStack f sum-stash) ≡ just sv)
                    (sym cf-fs9) read-sum-fs9
 
       -- The ten `halted ≡ false` obligations. Rows 0-5 are unconditional in
@@ -265,11 +266,11 @@ module SumC {FS : FrameSemantics} where
       tagout-fs6 : readReg (regs (floc fs6)) Output ≡ SV-Tag 0
       tagout-fs6 = writeReg-same (regs (floc fs5)) Output (SV-Tag 0)
 
-      tag-fs7 : MemOps.readLoc (floc fs7) sum-loc ≡ just (SV-Tag 0)
+      tag-fs7 : SMCore.MemOps.readLoc (floc fs7) sum-loc ≡ just (SV-Tag 0)
       tag-fs7 = trans (store-ind-result (floc fs6) (falloc fs6) sum-hl rdi-fs6)
                       (cong just tagout-fs6)
 
-      tag-fs10 : MemOps.readLoc (floc fs10) sum-loc ≡ just (SV-Tag 0)
+      tag-fs10 : SMCore.MemOps.readLoc (floc fs10) sum-loc ≡ just (SV-Tag 0)
       tag-fs10 =
         trans (heap-untouched (load-from-slot sum-stash) (floc fs9) (falloc fs9)
                  sum-hl nhw-load-from-slot)
@@ -284,7 +285,7 @@ module SumC {FS : FrameSemantics} where
       payout-fs8 = load-slot-result payload-stash (floc fs7) (falloc fs7) pv
                      (proj₂ wf-load-payload)
 
-      pay-fs10 : MemOps.readLoc (floc fs10) (sucLoc sum-loc) ≡ just pv
+      pay-fs10 : SMCore.MemOps.readLoc (floc fs10) (sucLoc sum-loc) ≡ just pv
       pay-fs10 =
         trans (heap-untouched (load-from-slot sum-stash) (floc fs9) (falloc fs9)
                  (sucHL sum-hl) nhw-load-from-slot)
@@ -492,12 +493,12 @@ module SumC {FS : FrameSemantics} where
       pv : StoredValue FS
       pv = readReg (regs (floc fs1)) Output
 
-      read-payload-fs2 : MemOps.readLoc (floc fs2)
+      read-payload-fs2 : SMCore.MemOps.readLoc (floc fs2)
                            (AtStack (current-frame (falloc fs1)) payload-stash) ≡ just pv
       read-payload-fs2 =
-        MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) payload-stash pv
+        SMCore.MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) payload-stash pv
 
-      read-payload-fs7 : MemOps.readLoc (floc fs7)
+      read-payload-fs7 : SMCore.MemOps.readLoc (floc fs7)
                            (AtStack (current-frame (falloc fs1)) payload-stash) ≡ just pv
       read-payload-fs7 =
         trans (store-ind-preserves-slot (floc fs6) (falloc fs6) sum-hl payload-stash rdi-fs6)
@@ -512,7 +513,7 @@ module SumC {FS : FrameSemantics} where
 
       wf-load-payload : InstrWF (floc fs7) (falloc fs7) (load-from-slot payload-stash)
       wf-load-payload =
-        pv , subst (λ f → MemOps.readLoc (floc fs7) (AtStack f payload-stash) ≡ just pv)
+        pv , subst (λ f → SMCore.MemOps.readLoc (floc fs7) (AtStack f payload-stash) ≡ just pv)
                    (sym cf-fs7) read-payload-fs7
 
       -- Row 8: the pointer must SURVIVE the first indirect store and the slot
@@ -543,12 +544,12 @@ module SumC {FS : FrameSemantics} where
       sv : StoredValue FS
       sv = readReg (regs (floc fs3)) Output
 
-      read-sum-fs4 : MemOps.readLoc (floc fs4)
+      read-sum-fs4 : SMCore.MemOps.readLoc (floc fs4)
                        (AtStack (current-frame (falloc fs3)) sum-stash) ≡ just sv
       read-sum-fs4 =
-        MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) sum-stash sv
+        SMCore.MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) sum-stash sv
 
-      read-sum-fs9 : MemOps.readLoc (floc fs9)
+      read-sum-fs9 : SMCore.MemOps.readLoc (floc fs9)
                        (AtStack (current-frame (falloc fs3)) sum-stash) ≡ just sv
       read-sum-fs9 =
         trans (store-ind-suc-preserves-slot (floc fs8) (falloc fs8) sum-hl sum-stash rdi-fs8)
@@ -563,7 +564,7 @@ module SumC {FS : FrameSemantics} where
 
       wf-load-sum : InstrWF (floc fs9) (falloc fs9) (load-from-slot sum-stash)
       wf-load-sum =
-        sv , subst (λ f → MemOps.readLoc (floc fs9) (AtStack f sum-stash) ≡ just sv)
+        sv , subst (λ f → SMCore.MemOps.readLoc (floc fs9) (AtStack f sum-stash) ≡ just sv)
                    (sym cf-fs9) read-sum-fs9
 
       -- The ten `halted ≡ false` obligations. Rows 0-5 are unconditional in
@@ -635,11 +636,11 @@ module SumC {FS : FrameSemantics} where
       tagout-fs6 : readReg (regs (floc fs6)) Output ≡ SV-Tag 1
       tagout-fs6 = writeReg-same (regs (floc fs5)) Output (SV-Tag 1)
 
-      tag-fs7 : MemOps.readLoc (floc fs7) sum-loc ≡ just (SV-Tag 1)
+      tag-fs7 : SMCore.MemOps.readLoc (floc fs7) sum-loc ≡ just (SV-Tag 1)
       tag-fs7 = trans (store-ind-result (floc fs6) (falloc fs6) sum-hl rdi-fs6)
                       (cong just tagout-fs6)
 
-      tag-fs10 : MemOps.readLoc (floc fs10) sum-loc ≡ just (SV-Tag 1)
+      tag-fs10 : SMCore.MemOps.readLoc (floc fs10) sum-loc ≡ just (SV-Tag 1)
       tag-fs10 =
         trans (heap-untouched (load-from-slot sum-stash) (floc fs9) (falloc fs9)
                  sum-hl nhw-load-from-slot)
@@ -654,7 +655,7 @@ module SumC {FS : FrameSemantics} where
       payout-fs8 = load-slot-result payload-stash (floc fs7) (falloc fs7) pv
                      (proj₂ wf-load-payload)
 
-      pay-fs10 : MemOps.readLoc (floc fs10) (sucLoc sum-loc) ≡ just pv
+      pay-fs10 : SMCore.MemOps.readLoc (floc fs10) (sucLoc sum-loc) ≡ just pv
       pay-fs10 =
         trans (heap-untouched (load-from-slot sum-stash) (floc fs9) (falloc fs9)
                  (sucHL sum-hl) nhw-load-from-slot)

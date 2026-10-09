@@ -34,7 +34,8 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Compile as C
-open C.PolyFunInfo using (pfunType)
+import Once.Parser as Parser
+open Parser.PolyFunInfo using (pfunType)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Denotation.DefEnv using (defAt; impAt)
@@ -76,10 +77,10 @@ module _ (δ : GM.DefSem) where
                 (lp : lookupPolyPrefix (C.buildPolyCtx ps) x ≡ just (sc , body , prefix)) (ki : KindedInstance sc U)
             → defAt (C.buildPolyCtx ps) x (defEnv ts) lp U ki ≡ refSem δ (poly-inst {S = S} {sc = sc} (proj₂ (telFind {S = S} ts lp)) ki)
   agree-def TR.[] () ki
-  agree-def {C.mkPolyFunInfo n ty b ∷ ps} (TR.t-def d e ts) {x} lp ki with StrProp._≟_ n x
+  agree-def {Parser.mkPolyFunInfo n ty b ∷ ps} (TR.t-def d e ts) {x} lp ki with StrProp._≟_ n x
   ... | yes refl with lp
   ...   | refl = refl
-  agree-def {C.mkPolyFunInfo n ty b ∷ ps} (TR.t-def d e ts) {x} lp ki | no _ = agree-def ts lp ki
+  agree-def {Parser.mkPolyFunInfo n ty b ∷ ps} (TR.t-def d e ts) {x} lp ki | no _ = agree-def ts lp ki
 
   -- Plan 0.105 (D257 amendment 2): the scope's environment runs in the core's
   -- world — its signatures with its implementation. D274: a reference to Σ

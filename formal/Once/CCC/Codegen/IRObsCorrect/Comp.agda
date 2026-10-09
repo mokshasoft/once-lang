@@ -9,6 +9,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -18,7 +19,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (next-slot)
+open import Once.CCC.Machine.SMCore using (next-slot; LocState; readReg; regs; Input1; Output; AbstractTrace; mov-to-input; halted; writeReg-same)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
@@ -283,7 +284,7 @@ module CompC {FS : FrameSemantics} where
       -- the budgeted monad — `minus-take`, `take-++-threaded` — is gone: the
       -- events are exact.)
       h : DL.List SigOpEvent
-      h = LocState.ev-log s
+      h = SMCore.ev-log s
 
       esF : DL.List SigOpEvent
       esF = eventsAt s (evalᴰ f x)
@@ -378,8 +379,8 @@ module CompC {FS : FrameSemantics} where
           -- D204: `g ∘ f` preserves what BOTH preserve.
           mem-pres-comp : ∀ (loc : ValueLocation FS)
                         → BeforeFrontier (record alloc { next-slot = n }) loc
-                        → MemOps.readLoc (floc (VR.settle vg)) loc
-                          ≡ MemOps.readLoc s loc
+                        → SMCore.MemOps.readLoc (floc (VR.settle vg)) loc
+                          ≡ SMCore.MemOps.readLoc s loc
           mem-pres-comp loc bf =
             trans (vr-mem-pres vg loc
                     (frontier-monotone (record (falloc fsM) { next-slot = n })
@@ -390,7 +391,7 @@ module CompC {FS : FrameSemantics} where
             where
               mpF : ∀ (l' : ValueLocation FS)
                   → BeforeFrontier (record alloc { next-slot = n }) l'
-                  → MemOps.readLoc (floc fsF) l' ≡ MemOps.readLoc s l'
+                  → SMCore.MemOps.readLoc (floc fsF) l' ≡ SMCore.MemOps.readLoc s l'
               mpF (AtStack fr j) b = spF fr j b
               mpF (AtDynamic hl) b = hpF hl b
 
@@ -430,7 +431,7 @@ module CompC {FS : FrameSemantics} where
                    (sym ev-comp))
 
           -- …and the log grows by both.
-          log-comp : LocState.ev-log (floc (VR.settle vg)) ≡ h DL.++ eventsAt s (evalᴰ (g ∘ f) x)
+          log-comp : SMCore.ev-log (floc (VR.settle vg)) ≡ h DL.++ eventsAt s (evalᴰ (g ∘ f) x)
           log-comp =
             trans (VR.log vg)
             (trans (cong (DL._++ evG) logF)

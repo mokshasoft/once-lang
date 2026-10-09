@@ -42,7 +42,8 @@ open import Once.Target.SymbolValid using (once-symbol-path-asm; once-symbol-own
 open import Once.Arith.SigOp.Block using (block-name)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
 open import Once.Compile using (moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; dedup-go; dedup-blocks; block-symbol; block-syms; calls-of; externs-of; is-extern?)
-open import Once.Parser.Module using (Module)
+open import Once.Parser.Module using ()
+open import Once.Parser.Module.Core using (Module)
 open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
 
 ------------------------------------------------------------------------

@@ -50,6 +50,8 @@ open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Spec.Core.Telescope using (runProgram)
 open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
+import Once.IR as IR
+import Once.Parser as Parser
 open import Once.Adequacy.RewritePreserves using (rewrite-program-preserves)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
@@ -89,6 +91,7 @@ open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
 import Once.Compile as C
 import Once.Grammar as G
 import Once.Parser.Module.Core as P
+import Once.Parser.Module.Resolve as Resolve
 import Once.Parser.Module as Module
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser using (parseStrict)
@@ -127,9 +130,9 @@ import Once.Adequacy.CPU as CPU
 compile-asm : Arch → Source → C.CompileResult
 compile-asm arch src with srcToModule src
 ... | nothing = C.Error "front-end (parse / import resolution) failed"
-... | just m  = C.compileFromModule C.Heap C.Build false arch m
+... | just m  = C.compileFromModule IR.Heap C.Build false arch m
 
-compile-cli-asm : C.AllocMode → C.Stage → Bool → Arch → P.Module → C.CompileResult
+compile-cli-asm : IR.AllocMode → C.Stage → Bool → Arch → P.Module → C.CompileResult
 compile-cli-asm allocMode stage doOpt arch m =
   C.compileFromModule allocMode stage doOpt arch m
 
@@ -220,7 +223,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- what the toolchain will check (D100/D167 were its postulated halves).
     file-wf :
       ∀ (m : P.Module) (F : C.FileOf arch) →
-      C.compileFileFromModule C.Heap false arch m ≡ inj₂ F →
+      C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       AsmWF-of arch F
     -- RUNNING THE FILE IS THE FLAT TRACE OF THE PROGRAM IT WAS EMITTED FROM: the
     -- `_start` stub, then the lowered image. Stated over the FILE (a value of the
@@ -228,7 +231,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- proofs reason about is a failed proof, not a hidden one (D261).
     file-trace-correct :
       ∀ (m : P.Module) (F : C.FileOf arch) →
-      C.compileFileFromModule C.Heap false arch m ≡ inj₂ F →
+      C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
       ∀ (n : ℕ) → at (run-file arch ι F) n
@@ -244,14 +247,14 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
 
 -- The CLI's text and the verified compiler's file are ONE pipeline (plan 0.107):
 -- the Build stage is the print of the file.
-build≡file-ef : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) (ef : String ⊎ List C.Entry)
-              → C.cfm-ef-aux C.Heap C.Build doOpt arch m ef ≡ C.built-of arch (C.cfm-file-ef C.Heap doOpt arch m ef)
+build≡file-ef : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) (ef : String ⊎ List Parser.Entry)
+              → C.cfm-ef-aux IR.Heap C.Build doOpt arch m ef ≡ C.built-of arch (C.cfm-file-ef IR.Heap doOpt arch m ef)
 build≡file-ef doOpt arch m (inj₁ err) = refl
 build≡file-ef doOpt arch m (inj₂ es)  = refl
 
 build≡file : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
-           → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.built-of arch (C.compileFileFromModule C.Heap doOpt arch m)
-build≡file doOpt arch m = build≡file-ef doOpt arch m (C.extractFunctions (C.extractAliases m) m)
+           → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.built-of arch (C.compileFileFromModule IR.Heap doOpt arch m)
+build≡file doOpt arch m = build≡file-ef doOpt arch m (Parser.extractFunctions (Parser.extractAliases m) m)
 
 built-of-inv : ∀ (arch : Arch) (r : String ⊎ C.FileOf arch) (asm : String)
              → C.built-of arch r ≡ C.Built asm → Σ-syntax (C.FileOf arch) (λ F → r ≡ inj₂ F)
@@ -327,7 +330,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   compile-mir : Arch → Bool → P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
-  compile-mir arch doOpt m (just _)  = compile-fe arch (C.compileFileFromModule C.Heap doOpt arch m)
+  compile-mir arch doOpt m (just _)  = compile-fe arch (C.compileFileFromModule IR.Heap doOpt arch m)
 
   compile-gm : Arch → Bool → Maybe P.Module → Maybe (List Byte)
   compile-gm arch doOpt nothing   = nothing
@@ -347,15 +350,15 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- what makes this the compiler's refusal rather than a coincidence about
   -- some other path returning `nothing`.
   refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                   (es : List C.Entry)
+                   (es : List Parser.Entry)
                    (d : Dec (AdmissibleM arch m)) → ¬ AdmissibleM arch m
-               → compile-fe arch (C.cfm-file-gated C.Heap doOpt arch m es d) ≡ nothing
+               → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ nothing
   refuse-gated arch doOpt m es (yes p) ¬adm = ⊥-elim (¬adm p)
   refuse-gated arch doOpt m es (no  _) ¬adm = refl
 
   refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                (ef : String ⊎ List C.Entry) → ¬ AdmissibleM arch m
-            → compile-fe arch (C.cfm-file-ef C.Heap doOpt arch m ef) ≡ nothing
+                (ef : String ⊎ List Parser.Entry) → ¬ AdmissibleM arch m
+            → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ nothing
   refuse-ef arch doOpt m (inj₁ err)            ¬adm = refl
   refuse-ef arch doOpt m (inj₂ es) ¬adm =
     refuse-gated arch doOpt m es (admissibleM? arch m) ¬adm
@@ -365,7 +368,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
              → compile-mir arch doOpt m mir ≡ nothing
   refuse-mir arch doOpt m nothing   ¬adm = refl
   refuse-mir arch doOpt m (just ir) ¬adm =
-    refuse-ef arch doOpt m (C.extractFunctions (C.extractAliases m) m) ¬adm
+    refuse-ef arch doOpt m (Parser.extractFunctions (Parser.extractAliases m) m) ¬adm
 
   refuse-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) → ¬ AdmissibleM arch m
             → compile-gm arch doOpt (just m) ≡ nothing
@@ -377,16 +380,16 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- `nothing`, which is not `just`), which is precisely the statement that the
   -- gate is what stands between an inadmissible program and an output.
   accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                   (es : List C.Entry)
+                   (es : List Parser.Entry)
                    (d : Dec (AdmissibleM arch m)) {bytes : List Byte}
-               → compile-fe arch (C.cfm-file-gated C.Heap doOpt arch m es d) ≡ just bytes
+               → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ just bytes
                → AdmissibleM arch m
   accept-gated arch doOpt m es (yes p) eq = p
   accept-gated arch doOpt m es (no  _) ()
 
   accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                (ef : String ⊎ List C.Entry) {bytes : List Byte}
-            → compile-fe arch (C.cfm-file-ef C.Heap doOpt arch m ef) ≡ just bytes
+                (ef : String ⊎ List Parser.Entry) {bytes : List Byte}
+            → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ just bytes
             → AdmissibleM arch m
   accept-ef arch doOpt m (inj₁ err)            ()
   accept-ef arch doOpt m (inj₂ es) eq =
@@ -397,7 +400,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
              → compile-mir arch doOpt m mir ≡ just bytes → AdmissibleM arch m
   accept-mir arch doOpt m nothing   ()
   accept-mir arch doOpt m (just ir) eq =
-    accept-ef arch doOpt m (C.extractFunctions (C.extractAliases m) m) eq
+    accept-ef arch doOpt m (Parser.extractFunctions (Parser.extractAliases m) m) eq
 
   accept-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) {bytes : List Byte}
             → compile-gm arch doOpt (just m) ≡ just bytes → AdmissibleM arch m
@@ -446,12 +449,12 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
     with MC.moduleToIR-complete mR mt hvm
   ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
-  ...   | (asm , built-eq) with built-of-inv arch (C.compileFileFromModule C.Heap doOpt arch mR) asm
+  ...   | (asm , built-eq) with built-of-inv arch (C.compileFileFromModule IR.Heap doOpt arch mR) asm
                                   (trans (sym (build≡file doOpt arch mR)) built-eq)
   ...     | (F , file-eq) = file-bytes arch F , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
           p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
-          res-eq : Module.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
+          res-eq : Resolve.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
           res-eq = RBR.resolvesModule-sound (Source.srcImports src)
                      (P.Module.decls mU) mR rmR
           stm-eq : srcToModule src ≡ just mR
@@ -535,7 +538,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- (`rewrite-program-preserves`). Every link but the first is a proof.
     file-correct :
       ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
-      C.compileFileFromModule C.Heap false arch m ≡ inj₂ F →
+      C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
       moduleSig m ≡ sig ι →
       ∀ (n : ℕ) → at (exec arch (file-bytes arch F)) n ≡ at (⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι) n
@@ -638,7 +641,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- (`trace-false` below).
     postulate
       opt-trace : ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
-        C.compileFileFromModule C.Heap true arch m ≡ inj₂ F →
+        C.compileFileFromModule IR.Heap true arch m ≡ inj₂ F →
         moduleToIR m ≡ just ir →
         -- plan 0.105: in a world that declares the module's signatures
         moduleSig m ≡ sig ι →
@@ -651,7 +654,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- (the proven codegen chain for `false`; `opt-trace` for `true`).
     TraceAt : Arch → Bool → P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
     TraceAt arch doOpt m ir =
-      ∀ (F : C.FileOf arch) → C.compileFileFromModule C.Heap doOpt arch m ≡ inj₂ F →
+      ∀ (F : C.FileOf arch) → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IR (arch-numerics arch) ι
 
     -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
@@ -659,7 +662,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
     correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
                    (fe : String ⊎ C.FileOf arch) → AdmissibleM arch m →
-                   C.compileFileFromModule C.Heap doOpt arch m ≡ fe →
+                   C.compileFileFromModule IR.Heap doOpt arch m ≡ fe →
                    moduleToIR m ≡ just ir →
                    TraceAt arch doOpt m ir →
                    Pointwise _≋_ (map (exec arch) (compile-fe arch fe)) (⟦ programAt (moduleTable m) (just ir) ⟧⊥-ir arch)
@@ -679,7 +682,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                     Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ programAt (moduleTable m) mir ⟧⊥-ir arch)
     correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
     correct-mir arch doOpt m (just ir) adm mi-eq tw =
-      correct-fe arch doOpt m ir (C.compileFileFromModule C.Heap doOpt arch m) adm refl mi-eq (tw ir refl)
+      correct-fe arch doOpt m ir (C.compileFileFromModule IR.Heap doOpt arch m) adm refl mi-eq (tw ir refl)
 
 
     -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;

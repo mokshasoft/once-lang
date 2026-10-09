@@ -49,8 +49,11 @@ import Once.CCC.Codegen.LabelScope as LS
 import Once.CCC.Codegen.SlotBudget as SB
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; top-done)
 import Once.Compile as C
+import Once.IR as IR
+import Once.Parser as Parser
 open import Once.Compile using (moduleToIR; moduleTable)
-open import Once.Parser.Module using (Module)
+open import Once.Parser.Module using ()
+open import Once.Parser.Module.Core using (Module)
 open import Once.Compile using (externs-of)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
@@ -245,8 +248,8 @@ module Lib (m : Module) where
 
   -- the table is linked, by the telescope walk (any compile result)
   private
-    ce-linked : ∀ (es : List C.Entry) → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es
-              → (r : _) → C.compileEntries C.Heap false C.emptyCScope es ≡ r
+    ce-linked : ∀ (es : List Parser.Entry) → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es
+              → (r : _) → C.compileEntries IR.Heap false C.emptyCScope es ≡ r
               → All (λ e → Linked (moduleSig-ef (inj₂ es)) (C.tableOfResult r) (fbody e)) (C.tableOfResult r)
     ce-linked es ef (inj₁ _)   _   = []
     ce-linked es ef (inj₂ cfs) ceq =
@@ -259,14 +262,14 @@ module Lib (m : Module) where
         u : ∀ {d} → d ∈ teleSig mt → d ∈ moduleSig-ef (inj₂ es)
         u {d} k = subst (d ∈_) (teleSig≡entrySig mt) k
 
-    ef-linked : ∀ (ef : _) → C.extractFunctions (C.extractAliases m) m ≡ ef
-              → All (λ e → Linked (moduleSig-ef ef) (C.tableOfResult (C.compileResolvedModule-aux C.Heap false m ef)) (fbody e))
-                    (C.tableOfResult (C.compileResolvedModule-aux C.Heap false m ef))
+    ef-linked : ∀ (ef : _) → Parser.extractFunctions (Parser.extractAliases m) m ≡ ef
+              → All (λ e → Linked (moduleSig-ef ef) (C.tableOfResult (C.compileResolvedModule-aux IR.Heap false m ef)) (fbody e))
+                    (C.tableOfResult (C.compileResolvedModule-aux IR.Heap false m ef))
     ef-linked (inj₁ _)  _  = []
     ef-linked (inj₂ es) ef = ce-linked es ef _ refl
 
   table-linked : All (λ e → Linked σ tbl (fbody e)) tbl
-  table-linked = ef-linked (C.extractFunctions (C.extractAliases m) m) refl
+  table-linked = ef-linked (Parser.extractFunctions (Parser.extractAliases m) m) refl
 
   rt-linked : All (λ e → Linked σ rt (fbody e)) rt
   rt-linked = proj₂ (rewrite-program-linked lp (tt , table-linked))

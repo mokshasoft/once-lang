@@ -9,6 +9,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -18,7 +19,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; LocState; StoredValue; halted; load-from-slot; store-indirect-suc; instr-load-code-addr; store-indirect; mov-to-input; store-at-slot; sucLoc; readReg; regs; Output; SV-Code; writeReg-same; SV-Ptr; current-frame; instr-alloc-heap; mov-to-output)
 open import Once.Memory.HeapAddress using (sucHL)
 
 import Once.CCC.FrameSemantics
@@ -73,11 +74,11 @@ module TwoCellBuildC {FS : FrameSemantics} where
     cell0out-fs6 : readReg (regs (floc fs6)) Output ≡ cell0v
     cell0out-fs6 = load-slot-result cell0-stash (floc fs5) (falloc fs5) cell0v (proj₂ wf-load-cell0)
 
-    cell0-fs7 : MemOps.readLoc (floc fs7) obj-loc ≡ just cell0v
+    cell0-fs7 : SMCore.MemOps.readLoc (floc fs7) obj-loc ≡ just cell0v
     cell0-fs7 = trans (store-ind-result (floc fs6) (falloc fs6) obj-hl rdi-fs6)
                     (cong just cell0out-fs6)
 
-    cell0-fs10 : MemOps.readLoc (floc fs10) obj-loc ≡ just cell0v
+    cell0-fs10 : SMCore.MemOps.readLoc (floc fs10) obj-loc ≡ just cell0v
     cell0-fs10 =
       trans (heap-untouched (load-from-slot obj-stash) (floc fs9) (falloc fs9)
                obj-hl nhw-load-from-slot)
@@ -91,7 +92,7 @@ module TwoCellBuildC {FS : FrameSemantics} where
     codeout-fs8 : readReg (regs (floc fs8)) Output ≡ SV-Code code-lbl
     codeout-fs8 = writeReg-same (regs (floc fs7)) Output (SV-Code code-lbl)
 
-    code-fs10 : MemOps.readLoc (floc fs10) (sucLoc obj-loc) ≡ just (SV-Code code-lbl)
+    code-fs10 : SMCore.MemOps.readLoc (floc fs10) (sucLoc obj-loc) ≡ just (SV-Code code-lbl)
     code-fs10 =
       trans (heap-untouched (load-from-slot obj-stash) (floc fs9) (falloc fs9)
                (sucHL obj-hl) nhw-load-from-slot)
@@ -151,7 +152,7 @@ module TwoCellBuildC {FS : FrameSemantics} where
     -- internal step.
     mem-pres : ∀ (loc : ValueLocation FS)
              → BeforeFrontier (record alloc { next-slot = n }) loc
-             → MemOps.readLoc (floc fs10) loc ≡ MemOps.readLoc s loc
+             → SMCore.MemOps.readLoc (floc fs10) loc ≡ SMCore.MemOps.readLoc s loc
     mem-pres = TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
                  n≤ rdi-fs6 rdi-fs8
 

@@ -27,6 +27,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -37,7 +38,7 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; AbstractTrace; LocState; StoredValue; halted; readReg; regs; Input1; SV-Ptr; mov-to-input)
 open import Data.Sum using (inj₂)
 open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using (IRTy) renaming (_+_ to _+ᵀ_)
@@ -178,7 +179,7 @@ module ArmRC {FS : FrameSemantics} where
 
       mem-pres : ∀ (loc : ValueLocation FS)
                → BeforeFrontier (record alloc { next-slot = n }) loc
-               → MemOps.readLoc (floc t2) loc ≡ MemOps.readLoc s loc
+               → SMCore.MemOps.readLoc (floc t2) loc ≡ SMCore.MemOps.readLoc s loc
       mem-pres loc bf = trans (vr-mem-pres vg loc (bf-up loc bf)) (P.mem-eq loc)
 
       bf-mono-c : ∀ (m : ℕ) (loc : ValueLocation FS)
@@ -222,7 +223,7 @@ module ArmRC {FS : FrameSemantics} where
 
       -- plan 0.105: the arm runs from the caller's log — the three prologue
       -- rows make no call — so its run IS the clause's.
-      h-eq : LocState.ev-log (floc P.r3) ≡ LocState.ev-log s
+      h-eq : SMCore.ev-log (floc P.r3) ≡ SMCore.ev-log s
       h-eq = P.log-r3
 
       RE : runAt (floc P.r3) (evalᴰ g Bv) ≡ runAt s (evalᴰ (case f g) (inj₂ Bv))
@@ -231,7 +232,7 @@ module ArmRC {FS : FrameSemantics} where
       st-eq : stopsAt s (evalᴰ (case f g) (inj₂ Bv)) ≡ stopsAt (floc P.r3) (evalᴰ g Bv)
       st-eq = sym (cong (λ r → is-stopped (proj₂ r)) RE)
 
-      log-c : LocState.ev-log (floc (VR.settle vg)) ≡ LocState.ev-log s ++ eventsAt s (evalᴰ (case f g) (inj₂ Bv))
+      log-c : SMCore.ev-log (floc (VR.settle vg)) ≡ SMCore.ev-log s ++ eventsAt s (evalᴰ (case f g) (inj₂ Bv))
       log-c = trans (VR.log vg) (cong₂ _++_ h-eq (cong proj₁ RE))
 
       witness : MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k

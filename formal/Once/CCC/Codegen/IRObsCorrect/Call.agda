@@ -15,6 +15,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; LinkedAt)
@@ -25,7 +26,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 
 import Once.CCC.FrameSemantics
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn; halted)
 import Once.IRTy
 import Once.IR
 open import Once.Res using (is-stopped)
@@ -90,15 +91,15 @@ module CallC {FS : FrameSemantics} where
       -- itself writes no memory.
       mem-pres : ∀ (loc : ValueLocation FS)
                → BeforeFrontier (record alloc { next-slot = n }) loc
-               → MemOps.readLoc (floc (CalleeRun.settle crun)) loc ≡ MemOps.readLoc s loc
+               → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc ≡ SMCore.MemOps.readLoc s loc
       mem-pres loc bf =
         trans (CalleeRun.mem-pres crun alloc n (cong falloc call-eq) loc bf)
-              (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
+              (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
 
       -- plan 0.105: the call writes nothing but control, so the callee runs
       -- from the caller's log.
-      h-eq : LocState.ev-log (floc post) ≡ LocState.ev-log s
-      h-eq = cong (λ st → LocState.ev-log (floc st)) call-eq
+      h-eq : SMCore.ev-log (floc post) ≡ SMCore.ev-log s
+      h-eq = cong (λ st → SMCore.ev-log (floc st)) call-eq
 
       RE : runAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) ≡ runAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
       RE = runAt-≡ {st = floc post} {st′ = s}

@@ -43,8 +43,10 @@ open import Once.Type.Rigid using (RigidFree; KindedInstance)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (bare)
 import Once.Compile as C
-open C.FunInfo using (funName; funBody)
-open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
+import Once.IR as IR
+import Once.Parser as Parser
+open Parser.FunInfo using (funName; funBody)
+open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
@@ -190,10 +192,10 @@ defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def d e ts) = cong₂ _,_ refl (defEnv
 -- ABI, is related to its elaboration's core meaning.
 module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig Fs (C.CScope.csig csc)} {is : ImpSig S (C.CScope.cimps csc)}
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
-                (sg : SigCF S) {fi : C.FunInfo} {ty : Type} (g : RigidFree ty)
+                (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} (g : RigidFree ty)
                 (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ctx.Usage.[])
                 {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
-                (cf : C.compileFun C.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+                (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
                 (inv : Inv {S = S} csc tl ss is ts pre) where
   x    = funName fi
@@ -239,10 +241,10 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
                          (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D tt) relA))
 
 
-inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : C.FunInfo} {ty : Type} {g : RigidFree ty}
+inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
              {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
-         → C.compileFun C.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+         → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
          → Inv (C.extendScope csc (funName fi) ty)
@@ -291,7 +293,7 @@ inv-mono {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]}
 -- Plan 0.104 E: the body at a kinded instance is the surface substitution
 -- instance of its rigid derivation (`ElabInst.inst-at`, proved), and it means
 -- the entry's abstraction instantiated there (`ElabInst.poly-instance-sem`).
-inv-poly : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {pfi : C.PolyFunInfo} {Ψ : Ctx.Usage 0}
+inv-poly : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {pfi : Parser.PolyFunInfo} {Ψ : Ctx.Usage 0}
              (D : ctxOf (AS.scopeOf csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
          → Inv {S = S} csc tl ss is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
          → Inv (C.addEntry csc pfi)
@@ -342,7 +344,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
         old = Inv.rel inv later ns I ia uf
 
         -- the telescope's earlier entries are not the new one
-        ra : ∀ (qs : List (C.PolyFunInfo × TopCtx)) → All (y ≢_) (map (λ q → pfunName (proj₁ q)) qs)
+        ra : ∀ (qs : List (Parser.PolyFunInfo × TopCtx)) → All (y ≢_) (map (λ q → pfunName (proj₁ q)) qs)
            → RefsAgree σo σ (C.buildPolyCtx (map proj₁ qs))
         ra []       []       = tt
         ra (q ∷ qs) (h ∷ hs) =

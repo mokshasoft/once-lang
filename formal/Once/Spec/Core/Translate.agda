@@ -39,8 +39,9 @@ open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; ground-kinded; rigidOf;
   rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 import Once.Compile as C
-open C.FunInfo using (funName; funBody)
-open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
+import Once.Parser as Parser
+open Parser.FunInfo using (funName; funBody)
+open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Surface.Context as Ctx using (Usage)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -104,7 +105,7 @@ data ImpSig {Fs s} (S : Sig Fs s) : C.FunCtx → Set where
   i-def : ∀ {x T imps} (d : Fin s) → S !! d ≡ monoSchema T → ImpSig S imps → ImpSig S ((x , T) ∷ imps)
 
 -- Each telescope definition's core entry.
-data TeleSig {Fs s} (S : Sig Fs s) : List C.PolyFunInfo → Set where
+data TeleSig {Fs s} (S : Sig Fs s) : List Parser.PolyFunInfo → Set where
   []    : TeleSig S []
   t-def : ∀ {p ps} (d : Fin s) → S !! d ≡ schemaOf (pfunType p) → TeleSig S ps → TeleSig S (p ∷ ps)
 
@@ -183,7 +184,7 @@ private
 -- The walk's `main` selection is TOP-LEVEL (not `where`-bound), so a proof can
 -- follow it: the first `main : IO Unit`, exactly as the compiler's `findMain`
 -- picks it.
-module _ {Fs s} {S : Sig Fs s} {sc : Scope} {fi : C.FunInfo} {ty : T.Type} {Ψ : Usage 0} where
+module _ {Fs s} {S : Sig Fs s} {sc : Scope} {fi : Parser.FunInfo} {ty : T.Type} {Ψ : Usage 0} where
 
 
   monoElab : SigSig Fs (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
@@ -203,12 +204,12 @@ monoSg : ∀ {Fs s} {S : Sig Fs s} {ty : T.Type} → SigCF S → RigidFree ty �
 monoSg sg g zero    = ground-cf g
 monoSg sg g (suc d) = sg d
 
-polySg : ∀ {Fs s} {S : Sig Fs s} → SigCF S → (pfi : C.PolyFunInfo) → SigCF (S ▷ schemaOf (pfunType pfi))
+polySg : ∀ {Fs s} {S : Sig Fs s} → SigCF S → (pfi : Parser.PolyFunInfo) → SigCF (S ▷ schemaOf (pfunType pfi))
 polySg sg pfi zero    = schemaOf-cf (pfunType pfi)
 polySg sg pfi (suc d) = sg d
 
 -- A telescope definition: typed once at its rigid schema, elaborated, abstracted.
-module _ {Fs s} {S : Sig Fs s} {sc : Scope} {pfi : C.PolyFunInfo} {Ψ : Usage 0} where
+module _ {Fs s} {S : Sig Fs s} {sc : Scope} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0} where
 
   polyElab : SigSig Fs (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
            → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ → E.Elab S Ctx.∅ Ψ (rigidOf (pfunType pfi))

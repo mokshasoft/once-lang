@@ -27,6 +27,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -38,7 +39,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.IRTy using (IRTy)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; AbstractInstr; load-indirect-suc; mov-to-input; halted; LocState; StoredValue; readReg; regs; Input1; Output; writeReg-same)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -218,17 +219,17 @@ module RunC {FS : FrameSemantics} where
       mv-eq = writeReg-same (regs (floc r2)) Input1
                 (readReg (regs (floc r2)) Output)
 
-      mem-eq : ∀ (lc : ValueLocation FS) → MemOps.readLoc (floc r3) lc ≡ MemOps.readLoc s lc
+      mem-eq : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc r3) lc ≡ SMCore.MemOps.readLoc s lc
       mem-eq lc = trans (mem-untouched mov-to-input (floc r2) (falloc r2) lc
                            nhw-mov-to-input refl)
                         (mem-untouched load-indirect-suc s alloc lc
                            nhw-load-indirect-suc refl)
 
       -- plan 0.105: …and the log is the caller's (no row calls).
-      log-r3 : LocState.ev-log (floc r3) ≡ LocState.ev-log s
+      log-r3 : SMCore.ev-log (floc r3) ≡ SMCore.ev-log s
       log-r3 = log-abstract load-indirect-suc tt s alloc
 
-      log-i4 : LocState.ev-log (floc i4) ≡ LocState.ev-log s
+      log-i4 : SMCore.ev-log (floc i4) ≡ SMCore.ev-log s
       log-i4 = log-abstract load-indirect-suc tt s alloc
 
       -- NONE of the five rows is a SigOp, so a prologue emits nothing. The

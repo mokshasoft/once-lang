@@ -19,6 +19,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -28,7 +29,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; LocState; current-frame; AbstractTrace; StoredValue; halted; mov-to-output; store-at-slot; readReg; regs; Input1; writeReg-preserves; Output; restore-input; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; store-indirect-suc; sv-as-loc; AbstractInstr)
 open import Once.IRTy using (IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
@@ -71,9 +72,9 @@ module PairC {FS : FrameSemantics} where
       (s : LocState FS) (settle : LocState FS)
     → (∀ (loc : ValueLocation FS)
        → BeforeFrontier (record alloc { next-slot = suc (suc (suc (suc n))) }) loc
-       → MemOps.readLoc settle loc ≡ MemOps.readLoc s loc)
-    → MemOps.readLoc settle (AtStack (current-frame alloc) n)
-      ≡ MemOps.readLoc s (AtStack (current-frame alloc) n)
+       → SMCore.MemOps.readLoc settle loc ≡ SMCore.MemOps.readLoc s loc)
+    → SMCore.MemOps.readLoc settle (AtStack (current-frame alloc) n)
+      ≡ SMCore.MemOps.readLoc s (AtStack (current-frame alloc) n)
   backup-survives f n alloc s settle mp =
     mp (AtStack (current-frame alloc) n)
        (BeforeFrontier.stack-before refl n<f-start)
@@ -121,10 +122,10 @@ module PairC {FS : FrameSemantics} where
 
     -- What the prologue WROTE: slot `backup` now holds the input, and that is
     -- what `restore-input backup` will read back after `f` has run.
-    backup-written : MemOps.readLoc (floc p2) (AtStack (current-frame alloc) backup)
+    backup-written : SMCore.MemOps.readLoc (floc p2) (AtStack (current-frame alloc) backup)
                    ≡ just (readReg (regs (floc p1)) Output)
     backup-written =
-      MemOps.writeLoc-read-same-stack (floc p1) (current-frame alloc) backup
+      SMCore.MemOps.writeLoc-read-same-stack (floc p1) (current-frame alloc) backup
         (readReg (regs (floc p1)) Output)
 
     ------------------------------------------------------------------------
@@ -142,8 +143,8 @@ module PairC {FS : FrameSemantics} where
       ∀ (settle : LocState FS)
       → (∀ (loc : ValueLocation FS)
          → BeforeFrontier (record alloc { next-slot = f-start }) loc
-         → MemOps.readLoc settle loc ≡ MemOps.readLoc (floc p2) loc)
-      → MemOps.readLoc settle (AtStack (current-frame alloc) backup)
+         → SMCore.MemOps.readLoc settle loc ≡ SMCore.MemOps.readLoc (floc p2) loc)
+      → SMCore.MemOps.readLoc settle (AtStack (current-frame alloc) backup)
         ≡ just (readReg (regs (floc p1)) Output)
     restore-ok settle mp =
       trans (backup-survives f n alloc (floc p2) settle mp) backup-written
@@ -507,7 +508,7 @@ module PairC {FS : FrameSemantics} where
     -- This is the premise `ihg` cannot be applied without: `IRObsCorrectF`
     -- asks for `halted s ≡ false` at `floc m2`.
     ------------------------------------------------------------------
-    read-backup-fsF : MemOps.readLoc (floc fsF)
+    read-backup-fsF : SMCore.MemOps.readLoc (floc fsF)
                         (AtStack (current-frame alloc) PS.backup)
                       ≡ just (readReg (regs (floc PR.p1)) Output)
     read-backup-fsF = PR.restore-ok (floc fsF) (vr-mem-pres vrf)
@@ -518,7 +519,7 @@ module PairC {FS : FrameSemantics} where
     bf-backup : BeforeFrontier aF (AtStack (current-frame alloc) PS.backup)
     bf-backup = BeforeFrontier.stack-before refl (n<1+n n)
 
-    read-backup-m1 : MemOps.readLoc (floc m1)
+    read-backup-m1 : SMCore.MemOps.readLoc (floc m1)
                        (AtStack (current-frame alloc) PS.backup)
                      ≡ just (readReg (regs (floc PR.p1)) Output)
     read-backup-m1 =
@@ -529,7 +530,7 @@ module PairC {FS : FrameSemantics} where
     wf-restore : InstrWF (floc m1) (falloc m1) (restore-input PS.backup)
     wf-restore =
       readReg (regs (floc PR.p1)) Output ,
-      subst (λ fr → MemOps.readLoc (floc m1) (AtStack fr PS.backup)
+      subst (λ fr → SMCore.MemOps.readLoc (floc m1) (AtStack fr PS.backup)
                     ≡ just (readReg (regs (floc PR.p1)) Output))
             (sym cf-m1) read-backup-m1
 
@@ -552,20 +553,20 @@ module PairC {FS : FrameSemantics} where
     fv : StoredValue FS
     fv = readReg (regs (floc fsF)) Output
 
-    read-fst-m1 : MemOps.readLoc (floc m1)
+    read-fst-m1 : SMCore.MemOps.readLoc (floc m1)
                     (AtStack (current-frame (falloc fsF)) PS.fst-stash) ≡ just fv
     read-fst-m1 =
-      MemOps.writeLoc-read-same-stack (floc fsF)
+      SMCore.MemOps.writeLoc-read-same-stack (floc fsF)
         (current-frame (falloc fsF)) PS.fst-stash fv
 
-    read-fst-m1' : MemOps.readLoc (floc m1)
+    read-fst-m1' : SMCore.MemOps.readLoc (floc m1)
                      (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-m1' =
-      subst (λ fr → MemOps.readLoc (floc m1) (AtStack fr PS.fst-stash) ≡ just fv)
+      subst (λ fr → SMCore.MemOps.readLoc (floc m1) (AtStack fr PS.fst-stash) ≡ just fv)
             cf-fsF read-fst-m1
 
     -- `restore-input` writes a REGISTER; the slot comes through.
-    read-fst-m2 : MemOps.readLoc (floc m2)
+    read-fst-m2 : SMCore.MemOps.readLoc (floc m2)
                     (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-m2 =
       trans (exec-abstract-preserves-stack-slot (restore-input PS.backup)
@@ -624,7 +625,7 @@ module PairC {FS : FrameSemantics} where
                  (AtStack (current-frame alloc) PS.fst-stash)
     bf-fst-g = BeforeFrontier.stack-before (sym cf-m2) fst<n1
 
-    read-fst-fsG : MemOps.readLoc (floc fsG)
+    read-fst-fsG : SMCore.MemOps.readLoc (floc fsG)
                      (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-fsG =
       trans (VR.stack-pres vrg (current-frame alloc) PS.fst-stash bf-fst-g)
@@ -694,21 +695,21 @@ module PairC {FS : FrameSemantics} where
     ----------------------------------------------------------------
     -- (i) `fst-stash` survives to `u5`, where `i6` loads it.
     ----------------------------------------------------------------
-    read-fst-u2 : MemOps.readLoc (floc u2)
+    read-fst-u2 : SMCore.MemOps.readLoc (floc u2)
                     (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-u2 =
       trans (store-slot-preserves-before PS.snd-stash (floc u1) aS (falloc u1)
                (AtStack (current-frame alloc) PS.fst-stash) cf-fsG ≤-refl bf-fst-S)
             read-fst-fsG
 
-    read-fst-u3 : MemOps.readLoc (floc u3)
+    read-fst-u3 : SMCore.MemOps.readLoc (floc u3)
                     (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-u3 =
       trans (mem-untouched (instr-alloc-heap 2) (floc u2) (falloc u2)
                (AtStack (current-frame alloc) PS.fst-stash) nhw-instr-alloc-heap refl)
             read-fst-u2
 
-    read-fst-u4 : MemOps.readLoc (floc u4)
+    read-fst-u4 : SMCore.MemOps.readLoc (floc u4)
                     (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-u4 =
       trans (store-slot-preserves-before PS.pair-stash (floc u3) aS (falloc u3)
@@ -716,7 +717,7 @@ module PairC {FS : FrameSemantics} where
                (n≤1+n PS.snd-stash) bf-fst-S)
             read-fst-u3
 
-    read-fst-u5 : MemOps.readLoc (floc u5)
+    read-fst-u5 : SMCore.MemOps.readLoc (floc u5)
                     (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-u5 =
       trans (mem-untouched mov-to-input (floc u4) (falloc u4)
@@ -725,7 +726,7 @@ module PairC {FS : FrameSemantics} where
 
     wf-load-fst : InstrWF (floc u5) (falloc u5) (load-from-slot PS.fst-stash)
     wf-load-fst =
-      fv , subst (λ fr → MemOps.readLoc (floc u5) (AtStack fr PS.fst-stash) ≡ just fv)
+      fv , subst (λ fr → SMCore.MemOps.readLoc (floc u5) (AtStack fr PS.fst-stash) ≡ just fv)
                  (sym cf-u5) read-fst-u5
 
     ----------------------------------------------------------------
@@ -749,47 +750,47 @@ module PairC {FS : FrameSemantics} where
     sv : StoredValue FS
     sv = readReg (regs (floc u1)) Output
 
-    read-snd-u2 : MemOps.readLoc (floc u2)
+    read-snd-u2 : SMCore.MemOps.readLoc (floc u2)
                     (AtStack (current-frame (falloc u1)) PS.snd-stash) ≡ just sv
     read-snd-u2 =
-      MemOps.writeLoc-read-same-stack (floc u1)
+      SMCore.MemOps.writeLoc-read-same-stack (floc u1)
         (current-frame (falloc u1)) PS.snd-stash sv
 
-    read-snd-u2' : MemOps.readLoc (floc u2)
+    read-snd-u2' : SMCore.MemOps.readLoc (floc u2)
                      (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
     read-snd-u2' =
-      subst (λ fr → MemOps.readLoc (floc u2) (AtStack fr PS.snd-stash) ≡ just sv)
+      subst (λ fr → SMCore.MemOps.readLoc (floc u2) (AtStack fr PS.snd-stash) ≡ just sv)
             cf-fsG read-snd-u2
 
-    read-snd-u3 : MemOps.readLoc (floc u3)
+    read-snd-u3 : SMCore.MemOps.readLoc (floc u3)
                     (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
     read-snd-u3 =
       trans (mem-untouched (instr-alloc-heap 2) (floc u2) (falloc u2)
                (AtStack (current-frame alloc) PS.snd-stash) nhw-instr-alloc-heap refl)
             read-snd-u2'
 
-    read-snd-u4 : MemOps.readLoc (floc u4)
+    read-snd-u4 : SMCore.MemOps.readLoc (floc u4)
                     (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
     read-snd-u4 =
       trans (store-slot-preserves-before PS.pair-stash (floc u3) aP (falloc u3)
                (AtStack (current-frame alloc) PS.snd-stash) cf-u3 ≤-refl bf-snd-P)
             read-snd-u3
 
-    read-snd-u5 : MemOps.readLoc (floc u5)
+    read-snd-u5 : SMCore.MemOps.readLoc (floc u5)
                     (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
     read-snd-u5 =
       trans (mem-untouched mov-to-input (floc u4) (falloc u4)
                (AtStack (current-frame alloc) PS.snd-stash) nhw-mov-to-input refl)
             read-snd-u4
 
-    read-snd-u6 : MemOps.readLoc (floc u6)
+    read-snd-u6 : SMCore.MemOps.readLoc (floc u6)
                     (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
     read-snd-u6 =
       trans (mem-untouched (load-from-slot PS.fst-stash) (floc u5) (falloc u5)
                (AtStack (current-frame alloc) PS.snd-stash) nhw-load-from-slot refl)
             read-snd-u5
 
-    read-snd-u7 : MemOps.readLoc (floc u7)
+    read-snd-u7 : SMCore.MemOps.readLoc (floc u7)
                     (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
     read-snd-u7 =
       trans (store-ind-preserves-slot (floc u6) (falloc u6) hl PS.snd-stash rdi6)
@@ -797,7 +798,7 @@ module PairC {FS : FrameSemantics} where
 
     wf-load-snd : InstrWF (floc u7) (falloc u7) (load-from-slot PS.snd-stash)
     wf-load-snd =
-      sv , subst (λ fr → MemOps.readLoc (floc u7) (AtStack fr PS.snd-stash) ≡ just sv)
+      sv , subst (λ fr → SMCore.MemOps.readLoc (floc u7) (AtStack fr PS.snd-stash) ≡ just sv)
                  (sym cf-u7) read-snd-u7
 
     rdi8 : sv-as-loc (readReg (regs (floc u8)) Input1) ≡ just (AtDynamic hl)
@@ -818,46 +819,46 @@ module PairC {FS : FrameSemantics} where
     pv : StoredValue FS
     pv = readReg (regs (floc u3)) Output
 
-    read-pair-u4 : MemOps.readLoc (floc u4)
+    read-pair-u4 : SMCore.MemOps.readLoc (floc u4)
                      (AtStack (current-frame (falloc u3)) PS.pair-stash) ≡ just pv
     read-pair-u4 =
-      MemOps.writeLoc-read-same-stack (floc u3)
+      SMCore.MemOps.writeLoc-read-same-stack (floc u3)
         (current-frame (falloc u3)) PS.pair-stash pv
 
-    read-pair-u4' : MemOps.readLoc (floc u4)
+    read-pair-u4' : SMCore.MemOps.readLoc (floc u4)
                       (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
     read-pair-u4' =
-      subst (λ fr → MemOps.readLoc (floc u4) (AtStack fr PS.pair-stash) ≡ just pv)
+      subst (λ fr → SMCore.MemOps.readLoc (floc u4) (AtStack fr PS.pair-stash) ≡ just pv)
             cf-u3 read-pair-u4
 
-    read-pair-u5 : MemOps.readLoc (floc u5)
+    read-pair-u5 : SMCore.MemOps.readLoc (floc u5)
                      (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
     read-pair-u5 =
       trans (mem-untouched mov-to-input (floc u4) (falloc u4)
                (AtStack (current-frame alloc) PS.pair-stash) nhw-mov-to-input refl)
             read-pair-u4'
 
-    read-pair-u6 : MemOps.readLoc (floc u6)
+    read-pair-u6 : SMCore.MemOps.readLoc (floc u6)
                      (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
     read-pair-u6 =
       trans (mem-untouched (load-from-slot PS.fst-stash) (floc u5) (falloc u5)
                (AtStack (current-frame alloc) PS.pair-stash) nhw-load-from-slot refl)
             read-pair-u5
 
-    read-pair-u7 : MemOps.readLoc (floc u7)
+    read-pair-u7 : SMCore.MemOps.readLoc (floc u7)
                      (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
     read-pair-u7 =
       trans (store-ind-preserves-slot (floc u6) (falloc u6) hl PS.pair-stash rdi6)
             read-pair-u6
 
-    read-pair-u8 : MemOps.readLoc (floc u8)
+    read-pair-u8 : SMCore.MemOps.readLoc (floc u8)
                      (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
     read-pair-u8 =
       trans (mem-untouched (load-from-slot PS.snd-stash) (floc u7) (falloc u7)
                (AtStack (current-frame alloc) PS.pair-stash) nhw-load-from-slot refl)
             read-pair-u7
 
-    read-pair-u9 : MemOps.readLoc (floc u9)
+    read-pair-u9 : SMCore.MemOps.readLoc (floc u9)
                      (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
     read-pair-u9 =
       trans (store-ind-suc-preserves-slot (floc u8) (falloc u8) hl PS.pair-stash rdi8)
@@ -865,7 +866,7 @@ module PairC {FS : FrameSemantics} where
 
     wf-load-pair : InstrWF (floc u9) (falloc u9) (load-from-slot PS.pair-stash)
     wf-load-pair =
-      pv , subst (λ fr → MemOps.readLoc (floc u9) (AtStack fr PS.pair-stash) ≡ just pv)
+      pv , subst (λ fr → SMCore.MemOps.readLoc (floc u9) (AtStack fr PS.pair-stash) ≡ just pv)
                  (sym cf-u9) read-pair-u9
 
     ----------------------------------------------------------------

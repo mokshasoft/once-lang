@@ -51,6 +51,7 @@ open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once-symbol-own-≢)
 open import Once.CanonicalName using (bare)
 import Once.Compile as C
+import Once.IR as IR
 import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.Classify as Classify
 open import Once.Type.Rigid using (rigidOf; rigidFree?)
@@ -140,7 +141,7 @@ map-allpairs-own (x ∷ xs) (px ∷ ap) (vx ∷ vxs) =
 ------------------------------------------------------------------------
 
 DistinctSymbols : Module → Set
-DistinctSymbols m = AllPairs _≢_ (C.moduleSyms C.Heap false m)
+DistinctSymbols m = AllPairs _≢_ (C.moduleSyms IR.Heap false m)
 
 -- (a) the extractor guard fired ⇒ the well-formedness Bool was `true`.
 distinctOrErr-true : ∀ b {p p' : List Entry}
@@ -192,11 +193,11 @@ guard-polys r {es} eq =
 
 -- The telescope walk emits exactly the monomorphic definitions' symbols.
 ce-syms : ∀ (doOpt : Bool) (sc : C.CScope) (es : List Entry) (cfs : List C.CompiledFun)
-  → C.compileEntries C.Heap doOpt sc es ≡ inj₂ cfs
+  → C.compileEntries IR.Heap doOpt sc es ≡ inj₂ cfs
   → C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf es))
 ce-syms-fun : ∀ (doOpt : Bool) (sc : C.CScope) (fi : FunInfo) (es : List Entry) (b : Bool)
   → FunInfo.funIsPrimitive fi ≡ b → (cfs : List C.CompiledFun)
-  → C.ce-fun C.Heap doOpt sc fi es b ≡ inj₂ cfs
+  → C.ce-fun IR.Heap doOpt sc fi es b ≡ inj₂ cfs
   → C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es)))
 
 ce-syms doOpt sc [] cfs eq = cong C.emittedSyms (sym (inj₂-injective eq))
@@ -223,10 +224,10 @@ ce-syms-fun doOpt sc fi es false ep cfs eq
 ... | inj₂ ty with rigidFree? ty
 ...   | nothing = case eq of λ ()
 ...   | just _
-    with C.compileFun C.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
+    with C.compileFun IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
 ...     | inj₁ _ = case eq of λ ()
 ...     | inj₂ irFun
-      with C.compileEntries C.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
+      with C.compileEntries IR.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
 ...       | inj₁ _ = case eq of λ ()
 ...       | inj₂ rest =
           subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es))))
@@ -240,7 +241,7 @@ program-no-clash (mkModule ds)
   with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq
 ... | inj₁ _ = []
 ... | inj₂ es
-    with C.compileEntries C.Heap false C.emptyCScope es in caeq
+    with C.compileEntries IR.Heap false C.emptyCScope es in caeq
 ...   | inj₁ _ = []
 ...   | inj₂ cfs =
         subst (AllPairs _≢_) (sym bridge)

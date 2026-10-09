@@ -19,15 +19,17 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.IR using (IR)
+open import Once.IR using (IR; Heap)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Target.Arch using (Arch)
 open import Once.Compile
-  using (Entry; CompiledFun; Heap; compileFileFromModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; extractFunctions; extractAliases; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
-open import Once.Parser.Module using (Module)
+  using (CompiledFun; compileFileFromModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
+open import Once.Parser using (Entry; extractFunctions; extractAliases)
+open import Once.Parser.Module using ()
+open import Once.Parser.Module.Core using (Module)
 
 private
   inj₂-inj : ∀ {A B : Set} {x y : B} → inj₂ {A = A} x ≡ inj₂ y → x ≡ y

@@ -37,6 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 open import Once.Parser.Module.Core using (Module)
 import Once.Compile as C
+import Once.IR as IR
 open import Once.Adequacy.Compile using (AsmWF-of)
 open import Once.Adequacy.EmitFile using (file-is-emit; file-is-lib)
 open import Once.Adequacy.ImageWF
@@ -118,7 +119,7 @@ module X8664W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
-  file-wf : ∀ (m : Module) (G : C.FileOf x86-64) → C.compileFileFromModule C.Heap false x86-64 m ≡ inj₂ G
+  file-wf : ∀ (m : Module) (G : C.FileOf x86-64) → C.compileFileFromModule IR.Heap false x86-64 m ≡ inj₂ G
           → AsmWF-of x86-64 G
   file-wf m G eq = by (C.moduleToIR m) refl
     where
@@ -174,7 +175,7 @@ module X8632W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
-  file-wf : ∀ (m : Module) (G : C.FileOf x86-32) → C.compileFileFromModule C.Heap false x86-32 m ≡ inj₂ G
+  file-wf : ∀ (m : Module) (G : C.FileOf x86-32) → C.compileFileFromModule IR.Heap false x86-32 m ≡ inj₂ G
           → AsmWF-of x86-32 G
   file-wf m G eq = by (C.moduleToIR m) refl
     where
@@ -230,7 +231,7 @@ module RiscV64W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
-  file-wf : ∀ (m : Module) (G : C.FileOf riscv64) → C.compileFileFromModule C.Heap false riscv64 m ≡ inj₂ G
+  file-wf : ∀ (m : Module) (G : C.FileOf riscv64) → C.compileFileFromModule IR.Heap false riscv64 m ≡ inj₂ G
           → AsmWF-of riscv64 G
   file-wf m G eq = by (C.moduleToIR m) refl
     where
@@ -242,7 +243,7 @@ module RiscV64W where
 -- THE THEOREM (was a postulate, D262).
 ------------------------------------------------------------------------
 file-wf : ∀ (arch : Arch) (m : Module) (F : C.FileOf arch)
-        → C.compileFileFromModule C.Heap false arch m ≡ inj₂ F
+        → C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F
         → AsmWF-of arch F
 file-wf x86-64  = X8664W.file-wf
 file-wf x86-32  = X8632W.file-wf

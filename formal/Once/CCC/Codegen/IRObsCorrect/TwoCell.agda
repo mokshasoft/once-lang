@@ -17,6 +17,7 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Machine.SMCore using (LocState; readReg; regs; Input1; writeReg-same; Output; SV-Ptr)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type)

@@ -37,7 +37,7 @@ Once/Arith/Backend/X86-64/RunTrace.agda 1
 Once/Arith/Backend/X86-64/StatePreserve.agda 1
 Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
 Once/CCC/Codegen/IRObsCorrect/Machine.agda 2
-Once/CCC/Codegen/IRObsCorrect/Prelude.agda 31
+Once/CCC/Codegen/IRObsCorrect/Prelude.agda 28
 Once/CCC/Codegen/IRObsCorrectFlat.agda 14
 Once/CCC/Codegen/ThunkScope.agda 1
 Once/CCC/Machine/Allocation.agda 2
@@ -48,7 +48,6 @@ Once/CCC/Machine/SMPrimitives.agda 2
 Once/CCC/Target/RiscV64/Layout.agda 3
 Once/CCC/Target/X86-32/Layout.agda 3
 Once/CCC/Target/X86-64/Layout.agda 3
-Once/Compile.agda 3
 Once/Compiler.agda 1
 Once/Denotation/Trace.agda 1
 Once/Denotation/ValueDomain.agda 1
@@ -60,7 +59,7 @@ Once/Memory/Regions.agda 1
 Once/Memory/StackSlots.agda 3
 Once/Optimizer/Normal.agda 2
 Once/Parser/Generic/PolyInst.agda 1
-Once/Parser/Module.agda 3
+Once/Parser/Module.agda 1
 Once/Parser/Module/Core.agda 3
 Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1
@@ -74,4 +73,3 @@ Once/Spec/Typing.agda 1
 Once/Spike/RelSpike.agda 1
 Once/Surface/Syntax.agda 1
 Once/Type.agda 1
-Once/TypeCheck/ElaborateProofs.agda 1

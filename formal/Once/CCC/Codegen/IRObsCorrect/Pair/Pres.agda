@@ -10,6 +10,7 @@
 
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
@@ -19,7 +20,7 @@ module Once.CCC.Codegen.IRObsCorrect.Pair.Pres (o : CanonicalName) (tbl : DL.Lis
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
-open import Once.CCC.Machine.SMCore using (AllocState; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; next-heap-ref; AbstractTrace; LocState; StoredValue; mov-to-output; store-at-slot; restore-input; load-from-slot; current-frame; store-indirect-suc; store-indirect; mov-to-input; instr-alloc-heap; sv-as-loc; readReg; regs; Input1)
 open import Once.IRTy using (IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
 
@@ -266,7 +267,7 @@ module PairPresC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     mem-pres-to-fsF : ∀ (loc : ValueLocation FS)
                     → BeforeFrontier (record alloc { next-slot = n }) loc
-                    → MemOps.readLoc (floc fsF) loc ≡ MemOps.readLoc s loc
+                    → SMCore.MemOps.readLoc (floc fsF) loc ≡ SMCore.MemOps.readLoc s loc
     mem-pres-to-fsF loc b =
       trans (vr-mem-pres vrF loc (bf-f loc b))
       (trans (store-slot-preserves-before backup (floc p1)
@@ -285,7 +286,7 @@ module PairPresC {FS : FrameSemantics} where
 
     mem-pres-to-gs : ∀ (loc : ValueLocation FS)
                    → BeforeFrontier (record alloc { next-slot = n }) loc
-                   → MemOps.readLoc (floc gs) loc ≡ MemOps.readLoc s loc
+                   → SMCore.MemOps.readLoc (floc gs) loc ≡ SMCore.MemOps.readLoc s loc
     mem-pres-to-gs loc b =
       trans (vr-mem-pres vrG loc (w-g-outer loc b))
       (trans (mem-untouched (restore-input backup) (floc m1) (falloc m1) loc
@@ -325,7 +326,7 @@ module PairPresC {FS : FrameSemantics} where
 
       mem-pres-pair : ∀ (loc : ValueLocation FS)
                     → BeforeFrontier (record alloc { next-slot = n }) loc
-                    → MemOps.readLoc (floc NSP.u10) loc ≡ MemOps.readLoc s loc
+                    → SMCore.MemOps.readLoc (floc NSP.u10) loc ≡ SMCore.MemOps.readLoc s loc
       mem-pres-pair loc b =
         -- (5) the nine-instruction tail: two stack writes at `snd-stash` and
         --     `pair-stash`, two heap writes into the block it just allocated.
@@ -352,14 +353,14 @@ module PairPresC {FS : FrameSemantics} where
 
       stack-pres-pair : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
                       → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
-                      → MemOps.readLoc (floc NSP.u10) (AtStack fr j)
-                        ≡ MemOps.readLoc s (AtStack fr j)
+                      → SMCore.MemOps.readLoc (floc NSP.u10) (AtStack fr j)
+                        ≡ SMCore.MemOps.readLoc s (AtStack fr j)
       stack-pres-pair fr j = mem-pres-pair (AtStack fr j)
 
       heap-pres-pair : ∀ (hl : HeapLocation)
                      → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
-                     → MemOps.readLoc (floc NSP.u10) (AtDynamic hl)
-                       ≡ MemOps.readLoc s (AtDynamic hl)
+                     → SMCore.MemOps.readLoc (floc NSP.u10) (AtDynamic hl)
+                       ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
       heap-pres-pair hl = mem-pres-pair (AtDynamic hl)
 
   ----------------------------------------------------------------------

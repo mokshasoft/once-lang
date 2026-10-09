@@ -10,6 +10,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -18,7 +19,7 @@ module Once.CCC.Codegen.IRObsCorrect.Out (o : CanonicalName) (tbl : DL.List IRFu
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; mov-to-input; readReg; regs; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; halted; sv-as-loc)
 open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; ν-type; ⟦_⟧TI)
 
 import Once.CCC.FrameSemantics
@@ -57,7 +58,7 @@ module OutC {FS : FrameSemantics} where
 
      -- Nothing writes memory, so every cell reads the same at `b3` as at entry.
      mem-pres : ∀ (loc : ValueLocation FS)
-             → MemOps.readLoc (floc b3) loc ≡ MemOps.readLoc s loc
+             → SMCore.MemOps.readLoc (floc b3) loc ≡ SMCore.MemOps.readLoc s loc
      mem-pres loc =
       trans (mem-untouched mov-to-input (floc b2) (falloc b2) loc nhw-mov-to-input refl)
             (mem-untouched load-indirect (floc b1) (falloc b1) loc nhw-load-indirect refl)
@@ -81,7 +82,7 @@ module OutC {FS : FrameSemantics} where
      -- own `CellAt` rather than a rebuild.
      input1-b3 : ∀ (ν-loc : ValueLocation FS) (sv : StoredValue FS)
               → readReg (regs s) Input1 ≡ SV-Ptr ν-loc
-              → MemOps.readLoc s ν-loc ≡ just sv
+              → SMCore.MemOps.readLoc s ν-loc ≡ just sv
               → readReg (regs (floc b3)) Input1 ≡ sv
      input1-b3 ν-loc sv rdi cell =
       trans (writeReg-same (regs (floc b2)) Input1 (readReg (regs (floc b2)) Output))
@@ -134,7 +135,7 @@ module OutC {FS : FrameSemantics} where
           seed-sv-of (cell-inline rep _)               = inline-sv rep seed
 
           seed-cell-of : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
-                       → MemOps.readLoc s ν-loc ≡ just (seed-sv-of c)
+                       → SMCore.MemOps.readLoc s ν-loc ≡ just (seed-sv-of c)
           seed-cell-of (cell-ptr q _ _)  = q
           seed-cell-of (cell-inline _ q) = q
 
@@ -165,7 +166,7 @@ module OutC {FS : FrameSemantics} where
           -- Opaque for `OutSetupPres`'s reason: the call's three-level view is
           -- consumed only through `cong`, never reduced.
           abstract
-           code-cell-b3 : MemOps.readLoc (floc OSP.b3) (sucLoc ν-loc)
+           code-cell-b3 : SMCore.MemOps.readLoc (floc OSP.b3) (sucLoc ν-loc)
                         ≡ just (SV-Code lbl)
            code-cell-b3 = trans (OSP.mem-pres (sucLoc ν-loc)) cp
 
@@ -236,12 +237,12 @@ module OutC {FS : FrameSemantics} where
 
               mem-pres-out : ∀ (loc : ValueLocation FS)
                            → BeforeFrontier (record alloc { next-slot = n }) loc
-                           → MemOps.readLoc (floc (CalleeRun.settle crun)) loc
-                             ≡ MemOps.readLoc s loc
+                           → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc
+                             ≡ SMCore.MemOps.readLoc s loc
               mem-pres-out loc bf =
                 trans (CalleeRun.mem-pres crun alloc n
                          (trans (cong falloc call-eq) refl) loc bf)
-                      (trans (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
+                      (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
                              (OSP.mem-pres loc))
 
               run4 : FlatSteps prog 4 (entry-flat base s alloc cl)
@@ -259,7 +260,7 @@ module OutC {FS : FrameSemantics} where
               -- plan 0.105: …from the caller's log, since the three setup
               -- rows and the call make no call of their own.
               callFs = flat-exec-instr instr-call-closure prog OSP.b3
-              h-eq : LocState.ev-log (floc callFs) ≡ LocState.ev-log s
+              h-eq : SMCore.ev-log (floc callFs) ≡ SMCore.ev-log s
               h-eq = trans (log-of run4 _ refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ runAt s (evalᴰ (Out wf) ν-val)

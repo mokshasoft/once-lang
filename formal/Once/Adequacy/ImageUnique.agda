@@ -438,6 +438,8 @@ open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidIdent)
 open import Once.Adequacy.NameClash using (guard-true; namesDistinct-sound; allValidIdentB-sound; map-allpairs-own; ce-syms; ∧-elimˡ; ∧-elimʳ)
 import Once.Compile as C
+import Once.IR as IR
+import Once.Parser as Parser
 
 record TableNames (T : List IRFun) : Set where
   field
@@ -462,9 +464,9 @@ private
   no-names = record { names = [] ; syms≡ = refl ; dist = [] ; valid = [] }
 
 table-names : ∀ (m : Module) → TableNames (C.moduleTable m)
-table-names (mkModule ds) with C.extractFunctions (C.extractAliases (mkModule ds)) (mkModule ds) in efeq
+table-names (mkModule ds) with Parser.extractFunctions (Parser.extractAliases (mkModule ds)) (mkModule ds) in efeq
 ... | inj₁ _ = no-names
-... | inj₂ es with C.compileEntries C.Heap false C.emptyCScope es in caeq
+... | inj₂ es with C.compileEntries IR.Heap false C.emptyCScope es in caeq
 ...   | inj₁ _ = no-names
 ...   | inj₂ cfs = record
         { names = emittedNames (funsOf es)
@@ -473,7 +475,7 @@ table-names (mkModule ds) with C.extractFunctions (C.extractAliases (mkModule ds
         ; valid = allValidIdentB-sound _ (∧-elimʳ guard)
         }
   where
-    guard = guard-true (extractFunctions-go (C.extractAliases (mkModule ds)) ds nothing) efeq
+    guard = guard-true (extractFunctions-go (Parser.extractAliases (mkModule ds)) ds nothing) efeq
 
 -- distinctness survives reversal
 ap-reverse : ∀ {xs : List String} → AllPairs _≢_ xs → AllPairs _≢_ (reverse xs)

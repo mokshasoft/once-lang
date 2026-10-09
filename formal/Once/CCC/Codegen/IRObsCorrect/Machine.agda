@@ -13,6 +13,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -23,7 +24,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; ValueLocation; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; store-at-slot; current-frame; readReg; regs; Output; LocState; sv-as-loc; Input1; store-indirect; StoredValue; sucLoc; load-indirect-suc; load-indirect; load-from-slot; writeReg-preserves; SV-Ptr; SV-Tag; SV-Lit; SV-Code; store-indirect-suc; writeReg-same; AbstractInstr; instr-alloc-heap; mov-to-input; mov-to-output; halted)
 open import Once.Memory.HeapAddress using (_≟HL_; HeapLocation; sucHL; heap-loc; ref-id; heap-ref; mkHeapRef)
 
 import Once.CCC.FrameSemantics
@@ -41,7 +42,7 @@ module Mach {FS : FrameSemantics} where
 
   flat-store-floc : ∀ (slot : ℕ) (prog : AbstractTrace) (fs : FlatState)
     → floc (flat-exec-instr (store-at-slot slot) prog fs)
-      ≡ MemOps.writeLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)
+      ≡ SMCore.MemOps.writeLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)
                  (readReg (regs (floc fs)) Output)
   flat-store-floc slot prog fs = refl
 
@@ -70,7 +71,7 @@ module Mach {FS : FrameSemantics} where
   store-ind-preserves-input s alloc loc eq
     with sv-as-loc (readReg (regs s) Input1) | eq
   ... | .(just loc) | refl =
-    cong (λ r → readReg r Input1) (MemOps.writeLoc-regs s loc (readReg (regs s) Output))
+    cong (λ r → readReg r Input1) (SMCore.MemOps.writeLoc-regs s loc (readReg (regs s) Output))
 
   -- D184: …and the same for the two INDIRECT loads, which `apply` runs before
   -- it has stashed anything. Both resolve `Input1` through a `Maybe` and then
@@ -79,23 +80,23 @@ module Mach {FS : FrameSemantics} where
   load-ind-suc-preserves-input : ∀ (s : LocState FS) (alloc : AllocState {FS})
       (loc : ValueLocation FS) (v : StoredValue FS)
     → sv-as-loc (readReg (regs s) Input1) ≡ just loc
-    → MemOps.readLoc s (sucLoc loc) ≡ just v
+    → SMCore.MemOps.readLoc s (sucLoc loc) ≡ just v
     → readReg (regs (proj₁ (exec-abstract load-indirect-suc s alloc))) Input1
       ≡ readReg (regs s) Input1
   load-ind-suc-preserves-input s alloc loc v eq cell
     with sv-as-loc (readReg (regs s) Input1) | eq
-  ... | .(just loc) | refl with MemOps.readLoc s (sucLoc loc) | cell
+  ... | .(just loc) | refl with SMCore.MemOps.readLoc s (sucLoc loc) | cell
   ...   | .(just v) | refl = refl
 
   load-ind-preserves-input : ∀ (s : LocState FS) (alloc : AllocState {FS})
       (loc : ValueLocation FS) (v : StoredValue FS)
     → sv-as-loc (readReg (regs s) Input1) ≡ just loc
-    → MemOps.readLoc s loc ≡ just v
+    → SMCore.MemOps.readLoc s loc ≡ just v
     → readReg (regs (proj₁ (exec-abstract load-indirect s alloc))) Input1
       ≡ readReg (regs s) Input1
   load-ind-preserves-input s alloc loc v eq cell
     with sv-as-loc (readReg (regs s) Input1) | eq
-  ... | .(just loc) | refl with MemOps.readLoc s loc | cell
+  ... | .(just loc) | refl with SMCore.MemOps.readLoc s loc | cell
   ...   | .(just v) | refl = refl
 
   load-slot-preserves-input : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
@@ -115,12 +116,12 @@ module Mach {FS : FrameSemantics} where
   store-ind-preserves-slot : ∀ (s : LocState FS) (alloc : AllocState {FS})
       (hl : HeapLocation) {f : Once.CCC.FrameSemantics.FrameSemantics.Frame FS} (slot : ℕ)
     → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
-    → MemOps.readLoc (proj₁ (exec-abstract store-indirect s alloc)) (AtStack f slot)
-      ≡ MemOps.readLoc s (AtStack f slot)
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract store-indirect s alloc)) (AtStack f slot)
+      ≡ SMCore.MemOps.readLoc s (AtStack f slot)
   store-ind-preserves-slot s alloc hl {f} slot eq
     with sv-as-loc (readReg (regs s) Input1) | eq
   ... | .(just (AtDynamic hl)) | refl =
-    MemOps.writeLoc-preserves-other s (AtDynamic hl) (AtStack f slot)
+    SMCore.MemOps.writeLoc-preserves-other s (AtDynamic hl) (AtStack f slot)
       (readReg (regs s) Output) (λ ())
 
   -- D174: THE HEAP'S READ-AFTER-WRITE. `SMCore` deliberately ships none —
@@ -131,7 +132,7 @@ module Mach {FS : FrameSemantics} where
   -- `writeLocToHeap` is a five-way split, and the read-back itself is the
   -- `≟HL` decision.
   writeLoc-heap-eq : ∀ (s : LocState FS) (hl : HeapLocation) (v : StoredValue FS)
-    → MemOps.writeLoc s (AtDynamic hl) v ≡ MemOps.writeLocToHeap s hl v
+    → SMCore.MemOps.writeLoc s (AtDynamic hl) v ≡ SMCore.MemOps.writeLocToHeap s hl v
   writeLoc-heap-eq s hl (SV-Ptr (AtStack _ _))  = refl
   writeLoc-heap-eq s hl (SV-Ptr (AtDynamic _))  = refl
   writeLoc-heap-eq s hl (SV-Tag _)              = refl
@@ -139,22 +140,22 @@ module Mach {FS : FrameSemantics} where
   writeLoc-heap-eq s hl (SV-Code _)             = refl
 
   heap-read-toheap : ∀ (s : LocState FS) (hl : HeapLocation) (v : StoredValue FS)
-    → MemOps.readLoc (MemOps.writeLocToHeap s hl v) (AtDynamic hl) ≡ just v
+    → SMCore.MemOps.readLoc (SMCore.MemOps.writeLocToHeap s hl v) (AtDynamic hl) ≡ just v
   heap-read-toheap s hl v with hl ≟HL hl
   ... | yes _  = refl
   ... | no ne  = ⊥-elim (ne refl)
 
   heap-read-same : ∀ (s : LocState FS) (hl : HeapLocation) (v : StoredValue FS)
-    → MemOps.readLoc (MemOps.writeLoc s (AtDynamic hl) v) (AtDynamic hl) ≡ just v
+    → SMCore.MemOps.readLoc (SMCore.MemOps.writeLoc s (AtDynamic hl) v) (AtDynamic hl) ≡ just v
   heap-read-same s hl v =
-    trans (cong (λ t → MemOps.readLoc t (AtDynamic hl)) (writeLoc-heap-eq s hl v))
+    trans (cong (λ t → SMCore.MemOps.readLoc t (AtDynamic hl)) (writeLoc-heap-eq s hl v))
           (heap-read-toheap s hl v)
 
   -- The indirect stores, with the `with` collapsed by the caller's pointer
   -- witness — the heap analogue of `store-ind-preserves-slot`.
   store-ind-result : ∀ (s : LocState FS) (alloc : AllocState {FS}) (hl : HeapLocation)
     → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
-    → MemOps.readLoc (proj₁ (exec-abstract store-indirect s alloc)) (AtDynamic hl)
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract store-indirect s alloc)) (AtDynamic hl)
       ≡ just (readReg (regs s) Output)
   store-ind-result s alloc hl eq with sv-as-loc (readReg (regs s) Input1) | eq
   ... | .(just (AtDynamic hl)) | refl = heap-read-same s hl (readReg (regs s) Output)
@@ -163,17 +164,17 @@ module Mach {FS : FrameSemantics} where
   -- successor cell is just another heap cell and the same read-back serves.
   store-ind-suc-result : ∀ (s : LocState FS) (alloc : AllocState {FS}) (hl : HeapLocation)
     → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
-    → MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) (AtDynamic (sucHL hl))
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) (AtDynamic (sucHL hl))
       ≡ just (readReg (regs s) Output)
   store-ind-suc-result s alloc hl eq with sv-as-loc (readReg (regs s) Input1) | eq
   ... | .(just (AtDynamic hl)) | refl = heap-read-same s (sucHL hl) (readReg (regs s) Output)
 
   load-slot-result : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (v : StoredValue FS)
-    → MemOps.readLoc s (AtStack (current-frame alloc) slot) ≡ just v
+    → SMCore.MemOps.readLoc s (AtStack (current-frame alloc) slot) ≡ just v
     → readReg (regs (proj₁ (exec-abstract (load-from-slot slot) s alloc))) Output ≡ v
   load-slot-result slot s alloc v eq
-    with MemOps.readLoc s (AtStack (current-frame alloc) slot) | eq
+    with SMCore.MemOps.readLoc s (AtStack (current-frame alloc) slot) | eq
   ... | .(just v) | refl = writeReg-same (regs s) Output v
 
   -- A heap cell and its successor are distinct: same ref, offsets `o` and
@@ -185,8 +186,8 @@ module Mach {FS : FrameSemantics} where
   -- Heap cells are preserved by any instruction that writes no heap.
   heap-untouched : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS})
       (hl : HeapLocation) → InstrNoHeapWrite i
-    → MemOps.readLoc (proj₁ (exec-abstract i s alloc)) (AtDynamic hl)
-      ≡ MemOps.readLoc s (AtDynamic hl)
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract i s alloc)) (AtDynamic hl)
+      ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
   heap-untouched i s alloc hl nhw =
     cong (λ m → m hl) (exec-abstract-preserves-heapMem i s alloc nhw)
 
@@ -194,23 +195,23 @@ module Mach {FS : FrameSemantics} where
       (hl hl' : HeapLocation)
     → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
     → AtDynamic {FS} (sucHL hl) ≢ AtDynamic hl'
-    → MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) (AtDynamic hl')
-      ≡ MemOps.readLoc s (AtDynamic hl')
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) (AtDynamic hl')
+      ≡ SMCore.MemOps.readLoc s (AtDynamic hl')
   store-ind-suc-preserves-heap s alloc hl hl' eq ne
     with sv-as-loc (readReg (regs s) Input1) | eq
   ... | .(just (AtDynamic hl)) | refl =
-    MemOps.writeLoc-preserves-other s (AtDynamic (sucHL hl)) (AtDynamic hl')
+    SMCore.MemOps.writeLoc-preserves-other s (AtDynamic (sucHL hl)) (AtDynamic hl')
       (readReg (regs s) Output) ne
 
   store-ind-suc-preserves-slot : ∀ (s : LocState FS) (alloc : AllocState {FS})
       (hl : HeapLocation) {f : Once.CCC.FrameSemantics.FrameSemantics.Frame FS} (slot : ℕ)
     → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
-    → MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) (AtStack f slot)
-      ≡ MemOps.readLoc s (AtStack f slot)
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) (AtStack f slot)
+      ≡ SMCore.MemOps.readLoc s (AtStack f slot)
   store-ind-suc-preserves-slot s alloc hl {f} slot eq
     with sv-as-loc (readReg (regs s) Input1) | eq
   ... | .(just (AtDynamic hl)) | refl =
-    MemOps.writeLoc-preserves-other s (sucLoc (AtDynamic hl)) (AtStack f slot)
+    SMCore.MemOps.writeLoc-preserves-other s (sucLoc (AtDynamic hl)) (AtStack f slot)
       (readReg (regs s) Output) (λ ())
 
   ------------------------------------------------------------------------
@@ -232,7 +233,7 @@ module Mach {FS : FrameSemantics} where
   mem-untouched : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS})
       (loc : ValueLocation FS)
     → InstrNoHeapWrite i → instr-writes-slot i ≡ nothing
-    → MemOps.readLoc (proj₁ (exec-abstract i s alloc)) loc ≡ MemOps.readLoc s loc
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract i s alloc)) loc ≡ SMCore.MemOps.readLoc s loc
   mem-untouched i s alloc (AtStack f slot) nhw nws =
     exec-abstract-preserves-stack-slot i s alloc f slot nhw nws
   mem-untouched i s alloc (AtDynamic hl)   nhw nws = heap-untouched i s alloc hl nhw
@@ -246,12 +247,12 @@ module Mach {FS : FrameSemantics} where
     → current-frame alloc' ≡ current-frame alloc
     → next-slot alloc ≤ k
     → BeforeFrontier alloc loc
-    → MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st alloc')) loc
-      ≡ MemOps.readLoc st loc
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st alloc')) loc
+      ≡ SMCore.MemOps.readLoc st loc
   store-slot-preserves-before k st alloc alloc' .(AtStack _ _) cf-eq ns≤k
     (BeforeFrontier.stack-before {f} {j} f≡cf j<ns) =
-    subst (λ f' → MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st alloc')) (AtStack f' j)
-                  ≡ MemOps.readLoc st (AtStack f' j))
+    subst (λ f' → SMCore.MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st alloc')) (AtStack f' j)
+                  ≡ SMCore.MemOps.readLoc st (AtStack f' j))
           (trans cf-eq (sym f≡cf))
           (store-at-slot-preserves-below j k st alloc' (<-≤-trans j<ns ns≤k))
   store-slot-preserves-before k st alloc alloc' .(AtStack _ _) cf-eq ns≤k
@@ -260,7 +261,7 @@ module Mach {FS : FrameSemantics} where
       (subst (λ c → Once.CCC.FrameSemantics.FrameSemantics._≺_ FS c f) (sym cf-eq) cf≺f)
   store-slot-preserves-before k st alloc alloc' .(AtDynamic _) cf-eq ns≤k
     (BeforeFrontier.heap-before {hl} _) =
-    MemOps.writeLoc-preserves-other st (AtStack (current-frame alloc') k) (AtDynamic hl)
+    SMCore.MemOps.writeLoc-preserves-other st (AtStack (current-frame alloc') k) (AtDynamic hl)
       (readReg (regs st) Output) (λ ())
 
   -- (3) A heap write into a FRESH block misses everything the caller can name:
@@ -282,8 +283,8 @@ module Mach {FS : FrameSemantics} where
     → sv-as-loc (readReg (regs st) Input1) ≡ just (AtDynamic hl)
     → next-heap-ref alloc ≤ ref-id (heap-ref hl)
     → BeforeFrontier alloc loc
-    → MemOps.readLoc (proj₁ (exec-abstract store-indirect st alloc')) loc
-      ≡ MemOps.readLoc st loc
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract store-indirect st alloc')) loc
+      ≡ SMCore.MemOps.readLoc st loc
   store-ind-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
     (BeforeFrontier.stack-before {f} {j} _ _) = store-ind-preserves-slot st alloc' hl j rdi
   store-ind-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
@@ -292,7 +293,7 @@ module Mach {FS : FrameSemantics} where
     (BeforeFrontier.heap-before {h} h<f)
     with sv-as-loc (readReg (regs st) Input1) | rdi
   ... | .(just (AtDynamic hl)) | refl =
-    MemOps.writeLoc-preserves-other st (AtDynamic hl) (AtDynamic h)
+    SMCore.MemOps.writeLoc-preserves-other st (AtDynamic hl) (AtDynamic h)
       (readReg (regs st) Output) (fresh-heap-≢ alloc hl h fresh h<f)
 
   store-ind-suc-preserves-before : ∀ (st : LocState FS) (alloc alloc' : AllocState {FS})
@@ -300,8 +301,8 @@ module Mach {FS : FrameSemantics} where
     → sv-as-loc (readReg (regs st) Input1) ≡ just (AtDynamic hl)
     → next-heap-ref alloc ≤ ref-id (heap-ref hl)
     → BeforeFrontier alloc loc
-    → MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc st alloc')) loc
-      ≡ MemOps.readLoc st loc
+    → SMCore.MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc st alloc')) loc
+      ≡ SMCore.MemOps.readLoc st loc
   store-ind-suc-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
     (BeforeFrontier.stack-before {f} {j} _ _) = store-ind-suc-preserves-slot st alloc' hl j rdi
   store-ind-suc-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
@@ -404,7 +405,7 @@ module Mach {FS : FrameSemantics} where
       → sv-as-loc (readReg (regs (floc u8)) Input1) ≡ just (AtDynamic hl)
       → (loc : ValueLocation FS)
       → BeforeFrontier (record alloc { next-slot = n }) loc
-      → MemOps.readLoc (floc u10) loc ≡ MemOps.readLoc (floc u1) loc
+      → SMCore.MemOps.readLoc (floc u10) loc ≡ SMCore.MemOps.readLoc (floc u1) loc
     mem-pres-from nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf =
       trans (mem-untouched (load-from-slot (suc n)) (floc u9) (falloc u9) loc
                nhw-load-from-slot refl)
@@ -435,8 +436,8 @@ module Mach {FS : FrameSemantics} where
     (cf-t1      : current-frame (falloc (flat-step-straight i0 (entry-flat base s alloc cl)))
                   ≡ current-frame alloc)
     (mem-t1     : ∀ (loc : ValueLocation FS)
-                → MemOps.readLoc (floc (flat-step-straight i0 (entry-flat base s alloc cl))) loc
-                  ≡ MemOps.readLoc s loc)
+                → SMCore.MemOps.readLoc (floc (flat-step-straight i0 (entry-flat base s alloc cl))) loc
+                  ≡ SMCore.MemOps.readLoc s loc)
     where
 
     t0 t1 : FlatState
@@ -471,7 +472,7 @@ module Mach {FS : FrameSemantics} where
       → sv-as-loc (readReg (regs (floc t8)) Input1) ≡ just (AtDynamic hl)
       → (loc : ValueLocation FS)
       → BeforeFrontier (record alloc { next-slot = n }) loc
-      → MemOps.readLoc (floc t10) loc ≡ MemOps.readLoc s loc
+      → SMCore.MemOps.readLoc (floc t10) loc ≡ SMCore.MemOps.readLoc s loc
     mem-pres nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf =
       trans (NSP.mem-pres-from nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf) (mem-t1 loc)
 
@@ -577,7 +578,7 @@ module Mach {FS : FrameSemantics} where
       -- `suc n`, `suc (suc n)`, all at or above it.
       → (loc : ValueLocation FS)
       → BeforeFrontier (record alloc { next-slot = n }) loc
-      → MemOps.readLoc (floc a16) loc ≡ MemOps.readLoc s loc
+      → SMCore.MemOps.readLoc (floc a16) loc ≡ SMCore.MemOps.readLoc s loc
     setup-mem-pres ns≤n rdi12 rdi14 loc bf =
       trans (mem-untouched mov-to-input (floc a15) (falloc a15) loc nhw-mov-to-input refl)
      (trans (mem-untouched (load-from-slot pair-stash) (floc a14) (falloc a14) loc
@@ -622,11 +623,11 @@ module Mach {FS : FrameSemantics} where
     -- `Maybe` split, so it is the caller's own witness that collapses it.
     input1-a2 : ∀ (pair-loc : ValueLocation FS) (arg-sv : StoredValue FS)
               → readReg (regs s) Input1 ≡ SV-Ptr pair-loc
-              → MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv
+              → SMCore.MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv
               → readReg (regs (floc a2)) Input1 ≡ SV-Ptr pair-loc
     input1-a2 pair-loc arg-sv eq cell =
       trans (cong (λ r → readReg r Input1)
-                  (MemOps.writeLoc-regs (floc a1)
+                  (SMCore.MemOps.writeLoc-regs (floc a1)
                      (AtStack (current-frame (falloc a1)) arg-stash)
                      (readReg (regs (floc a1)) Output)))
      (trans (load-ind-suc-preserves-input (floc a0) (falloc a0) pair-loc arg-sv
@@ -635,7 +636,7 @@ module Mach {FS : FrameSemantics} where
 
     pair-cell-a2 : ∀ (pair-loc : ValueLocation FS)
                  → next-slot alloc ≤ n → BeforeFrontier alloc pair-loc
-                 → MemOps.readLoc (floc a2) pair-loc ≡ MemOps.readLoc s pair-loc
+                 → SMCore.MemOps.readLoc (floc a2) pair-loc ≡ SMCore.MemOps.readLoc s pair-loc
     pair-cell-a2 pair-loc ns≤n bf =
       trans (store-slot-preserves-before arg-stash (floc a1) alloc (falloc a1) pair-loc
                cf-a1 ns≤n bf)
@@ -661,9 +662,9 @@ module Mach {FS : FrameSemantics} where
       (pair-loc fst-loc : ValueLocation FS)
       (arg-sv env-sv : StoredValue FS)
       (rdi      : readReg (regs s) Input1 ≡ SV-Ptr pair-loc)
-      (fst-cell : MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc))
-      (snd-cell : MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv)
-      (env-cell : MemOps.readLoc s fst-loc ≡ just env-sv)
+      (fst-cell : SMCore.MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc))
+      (snd-cell : SMCore.MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv)
+      (env-cell : SMCore.MemOps.readLoc s fst-loc ≡ just env-sv)
       (bf-pair  : BeforeFrontier alloc pair-loc)
       (bf-fst   : BeforeFrontier alloc fst-loc)
       (ns≤n     : next-slot alloc ≤ n)
@@ -688,7 +689,7 @@ module Mach {FS : FrameSemantics} where
                  (SV-Ptr fst-loc) (input1-a2 pair-loc arg-sv rdi snd-cell)
                  (trans (pair-cell-a2 pair-loc ns≤n bf-pair) fst-cell))
 
-      env-cell-a5 : MemOps.readLoc (floc a5) fst-loc ≡ just env-sv
+      env-cell-a5 : SMCore.MemOps.readLoc (floc a5) fst-loc ≡ just env-sv
       env-cell-a5 =
         trans (mem-untouched mov-to-input (floc a3) (falloc a3) fst-loc nhw-mov-to-input refl)
        (trans (mem-untouched load-indirect (floc a2) (falloc a2) fst-loc nhw-load-indirect refl)
@@ -740,11 +741,11 @@ module Mach {FS : FrameSemantics} where
       env-sv' : StoredValue FS
       env-sv' = readReg (regs (floc a6)) Output
 
-      env-a7 : MemOps.readLoc (floc a7) (AtStack (current-frame (falloc a6)) env-stash)
+      env-a7 : SMCore.MemOps.readLoc (floc a7) (AtStack (current-frame (falloc a6)) env-stash)
                ≡ just env-sv'
-      env-a7 = MemOps.writeLoc-read-same-stack (floc a6) (current-frame (falloc a6)) env-stash env-sv'
+      env-a7 = SMCore.MemOps.writeLoc-read-same-stack (floc a6) (current-frame (falloc a6)) env-stash env-sv'
 
-      env-a10 : MemOps.readLoc (floc a10) (AtStack (current-frame (falloc a6)) env-stash)
+      env-a10 : SMCore.MemOps.readLoc (floc a10) (AtStack (current-frame (falloc a6)) env-stash)
                 ≡ just env-sv'
       env-a10 =
         trans (exec-abstract-preserves-stack-slot mov-to-input (floc a9) (falloc a9)
@@ -766,14 +767,14 @@ module Mach {FS : FrameSemantics} where
       input1-a10 =
         trans (writeReg-same (regs (floc a9)) Input1 (readReg (regs (floc a9)) Output))
         (trans (cong (λ r → readReg r Output)
-                  (MemOps.writeLoc-regs (floc a8)
+                  (SMCore.MemOps.writeLoc-regs (floc a8)
                      (AtStack (current-frame (falloc a8)) pair-stash)
                      (readReg (regs (floc a8)) Output)))
                alloc-out)
 
       wf11 : InstrWF (floc a10) (falloc a10) (load-from-slot env-stash)
       wf11 = env-sv'
-           , subst (λ f → MemOps.readLoc (floc a10) (AtStack f env-stash) ≡ just env-sv')
+           , subst (λ f → SMCore.MemOps.readLoc (floc a10) (AtStack f env-stash) ≡ just env-sv')
                    (trans cf-a6 (sym cf-a10)) env-a10
 
       rdi12' : sv-as-loc (readReg (regs (floc a11)) Input1) ≡ just (AtDynamic ahl)
@@ -787,11 +788,11 @@ module Mach {FS : FrameSemantics} where
       arg-stashed : StoredValue FS
       arg-stashed = readReg (regs (floc a1)) Output
 
-      arg-a2 : MemOps.readLoc (floc a2) (AtStack (current-frame (falloc a1)) arg-stash)
+      arg-a2 : SMCore.MemOps.readLoc (floc a2) (AtStack (current-frame (falloc a1)) arg-stash)
                ≡ just arg-stashed
-      arg-a2 = MemOps.writeLoc-read-same-stack (floc a1) (current-frame (falloc a1)) arg-stash arg-stashed
+      arg-a2 = SMCore.MemOps.writeLoc-read-same-stack (floc a1) (current-frame (falloc a1)) arg-stash arg-stashed
 
-      arg-a12 : MemOps.readLoc (floc a12) (AtStack (current-frame (falloc a1)) arg-stash)
+      arg-a12 : SMCore.MemOps.readLoc (floc a12) (AtStack (current-frame (falloc a1)) arg-stash)
                 ≡ just arg-stashed
       arg-a12 =
         trans (store-ind-preserves-slot (floc a11) (falloc a11) ahl arg-stash rdi12')
@@ -814,7 +815,7 @@ module Mach {FS : FrameSemantics} where
 
       wf13 : InstrWF (floc a12) (falloc a12) (load-from-slot arg-stash)
       wf13 = arg-stashed
-           , subst (λ f → MemOps.readLoc (floc a12) (AtStack f arg-stash) ≡ just arg-stashed)
+           , subst (λ f → SMCore.MemOps.readLoc (floc a12) (AtStack f arg-stash) ≡ just arg-stashed)
                    (trans cf-a1 (sym cf-a12)) arg-a12
 
       rdi14' : sv-as-loc (readReg (regs (floc a13)) Input1) ≡ just (AtDynamic ahl)
@@ -830,12 +831,12 @@ module Mach {FS : FrameSemantics} where
       newpair-sv : StoredValue FS
       newpair-sv = readReg (regs (floc a8)) Output
 
-      newpair-a9 : MemOps.readLoc (floc a9) (AtStack (current-frame (falloc a8)) pair-stash)
+      newpair-a9 : SMCore.MemOps.readLoc (floc a9) (AtStack (current-frame (falloc a8)) pair-stash)
                    ≡ just newpair-sv
       newpair-a9 =
-        MemOps.writeLoc-read-same-stack (floc a8) (current-frame (falloc a8)) pair-stash newpair-sv
+        SMCore.MemOps.writeLoc-read-same-stack (floc a8) (current-frame (falloc a8)) pair-stash newpair-sv
 
-      newpair-a14 : MemOps.readLoc (floc a14) (AtStack (current-frame (falloc a8)) pair-stash)
+      newpair-a14 : SMCore.MemOps.readLoc (floc a14) (AtStack (current-frame (falloc a8)) pair-stash)
                     ≡ just newpair-sv
       newpair-a14 =
         trans (store-ind-suc-preserves-slot (floc a13) (falloc a13) ahl pair-stash rdi14')
@@ -848,7 +849,7 @@ module Mach {FS : FrameSemantics} where
 
       wf15 : InstrWF (floc a14) (falloc a14) (load-from-slot pair-stash)
       wf15 = newpair-sv
-           , subst (λ f → MemOps.readLoc (floc a14) (AtStack f pair-stash) ≡ just newpair-sv)
+           , subst (λ f → SMCore.MemOps.readLoc (floc a14) (AtStack f pair-stash) ≡ just newpair-sv)
                    (trans cf-a8 (sym cf-a14)) newpair-a14
 
       -- …and the rest of the `halted` chain, now that every conditional row's
@@ -896,7 +897,7 @@ module Mach {FS : FrameSemantics} where
       argout-a13 : readReg (regs (floc a13)) Output ≡ arg-stashed
       argout-a13 = load-slot-result arg-stash (floc a12) (falloc a12) arg-stashed (proj₂ wf13)
 
-      pair-fst-a16 : MemOps.readLoc (floc a16) (AtDynamic ahl) ≡ just env-sv
+      pair-fst-a16 : SMCore.MemOps.readLoc (floc a16) (AtDynamic ahl) ≡ just env-sv
       pair-fst-a16 =
         trans (mem-untouched mov-to-input (floc a15) (falloc a15) (AtDynamic ahl)
                  nhw-mov-to-input refl)
@@ -909,7 +910,7 @@ module Mach {FS : FrameSemantics} where
        (trans (store-ind-result (floc a11) (falloc a11) ahl rdi12')
               (cong just (trans envout-a11 env-sv'≡))))))
 
-      pair-snd-a16 : MemOps.readLoc (floc a16) (sucLoc (AtDynamic ahl)) ≡ just arg-sv
+      pair-snd-a16 : SMCore.MemOps.readLoc (floc a16) (sucLoc (AtDynamic ahl)) ≡ just arg-sv
       pair-snd-a16 =
         trans (mem-untouched mov-to-input (floc a15) (falloc a15) (AtDynamic (sucHL ahl))
                  nhw-mov-to-input refl)
@@ -1003,15 +1004,15 @@ module Mach {FS : FrameSemantics} where
       -- here rather than at the call site: they are facts about THIS run.
       mem-pres : (loc : ValueLocation FS)
                → BeforeFrontier (record alloc { next-slot = n }) loc
-               → MemOps.readLoc (floc a16) loc ≡ MemOps.readLoc s loc
+               → SMCore.MemOps.readLoc (floc a16) loc ≡ SMCore.MemOps.readLoc s loc
       mem-pres = setup-mem-pres ns≤n rdi12' rdi14'
 
     -- The closure register, at the call.
     closure-reg : ∀ (pair-loc fst-loc : ValueLocation FS) (arg-stashed : StoredValue FS)
                 → next-slot alloc ≤ n → BeforeFrontier alloc pair-loc
                 → readReg (regs s) Input1 ≡ SV-Ptr pair-loc
-                → MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-stashed
-                → MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc)
+                → SMCore.MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-stashed
+                → SMCore.MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc)
                 → fclosure a16 ≡ SV-Ptr fst-loc
     closure-reg pair-loc fst-loc arg-stashed ns≤n bf rdi snd-cell cell =
       trans (writeReg-same (regs (floc a3)) Input1 (readReg (regs (floc a3)) Output))
@@ -1025,8 +1026,8 @@ module Mach {FS : FrameSemantics} where
               → sv-as-loc (readReg (regs (floc a11)) Input1) ≡ just (AtDynamic ahl)
               → sv-as-loc (readReg (regs (floc a13)) Input1) ≡ just (AtDynamic ahl)
               → BeforeFrontier alloc (sucLoc fst-loc)
-              → MemOps.readLoc s (sucLoc fst-loc) ≡ just (SV-Code ℓ)
-              → MemOps.readLoc (floc a16) (sucLoc fst-loc) ≡ just (SV-Code ℓ)
+              → SMCore.MemOps.readLoc s (sucLoc fst-loc) ≡ just (SV-Code ℓ)
+              → SMCore.MemOps.readLoc (floc a16) (sucLoc fst-loc) ≡ just (SV-Code ℓ)
     code-cell fst-loc ℓ ns≤n rdi12 rdi14 bf-suc cell =
       trans (setup-mem-pres ns≤n rdi12 rdi14 (sucLoc fst-loc)
                (frontier-monotone alloc (record alloc { next-slot = n })

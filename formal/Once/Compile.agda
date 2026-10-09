@@ -34,10 +34,10 @@ open import Data.Unit using (⊤; tt)
 open import Function using (case_of_)
 
 -- Re-export types
-open import Once.Type public
+open import Once.Type
 
 -- Re-export Core IR
-open import Once.IR public
+open import Once.IR
 open import Once.IRTy using (Unit; ⌊_⌋)
 open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Target.Symbol using (once-symbol-path; once-symbol-own)
@@ -88,8 +88,9 @@ open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 
 -- Re-export Parser (for module loading)
-open import Once.Parser public
+open import Once.Parser
 open import Once.Parser.Module
+open import Once.Parser.Module.Core using (Module)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

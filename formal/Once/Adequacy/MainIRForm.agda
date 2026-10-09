@@ -16,6 +16,7 @@ module Once.Adequacy.MainIRForm where
 
 open import Once.TypeCheck.Classify using (TopCtx; PolyCtx)
 import Once.Parser.Module as Module
+import Once.Parser.Module.Core as Core
 open import Data.Bool using (false)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -28,6 +29,7 @@ open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Compile using (findMain; findMain-here; isEffUU?)
+import Once.IR as IR
 
 open import Once.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Zero; One; Many; pure; eff)
@@ -84,9 +86,9 @@ validateMain-EffUU ((ν-type _ _) ⇒[ k ] B)   ()
 -- (2) A successfully-compiled "main" has type EffUU.
 ------------------------------------------------------------------------
 
-compileFun-main-EffUU : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
+compileFun-main-EffUU : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
   (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
-  C.compileFun C.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
+  C.compileFun IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty ≡ EffUU
 compileFun-main-EffUU ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
 ... | inj₂ tt  = validateMain-EffUU ty veq

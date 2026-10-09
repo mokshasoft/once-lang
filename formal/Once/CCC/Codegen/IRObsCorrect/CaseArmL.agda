@@ -27,6 +27,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -36,7 +37,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; AbstractTrace; LocState; StoredValue; halted; readReg; regs; Input1; SV-Ptr; mov-to-input)
 open import Data.Sum using (inj₁)
 open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using (IRTy) renaming (_+_ to _+ᵀ_)
@@ -157,7 +158,7 @@ module ArmLC {FS : FrameSemantics} where
       ------------------------------------------------------------
       mem-pres : ∀ (loc : ValueLocation FS)
                → BeforeFrontier (record alloc { next-slot = n }) loc
-               → MemOps.readLoc (floc u1) loc ≡ MemOps.readLoc s loc
+               → SMCore.MemOps.readLoc (floc u1) loc ≡ SMCore.MemOps.readLoc s loc
       mem-pres loc bf = trans (vr-mem-pres vf loc bf) (P.mem-eq loc)
 
       bf-mono-c : ∀ (m : ℕ) (loc : ValueLocation FS)
@@ -192,7 +193,7 @@ module ArmLC {FS : FrameSemantics} where
 
       -- plan 0.105: the arm runs from the caller's log — the four prologue
       -- rows make no call — so its run IS the clause's.
-      h-eq : LocState.ev-log (floc P.i4) ≡ LocState.ev-log s
+      h-eq : SMCore.ev-log (floc P.i4) ≡ SMCore.ev-log s
       h-eq = P.log-i4
 
       RE : runAt (floc P.i4) (evalᴰ f Av) ≡ runAt s (evalᴰ (case f g) (inj₁ Av))
@@ -201,7 +202,7 @@ module ArmLC {FS : FrameSemantics} where
       st-eq : stopsAt s (evalᴰ (case f g) (inj₁ Av)) ≡ stopsAt (floc P.i4) (evalᴰ f Av)
       st-eq = sym (cong (λ r → is-stopped (proj₂ r)) RE)
 
-      log-c : LocState.ev-log (floc (VR.settle vf)) ≡ LocState.ev-log s ++ eventsAt s (evalᴰ (case f g) (inj₁ Av))
+      log-c : SMCore.ev-log (floc (VR.settle vf)) ≡ SMCore.ev-log s ++ eventsAt s (evalᴰ (case f g) (inj₁ Av))
       log-c = trans (VR.log vf) (cong₂ _++_ h-eq (cong proj₁ RE))
 
       witness : MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl k

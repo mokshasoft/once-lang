@@ -38,6 +38,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
@@ -47,7 +48,7 @@ module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) (tbl : DL.List IRF
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; LocState; StoredValue; halted; restore-input; current-frame; readReg; regs; Output)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
@@ -141,8 +142,8 @@ module PairAsm {FS : FrameSemantics} where
 
               mem-F→G : ∀ (loc : ValueLocation FS)
                       → BeforeFrontier (falloc PCF.fsF) loc
-                      → MemOps.readLoc (floc PCG.fsG) loc
-                        ≡ MemOps.readLoc (floc PCF.fsF) loc
+                      → SMCore.MemOps.readLoc (floc PCG.fsG) loc
+                        ≡ SMCore.MemOps.readLoc (floc PCF.fsF) loc
               mem-F→G loc b =
                 trans (vr-mem-pres vrg loc (bf-fsF→g loc b))
                 (trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1) loc
@@ -151,7 +152,7 @@ module PairAsm {FS : FrameSemantics} where
                           (falloc PCF.fsF) (falloc PCF.fsF) loc refl
                           (≤-trans (≤-reflexive ns-fsF) (≤-trans n≤ (n≤1+n n))) b))
 
-              fst-cell-gs : MemOps.readLoc (floc PCG.fsG)
+              fst-cell-gs : SMCore.MemOps.readLoc (floc PCG.fsG)
                               (AtStack (current-frame alloc) (suc n))
                           ≡ just (readReg (regs (floc PCF.fsF)) Output)
               fst-cell-gs =
@@ -179,7 +180,7 @@ module PairAsm {FS : FrameSemantics} where
               E : TM.T ⟦ B IRTy′.* C ⟧
               E = evalᴰ ⟨ f , g ⟩ x
 
-              field-log : LocState.ev-log (floc PCG.SETTLE) ≡ LocState.ev-log s ++ eventsAt s E
+              field-log : SMCore.ev-log (floc PCG.SETTLE) ≡ SMCore.ev-log s ++ eventsAt s E
               field-log =
                 trans (log-silent PCG.tail-chain _ refl)
                 (trans log-fg
@@ -196,12 +197,12 @@ module PairAsm {FS : FrameSemantics} where
 
               field-stack : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
                           → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
-                          → MemOps.readLoc (floc PCG.SETTLE) (AtStack fr j) ≡ MemOps.readLoc s (AtStack fr j)
+                          → SMCore.MemOps.readLoc (floc PCG.SETTLE) (AtStack fr j) ≡ SMCore.MemOps.readLoc s (AtStack fr j)
               field-stack = PPresF.stack-pres-pair
 
               field-heap : ∀ (hl : HeapLocation)
                          → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
-                         → MemOps.readLoc (floc PCG.SETTLE) (AtDynamic hl) ≡ MemOps.readLoc s (AtDynamic hl)
+                         → SMCore.MemOps.readLoc (floc PCG.SETTLE) (AtDynamic hl) ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
               field-heap = PPresF.heap-pres-pair
 
               -- the SAME chain names `PCG.RUN` is built from (`PCF.chainF`,
@@ -297,7 +298,7 @@ module PairAsm {FS : FrameSemantics} where
         where
           mem-to-fsF : ∀ (loc : ValueLocation FS)
                      → BeforeFrontier (record alloc { next-slot = n }) loc
-                     → MemOps.readLoc (floc (VR.settle vrf)) loc ≡ MemOps.readLoc s loc
+                     → SMCore.MemOps.readLoc (floc (VR.settle vrf)) loc ≡ SMCore.MemOps.readLoc s loc
           mem-to-fsF loc b = trans (vr-mem-pres vrf loc (bf-f loc b)) (mem-to-p2 loc b)
 
           sfeq : stopsAt (floc PC.PR.p2) (evalᴰ f x) ≡ true

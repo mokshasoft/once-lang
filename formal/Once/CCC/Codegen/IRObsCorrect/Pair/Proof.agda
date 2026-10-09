@@ -38,6 +38,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 import Once.CCC.Machine.SMPrimitives as SMPrimitives
 
 import Data.List as DL
@@ -48,7 +49,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (AllocState; next-heap-ref; next-slot)
+open import Once.CCC.Machine.SMCore using (AllocState; next-heap-ref; next-slot; AbstractTrace; LocState; StoredValue; halted; mov-to-output; restore-input; store-at-slot; readReg; regs; Input1; Output; writeReg-same)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Memory.HeapAddress using (HeapLocation; ref-id; heap-ref; heap-loc; mkHeapRef)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
@@ -160,7 +161,7 @@ module PairProofC {FS : FrameSemantics} where
       -- `backup = n`, neither of which is inside the caller's window.
       ----------------------------------------------------------------
       memP : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
-           → MemOps.readLoc (floc PC.PR.p2) loc ≡ MemOps.readLoc s loc
+           → SMCore.MemOps.readLoc (floc PC.PR.p2) loc ≡ SMCore.MemOps.readLoc s loc
       memP loc b =
         trans (store-slot-preserves-before n (floc PC.PR.p1) alloc
                  (falloc PC.PR.p1) loc
@@ -204,9 +205,9 @@ module PairProofC {FS : FrameSemantics} where
       -- from the caller's log.
       ----------------------------------------------------------------
       h : List SigOpEvent
-      h = LocState.ev-log s
+      h = SMCore.ev-log s
 
-      logP2 : LocState.ev-log (floc PC.PR.p2) ≡ h
+      logP2 : SMCore.ev-log (floc PC.PR.p2) ≡ h
       logP2 = log-silent PC.pre-chain _ refl
 
       esF : List SigOpEvent
@@ -233,7 +234,7 @@ module PairProofC {FS : FrameSemantics} where
       -- same thing at `alloc`; the record's field is at `alloc { next-slot = n }`.)
       mem-to-p2 : ∀ (loc : ValueLocation FS)
                 → BeforeFrontier (record alloc { next-slot = n }) loc
-                → MemOps.readLoc (floc PC.PR.p2) loc ≡ MemOps.readLoc s loc
+                → SMCore.MemOps.readLoc (floc PC.PR.p2) loc ≡ SMCore.MemOps.readLoc s loc
       mem-to-p2 loc b =
         trans (store-slot-preserves-before n (floc PC.PR.p1)
                  (record alloc { next-slot = n }) (falloc PC.PR.p1) loc
@@ -315,7 +316,7 @@ module PairProofC {FS : FrameSemantics} where
 
           mem-to-m2 : ∀ (loc : ValueLocation FS)
                     → BeforeFrontier (record alloc { next-slot = n }) loc
-                    → MemOps.readLoc (floc PCF.m2) loc ≡ MemOps.readLoc s loc
+                    → SMCore.MemOps.readLoc (floc PCF.m2) loc ≡ SMCore.MemOps.readLoc s loc
           mem-to-m2 loc b =
             trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1) loc
                      Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
@@ -361,7 +362,7 @@ module PairProofC {FS : FrameSemantics} where
           vrg = MachineRefinesObsF.value-realized mrg
 
           -- `g` runs from the log `f` left: the two mid rows make no call.
-          logM2 : LocState.ev-log (floc PCF.m2) ≡ h ++ esF
+          logM2 : SMCore.ev-log (floc PCF.m2) ≡ h ++ esF
           logM2 = trans (log-silent PCF.mid-chain _ refl)
                         (trans (VR.log vrf) (cong (_++ esF) logP2))
 
@@ -382,7 +383,7 @@ module PairProofC {FS : FrameSemantics} where
                                   (sym (cong proj₁ RG)) (trans (sym (cong proj₂ RG)) q))))
 
           -- …and the log after `g` is the caller's followed by both.
-          log-fg : LocState.ev-log (floc (VR.settle vrg)) ≡ (h ++ esF) ++ esG
+          log-fg : SMCore.ev-log (floc (VR.settle vrg)) ≡ (h ++ esF) ++ esG
           log-fg = trans (VR.log vrg) (cong (_++ esG) logM2)
 
           chainG₀ : FlatSteps prog (VR.steps vrg) PCF.m2 (VR.settle vrg)

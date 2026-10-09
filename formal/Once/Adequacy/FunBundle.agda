@@ -43,6 +43,8 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
+import Once.IR as IR
+import Once.Parser as Parser
 open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
@@ -56,6 +58,7 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module
+import Once.Parser.Module.Core as Core
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
@@ -68,13 +71,13 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 ctxC : C.CScope → NamedCtx
 ctxC sc = ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)
 
-data FunBundle : C.CScope → List C.Entry → Set where
+data FunBundle : C.CScope → List Parser.Entry → Set where
   bnil  : ∀ {sc} → FunBundle sc []
   bffi  : ∀ {sc fi ty es} {c : IsConcrete ty} {h : HonestFFI ty} {g : RigidFree ty}
         → funIsPrimitive fi ≡ true → funType fi ≡ just ty
         → isConcrete? ty ≡ just c → honest? ty ≡ just h → rigidFree? ty ≡ just g
         → FunBundle (C.extendSig sc (funName fi) ty) es      -- D274: Σ grows
-        → FunBundle sc (C.e-fun fi ∷ es)
+        → FunBundle sc (Parser.e-fun fi ∷ es)
   bcons : ∀ {sc fi es ty}
     {Ψ  : Usage (NamedCtx.size (ctxC sc))}
     {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ ty}
@@ -84,21 +87,21 @@ data FunBundle : C.CScope → List C.Entry → Set where
     (rf : C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty) →
     {g : RigidFree ty} → (eg : rigidFree? ty ≡ just g) →
     (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f) →
-    (cf : C.compileFun C.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+    (cf : C.compileFun IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
             (funName fi) ty (funBody fi) ≡ inj₂ irFun) →
     FunBundle (C.extendScope sc (funName fi) ty) es →
-    FunBundle sc (C.e-fun fi ∷ es)
+    FunBundle sc (Parser.e-fun fi ∷ es)
   bpoly : ∀ {sc pfi es}
     {Ψ  : Usage (NamedCtx.size (ctxC sc))}
-    {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ (rigidOf (C.PolyFunInfo.pfunType pfi))}
+    {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ (rigidOf (Parser.PolyFunInfo.pfunType pfi))}
     {d f : ℕ} →
-    (ce : checkElab (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ≡ TE.success Ψ se d f) →
+    (ce : checkElab (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ TE.success Ψ se d f) →
     FunBundle (C.addEntry sc pfi) es →
-    FunBundle sc (C.e-poly pfi ∷ es)
+    FunBundle sc (Parser.e-poly pfi ∷ es)
 
-compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
+compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
+  C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
@@ -107,9 +110,9 @@ compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
   AS.compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
     (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
-compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
+compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
+  C.compileFun-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
@@ -118,9 +121,9 @@ compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
-compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
+compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
-  C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
+  C.compileFun-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
@@ -130,9 +133,9 @@ compileFun-aux-ce doOpt ctx polys impsOf name ty expr true eq =
 compileFun-aux-ce doOpt ctx polys impsOf name ty expr false eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
-compileFun-ce : ∀ (polys : PolyCtx) (impsOf : Module.String → TopCtx)
+compileFun-ce : ∀ (polys : PolyCtx) (impsOf : Core.String → TopCtx)
   (ctx : TopCtx) (ty : Type) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
-  C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
+  C.compileFun IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
@@ -152,7 +155,7 @@ bundle→typed (bffi {c = c} {h = h} {g = g} ep et _ _ _ rest) = ffi ep et c h g
 bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf {g} eg ce cf rest) =
   mono ep rf g (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
 bundle→typed {sc} (bpoly {pfi = pfi} ce rest) =
-  poly (check-sound (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
+  poly (check-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
 
 bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
 bundle→compiled bnil = []
@@ -162,28 +165,28 @@ bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest
 bundle→compiled (bpoly ce rest) = bundle→compiled rest
 
 -- A bundle for every accepted telescope, whose compiled list IS the compiler's.
-CGB : C.CScope → List C.Entry → List C.CompiledFun → Set
+CGB : C.CScope → List Parser.Entry → List C.CompiledFun → Set
 CGB sc es compiled = Σ-syntax (FunBundle sc es) (λ b → bundle→compiled b ≡ compiled)
 
-ce-bundleP : ∀ (sc : C.CScope) (es : List C.Entry) (compiled : List C.CompiledFun)
-  → C.compileEntries C.Heap false sc es ≡ inj₂ compiled → CGB sc es compiled
-cgb-fun : ∀ (sc : C.CScope) (fi : FunInfo) (es : List C.Entry) (compiled : List C.CompiledFun) (b : Bool)
-  → funIsPrimitive fi ≡ b → C.ce-fun C.Heap false sc fi es b ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
-cgb-prim : ∀ (sc : C.CScope) (fi : FunInfo) (es : List C.Entry) (compiled : List C.CompiledFun)
+ce-bundleP : ∀ (sc : C.CScope) (es : List Parser.Entry) (compiled : List C.CompiledFun)
+  → C.compileEntries IR.Heap false sc es ≡ inj₂ compiled → CGB sc es compiled
+cgb-fun : ∀ (sc : C.CScope) (fi : FunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun) (b : Bool)
+  → funIsPrimitive fi ≡ b → C.ce-fun IR.Heap false sc fi es b ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
+cgb-prim : ∀ (sc : C.CScope) (fi : FunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
   → funIsPrimitive fi ≡ true → (mt : Maybe Type) → funType fi ≡ mt
-  → C.ce-prim C.Heap false sc fi es mt ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
-cgb-mono : ∀ (sc : C.CScope) (fi : FunInfo) (es : List C.Entry) (compiled : List C.CompiledFun)
+  → C.ce-prim IR.Heap false sc fi es mt ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
+cgb-mono : ∀ (sc : C.CScope) (fi : FunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
   → funIsPrimitive fi ≡ false → (rt : String ⊎ Type)
   → C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ rt
-  → C.ce-mono C.Heap false sc fi es rt ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
-cgb-poly : ∀ (sc : C.CScope) (pfi : C.PolyFunInfo) (es : List C.Entry) (compiled : List C.CompiledFun)
-  → (r : TE.VerifiedCheckResult (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))
-  → TE.checkElabV (ctxC sc) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)) ≡ r
-  → C.ce-poly C.Heap false sc pfi es (C.checkOK r) ≡ inj₂ compiled → CGB sc (C.e-poly pfi ∷ es) compiled
+  → C.ce-mono IR.Heap false sc fi es rt ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
+cgb-poly : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
+  → (r : TE.VerifiedCheckResult (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
+  → TE.checkElabV (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
+  → C.ce-poly IR.Heap false sc pfi es (C.checkOK r) ≡ inj₂ compiled → CGB sc (Parser.e-poly pfi ∷ es) compiled
 
 ce-bundleP sc [] compiled eq = bnil , inj₂-injective eq
-ce-bundleP sc (C.e-fun fi ∷ es) compiled eq = cgb-fun sc fi es compiled (funIsPrimitive fi) refl eq
-ce-bundleP sc (C.e-poly pfi ∷ es) compiled eq = cgb-poly sc pfi es compiled _ refl eq
+ce-bundleP sc (Parser.e-fun fi ∷ es) compiled eq = cgb-fun sc fi es compiled (funIsPrimitive fi) refl eq
+ce-bundleP sc (Parser.e-poly pfi ∷ es) compiled eq = cgb-poly sc pfi es compiled _ refl eq
 
 cgb-fun sc fi es compiled true  ep eq = cgb-prim sc fi es compiled ep (funType fi) refl eq
 cgb-fun sc fi es compiled false ep eq =
@@ -194,7 +197,7 @@ cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (hone
   where
     conc : (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
          → (mg : Maybe (RigidFree ty)) → rigidFree? ty ≡ mg
-         → C.ce-prim-conc C.Heap false sc fi es ty mc mh mg ≡ inj₂ compiled → CGB sc (C.e-fun fi ∷ es) compiled
+         → C.ce-prim-conc IR.Heap false sc fi es ty mc mh mg ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
     conc nothing _ _ _ _ _ ()
     conc (just _) _ nothing _ _ _ ()
     conc (just _) _ (just _) _ nothing _ ()
@@ -206,10 +209,10 @@ cgb-mono sc fi es compiled ep (inj₁ _) er ()
 cgb-mono sc fi es compiled ep (inj₂ ty) er eq with rigidFree? ty in eg
 ... | nothing = case eq of λ ()
 ... | just g
-  with C.compileFun C.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funName fi) ty (funBody fi) in cf
+  with C.compileFun IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funName fi) ty (funBody fi) in cf
 ... | inj₁ _ = case eq of λ ()
 ... | inj₂ irFun
-      with C.compileEntries C.Heap false (C.extendScope sc (funName fi) ty) es in rec
+      with C.compileEntries IR.Heap false (C.extendScope sc (funName fi) ty) es in rec
 ...   | inj₁ _ = case eq of λ ()
 ...   | inj₂ rest =
         let (Ψ , se , d , f , ce) = compileFun-ce (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.ctop sc) ty fi irFun cf
@@ -223,12 +226,12 @@ cgb-poly sc pfi es compiled (TE.success Ψ se d f , w) cv eq =
   let (b , beq) = ce-bundleP (C.addEntry sc pfi) es compiled eq
   in bpoly {Ψ = Ψ} {se = se} {d = d} {f = f} (cong proj₁ cv) b , beq
 
-ce-bundle : ∀ (sc : C.CScope) (es : List C.Entry) {compiled : List C.CompiledFun}
-  → C.compileEntries C.Heap false sc es ≡ inj₂ compiled → FunBundle sc es
+ce-bundle : ∀ (sc : C.CScope) (es : List Parser.Entry) {compiled : List C.CompiledFun}
+  → C.compileEntries IR.Heap false sc es ≡ inj₂ compiled → FunBundle sc es
 ce-bundle sc es {compiled} eq = proj₁ (ce-bundleP sc es compiled eq)
 
-bundle→compiled≡compiled : ∀ (sc : C.CScope) (es : List C.Entry) (compiled : List C.CompiledFun)
-  (eq : C.compileEntries C.Heap false sc es ≡ inj₂ compiled) → bundle→compiled (ce-bundle sc es eq) ≡ compiled
+bundle→compiled≡compiled : ∀ (sc : C.CScope) (es : List Parser.Entry) (compiled : List C.CompiledFun)
+  (eq : C.compileEntries IR.Heap false sc es ≡ inj₂ compiled) → bundle→compiled (ce-bundle sc es eq) ≡ compiled
 bundle→compiled≡compiled sc es compiled eq = proj₂ (ce-bundleP sc es compiled eq)
 
 BMainExists : ∀ {sc es} → FunBundle sc es → Set
@@ -304,29 +307,29 @@ bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf res
 -- compile bundle, and the compile result it is.
 ------------------------------------------------------------------------
 
-ProgramNode : Module.Module → Set
+ProgramNode : Core.Module → Set
 ProgramNode m =
-  Σ-syntax (List C.Entry) (λ es →
-  Σ-syntax (C.extractFunctions (C.extractAliases m) m ≡ inj₂ es) (λ _ →
+  Σ-syntax (List Parser.Entry) (λ es →
+  Σ-syntax (Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es) (λ _ →
   Σ-syntax (FunBundle C.emptyCScope es) (λ b →
-    C.compileResolvedModule C.Heap false m ≡ inj₂ (bundle→compiled b))))
+    C.compileResolvedModule IR.Heap false m ≡ inj₂ (bundle→compiled b))))
 
 private
-  node-ce : ∀ (m : Module.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List C.Entry) (cv : String ⊎ List C.CompiledFun)
-          → C.compileEntries C.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir
-          → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → ProgramNode m
+  node-ce : ∀ (m : Core.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List Parser.Entry) (cv : String ⊎ List C.CompiledFun)
+          → C.compileEntries IR.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir
+          → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es → ProgramNode m
   node-ce m ir es (inj₁ _) ce mi ef = case mi of λ ()
   node-ce m ir es (inj₂ compiled) ce mi ef =
     es , ef , ce-bundle C.emptyCScope es ce
-       , trans (cong (C.compileResolvedModule-aux C.Heap false m) ef)
+       , trans (cong (C.compileResolvedModule-aux IR.Heap false m) ef)
                (trans ce (cong inj₂ (sym (bundle→compiled≡compiled C.emptyCScope es compiled ce))))
 
-  node-ef : ∀ (m : Module.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List C.Entry)
-          → C.extractFunctions (C.extractAliases m) m ≡ efv
-          → moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → ProgramNode m
+  node-ef : ∀ (m : Core.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List Parser.Entry)
+          → Parser.extractFunctions (Parser.extractAliases m) m ≡ efv
+          → moduleToIR-aux (C.compileResolvedModule-aux IR.Heap false m efv) ≡ just ir → ProgramNode m
   node-ef m ir (inj₁ _)  ef mi = case mi of λ ()
-  node-ef m ir (inj₂ es) ef mi = node-ce m ir es (C.compileEntries C.Heap false C.emptyCScope es) refl mi ef
+  node-ef m ir (inj₂ es) ef mi = node-ce m ir es (C.compileEntries IR.Heap false C.emptyCScope es) refl mi ef
 
-program-node : ∀ (m : Module.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → ProgramNode m
-program-node m ir mi = node-ef m ir (C.extractFunctions (C.extractAliases m) m) refl mi
+program-node : ∀ (m : Core.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → ProgramNode m
+program-node m ir mi = node-ef m ir (Parser.extractFunctions (Parser.extractAliases m) m) refl mi
 

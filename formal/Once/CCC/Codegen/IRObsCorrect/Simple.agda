@@ -11,6 +11,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
@@ -18,10 +19,11 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Simple (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Machine.SMCore using (writeReg; regs; Output; readReg; Input1; mov-to-output; halted; SV-Ptr; writeReg-same; load-indirect; load-indirect-suc; sucLoc; instr-load-const; SV-Lit)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Float.Decimal using (Decimal; round)
-open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type)
+open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -453,7 +455,7 @@ module Simp {FS : FrameSemantics} where
       -- D115: the machine MATERIALISES the literal, exactly as the float
       -- case below does — `lit-value` is two's complement at this width.
       out-lit =
-        writeReg-same (regs s) Output (SV-Lit fits-intˢ (AbstractExec.lit-value {FS} fits-intˢ v))
+        writeReg-same (regs s) Output (SV-Lit fits-intˢ (SMCore.AbstractExec.lit-value {FS} fits-intˢ v))
 
   obs-correct-const fits-float v n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = sym (denot-[] k)

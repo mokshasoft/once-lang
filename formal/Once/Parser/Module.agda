@@ -17,7 +17,7 @@
 
 module Once.Parser.Module where
 
-open import Once.Parser.Module.Core public
+open import Once.Parser.Module.Core
 open import Once.Parser.Core using (Parser; skipNewlines)
 open import Once.Parser.Token using (TAmpersand; TArrow; TAt; TBang; TCaret0; TCaret1; TCaretW; TColon; TComma; TDot; TEOF; TEqEq; TEquals; TFloat; TGe; TGt; TInt; TLBrace; TLParen; TLambda; TLe; TLt; TMinus; TNeq; TNewline; TPercent; TPipe; TPlus; TRBrace; TRParen; TSemicolon; TSlash; TStar; TString; TWord; Token)
 open import Once.Type using (PolyType)
@@ -34,7 +34,7 @@ open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.DeclTail
-open import Once.Parser.Module.Resolve public
+open import Once.Parser.Module.Resolve
 open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
 open import Relation.Nullary using (Dec)
 open import Data.Bool using (Bool; true; false)

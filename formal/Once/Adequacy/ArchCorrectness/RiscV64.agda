@@ -75,6 +75,7 @@ open import Once.Target.Arch using (riscv64)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
+import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
@@ -354,7 +355,7 @@ ir-flat-correct-riscv64 brs = FFOr.ir-flat-correct-main ir-obs-correct brs
 -- entry, pc 0, which is the start.
 file-flat-riscv64 :
   ∀ (brs : BlockRunsHyp-riscv64) (m : P.Module) (F : RF.Image)
-  → C.compileFileFromModule C.Heap false riscv64 m ≡ inj₂ F
+  → C.compileFileFromModule IR.Heap false riscv64 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
   → (oq : o ≡ C.entry-owner)
   → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))

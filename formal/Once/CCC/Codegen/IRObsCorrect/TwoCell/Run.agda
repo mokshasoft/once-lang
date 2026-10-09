@@ -10,6 +10,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -19,7 +20,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; instr-load-code-addr; store-indirect-suc; LocState; StoredValue; halted; readReg; regs; Output; current-frame; sv-as-loc; Input1)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 
 import Once.CCC.FrameSemantics
@@ -94,12 +95,12 @@ module TwoCellRunC {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
             (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
 
-    read-cell0-fs2 : MemOps.readLoc (floc fs2)
+    read-cell0-fs2 : SMCore.MemOps.readLoc (floc fs2)
                      (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
     read-cell0-fs2 =
-      MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) cell0-stash cell0v
+      SMCore.MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) cell0-stash cell0v
 
-    read-cell0-fs5 : MemOps.readLoc (floc fs5)
+    read-cell0-fs5 : SMCore.MemOps.readLoc (floc fs5)
                      (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
     read-cell0-fs5 =
       trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs4) (falloc fs4)
@@ -111,7 +112,7 @@ module TwoCellRunC {FS : FrameSemantics} where
 
     wf-load-cell0 : InstrWF (floc fs5) (falloc fs5) (load-from-slot cell0-stash)
     wf-load-cell0 =
-      cell0v , subst (λ f → MemOps.readLoc (floc fs5) (AtStack f cell0-stash) ≡ just cell0v)
+      cell0v , subst (λ f → SMCore.MemOps.readLoc (floc fs5) (AtStack f cell0-stash) ≡ just cell0v)
                  (sym cf-fs5) read-cell0-fs5
 
     -- ── ROW 7: the closure pointer must survive the env load.
@@ -156,12 +157,12 @@ module TwoCellRunC {FS : FrameSemantics} where
     objv : StoredValue FS
     objv = readReg (regs (floc fs3)) Output
 
-    read-obj-fs4 : MemOps.readLoc (floc fs4)
+    read-obj-fs4 : SMCore.MemOps.readLoc (floc fs4)
                      (AtStack (current-frame (falloc fs3)) obj-stash) ≡ just objv
     read-obj-fs4 =
-      MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) obj-stash objv
+      SMCore.MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) obj-stash objv
 
-    read-obj-fs9 : MemOps.readLoc (floc fs9)
+    read-obj-fs9 : SMCore.MemOps.readLoc (floc fs9)
                      (AtStack (current-frame (falloc fs3)) obj-stash) ≡ just objv
     read-obj-fs9 =
       trans (store-ind-suc-preserves-slot (floc fs8) (falloc fs8) obj-hl obj-stash rdi-fs8)
@@ -176,7 +177,7 @@ module TwoCellRunC {FS : FrameSemantics} where
 
     wf-load-obj : InstrWF (floc fs9) (falloc fs9) (load-from-slot obj-stash)
     wf-load-obj =
-      objv , subst (λ f → MemOps.readLoc (floc fs9) (AtStack f obj-stash) ≡ just objv)
+      objv , subst (λ f → SMCore.MemOps.readLoc (floc fs9) (AtStack f obj-stash) ≡ just objv)
                  (sym cf-fs9) read-obj-fs9
 
     -- ── The ten `halted ≡ false` obligations.

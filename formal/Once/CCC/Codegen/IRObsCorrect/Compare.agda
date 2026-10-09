@@ -22,6 +22,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
@@ -50,7 +51,7 @@ open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; cmp-trace)
 open import Once.Target.Arch using (module TargetNum)
 open TargetNum using (int-bits)
-open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; next-heap-ref)
+open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; next-heap-ref; module AbstractExec; instr-sigop; current-frame; load-from-slot; instr-load-tag-lit; readReg; regs; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sv-as-loc; Input1; store-indirect; store-indirect-suc; halted; sucLoc; SV-Ptr)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -154,7 +155,7 @@ module CompareC {FS : FrameSemantics} where
         trans (exec-abstract-preserves-frame (instr-reg-op out-nz) (floc fs1) (falloc fs1))
               (exec-abstract-preserves-frame (instr-sigop si′) s alloc)
 
-      mem-fs2 : ∀ (loc : ValueLocation FS) → MemOps.readLoc (floc fs2) loc ≡ MemOps.readLoc s loc
+      mem-fs2 : ∀ (loc : ValueLocation FS) → SMCore.MemOps.readLoc (floc fs2) loc ≡ SMCore.MemOps.readLoc s loc
       mem-fs2 loc =
         trans (mem-untouched (instr-reg-op out-nz) (floc fs1) (falloc fs1) loc
                  InstrNoHeapWrite.nhw-instr-reg-op refl)
@@ -185,14 +186,14 @@ module CompareC {FS : FrameSemantics} where
 
       -- The tag, stashed at fs2→fs3 and read back at fs6→fs7. The only stack
       -- write in between targets `suc n`.
-      read-tag-fs3 : MemOps.readLoc (floc fs3)
+      read-tag-fs3 : SMCore.MemOps.readLoc (floc fs3)
                        (AtStack (current-frame (falloc fs2)) tag-stash)
                      ≡ just (readReg (regs (floc fs2)) Output)
       read-tag-fs3 =
-        MemOps.writeLoc-read-same-stack (floc fs2) (current-frame (falloc fs2)) tag-stash
+        SMCore.MemOps.writeLoc-read-same-stack (floc fs2) (current-frame (falloc fs2)) tag-stash
           (readReg (regs (floc fs2)) Output)
 
-      read-tag-fs6 : MemOps.readLoc (floc fs6)
+      read-tag-fs6 : SMCore.MemOps.readLoc (floc fs6)
                        (AtStack (current-frame (falloc fs2)) tag-stash)
                      ≡ just (readReg (regs (floc fs2)) Output)
       read-tag-fs6 =
@@ -213,7 +214,7 @@ module CompareC {FS : FrameSemantics} where
       wf-load-tag : InstrWF (floc fs6) (falloc fs6) (load-from-slot tag-stash)
       wf-load-tag =
         readReg (regs (floc fs2)) Output
-        , subst (λ f → MemOps.readLoc (floc fs6) (AtStack f tag-stash)
+        , subst (λ f → SMCore.MemOps.readLoc (floc fs6) (AtStack f tag-stash)
                          ≡ just (readReg (regs (floc fs2)) Output))
                 (sym cf-fs6) read-tag-fs6
 
@@ -248,12 +249,12 @@ module CompareC {FS : FrameSemantics} where
       sv : StoredValue FS
       sv = readReg (regs (floc fs4)) Output
 
-      read-sum-fs5 : MemOps.readLoc (floc fs5)
+      read-sum-fs5 : SMCore.MemOps.readLoc (floc fs5)
                        (AtStack (current-frame (falloc fs4)) sum-stash) ≡ just sv
       read-sum-fs5 =
-        MemOps.writeLoc-read-same-stack (floc fs4) (current-frame (falloc fs4)) sum-stash sv
+        SMCore.MemOps.writeLoc-read-same-stack (floc fs4) (current-frame (falloc fs4)) sum-stash sv
 
-      read-sum-fs10 : MemOps.readLoc (floc fs10)
+      read-sum-fs10 : SMCore.MemOps.readLoc (floc fs10)
                         (AtStack (current-frame (falloc fs4)) sum-stash) ≡ just sv
       read-sum-fs10 =
         trans (store-ind-suc-preserves-slot (floc fs9) (falloc fs9) sum-hl sum-stash rdi-fs9)
@@ -277,7 +278,7 @@ module CompareC {FS : FrameSemantics} where
 
       wf-load-sum : InstrWF (floc fs10) (falloc fs10) (load-from-slot sum-stash)
       wf-load-sum =
-        sv , subst (λ f → MemOps.readLoc (floc fs10) (AtStack f sum-stash) ≡ just sv)
+        sv , subst (λ f → SMCore.MemOps.readLoc (floc fs10) (AtStack f sum-stash) ≡ just sv)
                    (sym cf-fs10) read-sum-fs10
 
       -- ── THE ELEVEN `halted ≡ false` obligations. The SigOp step is pure —
@@ -338,11 +339,11 @@ module CompareC {FS : FrameSemantics} where
                             (proj₁ wf-load-tag) (proj₂ wf-load-tag))
                          out2
 
-      tag-fs8 : MemOps.readLoc (floc fs8) sum-loc ≡ just tv
+      tag-fs8 : SMCore.MemOps.readLoc (floc fs8) sum-loc ≡ just tv
       tag-fs8 = trans (store-ind-result (floc fs7) (falloc fs7) sum-hl rdi-fs7)
                       (cong just tagout-fs7)
 
-      tag-fs11 : MemOps.readLoc (floc fs11) sum-loc ≡ just tv
+      tag-fs11 : SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just tv
       tag-fs11 =
         trans (heap-untouched (load-from-slot sum-stash) (floc fs10) (falloc fs10)
                  sum-hl nhw-load-from-slot)
@@ -356,7 +357,7 @@ module CompareC {FS : FrameSemantics} where
       pv : StoredValue FS
       pv = SV-Tag 0
 
-      pay-fs11 : MemOps.readLoc (floc fs11) (sucLoc sum-loc) ≡ just pv
+      pay-fs11 : SMCore.MemOps.readLoc (floc fs11) (sucLoc sum-loc) ≡ just pv
       pay-fs11 =
         trans (heap-untouched (load-from-slot sum-stash) (floc fs10) (falloc fs10)
                  (sucHL sum-hl) nhw-load-from-slot)
@@ -373,7 +374,7 @@ module CompareC {FS : FrameSemantics} where
       -- ── WHAT THE RUN LEAVES ALONE: the nine, then the two register steps.
       mem-pres : ∀ (loc : ValueLocation FS)
                → BeforeFrontier (record alloc { next-slot = n }) loc
-               → MemOps.readLoc (floc fs11) loc ≡ MemOps.readLoc s loc
+               → SMCore.MemOps.readLoc (floc fs11) loc ≡ SMCore.MemOps.readLoc s loc
       mem-pres loc bf =
         trans (NSP.mem-pres-from nhw-load-from-slot refl nhw-instr-load-tag-lit refl n≤
                  rdi-fs7 rdi-fs9 loc bf)
@@ -395,7 +396,7 @@ module CompareC {FS : FrameSemantics} where
                                (n≤1+n _))
 
       -- ── THE PLACE: the sum the denotation returns, by the tag.
-      place-at : ∀ (b : Bool) → MemOps.readLoc (floc fs11) sum-loc ≡ just (SV-Tag (if b then 1 else 0))
+      place-at : ∀ (b : Bool) → SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just (SV-Tag (if b then 1 else 0))
                → ResultPlace (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
                              (resOf si (EvV.eraseᵍ (bool b))) (floc fs11)
       place-at true  tg rewrite bt-UU (conB si) =

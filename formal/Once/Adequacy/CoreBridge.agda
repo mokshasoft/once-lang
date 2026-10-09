@@ -37,6 +37,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 import Once.Compile as C
+import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig; teleSig≡entrySig)
 open import Once.Spec.Contract using (ISig; Impl)
@@ -84,14 +85,14 @@ typedSig-ef m (inj₁ _)  ()
 typedSig-ef m (inj₂ es) mt = teleSig mt
 
 typedSig : Typed → ISig
-typedSig (m , mt , hvm) = typedSig-ef m (C.extractFunctions (C.extractAliases m) m) mt
+typedSig (m , mt , hvm) = typedSig-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt
 
 typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt → Program (typedSig-ef m ef mt)
 typedProgram-ef m (inj₁ _)  () _
 typedProgram-ef m (inj₂ es) mt (_ , mi) = TR.toProgram₀ mt mi
 
 typedProgram : (tp : Typed) → Program (typedSig tp)
-typedProgram (m , mt , hvm) = typedProgram-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm
+typedProgram (m , mt , hvm) = typedProgram-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm
 
 -- …which are the module's signatures, read off its entries.
 typed-sig-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → typedSig-ef m ef mt ≡ moduleSig-ef ef
@@ -99,7 +100,7 @@ typed-sig-ef m (inj₁ _)  ()
 typed-sig-ef m (inj₂ es) mt = teleSig≡entrySig mt
 
 typed-sig : ∀ (tp : Typed) → typedSig tp ≡ moduleSig (proj₁ tp)
-typed-sig (m , mt , hvm) = typed-sig-ef m (C.extractFunctions (C.extractAliases m) m) mt
+typed-sig (m , mt , hvm) = typed-sig-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt
 
 -- An implementation of the module's signatures implements the core program's.
 implFor : ∀ (tp : Typed) → Impl (moduleSig (proj₁ tp)) → Impl (typedSig tp)
@@ -114,7 +115,7 @@ private
   runIRAt : Interp → List IRFun → ℕ → List SigOpEvent
   runIRAt ι′ tbl n = projTrace ι′ (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) mainCall tt) n
 
-  core-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
+  core-ef : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
               {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
             → (b : FB.FunBundle C.emptyCScope es) (I : Impl (moduleSig-ef ef)) (n : ℕ)
             → runIRAt (interp (moduleSig-ef ef) I) (tableOf-go (FB.bundle→compiled b) []) n
@@ -142,7 +143,7 @@ program-core :
 program-core m mt hvm I ir mi n with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)
-        (core-ef m (C.extractFunctions (C.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b I n)
+        (core-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b I n)
   where
     ι = interp (moduleSig m) I
     ir≡ : ir ≡ mainCall

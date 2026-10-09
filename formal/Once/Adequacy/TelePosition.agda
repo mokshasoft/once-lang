@@ -26,8 +26,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Type using (Type)
 open import Once.Type.Rigid using (RigidFree)
 import Once.Compile as C
-open C.FunInfo using (funName)
-open C.PolyFunInfo using (pfunName)
+import Once.IR as IR
+import Once.Parser as Parser
+open Parser.FunInfo using (funName)
+open Parser.PolyFunInfo using (pfunName)
 open import Once.TypeCheck.Classify using (Imports)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.TypeCheck.Elaborate
@@ -54,7 +56,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.Surface.Elaborate using (elaborateFull)
 
 -- A declaration-import map that agrees with the scope's telescope entries.
-IAgree : (String → TopCtx) → List (C.PolyFunInfo × TopCtx) → Set
+IAgree : (String → TopCtx) → List (Parser.PolyFunInfo × TopCtx) → Set
 IAgree I tele = All (λ q → I (pfunName (proj₁ q)) ≡ proj₂ q) tele
 
 -- The scope's imports are rigid-free.
@@ -67,32 +69,32 @@ irf-cons {y = y} g old {x} lk with y ≟str x
 ... | no _  = old lk
 
 -- The remaining entries' names: distinct, and new to the scope.
-entryName : C.Entry → String
+entryName : Parser.Entry → String
 entryName = Once.Parser.entryNameOf
 
 scopeNames : C.CScope → List String
 scopeNames csc = map proj₁ (C.CScope.cimps csc) ++ map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)
 
-Fresh : C.CScope → List C.Entry → Set
+Fresh : C.CScope → List Parser.Entry → Set
 Fresh csc es = AllPairs _≢_ (map entryName es) × All (λ x → All (x ≢_) (scopeNames csc)) (map entryName es)
 
 ------------------------------------------------------------------------
 -- The declaration imports along the telescope
 ------------------------------------------------------------------------
 
-declImps-head : ∀ (e : C.PolyFunInfo × TopCtx) (es : List (C.PolyFunInfo × TopCtx))
+declImps-head : ∀ (e : Parser.PolyFunInfo × TopCtx) (es : List (Parser.PolyFunInfo × TopCtx))
                   (d : Dec (pfunName (proj₁ e) ≡ pfunName (proj₁ e)))
               → C.declImps-aux e es (pfunName (proj₁ e)) d ≡ proj₂ e
 declImps-head e es (yes _) = refl
 declImps-head e es (no ¬p) = ⊥-elim (¬p refl)
 
-declImps-skip : ∀ (e : C.PolyFunInfo × TopCtx) (es : List (C.PolyFunInfo × TopCtx)) (x : String)
+declImps-skip : ∀ (e : Parser.PolyFunInfo × TopCtx) (es : List (Parser.PolyFunInfo × TopCtx)) (x : String)
                   (d : Dec (pfunName (proj₁ e) ≡ x)) → pfunName (proj₁ e) ≢ x
               → C.declImps-aux e es x d ≡ C.declImps es x
 declImps-skip e es x (yes p) ne = ⊥-elim (ne p)
 declImps-skip e es x (no _)  ne = refl
 
-iself-step : ∀ (e : C.PolyFunInfo × TopCtx) (tele : List (C.PolyFunInfo × TopCtx)) (qs : List (C.PolyFunInfo × TopCtx))
+iself-step : ∀ (e : Parser.PolyFunInfo × TopCtx) (tele : List (Parser.PolyFunInfo × TopCtx)) (qs : List (Parser.PolyFunInfo × TopCtx))
            → All (pfunName (proj₁ e) ≢_) (map (λ q → pfunName (proj₁ q)) qs)
            → IAgree (C.declImps tele) qs → IAgree (C.declImps (e ∷ tele)) qs
 iself-step e tele []       []       []       = []
@@ -120,14 +122,14 @@ private
 fresh-head : ∀ {csc e es} → Fresh csc (e ∷ es) → All (entryName e ≢_) (scopeNames csc)
 fresh-head (_ , (h ∷ _)) = h
 
-fresh-fun : ∀ {csc fi ty es} → Fresh csc (C.e-fun fi ∷ es) → Fresh (C.extendScope csc (funName fi) ty) es
+fresh-fun : ∀ {csc fi ty es} → Fresh csc (Parser.e-fun fi ∷ es) → Fresh (C.extendScope csc (funName fi) ty) es
 fresh-fun {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) = tl , insert-all [] (scopeNames csc) (map entryName es) hd hs
 
 -- D274: an FFI declaration extends Σ, not the definitions' names.
-fresh-sig : ∀ {csc fi ty es} → Fresh csc (C.e-fun fi ∷ es) → Fresh (C.extendSig csc (funName fi) ty) es
+fresh-sig : ∀ {csc fi ty es} → Fresh csc (Parser.e-fun fi ∷ es) → Fresh (C.extendSig csc (funName fi) ty) es
 fresh-sig ((_ ∷ tl) , (_ ∷ hs)) = tl , hs
 
-fresh-poly : ∀ {csc pfi es} → Fresh csc (C.e-poly pfi ∷ es) → Fresh (C.addEntry csc pfi) es
+fresh-poly : ∀ {csc pfi es} → Fresh csc (Parser.e-poly pfi ∷ es) → Fresh (C.addEntry csc pfi) es
 fresh-poly {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) =
   tl , insert-all (map proj₁ (C.CScope.cimps csc)) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc))
                   (map entryName es) hd hs
@@ -161,9 +163,9 @@ lookup-head n L with StrProp._≟_ n n
 
 -- The walk's premises at the start: the empty scope, and the entries' names
 -- (D249: the extractor's guard).
-entries-distinct : ∀ (m : P.Module) {es : List C.Entry}
-  → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map entryName es)
-entries-distinct (P.mkModule ds) eq = NC.guard-entries (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds Module.nothing) eq
+entries-distinct : ∀ (m : P.Module) {es : List Parser.Entry}
+  → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map entryName es)
+entries-distinct (P.mkModule ds) eq = NC.guard-entries (Parser.extractFunctions-go (Parser.extractAliases (P.mkModule ds)) ds P.nothing) eq
 
 none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (scopeNames C.emptyCScope)) xs
 none-in-empty []       = []
@@ -186,15 +188,15 @@ tableOf-go-++ (cf ∷ cfs) xs pre = tableOf-go-++ cfs (irFunOf cf ∷ xs) pre
 -- too — its type check passes, and it is not rewritten).
 irFun-main : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → TopCtx)
                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋} {r : _}
-               (v : _) → C.compileFun-main-aux C.Heap false ctx polys impsOf x ty body v ≡ inj₂ irFun
-           → C.compileFunBody C.Heap false ctx polys impsOf x ty body ≡ r → r ≡ inj₂ irFun
+               (v : _) → C.compileFun-main-aux IR.Heap false ctx polys impsOf x ty body v ≡ inj₂ irFun
+           → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ r → r ≡ inj₂ irFun
 irFun-main ctx polys impsOf x ty body (inj₁ _) () _
 irFun-main ctx polys impsOf x ty body (inj₂ _) cf eq = trans (sym eq) cf
 
 irFun-body : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → TopCtx)
                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋} (b : Bool)
-           → C.compileFun-aux C.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
-           → C.compileFunBody C.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
+           → C.compileFun-aux IR.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
+           → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
 irFun-body ctx polys impsOf x ty body true  cf = irFun-main ctx polys impsOf x ty body (C.validateMain ty) cf refl
 irFun-body ctx polys impsOf x ty body false cf = cf
 
@@ -202,17 +204,17 @@ aux-form : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf 
              (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty)
              (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
-         → C.compileFunBody-aux C.Heap false ctx polys impsOf x ty refl cr
-           ≡ inj₂ (elaborateFull C.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize (sound-of cr ce))))
+         → C.compileFunBody-aux IR.Heap false ctx polys impsOf x ty refl cr
+           ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize (sound-of cr ce))))
 aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
 irFun-form : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → TopCtx)
                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
                {se : _} {d f : ℕ}
-           → C.compileFun C.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
+           → C.compileFun IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
            → (ce : Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty
                      ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
-           → irFun ≡ elaborateFull C.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0
+           → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0
                        (realize (sound-of (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce)))
 irFun-form ctx polys impsOf x ty body cf ce =
   inj₂-injective (trans (sym (irFun-body ctx polys impsOf x ty body (Relation.Nullary.isYes (x ≟str "main")) cf))

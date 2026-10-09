@@ -54,7 +54,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap; Cata; SigOp; Call; out-μ
   id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
   In; Out; in-ν; Ana; const) public
 open import Once.IRTy using (FitsInRegI; ⌊_⌋; fits-int; fits-float) public
-open import Once.IRTy using (⟦_,_⟧-baseI) public
+open import Once.IRTy using (⟦_,_⟧-baseI)
 open import Data.Unit using (tt) public
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
@@ -83,9 +83,9 @@ open import Once.CCC.Machine.SMCore
          load-from-slot; load-indirect; load-indirect-suc; sucLoc; SV-Tag; writeReg-preserves;
          -- plan 0.91 S2: how a block is LAID OUT, so `BlocksAt` can say where
          -- it lives without restating `c-thunk … ∷ t ++ c-ret … ∷ []`.
-         block-layout) public
+         block-layout)
 open import Once.CCC.Machine.ValidAtWFHalted o tbl using (validAtWF-set-halted) public
-open import Once.CCC.Machine.Allocation using (module FrontierInvariant) public
+open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace') public
 open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of) public
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable) public

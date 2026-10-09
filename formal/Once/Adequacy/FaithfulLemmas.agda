@@ -47,6 +47,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Elaborate using (elaborate; cataM; anaM)
 import Once.Compile as C
+import Once.IR as IR
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc; fmapT; fmapT-∘; fmapT-cong)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
@@ -102,9 +103,9 @@ subst-arrow refl refl g = refl
 -- record, equal-at-every-budget IS equality, so the index was carrying
 -- nothing.
 morph-app-bridge : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
-                     (ih : liftFn fmt ρ {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt ≡ SD.⟦ morph ⟧ˢ fmt σ₀ tt)
+                     (ih : liftFn fmt ρ {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate IR.Heap morph) tt ≡ SD.⟦ morph ⟧ˢ fmt σ₀ tt)
                      (w : ⟦ D ⟧ᴰ)
-                   → liftFn fmt ρ {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w
+                   → liftFn fmt ρ {D} {E} (apply ∘ ⟨ elaborate IR.Heap morph ∘ terminal , id ⟩) w
                      ≡ (SD.⟦ morph ⟧ˢ fmt σ₀ tt >>=T (λ clo → clo w))
 morph-app-bridge {D} {E} {π} morph ih w =
   trans (cong (λ X → subst T (cohᴰ E) X) app-⟨⟩-clean)
@@ -116,12 +117,12 @@ morph-app-bridge {D} {E} {π} morph ih w =
     -- monad-reduces (`terminal`/`id` = `returnT`) to the morphism's computation
     -- with its value paired against `w'`, then applied: ONE associativity law
     -- (plan 0.105: equality of computations is equality of trees).
-    app-⟨⟩-clean : evalᴰ fmt ρ (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w'
-                   ≡ (evalᴰ fmt ρ (elaborate C.Heap morph) tt >>=T (λ vf → vf w'))
-    app-⟨⟩-clean = >>=T-assoc (evalᴰ fmt ρ (elaborate C.Heap morph) tt)
+    app-⟨⟩-clean : evalᴰ fmt ρ (apply ∘ ⟨ elaborate IR.Heap morph ∘ terminal , id ⟩) w'
+                   ≡ (evalᴰ fmt ρ (elaborate IR.Heap morph) tt >>=T (λ vf → vf w'))
+    app-⟨⟩-clean = >>=T-assoc (evalᴰ fmt ρ (elaborate IR.Heap morph) tt)
                               (λ b → returnT (b , w')) (evalᴰ fmt ρ (apply {⌊ D ⌋} {⌊ E ⌋}))
     -- `ih` in `evalᴰ`-form: `evalᴰ (elaborate morph) tt ≡ subst T (sym cohᴰ(D⇒E)) (SD.⟦morph⟧ˢ tt)`.
-    ih-evalᴰ : evalᴰ fmt ρ (elaborate C.Heap morph) tt
+    ih-evalᴰ : evalᴰ fmt ρ (elaborate IR.Heap morph) tt
                ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ fmt σ₀ tt)
     ih-evalᴰ = trans (sym (subst-sym-subst (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))))
                      (cong (subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E)))) ih)
@@ -150,7 +151,7 @@ morph-app-bridge-fun = morph-app-bridge
 cataM-fold : ∀ {F : Functor} {A : Type} {π : Purity} (wfF : WellFormedF F)
                (c : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ)
            → liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {μ-type F ⇒[ mk-kind Many π ] A}
-                    (cataM {F} {A} wfF C.Heap) c
+                    (cataM {F} {A} wfF IR.Heap) c
              ≡ returnT (cata-sem wfF c)
 cataM-fold {F} {A} {π} wfF c =
   trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ (μ-type F)) (cohᴰ A))
@@ -167,7 +168,7 @@ cataM-fold {F} {A} {π} wfF c =
   where
     c' = subst (λ z → z) (sym (cohᴰ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))) c
     applyIR : IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ II.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
-    applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩
+    applyIR = IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩
     -- Applying the carried closure IS the algebra: `⟨fst,snd⟩` is pair-η and
     -- `liftFn apply` is application, so the fold's per-layer algebra is `c`.
     apply-closure : ∀ (z : ⟦ ⟦ F ⟧T A ⟧ᴰ)
@@ -175,7 +176,7 @@ cataM-fold {F} {A} {π} wfF c =
                            applyIR (c , z)
                     ≡ c z
     apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {π})
-    innerCata = C.Cata (wf-⌊⌋ wfF)
+    innerCata = IR.Cata (wf-⌊⌋ wfF)
                      (subst (λ o → IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ II.* o) ⌊ A ⌋)
                             (⌊⟧T-commute F A) applyIR)
 
@@ -187,16 +188,16 @@ cata-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
               (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
-              (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) dγ
+              (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate IR.Heap alg) dγ
                     ≡ SD.⟦ alg ⟧ˢ fmt σ₀ dγ)
             → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
-                (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
+                (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
 cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ ih =
   trans split fold-step
   where
-    ealg   = elaborate C.Heap alg
-    cataM' = cataM {F} {A} wf C.Heap
+    ealg   = elaborate IR.Heap alg
+    cataM' = cataM {F} {A} wf IR.Heap
     -- `liftFn`'s surface implicits cannot be inferred through `⌊_⌋`, so pin
     -- them once here.
     liftCataM = liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
@@ -205,7 +206,7 @@ cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ ih =
     -- The composition splits; the left factor is the algebra's own
     -- denotation, which the IH identifies with its surface meaning.
     split : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
-                   (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
+                   (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ
           ≡ (SD.⟦ alg ⟧ˢ fmt σ₀ dγ >>=T liftCataM)
     split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ Ψ ⟧ᶜ} cataM' ealg))
                   (cong (λ t → t >>=T liftCataM) ih)
@@ -271,7 +272,7 @@ subst-fam-T P refl m = refl
 anaM-unfold : ∀ {F : Functor} {A : Type} {π₀ π : Purity} (wf : WellFormedF F)
                 (c : ⟦ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ⟧ᴰ)
             → liftFn fmt ρ {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
-                     (anaM {F} {A} {π} wf C.Heap) c
+                     (anaM {F} {A} {π} wf IR.Heap) c
               ≡ returnT (λ a → returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A) (c a')) a))
 anaM-unfold {F} {A} {π₀} {π} wf c =
   trans elab-ana-reduce (cong returnT per-a)
@@ -279,12 +280,12 @@ anaM-unfold {F} {A} {π₀} {π} wf c =
     Arr = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A
     c' = subst (λ z → z) (sym (cohᴰ Arr)) c
     applyIR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ⟦ F ⟧T A ⌋
-    applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩
+    applyIR = IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩
     coalg' = subst (λ o → IR (⌊ Arr ⌋ II.* ⌊ A ⌋) o) (⌊⟧T-commute F A) applyIR
     Ana-IR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ν-type F π ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
-    elab-ana-reduce : liftFn fmt ρ {Arr} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (anaM {F} {A} {π} wf C.Heap) c
+    elab-ana-reduce : liftFn fmt ρ {Arr} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (anaM {F} {A} {π} wf IR.Heap) c
                       ≡ returnT (λ a → subst T (cohᴰ (ν-type F π))
                                          (evalᴰ fmt ρ Ana-IR (c' , subst (λ z → z) (sym (cohᴰ A)) a)))
     elab-ana-reduce =
@@ -443,21 +444,21 @@ ana-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π₀ π : Pur
              (wf : WellFormedF F)
              (coalg : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
              (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
-             (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) dγ
+             (ih : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate IR.Heap coalg) dγ
                    ≡ SD.⟦ coalg ⟧ˢ fmt σ₀ dγ)
            → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
-               (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
+               (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
              ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg ⟧ˢ fmt σ₀ dγ
 ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg dγ ih =
   trans split unfold-step
   where
-    ecoalg = elaborate C.Heap coalg
-    anaM'  = anaM {F} {A} {π} wf C.Heap
+    ecoalg = elaborate IR.Heap coalg
+    anaM'  = anaM {F} {A} {π} wf IR.Heap
     liftAnaM = liftFn fmt ρ {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
                             {A ⇒[ mk-kind Many π₀ ] ν-type F π} anaM'
 
     split : liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F π}
-                   (elaborate C.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
+                   (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {π = π} wf coalg)) dγ
           ≡ (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ >>=T liftAnaM)
     split = trans (cong (λ h → h dγ) (liftFn-∘ {B = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
                                                 {C = A ⇒[ mk-kind Many π₀ ] ν-type F π}

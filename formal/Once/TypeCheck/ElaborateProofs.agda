@@ -12,7 +12,7 @@
 
 module Once.TypeCheck.ElaborateProofs where
 
-open import Once.TypeCheck.Elaborate public
+open import Once.TypeCheck.Elaborate
 open import Once.Surface.Syntax using (zeroUsage)
 open import Data.Unit using (tt; ⊤)
 open import Once.Denotation.Realize using (realize)

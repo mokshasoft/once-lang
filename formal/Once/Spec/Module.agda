@@ -43,12 +43,13 @@ open import Once.Type.Rigid using (rigidOf; RigidFree)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 import Once.Compile as C
+import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.TypeCheck.Classify using (NamedCtx; ctxWithImportsAndPolys; topCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 
-open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
-open C.PolyFunInfo using (pfunType; pfunBody)
+open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
+open Parser.PolyFunInfo using (pfunType; pfunBody)
 
 ------------------------------------------------------------------------
 -- D241/D242 (plan 0.103 6c′): THE MODULE IS ONE TELESCOPE.
@@ -68,7 +69,7 @@ record Scope : Set where
   field
     sig  : ISig                  -- the signatures declared so far (Σ)
     imps : C.FunCtx              -- monomorphic definitions
-    tele : List C.PolyFunInfo    -- telescope definitions
+    tele : List Parser.PolyFunInfo    -- telescope definitions
 
 emptyScope : Scope
 emptyScope = scope [] C.emptyFunCtx []
@@ -82,10 +83,10 @@ addSig sc x ty = scope ((x , ty) ∷ Scope.sig sc) (Scope.imps sc) (Scope.tele s
 addImp : Scope → String → Type → Scope
 addImp sc x ty = scope (Scope.sig sc) (C.extendFunCtx (Scope.imps sc) x ty) (Scope.tele sc)
 
-addPoly : Scope → C.PolyFunInfo → Scope
+addPoly : Scope → Parser.PolyFunInfo → Scope
 addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 
-data ModTele : Scope → List C.Entry → Set where
+data ModTele : Scope → List Parser.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
   -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
   -- contract (D061/D071) — HONEST (D231: `pure` means no side effects), and
@@ -94,7 +95,7 @@ data ModTele : Scope → List C.Entry → Set where
   ffi  : ∀ {sc fi ty es}
        → funIsPrimitive fi ≡ true → funType fi ≡ just ty → IsConcrete ty → HonestFFI ty → RigidFree ty
        → ModTele (addSig sc (funName fi) ty) es
-       → ModTele sc (C.e-fun fi ∷ es)
+       → ModTele sc (Parser.e-fun fi ∷ es)
   -- A monomorphic definition, typed at its (declared or inferred) type.
   mono : ∀ {sc fi ty es Ψ}
        → funIsPrimitive fi ≡ false
@@ -102,13 +103,13 @@ data ModTele : Scope → List C.Entry → Set where
        → RigidFree ty                    -- D243: a monomorphic type is GROUND
        → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ
        → ModTele (addImp sc (funName fi) ty) es
-       → ModTele sc (C.e-fun fi ∷ es)
+       → ModTele sc (Parser.e-fun fi ∷ es)
   -- D243: a telescope definition, typed ONCE, at its schema with rigid
   -- parameters. A use is at a kinded instance of it.
   poly : ∀ {sc pfi es Ψ}
        → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
        → ModTele (addPoly sc pfi) es
-       → ModTele sc (C.e-poly pfi ∷ es)
+       → ModTele sc (Parser.e-poly pfi ∷ es)
 
 ------------------------------------------------------------------------
 -- Plan 0.105 (D257 amendment 2): THE INTERPRETATION SIGNATURES A MODULE IS
@@ -118,15 +119,15 @@ data ModTele : Scope → List C.Entry → Set where
 -- do not depend on which derivation types the module.
 ------------------------------------------------------------------------
 
-entrySig-fun : C.FunInfo → Bool → Maybe Type → ISig → ISig
+entrySig-fun : Parser.FunInfo → Bool → Maybe Type → ISig → ISig
 entrySig-fun fi true  (just ty) rest = (funName fi , ty) ∷ rest
 entrySig-fun fi true  nothing   rest = rest
 entrySig-fun fi false _         rest = rest
 
-entrySig : List C.Entry → ISig
+entrySig : List Parser.Entry → ISig
 entrySig []                = []
-entrySig (C.e-fun fi ∷ es)  = entrySig-fun fi (funIsPrimitive fi) (funType fi) (entrySig es)
-entrySig (C.e-poly _ ∷ es) = entrySig es
+entrySig (Parser.e-fun fi ∷ es)  = entrySig-fun fi (funIsPrimitive fi) (funType fi) (entrySig es)
+entrySig (Parser.e-poly _ ∷ es) = entrySig es
 
 teleSig : ∀ {sc es} → ModTele sc es → ISig
 teleSig []                                    = []
@@ -141,19 +142,19 @@ teleSig≡entrySig (mono {fi = fi} ep _ _ _ rest)            rewrite ep = teleSi
 teleSig≡entrySig (poly _ rest)                            = teleSig≡entrySig rest
 
 -- A module's signatures, when it extracts.
-moduleSig-ef : (String ⊎ List C.Entry) → ISig
+moduleSig-ef : (String ⊎ List Parser.Entry) → ISig
 moduleSig-ef (inj₁ _)  = []
 moduleSig-ef (inj₂ es) = entrySig es
 
 moduleSig : P.Module → ISig
-moduleSig m = moduleSig-ef (C.extractFunctions (C.extractAliases m) m)
+moduleSig m = moduleSig-ef (Parser.extractFunctions (Parser.extractAliases m) m)
 
-ModuleTyped-ef : P.Module → (String ⊎ List C.Entry) → Set
+ModuleTyped-ef : P.Module → (String ⊎ List Parser.Entry) → Set
 ModuleTyped-ef m (inj₁ _)  = ⊥
 ModuleTyped-ef m (inj₂ es) = ModTele emptyScope es
 
 ModuleTyped : P.Module → Set
-ModuleTyped m = ModuleTyped-ef m (C.extractFunctions (C.extractAliases m) m)
+ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions (Parser.extractAliases m) m)
 
 ------------------------------------------------------------------------
 -- The entry point: a monomorphic definition `main : IO Unit`.
@@ -177,8 +178,8 @@ MainIn (ffi _ _ _ _ _ rest)                = MainIn rest
 MainIn (mono {fi = fi} {ty = ty} _ _ _ _ rest) = ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest
 MainIn (poly _ rest)                       = MainIn rest
 
-HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List C.Entry) → ModuleTyped-ef m ef → Set
+HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) → ModuleTyped-ef m ef → Set
 HasValidMain-ef m (inj₂ _) mt = MainsEffUU mt × MainIn mt
 
 HasValidMain : ∀ (m : P.Module) → ModuleTyped m → Set
-HasValidMain m mt = HasValidMain-ef m (C.extractFunctions (C.extractAliases m) m) mt
+HasValidMain m mt = HasValidMain-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt

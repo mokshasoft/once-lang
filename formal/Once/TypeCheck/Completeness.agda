@@ -37,8 +37,8 @@ open import Once.Type as T using (Type; Unit; _*_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RResolved)
 open import Once.CanonicalName using (CanonicalName; gen; own; bare-NotGenerator; NotGenerator)
-open import Once.TypeCheck.ElaborateProofs
-  using (inferElab; checkElab; success; failure; inferElabV; checkElabV; VerifiedInferResult)
+open import Once.TypeCheck.Elaborate
+  using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo)
 import Once.TypeCheck.Classify as Classify
 import Once.TypeCheck.Error as Error
 open import Once.TypeCheck.Judgment
@@ -66,7 +66,7 @@ open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ModeAgreement using (mode-agree-ic; mode-agree-dc)
-open import Once.TypeCheck.ElaborateProofs using (checkCaseGo; elabGivenV; elabGivenLeaf; elabGivenApp; given-infer; given-cata; checkCompose-g; checkCompose-f; VerifiedGivenResult; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success)
+open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success)
 
 
 -- The per-rule lemmas (split for the 30 s per-module check budget).
@@ -237,7 +237,7 @@ poly-head-fails ctx x {schema} eL eI eP ¬g =
 var-route : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity)
   (r : VerifiedInferResult ctx (RVar x)) {B Ψ eE d f}
   → proj₁ r ≡ success B Ψ eE d f
-  → Once.TypeCheck.ElaborateProofs.given-var ctx x A π r ≡ given-infer ctx (RVar x) A π r
+  → E.given-var ctx x A π r ≡ given-infer ctx (RVar x) A π r
 var-route ctx x A π (success _ _ _ _ _ , _) _ = refl
 var-route ctx x A π (failure _ , _) ()
 
@@ -505,7 +505,7 @@ checkElabV-RResolved-J :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) (T : Type) (gv : GenView cn)
   → classifyGen cn ≡ gv
   → checkElab ctx (RResolved cn) T
-      ≡ proj₁ (Once.TypeCheck.ElaborateProofs.checkElabV-RResolved-dispatch
+      ≡ proj₁ (E.checkElabV-RResolved-dispatch
                  ctx cn T gv (inferElabV ctx (RResolved cn)))
 checkElabV-RResolved-J ctx cn T .(classifyGen cn) refl = refl
 
@@ -874,7 +874,7 @@ mutual
   given-complete {ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} leq bd)
     with inferElabV (Classify.extendNamedCtx ctx x A) body | infer-complete bd
   ... | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | (_ , _ , _ , refl)
-      with Once.TypeCheck.ElaborateProofs.decideLeq q' T.Many | decideLeq-just q' T.Many leq
+      with E.decideLeq q' T.Many | decideLeq-just q' T.Many leq
   ...   | just _ | _ , refl = _ , _ , _ , refl
   given-complete {ctx} (d-compose {f = f} {g = g} {A = A} {M = M} {π = π} dg df)
     with elabGivenV ctx g A π | given-complete dg

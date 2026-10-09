@@ -9,12 +9,14 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Apply (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Machine.SMCore using (AbstractTrace; SV-Ptr; sucLoc; SV-Code; instr-call-closure; StoredValue; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
@@ -44,7 +46,7 @@ module ApplyC {FS : FrameSemantics} where
   -- the chain was written at `a16` directly).
   call-at : ∀ (prog : AbstractTrace) (fs : FlatState) (hl : _) (ℓ : LabelId) (j : ℕ)
           → fclosure fs ≡ SV-Ptr (AtDynamic hl)
-          → MemOps.readLoc (floc fs) (sucLoc (AtDynamic hl)) ≡ just (SV-Code ℓ)
+          → SMCore.MemOps.readLoc (floc fs) (sucLoc (AtDynamic hl)) ≡ just (SV-Code ℓ)
           → find-thunk prog ℓ ≡ just j
           → flat-exec-instr instr-call-closure prog fs
             ≡ record fs
@@ -98,7 +100,7 @@ module ApplyC {FS : FrameSemantics} where
           env-sv-of (env-in-cell rep _)   = inline-sv rep env
 
           env-cell-of : (ea : EnvAt alloc {E} env fst-loc s)
-                      → MemOps.readLoc s fst-loc ≡ just (env-sv-of ea)
+                      → SMCore.MemOps.readLoc s fst-loc ≡ just (env-sv-of ea)
           env-cell-of (env-at-loc _ ep _ _) = ep
           env-cell-of (env-in-cell _ ep)    = ep
 
@@ -107,7 +109,7 @@ module ApplyC {FS : FrameSemantics} where
           arg-sv-of (cell-inline rep _)              = inline-sv rep (proj₂ x)
 
           arg-cell-of : (c : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s)
-                      → MemOps.readLoc s (sucLoc pair-loc) ≡ just (arg-sv-of c)
+                      → SMCore.MemOps.readLoc s (sucLoc pair-loc) ≡ just (arg-sv-of c)
           arg-cell-of (cell-ptr ap _ _)  = ap
           arg-cell-of (cell-inline _ ap) = ap
 
@@ -136,7 +138,7 @@ module ApplyC {FS : FrameSemantics} where
                             rdi fst-cell (arg-cell-of sc') (env-cell-of ea) bf fst-bf n≤ nh
 
               callee-env : (ea' : EnvAt alloc {E} env fst-loc s)
-                         → MemOps.readLoc (floc ASP.a16) (AtDynamic ASP.ahl)
+                         → SMCore.MemOps.readLoc (floc ASP.a16) (AtDynamic ASP.ahl)
                            ≡ just (env-sv-of ea')
                          → CellAt (falloc ASP.a16) E env (AtDynamic ASP.ahl) (floc ASP.a16)
               callee-env (env-at-loc el ep eb ev) q =
@@ -144,7 +146,7 @@ module ApplyC {FS : FrameSemantics} where
               callee-env (env-in-cell rep ep) q = cell-inline rep q
 
               callee-arg : (c : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s)
-                         → MemOps.readLoc (floc ASP.a16) (sucLoc (AtDynamic ASP.ahl))
+                         → SMCore.MemOps.readLoc (floc ASP.a16) (sucLoc (AtDynamic ASP.ahl))
                            ≡ just (arg-sv-of c)
                          → CellAt (falloc ASP.a16) A (proj₂ x)
                              (sucLoc (AtDynamic ASP.ahl)) (floc ASP.a16)
@@ -249,7 +251,7 @@ module ApplyC {FS : FrameSemantics} where
               -- plan 0.105: …and the callee runs from the caller's log — the
               -- seventeen setup rows make no call — so the two RUNS agree.
               callFs = flat-exec-instr instr-call-closure prog ASP.a16
-              h-eq : LocState.ev-log (floc callFs) ≡ LocState.ev-log s
+              h-eq : SMCore.ev-log (floc callFs) ≡ SMCore.ev-log s
               h-eq = trans (log-of run17 _ refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (evalᴰ body (env , proj₂ x)) ≡ runAt s (evalᴰ (apply {A} {B}) x)
@@ -292,8 +294,8 @@ module ApplyC {FS : FrameSemantics} where
 
               mem-pres-apply : ∀ (loc : ValueLocation FS)
                              → BeforeFrontier (record alloc { next-slot = n }) loc
-                             → MemOps.readLoc (floc (CalleeRun.settle crun)) loc
-                               ≡ MemOps.readLoc s loc
+                             → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc
+                               ≡ SMCore.MemOps.readLoc s loc
               mem-pres-apply loc bf =
                 -- The callee preserves the caller's frame at ANY bound; the
                 -- setup's own preservation is at apply's frontier `n`. The
@@ -304,7 +306,7 @@ module ApplyC {FS : FrameSemantics} where
                          (frontier-monotone (record alloc { next-slot = n })
                             (record (falloc ASP.a16) { next-slot = n })
                             (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf))
-                      (trans (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
+                      (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
                              (ASP.setup-mem-pres n≤ OB.rdi12' OB.rdi14' loc bf))
 
               trc : chain-events run ≡ eventsAt s (evalᴰ (apply {A} {B}) x)
