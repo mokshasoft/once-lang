@@ -49,9 +49,13 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (AllocState; next-heap-ref; next-slot; AbstractTrace; LocState; StoredValue; halted; mov-to-output; restore-input; store-at-slot; readReg; regs; Input1; Output; writeReg-same)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; restore-input; store-at-slot; readReg; Input1; Output; writeReg-same; module LocState; module AllocState)
+open AllocState using (next-heap-ref; next-slot)
+open LocState using (halted; regs)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Memory.HeapAddress using (HeapLocation; ref-id; heap-ref; heap-loc; mkHeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
 open import Data.Nat using (z≤n)
@@ -205,9 +209,9 @@ module PairProofC {FS : FrameSemantics} where
       -- from the caller's log.
       ----------------------------------------------------------------
       h : List SigOpEvent
-      h = SMCore.ev-log s
+      h = SMCore.LocState.ev-log s
 
-      logP2 : SMCore.ev-log (floc PC.PR.p2) ≡ h
+      logP2 : SMCore.LocState.ev-log (floc PC.PR.p2) ≡ h
       logP2 = log-silent PC.pre-chain _ refl
 
       esF : List SigOpEvent
@@ -362,7 +366,7 @@ module PairProofC {FS : FrameSemantics} where
           vrg = MachineRefinesObsF.value-realized mrg
 
           -- `g` runs from the log `f` left: the two mid rows make no call.
-          logM2 : SMCore.ev-log (floc PCF.m2) ≡ h ++ esF
+          logM2 : SMCore.LocState.ev-log (floc PCF.m2) ≡ h ++ esF
           logM2 = trans (log-silent PCF.mid-chain _ refl)
                         (trans (VR.log vrf) (cong (_++ esF) logP2))
 
@@ -383,7 +387,7 @@ module PairProofC {FS : FrameSemantics} where
                                   (sym (cong proj₁ RG)) (trans (sym (cong proj₂ RG)) q))))
 
           -- …and the log after `g` is the caller's followed by both.
-          log-fg : SMCore.ev-log (floc (VR.settle vrg)) ≡ (h ++ esF) ++ esG
+          log-fg : SMCore.LocState.ev-log (floc (VR.settle vrg)) ≡ (h ++ esF) ++ esG
           log-fg = trans (VR.log vrg) (cong (_++ esG) logM2)
 
           chainG₀ : FlatSteps prog (VR.steps vrg) PCF.m2 (VR.settle vrg)

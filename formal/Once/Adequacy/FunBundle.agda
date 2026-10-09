@@ -59,6 +59,7 @@ open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
+import Data.String as String
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
@@ -99,7 +100,7 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     FunBundle (C.addEntry sc pfi) es →
     FunBundle sc (Parser.e-poly pfi ∷ es)
 
-compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
+compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
@@ -110,7 +111,7 @@ compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
   AS.compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
     (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
-compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
+compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
@@ -121,7 +122,7 @@ compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
-compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
+compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
@@ -133,7 +134,7 @@ compileFun-aux-ce doOpt ctx polys impsOf name ty expr true eq =
 compileFun-aux-ce doOpt ctx polys impsOf name ty expr false eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
-compileFun-ce : ∀ (polys : PolyCtx) (impsOf : Core.String → TopCtx)
+compileFun-ce : ∀ (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (ctx : TopCtx) (ty : Type) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →

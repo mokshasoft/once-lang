@@ -16,7 +16,8 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Apply (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (AbstractTrace; SV-Ptr; sucLoc; SV-Code; instr-call-closure; StoredValue; halted)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; SV-Ptr; sucLoc; SV-Code; instr-call-closure; StoredValue; module LocState)
+open LocState using (halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
@@ -251,7 +252,7 @@ module ApplyC {FS : FrameSemantics} where
               -- plan 0.105: …and the callee runs from the caller's log — the
               -- seventeen setup rows make no call — so the two RUNS agree.
               callFs = flat-exec-instr instr-call-closure prog ASP.a16
-              h-eq : SMCore.ev-log (floc callFs) ≡ SMCore.ev-log s
+              h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
               h-eq = trans (log-of run17 _ refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (evalᴰ body (env , proj₂ x)) ≡ runAt s (evalᴰ (apply {A} {B}) x)

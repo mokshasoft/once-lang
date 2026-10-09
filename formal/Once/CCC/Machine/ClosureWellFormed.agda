@@ -41,6 +41,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
+open AllocState using (next-slot; next-heap-ref; current-frame)
+open LocState using (regs; ev-log; halted; stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 import Once.CCC.Machine.SMPrimitives as SMP
 -- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.

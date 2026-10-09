@@ -106,15 +106,16 @@ open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (NoThunks; missBefore-from; blocks-at)
 open import Data.List using (_++_; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk; AllocState; mkAllocState; next-slot)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk; AllocState; mkAllocState; module AllocState)
+open AllocState using (next-slot)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Data.Nat.Properties using (+-identityʳ; +-comm)
 open import Once.CCC.Machine.SMCore
-  using (LocState; mkLocState; Registers; mkRegs; SV-Tag;
-         halted)
+  using (LocState; mkLocState; Registers; mkRegs; SV-Tag; module LocState)
+open LocState using (halted)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
 open import Data.Nat using (z≤n; s≤s; _≤_; _+_)

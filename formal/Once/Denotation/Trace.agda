@@ -70,7 +70,7 @@ record SigOpEvent : Set where
     .ev-base : IsBaseType ev-dom
     ev-arg   : M.⟦ ev-dom ⟧
 
-open SigOpEvent public
+open SigOpEvent
 
 -- Every `SigOpInfo` carries `baseA : IsBaseType A`, so the witness is already
 -- to hand and this needs no dispatch: it reduces on an abstract domain.

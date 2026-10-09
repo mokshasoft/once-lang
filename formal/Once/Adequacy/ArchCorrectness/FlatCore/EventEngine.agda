@@ -128,6 +128,8 @@ module RT = Core.RunTrace State (List Instr) Instr Payload
 -- (`hiding (Instr)`: the abstract machine has an `Instr` of its own, and this
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
+open AllocState using (next-heap-ref)
+open LocState using (halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)

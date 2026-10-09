@@ -37,6 +37,8 @@ open import Data.Product using (proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.Machine.SMCore
+open AllocState using (frame-slots; saved-frames; current-frame)
+open LocState using (regs; stackMem)
 import Once.Allocator.AbstractInstance as AI
 open AbstractExec {FS}
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)

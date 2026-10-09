@@ -47,6 +47,7 @@ import Once.TypeCheck.Classify as Classify
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P
+import Data.String as String
 import Once.Parser.Module as Module
 
 ------------------------------------------------------------------------
@@ -54,7 +55,7 @@ import Once.Parser.Module as Module
 ------------------------------------------------------------------------
 
 cfb-aux-doOpt : ∀ {nctx : Classify.NamedCtx} {body : RawExpr}
-  (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : P.String → TopCtx)
+  (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type.Type) (δ : Srf.⟦ Classify.NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
   (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux IR.Heap false ctx polys impsOf name ty δ cr ≡ inj₂ ir →
@@ -62,7 +63,7 @@ cfb-aux-doOpt : ∀ {nctx : Classify.NamedCtx} {body : RawExpr}
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _ , _) eq = _ , refl
 
-cfb-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : P.String → TopCtx)
+cfb-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
@@ -74,7 +75,7 @@ cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
 -- Layer 1 — `compileFun` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
-cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : P.String → TopCtx)
+cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux IR.Heap false ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir')
@@ -82,7 +83,7 @@ cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
-cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : P.String → TopCtx)
+cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type.Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux IR.Heap false ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir')
@@ -91,7 +92,7 @@ cfun-aux-doOpt doOpt ctx polys impsOf name ty expr true eq =
 cfun-aux-doOpt doOpt ctx polys impsOf name ty expr false eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
-cfun-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : P.String → TopCtx)
+cfun-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')

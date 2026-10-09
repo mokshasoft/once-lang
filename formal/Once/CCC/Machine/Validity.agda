@@ -20,6 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
+open LocState using (stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.Semantics.Machine
   using (sem-pair)

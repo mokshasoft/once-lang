@@ -192,6 +192,7 @@ open import Data.Bool using (true; false)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Machine.SMCore
+open LocState using (halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtDynamic)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.Flat

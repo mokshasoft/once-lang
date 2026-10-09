@@ -19,7 +19,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (next-slot; LocState; readReg; regs; Input1; Output; AbstractTrace; mov-to-input; halted; writeReg-same)
+open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; Output; AbstractTrace; mov-to-input; writeReg-same; module LocState; module AllocState)
+open AllocState using (next-slot)
+open LocState using (regs; halted)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
@@ -284,7 +286,7 @@ module CompC {FS : FrameSemantics} where
       -- the budgeted monad — `minus-take`, `take-++-threaded` — is gone: the
       -- events are exact.)
       h : DL.List SigOpEvent
-      h = SMCore.ev-log s
+      h = SMCore.LocState.ev-log s
 
       esF : DL.List SigOpEvent
       esF = eventsAt s (evalᴰ f x)
@@ -431,7 +433,7 @@ module CompC {FS : FrameSemantics} where
                    (sym ev-comp))
 
           -- …and the log grows by both.
-          log-comp : SMCore.ev-log (floc (VR.settle vg)) ≡ h DL.++ eventsAt s (evalᴰ (g ∘ f) x)
+          log-comp : SMCore.LocState.ev-log (floc (VR.settle vg)) ≡ h DL.++ eventsAt s (evalᴰ (g ∘ f) x)
           log-comp =
             trans (VR.log vg)
             (trans (cong (DL._++ evG) logF)

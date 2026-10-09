@@ -68,7 +68,8 @@ open Once.Denotation.Behavior.Behavior using (at)
 -- per-arch instance postulates; that is intentional and confined to
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
-open import Once.Adequacy.CPU using (Byte)
+open import Once.Adequacy.CPU using ()
+open import Once.Adequacy.CPU.Interface using (Byte)
 open import Once.Target.Arch using (Arch)
 open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits

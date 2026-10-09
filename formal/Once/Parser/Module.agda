@@ -18,6 +18,9 @@
 module Once.Parser.Module where
 
 open import Once.Parser.Module.Core
+open import Data.Maybe using (nothing; just; Maybe)
+open import Data.Product using (_,_; Σ-syntax; _×_; proj₁; proj₂)
+open import Data.String using (String; _≟_)
 open import Once.Parser.Core using (Parser; skipNewlines)
 open import Once.Parser.Token using (TAmpersand; TArrow; TAt; TBang; TCaret0; TCaret1; TCaretW; TColon; TComma; TDot; TEOF; TEqEq; TEquals; TFloat; TGe; TGt; TInt; TLBrace; TLParen; TLambda; TLe; TLt; TMinus; TNeq; TNewline; TPercent; TPipe; TPlus; TRBrace; TRParen; TSemicolon; TSlash; TStar; TString; TWord; Token)
 open import Once.Type using (PolyType)
@@ -29,7 +32,7 @@ open import Data.Nat.Properties using (<-trans; n≤1+n; ≤-refl; ≤-trans)
 open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.List using (List; []; _∷_; length)
 open import Once.Parser.Module.Import
-open import Once.Parser.Module.FunDef public
+open import Once.Parser.Module.FunDef
 open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Parser.Module.FunDef.Body using (eqHead)

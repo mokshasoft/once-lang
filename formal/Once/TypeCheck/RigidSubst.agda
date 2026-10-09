@@ -33,6 +33,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Type
+open ArrowKind using (quantity)
 open import Once.Type.Sub using (_<:_; <:-refl; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Type.Rigid using (RigidFree; KindedInstance; extractGround-rf)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF)

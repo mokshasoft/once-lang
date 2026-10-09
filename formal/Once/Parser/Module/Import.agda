@@ -13,6 +13,9 @@ module Once.Parser.Module.Import where
 open import Relation.Nullary using (Dec)
 open import Data.Bool using (Bool; true; false)
 open import Once.Parser.Module.Core
+open import Data.Maybe using (nothing; just)
+open import Data.Product using (_,_)
+open import Data.String using (String; _≟_)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Token using (TDot; Token)
 open import Relation.Binary.PropositionalEquality using (_≡_)

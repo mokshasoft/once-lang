@@ -19,7 +19,8 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Simple (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (writeReg; regs; Output; readReg; Input1; mov-to-output; halted; SV-Ptr; writeReg-same; load-indirect; load-indirect-suc; sucLoc; instr-load-const; SV-Lit)
+open import Once.CCC.Machine.SMCore using (writeReg; Output; readReg; Input1; mov-to-output; SV-Ptr; writeReg-same; load-indirect; load-indirect-suc; sucLoc; instr-load-const; SV-Lit; module LocState)
+open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Float.Decimal using (Decimal; round)

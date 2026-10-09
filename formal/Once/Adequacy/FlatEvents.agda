@@ -44,7 +44,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- The observable's value domain — the same `⟦_⟧` the event carries.
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; halted; module AbstractExec; AbstractTrace; AbstractInstr; instr-sigop)
+  using (LocState; module LocState; module AbstractExec; AbstractTrace; AbstractInstr; instr-sigop)
+open LocState using (halted)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.Denotation.Trace using (SigOpEvent)

@@ -38,6 +38,8 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (sucHL; HeapLocation)
 open import Once.CCC.Machine.SMCore
+open AllocState using (current-frame; frame-slots; saved-frames; next-slot; next-heap-ref; block-size)
+open LocState using (regs; stackMem; heapMem; halted)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
 
 module FlatMachine {FS : FrameSemantics} where

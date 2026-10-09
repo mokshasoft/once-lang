@@ -109,7 +109,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Memory.HeapAddress
-  using (HeapRef; sucHL; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; _≟HL_; HeapLocation)
+  using (HeapRef; sucHL; heap-loc; mkHeapRef; _≟HL_; HeapLocation; module HeapRef; module HeapLocation)
+open HeapLocation using (heap-ref; heap-offset)
+open HeapRef using (ref-id)
 
 -- Plan 0.65 G1c step 4: ONE accessor per observable, so the correspondence
 -- reads the machine through a surface a core can take as parameters. `memory`
@@ -135,6 +137,8 @@ readMem m a = m a
 writeMem : Memory → ℕ → Word → Memory
 writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 open import Once.CCC.Machine.SMCore
+open AllocState using (current-frame; frame-slots; saved-frames; next-heap-ref; block-size)
+open LocState using (regs; halted; heapMem; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
@@ -782,7 +786,7 @@ record SetsRoleMem (s s' : State) (ρ : Role) (v : Word) (a : ℕ) (mv : Word) :
     rm-off-addr : ∀ a' → ¬ (a' ≡ a)
                 → readMem (memory s') a' ≡ readMem (memory s) a'
     rm-halt     : xhalted s' ≡ xhalted s
-open SetsRoleMem public
+open SetsRoleMem
 
 record Sets2Roles (s s' : State) (ρ₁ ρ₂ : Role) (v₁ v₂ : Word) : Set where
   field

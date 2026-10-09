@@ -19,7 +19,8 @@ module Once.CCC.Codegen.IRObsCorrect.Out (o : CanonicalName) (tbl : DL.List IRFu
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; mov-to-input; readReg; regs; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; halted; sv-as-loc)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; sv-as-loc; module LocState)
+open LocState using (regs; halted)
 open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; ν-type; ⟦_⟧TI)
 
 import Once.CCC.FrameSemantics
@@ -260,7 +261,7 @@ module OutC {FS : FrameSemantics} where
               -- plan 0.105: …from the caller's log, since the three setup
               -- rows and the call make no call of their own.
               callFs = flat-exec-instr instr-call-closure prog OSP.b3
-              h-eq : SMCore.ev-log (floc callFs) ≡ SMCore.ev-log s
+              h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
               h-eq = trans (log-of run4 _ refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ runAt s (evalᴰ (Out wf) ν-val)

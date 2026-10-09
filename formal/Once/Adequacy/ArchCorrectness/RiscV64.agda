@@ -89,10 +89,12 @@ open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFl
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt; compile-trace-cnt-agrees; compile-trace; slot-to-disp)
 open import Once.CCC.Machine.NoNested using (no-nested-of-all; NoNested)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size) renaming (Program to RVProgram)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; heap-offset; sucHL)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; sucHL; module HeapLocation)
+open HeapLocation using (heap-offset)
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Machine.SMCore using (current-frame)
+open import Once.CCC.Machine.SMCore using (module AllocState)
+open AllocState using (current-frame)
 open FrameSemantics using (frame-base)
 open import Data.Empty using (⊥)
 open import Data.Unit using (tt)
@@ -169,7 +171,8 @@ open FlatEventTrace {rv64-frame-semantics} using (flat-events)
 open import Once.CCC.Machine.FlatStoreWF rv64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF rv64-frame-semantics using (FlatRegTag)
 open import Once.CCC.Machine.SMCore using
-  (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr)
+  (AbstractReg; Input1; Output; Scratch; Count; readReg; SV-Ptr; module LocState)
+open LocState using (regs)
 
 ------------------------------------------------------------------------
 -- THE ENTRY HEAP VIEW. Nothing is allocated yet: the domain is EMPTY, the

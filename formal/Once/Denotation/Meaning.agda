@@ -43,7 +43,8 @@ open Interp using (sig; impl)
 open import Data.List.Membership.Propositional using (_∈_)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; seqF; module νᵈ)
+open νᵈ using (forceᵈ)
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (lookupᴰUsed)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)

@@ -14,6 +14,9 @@
 module Once.Parser.Module.FunDef.Def where
 
 open import Once.Parser.Module.Core
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (Σ-syntax; _,_)
+open import Data.String using (String)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Token using (Token)
 open import Data.Nat.Properties using (<-≤-trans)

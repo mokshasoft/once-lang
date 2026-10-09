@@ -11,6 +11,9 @@
 module Once.Parser.Module.FunDef.OpDecl where
 
 open import Once.Parser.Module.Core
+open import Data.Maybe using (nothing; just; Maybe)
+open import Data.Product using (_,_; _×_)
+open import Data.String using (String)
 open import Once.Parser.Token using (Token)
 open import Data.Nat.Properties using (<-≤-trans; <⇒≤; ≤-<-trans)
 open import Data.List using (List)

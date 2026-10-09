@@ -19,7 +19,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; LocState; StoredValue; halted; load-from-slot; store-indirect-suc; instr-load-code-addr; store-indirect; mov-to-input; store-at-slot; sucLoc; readReg; regs; Output; SV-Code; writeReg-same; SV-Ptr; current-frame; instr-alloc-heap; mov-to-output)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; load-from-slot; store-indirect-suc; instr-load-code-addr; store-indirect; mov-to-input; store-at-slot; sucLoc; readReg; Output; SV-Code; writeReg-same; SV-Ptr; instr-alloc-heap; mov-to-output; module LocState; module AllocState)
+open AllocState using (next-slot; next-heap-ref; current-frame)
+open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (sucHL)
 
 import Once.CCC.FrameSemantics

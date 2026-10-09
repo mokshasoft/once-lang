@@ -24,8 +24,12 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; ValueLocation; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; store-at-slot; current-frame; readReg; regs; Output; LocState; sv-as-loc; Input1; store-indirect; StoredValue; sucLoc; load-indirect-suc; load-indirect; load-from-slot; writeReg-preserves; SV-Ptr; SV-Tag; SV-Lit; SV-Code; store-indirect-suc; writeReg-same; AbstractInstr; instr-alloc-heap; mov-to-input; mov-to-output; halted)
-open import Once.Memory.HeapAddress using (_≟HL_; HeapLocation; sucHL; heap-loc; ref-id; heap-ref; mkHeapRef)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; store-at-slot; readReg; Output; LocState; sv-as-loc; Input1; store-indirect; StoredValue; sucLoc; load-indirect-suc; load-indirect; load-from-slot; writeReg-preserves; SV-Ptr; SV-Tag; SV-Lit; SV-Code; store-indirect-suc; writeReg-same; AbstractInstr; instr-alloc-heap; mov-to-input; mov-to-output; module LocState; module AllocState)
+open AllocState using (current-frame; next-slot; next-heap-ref)
+open LocState using (regs; halted)
+open import Once.Memory.HeapAddress using (_≟HL_; HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

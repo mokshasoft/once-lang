@@ -62,8 +62,12 @@ open import Data.Bool using (false; true; if_then_else_)
 import Data.Nat
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.CCC.Machine.SMCore
+open AllocState using (frame-slots; current-frame; saved-frames; next-heap-ref)
+open LocState using (halted; stackMem; regs; heapMem)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
-open import Once.Memory.HeapAddress using (ref-id; heap-ref)
+open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 open import Data.Unit using (tt)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat

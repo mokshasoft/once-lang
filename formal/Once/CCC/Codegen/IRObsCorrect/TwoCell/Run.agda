@@ -20,7 +20,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; instr-load-code-addr; store-indirect-suc; LocState; StoredValue; halted; readReg; regs; Output; current-frame; sv-as-loc; Input1)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; instr-load-code-addr; store-indirect-suc; LocState; StoredValue; readReg; Output; sv-as-loc; Input1; module LocState; module AllocState)
+open AllocState using (next-slot; next-heap-ref; current-frame)
+open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 
 import Once.CCC.FrameSemantics

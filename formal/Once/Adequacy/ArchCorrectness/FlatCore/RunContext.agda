@@ -52,6 +52,8 @@ open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.CCC.Machine.SMCore
+open AllocState using (next-slot; saved-frames; block-size; frame-slots)
+open LocState using (halted; heapMem; stackMem; regs)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}

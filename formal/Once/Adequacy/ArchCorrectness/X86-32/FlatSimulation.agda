@@ -62,8 +62,12 @@ module Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation
   where
 
 open import Once.CCC.Machine.SMCore
+open AllocState using (frame-slots; current-frame; saved-frames; next-heap-ref)
+open LocState using (stackMem; halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
-open import Once.Memory.HeapAddress using (ref-id; heap-ref)
+open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 open import Data.Unit using (tt)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}

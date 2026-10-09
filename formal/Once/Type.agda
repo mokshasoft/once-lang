@@ -174,7 +174,7 @@ record ArrowKind : Set where
     quantity : Quantity
     purity   : Purity
 
-open ArrowKind public
+open ArrowKind
 
 -- | Show function for ArrowKind
 showArrowKind : ArrowKind → String

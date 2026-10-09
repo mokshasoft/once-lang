@@ -344,6 +344,7 @@ open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
 open import Once.CCC.Machine.SMCore hiding (Instr)
+open LocState using (halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtDynamic)
 open FlatMachine {FS} using (fpc; floc; fetch; find-label; flat-exec-instr)
 open MemOps {FS} using (readLoc)

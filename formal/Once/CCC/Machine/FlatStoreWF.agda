@@ -38,13 +38,17 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.CCC.Label using (LabelId)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; heap-ref; ref-id; _≟HL_)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; _≟HL_; module HeapRef; module HeapLocation)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
+open AllocState using (next-heap-ref; current-frame)
+open LocState using (regs; heapMem; stackMem; halted; ev-log)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack; Slot)
 open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}

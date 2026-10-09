@@ -67,6 +67,8 @@ open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
+open AllocState using (current-frame; next-heap-ref)
+open LocState using (regs; heapMem; stackMem; ev-log)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; Slot; ValueLocation)
 open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}

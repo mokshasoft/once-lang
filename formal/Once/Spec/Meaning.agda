@@ -63,7 +63,7 @@ open import Once.Denotation.Admissible public
         ; rawIntLits ; negLits ; declIntLits ; moduleIntLits )
 
 open import Once.Denotation.Trace public
-  using ( SigOpEvent ; ev-name ; ev-dom ; ev-arg ; mkEvent )
+  using ( SigOpEvent ; mkEvent )
 
 open import Once.Denotation.ValueDomain public
   using ( ⟦_⟧ᴰ ; ⟦_⟧ᴰᴵ ; cohᴰ ; coerce-functor⁻¹-D )

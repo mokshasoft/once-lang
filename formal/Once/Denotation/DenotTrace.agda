@@ -71,6 +71,7 @@ open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; haltOp
 -- (consumers unchanged), so the reference meaning `⟦_⟧ᵈ` can land in `⟦_⟧ᴰ`
 -- without `Once.IR` (IR enters only at `evalᴰ` below).
 open import Once.Denotation.ValueDomain
+open νᵈ using (forceᵈ)
 
 ------------------------------------------------------------------------
 -- The recursion-scheme trace in the T-convention.

@@ -14,9 +14,9 @@ module Once.Parser.Module.Core where
 
 open import Data.List using (List; _∷_; length)
 open import Data.Bool using (Bool)
-open import Data.Maybe using (Maybe; just; nothing; is-just) public
-open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax) public
-open import Data.String using (String; _≟_) public
+open import Data.Maybe using (Maybe; just; nothing; is-just)
+open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax)
+open import Data.String using (String; _≟_)
 open import Data.Nat using (_≤_; _<_; s≤s)
 open import Data.Nat.Properties using (≤-refl)
 open import Data.Nat.Induction using (<-wellFounded)

@@ -41,6 +41,8 @@ open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
 open import Once.CCC.Machine.SMCore
+open AllocState using (next-slot; current-frame)
+open LocState using (stackMem; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Data.Maybe using (Maybe; just; nothing)

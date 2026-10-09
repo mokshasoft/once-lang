@@ -60,6 +60,7 @@ import Once.Adequacy.AcceptSound as AS
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
+import Data.String as String
 open FunInfo
 
 -- `EffUU` is in `Once.Spec.Module` (plan 0.84).
@@ -68,7 +69,7 @@ open FunInfo
 -- (1) a `⊢ᶜ` derivation ⇒ the body compiles, via `check-complete`.
 ------------------------------------------------------------------------
 
-compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
+compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
@@ -89,7 +90,7 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
 -- = `isYes (name ≟ "main")`, so casing `name ≟str "main"` reduces it.
 ------------------------------------------------------------------------
 
-compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
+compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty ≡ EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →

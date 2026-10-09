@@ -125,8 +125,12 @@ open RegRoles roles using (in1-reg; sp-reg; scratch-reg; out-reg)
 -- (`hiding (Instr)`: the abstract machine has an `Instr` of its own, and this
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
+open AllocState using (saved-frames; current-frame; block-size; frame-slots; next-heap-ref)
+open LocState using (halted; heapMem; regs; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation; AtStack)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-offset; ref-id; heap-ref)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation)
+open HeapLocation using (heap-offset; heap-ref)
+open HeapRef using (ref-id)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the

@@ -54,8 +54,10 @@ open import Data.List using ([]; take)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; heap-offset)
-open import Once.CCC.Machine.SMCore using (current-frame)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; module HeapLocation)
+open HeapLocation using (heap-offset)
+open import Once.CCC.Machine.SMCore using (module AllocState)
+open AllocState using (current-frame)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics using (frame-base)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -192,7 +194,8 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   using (events-agree-start; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-64-frame-semantics using (FlatRegTag)
-open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr)
+open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Output; Scratch; Count; readReg; SV-Ptr; module LocState)
+open LocState using (regs)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
 -- `instr-alloc-heap` (the fresh block lands at the concrete `%r15` frontier), so

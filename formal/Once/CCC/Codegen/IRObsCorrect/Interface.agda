@@ -36,7 +36,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; halted; current-frame; readReg; regs; Input1; SV-Ptr; sucLoc; SV-Code)
+open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; readReg; Input1; SV-Ptr; sucLoc; SV-Code; module LocState; module AllocState)
+open AllocState using (next-slot; current-frame)
+open LocState using (halted; regs)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -85,7 +87,7 @@ module Core {FS : FrameSemantics} where
                    (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl)
 
   runAt : ∀ {X} → LocState FS → TM.T X → TM.Run X
-  runAt s m = TM.run ιᶠ (SMCore.ev-log s) m
+  runAt s m = TM.run ιᶠ (SMCore.LocState.ev-log s) m
 
   -- …its calls, how it ends, and whether it stopped.
   eventsAt : ∀ {X} → LocState FS → TM.T X → DL.List SigOpEvent
@@ -99,16 +101,16 @@ module Core {FS : FrameSemantics} where
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
-          → SMCore.ev-log st ≡ SMCore.ev-log st′ → m ≡ m′ → runAt st m ≡ runAt st′ m′
+          → SMCore.LocState.ev-log st ≡ SMCore.LocState.ev-log st′ → m ≡ m′ → runAt st m ≡ runAt st′ m′
   runAt-≡ h e = cong₂ (TM.run ιᶠ) h e
 
   -- A fragment that makes no call leaves the log as it found it.
-  log-pure : ∀ {s : LocState FS} → SMCore.ev-log s ≡ SMCore.ev-log s DL.++ DL.[]
+  log-pure : ∀ {s : LocState FS} → SMCore.LocState.ev-log s ≡ SMCore.LocState.ev-log s DL.++ DL.[]
   log-pure = sym (Data.List.Properties.++-identityʳ _)
 
   -- One call-free step of the structured machine leaves the log alone.
   log-abstract : ∀ (i : AbstractInstr) → LogFree i → ∀ (s : LocState FS) alloc
-               → SMCore.ev-log (proj₁ (SMCore.AbstractExec.exec-abstract {FS} i s alloc)) ≡ SMCore.ev-log s
+               → SMCore.LocState.ev-log (proj₁ (SMCore.AbstractExec.exec-abstract {FS} i s alloc)) ≡ SMCore.LocState.ev-log s
   log-abstract = LP.exec-abstract-log
 
   -- The value of a computation that RETURNS AT ONCE (`ret v`: a constructor,
@@ -131,7 +133,7 @@ module Core {FS : FrameSemantics} where
 
   -- …and one call-free flat step is such a fragment (`FlatLog`).
   log-step : ∀ (i : AbstractInstr) → LogFree i → ∀ prog (fs : FlatState)
-           → SMCore.ev-log (floc (flat-exec-instr i prog fs)) ≡ SMCore.ev-log (floc fs) DL.++ DL.[]
+           → SMCore.LocState.ev-log (floc (flat-exec-instr i prog fs)) ≡ SMCore.LocState.ev-log (floc fs) DL.++ DL.[]
   log-step i lf prog fs = trans (LP.flat-exec-instr-log i lf prog fs) (log-pure {floc fs})
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
@@ -171,14 +173,14 @@ module Core {FS : FrameSemantics} where
   -- log by its events, so a clause's `log` follows from its `traces-agree`.
   log-of : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
          → ∀ {es} → chain-events r ≡ es
-         → SMCore.ev-log (floc fs′) ≡ SMCore.ev-log (floc fs) DL.++ es
-  log-of {fs = fs} r nn eq = trans (chain-log r nn) (cong (SMCore.ev-log (floc fs) DL.++_) eq)
+         → SMCore.LocState.ev-log (floc fs′) ≡ SMCore.LocState.ev-log (floc fs) DL.++ es
+  log-of {fs = fs} r nn eq = trans (chain-log r nn) (cong (SMCore.LocState.ev-log (floc fs) DL.++_) eq)
 
   -- …in particular a SILENT chain (the emitter's own rows) leaves it alone.
   log-silent : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
              → chain-events r ≡ DL.[]
-             → SMCore.ev-log (floc fs′) ≡ SMCore.ev-log (floc fs)
-  log-silent {fs = fs} r nn eq = trans (log-of r nn eq) (Data.List.Properties.++-identityʳ (SMCore.ev-log (floc fs)))
+             → SMCore.LocState.ev-log (floc fs′) ≡ SMCore.LocState.ev-log (floc fs)
+  log-silent {fs = fs} r nn eq = trans (log-of r nn eq) (Data.List.Properties.++-identityʳ (SMCore.LocState.ev-log (floc fs)))
   open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; r-rigid; readable?; readable-base; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
@@ -387,7 +389,7 @@ module Core {FS : FrameSemantics} where
       -- `FlatSteps`: the retired nested instructions (`instr-case-on-tag`,
       -- `instr-loop`) grow the log without an `event-of`, and a chain does not
       -- know it was emitted.
-      log        : SMCore.ev-log (floc settle) ≡ SMCore.ev-log s DL.++ eventsAt s (evalᴰ ir x)
+      log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log s DL.++ eventsAt s (evalᴰ ir x)
       -- D179: the value comes from `evalᴰ`, not the pure `eval`. While it was
       -- `eval ir x` the value half refined a DIFFERENT semantics from the
       -- trace half — the same two-models category error this codebase retired
@@ -648,7 +650,7 @@ module Core {FS : FrameSemantics} where
       -- Plan 0.105: exact, and the log grows by them — see
       -- `ValueRealized.log`/`traces-agree`.
       events     : chain-events run ≡ eventsAt (floc fs) comp
-      log        : SMCore.ev-log (floc settle) ≡ SMCore.ev-log (floc fs) DL.++ eventsAt (floc fs) comp
+      log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log (floc fs) DL.++ eventsAt (floc fs) comp
       -- D204: WHAT THE CALL LEAVES ALONE — the call half of the same fact
       -- `ValueRealized.mem-pres` states for a straight-line fragment.
       --

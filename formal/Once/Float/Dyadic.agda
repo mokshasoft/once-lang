@@ -58,7 +58,7 @@ record Dyadic : Set where
     sig   : ℤ
     shift : ℕ
 
-open Dyadic public
+open Dyadic
 
 -- | The whole number `n`.
 fromℕ : ℕ → Dyadic

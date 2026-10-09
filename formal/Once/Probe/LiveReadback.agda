@@ -7,7 +7,8 @@ open import Data.List using (List; []; _∷_)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (halted)
+open import Once.CCC.Machine.SMCore using (LocState)
+open LocState using (halted)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module P {FS : FrameSemantics} where

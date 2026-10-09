@@ -51,7 +51,9 @@ open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; cmp-trace)
 open import Once.Target.Arch using (module TargetNum)
 open TargetNum using (int-bits)
-open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; next-heap-ref; module AbstractExec; instr-sigop; current-frame; load-from-slot; instr-load-tag-lit; readReg; regs; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sv-as-loc; Input1; store-indirect; store-indirect-suc; halted; sucLoc; SV-Ptr)
+open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; module AbstractExec; instr-sigop; load-from-slot; instr-load-tag-lit; readReg; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sv-as-loc; Input1; store-indirect; store-indirect-suc; sucLoc; SV-Ptr; module LocState; module AllocState)
+open AllocState using (next-heap-ref; current-frame)
+open LocState using (regs; halted)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

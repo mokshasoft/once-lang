@@ -14,6 +14,9 @@ open import Data.Bool using (Bool; true; false)
 open import Data.List using (reverse)
 
 open import Once.Parser.Module.Core
+open import Data.Maybe using (nothing; just)
+open import Data.Product using (_,_)
+open import Data.String using (String)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Token using (TColon; TEquals; Token)
 open import Once.Type using (Type)

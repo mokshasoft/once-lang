@@ -37,6 +37,7 @@ import Once.TypeCheck.Classify
 import Once.Parser
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as P
+import Data.Maybe as Maybe
 import Once.Adequacy.NameClash as NC
 import Data.String.Properties as StrProp
 import Relation.Nullary
@@ -165,7 +166,7 @@ lookup-head n L with StrProp._≟_ n n
 -- (D249: the extractor's guard).
 entries-distinct : ∀ (m : P.Module) {es : List Parser.Entry}
   → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map entryName es)
-entries-distinct (P.mkModule ds) eq = NC.guard-entries (Parser.extractFunctions-go (Parser.extractAliases (P.mkModule ds)) ds P.nothing) eq
+entries-distinct (P.mkModule ds) eq = NC.guard-entries (Parser.extractFunctions-go (Parser.extractAliases (P.mkModule ds)) ds Maybe.nothing) eq
 
 none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (scopeNames C.emptyCScope)) xs
 none-in-empty []       = []

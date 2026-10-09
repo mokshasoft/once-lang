@@ -48,6 +48,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore
+open AllocState using (current-frame; next-heap-ref)
+open LocState using (heapMem; regs; stackMem; halted; ev-log)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation)
 

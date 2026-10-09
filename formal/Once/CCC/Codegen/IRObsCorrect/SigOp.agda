@@ -31,7 +31,8 @@ module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IR
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; SV-Ptr; readReg; regs; Input1; AbstractTrace; StoredValue; halted; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output)
+open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; SV-Ptr; readReg; Input1; AbstractTrace; StoredValue; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output; module LocState)
+open LocState using (regs; halted)
 open import Once.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ; Float to Floatˢ)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Function using () renaming (id to idᶠ)
@@ -194,7 +195,7 @@ module SigOpC {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((nh , span′ 0 _ refl) ∷ [])
                    live (λ _ → cong (λ t → DL.length t + base) (sym em≡)) stops refl refl
-                   (cong (SMCore.ev-log s DL.++_) ev-eq)
+                   (cong (SMCore.LocState.ev-log s DL.++_) ev-eq)
                    place
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output
                    -- register, the halt flag and the log — memory is untouched
@@ -361,20 +362,20 @@ module SigOpC {FS : FrameSemantics} where
       op = TM.callOp (name si) A (baseA si) B
       y  = yes-of d
       p₀ = proj₁ y
-      ans = TM.answer ιᶠ (SMCore.ev-log s) op p₀ (argOf si x)
+      ans = TM.answer ιᶠ (SMCore.LocState.ev-log s) op p₀ (argOf si x)
       -- the run of the call node, at the decided `yes`
-      run-call : TM.run ιᶠ (SMCore.ev-log s) (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret))
+      run-call : TM.run ιᶠ (SMCore.LocState.ev-log s) (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret))
                ≡ (TM.callEvent op (argOf si x) DL.∷ DL.[] , returns (resOf si ans))
-      run-call = cong (TM.run-call ιᶠ (SMCore.ev-log s) op (argOf si x) (λ b → TM.ret (resOf si b))) ans-eq
+      run-call = cong (TM.run-call ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (λ b → TM.ret (resOf si b))) ans-eq
         where
           -- an answering call's result fits a register, so it is not `Unit`:
           -- the implementation answers it, at the decided `yes`
-          ans-eq : TM.callAnswer ιᶠ (SMCore.ev-log s) op (argOf si x) ≡ just ans
+          ans-eq : TM.callAnswer ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) ≡ just ans
           ans-eq = go (isUnit? B)
             where go : (du : Dec (B ≡ Unitᵀ))
-                     → TM.callAnswer-at ιᶠ (SMCore.ev-log s) op (argOf si x) du (TM.callKey op ∈K? TM.calls ιᶠ) ≡ just ans
+                     → TM.callAnswer-at ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) du (TM.callKey op ∈K? TM.calls ιᶠ) ≡ just ans
                   go (yes u) = ⊥-elim (fits-not-unit fit u)
-                  go (no nu) = cong (TM.callAnswer-at ιᶠ (SMCore.ev-log s) op (argOf si x) (no nu)) (proj₂ y)
+                  go (no nu) = cong (TM.callAnswer-at ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (no nu)) (proj₂ y)
       res-call : resultAt s (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret)) ≡ returns (resOf si ans)
       res-call = cong proj₂ run-call
       ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)

@@ -48,7 +48,9 @@ module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) (tbl : DL.List IRF
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref; AbstractTrace; LocState; StoredValue; halted; restore-input; current-frame; readReg; regs; Output)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; restore-input; readReg; Output; module LocState; module AllocState)
+open AllocState using (next-slot; next-heap-ref; current-frame)
+open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
@@ -180,7 +182,7 @@ module PairAsm {FS : FrameSemantics} where
               E : TM.T ⟦ B IRTy′.* C ⟧
               E = evalᴰ ⟨ f , g ⟩ x
 
-              field-log : SMCore.ev-log (floc PCG.SETTLE) ≡ SMCore.ev-log s ++ eventsAt s E
+              field-log : SMCore.LocState.ev-log (floc PCG.SETTLE) ≡ SMCore.LocState.ev-log s ++ eventsAt s E
               field-log =
                 trans (log-silent PCG.tail-chain _ refl)
                 (trans log-fg

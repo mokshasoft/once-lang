@@ -23,7 +23,7 @@ open import Once.Type public
   using ( -- usage algebra (the rules compute with it)
           Quantity ; Zero ; One ; Many ; _+q_ ; _*q_ ; _⊔q_ ; _≤q_
         ; Purity ; pure ; eff ; _⊔p_
-        ; ArrowKind ; mk-kind ; quantity ; purity ; pureK ; effK
+        ; ArrowKind ; mk-kind ; pureK ; effK
           -- the type / functor grammar
         ; Type ; Unit ; Void ; Int ; Float
         ; _*_ ; _+_ ; _⇒[_]_ ; μ-type ; ν-type

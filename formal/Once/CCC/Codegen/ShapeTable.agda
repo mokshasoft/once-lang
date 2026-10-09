@@ -629,10 +629,14 @@ module Sem (FS : FrameSemantics) where
   open import Once.Type using ()
     renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
   open import Once.CCC.Machine.SMCore as SM using
-    (LocState; StoredValue; SV-Ptr; SV-Tag; SV-Lit; sucLoc; regs; readReg; Input1; Output; stackMem; heapMem; current-frame; AllocState; next-heap-ref)
+    (LocState; StoredValue; SV-Ptr; SV-Tag; SV-Lit; sucLoc; readReg; Input1; Output; AllocState; module AllocState; module LocState)
+  open AllocState using (next-heap-ref; current-frame)
+  open LocState using (heapMem; regs; stackMem)
   open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
   open import Once.Memory.HeapAddress
-    using (HeapLocation; heap-ref; heap-offset; ref-id; sucHL)
+    using (HeapLocation; sucHL; module HeapRef; module HeapLocation)
+  open HeapLocation using (heap-offset; heap-ref)
+  open HeapRef using (ref-id)
   open import Data.Nat using (suc; zero; _<_)
   open import Data.Nat.Properties using (≤-refl)
   open SM.MemOps {FS} using (readLoc)

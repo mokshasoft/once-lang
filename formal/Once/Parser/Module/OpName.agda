@@ -14,6 +14,9 @@ import Data.String
 open import Data.List using (reverse)
 
 open import Once.Parser.Module.Core
+open import Data.Maybe using (nothing; just; Maybe)
+open import Data.Product using (_,_; _×_)
+open import Data.String using (String)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Token using (TAmpersand; TAt; TDot; TGt; TLParen; TLt; TMinus; TPercent; TPipe; TPlus; TRParen; TSlash; TStar; Token)
 open import Data.Nat.Properties using (<-trans; ≤-refl)

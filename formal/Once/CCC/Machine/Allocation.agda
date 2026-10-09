@@ -27,8 +27,12 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
+open AllocState using (current-frame; next-slot; next-heap-ref; frame-slots; saved-frames; block-size)
+open LocState using (stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef; HeapLocation; _≟HL_; ref-id; heap-ref)
+open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef; HeapLocation; _≟HL_; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 
 ------------------------------------------------------------------------
 -- Stack Allocation
@@ -141,7 +145,7 @@ record LocStateWithAlloc {FS : FrameSemantics} : Set where
     machine-state : LocState FS
     alloc-state : AllocState {FS}
 
-open LocStateWithAlloc public
+open LocStateWithAlloc
 
 ------------------------------------------------------------------------
 -- Memory Write Operations

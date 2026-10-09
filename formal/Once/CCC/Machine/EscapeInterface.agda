@@ -25,8 +25,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (LocState; AllocState; next-slot; current-frame; next-heap-ref)
-open import Once.Memory.HeapAddress using (HeapRef; HeapLocation; heap-ref; ref-id)
+open import Once.CCC.Machine.SMCore using (LocState; AllocState; module AllocState)
+open AllocState using (next-slot; current-frame; next-heap-ref)
+open import Once.Memory.HeapAddress using (HeapRef; HeapLocation; module HeapRef; module HeapLocation)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 
 ------------------------------------------------------------------------
 -- Escape Interface parameterized by FrameSemantics

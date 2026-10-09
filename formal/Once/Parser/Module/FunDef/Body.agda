@@ -12,6 +12,9 @@ module Once.Parser.Module.FunDef.Body where
 
 open import Data.Bool using (Bool; true; false)
 open import Once.Parser.Module.Core
+open import Data.Maybe using (nothing; just)
+open import Data.Product using (_,_)
+open import Data.String using (String)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Token using (TEquals; Token)
 open import Once.TypeCheck.Raw using (RawExpr)

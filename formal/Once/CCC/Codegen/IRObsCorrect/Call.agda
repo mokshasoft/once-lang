@@ -26,7 +26,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 
 import Once.CCC.FrameSemantics
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn; halted)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn; module LocState)
+open LocState using (halted)
 import Once.IRTy
 import Once.IR
 open import Once.Res using (is-stopped)
@@ -98,8 +99,8 @@ module CallC {FS : FrameSemantics} where
 
       -- plan 0.105: the call writes nothing but control, so the callee runs
       -- from the caller's log.
-      h-eq : SMCore.ev-log (floc post) ≡ SMCore.ev-log s
-      h-eq = cong (λ st → SMCore.ev-log (floc st)) call-eq
+      h-eq : SMCore.LocState.ev-log (floc post) ≡ SMCore.LocState.ev-log s
+      h-eq = cong (λ st → SMCore.LocState.ev-log (floc st)) call-eq
 
       RE : runAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) ≡ runAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
       RE = runAt-≡ {st = floc post} {st′ = s}

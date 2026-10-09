@@ -38,7 +38,8 @@ open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; CompUnit; link; link-pre; link-post; link-block-split; module CompUnit)
+  using (readReg; Scratch; AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; CompUnit; link; link-pre; link-post; link-block-split; module CompUnit; module LocState)
+open LocState using (halted; regs)
 open CompUnit using (blocks)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 

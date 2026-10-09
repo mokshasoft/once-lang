@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Data.Product using (_×_)
 
 -- Re-export Word from Memory
-open import Once.Memory.Memory using (Word) public
+open import Once.Memory.Memory using (Word)
 
 ------------------------------------------------------------------------
 -- Core Types

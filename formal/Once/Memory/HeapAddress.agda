@@ -38,7 +38,7 @@ record HeapRef : Set where
   field
     ref-id : ℕ
 
-open HeapRef public
+open HeapRef
 
 _≟H_ : (h₁ h₂ : HeapRef) → Dec (h₁ ≡ h₂)
 mkHeapRef n₁ ≟H mkHeapRef n₂ with n₁ ≟ n₂
@@ -60,7 +60,7 @@ record HeapLocation : Set where
     heap-ref : HeapRef
     heap-offset : HeapOffset
 
-open HeapLocation public
+open HeapLocation
 
 -- Decidable equality for HeapLocation. Inner Dec results are
 -- explicitly enumerated via a top-level helper to avoid the with-

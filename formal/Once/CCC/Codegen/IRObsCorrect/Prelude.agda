@@ -68,14 +68,14 @@ open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m�
 open import Function using (case_of_) public
 import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.SMCore
-  using (LocState; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
+  using (LocState; SV-Ptr; sv-as-loc; readReg; Input1; Output;
          instr-sigop; mov-to-output; mov-to-input; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace;
          -- D155: the closure register's type — the entry state's one open
          -- component (see `entry-flat`).
          StoredValue; AbstractInstr; module AbstractExec; module MemOps;
          -- D171: the store instruction and the location vocabulary its
          -- read-back needs.
-         store-at-slot; restore-input; current-frame;
+         store-at-slot; restore-input;
          -- D174: the rest of `inl`/`inr`'s heap build — the first discharge in
          -- this file that ALLOCATES, so these are new to its vocabulary.
          instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code;

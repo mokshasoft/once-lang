@@ -17,6 +17,7 @@ module Once.Adequacy.MainIRForm where
 open import Once.TypeCheck.Classify using (TopCtx; PolyCtx)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
+import Data.String as String
 open import Data.Bool using (false)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -86,7 +87,7 @@ validateMain-EffUU ((ν-type _ _) ⇒[ k ] B)   ()
 -- (2) A successfully-compiled "main" has type EffUU.
 ------------------------------------------------------------------------
 
-compileFun-main-EffUU : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : Core.String → TopCtx)
+compileFun-main-EffUU : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty ≡ EffUU

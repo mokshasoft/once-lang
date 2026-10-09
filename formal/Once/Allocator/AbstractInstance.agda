@@ -28,7 +28,9 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; cong; sym)
 
 open import Once.Memory.HeapAddress
-  using (HeapLocation; heap-loc; mkHeapRef; ref-id; heap-ref; offsetHL)
+  using (HeapLocation; heap-loc; mkHeapRef; offsetHL; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 
 open import Once.Allocator.Interface
 

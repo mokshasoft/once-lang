@@ -52,7 +52,7 @@ record νᵈ (F : SFunctor) : Set where
   field
     forceᵈ : T (⟦ F ⟧SF (νᵈ F))
 
-open νᵈ public
+open νᵈ
 
 -- `in-νᵈ` — THE MISSING INTRODUCTION FORM (plan 0.93).
 --

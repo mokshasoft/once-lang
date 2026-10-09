@@ -77,8 +77,10 @@ private
 ------------------------------------------------------------------------
 
 open import Once.Memory.HeapAddress
-  using (HeapRef; ref-id;
-         HeapLocation; heap-loc; heap-ref; heap-offset; _≟HL_)
+  using (HeapRef;
+         HeapLocation; heap-loc; _≟HL_; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref; heap-offset)
+open HeapRef using (ref-id)
 
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.
@@ -106,7 +108,7 @@ record HeapRegion : Set where
     region-ref : HeapRef
     region-size : ℕ
 
-open HeapRegion public
+open HeapRegion
 
 -- Positive predicate: HeapLocation is within a HeapRegion
 -- Uses ordering: same ref AND offset < size
@@ -467,7 +469,7 @@ record LocState (FS : FrameSemantics) : Set where
     -- remember them, as the tree's `run` threads its history.
     ev-log : List SigOpEvent
 
-open LocState public
+open LocState
 
 -- Plan 0.29 (M5): LocState-only effect of a reg-op (alloc untouched —
 -- kept separate so `proj₂ (exec-abstract (instr-reg-op op)) ≡ alloc`
@@ -570,7 +572,7 @@ record AllocState {FS : FrameSemantics} : Set where
   -- Note: frame-capacity removed in Phase 3 of core invariants refactoring.
   -- Capacity bounds are now enforced per-closure via scratch-bounded invariant.
 
-open AllocState public
+open AllocState
 
 ------------------------------------------------------------------------
 -- Memory Operations

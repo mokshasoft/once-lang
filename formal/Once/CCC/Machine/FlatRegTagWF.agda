@@ -51,6 +51,8 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 open import Once.CCC.Machine.SMCore
+open AllocState using (current-frame)
+open LocState using (regs; halted; ev-log)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open MemOps {FS}
 open ExecFinal {FS}

@@ -11,6 +11,9 @@
 module Once.Parser.Module.FunDef.Params where
 
 open import Once.Parser.Module.Core
+open import Data.Maybe using (nothing; just)
+open import Data.Product using (Σ-syntax; _,_; _×_)
+open import Data.String using (String)
 open import Once.Parser.Token using (TEquals; TWord; Token)
 open import Once.TypeCheck.Raw using (RLam; RawExpr)
 open import Induction.WellFounded using (Acc; acc)
