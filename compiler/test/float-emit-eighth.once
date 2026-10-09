@@ -1,8 +1,11 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- D220: the float literal is USED — passed to `emitF`, and the TRACE is what
--- this test asserts.
+-- D220: the float literal is USED — passed to `emitF` and emitted at run time.
+-- What this exit test CHECKS is the exit code (the scripts save the emitted
+-- bytes to `$BUILD/<name>.trace` but do not compare them); the emitted float
+-- itself is asserted by `FloatEmitSpec` (plan 0.113 D: the header said "the
+-- TRACE is what this test asserts", which it was not).
 --
 -- It used to end `main = let _ = emitF@T 0.125 in exit@S 3`, which binds a
 -- suspension and never forces it. It emitted nothing and compiled

@@ -1,0 +1,16 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D253: `main` is an ordinary entry of the telescope, not its end. A definition
+-- AFTER `main` is part of the module (typed once, in its prefix), and the
+-- program still runs `main`.
+--
+-- Expected: exit code 3.
+
+import I.Linux.Syscalls as S
+
+main : IO Unit
+main = exit@S 3
+
+later : Int
+later = 4

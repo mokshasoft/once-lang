@@ -917,6 +917,7 @@ test-suite once-test
       ParseSpec
       QttSpec
       PuritySpec
+      SpecMatrixSpec
       TelescopeSpec
       SymbolNameSpec
       TraceSpec
@@ -925,7 +926,6 @@ test-suite once-test
       -- Disabled: reference old Haskell modules that no longer exist
       -- ElaborateSpec (Once.Elaborate, Once.Parser, Once.Syntax)
       -- ModuleSpec (Once.Module, Once.Syntax)
-      -- ParserSpec (Once.Parser, Once.Syntax)
       -- QuantitySpec (Once.Quantity)
   autogen-modules:
       Paths_once

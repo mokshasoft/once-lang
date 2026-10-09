@@ -1,0 +1,15 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D225/D227: an effectful arrow into `Void` HALTS. Whatever is composed after
+-- the halt is never observed: the trace is `[1]`, not `[1, 2]` — the meaning's
+-- `halt` node has no continuation, and the machine's exit ends the run.
+--
+-- Expected: exit code 3, trace [1].
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+main : IO Unit
+main = compose (compose emit@E (\_ -> 2))
+               (compose exit@S (compose (\_ -> 3) (compose emit@E (\_ -> 1))))

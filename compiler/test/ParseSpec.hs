@@ -128,6 +128,24 @@ validSyntaxTests = testGroup "Valid syntax"
       result <- parseSource source
       assertParseError result
 
+  , testCase "the emits annotation is gone too" $ do
+      -- Plan 0.113 D (audit leftover): both annotations were deleted together.
+      let source = T.unlines
+            [ "signature ex : Eff Int Unit ! emits"
+            ]
+      result <- parseSource source
+      assertParseError result
+
+  , testCase "the @stack allocation annotation is gone" $ do
+      -- D142: allocation is decided by the compiler; the FunDef grammar has no
+      -- annotation (the dead ParserSpec still accepted it).
+      let source = T.unlines
+            [ "f : Int -> Int"
+            , "f @stack = id"
+            ]
+      result <- parseSource source
+      assertParseError result
+
   , testCase "import statement" $ do
       -- `import` now resolves the interpretation and surfaces ITS signatures
       -- too, so the parse output is the imported module's signatures plus the

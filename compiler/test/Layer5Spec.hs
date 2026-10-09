@@ -27,6 +27,8 @@ layer5Tests = testGroup "Layer5"
                "apply-eff-closure-snd" [9] 7
   , traceCases "pair arm order — TWO emitting arms (D222)"
                "pair-arm-order-emit" [1, 2] 7
+  , traceCases "a halt ends the trace — nothing after exit is observed (D225/D227)"
+               "halt-ends-trace" [1] 3
   , testGroup "cata-effectful (Plan 0.36)"
       -- D220/D221: these assert the TRACE, not the exit code. They used to use
       -- `exitCases`, which links the production `Strata/` NOP `emit` and can

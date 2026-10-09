@@ -104,9 +104,10 @@ literals =
 --   * The effect must be SEQUENCED with `compose`, not bound by `let _ = … in`.
 --     A `let`-bound effect compiles to a thunk that is never entered, so it
 --     emits nothing — verified with the Int `emit` too, so this is not a float
---     matter. (The shipped `test/float-emit-*.once` exit tests use the `let`
---     shape and therefore never invoke `emitF` at runtime; they only show the
---     program builds and exits.)
+--     matter. (The shipped `test/float-emit-*.once` exit tests USED the `let`
+--     shape and so never invoked `emitF`; since b486a4750 they sequence with
+--     `compose` and emit at run time — their scripts still check only the exit
+--     code, which is why the float itself is asserted here.)
 --   * The literal needs a SIGNATURE-CARRYING binding. `compose emitF@E
 --     (\\_ -> 0.5)` checks fine against a declared `IO Unit`, but nested inside
 --     another `compose` it lands in an INFERENCE position and a float literal
