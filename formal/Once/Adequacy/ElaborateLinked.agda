@@ -325,7 +325,10 @@ private
 
 sigOp-linked : ∀ {tbl} {n} {Γ : Ctx n} {A} (m : _) (name : CanonicalName) (conc : IsConcrete A)
              → (showCanonical name , A) ∈ σ → Linked σ tbl (elaborate {Γ = Γ} m (sigOp name conc))
-sigOp-linked m name (con-fun {k = mk-kind Zero π} bDom cCod) d = value-∈ d refl , tt
+sigOp-linked m name (con-fun {k = mk-kind Zero Ty.pure} bDom cCod) d = value-∈ d refl , tt
+-- plan 0.113 A3: an effectful erased arrow is a call with a `Unit` slot.
+sigOp-linked m name (con-fun {B = Cod} {k = mk-kind Zero Ty.eff} bDom cCod) d =
+  eff-decl (arrow-info (mk-kind Zero Ty.eff) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {k = mk-kind One  Ty.pure} bDom cCod) d = value-∈ d refl , tt
 sigOp-linked m name (con-fun {k = mk-kind Many Ty.pure} bDom cCod) d = value-∈ d refl , tt
 sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff} bDom cCod) d =

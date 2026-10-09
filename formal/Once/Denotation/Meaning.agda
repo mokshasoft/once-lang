@@ -182,8 +182,12 @@ sigOpRefᴰ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcr
 sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
 -- D143: at an ERASED arrow the symbol never receives its argument, so the
 -- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero π} bDom bCod) =
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Type.pure} bDom bCod) =
   returnT (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
+-- plan 0.113 A3: only a PURE erased arrow is a value; an effectful one is a call
+-- with the erased slot `tt` (as `Elaborate` and `SourceDenote`).
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Type.eff} bDom bCod) =
+  returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Type.eff) cn base-Unit bCod) tt))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
   returnT (λ arg → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =

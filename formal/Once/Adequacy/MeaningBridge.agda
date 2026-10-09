@@ -330,8 +330,9 @@ sigOpRef-rel {A} ι cn (con-base ib) m =
   val-rel ι (showCanonical cn) ib tt _ (key (showCanonical cn) Unit A ∈K? pures ι)
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m =
   rel-ret (val-rel ι (showCanonical cn) bCod tt _ (key (showCanonical cn) Unit Cod ∈K? pures ι))
+-- plan 0.113 A3: an effectful erased arrow is the same CALL on both sides.
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) m =
-  rel-ret (val-rel ι (showCanonical cn) bCod tt _ (key (showCanonical cn) Unit Cod ∈K? pures ι))
+  rel-ret (same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Unit} {Cod} (mk-kind Zero eff) cn base-Unit bCod) tt))
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) m =
   rel-ret (ptr-rel {Dom} {Cod} bDom
     (λ x → returnT (injB bCod (valueOf-at (impl ι) k (value-∈ m refl) (k ∈K? pures ι) x)))
@@ -391,9 +392,13 @@ sigop-ref-bridge {A = A} ι cn (con-base ib) m dγ eq =
              → RelGM pure A (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-base ib) m) (sigOpRefᴰ fmt φ′ cn (con-base ib))
         at-φ refl r = r
 -- D143: `⟦ sigOp ⟧ˢ` splits on the arrow's quantity, so this must too.
-sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero π ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
-  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero π ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero π} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero π} bDom bCod)))
-        eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero π} bDom bCod) m)
+sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero pure ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
+  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero pure ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero pure} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero pure} bDom bCod)))
+        eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero pure} bDom bCod) m)
+-- plan 0.113 A3: `⟦ sigOp ⟧ˢ` splits the erased arrow by purity, so this does.
+sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero eff ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
+  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero eff ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero eff} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero eff} bDom bCod)))
+        eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero eff} bDom bCod) m)
 sigop-ref-bridge {A = Dom ⇒[ mk-kind One π ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
   subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind One π ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind One π} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind One π} bDom bCod)))
         eq (sigOpRef-rel ι cn (con-fun {k = mk-kind One π} bDom bCod) m)

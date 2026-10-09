@@ -88,7 +88,12 @@ contract-eff c A B (no _)  (yes _) = effect
 contract-eff c A B (no _)  (no _)  = answers (key c A B)
 
 contractOf : String → Type → Contract
-contractOf c (A ⇒[ mk-kind Zero π ]    B) = value (key c UnitT B)
+-- Plan 0.113 A3: the two grades are independent. The QUANTITY decides the key's
+-- domain (`Zero` erases the argument: `Unit`, D143); the PURITY decides value vs
+-- effect. An effectful operation whose argument is erased is still a call —
+-- it is not a constant (D250: only `pure` means referentially transparent).
+contractOf c (A ⇒[ mk-kind Zero Ty.pure ] B) = value (key c UnitT B)
+contractOf c (A ⇒[ mk-kind Zero Ty.eff ]  B) = contract-eff c UnitT B (isVoid? B) (isUnit? B)
 contractOf c (A ⇒[ mk-kind One  Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind Many Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind One  Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)

@@ -538,8 +538,15 @@ elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ 
 -- At an ERASED arrow the symbol never receives its argument, so it cannot be
 -- an `arrow-info` call (there is no `⌊Dom⌋` to pass). It degenerates to the
 -- VALUE case: the slot is `Unit`, and the symbol produces the result from it.
-elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom cCod)) =
+--
+-- Plan 0.113 A3: that holds for a PURE erased arrow only. An EFFECTFUL one is
+-- still a call (D250: only `pure` is referentially transparent) — the call's
+-- argument slot is `Unit`, the erased argument; `arrow-sem` then decides call /
+-- emit / halt from the codomain, as for every effectful SigOp.
+elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero pure ] Cod)} name (con-fun bDom cCod)) =
   curry (SigOp (value-info name base-Unit cCod) ∘ snd)
+elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero eff ] Cod)} name (con-fun bDom cCod)) =
+  curry (SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod)) =
   curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod)) =

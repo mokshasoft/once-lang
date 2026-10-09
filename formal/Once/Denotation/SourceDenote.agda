@@ -354,8 +354,11 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- D143: split on the arrow's quantity. At an ERASED arrow the symbol never
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Type.pure ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
+-- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Type.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Type.eff) name base-Unit bCod) tt)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =

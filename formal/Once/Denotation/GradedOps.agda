@@ -205,8 +205,10 @@ sigOpRefᵛ {A} fmt Σ I cn (con-base ib) m =
   injB ib (valueOf I (key (showCanonical cn) Unit A) (value-∈ m (base-contract (showCanonical cn) ib)) tt)
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m =
   λ _ → injB bCod (valueOf I (key (showCanonical cn) Unit Cod) (value-∈ m refl) tt)
+-- plan 0.113 A3: an effectful erased arrow is a CALL with the erased slot `tt`
+-- (D250) — the elaborator's `arrow-info (mk-kind Zero eff) cn base-Unit`.
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) m =
-  λ _ → returnT (injB bCod (valueOf I (key (showCanonical cn) Unit Cod) (value-∈ m refl) tt))
+  λ _ → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Unit} {Cod} (mk-kind Zero eff) cn base-Unit bCod) tt)
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) m =
   λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) m =

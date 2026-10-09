@@ -1566,13 +1566,21 @@ faithful (let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} {B =
 -- D143: at an ERASED arrow the SigOp is a VALUE-position reference — the
 -- elaborator emits `value-info` (domain `Unit`), not `arrow-info`, and the
 -- arrow's `cohᴰ` is the one-equation form.
-faithful (sigOp {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom cCod)) dγ =
+faithful (sigOp {A = (Dom ⇒[ mk-kind Zero pure ] Cod)} name (con-fun bDom cCod)) dγ =
     (trans (subst-T-returnT (cong (λ y → ⟦ Unit ⟧ᴰ → T y) (cohᴰ Cod))
                             (λ u → evalᴰ fmt ρ (SigOp (value-info name base-Unit cCod)) u))
            (cong returnT
              (trans (subst-arrow₀ᴰ (cohᴰ Cod)
                        (λ u → evalᴰ fmt ρ (SigOp (value-info name base-Unit cCod)) u))
                     (liftFn-SigOp (value-info name base-Unit cCod)))))
+-- plan 0.113 A3: the effectful erased arrow is `arrow-info` at the `Unit` slot.
+faithful (sigOp {A = (Dom ⇒[ mk-kind Zero eff ] Cod)} name (con-fun bDom cCod)) dγ =
+    (trans (subst-T-returnT (cong (λ y → ⟦ Unit ⟧ᴰ → T y) (cohᴰ Cod))
+                            (λ u → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod)) u))
+           (cong returnT
+             (trans (subst-arrow₀ᴰ (cohᴰ Cod)
+                       (λ u → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod)) u))
+                    (liftFn-SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod)))))
 faithful (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod)) dγ =
     (trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ Dom) (cohᴰ Cod))
                             (λ a → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind One π) name bDom cCod)) a))
