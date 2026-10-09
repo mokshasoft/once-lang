@@ -30,8 +30,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Postulates using (extensionality)
 open import Once.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; One; Zero; Purity; Quantity; _≤q_; μ-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; <:-trans; <:-unique;
-  _⊑π_; ⊑π-refl)
+open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
+open import Once.Type.SubLaws using (<:-refl; <:-trans; <:-unique; ⊑π-refl)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT)
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc)

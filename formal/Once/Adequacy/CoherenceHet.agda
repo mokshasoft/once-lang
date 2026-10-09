@@ -30,7 +30,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Postulates using (extensionality)
 open import Once.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Many;
   Purity; Quantity; _≤q_; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; <:-refl; _⊑π_; ⊑-pure; ⊑π-refl)
+open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
+open import Once.Type.SubLaws using (<:-refl; ⊑π-refl)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.CanonicalName using (NotGenerator; showCanonical)
 open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)

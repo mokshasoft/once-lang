@@ -225,7 +225,8 @@ import Data.String
 open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_)
 open import Once.Adequacy.ImageWF using (lib-defs)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
-open import Once.Spec.Module using (moduleSig-ef; teleSig; teleSig≡entrySig)
+open import Once.Spec.Module using (moduleSig-ef; teleSig)
+open import Once.Spec.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.ProgramLinked using (link-walk; linv₀)
 open import Once.Adequacy.TelePosition using (entries-distinct; none-in-empty)
 import Once.Adequacy.AcceptSound as AS

@@ -27,7 +27,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Type as T
 open T using (Purity; pure; mk-kind; Many; One)
-open import Once.Type.Sub using (⊑π-refl)
+open import Once.Type.Sub using ()
+open import Once.Type.SubLaws using (⊑π-refl)
 open import Once.Surface.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)

@@ -104,7 +104,8 @@ open import Data.Fin using (zero; suc)
 open import Once.Type using (Many; mk-kind; _⇒[_]_; pure; eff)
 open import Once.Denotation.PhaseV using (restrictᵛ)
 open import Once.Spec.Core.Syntax S
-open import Once.Type.Sub using (pure⊑; sub-arr; <:-refl)
+open import Once.Type.Sub using (pure⊑; sub-arr)
+open import Once.Type.SubLaws using (<:-refl)
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.DerivedTyping S
 import Once.Adequacy.CoreRenameSem S as RS

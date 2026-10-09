@@ -26,6 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Type as T using (Zero; One; Many)
 open import Once.Type.Sub
+open import Once.Type.SubLaws
 open import Once.IR
 open import Once.IRTy using (_⇛_; Unit; ⌊_⌋; _*_; _+_)
 

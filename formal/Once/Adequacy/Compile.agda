@@ -45,7 +45,9 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 
-open import Once.Denotation.Behavior using (Source; Behavior; behavior-by)
+open import Once.Denotation.Behavior using (Source; Behavior)
+
+open import Once.Denotation.BehaviorLaws using (behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Spec.Core.Telescope using (runProgram)
 open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)

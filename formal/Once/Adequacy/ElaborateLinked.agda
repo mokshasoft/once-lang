@@ -24,6 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.Type using (Type; Zero; One; Many; mk-kind)
 open import Once.Type.Sub
+open import Once.Type.SubLaws
 open import Once.CanonicalName using (CanonicalName; bare; _≟ᶜ_; showCanonical)
 open import Once.IR using (IR)
 import Once.IR as IR
@@ -40,7 +41,8 @@ import Once.IRTy
 open import Once.Type using (⟦_⟧T)
 open import Once.Denotation.Program using (IRFun; LinkedAt; LinkedAt-at; Linked; Declared-at)
 open Once.Denotation.Program.IRFun using (fcod; fdom; fname)
-open import Once.Spec.Contract using (ISig; contractOf; contract-eff; value-∈; answer-∈)
+open import Once.Spec.Contract using (ISig; contractOf; contract-eff)
+open import Once.Spec.ContractLaws using (value-∈; answer-∈)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
 import Once.Type as Ty

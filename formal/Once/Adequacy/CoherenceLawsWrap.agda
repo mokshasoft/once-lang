@@ -27,7 +27,8 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; Quantity; _≤q_; μ-type; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; <:-trans; _⊑π_; ⊑π-refl)
+open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
+open import Once.Type.SubLaws using (<:-refl; <:-trans; ⊑π-refl)
 open import Once.Surface.Syntax using (Expr; Ctx; _∷_; _,_^_; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
 import Once.Type
 open import Once.Functor.Translate using (WellFormedF)

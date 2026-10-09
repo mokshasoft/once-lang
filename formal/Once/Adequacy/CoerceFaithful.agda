@@ -31,6 +31,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Type as Ty using (Type; Zero; One; Many; mk-kind; _⇒[_]_; _*_; _+_; Unit)
 open import Once.Type.Sub
+open import Once.Type.SubLaws
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)

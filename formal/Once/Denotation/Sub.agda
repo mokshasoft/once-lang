@@ -9,7 +9,7 @@
 -- backwards and its RESULT forwards under `fmapT`, which leaves the trace alone;
 -- the grade is erased, as `⟦_⟧ᴰ` erases it.
 --
--- Coherence has two halves. `Once.Type.Sub.<:-unique` says each `A <: B` has
+-- Coherence has two halves. `Once.Type.SubLaws.<:-unique` says each `A <: B` has
 -- one derivation. This module says the admissible structure means what it
 -- should: `<:-refl` denotes the identity and `<:-trans` denotes composition. So
 -- any chain of conversions means the single direct one.
@@ -28,6 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Type; Zero; One; Many; mk-kind; _⇒[_]_; Void)
 open import Once.Type.Sub
+open import Once.Type.SubLaws
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 -- `fmapT` is a functor and congruent: the tree's laws (plan 0.105).
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; fmapT; _>>=T_)

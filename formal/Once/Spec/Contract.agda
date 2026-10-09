@@ -60,12 +60,6 @@ open import Data.List.Relation.Unary.Any using (here; there)
 _∈K?_ : (k : Key) (ks : List Key) → Dec (k ∈ ks)
 _∈K?_ = DecMem._∈?_ _≟K_
 
--- A decision on a membership that holds is `yes` (of the decided proof).
-yes-of : ∀ {k ks} → k ∈ ks → Σ (k ∈ ks) (λ p₀ → (k ∈K? ks) ≡ yes p₀)
-yes-of {k} {ks} p = go (k ∈K? ks)
-  where go : (d : Dec (k ∈ ks)) → Σ (k ∈ ks) (λ p₀ → d ≡ yes p₀)
-        go (yes p₀) = p₀ , refl
-        go (no ¬p)  = ⊥-elim (¬p p)
 
 -- An interpretation's declared signatures: each SigOp's canonical name and
 -- declared FFI type.
@@ -117,24 +111,8 @@ valueKeys ((c , T) ∷ Σ) = value-step (contractOf c T) (valueKeys Σ)
 answerKeys []            = []
 answerKeys ((c , T) ∷ Σ) = answer-step (contractOf c T) (answerKeys Σ)
 
--- A declaration's key is declared.
-private
-  value-there : ∀ {k ks} (ct : Contract) → k ∈ ks → k ∈ value-step ct ks
-  value-there (value _)   m = there m
-  value-there (answers _) m = m
-  value-there effect      m = m
-  answer-there : ∀ {k ks} (ct : Contract) → k ∈ ks → k ∈ answer-step ct ks
-  answer-there (value _)   m = m
-  answer-there (answers _) m = there m
-  answer-there effect      m = m
 
-value-∈ : ∀ {Σ x T k} → (x , T) ∈ Σ → contractOf x T ≡ value k → k ∈ valueKeys Σ
-value-∈ {(c , T) ∷ Σ} (here refl) eq rewrite eq = here refl
-value-∈ {(c , T) ∷ Σ} (there m)   eq = value-there (contractOf c T) (value-∈ m eq)
 
-answer-∈ : ∀ {Σ x T k} → (x , T) ∈ Σ → contractOf x T ≡ answers k → k ∈ answerKeys Σ
-answer-∈ {(c , T) ∷ Σ} (here refl) eq rewrite eq = here refl
-answer-∈ {(c , T) ∷ Σ} (there m)   eq = answer-there (contractOf c T) (answer-∈ m eq)
 
 ------------------------------------------------------------------------
 -- WHAT AN INTERPRETATION'S AUTHOR OWES: an implementation of its declared
@@ -166,12 +144,3 @@ valueOf-at I k p (no ¬p)  = ⊥-elim (¬p p)
 valueOf : ∀ {Σ} → Impl Σ → (k : Key) → k ∈ valueKeys Σ → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
 valueOf {Σ} I k p = valueOf-at I k p (k ∈K? valueKeys Σ)
 
--- A first-order constant (not an arrow) is a value contract at `Unit → A`.
-base-contract : ∀ {A} (x : String) → IsBaseType A → contractOf x A ≡ value (key x UnitT A)
-base-contract x base-Unit        = refl
-base-contract x base-Void        = refl
-base-contract x base-Int         = refl
-base-contract x base-Float       = refl
-base-contract x (base-Prod a b)  = refl
-base-contract x (base-Sum a b)   = refl
-base-contract x base-rigid       = refl

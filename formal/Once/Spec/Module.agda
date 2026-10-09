@@ -135,11 +135,6 @@ teleSig (ffi {fi = fi} {ty = ty} _ _ _ _ _ rest) = (funName fi , ty) ∷ teleSig
 teleSig (mono _ _ _ _ rest)                   = teleSig rest
 teleSig (poly _ rest)                         = teleSig rest
 
-teleSig≡entrySig : ∀ {sc es} (mt : ModTele sc es) → teleSig mt ≡ entrySig es
-teleSig≡entrySig []                                       = refl
-teleSig≡entrySig (ffi {fi = fi} {ty = ty} ep et _ _ _ rest) rewrite ep | et = cong ((funName fi , ty) ∷_) (teleSig≡entrySig rest)
-teleSig≡entrySig (mono {fi = fi} ep _ _ _ rest)            rewrite ep = teleSig≡entrySig rest
-teleSig≡entrySig (poly _ rest)                            = teleSig≡entrySig rest
 
 -- A module's signatures, when it extracts.
 moduleSig-ef : (String ⊎ List Parser.Entry) → ISig

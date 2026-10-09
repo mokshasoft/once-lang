@@ -88,7 +88,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IR using (IR; Stack)
 open import Once.IRTy using (Unit)
-open import Once.Denotation.Behavior using (Behavior; behavior-by)
+open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.BehaviorLaws using (behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)

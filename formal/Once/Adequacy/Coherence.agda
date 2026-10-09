@@ -29,7 +29,8 @@ open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong-app)
 
 open import Once.Type as T using (Type; _⇒[_]_)
-open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; _⊑π_; ⊑-pure; ⊑π-refl)
+open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_; ⊑-pure)
+open import Once.Type.SubLaws using (<:-refl; ⊑π-refl)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment

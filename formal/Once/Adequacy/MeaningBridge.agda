@@ -55,7 +55,8 @@ open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; rel-ret
 open import Once.Denotation.TraceMonadLaws using (>>=T-identityʳ; RelT′-fmap; RelT′-refl)
 open Interp using (impl; sig)
 import Once.Denotation.TraceMonad as TM
-open import Once.Spec.Contract using (key; valueOf-at; value-∈; _∈K?_)
+open import Once.Spec.Contract using (key; valueOf-at; _∈K?_)
+open import Once.Spec.ContractLaws using (value-∈)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; module CallEnv)
@@ -67,6 +68,7 @@ open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Type using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Type.Sub
+open import Once.Type.SubLaws
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
