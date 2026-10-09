@@ -34,11 +34,11 @@ module Once.Adequacy.CataErased (fmt : TargetNum) (ρ : CallEnv) where
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; fmapT; RelT′)
-open import Once.Denotation.TraceMonadLaws using (fmapT-id; RelT′-bind; RelT′-≡; ≡-RelT′)
+open import Once.Denotation.TraceMonad using (T; fmapT; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.Denotation.TraceMonadLaws using (fmapT-id; RelT′-bind; RelT′-fmap; RelT′-≡; ≡-RelT′)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (evalᴰ; cata-ev-algᴰ)
@@ -47,14 +47,16 @@ open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
-open import Once.Functor.Translate using (WellFormedF; translateF)
+open import Once.Functor.Translate using (WellFormedF; translateF; ⟦_,_⟧-base; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor⁻¹-D; seqF)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (conB; baseA)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
+open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
+open import Once.Semantics.Value Carrier Carrier using (coerce-base-to-full)
+open import Once.Semantics.ValueIR Carrier Carrier using (base-coh)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Postulates using (extensionality)
 open import Data.Sum using (_⊎_)
@@ -203,6 +205,30 @@ subst-SK : ∀ {S₁ S₂ X : Set} (e : S₁ ≡ S₂) (a : S₂)
   → subst (λ H → ⟦ H ⟧SF X) (sym (cong SK e)) a ≡ subst (λ z → z) (sym e) a
 subst-SK refl a = refl
 
+-- The K-node base-constant coherence (induction on `IsBaseType`): master's
+-- `base-z`, at `injectᵇ` (plan 0.113 A2; D258 removed Str/Buffer, D243 added
+-- `rigid`, which has no value).
+base-z : ∀ {A} (ib : IsBaseType A) (y : ⟦ Carrier , Carrier ⟧-base A)
+  → injectᵇ (base-⌈⌉ (base-⌊⌋ ib)) (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) (subst (λ z → z) (sym (base-coh A)) y))
+    ≡ subst (λ z → z) (sym (cohᴰ A)) (injectᵇ ib (coerce-base-to-full ib y))
+base-z base-Unit   y = refl
+base-z base-Void   ()
+base-z base-Int    y = refl
+base-z base-Float  y = refl
+base-z (base-Prod {A} {B} pA pB) (a , b)
+  rewrite push-× (base-coh A) (base-coh B) a b
+        | push-× (cohᴰ A) (cohᴰ B) (injectᵇ pA (coerce-base-to-full pA a)) (injectᵇ pB (coerce-base-to-full pB b))
+  = cong₂ _,_ (base-z pA a) (base-z pB b)
+base-z (base-Sum {A} {B} pA pB) (inj₁ a)
+  rewrite push-⊎₁ (base-coh A) (base-coh B) a
+        | push-⊎₁ (cohᴰ A) (cohᴰ B) (injectᵇ pA (coerce-base-to-full pA a))
+  = cong inj₁ (base-z pA a)
+base-z (base-Sum {A} {B} pA pB) (inj₂ b)
+  rewrite push-⊎₂ (base-coh A) (base-coh B) b
+        | push-⊎₂ (cohᴰ A) (cohᴰ B) (injectᵇ pB (coerce-base-to-full pB b))
+  = cong inj₂ (base-z pB b)
+base-z base-rigid ()
+
 module _ {A' : Type} where
 
   -- D179: the fold's carrier is a COMPUTATION, so this relates two of them:
@@ -215,7 +241,7 @@ module _ {A' : Type} where
 
   -- D179: ONE lemma where there were two (`layer-events` for the trace half,
   -- `layer-z` for the value half). With a computation carrier they cannot be
-  -- separated — see `RelC`. Stated and assumed here, discharged below.
+  -- separated — see `RelC`. Proved below by induction on `WellFormedF` (plan 0.113 A2).
   LayerRel : ∀ {G : Functor} → WellFormedF G → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ G ⟧F ⟦ A' ⟧ᴰ → Set
   LayerRel {G} wfG l r =
       subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
@@ -224,16 +250,80 @@ module _ {A' : Type} where
     ≡ subst (λ z → z) (sym (cohᴰ (⟦ G ⟧T A')))
         (coerce-functor⁻¹-D wfG A' r)
 
-  postulate
-    layer-rel : ∀ {G} (wfG : WellFormedF G)
-        {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
-        {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ A' ⟧ᴰ)}
-      → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
-      → RelT′ (LayerRel wfG)
-          (seqF ⌈ eraseF G ⌉F
-            (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _
-              (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁)))
-          (seqF G (coerce-μ-out wfG _ y₂))
+  -- Plan 0.113 A2: PROVED again (master proved `layer-events`/`layer-z`; D179
+  -- merged them into this relation and left it a postulate). `seqF` is a
+  -- traversal, so the computation-level relation reduces, functor case by case,
+  -- to a VALUE step over arbitrary related values — master's `layer-z` cases,
+  -- now stated for any `l`/`r` — through `RelT′-fmap` / `RelT′-bind`.
+  RelT′-mono : ∀ {X Y : Set} {R S : X → Y → Set} → (∀ {x y} → R x y → S x y)
+             → ∀ {m n} → RelT′ R m n → RelT′ S m n
+  RelT′-mono f (rel-ret r)  = rel-ret (f r)
+  RelT′-mono f (rel-call k) = rel-call (λ b → RelT′-mono f (k b))
+  RelT′-mono f rel-halt     = rel-halt
+
+  id-step : ∀ {l : ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : ⟦ A' ⟧ᴰ} → subst (λ z → z) (cohᴰ A') l ≡ r → LayerRel wf-Id l r
+  id-step {l} e = trans (sym (subst-sym-subst (cohᴰ A') {l})) (cong (subst (λ z → z) (sym (cohᴰ A'))) e)
+
+  sum₁-step : ∀ {Fa Gb} (wfF : WellFormedF Fa) (wfG : WellFormedF Gb) l r
+            → LayerRel wfF l r → LayerRel (wf-Sum wfF wfG) (inj₁ l) (inj₁ r)
+  sum₁-step {Fa} {Gb} wfF wfG l r e
+    rewrite pushᴰ-+₁ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
+                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)
+          | pushᴰᴵ-+₁ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
+                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l))
+          | push-⊎₁ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) (coerce-functor⁻¹-D wfF A' r)
+    = cong inj₁ e
+
+  sum₂-step : ∀ {Fa Gb} (wfF : WellFormedF Fa) (wfG : WellFormedF Gb) l r
+            → LayerRel wfG l r → LayerRel (wf-Sum wfF wfG) (inj₂ l) (inj₂ r)
+  sum₂-step {Fa} {Gb} wfF wfG l r e
+    rewrite pushᴰ-+₂ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
+                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l)
+          | pushᴰᴵ-+₂ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
+                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l))
+          | push-⊎₂ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) (coerce-functor⁻¹-D wfG A' r)
+    = cong inj₂ e
+
+  prod-step : ∀ {Fa Gb} (wfF : WellFormedF Fa) (wfG : WellFormedF Gb) l r l′ r′
+            → LayerRel wfF l r → LayerRel wfG l′ r′ → LayerRel (wf-Prod wfF wfG) (l , l′) (r , r′)
+  prod-step {Fa} {Gb} wfF wfG l r l′ r′ e e′
+    rewrite pushᴰ-* (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
+                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)
+                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l′)
+          | pushᴰᴵ-* (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
+                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l))
+                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l′))
+          | push-× (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A'))
+                   (coerce-functor⁻¹-D wfF A' r) (coerce-functor⁻¹-D wfG A' r′)
+    = cong₂ _,_ e e′
+
+  layer-rel : ∀ {G} (wfG : WellFormedF G)
+      {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
+      {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ A' ⟧ᴰ)}
+    → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
+    → RelT′ (LayerRel wfG)
+        (seqF ⌈ eraseF G ⌉F
+          (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _
+            (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁)))
+        (seqF G (coerce-μ-out wfG _ y₂))
+  layer-rel {TT.K B} (wf-K ib) {y} {.y} refl =
+    rel-ret (trans (cong (λ v → injectᵇ (base-⌈⌉ (base-⌊⌋ ib)) (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) v))
+                         (subst-SK (base-coh B) y))
+                   (base-z ib y))
+  layer-rel wf-Id rc = RelT′-mono id-step rc
+  layer-rel (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₁ x₁} {inj₁ x₂} rsf
+    rewrite subst-S⊕-inj₁ (tF-coh Fa) (tF-coh Gb) x₁ =
+    RelT′-fmap (LayerRel wfF) (LayerRel (wf-Sum wfF wfG)) (sum₁-step wfF wfG) (layer-rel wfF rsf)
+  layer-rel (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₂ y₁} {inj₂ y₂} rsf
+    rewrite subst-S⊕-inj₂ (tF-coh Fa) (tF-coh Gb) y₁ =
+    RelT′-fmap (LayerRel wfG) (LayerRel (wf-Sum wfF wfG)) (sum₂-step wfF wfG) (layer-rel wfG rsf)
+  layer-rel (wf-Sum wfF wfG) {inj₁ _} {inj₂ _} ()
+  layer-rel (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} ()
+  layer-rel (wf-Prod {F = Fa} {G = Gb} wfF wfG) {x₁ , z₁} {x₂ , z₂} (rf , rg)
+    rewrite subst-S⊗ (tF-coh Fa) (tF-coh Gb) x₁ z₁ =
+    RelT′-bind (LayerRel wfF) (LayerRel (wf-Prod wfF wfG)) (layer-rel wfF rf) λ l r e →
+    RelT′-bind (LayerRel wfG) (LayerRel (wf-Prod wfF wfG)) (layer-rel wfG rg) λ l′ r′ e′ →
+    rel-ret (prod-step wfF wfG l r l′ r′ e e′)
 
   evalᴰ-Cata-erased : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
       (mir : IR.IR (⌊ Eˢ ⌋ II.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
