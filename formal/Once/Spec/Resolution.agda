@@ -31,13 +31,12 @@ module Once.Spec.Resolution where
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
+open import Relation.Binary.PropositionalEquality using (_≢_)
 open import Relation.Nullary using (¬_)
 
-open import Once.CanonicalName using (CanonicalName; canonical; gen; GenWord)
+open import Once.CanonicalName using (canonical; gen; GenWord)
 open import Once.Spec.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp;
   RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot;
   RBinOp; RUnaryOp; RAna)

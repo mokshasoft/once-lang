@@ -63,7 +63,7 @@ import Data.Nat
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
-open import Once.Memory.HeapAddress using (sucHL; ref-id; heap-ref)
+open import Once.Memory.HeapAddress using (ref-id; heap-ref)
 open import Data.Unit using (tt)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat

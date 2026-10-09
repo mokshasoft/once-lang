@@ -30,10 +30,10 @@ module Once.Spec.Core.PolyTyping {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Bool using (true)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Type as T
-open T using (Purity; pure; eff; ArrowKind; mk-kind; Quantity; Zero; One; Many; _≤q_)
+open T using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_)
 open import Once.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid;
   sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Functor.Translate using (IsConcrete)

@@ -23,7 +23,7 @@ module Once.Spec.Core.TySubst {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
 import Once.Type as T
 open T using (Purity; pure; mk-kind; Many; One)

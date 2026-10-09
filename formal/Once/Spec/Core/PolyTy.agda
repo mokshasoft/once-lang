@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 import Once.Type as T
 open import Once.Spec.Contract using (ISig)
-open T using (Purity; pure; eff; ArrowKind; mk-kind; Quantity)
+open T using (Purity; ArrowKind)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int;
   base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 
@@ -282,7 +282,6 @@ record Schema : Set where
     arity : ℕ
     kinds : KCtx arity
     type  : Ty arity
-open Schema
 
 -- Plan 0.105 (D257 amendment 2): it is indexed by the interpretation signatures
 -- the program is compiled against (`Fs`): an FFI reference is a constant of

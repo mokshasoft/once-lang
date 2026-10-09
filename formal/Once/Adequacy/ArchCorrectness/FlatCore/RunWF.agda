@@ -65,7 +65,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtDynamic; Slot; AtStack; ValueLocation)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; ref-id; heap-ref)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-offset; ref-id; heap-ref)
 open MemOps {FS} using (readLoc)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat

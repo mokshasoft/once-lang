@@ -49,7 +49,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
+open import Once.Memory.HeapAddress using (HeapLocation)
 
 ------------------------------------------------------------------------
 -- D175: THE `!!` HATCH IS GONE.

@@ -42,14 +42,13 @@ open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.Type.Rigid using (rigidOf; RigidFree)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.Surface.Context using (zeroUsage)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.TypeCheck.Classify using (NamedCtx; ctxWithImportsAndPolys; topCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 
 open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
-open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
+open C.PolyFunInfo using (pfunType; pfunBody)
 
 ------------------------------------------------------------------------
 -- D241/D242 (plan 0.103 6c′): THE MODULE IS ONE TELESCOPE.

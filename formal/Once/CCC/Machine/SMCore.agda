@@ -77,9 +77,8 @@ private
 ------------------------------------------------------------------------
 
 open import Once.Memory.HeapAddress
-  using (HeapOffset; HeapRef; mkHeapRef; ref-id;
-         HeapLocation; heap-loc; heap-ref; heap-offset;
-         _≟H_; _≟HL_; ≟HL-aux; hl-ref)
+  using (HeapRef; ref-id;
+         HeapLocation; heap-loc; heap-ref; heap-offset; _≟HL_)
 
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.

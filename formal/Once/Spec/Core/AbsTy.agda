@@ -8,14 +8,14 @@
 
 module Once.Spec.Core.AbsTy where
 
-open import Data.Nat using (ℕ; zero; suc; _<?_)
+open import Data.Nat using (ℕ; _<?_)
 import Data.Nat
-open import Data.Fin using (Fin; zero; suc; fromℕ<)
+open import Data.Fin using (Fin; fromℕ<)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 import Once.Type as T
-open T using (TKind; k-base; k-any; Purity; mk-kind; Many)
+open T using (TKind; k-base)
 open import Once.Type.DecEq using (_≟tk_)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float;
   rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)

@@ -23,19 +23,14 @@ open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
 module Once.Spec.Core.Abstract {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Data.Nat using (zero; suc; _<?_)
-open import Data.Fin using (Fin; zero; suc; fromℕ<)
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
+open import Data.Nat using (zero; suc)
+open import Data.Fin using (Fin; zero; suc)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Type as T
-open T using (TKind; k-base; k-any; Purity; mk-kind; Many)
-open import Once.Type.DecEq using (_≟tk_)
+open T using (mk-kind; Many)
 open import Once.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid;
   sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
-open import Once.Type.Rigid using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float;
-  rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
-open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Functor.Translate as Tr
 open import Once.Surface.Context as C using (Ctx; Usage)
 open import Once.Spec.Core.PolyTy

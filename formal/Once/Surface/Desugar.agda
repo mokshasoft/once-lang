@@ -12,7 +12,6 @@
 
 module Once.Surface.Desugar where
 
-open import Once.Type
 open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.IR as C
 import Once.IRTy as IRTy

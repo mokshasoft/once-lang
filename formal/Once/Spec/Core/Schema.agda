@@ -15,29 +15,27 @@
 
 module Once.Spec.Core.Schema where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _<?_; z<s; s<s)
+open import Data.Nat using (zero; suc; _<_; z<s; s<s)
 import Data.Nat
-open import Data.Nat.Properties using (<-irrelevant)
 open import Data.Fin using (Fin; zero; suc; fromℕ<)
-open import Data.List using (List; []; _∷_; _++_; length; lookup)
+open import Data.List using (List; []; _∷_; length; lookup)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Membership.Propositional.Properties using (∈-++⁻; ∈-++⁺ˡ; ∈-++⁺ʳ)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Bool using (true; false; if_then_else_)
+open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String; _≟_)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 import Once.Type as T
 open T using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff;
-  Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; TKind; k-base; k-any; mk-kind; Many; eff; pure)
+  Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; k-base; k-any; mk-kind; Many; eff; pure)
 open import Once.Type.DecEq using (_≟tk_)
 open import Once.Type.Rigid using (params; nubFrom; arityOf; kindOf; indexOf; memberB; rigidSubst; rigidOf; ftvK;
   KindedInstance; RespectsKinds)
-open import Once.Functor.Translate using (IsBaseType)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)
 

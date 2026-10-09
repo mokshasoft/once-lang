@@ -126,7 +126,7 @@ open RegRoles roles using (in1-reg; sp-reg; scratch-reg; out-reg)
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation; AtStack)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; ref-id; heap-ref)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-offset; ref-id; heap-ref)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the

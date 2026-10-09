@@ -129,7 +129,6 @@ module RT = Core.RunTrace State (List Instr) Instr Payload
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
 open import Once.CCC.Machine.Locations using (AtDynamic)
-open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)
 open MemOps {FS} using (readLoc)
@@ -411,7 +410,6 @@ record StuckSteps : Set₁ where
       → memory s (rreg s in1-reg + 0) ≡ just 0
       → FlatMachine.find-label {FS} prog m ≡ nothing
       → StuckAt ev env (compile-trace prog) s
-open StuckSteps
 
 -- THE GENERIC HALF, discharged once: if the flat machine has halted at the
 -- post-state and the instruction emits no event, then the arch's "nothing more

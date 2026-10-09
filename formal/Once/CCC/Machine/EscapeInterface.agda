@@ -19,9 +19,9 @@
 
 module Once.CCC.Machine.EscapeInterface where
 
-open import Data.Nat using (ℕ; _<_)
+open import Data.Nat using (_<_)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)

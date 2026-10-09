@@ -67,7 +67,6 @@ a ≈ˢ b = ⟦ a ⟧ˢ fmt ≡ ⟦ b ⟧ˢ fmt
 record _≈_ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (a b : Expr Γ Ψ A) : Set where
   constructor ≈-intro
   field ≈-out : a ≈ˢ b
-open _≈_
 
 ≈-refl : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a : Expr Γ Ψ A} → a ≈ a
 ≈-refl = ≈-intro refl

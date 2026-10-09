@@ -32,29 +32,25 @@ open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
 module Once.Spec.Elaboration {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Data.Fin using (Fin; zero; suc)
-open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ; Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Fin using (Fin)
+open import Data.Maybe using (just)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (String; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Many; Purity; pure; eff;
-  μ-type; ν-type; ⟦_⟧T; PolyType; Ground; extractGround)
+open import Once.Type using (Type; Int; Float; _*_; _⇒[_]_; mk-kind; Many; pure; Ground; extractGround)
 open import Once.Type.Rigid using (KindedInstance; RigidFree)
 open import Once.Type.Sub using (pure⊑; _<:_; sub-arr; <:-refl)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.CanonicalName using (bare; showCanonical)
+open import Once.CanonicalName using (bare)
 open import Once.Float.Decimal using (decimalOf; negate)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Surface.Context using (Ctx; ∅; Usage; zeroUsage; _+ᵘ_; _*ᵘ_)
-open import Once.Surface.Properties using (+ᵘ-identityʳ)
-open import Once.TypeCheck.Raw using (RawExpr;
-  OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix;
-  ctxWithImportsAndPolys)
+open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.TypeCheck.Judgment
 open import Once.Spec.Core.PolyTy using (sigOf; _!!_; Respects; GSub; _⟪_⟫; module Schema)
 open Schema using (arity; kinds; type)

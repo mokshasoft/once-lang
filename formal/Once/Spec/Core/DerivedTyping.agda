@@ -16,13 +16,12 @@ module Once.Spec.Core.DerivedTyping {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Bool using (true)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; subst; cong; cong₂)
 
 open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; mk-kind; Many; One; Zero; Purity; pure; eff;
   μ-type; ν-type; Functor; ⟦_⟧T)
-open import Once.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; pure⊑)
-open import Once.Surface.Context using (Ctx; _,_; _,_^_; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open import Once.Type.Sub using (⊑-pe; pure⊑)
+open import Once.Surface.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Surface.Thinning using (thin-usage-refl)
 open import Once.Functor.Translate using (WellFormedF)

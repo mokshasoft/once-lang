@@ -57,8 +57,7 @@ open import Once.Type as T using (Type)
 
 -- SigOpInfo: the descriptor carried by every signature operation.
 open import Once.SigOp.Info
-  using (SigOpInfo; mk-info; semM; effect;
-         EffectShape; Pure; Emits; Halts)
+  using (SigOpInfo)
 
 ------------------------------------------------------------------------
 -- Allocation Mode

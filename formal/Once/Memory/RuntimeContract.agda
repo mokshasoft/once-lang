@@ -96,4 +96,3 @@ record RuntimeContract : Set where
     , (λ { ((_ , a≤s) , (c≤a , _)) → gap a≤s stack<code c≤a })
     , (λ { ((_ , a≤h) , (c≤a , _)) → gap a≤h heap<code c≤a })
 
-open RuntimeContract

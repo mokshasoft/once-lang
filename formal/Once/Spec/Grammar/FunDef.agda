@@ -18,7 +18,6 @@ module Once.Spec.Grammar.FunDef where
 open import Data.Bool using (true; false)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String)
-open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token

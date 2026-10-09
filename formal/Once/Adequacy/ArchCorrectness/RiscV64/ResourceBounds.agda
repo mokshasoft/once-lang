@@ -228,7 +228,6 @@ record AddrNoWrap : Set₁ where
       → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FCr.lo hv < R.W.modulus
-open AddrNoWrap
 
 ------------------------------------------------------------------------
 -- (4) THE EMITTED LITERALS FIT IN A MACHINE WORD (plan 0.70 phase D).
@@ -259,7 +258,6 @@ record LitFits : Set₁ where
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {rv64-frame-semantics} fits-int v < R.W.modulus
-open LitFits
 
 
 ------------------------------------------------------------------------

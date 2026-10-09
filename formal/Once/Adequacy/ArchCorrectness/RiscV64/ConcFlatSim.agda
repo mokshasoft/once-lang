@@ -345,7 +345,6 @@ open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
 open import Once.CCC.Machine.SMCore hiding (Instr)
 open import Once.CCC.Machine.Locations using (AtDynamic)
-open import Once.Memory.HeapAddress using (sucHL)
 open FlatMachine {FS} using (fpc; floc; fetch; find-label; flat-exec-instr)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)

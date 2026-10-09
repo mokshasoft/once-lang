@@ -92,7 +92,6 @@ open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; heap-offset; 
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (current-frame)
-open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics using (frame-base)
 open import Data.Empty using (⊥)
 open import Data.Unit using (tt)

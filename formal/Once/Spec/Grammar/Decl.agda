@@ -22,7 +22,6 @@ open import Once.Parser.Token
 open import Once.Parser.Module.Core using (Decl; DTypeSig)
 import Once.Parser.Module
 open import Once.Parser.Module.FunDef.Body using (eqHead)
-open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.DeclTail using (colDrop1; colonHead)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 

@@ -46,13 +46,12 @@ open import Once.SigOp.Info using (SigOpSem; mk-info'; emitsV; haltsV; ffiV; cal
 open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
+open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
   LambdaInInferMode; LambdaRequiresFunctionType; StringLiteralUnsupported;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
-  FstNeedsPair; SndNeedsPair; ArrNeedsFunction; NegationNotInt;
-  CaseScrutineeNotSum; CaseBranchMismatch;
-  ApplicationTypeMismatch; TypeMismatch; NotFunction;
+  FstNeedsPair; SndNeedsPair;
+  CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; NotFunction;
   UsageViolation; BuiltinTypeMismatch;
   BinOpLeftError; BinOpRightError;
   UnboundVariable; UnboundQualified; NonConcreteSigOpType)

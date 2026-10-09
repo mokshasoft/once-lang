@@ -25,7 +25,7 @@ open Schema using (arity; kinds; type)
 open import Once.Spec.Contract using (ISig)
 module Once.Spec.Core.Meaning {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Data.Fin using (Fin)
+import Data.Fin
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (tt)
@@ -36,16 +36,16 @@ open import Once.Float.Decimal using (round)
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 open import Once.Type
-  using (Type; Zero; One; Many; mk-kind; Purity; pure; eff)
+  using (Zero; One; Many)
 open import Once.Surface.Context
-  using ( Ctx; Usage; _↾_; _+ᵘ_; _*ᵘ_; zeroUsage
+  using ( Ctx; Usage; _↾_; _*ᵘ_
         ; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many )
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; returnM; bindM; subM)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
-open import Once.SigOp.Info using (semP; int-prim; int-pure)
+open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Spec.Contract using (Impl)
 open import Once.Arith.SigOp.Builders
   using ( add-info; sub-info; mul-info; div-info; mod-info; neg-info

@@ -17,38 +17,26 @@ module Once.TypeCheck where
 ------------------------------------------------------------------------
 
 -- Types
-open import Once.Type
-  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒_)
 
 -- Raw syntax (parser output)
 open import Once.TypeCheck.Raw
-  using (RawExpr; RVar; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp)
-  using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-  using (UnaryOp; OpNeg)
-  using (isComparisonOp; isArithmeticOp)
+  using (RawExpr; RVar; RApp; RLam; RUnit; RInt; RBinOp; OpAdd; OpLt)
 
 -- Typing contexts
-open import Once.TypeCheck.Context
-  using (Ctx; ∅; _,_∷_; lookup; LookupResult; found; notFound)
-  using (Binding; mkBinding)
-open Once.TypeCheck.Context.Binding using (name; quantity; type)
+import Once.TypeCheck.Context
 
 -- Quantities (from Once.Type)
-open import Once.Type
-  using (Quantity; Zero; One; Many)
 
 -- Combined inference + elaboration (intrinsically typed)
 -- Soundness is trivial by construction: if inferElab returns success,
 -- the expression IS well-typed (the type is encoded in the term).
 open import Once.TypeCheck.Elaborate as Elaborate
   using (InferElabResult)
-  using (inferElab; checkElab)
+  using (inferElab)
 open import Once.TypeCheck.Classify using (emptyCtx)
   using ()
 
 -- Thinning operations (weaken, exchange)
-open import Once.Surface.Thinning
-  using (weaken; exchange)
 
 -- Surface syntax (for empty context S∅)
 open import Once.Surface.Syntax
@@ -68,8 +56,6 @@ open import Once.Surface.Syntax
 -- are part of what they depend on.
 --
 -- See plans/0.3-frontend-verification-gaps.md.
-open import Once.TypeCheck.Verified
-  using (VerifiedTypeChecker; verifiedTypeChecker)
 
 ------------------------------------------------------------------------
 -- Convenience API

@@ -21,32 +21,30 @@
 
 module Once.Spec.Core.Translate where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (zero; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Data.String using () renaming (_≟_ to _≟str_)
 import Data.String.Properties as StrProp
-open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
 import Once.Type as T
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; ground-kinded; rigidOf;
   rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 import Once.Compile as C
-open C.FunInfo using (funName; funBody; funType; funIsPrimitive)
+open C.FunInfo using (funName; funBody)
 open C.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Surface.Context as Ctx using (Usage)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
-open import Once.Spec.Module using (Scope; scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; addPoly)
+open import Once.Spec.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp)
 open import Once.Spec.Contract using (ISig)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)

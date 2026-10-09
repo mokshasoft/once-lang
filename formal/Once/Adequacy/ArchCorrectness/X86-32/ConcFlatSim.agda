@@ -194,7 +194,6 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtDynamic)
-open import Once.Memory.HeapAddress using (sucHL)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
