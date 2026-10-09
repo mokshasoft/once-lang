@@ -34,6 +34,26 @@ purityTests = testGroup "Purity (pure emits nothing)"
       r <- checkLib [ "signature stop : Int -> Void" ]
       assertBool "Should reject a pure signature that halts" (isLeft r)
 
+  -- Plan 0.113 B2: halting/emitting are UP TO ISOMORPHISM. An empty codomain must
+  -- be WRITTEN `Void`, a singleton one `Unit` (a skeleton): `Void * Int` would be
+  -- an answering contract with no possible answer.
+  , testCase "effectful FFI arrow into an empty codomain other than Void is rejected" $ do
+      r <- checkLib [ "signature stop2 : Eff Int (Void * Int)" ]
+      assertBool "Should reject an empty codomain not written Void" (isLeft r)
+
+  , testCase "effectful FFI arrow into a singleton codomain other than Unit is rejected" $ do
+      r <- checkLib [ "signature beep2 : Eff Int (Unit * Unit)" ]
+      assertBool "Should reject a singleton codomain not written Unit" (isLeft r)
+
+  , testCase "pure FFI arrow into an empty codomain is rejected" $ do
+      r <- checkLib [ "signature f : Int -> (Void + Void)" ]
+      assertBool "Should reject a pure arrow into an empty type" (isLeft r)
+
+  , testCase "effectful FFI arrow into a sum with an empty summand is accepted" $ do
+      -- `Int + Void` is neither empty nor a singleton: an answering contract.
+      r <- checkLib [ "signature pick : Eff Int (Int + Void)" ]
+      r @?= Right ()
+
   , testCase "base-typed FFI constant of type Unit is rejected (its reference is a call)" $ do
       -- `tick` is a nullary SigOp: referencing it emits. Effects live on
       -- arrows (D032), so the honest declaration is `Eff Unit Unit`.
