@@ -28,11 +28,12 @@ open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.IR hiding (_+_; _*_)
+open import Once.IR
+open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 import Once.IRTy as II
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
-open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
+open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ; ⟦_⟧ᴰᴵ)
 -- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
 open import Once.Functor.Translate using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)
 open import Once.Arith.Machine.IR using (MArithIR; shape-as-type; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
@@ -43,17 +44,18 @@ open import Once.Arith.Machine.Rewrite using (try-lift; shape-of; has-op; block-
 open import Once.Postulates using (extensionality)
 open import Data.Maybe using () renaming (map to mapᴹ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
-open import Once.Denotation.DenotTrace using (evalᴰ; ⟦_⟧ᴰᴵ)
+open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Arith.Machine.Shape using (InputShape; shape-int; shape-float; shape-pair; Fst; Snd; InputPath; Path; here-int; here-flt; go-fst; go-snd; typePath?)
 open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-through; rp-at; rp-comp; pair-path;
   PView; pv-id; pv-fst; pv-snd; pv-pair; pv-comp; pv-other; p-view; is-terminal?; TView; tv-term; tv-comp; tv-other; t-view; it-at;
   recognise-body; recognise-binop; recognise-prim; binop-at; rb-at; rb-view; RBView; v-reassoc; v-sigop; v-cint; v-cflt; v-other;
   recognise-body-float; recognise-binop-float; recognise-prim-float; binop-at-float; rbf-at;
   lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-other; pair-of)
-open import Once.SigOp.Info using (SigOpSem; mk-info'; primV)
+open import Once.SigOp.Info using (SigOpSem; mk-info'; primV; SigOpInfo)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 import Once.Type as Ty
-open import Once.Target.Arch using (int-bits; float-format)
+open import Once.Target.Arch using (module TargetNum)
+open TargetNum using (int-bits; float-format)
 import Once.Word as OnceWord
 import Once.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)

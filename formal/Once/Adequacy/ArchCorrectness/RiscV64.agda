@@ -31,7 +31,8 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Denotation.TraceMonad using (Interp; sig)
+open import Once.Denotation.TraceMonad using (Interp; module Interp)
+open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
   (ι : Interp)
@@ -65,7 +66,8 @@ import Once.Arith.Backend.RiscV64.RunTrace as RTr
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
+open import Once.IR using (IR)
+open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.CPU using (arch-semantics)
@@ -90,7 +92,8 @@ open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; heap-offset; 
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (current-frame)
-open import Once.CCC.FrameSemantics using (frame-base)
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
+open FrameSemantics using (frame-base)
 open import Data.Empty using (⊥)
 open import Data.Unit using (tt)
 open import Data.Nat using (suc; _+_; _*_; z≤n)
@@ -154,9 +157,9 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   rv64-frame-semantics refl refl riscv64-slot-addr-no-wrap
   riscv64-heap-room riscv64-stack-room riscv64-call-room
   riscv64-reg-range riscv64-scratch-dec-guarded
-  (RBr.ret-no-wrap riscv64-addr-no-wrap) (RBr.count-no-wrap riscv64-addr-no-wrap)
-  (RBr.lo-fits riscv64-addr-no-wrap)
-  (RBr.tag-fits riscv64-lit-fits) (RBr.lit-fits riscv64-lit-fits)
+  (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap) (RBr.AddrNoWrap.count-no-wrap riscv64-addr-no-wrap)
+  (RBr.AddrNoWrap.lo-fits riscv64-addr-no-wrap)
+  (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
   (RBr.float-fits o ι)
   using (events-agree-start; CompiledCorr; EntryLike; reach-start; RunAt; mkRunAt)
 
@@ -357,10 +360,10 @@ file-flat-riscv64 :
   → (oq : o ≡ C.entry-owner)
   → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
-  → ∀ (n : ℕ) → at (run-trace-riscv64 ι F (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry F)))) n
+  → ∀ (n : ℕ) → at (run-trace-riscv64 ι F (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))) n
               ≡ at (flat-riscv64 brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk) n
 file-flat-riscv64 brs m F eq ir mi oq teq lk n =
-  subst (λ G → at (run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry G)))) n
+  subst (λ G → at (run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))) n
                ≡ at (flat-riscv64 brs ir′ lk) n)
         (sym (file-is-emit riscv64 m F ir eq mi))
         (trans (cong (λ cd → take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64

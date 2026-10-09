@@ -26,14 +26,16 @@ open import Once.Postulates using (extensionality)
 import Once.Adequacy.LiftSound
 open import Once.Target.Arch using (TargetNum)
 open import Once.IR
+open import Once.IRTy using (⌊_⌋; ⌈_⌉F; ⌈⟧TI-commute; ⌈_⌉; _≟IRTy_)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift; bare-at)
 open import Once.Denotation.TraceMonad using (>>=T-identityˡ)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
-open import Once.SigOp.Info using (FFIAnswers)
+open import Once.SigOp.Info using (FFIAnswers; SigOpInfo)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
+import Once.Denotation.ValueDomain as ValueDomain
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
@@ -138,7 +140,7 @@ calls-sound fmt φ (e ∷ es) =
     at-sound : ∀ f A B d₁ d₂ d₃ a
              → tableEnv-at fmt φ (rewrite-fun e) (rewrite-table es) f A B d₁ d₂ d₃ a ≡ tableEnv-at fmt φ e es f A B d₁ d₂ d₃ a
     at-sound f A B (yes _) (yes p) (yes q) a =
-      cong (subst (λ Y → T (Once.Denotation.DenotTrace.⟦_⟧ᴰᴵ Y)) q)
+      cong (subst (λ Y → T (ValueDomain.⟦_⟧ᴰᴵ Y)) q)
         (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (fbody e))) _) ihE)
                (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt φ es) (fbody e))))
     at-sound f A B (yes _) (yes _) (no _)  a = cong (λ c → c f A B a) ih

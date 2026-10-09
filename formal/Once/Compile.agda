@@ -38,6 +38,7 @@ open import Once.Type public
 
 -- Re-export Core IR
 open import Once.IR public
+open import Once.IRTy using (Unit; ⌊_⌋)
 open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Target.Symbol using (once-symbol-path; once-symbol-own)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms)
@@ -97,13 +98,14 @@ open FunInfo
 open PolyFunInfo
 
 -- Type checking / elaboration
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndPolys; PolyCtx; emptyPolyCtx; checkElab)
+open import Once.TypeCheck.Elaborate using (checkElab)
+import Once.TypeCheck.Error as Error
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (NamedCtx; TopCtx; topCtx; emptyTopCtx)
+open import Once.TypeCheck.Classify using (NamedCtx; TopCtx; topCtx; emptyTopCtx; PolyCtx; ctxWithImportsAndPolys; emptyPolyCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
@@ -197,7 +199,7 @@ compileFunBody-aux : ∀ {ctx : NamedCtx} {body : RawExpr}
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
   → TE.VerifiedCheckResult ctx body ty → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
-  inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
+  inj₁ ("Type error in " ++ name ++ ": " ++ Error.renderError err)
 compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ _ _ _ , w) =
   -- Plan 0.19: the user-fn list (= `ctx + self`) is `userFns`. Plan 0.103
   -- phase 1c: a telescope body is linked in ITS declaration imports
@@ -284,7 +286,7 @@ inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) bo
 -- (ground answers only here; schema answers route via the telescope, M3).
 ... | TE.failure err       =
       inferType-validate (ctxWithImportsAndPolys ctx polys) body
-        ("Cannot infer type: " ++ TE.renderError err)
+        ("Cannot infer type: " ++ Error.renderError err)
         (Principal.principalGround (ctxWithImportsAndPolys ctx polys) body)
 
 -- | The explicit signature if given, otherwise the inferred type (D007).

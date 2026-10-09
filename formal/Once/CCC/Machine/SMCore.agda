@@ -36,7 +36,8 @@ open import Data.List.Properties using (++-assoc)
 open import Relation.Nullary using (Dec; yes; no)
 
 -- Import FrameSemantics for Frame type
-open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; fs-interp)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; module FrameSemantics)
+open FrameSemantics using (fs-interp)
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 open import Once.Denotation.TraceMonad using (callOp; answer; callKey; calls)
 open import Once.Spec.Contract using (_∈K?_)
@@ -45,7 +46,7 @@ open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
-open import Once.CCC.Label public using (LabelId; mkLabelId; owner; path; idx; EntryId; e-thunk; e-fn)
+open import Once.CCC.Label public using (LabelId; mkLabelId; EntryId; e-thunk; e-fn)
 open import Once.CanonicalName using (CanonicalName)
 
 -- Import SigOpInfo so `instr-sigop` carries its full self-describing
@@ -55,7 +56,8 @@ open import Once.CanonicalName using (CanonicalName)
 open import Once.Type using (Type; Unit; Int; Float; _*_; FitsInReg; fits-int; fits-float; fits-in-reg?)
 import Once.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
-open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; name; baseA)
+open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
+open SigOpInfo using (name; baseA)
 open import Once.Res using (Res; stopped; returns)
 
 private
@@ -74,14 +76,14 @@ private
 -- the allocator can depend on them without going through CCC.
 ------------------------------------------------------------------------
 
-open import Once.Memory.HeapAddress public
+open import Once.Memory.HeapAddress
   using (HeapOffset; HeapRef; mkHeapRef; ref-id;
          HeapLocation; heap-loc; heap-ref; heap-offset;
          _≟H_; _≟HL_; ≟HL-aux; hl-ref)
 
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.
-open import Once.CCC.Machine.Locations public
+open import Once.CCC.Machine.Locations
 open import Once.Float.Decimal using (round)
 import Once.Word as Word
 import Data.Nat as ℕ
@@ -340,7 +342,7 @@ record Registers (FS : FrameSemantics) : Set where
     scratch : StoredValue FS  -- Plan 0.29: loop-private (rbx); see AbstractReg.Scratch
     count : StoredValue FS    -- Plan 0.54 D item 4: descend tally; see AbstractReg.Count
 
-open Registers public
+open Registers
 
 readReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS
 readReg r Input1 = input1 r
@@ -1337,7 +1339,7 @@ record CompUnit : Set where
     entry-budget : ℕ
     entry        : AbstractTrace
     blocks       : List (LabelId × ℕ × AbstractTrace)
-open CompUnit public
+open CompUnit
 
 block-layout : LabelId × ℕ × AbstractTrace → AbstractTrace
 block-layout (lbl , b , t) =

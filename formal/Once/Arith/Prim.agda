@@ -23,7 +23,8 @@ open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.CmpOp using (cmp-word)
 open import Once.Word using (Carrier)
 import Once.Word as OnceWord
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
 import Once.Float.Arith as FA
 import Once.Semantics.Value Carrier Carrier as M
 

@@ -17,10 +17,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
+import Once.IRTy as IRTy′
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
@@ -72,7 +76,7 @@ module TwoCellC {FS : FrameSemantics} where
       -- D181's `valid-closure-reg-wf`. Without that constructor the last two —
       -- and a unit env is `main`'s — would be unprovable.
       place-of : InputAt mIn alloc x s
-               → ResultPlace (B IRTy.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
+               → ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                              (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)
       place-of (in-reg fit eq) =
         at-loc TCR.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
@@ -108,7 +112,7 @@ module TwoCellC {FS : FrameSemantics} where
               (trans TCB.cell0-fs10 (cong just (ev≡ptr e))) TCB.code-fs10
               (TCB.bf-advance bf) TCB.before-suc (TCB.valid-transport x loc bf valid)
 
-      place : ResultPlace (B IRTy.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
+      place : ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)
       place = place-of inp
 
@@ -130,7 +134,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- same thing twice.
   ------------------------------------------------------------------------
   -- D273: the seed is the pair `(e , a)`; nothing here depends on its shape.
-  obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {E A} (coalg : IR (E IRTy.* A) (⟦ F ⟧TI A))
+  obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {E A} (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A))
                   → IRObsCorrectF (Ana wf coalg)
   obs-correct-Ana {F} wf {E} {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
@@ -159,7 +163,7 @@ module TwoCellC {FS : FrameSemantics} where
 
       -- THE SEED CELL — one clause per residence, one constructor for all three.
       cell-of : InputAt mIn alloc x s
-              → CellAt (falloc TCR.fs10) (E IRTy.* A) x TCR.obj-loc (floc TCR.fs10)
+              → CellAt (falloc TCR.fs10) (E IRTy′.* A) x TCR.obj-loc (floc TCR.fs10)
       cell-of (in-reg fit eq) =
         cell-inline (rep-prim fit)
           (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))

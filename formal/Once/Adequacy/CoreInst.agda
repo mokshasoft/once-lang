@@ -29,7 +29,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Type as T
 open T using (Type; mk-kind; Many; pure; μ-type; ν-type; ⟦_⟧T)
 import Once.Surface.Context as C
-open import Once.Spec.Core.PolyTy using (_⟪_⟫; _!!_; type; ⟨⟩-⟪⟫; ⌈⌉-⟪⟫; ⟦⟧F-⟪⟫)
+open import Once.Spec.Core.PolyTy using (_⟪_⟫; _!!_; ⟨⟩-⟪⟫; ⌈⌉-⟪⟫; ⟦⟧F-⟪⟫; module Schema)
+open Schema using (type)
 import Once.Spec.Core.PolyTy as Ty
 open import Once.Spec.Core.AbsTy using (absTy; absF; abs-⟪⟫; absTy-⟦⟧; absTy-ground)
 import Once.Spec.Core.Syntax S as G
@@ -62,7 +63,7 @@ open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 module WithSG (sg : SigGround) where
 
   -- A definition's instance, substituted, is the substituted instance.
-  ρ̂-ref : ∀ d (τ′ : GSub (Once.Spec.Core.PolyTy.arity (S !! d)))
+  ρ̂-ref : ∀ d (τ′ : GSub (Once.Spec.Core.PolyTy.Schema.arity (S !! d)))
         → ρ̂ (type (S !! d) ⟪ τ′ ⟫) ≡ type (S !! d) ⟪ (λ i → ρ̂ (τ′ i)) ⟫
   ρ̂-ref d τ′ = trans (cong (_⟪ τ ⟫) (abs-⟪⟫ Δ τ′ (sg d))) (⟨⟩-⟪⟫ (type (S !! d)) (λ i → absTy Δ (τ′ i)) τ)
 

@@ -38,12 +38,19 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.Machine.SMPrimitives as SMPrimitives
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Proof (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
+open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
+open import Once.CCC.Machine.SMCore using (AllocState; next-heap-ref; next-slot)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Memory.HeapAddress using (HeapLocation; ref-id; heap-ref; heap-loc; mkHeapRef)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Pres o tbl
 open import Data.Nat using (z≤n)
@@ -51,10 +58,12 @@ open import Data.Nat using (z≤n)
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
+import Once.IRTy as IRTy′
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
+import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
 open import Once.Res using (Res; returns; is-stopped)
 
@@ -114,7 +123,7 @@ module PairProofC {FS : FrameSemantics} where
     (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
-    (mIn : AllocMode) (x : DT.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
     where
       module PS = PairShape f g n l
@@ -203,7 +212,7 @@ module PairProofC {FS : FrameSemantics} where
       esF : List SigOpEvent
       esF = eventsAt (floc PC.PR.p2) (evalᴰ f x)
 
-      innerT : ⟦ B ⟧ → TM.T ⟦ B IRTy.* C ⟧
+      innerT : ⟦ B ⟧ → TM.T ⟦ B IRTy′.* C ⟧
       innerT vb = evalᴰ g x TM.>>=T λ c → TM.returnT (vb , c)
 
       RF : runAt (floc PC.PR.p2) (evalᴰ f x) ≡ TM.run ιᶠ h (evalᴰ f x)
@@ -299,7 +308,7 @@ module PairProofC {FS : FrameSemantics} where
           ----------------------------------------------------------------
           input1-m2 : readReg (regs (floc PCF.m2)) Input1 ≡ readReg (regs s) Input1
           input1-m2 =
-            trans (RecSchemeSemantics.exec-abstract-restore-input-sets-input
+            trans (SMPrimitives.RecSchemeSemantics.exec-abstract-restore-input-sets-input
                      n (floc PCF.m1) (falloc PCF.m1)
                      (readReg (regs (floc PC.PR.p1)) Output) (proj₂ PCF.wf-restore))
                   (writeReg-same (regs s) Output (readReg (regs s) Input1))

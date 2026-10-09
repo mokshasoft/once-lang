@@ -28,7 +28,8 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Denotation.TraceMonad using (Interp; sig)
+open import Once.Denotation.TraceMonad using (Interp; module Interp)
+open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.X86-32
   (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
@@ -61,7 +62,8 @@ open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; heap-offset)
 open import Once.CCC.Machine.SMCore using (current-frame)
-open import Once.CCC.FrameSemantics using (frame-base)
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
+open FrameSemantics using (frame-base)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-32.Syntax using (slot-size)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (slot-to-disp)
@@ -83,7 +85,8 @@ import Once.Arith.Backend.X86-32.RunTrace as RTx
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
-open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
+open import Once.IR using (IR)
+open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.CPU using (arch-semantics)
@@ -189,9 +192,9 @@ import Once.Adequacy.ArchCorrectness.X86-32.RunContext as RCx
 open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   x86-32-frame-semantics refl refl x86-32-heap-room x86-32-stack-room x86-32-call-room
   x86-32-reg-range x86-32-scratch-dec-guarded
-  (RB.ret-no-wrap x86-32-addr-no-wrap) (RB.count-no-wrap x86-32-addr-no-wrap)
-  (RB.tag-fits x86-32-lit-fits) (RB.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
-  (RB.lo-fits x86-32-addr-no-wrap)
+  (RB.AddrNoWrap.ret-no-wrap x86-32-addr-no-wrap) (RB.AddrNoWrap.count-no-wrap x86-32-addr-no-wrap)
+  (RB.LitFits.tag-fits x86-32-lit-fits) (RB.LitFits.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
+  (RB.AddrNoWrap.lo-fits x86-32-addr-no-wrap)
   using (events-agree-start; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-32-frame-semantics using (FlatRegTag)
@@ -438,10 +441,10 @@ file-flat-x86-32 :
   → (oq : o ≡ C.entry-owner)
   → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
-  → ∀ (n : ℕ) → at (run-trace-x86-32 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry F)))) n
+  → ∀ (n : ℕ) → at (run-trace-x86-32 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))) n
               ≡ at (flat-x86-32 brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk) n
 file-flat-x86-32 brs m F eq ir mi oq teq lk n =
-  subst (λ G → at (run-trace-x86-32 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry G)))) n
+  subst (λ G → at (run-trace-x86-32 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))) n
                ≡ at (flat-x86-32 brs ir′ lk) n)
         (sym (file-is-emit x86-32 m F ir eq mi))
         (trans (cong (λ cd → take n (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32

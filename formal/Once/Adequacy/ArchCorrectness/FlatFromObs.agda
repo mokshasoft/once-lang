@@ -86,7 +86,8 @@ open import Data.Product using (proj₁)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.IR using (IR; Unit; Stack)
+open import Once.IR using (IR; Stack)
+open import Once.IRTy using (Unit)
 open import Once.Denotation.Behavior using (Behavior; behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -105,19 +106,20 @@ open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (NoThunks; missBefore-from; blocks-at)
 open import Data.List using (_++_; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk; AllocState; mkAllocState; next-slot)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Data.Nat.Properties using (+-identityʳ; +-comm)
 open import Once.CCC.Machine.SMCore
-  using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
+  using (LocState; mkLocState; Registers; mkRegs; SV-Tag;
          halted)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
 open import Data.Nat using (z≤n; s≤s; _≤_; _+_)
 open import Once.CCC.Machine.Allocation
-  using (AllocState; mkAllocState; next-slot; module FrontierInvariant)
+  using (module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 import Once.Compile as C
@@ -507,7 +509,7 @@ entry-witness ir ioc brs k =
 IOC : Set
 -- plan 0.105: the signatures the world `FS` runs in declares.
 σFS : ISig
-σFS = TM.sig (Once.CCC.FrameSemantics.fs-interp FS)
+σFS = TM.Interp.sig (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)
 
 IOC = ∀ {A B} (ir : IR A B) → Linked σFS tbl ir → IRObsCorrectF ir
 
@@ -526,7 +528,7 @@ flat-trace-fam ioc brs ir lk n =
 ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (n : ℕ)
                     → flat-trace-fam ioc brs ir lk n
                       ≡ at (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)
-                              (Once.CCC.FrameSemantics.fs-interp FS)) n
+                              (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)) n
 -- Plan 0.105: the witness's events are EXACTLY the program's run from the
 -- empty log (`entry-s`), so the depth-`n` observable is one `take n`.
 ir-flat-correct-fam ioc brs ir lk n =
@@ -539,13 +541,13 @@ ir-flat-correct-fam ioc brs ir lk n =
 -- three laws from the denotation it is proved equal to (`behavior-by`).
 flat-main : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → Behavior
 flat-main ioc brs ir lk =
-  behavior-by (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.fs-interp FS))
+  behavior-by (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS))
               (flat-trace-fam ioc brs ir lk)
               (λ n → sym (ir-flat-correct-fam ioc brs ir lk n))
 
 ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (n : ℕ)
                      → at (flat-main ioc brs ir lk) n
-                       ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics arch) (Once.CCC.FrameSemantics.fs-interp FS)) n
+                       ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics arch) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)) n
 ir-flat-correct-main ioc brs ir lk n =
-  subst (λ F → at (flat-main ioc brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR F (Once.CCC.FrameSemantics.fs-interp FS)) n)
+  subst (λ F → at (flat-main ioc brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR F (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)) n)
         fmt-agree (ir-flat-correct-fam ioc brs ir lk n)

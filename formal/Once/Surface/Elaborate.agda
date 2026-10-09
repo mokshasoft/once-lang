@@ -13,6 +13,7 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.Float.Decimal using (Decimal)
 open import Once.IR
+open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; μ-type; ⌊⟧T-commute; ν-type; base-Unit)
 open import Once.IR.Ref using (refIR)
 open import Once.Surface.Syntax
 open import Once.Surface.CoerceIR using (runCoe)

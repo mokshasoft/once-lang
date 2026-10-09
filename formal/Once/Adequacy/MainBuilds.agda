@@ -40,36 +40,38 @@ import Once.CanonicalName
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
+import Once.TypeCheck.Classify as Classify
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P
+import Once.Parser.Module as Module
 
 ------------------------------------------------------------------------
 -- Layer 0 — `compileFunBody-aux` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
-cfb-aux-doOpt : ∀ {nctx : TE.NamedCtx} {body : RawExpr}
-  (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
-  (name : String) (ty : C.Type) (δ : Srf.⟦ TE.NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
+cfb-aux-doOpt : ∀ {nctx : Classify.NamedCtx} {body : RawExpr}
+  (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
+  (name : String) (ty : C.Type) (δ : Srf.⟦ Classify.NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
   (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux C.Heap false ctx polys impsOf name ty δ cr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody-aux C.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir')
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _ , _) eq = _ , refl
 
-cfb-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+cfb-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
   cfb-aux-doOpt doOpt ctx polys impsOf name ty refl
-    (TE.checkElabV (TE.ctxWithImportsAndPolys ctx polys) expr ty) eq
+    (TE.checkElabV (Classify.ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
-cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap false ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir')
@@ -77,7 +79,7 @@ cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
-cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap false ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir')
@@ -86,7 +88,7 @@ cfun-aux-doOpt doOpt ctx polys impsOf name ty expr true eq =
 cfun-aux-doOpt doOpt ctx polys impsOf name ty expr false eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
-cfun-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+cfun-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun C.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
@@ -119,7 +121,7 @@ ce-doOpt doOpt sc [] eq = _ , refl
 ce-doOpt doOpt sc (C.e-fun fi ∷ es) eq = ce-fun-doOpt doOpt sc fi es (C.FunInfo.funIsPrimitive fi) eq
 ce-doOpt doOpt sc (C.e-poly pfi ∷ es) eq =
   ce-poly-doOpt doOpt sc pfi es
-    (C.checkOK (TE.checkElabV (TE.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))) eq
+    (C.checkOK (TE.checkElabV (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (C.PolyFunInfo.pfunBody pfi) (rigidOf (C.PolyFunInfo.pfunType pfi)))) eq
 
 ce-fun-doOpt doOpt sc fi es true  eq = ce-prim-doOpt doOpt sc fi es (C.FunInfo.funType fi) eq
 ce-fun-doOpt doOpt sc fi es false eq =

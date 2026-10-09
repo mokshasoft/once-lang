@@ -20,6 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.Semantics.Machine
   using (sem-pair)
 -- The IRTy value-domain rename is LOCAL to Validity (not re-exported), so it

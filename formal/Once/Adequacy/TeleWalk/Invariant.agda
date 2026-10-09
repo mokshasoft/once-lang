@@ -95,7 +95,8 @@ open import Once.Adequacy.Coherence fmt using (realize-invariant)
 import Once.TypeCheck.Completeness
 import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
-open import Once.Denotation.DenotTrace using (evalᴰ; cohᴰ)
+open import Once.Denotation.DenotTrace using (evalᴰ)
+open import Once.Denotation.ValueDomain using (cohᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (abiT; abi)
 import Data.Fin
@@ -351,9 +352,9 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
         -- the new entry: its splice at an instance is its core instance (6e)
         head : ∀ (U : Type) (ki : KindedInstance scT U)
              → RelGM Once.Type.pure U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
-                      (SD.refs σ y U)
+                      (SD.DefsSem.refs σ y U)
         head U ki =
-          subst (λ m → RelGM Once.Type.pure U m (SD.refs σ y U))
+          subst (λ m → RelGM Once.Type.pure U m (SD.DefsSem.refs σ y U))
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D-U tt)
                        (EI.poly-instance-sem S (viewOf {S = S} ss is ts) sg fmt δ scT
                          (λ ki′ → EI.viewOf-natural S (kindsOf scT) _ _ ss is ts) (Inv.irf inv , Inv.irs inv) D ki))
@@ -365,7 +366,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
             ce  = proj₂ (proj₂ (proj₂ ccU))
             cr  = Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) (pfunBody pfi) U
             D′  = sound-of cr ce
-            eqSD : SD.refs σ y U ≡ SD.⟦ realize D-U ⟧ˢ fmt σo tt
+            eqSD : SD.DefsSem.refs σ y U ≡ SD.⟦ realize D-U ⟧ˢ fmt σo tt
             eqSD =
               trans (refs-head I uf (tableEnv fmt φ tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
                 (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y

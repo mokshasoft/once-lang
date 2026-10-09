@@ -40,7 +40,9 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Sub using (_<:?_; sub-int; sub-unit)
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; lookupLocal; lookupImport; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; lookupPoly; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
+  using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
+open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; lookupPoly)
+import Once.TypeCheck.Classify as Classify
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error
@@ -96,7 +98,7 @@ inl-check-Void ctx arg refl = refl
 
 private
   fail-inj : ∀ {ctx : NamedCtx} {a b : TypeError}
-           → _≡_ {A = InferElabResult (NamedCtx.debruijn ctx)} (failure a) (failure b) → b ≡ a
+           → _≡_ {A = InferElabResult (Classify.NamedCtx.debruijn ctx)} (failure a) (failure b) → b ≡ a
   fail-inj refl = refl
 
   -- `rule` at a result whose type the rule rejects with `e₀`.
@@ -125,7 +127,7 @@ inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
 inl-check-Int ctx arg refl = refl
 qualified-not-found-is-UnboundQualified :
   ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
-  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ nothing
+  → lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ nothing
   → inferElab ctx (RQualified name alias) ≡ failure err
   → err ≡ UnboundQualified name alias
 qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqOuter =
@@ -133,9 +135,9 @@ qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqOuter =
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RQualified-aux)
     helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
+           → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
            → inferElabV-RQualified-aux ctx name alias
-               (lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
+               (lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
              ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
     helper _ refl = refl
     go : ∀ {err} → failure (UnboundQualified name alias) ≡ failure err
@@ -199,9 +201,9 @@ case-branch-mismatch-is-CaseBranchMismatch :
     (C₁ C₂ : Type) {qℓ qr}
     {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
   → inferElab ctx scrut ≡ success (A T.+ B) Ψs scrutE ds fs
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
+  → inferElab (Classify.extendNamedCtx ctx xL A) eL
       ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
+  → inferElab (Classify.extendNamedCtx ctx xR B) eR
       ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
   → ¬ (C₁ ≡ C₂)
   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
@@ -209,9 +211,9 @@ case-branch-mismatch-is-CaseBranchMismatch :
 case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ eqS eqL eqR ¬eq eqOuter
   with inferElabV ctx scrut | eqS
 ... | success (_ T.+ _) _ _ _ _ , _ | refl
-    with inferElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL | eqL
+    with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
 ...   | success _ (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
-      with inferElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR | eqR
+      with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
 ...     | success _ (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
         with C₁ ≟T C₂
 ...       | yes ceq = ⊥-elim (¬eq ceq)
@@ -240,24 +242,24 @@ var-unbound-is-UnboundVariable :
   ∀ (ctx : NamedCtx) (x : String)
     {err : TypeError}
   → lookupLocal ctx x ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
   → inferElab ctx (Raw.RVar x) ≡ failure err
   → err ≡ UnboundVariable x
 -- D136: the `¬ (x ≡ "unit")` premise is gone — `unit` is `RResolved (gen
 -- "unit")` now, so a bare `unit` is an ordinary variable that CAN be unbound.
 var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
-  = goPolyLp eqLoc eqImp (lookupPoly (NamedCtx.polys ctx) x) refl
+  = goPolyLp eqLoc eqImp (lookupPoly (Classify.NamedCtx.polys ctx) x) refl
       (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
-    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ' A')))
+    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Surface.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
               → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
                 ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
     helperLoc _ refl = refl
     helperImp : ∀ (lhs : Maybe Type)
-              → (eq' : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
+              → (eq' : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (Classify.NamedCtx.imports ctx) x) refl
                 ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc lhs eq'
     helperImp _ refl = refl
     go : ∀ {err} → failure (UnboundVariable x) ≡ failure err
@@ -274,7 +276,7 @@ var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
     goPolyIg eL eI schema body eqLp (inj₂ tt) _ eqF = go eqF
     goPolyIg eL eI schema body eqLp (inj₁ g) _ ()
     goPolyLp : ∀ eL eI (lp : Maybe (T.PolyType × Raw.RawExpr))
-                 (eqLp : lookupPoly (NamedCtx.polys ctx) x ≡ lp) {err'}
+                 (eqLp : lookupPoly (Classify.NamedCtx.polys ctx) x ≡ lp) {err'}
              → proj₁ (inferElabV-RVar-poly-lookup-aux ctx x eL eI lp eqLp) ≡ failure err'
              → err' ≡ UnboundVariable x
     goPolyLp eL eI nothing _ eqF = go eqF
@@ -317,14 +319,14 @@ lam-usage-violation-is-UsageViolation :
     (A : Type) (q : _) (B : Type)
     (q' : _) {Ψ' eE' d' f' err}
   → Once.TypeCheck.Elaborate.checkElab
-      (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+      (Classify.extendNamedCtx ctx x A) body B
       ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
   → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
   → Once.TypeCheck.Elaborate.checkElab ctx (Raw.RLam x body)
       (A T.⇒[ T.mk-kind q T.pure ] B) ≡ failure err
   → err ≡ Once.TypeCheck.Error.UsageViolation x q q'
 lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
-  with checkElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B | eqInner
+  with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqInner
 ... | success (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
     with Once.TypeCheck.Elaborate.decideLeq q' q | eqLeq
 ...   | nothing | refl with eqOuter

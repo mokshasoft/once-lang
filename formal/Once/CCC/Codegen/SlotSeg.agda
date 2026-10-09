@@ -27,7 +27,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.Machine.SMCore using (blocks-layout)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; Slot; lea-slot; instr-ctrl; c-thunk; c-entry; c-start; c-ret; c-label)
+  (AbstractInstr; AbstractTrace; lea-slot; instr-ctrl; c-thunk; c-entry; c-start; c-ret; c-label)
+open import Once.CCC.Machine.Locations using (Slot)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 
 
@@ -49,7 +50,7 @@ record SlotBelow (b : ℕ) (i : AbstractInstr) : Set where
     -- in the SAME record as `below` so the whole induction is walked once; on
     -- every other instruction the field is vacuous.
     pair-below : ∀ (slot : Slot) → i ≡ lea-slot slot → suc slot < b
-open SlotBelow public
+open SlotBelow
 
 -- an instruction that addresses no slot (`slot-of` reduces to `nothing`). Such
 -- an instruction is not a `lea-slot` either — that one HAS a slot — so the pair
@@ -108,7 +109,7 @@ record SegState : Set where
   field
     cur   : ℕ         -- the reservation in force here
     saved : List ℕ    -- the enclosing frames' reservations, innermost first
-open SegState public
+open SegState
 
 data SegAction : Set where
   seg-id   : SegAction
@@ -177,7 +178,7 @@ record SegLE (st st' : SegState) : Set where
   field
     cur-le   : cur st ≤ cur st'
     saved-le : SavedLE (saved st) (saved st')
-open SegLE public
+open SegLE
 
 saved-le-refl : ∀ (bs : List ℕ) → SavedLE bs bs
 saved-le-refl []       = []
@@ -276,7 +277,7 @@ record SegOK (b : ℕ) (t : AbstractTrace) : Set where
   field
     ok-all : ∀ {sv : List ℕ} → AllSeg (mkSeg b sv) t
     ok-neu : ∀ (st : SegState) → seg-fold t st ≡ st
-open SegOK public
+open SegOK
 
 -- THE BRIDGE: an idle fragment's existing `All` proof IS its `SegOK`.
 segok-idle : ∀ {b : ℕ} (t : AbstractTrace) → seg-idle? t ≡ true

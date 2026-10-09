@@ -35,13 +35,14 @@ open import Once.Type
 -- with Once.Type's (opened above). Hide the IRTy object/functor constructors
 -- from the unqualified open (they stay available as `IR.*`); the surface-type
 -- names resolve unambiguously to `Once.Type`.
-open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.IR as IR
+open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 -- External arrow SigOps are built from their DECLARED arrow (purity and
 -- codomain), never from a hardcoded name; each is a CONTRACT whose meaning is
 -- the interpretation's (plan 0.105: `ffiV`/`callsV`; `generic-semM` is gone).
 open import Once.Arith.SigOp.Builders using (arrow-info)
-open import Once.SigOp.Info using (SigOpSem; mk-info'; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpSem; mk-info'; emitsV; haltsV; ffiV; callsV; SigOpInfo)
 open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; GenWord; genWord?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -54,7 +55,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError; ComposeMiddleUnd
   ApplicationTypeMismatch; TypeMismatch; NotFunction;
   UsageViolation; BuiltinTypeMismatch;
   BinOpLeftError; BinOpRightError;
-  UnboundVariable; UnboundQualified; NonConcreteSigOpType) public
+  UnboundVariable; UnboundQualified; NonConcreteSigOpType)
 import Once.TypeCheck.Context
 open import Once.TypeCheck.Context as Context using () renaming ()
 open import Once.Surface.Syntax as Surface using ()
@@ -62,7 +63,7 @@ open import Once.Surface.Syntax as Surface using ()
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Elaborate as Elab using ()
 
-open import Once.TypeCheck.Classify public
+open import Once.TypeCheck.Classify
 import Once.Functor.Translate
 open import Once.Functor.Translate using (IsConcrete; con-fun; IsBaseType)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)

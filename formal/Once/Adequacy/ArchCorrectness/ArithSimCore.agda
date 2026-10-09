@@ -73,7 +73,8 @@ import Once.Word as OnceWord
 -- generic frame `rf-other`.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
 import Once.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Float.Decimal using (round)

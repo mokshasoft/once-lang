@@ -31,9 +31,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T; Purity; mk-kind; Many)
 import Once.Semantics.Machine as Val
-open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; Ana; ⌊_⌋)
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; Ana)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉)
+open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Denotation.Meaning using (cata-sem)
@@ -43,14 +43,14 @@ open import Once.Adequacy.AnaErased fmt ρ using (VE0ᴰ; coerce-νin-erase-D)
 open import Once.Semantics.Machine using
   (coerce-ν-in; tF-coh; ⟦_⟧F)
 open import Once.Semantics.Functor using (⟦_⟧SF; SFunctor)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; anaFᵈ; coerce-functor-D; subst-νᵈ-cong; anaᵈ-erase-full)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Elaborate using (elaborate; cataM; anaM)
 import Once.Compile as C
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc; fmapT; fmapT-∘; fmapT-cong)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; coerce-functor-D; liftFn; cohᴰ; anaFᵈ; anaᵈ-erase-full; subst-νᵈ-cong)
+open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.Denotation.SourceDenote as SD
 
 -- Plan 0.103 phase 1c: these lemmas relate the surface meaning to the
@@ -166,7 +166,7 @@ cataM-fold {F} {A} {π} wfF c =
                                 (extensionality apply-closure))))))
   where
     c' = subst (λ z → z) (sym (cohᴰ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))) c
-    applyIR : IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ C.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
+    applyIR : IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ II.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
     applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩
     -- Applying the carried closure IS the algebra: `⟨fst,snd⟩` is pair-η and
     -- `liftFn apply` is application, so the fold's per-layer algebra is `c`.
@@ -176,7 +176,7 @@ cataM-fold {F} {A} {π} wfF c =
                     ≡ c z
     apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {π})
     innerCata = C.Cata (wf-⌊⌋ wfF)
-                     (subst (λ o → IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ C.* o) ⌊ A ⌋)
+                     (subst (λ o → IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ II.* o) ⌊ A ⌋)
                             (⌊⟧T-commute F A) applyIR)
 
 -- D131: the elaboration is `cataM ∘ ealg` and BOTH sides bind the algebra once,
@@ -278,10 +278,10 @@ anaM-unfold {F} {A} {π₀} {π} wf c =
   where
     Arr = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A
     c' = subst (λ z → z) (sym (cohᴰ Arr)) c
-    applyIR : IR (⌊ Arr ⌋ C.* ⌊ A ⌋) ⌊ ⟦ F ⟧T A ⌋
+    applyIR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ⟦ F ⟧T A ⌋
     applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩
-    coalg' = subst (λ o → IR (⌊ Arr ⌋ C.* ⌊ A ⌋) o) (⌊⟧T-commute F A) applyIR
-    Ana-IR : IR (⌊ Arr ⌋ C.* ⌊ A ⌋) ⌊ ν-type F π ⌋
+    coalg' = subst (λ o → IR (⌊ Arr ⌋ II.* ⌊ A ⌋) o) (⌊⟧T-commute F A) applyIR
+    Ana-IR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ν-type F π ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
     elab-ana-reduce : liftFn fmt ρ {Arr} {A ⇒[ mk-kind Many π₀ ] ν-type F π} (anaM {F} {A} {π} wf C.Heap) c

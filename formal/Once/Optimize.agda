@@ -25,6 +25,7 @@ module Once.Optimize where
 
 open import Once.Type
 open import Once.IR
+open import Once.IRTy using (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; IRTy; _≟IRTy_)
 import Once.IRTy as II
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)

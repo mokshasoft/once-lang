@@ -25,7 +25,8 @@ module Once.Denotation.Trace where
 
 open import Once.Type using (Type)
 open import Once.Functor.Translate using (IsBaseType)
-open import Once.SigOp.Info using (SigOpInfo; name; baseA)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (name; baseA)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M

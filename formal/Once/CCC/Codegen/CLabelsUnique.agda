@@ -219,7 +219,8 @@ resusp-cl n l lbl env (wf-Sum wfF wfG) =
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o

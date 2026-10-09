@@ -29,7 +29,7 @@ open import Data.Integer using (ℤ)
 -- Plan 0.52 M2: IR OBJECTS are the UNGRADED `Once.IRTy` (pure/eff arrows are
 -- the SAME object, so `arr` is retired). Re-exported so consumers get
 -- `Unit`/`_*_`/`_+_`/`_⇛_`/`μ-type`/`⟦_⟧TI`/`WellFormedFI`/`FitsInRegI`/… as IRTy.
-open import Once.IRTy public
+open import Once.IRTy
 
 -- Surface `Type` + `⌊_⌋`, for the `SigOp` FFI boundary ONLY: its objects stay
 -- IRTy (`IR ⌊ A ⌋ ⌊ B ⌋`) while the contract `SigOpInfo A B` is surface-typed
@@ -56,8 +56,8 @@ open import Once.Type as T using (Type)
 -- (negation is a separate `OpNeg`).
 
 -- SigOpInfo: the descriptor carried by every signature operation.
-open import Once.SigOp.Info public
-  using (SigOpInfo; mk-info; name; semM; effect;
+open import Once.SigOp.Info
+  using (SigOpInfo; mk-info; semM; effect;
          EffectShape; Pure; Emits; Halts)
 
 ------------------------------------------------------------------------

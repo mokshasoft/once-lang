@@ -282,7 +282,7 @@ record Schema : Set where
     arity : ℕ
     kinds : KCtx arity
     type  : Ty arity
-open Schema public
+open Schema
 
 -- Plan 0.105 (D257 amendment 2): it is indexed by the interpretation signatures
 -- the program is compiled against (`Fs`): an FFI reference is a constant of

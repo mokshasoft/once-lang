@@ -30,14 +30,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (yes; no)
 open import Data.Char.Properties using (_≟_)
 
-open import Once.CanonicalName using (CanonicalName; parts; canonical)
+open import Once.CanonicalName using (CanonicalName; canonical)
+open CanonicalName using (parts)
 open import Once.Target.AsmSymbol using (AsmSym; AsmSymChars; sym-start; sym-continue; sym-punct)
 open import Once.Target.Symbol
   using (z-encode-char; z-encode-char-aux; symbol-char?; showNat; once-symbol-path; once-symbol-own; once-prefix;
          mangle-component; join-us)
 open import Once.Target.SymbolInjective
   using (zencL; mangL; joinUsL'; withSep; toList-joinUs; body-rel; charsInBase-all-digits)
-open import Once.CCC.Label using (LabelId; owner; path; idx; showLabelId; showPath; labelSym; thunkSym; entrySym; once; callee; EntryId; e-thunk; e-fn)
+open import Once.CCC.Label using (LabelId; showLabelId; showPath; labelSym; thunkSym; entrySym; once; callee; EntryId; e-thunk; e-fn)
+open LabelId using (owner; path; idx)
 
 ------------------------------------------------------------------------
 -- Chars that continue a symbol.

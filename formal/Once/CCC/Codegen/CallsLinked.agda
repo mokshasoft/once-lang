@@ -36,7 +36,8 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K;
 open import Once.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap; blocks-layout; blocks-layout-++; LabelId; link-top; restore-input; load-indirect-suc; store-at-slot; mov-to-input; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using

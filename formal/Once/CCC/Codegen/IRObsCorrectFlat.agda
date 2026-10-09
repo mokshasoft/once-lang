@@ -52,6 +52,7 @@ module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) (tbl : DL.List IRFu
 -- `public` — seven public re-exports of the same prelude is seven paths to
 -- `Data.Nat._+_`, which Agda rejects as a clashing definition.
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl public
+open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 open import Once.CCC.Codegen.IRObsCorrect.Simple  o tbl
 open import Once.CCC.Codegen.IRObsCorrect.SigOp   o tbl
@@ -91,7 +92,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   -- than a silent variable pattern absorbing it (the retired-ctor trap).
   -- plan 0.105: linked against the signatures the machine's interpretation
   -- declares, so every FFI SigOp in `ir` is declared there.
-  ir-obs-correct : ∀ {A B} (ir : IR A B) → Linked (TM.sig (Once.CCC.FrameSemantics.fs-interp FS)) tbl ir → IRObsCorrectF ir
+  ir-obs-correct : ∀ {A B} (ir : IR A B) → Linked (TM.Interp.sig (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)) tbl ir → IRObsCorrectF ir
   -- category structure
   ir-obs-correct id                  _ = obs-correct-id
   ir-obs-correct (g ∘ f)             (lg , lf) = comp-obs-correct (ir-obs-correct g lg) (ir-obs-correct f lf)

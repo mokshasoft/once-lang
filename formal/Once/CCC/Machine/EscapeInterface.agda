@@ -25,7 +25,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; trans; subst)
 open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (HeapRef; HeapLocation; heap-ref; ref-id; LocState)
+open import Once.CCC.Machine.SMCore using (LocState; AllocState; next-slot; current-frame; next-heap-ref)
+open import Once.Memory.HeapAddress using (HeapRef; HeapLocation; heap-ref; ref-id)
 
 ------------------------------------------------------------------------
 -- Escape Interface parameterized by FrameSemantics
@@ -33,8 +34,9 @@ open import Once.CCC.Machine.SMCore using (HeapRef; HeapLocation; heap-ref; ref-
 
 module EscapeInterfaceDef {FS : FrameSemantics} where
   open FrameSemantics FS
-  open import Once.CCC.Machine.SMCore using (ValueLocation; AtStack; AtDynamic)
-  open import Once.CCC.Machine.Allocation using (AllocState; next-heap-ref; current-frame; next-slot)
+  open import Once.CCC.Machine.SMCore using ()
+  open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+  open import Once.CCC.Machine.Allocation using ()
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS}
 

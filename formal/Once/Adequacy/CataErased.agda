@@ -40,16 +40,18 @@ open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; μS; cat
 open import Once.Denotation.TraceMonad using (T; fmapT; fmapT-id; RelT′; RelT′-bind; RelT′-≡; ≡-RelT′)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
-  using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
+  using (evalᴰ; cata-ev-algᴰ)
 open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; translateF)
-open import Once.Denotation.DenotTrace using (liftFn; cohᴰ; seqF; sigOpT; ffiE)
-open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ)
-open import Once.SigOp.Info using (SigOpInfo; baseA; conB)
+open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
+open CallEnv using (ffiE)
+open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor⁻¹-D; seqF)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (conB; baseA)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
@@ -95,8 +97,8 @@ evalᴰ-subst-dom refl m z = refl
 -- D131: the same naturality with a PAIRED domain — the transport moves only
 -- the second component; the environment slot is untouched.
 evalᴰ-subst-dom-pair : ∀ {E o₁ o₂ : IRTy} {B : IRTy} (eq : o₁ ≡ o₂)
-    (m : IR.IR (E IR.* o₁) B) (env : ⟦ E ⟧ᴰᴵ) (z : ⟦ o₂ ⟧ᴰᴵ)
-  → evalᴰ fmt ρ (subst (λ o → IR.IR (E IR.* o) B) eq m) (env , z)
+    (m : IR.IR (E II.* o₁) B) (env : ⟦ E ⟧ᴰᴵ) (z : ⟦ o₂ ⟧ᴰᴵ)
+  → evalᴰ fmt ρ (subst (λ o → IR.IR (E II.* o) B) eq m) (env , z)
     ≡ evalᴰ fmt ρ m (env , subst ⟦_⟧ᴰᴵ (sym eq) z)
 evalᴰ-subst-dom-pair refl m env z = refl
 
@@ -116,7 +118,7 @@ pairᴰ-subst⁻ refl refl a b = refl
 -- D179: the carrier is now `T ⟦C⟧ᴰ` and the budget rides in it, so the `ℕ`
 -- parameter is gone from both sides. The collapse is still `refl`.
 cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy} (wf : II.WellFormedFI F)
-    (alg : IR.IR (E IR.* ⟦ F ⟧TI C) C) (env : ⟦ E ⟧ᴰᴵ)
+    (alg : IR.IR (E II.* ⟦ F ⟧TI C) C) (env : ⟦ E ⟧ᴰᴵ)
     (fc : ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ))
   → cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg env fc
     ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉} (wf-⌈⌉ wf)
@@ -233,15 +235,15 @@ module _ {A' : Type} where
           (seqF G (coerce-μ-out wfG _ y₂))
 
   evalᴰ-Cata-erased : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
-      (mir : IR.IR (⌊ Eˢ ⌋ IR.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
+      (mir : IR.IR (⌊ Eˢ ⌋ II.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
     → liftFn fmt ρ {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
-                    (subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
+                    (subst (λ o → IR.IR (⌊ Eˢ ⌋ II.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
              (env , w)
       ≡ cata-sem wfF (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
   evalᴰ-Cata-erased {F} {Eˢ} wfF mir env w = body
     where
-      mir' : IR.IR (⌊ Eˢ ⌋ IR.* ⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
-      mir' = subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir
+      mir' : IR.IR (⌊ Eˢ ⌋ II.* ⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
+      mir' = subst (λ o → IR.IR (⌊ Eˢ ⌋ II.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir
 
       w' : ⟦ ⌊ μ-type F ⌋ ⟧ᴰᴵ
       w' = subst (λ z → z) (sym (cohᴰ (μ-type F))) w

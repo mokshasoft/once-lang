@@ -15,6 +15,7 @@ module Once.Surface.Desugar where
 open import Once.Type
 open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.IR as C
+import Once.IRTy as IRTy
 open import Once.Arith.SigOp.Builders using (generic-info)
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.CanonicalName using (bare)
@@ -37,7 +38,7 @@ open import Data.String using (String)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-sigOp-desugar : ∀ {A B} → IsBaseType A → IsBaseType B → String → C.IR C.⌊ A ⌋ C.⌊ B ⌋
+sigOp-desugar : ∀ {A B} → IsBaseType A → IsBaseType B → String → C.IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋
 sigOp-desugar bA bB name = C.SigOp (generic-info (bare name) bA bB)
 
 ------------------------------------------------------------------------
@@ -57,7 +58,7 @@ sigOp-desugar bA bB name = C.SigOp (generic-info (bare name) bA bB)
 -- 2. Expands Let to composition + pairing
 -- 3. Converts SigOp to Core's sigOp
 --
-desugar : ∀ {A B} → C.AllocMode → SurfaceIR A B → C.IR C.⌊ A ⌋ C.⌊ B ⌋
+desugar : ∀ {A B} → C.AllocMode → SurfaceIR A B → C.IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋
 
 -- Category structure
 desugar m S.id = C.id
@@ -105,5 +106,5 @@ desugar m (SigOp name bA cB) = sigOp-desugar bA cB name
 
 -- | Historical default: Heap allocation. Preserves pre-Plan-0.14
 -- behavior for callers that don't thread an AllocMode.
-desugar-default : ∀ {A B} → SurfaceIR A B → C.IR C.⌊ A ⌋ C.⌊ B ⌋
+desugar-default : ∀ {A B} → SurfaceIR A B → C.IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋
 desugar-default = desugar C.Heap

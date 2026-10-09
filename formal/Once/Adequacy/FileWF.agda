@@ -90,12 +90,12 @@ module X8664W where
     where
       p = irProgram (C.moduleTable m) ir
       G = C.emitProgram x86-64 p
-      code≡ : F.code G ≡ L.compile-trace (C.image-of p)
+      code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p) (prog-nn m ir))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
-      refs≡ : F.refs (F.code G) ≡ arefs (C.image-of p)
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
 
   lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
@@ -109,13 +109,13 @@ module X8664W where
     }
     where
       G = C.emitLibrary x86-64 (C.moduleTable m)
-      code≡ : F.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
+      code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)) (lib-nn m))
       defs≡ : F.defs G ≡ lib-defs m
       defs≡ = cong (F.heap-sym ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image (C.moduleTable m))))
                             (map-fst _ _))
-      refs≡ : F.refs (F.code G) ≡ arefs (C.lib-image (C.moduleTable m))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
   file-wf : ∀ (m : Module) (G : C.FileOf x86-64) → C.compileFileFromModule C.Heap false x86-64 m ≡ inj₂ G
@@ -146,12 +146,12 @@ module X8632W where
     where
       p = irProgram (C.moduleTable m) ir
       G = C.emitProgram x86-32 p
-      code≡ : F.code G ≡ L.compile-trace (C.image-of p)
+      code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p) (prog-nn m ir))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
-      refs≡ : F.refs (F.code G) ≡ arefs (C.image-of p)
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
 
   lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
@@ -165,13 +165,13 @@ module X8632W where
     }
     where
       G = C.emitLibrary x86-32 (C.moduleTable m)
-      code≡ : F.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
+      code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)) (lib-nn m))
       defs≡ : F.defs G ≡ lib-defs m
       defs≡ = cong (F.heap-sym ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image (C.moduleTable m))))
                             (map-fst _ _))
-      refs≡ : F.refs (F.code G) ≡ arefs (C.lib-image (C.moduleTable m))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
   file-wf : ∀ (m : Module) (G : C.FileOf x86-32) → C.compileFileFromModule C.Heap false x86-32 m ≡ inj₂ G
@@ -202,12 +202,12 @@ module RiscV64W where
     where
       p = irProgram (C.moduleTable m) ir
       G = C.emitProgram riscv64 p
-      code≡ : F.code G ≡ L.compile-trace (C.image-of p)
+      code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p) (prog-nn m ir))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
-      refs≡ : F.refs (F.code G) ≡ arefs (C.image-of p)
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
 
   lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
@@ -221,13 +221,13 @@ module RiscV64W where
     }
     where
       G = C.emitLibrary riscv64 (C.moduleTable m)
-      code≡ : F.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
+      code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)) (lib-nn m))
       defs≡ : F.defs G ≡ lib-defs m
       defs≡ = cong (F.heap-sym ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image (C.moduleTable m))))
                             (map-fst _ _))
-      refs≡ : F.refs (F.code G) ≡ arefs (C.lib-image (C.moduleTable m))
+      refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
   file-wf : ∀ (m : Module) (G : C.FileOf riscv64) → C.compileFileFromModule C.Heap false riscv64 m ≡ inj₂ G

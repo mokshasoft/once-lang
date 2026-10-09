@@ -49,7 +49,9 @@ open import Once.IR.Ref using (refIR)
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callsE; ⟦_⟧ᴰᴵ; cohᴰ)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; module CallEnv)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; cohᴰ)
+open CallEnv using (callsE)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
@@ -109,21 +111,21 @@ module _ (I : String → TopCtx) (uf : Imports) where
       splice-val L a x A eq (checkElabV (ctxWithImportsAndPolys (I x) pre) body A)
 
   refs-lookup : ∀ (ρ : CallEnv) (L : PolyCtx) (x : String) (A : Type)
-    → SD.refs (RF.σR fmt ρ L I uf 0) x A ≡ SD.⟦ polyVal x A (lookupPolyPrefix L x) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
+    → SD.DefsSem.refs (RF.σR fmt ρ L I uf 0) x A ≡ SD.⟦ polyVal x A (lookupPolyPrefix L x) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
   refs-lookup ρ L x A = cong (λ e → SD.⟦ e ⟧ˢ fmt (RF.σ₀ fmt ρ) tt)
                              (case-val L (<-wellFounded (length L)) x A (lookupPolyPrefix L x) refl)
 
 module _ (I : String → TopCtx) (uf : Imports) (ρ : CallEnv) where
 
   refs-skip : ∀ (n : String) {s b} (L : PolyCtx) (y : String) (A : Type) → n ≢ y
-    → SD.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) y A ≡ SD.refs (RF.σR fmt ρ L I uf 0) y A
+    → SD.DefsSem.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) y A ≡ SD.DefsSem.refs (RF.σR fmt ρ L I uf 0) y A
   refs-skip n {s} {b} L y A n≢y =
     trans (refs-lookup I uf ρ ((n , s , b) ∷ L) y A)
           (trans (cong (λ l → SD.⟦ polyVal I uf y A l ⟧ˢ fmt (RF.σ₀ fmt ρ) tt) (lookup-skip n L y n≢y))
                  (sym (refs-lookup I uf ρ L y A)))
 
   refs-head : ∀ (n : String) {s b} (L : PolyCtx) (A : Type)
-    → SD.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) n A
+    → SD.DefsSem.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) n A
       ≡ SD.⟦ spliceClosed I uf L n (checkElabV (ctxWithImportsAndPolys (I n) L) b A) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
   refs-head n {s} {b} L A =
     trans (refs-lookup I uf ρ ((n , s , b) ∷ L) n A)
@@ -135,7 +137,7 @@ module _ (I : String → TopCtx) (uf : Imports) (ρ : CallEnv) where
 
 RefsAgree : SD.DefsSem → SD.DefsSem → PolyCtx → Set
 RefsAgree σ₁ σ₂ []                   = ⊤
-RefsAgree σ₁ σ₂ ((n , _ , _) ∷ rest) = (∀ A → SD.refs σ₁ n A ≡ SD.refs σ₂ n A) × RefsAgree σ₁ σ₂ rest
+RefsAgree σ₁ σ₂ ((n , _ , _) ∷ rest) = (∀ A → SD.DefsSem.refs σ₁ n A ≡ SD.DefsSem.refs σ₂ n A) × RefsAgree σ₁ σ₂ rest
 
 envrel-transport : ∀ (σ₁ σ₂ : SD.DefsSem) (polys : PolyCtx) {ρ : DefMeanings polys}
   → RefsAgree σ₁ σ₂ polys → MB.EnvRel fmt σ₁ polys ρ → MB.EnvRel fmt σ₂ polys ρ

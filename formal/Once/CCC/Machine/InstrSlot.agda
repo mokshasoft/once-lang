@@ -22,6 +22,7 @@ module Once.CCC.Machine.InstrSlot where
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (Slot)
 
 slot-of : AbstractInstr → Maybe Slot
 slot-of (load-from-slot k)  = just k

@@ -26,7 +26,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 -- Import types for layout construction
 open import Once.Memory.MemoryLayoutSemantics as MLS
-  using (MemoryLayout; RegionBounds; lower; upper)
+  using (MemoryLayout; RegionBounds; module RegionBounds)
+open RegionBounds using (lower; upper)
 
 -- Import RuntimeContract and the RISC-V64 instance
 open import Once.Memory.RuntimeContract as RC using ()
@@ -49,13 +50,13 @@ open import Once.CCC.Target.RiscV64.StackGrowth
 
 -- Region bounds from RuntimeContract
 rv64-stack-bounds : RegionBounds
-rv64-stack-bounds = RC.stack-bounds RP.rv64-runtime
+rv64-stack-bounds = RC.RuntimeContract.stack-bounds RP.rv64-runtime
 
 rv64-heap-bounds : RegionBounds
-rv64-heap-bounds = RC.heap-bounds RP.rv64-runtime
+rv64-heap-bounds = RC.RuntimeContract.heap-bounds RP.rv64-runtime
 
 rv64-code-bounds : RegionBounds
-rv64-code-bounds = RC.code-bounds RP.rv64-runtime
+rv64-code-bounds = RC.RuntimeContract.code-bounds RP.rv64-runtime
 
 -- RISC-V 64 Memory Layout instance (constructed from RuntimeContract)
 rv64-layout : MemoryLayout
@@ -63,7 +64,7 @@ rv64-layout = record
   { stack-bounds = rv64-stack-bounds
   ; heap-bounds = rv64-heap-bounds
   ; code-bounds = rv64-code-bounds
-  ; intervals-disjoint = RC.intervals-disjoint RP.rv64-runtime
+  ; intervals-disjoint = RC.RuntimeContract.intervals-disjoint RP.rv64-runtime
   }
 
 ------------------------------------------------------------------------

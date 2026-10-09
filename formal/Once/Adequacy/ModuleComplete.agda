@@ -15,7 +15,7 @@
 
 module Once.Adequacy.ModuleComplete where
 
-open import Once.TypeCheck.Classify using (TopCtx)
+open import Once.TypeCheck.Classify using (TopCtx; PolyCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
@@ -50,12 +50,13 @@ cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a′ b b′ c c′} �
 cong₃ f refl refl refl = refl
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate
-  using (ctxWithImportsAndPolys; PolyCtx)
+  using ()
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
 open import Once.Parser using (FunInfo)
+import Once.Parser.Module as Module
 open FunInfo
 
 -- `EffUU` is in `Once.Spec.Module` (plan 0.84).
@@ -64,7 +65,7 @@ open FunInfo
 -- (1) a `⊢ᶜ` derivation ⇒ the body compiles, via `check-complete`.
 ------------------------------------------------------------------------
 
-compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : C.String → TopCtx)
+compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
@@ -85,7 +86,7 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
 -- = `isYes (name ≟ "main")`, so casing `name ≟str "main"` reduces it.
 ------------------------------------------------------------------------
 
-compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : C.String → TopCtx)
+compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty ≡ EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
@@ -204,7 +205,7 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er g deriv rest) (mai
       let (cfs , ir , rec , fm) = ce-find-complete (C.extendScope sc (funName fi) ty) rest mrest mi′
       in cf0 ∷ cfs , ir , chain rec , trans (findMain-skip cf0 cfs (λ e → ¬nm (bare-injective e))) fm
 
-moduleToIR-complete : ∀ (m : C.Module) (mt : ModuleTyped m) → HasValidMain m mt →
+moduleToIR-complete : ∀ (m : Module.Module) (mt : ModuleTyped m) → HasValidMain m mt →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
 moduleToIR-complete m mt hvm with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ es with ce-find-complete C.emptyCScope mt (proj₁ hvm) (proj₂ hvm)
@@ -281,7 +282,7 @@ ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er g deriv rest) {cfs} {
           in inj₂ (ce-mainexists (C.extendScope sc (funName fi) ty) rest rec
                      (trans (sym (findMain-skip cf0 rest-cfs (λ e → ¬p (bare-injective e)))) fm′))
 
-moduleToIR-sound : ∀ (m : C.Module) (mt : ModuleTyped m) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
+moduleToIR-sound : ∀ (m : Module.Module) (mt : ModuleTyped m) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   moduleToIR m ≡ just ir → HasValidMain m mt
 moduleToIR-sound m mt mi with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ es with C.compileEntries C.Heap false C.emptyCScope es in ce-eq

@@ -73,7 +73,7 @@ record TargetNum : Set where
     -- and this field is where that gets said.
     int-bits-pos : 0 < int-bits
 
-open TargetNum public
+open TargetNum
 
 ------------------------------------------------------------------------
 -- THE INT CONTRACT (plan 0.74 J6, D115)

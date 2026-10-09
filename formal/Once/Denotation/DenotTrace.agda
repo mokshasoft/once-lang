@@ -35,11 +35,11 @@ open import Once.Type
   using (Type; Unit; _*_; μ-type; ν-type)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.IR
-  using (IR; IRTy; Call; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
+  using (IR; Call; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; SigOp; Cata; In; Out; Ana; in-ν;
          out-μ; const)
 open import Once.IRTy
-  using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; WellFormedFI; fits-int; fits-float)
+  using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; WellFormedFI; fits-int; fits-float; IRTy)
 open import Once.Float.Decimal using (round)
 import Once.Word as OnceWord
 -- plan 0.98: `eval` is NO LONGER IMPORTED. The Spec's meaning is `evalᴰ`, and
@@ -53,9 +53,11 @@ import Once.Semantics.Machine as Val
 -- so the reference meaning is too. Threaded as an explicit argument rather
 -- than a module parameter: `evalᴰ` is recursive, and a recursive function in
 -- a parameterised module stops reducing downstream at a variable instance.
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.SigOp.Info
-  using (SigOpInfo; SigOpSem; sem; name; baseA; conB; pureV; primV; emitsV; haltsV; ffiV; callsV; FFIAnswers)
+  using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; FFIAnswers; module SigOpInfo)
+open SigOpInfo using (name; baseA; sem; conB)
 open import Once.Arith.Prim using (primSem)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Semantics.Machine
@@ -68,7 +70,7 @@ open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; haltOp
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
 -- (consumers unchanged), so the reference meaning `⟦_⟧ᵈ` can land in `⟦_⟧ᴰ`
 -- without `Once.IR` (IR enters only at `evalᴰ` below).
-open import Once.Denotation.ValueDomain public
+open import Once.Denotation.ValueDomain
 
 ------------------------------------------------------------------------
 -- The recursion-scheme trace in the T-convention.
@@ -136,7 +138,7 @@ record CallEnv : Set where
   field
     callsE : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
     ffiE   : FFIAnswers
-open CallEnv public
+open CallEnv
 
 -- A SigOp's meaning, read off its contract. An internal or pure FFI operation
 -- returns a value; an emitting one is a call answered by `⊤`; an answering one

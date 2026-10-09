@@ -19,6 +19,8 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
+open import Once.Memory.HeapAddress using (_≟HL_; HeapLocation)
 open import Once.CCC.Machine.Allocation
 
 ------------------------------------------------------------------------

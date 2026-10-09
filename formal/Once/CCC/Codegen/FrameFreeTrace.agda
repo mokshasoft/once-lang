@@ -64,7 +64,8 @@ open import Once.CCC.Machine.FrameFree using
   (EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using

@@ -19,6 +19,12 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Machine (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Interface o tbl public
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
+open import Once.CCC.Machine.Locations using (AtStack; ValueLocation; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.Memory.HeapAddress using (_≟HL_; HeapLocation; sucHL; heap-loc; ref-id; heap-ref; mkHeapRef)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -107,7 +113,7 @@ module Mach {FS : FrameSemantics} where
   -- never disturbs a stack cell, and `writeLoc-preserves-other` is `refl` on
   -- exactly that pairing. The caller's pointer witness collapses the `with`.
   store-ind-preserves-slot : ∀ (s : LocState FS) (alloc : AllocState {FS})
-      (hl : HeapLocation) {f : Once.CCC.FrameSemantics.Frame FS} (slot : ℕ)
+      (hl : HeapLocation) {f : Once.CCC.FrameSemantics.FrameSemantics.Frame FS} (slot : ℕ)
     → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
     → MemOps.readLoc (proj₁ (exec-abstract store-indirect s alloc)) (AtStack f slot)
       ≡ MemOps.readLoc s (AtStack f slot)
@@ -197,7 +203,7 @@ module Mach {FS : FrameSemantics} where
       (readReg (regs s) Output) ne
 
   store-ind-suc-preserves-slot : ∀ (s : LocState FS) (alloc : AllocState {FS})
-      (hl : HeapLocation) {f : Once.CCC.FrameSemantics.Frame FS} (slot : ℕ)
+      (hl : HeapLocation) {f : Once.CCC.FrameSemantics.FrameSemantics.Frame FS} (slot : ℕ)
     → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
     → MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) (AtStack f slot)
       ≡ MemOps.readLoc s (AtStack f slot)

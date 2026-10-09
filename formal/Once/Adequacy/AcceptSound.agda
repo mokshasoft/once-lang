@@ -18,7 +18,7 @@
 
 module Once.Adequacy.AcceptSound where
 
-open import Once.TypeCheck.Classify using (TopCtx)
+open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -34,7 +34,8 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type)
 import Once.Compile as C
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Elaborate as TE using (ctxWithImportsAndPolys)
+open import Once.TypeCheck.Elaborate as TE using ()
+import Once.TypeCheck.Classify as Classify
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -54,6 +55,7 @@ open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Compile using (moduleToIR)
 open import Once.Adequacy.MainBuilds using (moduleToIR-inj₂)
 import Once.Parser.Module.Core as P
+import Once.Parser.Module as Module
 
 ------------------------------------------------------------------------
 -- Leaf — a successful `compileFunBody` means `checkElab` succeeded, so its
@@ -61,7 +63,7 @@ import Once.Parser.Module.Core as P
 ------------------------------------------------------------------------
 
 compileFunBody-aux-success : ∀ {nctx : NamedCtx} {body : RawExpr}
-  (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+  (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
   (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux C.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir →
@@ -71,7 +73,7 @@ compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.failure err , _
 compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.success Ψ se d f , _) eq =
   Ψ , se , d , f , refl
 
-compileFunBody-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+compileFunBody-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
@@ -95,7 +97,7 @@ compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
 -- Layer 1 — `compileFun` accepts ⇒ its body has a derivation.
 ------------------------------------------------------------------------
 
-compileFun-main-aux-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+compileFun-main-aux-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
@@ -104,7 +106,7 @@ compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 compileFun-main-aux-sound doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-sound doOpt ctx polys impsOf name ty expr eq
 
-compileFun-aux-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+compileFun-aux-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
@@ -114,7 +116,7 @@ compileFun-aux-sound doOpt ctx polys impsOf name ty expr true eq =
 compileFun-aux-sound doOpt ctx polys impsOf name ty expr false eq =
   compileFunBody-sound doOpt ctx polys impsOf name ty expr eq
 
-compileFun-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : TE.PolyCtx) (impsOf : C.String → TopCtx)
+compileFun-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))

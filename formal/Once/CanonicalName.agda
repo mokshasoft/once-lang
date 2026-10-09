@@ -39,7 +39,7 @@ record CanonicalName : Set where
   constructor canonical
   field parts : List String
 
-open CanonicalName public
+open CanonicalName
 
 -- A bare/single-component identity (local def, builtin, compiler-generated
 -- block). Qualified refs build `canonical (path ++ [name])` at resolution.

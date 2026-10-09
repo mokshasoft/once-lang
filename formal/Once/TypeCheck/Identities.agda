@@ -34,7 +34,9 @@ open import Once.Type using (Type; Quantity; Zero; One; Many; _≤q_)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
 open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Elaborate
-  using (decideLeq; classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial)
+  using (decideLeq)
+open import Once.TypeCheck.Classify using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
+import Once.TypeCheck.Classify as Classify
 
 ------------------------------------------------------------------------
 -- classifyAppHead determinism
@@ -551,21 +553,21 @@ open Once.Surface.Syntax.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ
 ------------------------------------------------------------------------
 
 -- `extendNamedCtx` grows the context's size by exactly one.
-open Once.TypeCheck.Elaborate using (NamedCtx; extendNamedCtx)
+open Once.TypeCheck.Elaborate using ()
 
 extendNamedCtx-size :
   ∀ (ctx : NamedCtx) (x : String) (T : Type)
-  → NamedCtx.size (extendNamedCtx ctx x T) ≡ suc (NamedCtx.size ctx)
+  → Classify.NamedCtx.size (extendNamedCtx ctx x T) ≡ suc (Classify.NamedCtx.size ctx)
 extendNamedCtx-size _ _ _ = refl
 
 -- `extendNamedCtx` preserves the fresh counter and imports.
 extendNamedCtx-fresh :
   ∀ (ctx : NamedCtx) (x : String) (T : Type)
-  → NamedCtx.freshCounter (extendNamedCtx ctx x T)
-    ≡ NamedCtx.freshCounter ctx
+  → Classify.NamedCtx.freshCounter (extendNamedCtx ctx x T)
+    ≡ Classify.NamedCtx.freshCounter ctx
 extendNamedCtx-fresh _ _ _ = refl
 
 extendNamedCtx-imports :
   ∀ (ctx : NamedCtx) (x : String) (T : Type)
-  → NamedCtx.imports (extendNamedCtx ctx x T) ≡ NamedCtx.imports ctx
+  → Classify.NamedCtx.imports (extendNamedCtx ctx x T) ≡ Classify.NamedCtx.imports ctx
 extendNamedCtx-imports _ _ _ = refl

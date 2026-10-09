@@ -16,10 +16,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Out (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState)
+open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; ν-type; ⟦_⟧TI)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
+import Once.IRTy as IRTy′
 import Once.IR
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Res using (is-stopped)
@@ -124,21 +129,21 @@ module OutC {FS : FrameSemantics} where
           -- argument's — and the MODE comes out of the split too, because a
           -- boxed seed is `in-loc` at the cell's own mode and an inline one is
           -- `in-reg`, which has no mode at all.
-          seed-sv-of : CellAt alloc (E IRTy.* A) seed ν-loc s → StoredValue FS
+          seed-sv-of : CellAt alloc (E IRTy′.* A) seed ν-loc s → StoredValue FS
           seed-sv-of (cell-ptr {comp-loc = cl'} _ _ _) = SV-Ptr cl'
           seed-sv-of (cell-inline rep _)               = inline-sv rep seed
 
-          seed-cell-of : (c : CellAt alloc (E IRTy.* A) seed ν-loc s)
+          seed-cell-of : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
                        → MemOps.readLoc s ν-loc ≡ just (seed-sv-of c)
           seed-cell-of (cell-ptr q _ _)  = q
           seed-cell-of (cell-inline _ q) = q
 
-          mode-of : CellAt alloc (E IRTy.* A) seed ν-loc s → AllocMode
+          mode-of : CellAt alloc (E IRTy′.* A) seed ν-loc s → AllocMode
           mode-of (cell-ptr {mC = m} _ _ _) = m
           mode-of (cell-inline _ _)         = Heap
 
-          input-of : (c : CellAt alloc (E IRTy.* A) seed ν-loc s)
-                   → InputAt {E IRTy.* A} (mode-of c) alloc seed (floc OSP.b3)
+          input-of : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
+                   → InputAt {E IRTy′.* A} (mode-of c) alloc seed (floc OSP.b3)
           input-of (cell-ptr {comp-loc = cl'} q cbf cv) =
             in-loc cl' (OSP.carry seed cl' cbf cv) cbf
                    (OSP.input1-b3 ν-loc (SV-Ptr cl') rdi q)
@@ -175,7 +180,7 @@ module OutC {FS : FrameSemantics} where
              (trans (cong (λ z → do-call-code prog z OSP.b3) code-cell-b3)
                     (cong (λ z → do-call-at z OSP.b3) feq))
 
-          assemble : (c : CellAt alloc (E IRTy.* A) seed ν-loc s)
+          assemble : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
                    → MachineRefinesObsF prog base n l (Out wf) ν-val s alloc cl k
           assemble c = record
             { value-realized =
@@ -213,7 +218,7 @@ module OutC {FS : FrameSemantics} where
                        (trans (cong (λ st → halted (floc st)) call-eq) nh3)
                        (trans (cong fret call-eq) refl)
                        (trans (cong falloc call-eq) refl)
-                       (subst (λ st → InputAt {E IRTy.* A} (mode-of c) (falloc OSP.b3) seed st)
+                       (subst (λ st → InputAt {E IRTy′.* A} (mode-of c) (falloc OSP.b3) seed st)
                               (sym (cong floc call-eq)) (input-of c))
 
               -- D204: what the WHOLE force leaves alone — the three setup rows

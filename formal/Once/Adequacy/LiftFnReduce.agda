@@ -37,6 +37,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.IR as IR
+import Once.IRTy as IRTy
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; fst; snd; case; terminal; apply)
 open import Once.Postulates using (extensionality)
 
@@ -132,7 +133,7 @@ liftFn-inr {B} {A} = extensionality λ b →
         (cong returnT (trans (push⊎₂ (cohᴰ A) (cohᴰ B) (subst id (sym (cohᴰ B)) b))
                              (cong inj₂ (subst-subst-sym (cohᴰ B)))))
 
-liftFn-∘ : (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋)
+liftFn-∘ : (g : IR IRTy.⌊ B ⌋ IRTy.⌊ C ⌋) (f : IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋)
   → liftFn fmt ρ {A} {C} (g ∘ f) ≡ (λ a → liftFn fmt ρ {A} {B} f a >>=T liftFn fmt ρ {B} {C} g)
 liftFn-∘ {B} {C} {A} g f = extensionality λ a →
   subst-bind (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt ρ g)
@@ -167,7 +168,7 @@ apply-red refl refl v = refl
 -- Restored (D144 note): deleted as unused when `MeaningBridge` only imported
 -- it, then re-earned a consumer — `liftFn-restrictEnv` in `SourceFaithful`
 -- needs exactly this for `restrictEnv`'s `⟨ … , snd ⟩` case.
-liftFn-pair : (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋) (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
+liftFn-pair : (f : IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋) (g : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋)
   → liftFn fmt ρ {A} {B * C} (⟨ f , g ⟩)
     ≡ (λ a → liftFn fmt ρ {A} {B} f a >>=T (λ b → liftFn fmt ρ {A} {C} g a >>=T (λ c → returnT (b , c))))
 liftFn-pair {A} {B} {C} f g = extensionality λ a →
@@ -195,7 +196,7 @@ curry-red : ∀ {AI AT BI BT CI CT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (pC 
     ≡ returnT (λ b → subst T pC (gg (subst id (sym (cong₂ _×_ pA pB)) (a , b))))
 curry-red refl refl refl gg a = refl
 
-liftFn-curry : ∀ {A B C : Type} {π} (g : IR IR.⌊ A * B ⌋ IR.⌊ C ⌋)
+liftFn-curry : ∀ {A B C : Type} {π} (g : IR IRTy.⌊ A * B ⌋ IRTy.⌊ C ⌋)
   → liftFn fmt ρ {A} {B ⇒[ mk-kind Many π ] C} (IR.curry g)
     ≡ (λ a → returnT (λ b → liftFn fmt ρ {A * B} {C} g (a , b)))
 liftFn-curry {A} {B} {C} g =
@@ -226,7 +227,7 @@ liftFn-eff-apply {A} {B} = extensionality λ p →
 -- D233: `curry (g ∘ fst)` is the SUSPENSION of `g` — what forcing an effectful
 -- stream at the surface elaborates to (`g = Out`). `liftFn-eff-apply` is the
 -- same shape at `g = apply`; the final `refl` is `returnT a >>=T f ≡ f a`.
-liftFn-curry-fst : ∀ {A C : Type} (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
+liftFn-curry-fst : ∀ {A C : Type} (g : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋)
   → liftFn fmt ρ {A} {Unit ⇒[ mk-kind Many Once.Type.eff ] C} (IR.curry (g ∘ fst))
     ≡ (λ a → returnT (λ _ → liftFn fmt ρ {A} {C} g a))
 liftFn-curry-fst {A} {C} g = extensionality λ a →
@@ -238,12 +239,12 @@ liftFn-curry-fst {A} {C} g = extensionality λ a →
                              (cong (λ h → h (a , b)) (liftFn-fst {A} {Unit})))
                        refl)))
 
-liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
+liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋) (g : IR IRTy.⌊ B ⌋ IRTy.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
   → liftFn fmt ρ {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt ρ {A} {C} f a
 liftFn-case-inj₁ {A} {B} {C} f g a =
-  lift-inj₁-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt ρ f) (λ x → refl) a
+  lift-inj₁-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ (case {IRTy.⌊ A ⌋} {IRTy.⌊ B ⌋} {IRTy.⌊ C ⌋} f g)) (evalᴰ fmt ρ f) (λ x → refl) a
 
-liftFn-case-inj₂ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (b : ⟦ B ⟧ᴰ)
+liftFn-case-inj₂ : ∀ {A B C : Type} (f : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋) (g : IR IRTy.⌊ B ⌋ IRTy.⌊ C ⌋) (b : ⟦ B ⟧ᴰ)
   → liftFn fmt ρ {A + B} {C} (case f g) (inj₂ b) ≡ liftFn fmt ρ {B} {C} g b
 liftFn-case-inj₂ {A} {B} {C} f g b =
-  lift-inj₂-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt ρ g) (λ x → refl) b
+  lift-inj₂-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ (case {IRTy.⌊ A ⌋} {IRTy.⌊ B ⌋} {IRTy.⌊ C ⌋} f g)) (evalᴰ fmt ρ g) (λ x → refl) b

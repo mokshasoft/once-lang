@@ -25,9 +25,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Chain (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.IRTy using (IRTy)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
-open import Once.CCC.Label using (idx)
+open import Once.CCC.Label using (module LabelId)
+open LabelId using (idx)
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
@@ -40,6 +47,7 @@ import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
+import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
 
 module PairC {FS : FrameSemantics} where
@@ -411,7 +419,7 @@ module PairC {FS : FrameSemantics} where
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩))
-    {xf : DT.⟦ A ⟧ᴰᴵ} {kf : ℕ}
+    {xf : ValueDomain.⟦ A ⟧ᴰᴵ} {kf : ℕ}
     (vrf : ValueRealized prog (suc (suc base)) (PairShape.f-start f g n l) l f xf
              (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) kf)
     (sfeq : stopsAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (evalᴰ f xf) ≡ false)
@@ -575,11 +583,11 @@ module PairC {FS : FrameSemantics} where
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩))
-    {xf : DT.⟦ A ⟧ᴰᴵ} {kf : ℕ}
+    {xf : ValueDomain.⟦ A ⟧ᴰᴵ} {kf : ℕ}
     (vrf : ValueRealized prog (suc (suc base)) (PairShape.f-start f g n l) l f xf
              (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) kf)
     (sfeq : stopsAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (evalᴰ f xf) ≡ false)
-    {xg : DT.⟦ A ⟧ᴰᴵ} {kg : ℕ}
+    {xg : ValueDomain.⟦ A ⟧ᴰᴵ} {kg : ℕ}
     (vrg : ValueRealized prog (PairChainF.bg f g n l prog base s alloc cl n≤ nh span vrf sfeq) (PairShape.n1 f g n l) (PairShape.l1 f g n l) g xg
              (floc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (falloc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (fclosure (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) kg)
     (sgeq : stopsAt (floc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (evalᴰ g xg) ≡ false)

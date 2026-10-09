@@ -20,7 +20,7 @@
 -- (`resolveExpr-sigOp-closure-faithful`; plan 0.103 1c deleted the inconsistent poly-splice one).
 ------------------------------------------------------------------------
 
-open import Once.TypeCheck.Classify using (TopCtx)
+open import Once.TypeCheck.Classify using (TopCtx; PolyCtx; Imports)
 open import Once.Target.Arch using (TargetNum)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
@@ -51,12 +51,13 @@ open import Once.Type using (Type; Int; Float; Unit; _+_; Zero; One; Many)
 import Once.Type as T
 open import Once.Functor.Translate using (IsConcrete; con-fun; con-base)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
+open import Once.Denotation.DenotTrace using (evalᴰ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders
 open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; fmapT)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports; resolvePolyCase; applySplice; checkElabV; CheckElabResult; VerifiedCheckResult)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice; checkElabV; CheckElabResult; VerifiedCheckResult)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix; ctxWithImportsAndPolys)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Postulates using (extensionality)

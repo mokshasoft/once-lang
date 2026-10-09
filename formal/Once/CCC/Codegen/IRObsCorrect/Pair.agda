@@ -38,12 +38,17 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl
@@ -52,10 +57,12 @@ open import Data.List.Properties using (++-identityʳ)
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
+import Once.IRTy as IRTy′
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
+import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
 open import Once.Res using (Res; stopped; returns; is-stopped; returns-inj)
 
@@ -72,7 +79,7 @@ module PairAsm {FS : FrameSemantics} where
     (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
-    (mIn : AllocMode) (x : DT.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
     where
       open PairProof ihf ihg n l prog base ss cr span bl la mIn x s alloc cl n≤ nh inp k
@@ -169,7 +176,7 @@ module PairAsm {FS : FrameSemantics} where
               -- mention `PCG.SETTLE`/`PCG.RUN`, the suppliers their own states,
               -- and stating each once keeps the conversion between them in
               -- one place (and lets a profile see which one costs).
-              E : TM.T ⟦ B IRTy.* C ⟧
+              E : TM.T ⟦ B IRTy′.* C ⟧
               E = evalᴰ ⟨ f , g ⟩ x
 
               field-log : LocState.ev-log (floc PCG.SETTLE) ≡ LocState.ev-log s ++ eventsAt s E
@@ -181,7 +188,7 @@ module PairAsm {FS : FrameSemantics} where
               -- plan 0.98: the premise binds `v`; `res-pair` says what the pair
               -- actually returned, and `returns-inj` identifies the two.
               field-place : ∀ {v} → resultAt s E ≡ returns v
-                          → ResultPlace (B IRTy.* C) PPlace.out-mode (falloc PCG.SETTLE)
+                          → ResultPlace (B IRTy′.* C) PPlace.out-mode (falloc PCG.SETTLE)
                               PPlace.cont-alloc v (floc PCG.SETTLE)
               field-place p = subst (λ w → ResultPlace _ _ _ _ w _)
                                     (returns-inj (trans (sym res-pair) p))

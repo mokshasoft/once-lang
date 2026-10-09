@@ -65,6 +65,7 @@ open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot; ValueLocation)
 open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}
 open ExecFinal {FS}
@@ -76,7 +77,8 @@ open FlatMachine {FS}
 -- `writeLoc` fold-back
 open import Once.CCC.Machine.FlatStackPtr FS using (readReg-write; writeLoc-dyn)
 open import Once.CCC.Machine.FlatStoreWF FS
-  using (StoreWF; wf-regs; wf-heap; wf-stack; sv-below; svm-below)
+  using (StoreWF; sv-below; svm-below; module StoreWF)
+open StoreWF using (wf-heap; wf-stack; wf-regs)
 
 ------------------------------------------------------------------------
 -- The per-value predicate, over the block-size map alone (it reads NOTHING
@@ -106,7 +108,7 @@ record PBInv (bs : ℕ → ℕ) (ls : LocState FS) : Set where
     pb-regs  : ∀ (r : AbstractReg) → PtrB bs (readReg (regs ls) r)
     pb-heap  : ∀ (hl : HeapLocation) → PtrB? bs (heapMem ls hl)
     pb-stack : ∀ (f : Frame) (k : Slot) → PtrB? bs (stackMem ls f k)
-open PBInv public
+open PBInv
 
 PtrBoundsWF : FlatState → Set
 PtrBoundsWF fs = PBInv (block-size (falloc fs)) (floc fs)

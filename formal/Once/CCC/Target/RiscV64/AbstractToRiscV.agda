@@ -54,7 +54,8 @@ open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; Slot; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl; scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start)
+  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl; scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start)
+open import Once.CCC.Machine.Locations using (Slot)
 open import Once.CCC.Machine.NoNested
 
 ------------------------------------------------------------------------

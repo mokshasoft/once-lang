@@ -36,8 +36,9 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 -- for `flink-pres`'s two excluded writers (plan 0.65 G2)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Memory.HeapAddress using (sucHL)
+open import Once.Memory.HeapAddress using (sucHL; HeapLocation)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
 
 module FlatMachine {FS : FrameSemantics} where
   open MemOps {FS}

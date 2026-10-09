@@ -11,12 +11,17 @@
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Simple (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
+open import Once.Float.Decimal using (Decimal; round)
+open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

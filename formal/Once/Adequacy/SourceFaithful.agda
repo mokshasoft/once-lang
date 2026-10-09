@@ -63,8 +63,8 @@ open import Once.Adequacy.CataErased fmt ρ using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-∘; liftFn-pair;
                                                   liftFn-terminal)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; liftFn; cohᴰ)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
+open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ)
 open import Once.IRTy using (IRTy; ⌊_⌋) renaming (_*_ to _*ᴵ_; _+_ to _+ᴵ_)
 open import Function using (id)
 import Once.Semantics.Machine as Val

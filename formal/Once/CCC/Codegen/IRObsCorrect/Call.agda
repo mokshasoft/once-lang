@@ -21,6 +21,8 @@ open import Once.Denotation.Program using (IRFun; LinkedAt)
 module Once.CCC.Codegen.IRObsCorrect.Call (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 
 import Once.CCC.FrameSemantics
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn)

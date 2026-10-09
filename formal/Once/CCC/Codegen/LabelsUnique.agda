@@ -47,13 +47,15 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.CCC.Label using (LabelId; idx; ℓ)
+open import Once.CCC.Label using (LabelId; ℓ; module LabelId)
+open LabelId using (idx)
 open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F)
 open import Once.IRTy using (fits-int; fits-float)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o

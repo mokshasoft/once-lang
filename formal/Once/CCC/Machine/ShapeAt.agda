@@ -33,17 +33,18 @@ open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.IR using (IRTy; Unit; Int; Float; _*_; _+_; _⇛_;
-  μ-type; ν-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float)
+open import Once.IR using ()
+open import Once.IRTy using (IRTy; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; _+_; WellFormedFI; ⟦_⟧TI; μ-type; ν-type; Int; Float)
 open import Once.Type using ()
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ;
             Int to Intˢ; Float to Floatˢ)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰ to ⟦_⟧; ⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
   hiding (AllocMode; Stack; Heap)
+open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.CCC.Machine.Allocation hiding (AllocMode)
+open import Once.CCC.Machine.Allocation
 open import Once.IR using (AllocMode; Stack; Heap)
 open MemOps {FS} using (readLoc)
 open FrontierInvariant {FS} using (BeforeFrontier)

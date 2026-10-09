@@ -44,6 +44,7 @@ open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Surface.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
 open import Once.Spec.Core.PolyTy
+open Schema using (arity; kinds; type)
 import Once.Spec.Core.Syntax S as G
 open G using (Lit; lit-int; lit-float; Prim; primDom; primCod)
 import Once.Spec.Core.Typing S as GT

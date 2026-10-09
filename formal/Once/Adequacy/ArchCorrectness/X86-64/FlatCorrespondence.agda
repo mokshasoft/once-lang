@@ -22,7 +22,8 @@
 -- realisers below are the whole of x86-64's remaining share.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -55,6 +56,7 @@ rreg s r = X.readReg (X.State.regs s) r
 open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg x86-64-roles X.State rreg memory xhalted
   public
+open SetsRole using (at-role; off-role)
 
 
 ------------------------------------------------------------------------

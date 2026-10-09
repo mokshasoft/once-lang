@@ -23,7 +23,8 @@
 module Once.CCC.Target.X86-64.Semantics where
 
 open import Once.CCC.Target.X86-64.Syntax
-open import Once.CCC.Label using (Label; _≡ᵇᴸ_; idx; thunk)
+open import Once.CCC.Label using (Label; _≡ᵇᴸ_; thunk; module LabelId)
+open LabelId using (idx)
 -- Plan 0.70 phase C (PROBE): the machine's arithmetic is MODULAR.
 import Once.Word as W64
 module W = W64.Width 64

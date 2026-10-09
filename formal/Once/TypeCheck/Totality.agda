@@ -39,8 +39,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
+  using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
+open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Error using (TypeError)
 
 open import Once.Surface.Syntax as Surface using ()

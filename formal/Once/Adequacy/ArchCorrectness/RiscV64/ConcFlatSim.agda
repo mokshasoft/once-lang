@@ -24,7 +24,8 @@
 -- CALL WINDOW. See the handoff for the measured list.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CanonicalName using (CanonicalName)
@@ -311,7 +312,7 @@ riscv64-traceloop = record
   ; matchCall = RTr.matchCall
   -- plan 0.105: an external call returns with the world's answer in `a0`, the
   -- world being the frame semantics' interpretation.
-  ; ret-call = RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-riscv64)
+  ; ret-call = RTr.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
   ; dispatchArith = uncurry (dispatch-arith val-riscv64)
   ; ev-arch = ev-riscv64 ; ArithTable = riscv64-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
@@ -321,16 +322,14 @@ riscv64-traceloop = record
 -- `using`, for the same reason as the dispatch's application at the end.
 module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
                    riscv64-emitter riscv64-machine riscv64-traceloop
-  using ( FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
-        ; inv-run; flat-inv-step; block-run-exec
+  using ( FlatInv; mkFlatInv; flat-inv-step; block-run-exec
         ; events-running-end; sigop-concrete-fetch; sigop-run-arith
         ; sigop-run-external; event-of-pure; StuckAt; StuckSteps
         ; EntryLike; Reachable; reach-start; mkRunAt
         ; RunAt; stuck-result; Supply; fetch-block-head; fetch-block-2nd
         ; module CFC; module RT )
 
-open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
-              ; inv-run; flat-inv-step; block-run-exec
+open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
               ; events-running-end; sigop-concrete-fetch; sigop-run-arith
               ; sigop-run-external; event-of-pure
               -- …and what the five stuck routes name. `CompiledCorr`/`HeapView`
@@ -345,12 +344,15 @@ open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
 open import Once.CCC.Machine.SMCore hiding (Instr)
+open import Once.CCC.Machine.Locations using (AtDynamic)
+open import Once.Memory.HeapAddress using (sucHL)
 open FlatMachine {FS} using (fpc; floc; fetch; find-label; flat-exec-instr)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (event-of)
-open import Once.SigOp.Info using (SigOpInfo; sem; Internal; External)
+open import Once.SigOp.Info using (SigOpInfo; Internal; External; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
 -- (`zero` is BOTH a riscv64 register and `ℕ`'s constructor; the register is
 -- renamed so the two never collide in this module.)
@@ -645,7 +647,7 @@ postulate
                                 ≡ event-of (instr-sigop si) fs)
                             × CompiledCorr hv prog
                                 (flat-exec-instr (instr-sigop si) prog fs)
-                                (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-interp FS) call-at-riscv64)
+                                (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------

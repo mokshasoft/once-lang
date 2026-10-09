@@ -34,7 +34,8 @@ open import Once.Denotation.TraceMonad using (T; ret; returnT; fmapT; fmapT-∘;
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; returnM; bindM-idˡ)
 open import Once.Denotation.GradedOps using (cfᵛ; anaᵖ; mapAnaᵖ; ana-semᵛ)
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; force-∼ᵖᵈ; prjB-rel)
+  using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; prjB-rel; module _∼ᵖᵈ_)
+open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 
 ------------------------------------------------------------------------
 -- Pure codata against effectful codata, by coinduction.

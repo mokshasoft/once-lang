@@ -35,7 +35,7 @@ open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; <:-
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; >>=T-assoc; fmapT)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
+open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-id; <:-trans-∘)
 open import Once.Denotation.TraceMonad using (fmapT-id; fmapT-cong; fmapT-∘)
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
@@ -44,16 +44,18 @@ open import Once.Functor.Translate using (translateF; wf-K; wf-Id; wf-Sum; wf-Pr
 open import Once.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Data.Empty using (⊥)
-open import Once.Denotation.ValueDomain using (seqF; coerce-functor⁻¹-D)
+open import Once.Denotation.ValueDomain using (seqF; coerce-functor⁻¹-D; cohᴰ; anaFᵈ; coerce-functor-D; ⟦_⟧ᴰ)
 open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.IR using (IR; ⌊_⌋)
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
 open import Relation.Binary.PropositionalEquality using (subst)
 import Once.Denotation.SourceDenote as SD
-open SD using (⟦_⟧ˢ; calls; cata-ev-algˢ)
+open SD using (⟦_⟧ˢ; cata-ev-algˢ)
+open SD.DefsSem using (calls)
 
 infix 4 _≈ˢ_ _≈_
 _≈ˢ_ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → Expr Γ Ψ A → Set
@@ -65,7 +67,7 @@ a ≈ˢ b = ⟦ a ⟧ˢ fmt ≡ ⟦ b ⟧ˢ fmt
 record _≈_ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (a b : Expr Γ Ψ A) : Set where
   constructor ≈-intro
   field ≈-out : a ≈ˢ b
-open _≈_ public
+open _≈_
 
 ≈-refl : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a : Expr Γ Ψ A} → a ≈ a
 ≈-refl = ≈-intro refl

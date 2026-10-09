@@ -49,7 +49,7 @@ record Image : Set where
     blocks  : List (String × Payload)     -- the arith blocks, by symbol
     externs : List String                 -- symbols `ld` resolves elsewhere
 
-open Image public
+open Image
 
 ------------------------------------------------------------------------
 -- THE CANONICAL TEXT. The runtime's data (one `.bss` heap), then `.text` with

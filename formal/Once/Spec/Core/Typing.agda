@@ -31,7 +31,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
+open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; Respects; _⟪_⟫; GSub; module Schema)
+open Schema using (arity; kinds; type)
 
 open import Once.Spec.Contract using (ISig)
 module Once.Spec.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where

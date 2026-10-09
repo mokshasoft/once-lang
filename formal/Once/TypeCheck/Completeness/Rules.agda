@@ -43,7 +43,8 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
-  using (NamedCtx; inferElab; checkElab; success; lookupLocal; lookupImport; inferElabV; checkElabV; VerifiedInferResult; classifyAppHead; classifyAppHeadView; ahv-other; classifyAppHead-nothing⇒view-other; AppHeadView; via; apply-pure; apply-eff)
+  using (inferElab; checkElab; success; inferElabV; checkElabV; VerifiedInferResult; via; apply-pure; apply-eff)
+import Once.TypeCheck.Classify as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
 open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
@@ -65,7 +66,7 @@ import Data.String.Properties
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Surface.Syntax as Srf using ()
 open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other)
+open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J; nov-int; nov-float; nov-other; negOperandView)
 
@@ -103,7 +104,7 @@ infer-complete-RVar-unit = _ , _ , _ , refl
 
 infer-complete-RQualified :
   ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
-  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T
+  → lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
@@ -121,14 +122,14 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RQualified-aux;
       inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux)
     helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
+           → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
            → inferElabV-RQualified-aux ctx name alias
-               (lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
+               (lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
              ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
     helper _ refl = refl
     -- Drive the de-withed arrow / value auxes to their concreteness `just` branch.
     helperArr : ∀ {A B} {π : T.Purity}
-              → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)
+              → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name)
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
                 (mcB : Maybe (IsBaseType B)) (eqc : isBaseType? B ≡ mcB)
@@ -136,13 +137,13 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
                 ≡ inferElabV-RQualified-arrow-aux ctx name alias eq' mbA eqb mcB eqc
     helperArr _ _ refl _ refl = refl
     helperVal : ∀ {ty}
-              → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just ty)
+              → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just ty)
               → (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
               → inferElabV-RQualified-value-aux ctx name alias ty eq' (isConcrete? ty) refl
                 ≡ inferElabV-RQualified-value-aux ctx name alias ty eq' mc eqc
     helperVal _ _ refl = refl
     go : ∀ (T' : Type) → IsConcrete T'
-       → (eq' : lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T')
+       → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RQualified name alias) ≡ success T' zeroUsage eE d f
     go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
@@ -185,7 +186,7 @@ infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
 infer-complete-RResolved :
   ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
   → (ng : NotGenerator cn)
-  → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T
+  → lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
@@ -209,7 +210,7 @@ infer-complete-RResolved-view :
   ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
   → (gv : GenView cn) → classifyGen cn ≡ gv
   → NotGenerator cn
-  → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T
+  → lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just T
   → IsConcrete T
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
@@ -227,13 +228,13 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
       inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux)
     helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ lhs)
+           → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ lhs)
            → inferElabV-RResolved-aux ctx cn ng'
-               (lookupImport (NamedCtx.sig ctx) (showCanonical cn)) refl
+               (lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn)) refl
              ≡ inferElabV-RResolved-aux ctx cn ng' lhs eq'
     helper _ refl = refl
     helperArr : ∀ {A B} {π : T.Purity}
-              → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn)
+              → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn)
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
                 (mcB : Maybe (IsBaseType B)) (eqc : isBaseType? B ≡ mcB)
@@ -241,13 +242,13 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
                 ≡ inferElabV-RResolved-arrow-aux ctx cn ng' eq' mbA eqb mcB eqc
     helperArr _ _ refl _ refl = refl
     helperVal : ∀ {ty}
-              → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just ty)
+              → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just ty)
               → (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
               → inferElabV-RResolved-value-aux ctx cn ng' ty eq' (isConcrete? ty) refl
                 ≡ inferElabV-RResolved-value-aux ctx cn ng' ty eq' mc eqc
     helperVal _ _ refl = refl
     go : ∀ (T' : Type) → IsConcrete T'
-       → (eq' : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T')
+       → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RResolved cn) ≡ success T' zeroUsage eE d f
     go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
@@ -292,8 +293,8 @@ infer-complete-RResolved {ctx} {cn} {T} ng eq conc =
 -- elaborator reads Σ first, finds nothing, and calls the definition.
 infer-complete-RResolved-own :
   ∀ {ctx : NamedCtx} {x : String} {T : Type}
-  → lookupImport (NamedCtx.sig ctx) x ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) x ≡ just T
+  → lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing
+  → lookupImport (Classify.NamedCtx.imports ctx) x ≡ just T
   → IsConcrete T
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved (own x)) ≡ success T zeroUsage eE d f
@@ -301,12 +302,12 @@ infer-complete-RResolved-own {ctx} {x} {T} ns eq conc = view (classifyGen (own x
   where
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
       inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux)
-    h1 : ∀ (ng : NotGenerator (own x)) (lhs : Maybe Type) (e′ : lookupImport (NamedCtx.sig ctx) x ≡ lhs)
-       → inferElabV-RResolved-aux ctx (own x) ng (lookupImport (NamedCtx.sig ctx) x) refl
+    h1 : ∀ (ng : NotGenerator (own x)) (lhs : Maybe Type) (e′ : lookupImport (Classify.NamedCtx.sig ctx) x ≡ lhs)
+       → inferElabV-RResolved-aux ctx (own x) ng (lookupImport (Classify.NamedCtx.sig ctx) x) refl
          ≡ inferElabV-RResolved-aux ctx (own x) ng lhs e′
     h1 ng _ refl = refl
-    h2 : ∀ (lhs : Maybe Type) (e′ : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
-       → inferElabV-RResolved-own-aux ctx x ns (lookupImport (NamedCtx.imports ctx) x) refl
+    h2 : ∀ (lhs : Maybe Type) (e′ : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
+       → inferElabV-RResolved-own-aux ctx x ns (lookupImport (Classify.NamedCtx.imports ctx) x) refl
          ≡ inferElabV-RResolved-own-aux ctx x ns lhs e′
     h2 _ refl = refl
     h3 : ∀ (mc : Maybe (IsConcrete T)) (ec : isConcrete? T ≡ mc)
@@ -337,9 +338,9 @@ infer-complete-RResolved-own {ctx} {x} {T} ns eq conc = view (classifyGen (own x
 
 infer-complete-RPair :
   ∀ {ctx : NamedCtx} (a b : RawExpr) {A B : Type}
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {aE : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
-    {bE : SExpr (NamedCtx.debruijn ctx) Ψ₂ B}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {aE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ A}
+    {bE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ B}
     {dA dB fA fB : ℕ}
   → inferElab ctx a ≡ success A Ψ₁ aE dA fA
   → inferElab ctx b ≡ success B Ψ₂ bE dB fB
@@ -353,8 +354,8 @@ infer-complete-RPair {ctx} a b eqA eqB
 
 infer-complete-RUnaryOp-neg :
   ∀ {ctx : NamedCtx} (e : RawExpr)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ Int}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Int}
     {d' f' : ℕ}
   → inferElab ctx e ≡ success Int Ψ eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -380,8 +381,8 @@ infer-complete-RUnaryOp-neg {ctx} e eqE with negOperandView e | eqE
 
 infer-complete-RAnnot :
   ∀ {ctx : NamedCtx} (e : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T}
     {d' f' : ℕ}
   → RigidFree T
   → checkElab ctx e T ≡ success Ψ eE' d' f'
@@ -409,26 +410,26 @@ infer-complete-RAnnot {ctx} e T rf eqC
 infer-complete-RLet :
   ∀ {ctx : NamedCtx} (x : String) (e₁ e₂ : RawExpr)
     {A B : Type} {q : Quantity}
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
-    {e₂E : SExpr (NamedCtx.debruijn (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A))
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ A}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn (Classify.extendNamedCtx ctx x A))
                  (q Surface.Usage.∷ Ψ₂) B}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
-  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) e₂
+  → inferElab (Classify.extendNamedCtx ctx x A) e₂
       ≡ success B (q Surface.Usage.∷ Ψ₂) e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RLet x e₁ e₂) ≡ success B (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) eE d f
 infer-complete-RLet {ctx} x e₁ e₂ {A = A} eq₁ eq₂
   with inferElabV ctx e₁ | eq₁
 ... | success _ _ _ _ _ , _ | refl
-    with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) e₂ | eq₂
+    with inferElabV (Classify.extendNamedCtx ctx x A) e₂ | eq₂
 ...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl = _ , _ , _ , refl
 
 infer-complete-RApp-id :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {T : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T}
     {d' f' : ℕ}
   → inferElab ctx arg ≡ success T Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -440,8 +441,8 @@ infer-complete-RApp-id {ctx} arg eqArg
 
 infer-complete-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {T : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T}
     {d' f' : ℕ}
   → inferElab ctx arg ≡ success T Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -456,8 +457,8 @@ infer-complete-RApp-terminal {ctx} arg eqArg
 -- have to be reduced through before the elaborator's success is visible.
 infer-complete-RApp-Out :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (T.ν-type F T.pure)}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.pure)}
     {d' f' : ℕ}
     (wfF : WellFormedF F)
   → inferElab ctx arg ≡ success (T.ν-type F T.pure) Ψ argE d' f'
@@ -477,8 +478,8 @@ infer-complete-RApp-Out {ctx} arg {F} wfF eqArg
 
 infer-complete-RApp-Out-eff :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (T.ν-type F T.eff)}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.eff)}
     {d' f' : ℕ}
     (wfF : WellFormedF F)
   → inferElab ctx arg ≡ success (T.ν-type F T.eff) Ψ argE d' f'
@@ -498,8 +499,8 @@ infer-complete-RApp-Out-eff {ctx} arg {F} wfF eqArg
 
 infer-complete-RApp-fst :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A * B)}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A * B)}
     {d' f' : ℕ}
   → inferElab ctx arg ≡ success (A * B) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -509,8 +510,8 @@ infer-complete-RApp-fst {ctx} arg eqArg = via (E.inferFstOn ctx arg) (inferElabV
 
 infer-complete-RApp-snd :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A * B)}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A * B)}
     {d' f' : ℕ}
   → inferElab ctx arg ≡ success (A * B) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -522,8 +523,8 @@ infer-complete-RApp-snd {ctx} arg eqArg = via (E.inferSndOn ctx arg) (inferElabV
 
 infer-complete-RApp-apply :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A)}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A)}
     {d' f' : ℕ}
   → inferElab ctx arg ≡ success ((A T.⇒[ T.mk-kind T.Many T.pure ] B) T.* A) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -538,8 +539,8 @@ infer-complete-RApp-apply {ctx} arg A {B} {Ψ} {argE} {d'} {f'} eqArg =
 -- same `with`-chase.
 infer-complete-RApp-apply-eff :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.eff ] B) T.* A)}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.eff ] B) T.* A)}
     {d' f' : ℕ}
   → inferElab ctx arg ≡ success ((A T.⇒[ T.mk-kind T.Many T.eff ] B) T.* A) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -554,8 +555,8 @@ infer-complete-RApp-apply-eff {ctx} arg A {B} {Ψ} {argE} {d'} {f'} eqArg =
 
 infer-complete-RVar-local :
   ∀ {ctx : NamedCtx} (x : String) {A : Type}
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : Srf.SVar (NamedCtx.debruijn ctx) Ψ A}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE' : Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ A}
   → lookupLocal ctx x ≡ just (A , Ψ , eE')
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RVar x) ≡ success A Ψ eE d f
@@ -563,7 +564,7 @@ infer-complete-RVar-local {ctx} x {A} {Ψ} {eE'} eqLoc
   = _ , _ , _ , cong proj₁ (helper _ eqLoc)
   where
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux)
-    helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (NamedCtx.debruijn ctx) Ψ' A')))
+    helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
            → (eq' : lookupLocal ctx x ≡ lhs)
            → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
              ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
@@ -576,7 +577,7 @@ infer-complete-RVar-import :
   ∀ {ctx : NamedCtx} (x : String) {T : Type}
   → ¬ GenWord x
   → lookupLocal ctx x ≡ nothing
-  → lookupImport (NamedCtx.imports ctx) x ≡ just T
+  → lookupImport (Classify.NamedCtx.imports ctx) x ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
@@ -588,14 +589,14 @@ infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc
   where
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux;
       inferElabV-RVar-import-value-aux)
-    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (NamedCtx.debruijn ctx) Ψ' A')))
+    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
               → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
                 ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
     helperLoc _ refl = refl
     helperImp : ∀ (lhs : Maybe Type)
-              → (eq' : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
+              → (eq' : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
+              → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (Classify.NamedCtx.imports ctx) x) refl
                 ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc lhs eq'
     helperImp _ refl = refl
     helperImpVal : (gw : Dec (GenWord x)) (eqg : genWord? x ≡ gw)
@@ -623,9 +624,9 @@ infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc
 infer-complete-RBinOp-arith-float-il′ :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ T.Float}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ T.Float}
     {d₁ d₂ f₁ f₂ : ℕ}
   → proj₁ r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
   → proj₁ r₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
@@ -639,9 +640,9 @@ infer-complete-RBinOp-arith-float-il′ Raw.OpDiv refl e₁ e₂ (_ , _) (_ , _)
 infer-complete-RBinOp-arith-float-il :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ T.Float}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ T.Float}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
   → inferElab ctx e₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
@@ -652,9 +653,9 @@ infer-complete-RBinOp-arith-float-il {ctx} op eqop e₁ e₂ eq₁ eq₂ = infer
 infer-complete-RBinOp-arith-float-ir′ :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ T.Float}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ T.Float}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
   → proj₁ r₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
   → proj₁ r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
@@ -668,9 +669,9 @@ infer-complete-RBinOp-arith-float-ir′ Raw.OpDiv refl e₁ e₂ (_ , _) (_ , _)
 infer-complete-RBinOp-arith-float-ir :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ T.Float}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ T.Float}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
   → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
@@ -681,9 +682,9 @@ infer-complete-RBinOp-arith-float-ir {ctx} op eqop e₁ e₂ eq₁ eq₂ = infer
 infer-complete-RBinOp-arith-float′ :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ T.Float}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ T.Float}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ T.Float}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ T.Float}
     {d₁ d₂ f₁ f₂ : ℕ}
   → proj₁ r₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
   → proj₁ r₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
@@ -697,9 +698,9 @@ infer-complete-RBinOp-arith-float′ Raw.OpDiv refl e₁ e₂ (_ , _) (_ , _) re
 infer-complete-RBinOp-arith-float :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ T.Float}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ T.Float}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ T.Float}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ T.Float}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
   → inferElab ctx e₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
@@ -710,9 +711,9 @@ infer-complete-RBinOp-arith-float {ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-co
 infer-complete-RBinOp-arith′ :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
   → proj₁ r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
   → proj₁ r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
@@ -727,9 +728,9 @@ infer-complete-RBinOp-arith′ Raw.OpMod refl e₁ e₂ (_ , _) (_ , _) refl ref
 infer-complete-RBinOp-arith :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
   → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
@@ -740,9 +741,9 @@ infer-complete-RBinOp-arith {ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete
 infer-complete-RBinOp-cmp′ :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (cmpEq : Raw.isComparisonOp op ≡ true)
     (e₁ e₂ : RawExpr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
   → proj₁ r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
   → proj₁ r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
@@ -758,9 +759,9 @@ infer-complete-RBinOp-cmp′ Raw.OpNe refl e₁ e₂ (_ , _) (_ , _) refl refl =
 infer-complete-RBinOp-cmp :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (cmpEq : Raw.isComparisonOp op ≡ true)
     (e₁ e₂ : RawExpr)
-    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
-    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
   → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
@@ -785,17 +786,17 @@ decideLeq-just Many Many refl = refl , refl
 check-complete-RLam :
   ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
     (A : Type) (q q' : Quantity) (B : Type)
-    {Ψ' : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A))
+    {Ψ' : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE' : SExpr (Classify.NamedCtx.debruijn (Classify.extendNamedCtx ctx x A))
                  (q' Surface.Usage.∷ Ψ') B}
     {d' f' : ℕ} {π : T.Purity}
   → (q' T.≤q q) ≡ true
-  → checkElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B
+  → checkElab (Classify.extendNamedCtx ctx x A) body B
       ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q π ] B) ≡ success Ψ' eE d f
 check-complete-RLam ctx x body A q q' B leqEq eqC
-  with checkElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B | eqC
+  with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqC
 ... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
     with Once.TypeCheck.ElaborateProofs.decideLeq q' q | decideLeq-just q' q leqEq
 ...   | just _ | _ , refl = _ , _ , _ , refl
@@ -807,24 +808,24 @@ check-complete-RLam ctx x body A q q' B leqEq eqC
 infer-complete-RDestruct :
   ∀ {ctx : NamedCtx} (scrut : RawExpr) (xL : String) (eL : RawExpr)
     (xR : String) (eR : RawExpr) {A B : Type}
-    {Ψs : Surface.Usage (NamedCtx.size ctx)}
-    {scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A + B)}
+    {Ψs : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A + B)}
     {ds fs : ℕ}
     (C : Type) {qℓ qr : Quantity}
-    {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
-    {eLE : SExpr (NamedCtx.debruijn
-                    (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL A))
+    {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eLE : SExpr (Classify.NamedCtx.debruijn
+                    (Classify.extendNamedCtx ctx xL A))
                  (qℓ Surface.Usage.∷ Ψₗ) C}
     {dL fL : ℕ}
-    {Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
-    {eRE : SExpr (NamedCtx.debruijn
-                    (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR B))
+    {Ψᵣ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eRE : SExpr (Classify.NamedCtx.debruijn
+                    (Classify.extendNamedCtx ctx xR B))
                  (qr Surface.Usage.∷ Ψᵣ) C}
     {dR fR : ℕ}
   → inferElab ctx scrut ≡ success (A + B) Ψs scrutE ds fs
-  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL A) eL
+  → inferElab (Classify.extendNamedCtx ctx xL A) eL
       ≡ success C (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
-  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR B) eR
+  → inferElab (Classify.extendNamedCtx ctx xR B) eR
       ≡ success C (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
@@ -832,9 +833,9 @@ infer-complete-RDestruct :
 infer-complete-RDestruct {ctx} scrut xL eL xR eR {A = A} {B = B} C eqS eqL eqR
   with inferElabV ctx scrut | eqS
 ... | success (_ + _) _ _ _ _ , _ | refl
-    with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL A) eL | eqL
+    with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
 ...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
-      with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR B) eR | eqR
+      with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
 ...     | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
         with C ≟T C
 ...       | yes refl = _ , _ , _ , refl
@@ -852,13 +853,13 @@ infer-complete-RDestruct {ctx} scrut xL eL xR eR {A = A} {B = B} C eqS eqL eqR
 -- inferElab witness convert via `check-complete (t-embed dX)`.
 infer-complete-RApp-generic :
   ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
-    {Ψf : Surface.Usage (NamedCtx.size ctx)}
-    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind q T.pure ] B)}
+    {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind q T.pure ] B)}
     {df ff : ℕ}
-    {Ψx : Surface.Usage (NamedCtx.size ctx)}
-    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+    {Ψx : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {xE : SExpr (Classify.NamedCtx.debruijn ctx) Ψx A}
     {dx fx : ℕ}
-  → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
+  → Classify.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
   → checkElab ctx x A ≡ success Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
@@ -870,7 +871,7 @@ viewBridge : ∀ {ctx f x} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ 
            → inferElabV-RApp-dispatch ctx f x (classifyAppHeadView f) refl
              ≡ inferElabV-RApp-dispatch ctx f x vw eq
 viewBridge _ refl = refl
-otherBridge : ∀ {ctx f x} (lhs : Maybe Once.TypeCheck.ElaborateProofs.PolyBuiltinApp)
+otherBridge : ∀ {ctx f x} (lhs : Maybe Classify.PolyBuiltinApp)
               (eq : classifyAppHead f ≡ lhs)
             → inferElabV-RApp-other-aux ctx f x (classifyAppHead f) refl
               ≡ inferElabV-RApp-other-aux ctx f x lhs eq
@@ -886,13 +887,13 @@ infer-complete-RApp-generic {ctx} f x A {B} {q} eqAH eqF eqX
 
 infer-complete-RApp-eff :
   ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
-    {Ψf : Surface.Usage (NamedCtx.size ctx)}
-    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.eff ] B)}
+    {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.eff ] B)}
     {df ff : ℕ}
-    {Ψx : Surface.Usage (NamedCtx.size ctx)}
-    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+    {Ψx : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {xE : SExpr (Classify.NamedCtx.debruijn ctx) Ψx A}
     {dx fx : ℕ}
-  → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
+  → Classify.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
   → checkElab ctx x A ≡ success Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]

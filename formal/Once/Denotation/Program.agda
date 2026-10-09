@@ -28,15 +28,17 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; showCanonical)
-open import Once.IR using (IR; IRTy; Unit)
+open import Once.IR using (IR)
 open Once.IR.IR
-open import Once.IRTy using (_≟IRTy_)
+open import Once.IRTy using (_≟IRTy_; IRTy; Unit)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.TraceMonad using (T; unlinkedT)
-open import Once.SigOp.Info using (FFIAnswers; SigOpInfo; SigOpSem; sem; name; pureV; primV; ffiV; callsV; emitsV; haltsV)
+open import Once.SigOp.Info using (FFIAnswers; SigOpInfo; SigOpSem; pureV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
+open SigOpInfo using (name; sem)
 open import Once.Spec.Contract using (ISig; key; valueKeys; answerKeys)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; ⟦_⟧ᴰᴵ)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 ------------------------------------------------------------------------
 -- A table entry: a definition's name and its compiled body as the DIRECT-CALL

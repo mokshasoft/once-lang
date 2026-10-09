@@ -42,14 +42,16 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
 
-open import Once.CCC.Label using (LabelId; idx; _≡ᵇᴵ_; ≡ᵇᴵ-true; ≡ᵇᴵ-refl)
+open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true; ≡ᵇᴵ-refl; module LabelId)
+open LabelId using (idx)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-label)
 open import Once.CCC.Machine.SMCore as SM using ()
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
-open import Once.CCC.Codegen.LabelSeg using (once-label-of; LabelsIn; in-range)
+open import Once.CCC.Codegen.LabelSeg using (once-label-of; LabelsIn; module LabelIn)
+open LabelIn using (in-range)
 
 module Resolve {FS : FrameSemantics} where
   open FlatMachine {FS}

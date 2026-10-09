@@ -180,7 +180,7 @@ record Interp : Set where
   field
     sig  : ISig
     impl : Impl sig
-open Interp public
+open Interp
 
 calls pures : Interp → List Key
 calls ι = answerKeys (sig ι)

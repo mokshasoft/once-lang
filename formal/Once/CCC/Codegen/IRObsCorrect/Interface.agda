@@ -28,6 +28,19 @@ open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedAt
 module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
+open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot)
+open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
+open import Once.CCC.Machine.Validity using (module ReadLocEq)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; μ-type; ⟦_⟧TI; IRTy; Unit; ν-type; _*_)
+open import Once.Memory.HeapAddress using (HeapLocation)
+import Once.CCC.FrameSemantics as FrameSemantics′
 
 -- Qualified aliases cannot be re-exported, so each part repeats these. The
 -- bare `import` of FrameSemantics is for the FULLY QUALIFIED
@@ -36,10 +49,12 @@ open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
+import Once.IRTy as IRTy′
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
+import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
 open import Once.Res using (Res; returns; is-stopped)
 open import Data.Bool using (Bool)
@@ -61,9 +76,9 @@ module Core {FS : FrameSemantics} where
   -- which is why the obligations below take it from the state rather than
   -- from the empty history.
   ιᶠ : TM.Interp
-  ιᶠ = Once.CCC.FrameSemantics.fs-interp FS
+  ιᶠ = Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS
 
-  evalᴰ : ∀ {A B} → IR A B → DT.⟦ A ⟧ᴰᴵ → TM.T DT.⟦ B ⟧ᴰᴵ
+  evalᴰ : ∀ {A B} → IR A B → ValueDomain.⟦ A ⟧ᴰᴵ → TM.T ValueDomain.⟦ B ⟧ᴰᴵ
   evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
                    (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl)
 
@@ -334,7 +349,7 @@ module Core {FS : FrameSemantics} where
   -- relocated by, and `no-ret`/`no-link` say the run left no return pending.
   -- `fclosure` is deliberately NOT constrained — it is what `ir` hands on.
   record ValueRealized (prog : AbstractTrace) (base : ℕ)
-                       {A B} (n l : ℕ) (ir : IR A B) (x : DT.⟦ A ⟧ᴰᴵ)
+                       {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
                        (s : LocState FS) (alloc : AllocState {FS})
                        (cl : StoredValue FS) (k : ℕ) : Set where
     constructor realized
@@ -497,7 +512,7 @@ module Core {FS : FrameSemantics} where
   vr-mem-pres vr (AtDynamic hl) bf = ValueRealized.heap-pres  vr hl bf
 
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
-                             {A B} (n l : ℕ) (ir : IR A B) (x : DT.⟦ A ⟧ᴰᴵ)
+                             {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
                              (s : LocState FS) (alloc : AllocState {FS})
                              (cl : StoredValue FS) (k : ℕ) : Set where
     field
@@ -681,10 +696,10 @@ module Core {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   CalleeRuns : AbstractTrace → Set
   CalleeRuns prog =
-    ∀ {E A B : IRTy} (body : IR (E IRTy.* A) B) (env : ⟦ E ⟧) (ℓ : LabelId)
+    ∀ {E A B : IRTy} (body : IR (E IRTy′.* A) B) (env : ⟦ E ⟧) (ℓ : LabelId)
       {m : AllocMode} {alloc' : AllocState {FS}}
       {cloc : ValueLocation FS} {st : LocState FS}
-    → ValidAtWF m alloc' {A IRTy.⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
+    → ValidAtWF m alloc' {A IRTy′.⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
     → MemOps.readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
     → ∃[ j ]
         ( (find-thunk prog ℓ ≡ just j)
@@ -693,10 +708,10 @@ module Core {FS : FrameSemantics} where
         -- so a caller-resident component is an ancestor afterwards, and that
         -- transfer belongs with the callee's proof, not at every call site.
         × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
-             (envArg : ⟦ E IRTy.* A ⟧) (ret-pc k : ℕ) (mIn' : AllocMode)
+             (envArg : ⟦ E IRTy′.* A ⟧) (ret-pc k : ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {E IRTy.* A} mIn' pre-alloc envArg (floc fs)
+           → InputAt {E IRTy′.* A} mIn' pre-alloc envArg (floc fs)
            → CalleeRun prog fs ret-pc B (evalᴰ body envArg) k))
 
   -- D198: the ν analogue of `CalleeRuns`, and a SIBLING rather than an
@@ -709,7 +724,7 @@ module Core {FS : FrameSemantics} where
   CoalgRuns prog =
     -- D273: the seed is the PAIR `(e , a)` of the parameterized `Ana`.
     ∀ {E A : IRTy} {F : Once.IRTy.IRFunctor} (wf : WellFormedFI F)
-      (coalg : IR (E IRTy.* A) (⟦ F ⟧TI A)) (seed : ⟦ E IRTy.* A ⟧) (ℓ : LabelId)
+      (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A)) (seed : ⟦ E IRTy′.* A ⟧) (ℓ : LabelId)
       {m : AllocMode} {alloc' : AllocState {FS}}
       {vloc : ValueLocation FS} {st : LocState FS}
     → ValidAtWF m alloc' {ν-type F}
@@ -721,7 +736,7 @@ module Core {FS : FrameSemantics} where
              (ret-pc k : ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {E IRTy.* A} mIn' pre-alloc seed (floc fs)
+           → InputAt {E IRTy′.* A} mIn' pre-alloc seed (floc fs)
            -- D199: the block is the coalgebra FOLLOWED BY the re-suspension of
            -- every recursive position, so what it computes is not `coalg` but
            -- the FORCED LAYER — `evalᴰ (Out wf)` of the very ν whose code cell
@@ -792,7 +807,7 @@ module Core {FS : FrameSemantics} where
     -- trace-free suspension — so `apply` could never observe a closure emit and
     -- `Out` could never observe a layer emit. The statement was true of a case
     -- that cannot carry effects.
-    ∀ (mIn : AllocMode) (x : DT.⟦ A ⟧ᴰᴵ)
+    ∀ (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
       (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) →
     -- D155: `≤`, not `≡`. What this premise is FOR is that the emitter's
     -- scratch region `[n , …)` is above anything the caller has live —

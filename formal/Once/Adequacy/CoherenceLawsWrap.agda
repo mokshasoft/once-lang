@@ -31,7 +31,8 @@ open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; <:-refl; <:-
 open import Once.Surface.Syntax using (Expr; Ctx; _∷_; _,_^_; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
 import Once.Type
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.IR using (IR; ⌊_⌋)
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
 import Once.Denotation.SourceDenote as SD
 

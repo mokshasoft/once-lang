@@ -28,7 +28,8 @@
 --     what stops G2's block-steps from inventing their own premises.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
@@ -61,6 +62,8 @@ open import Data.Bool using (false; true; if_then_else_)
 import Data.Nat
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
+open import Once.Memory.HeapAddress using (sucHL; ref-id; heap-ref)
 open import Data.Unit using (tt)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
@@ -86,7 +89,8 @@ open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-≤-trans; <⇒≢
                                       ; m∸n+n≡m)
 open import Data.Empty using (⊥)
-open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-linear; shift-frame; shift-base)
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
+open FrameSemantics using (frame-base; slot-addr; slot-addr-linear; shift-frame; shift-base)
 -- …and what `block-step-alloc-heap`'s premise list needs: the store-WF
 -- predicates and the heap-reference identity (plan 0.65 G2).
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)

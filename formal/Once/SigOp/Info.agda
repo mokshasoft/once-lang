@@ -184,7 +184,7 @@ record SigOpInfo (A B : Type) : Set where
     -- returns a function.)
     conB  : IsBaseType B
 
-open SigOpInfo public
+open SigOpInfo
 
 ------------------------------------------------------------------------
 -- Derived accessors — `semM` and `effect` are now DERIVED from `sem`

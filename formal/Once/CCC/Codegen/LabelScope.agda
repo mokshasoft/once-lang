@@ -33,7 +33,8 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.LabelScope (o : CanonicalName) where
 
-open import Once.CCC.Label using (LabelId; idx; ℓ)
+open import Once.CCC.Label using (LabelId; ℓ; module LabelId)
+open LabelId using (idx)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; +-monoʳ-≤; +-assoc; m≤n⇒m≤1+n; <-≤-trans; +-suc)
@@ -56,7 +57,8 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
@@ -65,6 +67,8 @@ open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-
   resuspend-label-mono)
 open import Once.CCC.Codegen.SlotBudget o using (visit-idle; rebuild-idle; slots-below; budget-of; bodies-of)
 open import Once.CCC.Codegen.SlotSeg
+open SegOK using (ok-neu)
+open SegState using (cur; saved)
 -- the owner-free label windows and segment-agreement combinators
 open import Once.CCC.Codegen.LabelSeg
 

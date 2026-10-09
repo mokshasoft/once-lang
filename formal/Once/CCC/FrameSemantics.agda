@@ -225,7 +225,7 @@ record FrameSemantics : Set₁ where
       slot-addr f₁ k₁ < frame-base f₂ →  -- Slot is within gap
       slot-addr f₁ k₁ ≢ slot-addr f₂ k₂
 
-open FrameSemantics public
+open FrameSemantics
 
 ------------------------------------------------------------------------
 -- NOTE: Location (AllocMode) is NOT part of FrameSemantics

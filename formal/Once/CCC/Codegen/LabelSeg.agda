@@ -12,6 +12,7 @@
 module Once.CCC.Codegen.LabelSeg where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; s≤s)
+import Once.CCC.Label as Label
 open import Data.Nat.Properties using
   (≤-trans; m≤m+n; +-monoʳ-≤; +-suc)
 open import Data.Bool using (true)
@@ -23,6 +24,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
 open import Once.CCC.Machine.SMCore
+open Label.LabelId using (idx)
 open import Once.CCC.Codegen.SlotSeg
 
 
@@ -42,7 +44,7 @@ once-label-of _                                      = nothing
 record LabelIn (lo hi : ℕ) (i : AbstractInstr) : Set where
   constructor mkLabelIn
   field in-range : ∀ (m : LabelId) → once-label-of i ≡ just m → (lo ≤ idx m) × (idx m < hi)
-open LabelIn public
+open LabelIn
 
 LabelsIn : ℕ → ℕ → AbstractTrace → Set
 LabelsIn lo hi = All (LabelIn lo hi)

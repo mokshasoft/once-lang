@@ -28,6 +28,9 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Compare (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
 open import Once.Type using () renaming (Unit to Unitᵀ; Int to Intᵀ; _*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Prod; base-Sum)
@@ -35,8 +38,9 @@ open import Function using () renaming (id to idᶠ)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
 open import Once.Res using (returns; returns-inj)
 open import Once.Denotation.Program using (Declared)
-open import Once.SigOp.Info using (SigOpSem; sem; baseA; conB;
-                                   pureV; primV; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpSem;
+                                   pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo)
+open SigOpInfo using (sem; baseA; conB)
 open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg;
                                    p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; bool)
 open import Data.Bool using (Bool; if_then_else_)
@@ -44,8 +48,9 @@ import Data.Nat as ℕ
 open import Once.Arith.CmpOp using (CmpOp; cmp-word)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; cmp-trace)
-open import Once.Target.Arch using (int-bits)
-open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz)
+open import Once.Target.Arch using (module TargetNum)
+open TargetNum using (int-bits)
+open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; next-heap-ref)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -64,7 +69,7 @@ module CompareC {FS : FrameSemantics} where
 
   private
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
-    σᶠ  = TM.sig ιᶠ
+    σᶠ  = TM.Interp.sig ιᶠ
 
   -- A comparison's argument and result are each ONE base type, so the info's
   -- witnesses are the canonical ones — which is what lets the block's own

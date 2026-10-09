@@ -40,7 +40,8 @@ import Once.Word as OnceWord
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
 open import Once.Arith.SigOp.Block using (block-semM; projectM; readLeafM)
 
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
 
 ------------------------------------------------------------------------
 -- PLAN 0.74 J5 — parameterised by the TARGET, because every definition

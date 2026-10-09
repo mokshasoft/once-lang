@@ -188,8 +188,8 @@ postulate
 
 run-trace-x86-64 : Interp → RF.Image → X64.State → Behavior
 run-trace-x86-64 ι P s =
-  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) (step-budget-x86-64 (RF.blocks P) (RF.code P) s) ev-x86-64 (block-env (RF.blocks P)) (RF.code P) s
-    (step-budget-x86-64-adequate ι (RF.blocks P) (RF.code P) s)
+  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) (step-budget-x86-64 (RF.Image.blocks P) (RF.Image.code P) s) ev-x86-64 (block-env (RF.Image.blocks P)) (RF.Image.code P) s
+    (step-budget-x86-64-adequate ι (RF.Image.blocks P) (RF.Image.code P) s)
 
 postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the
@@ -211,8 +211,8 @@ arch-semantics : ArchSemantics
 arch-semantics = record
   { Program      = RF.Image
   ; State        = X64.State
-  ; initialState = λ P → X64.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry P))
-  ; run          = λ P → X64.run (RF.code P)
+  ; initialState = λ P → X64.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry P))
+  ; run          = λ P → X64.run (RF.Image.code P)
   ; run-trace    = run-trace-x86-64
   ; decode       = decode-x86-64
   ; assemble     = assemble-x86-64

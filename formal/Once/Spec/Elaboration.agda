@@ -56,7 +56,8 @@ open import Once.TypeCheck.Raw using (RawExpr;
 open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix;
   ctxWithImportsAndPolys)
 open import Once.TypeCheck.Judgment
-open import Once.Spec.Core.PolyTy using (sigOf; _!!_; arity; kinds; type; Respects; GSub; _⟪_⟫)
+open import Once.Spec.Core.PolyTy using (sigOf; _!!_; Respects; GSub; _⟪_⟫; module Schema)
+open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.Derived S

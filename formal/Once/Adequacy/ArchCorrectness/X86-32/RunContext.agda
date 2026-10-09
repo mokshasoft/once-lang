@@ -17,7 +17,8 @@
 -- thing that differs here is the number, which is 4.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.CCC.Target.X86-32.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 

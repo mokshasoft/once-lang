@@ -20,7 +20,8 @@ open import Once.Target.Arch using (TargetNum)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-open import Once.Denotation.SourceDenote using (DefsSem; calls; refs)
+open import Once.Denotation.SourceDenote using (DefsSem; module DefsSem)
+open DefsSem using (calls; refs)
 
 -- Plan 0.103 phase 1c: the surface side is meant in a definitions environment
 -- `σ`; the bridge holds whenever `σ` is related, entry by entry, to the
@@ -49,13 +50,15 @@ open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; _↾_; si
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Syntax using (sigOp; Usage)
 import Once.Surface.Syntax as Surface
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-identityʳ; fmapT; rel-ret; RelT′-fmap; RelT′-refl; Interp; sig; impl; pures; pureHalf; pureHalf-at; resT)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-identityʳ; fmapT; rel-ret; RelT′-fmap; RelT′-refl; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
+open Interp using (impl; sig)
 import Once.Denotation.TraceMonad as TM
 open import Once.Spec.Contract using (key; valueOf-at; value-∈; _∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; cohᴰ; sigOpT; ffiE)
+open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; module CallEnv)
+open CallEnv using (ffiE)
 open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
 open import Once.IR.Ref using (refIR)
@@ -97,7 +100,8 @@ open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; prjB-rel; injB-rel; force-∼ᵖᵈ; embν-∼)
+  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; prjB-rel; injB-rel; embν-∼; module _∼ᵖᵈ_)
+open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)

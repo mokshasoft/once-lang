@@ -46,7 +46,8 @@
 -- layer and are the only things there.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Nat using (ℕ; _*_; NonZero; _<_; suc; s≤s; z≤n)
@@ -108,7 +109,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Memory.HeapAddress
-  using (HeapRef; sucHL; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; _≟HL_)
+  using (HeapRef; sucHL; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; _≟HL_; HeapLocation)
 
 -- Plan 0.65 G1c step 4: ONE accessor per observable, so the correspondence
 -- reads the machine through a surface a core can take as parameters. `memory`
@@ -134,6 +135,7 @@ readMem m a = m a
 writeMem : Memory → ℕ → Word → Memory
 writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
@@ -249,7 +251,7 @@ record AddrMap : Set where
   field
     hmap : HeapLocation → ℕ
     cmap : LabelId → ℕ
-open AddrMap public
+open AddrMap
 
 enc-sv-at : AddrMap → StoredValue FS → Word
 enc-sv-at am (SV-Tag n)                = n
@@ -646,7 +648,7 @@ record SetsRole (s s' : State) (ρ : Role) (v : Word) : Set where
                → rreg s' (reg-of ρ') ≡ rreg s (reg-of ρ')
     keeps-mem  : memory s' ≡ memory s
     keeps-halt : xhalted s' ≡ xhalted s
-open SetsRole public
+open SetsRole
 
 ------------------------------------------------------------------------
 -- Transporting the fields a role write does not touch. One helper per
@@ -726,7 +728,7 @@ record SetsMem (s s' : State) (a : ℕ) (v : Word) : Set where
              → readMem (memory s') a' ≡ readMem (memory s) a'
     mem-regs : ∀ ρ → rreg s' (reg-of ρ) ≡ rreg s (reg-of ρ)
     mem-halt : xhalted s' ≡ xhalted s
-open SetsMem public
+open SetsMem
 
 module _ {hv : HeapView} {fs : FlatState} {s s' : State} {wa : ℕ} {wv : Word}
          (corr : FlatCorr hv fs s) (sm : SetsMem s s' wa wv) where
@@ -790,7 +792,7 @@ record Sets2Roles (s s' : State) (ρ₁ ρ₂ : Role) (v₁ v₂ : Word) : Set w
               → rreg s' (reg-of ρ) ≡ rreg s (reg-of ρ)
     keeps-mem₂  : memory s' ≡ memory s
     keeps-halt₂ : xhalted s' ≡ xhalted s
-open Sets2Roles public
+open Sets2Roles
 
 ------------------------------------------------------------------------
 -- The window a straight-line instruction addresses: the CURRENT frame's,

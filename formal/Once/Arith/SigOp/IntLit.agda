@@ -33,7 +33,8 @@ open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Functor.Translate using (base-Unit; base-Int)
 open import Once.CanonicalName using (bare)
 import Once.Word as OnceWord
-open import Once.Target.Arch using (int-bits)
+open import Once.Target.Arch using (module TargetNum)
+open TargetNum using (int-bits)
 
 ------------------------------------------------------------------------
 -- The literal-family builder

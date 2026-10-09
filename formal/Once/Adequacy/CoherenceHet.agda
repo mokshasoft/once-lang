@@ -91,7 +91,7 @@ record _≅_ (a : Expr Γ Ψ A) (b : Expr Γ Ψ′ A′) : Set where
     ≅-ty  : A ≡ A′
     ≅-us  : Ψ ≡ Ψ′
     ≅-sem : Same2 ≅-ty ≅-us a b
-open _≅_ public
+open _≅_
 
 ≅-of : {a b : Expr Γ Ψ A} → a ≈ b → a ≅ b
 ≅-of h = ≅i refl refl h

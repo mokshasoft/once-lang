@@ -48,7 +48,8 @@ open import Once.TypeCheck.Judgment
 import Once.Spec.Core.Syntax S as G
 import Once.Spec.Core.Typing S as GT
 open GT using (_⊢[_]_∷_!_)
-open import Once.Spec.Core.PolyTy using (_!!_; arity)
+open import Once.Spec.Core.PolyTy using (_!!_; module Schema)
+open Schema using (arity)
 import Once.Spec.Core.Rename S as RN
 import Once.Spec.Core.DerivedTyping S as DT
 open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; def; importE; sigE; refE; InstanceOf)

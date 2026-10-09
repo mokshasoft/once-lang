@@ -42,9 +42,8 @@ open import Once.Type
 -- the expression IS well-typed (the type is encoded in the term).
 open import Once.TypeCheck.Elaborate as Elaborate
   using (InferElabResult)
-  renaming (success to elab-success; failure to elab-failure)
-  using (NamedCtx; emptyCtx; extendNamedCtx)
   using (inferElab; checkElab)
+open import Once.TypeCheck.Classify using (emptyCtx)
   using ()
 
 -- Thinning operations (weaken, exchange)

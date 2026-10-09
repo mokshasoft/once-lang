@@ -39,6 +39,7 @@ open import Once.Type.Rigid using (params; nubFrom; arityOf; kindOf; indexOf; me
   KindedInstance; RespectsKinds)
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.Spec.Core.PolyTy
+open Schema using (type)
 
 ------------------------------------------------------------------------
 -- List facts

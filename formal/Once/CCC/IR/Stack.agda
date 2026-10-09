@@ -16,6 +16,8 @@ open import Data.Nat.Properties using (+-assoc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.IR
+open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.SigOp.Info using (SigOpInfo)
 import Once.CCC.Machine.SMPrimitives as SMP
 
 ------------------------------------------------------------------------

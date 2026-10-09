@@ -28,7 +28,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; inferElab; checkElab; InferElabResult)
+  using (inferElab; checkElab; InferElabResult)
+open import Once.TypeCheck.Classify using (NamedCtx)
 
 ------------------------------------------------------------------------
 -- Reflexivity: the typechecker is a function

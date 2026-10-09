@@ -81,8 +81,8 @@ postulate
 
 run-trace-x86-32 : Interp → RF.Image → X32.State → Behavior
 run-trace-x86-32 ι P s =
-  RT.run-trace val-x86-32 (answer-at ι call-at-x86-32) (step-budget-x86-32 (RF.blocks P) (RF.code P) s) ev-x86-32 (block-env (RF.blocks P)) (RF.code P) s
-    (step-budget-x86-32-adequate ι (RF.blocks P) (RF.code P) s)
+  RT.run-trace val-x86-32 (answer-at ι call-at-x86-32) (step-budget-x86-32 (RF.Image.blocks P) (RF.Image.code P) s) ev-x86-32 (block-env (RF.Image.blocks P)) (RF.Image.code P) s
+    (step-budget-x86-32-adequate ι (RF.Image.blocks P) (RF.Image.code P) s)
 
 postulate
   decode-x86-32 : List Byte → Maybe RF.Image
@@ -96,8 +96,8 @@ arch-semantics : ArchSemantics
 arch-semantics = record
   { Program      = RF.Image
   ; State        = X32.State
-  ; initialState = λ P → X32.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry P))
-  ; run          = λ P → X32.run (RF.code P)
+  ; initialState = λ P → X32.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry P))
+  ; run          = λ P → X32.run (RF.Image.code P)
   ; run-trace    = run-trace-x86-32
   ; decode       = decode-x86-32
   ; assemble     = assemble-x86-32

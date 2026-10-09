@@ -28,6 +28,9 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ; Float to Floatˢ)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Function using () renaming (id to idᶠ)
@@ -50,7 +53,8 @@ open import Once.Type using (isUnit?)
 open import Once.Denotation.Program using (Declared; Declared-at)
 open import Once.CanonicalName using (showCanonical)
 open import Once.Res using (is-stopped)
-open import Once.SigOp.Info using (SigOpSem; sem; effect-of; baseA; conB; name; pureV; primV; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpSem; effect-of; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo; Pure)
+open SigOpInfo using (baseA; conB; sem; name)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code)
 
@@ -64,7 +68,7 @@ module SigOpC {FS : FrameSemantics} where
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
     φ   = TM.pureHalf ιᶠ
     -- plan 0.105: the signatures the machine's interpretation declares.
-    σᶠ  = TM.sig ιᶠ
+    σᶠ  = TM.Interp.sig ιᶠ
 
   ------------------------------------------------------------------------
   -- The denotation of a SigOp node, at its contract. A SigOp's argument and

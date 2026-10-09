@@ -58,7 +58,7 @@ record SameFrames (fs' fs : FlatState) : Set where
     sf-slots : frame-slots  (falloc fs') ≡ frame-slots  (falloc fs)
     sf-saved : saved-frames (falloc fs') ≡ saved-frames (falloc fs)
     sf-ret   : fret fs'                  ≡ fret fs
-open SameFrames public
+open SameFrames
 
 sf-refl : ∀ (fs : FlatState) → SameFrames fs fs
 sf-refl fs = mkSameFrames refl refl refl

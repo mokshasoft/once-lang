@@ -44,7 +44,8 @@ import Once.Word as OnceWord
 -- PLAN 0.74 J5: was `module W = OnceWord.Word64`. `block-semM` is the
 -- definitional modular-`Word` evaluator an arith BLOCK denotes, and a block
 -- is lowered by all three backends, so its width is the target's.
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 
 open import Once.Float.Decimal using (Decimal; round)

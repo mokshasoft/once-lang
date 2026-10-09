@@ -38,7 +38,8 @@ open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M)
 import Once.Surface.Context as C
 open import Once.Surface.Context using ([]; _∷_)
-open import Once.Spec.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; arity; type)
+open import Once.Spec.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; module Schema)
+open Schema using (arity; type)
 open import Once.Spec.Core.AbsTy using (absTy; absF; ar-bound; absTy-⟦⟧; absTy-ground; abs-⟪⟫)
 import Once.Spec.Core.Syntax S as G
 import Once.Spec.Core.Typing S as GT

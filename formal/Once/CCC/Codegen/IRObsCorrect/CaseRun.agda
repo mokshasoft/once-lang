@@ -33,7 +33,12 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseRun (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Machine.Locations using (ValueLocation)
+open import Once.IRTy using (IRTy)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

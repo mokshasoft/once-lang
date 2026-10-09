@@ -10,12 +10,18 @@
 
 
 open import Once.CanonicalName using (CanonicalName)
+import Once.CCC.FrameSemantics as FrameSemantics′
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Pres (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
+open import Once.CCC.Machine.SMCore using (AllocState; next-heap-ref)
+open import Once.IRTy using (IRTy)
+open import Once.Memory.HeapAddress using (HeapLocation)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

@@ -37,8 +37,8 @@ import Once.Surface.Syntax as Srf
 import Once.Compile as C
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; rel-ret)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰᴵ; cohᴰ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
+open import Once.Denotation.DenotTrace using ()
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV; RelGM; RelGT-return)
 open import Once.Adequacy.TableCall fmt φ using (abiT)

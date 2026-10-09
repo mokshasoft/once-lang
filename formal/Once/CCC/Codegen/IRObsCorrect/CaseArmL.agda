@@ -33,9 +33,13 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CaseArmL (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot)
 open import Data.Sum using (inj₁)
 open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
-open import Once.IRTy using () renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy) renaming (_+_ to _+ᵀ_)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

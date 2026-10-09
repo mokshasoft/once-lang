@@ -40,7 +40,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Data.Empty using (⊥; ⊥-elim)
 
-open import Once.CCC.Label using (LabelId; idx)
+open import Once.CCC.Label using (LabelId; module LabelId)
+open LabelId using (idx)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-thunk)
@@ -51,7 +52,8 @@ import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;

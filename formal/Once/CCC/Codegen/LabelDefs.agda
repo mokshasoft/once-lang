@@ -24,7 +24,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 
-open import Once.CCC.Label using (idx; e-thunk; e-fn)
+open import Once.CCC.Label using (e-thunk; e-fn; module LabelId)
+open LabelId using (idx)
 open import Once.CCC.Machine.SMCore
 
 open import Once.CanonicalName using (CanonicalName)

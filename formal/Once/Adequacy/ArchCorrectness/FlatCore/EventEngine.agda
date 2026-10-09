@@ -36,11 +36,13 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _++_; drop)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Data.Sum using (_⊎_)
-open import Once.SigOp.Info using (SigOpInfo; effect; Pure; sem; Internal; External)
+open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Internal; External; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -126,6 +128,8 @@ module RT = Core.RunTrace State (List Instr) Instr Payload
 -- (`hiding (Instr)`: the abstract machine has an `Instr` of its own, and this
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
+open import Once.CCC.Machine.Locations using (AtDynamic)
+open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)
 open MemOps {FS} using (readLoc)
@@ -161,7 +165,7 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     -- per-arch start lemma covers on its own; no step returns there
     -- (`RunWF.run-step-pc-pos`).
     inv-started : fpc fs ≡ 0 → ⊥
-open FlatInv public
+open FlatInv
 
 -- One flat step preserves it: each component by its own flat-machine theorem
 -- (no per-block-step obligation), and the run context by `reach-step`.
@@ -407,7 +411,7 @@ record StuckSteps : Set₁ where
       → memory s (rreg s in1-reg + 0) ≡ just 0
       → FlatMachine.find-label {FS} prog m ≡ nothing
       → StuckAt ev env (compile-trace prog) s
-open StuckSteps public
+open StuckSteps
 
 -- THE GENERIC HALF, discharged once: if the flat machine has halted at the
 -- post-state and the instruction emits no event, then the arch's "nothing more

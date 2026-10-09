@@ -24,7 +24,8 @@ module Once.Denotation.Meaning where
 import Data.Integer as ℤ
 import Once.Word as OnceWord
 open import Once.Float.Decimal using (decimalOf; round; negate)
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
@@ -37,7 +38,8 @@ open import Once.Type
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Data.Maybe using (just)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; Interp; sig; impl)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; Interp; module Interp)
+open Interp using (sig; impl)
 open import Data.List.Membership.Propositional using (_∈_)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
@@ -58,7 +60,8 @@ open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Type.Sub using (sub-arr; <:-refl)
-open import Once.SigOp.Info using (SigOpInfo; conB; FFIAnswers)
+open import Once.SigOp.Info using (SigOpInfo; FFIAnswers; module SigOpInfo)
+open SigOpInfo using (conB)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;

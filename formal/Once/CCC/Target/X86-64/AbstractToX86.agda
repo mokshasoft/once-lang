@@ -30,6 +30,7 @@ open import Once.CCC.Target.X86-64.Syntax
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (Slot)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)

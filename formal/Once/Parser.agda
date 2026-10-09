@@ -30,7 +30,7 @@ open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
 open import Once.Parser.Type using (isUpperWord)
-open import Once.Parser.Module public
+open import Once.Parser.Module
 open import Once.Parser.TypeAlias
 
 -- Parser smoke tests (plan 0.3 G1): pull into the compilation graph

@@ -51,6 +51,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open MemOps {FS}
 open ExecFinal {FS}
 open AbstractExec {FS}
@@ -71,7 +72,7 @@ record RegTagWF (ls : LocState FS) : Set where
   field
     scratch-tag : IsTag (readReg (regs ls) Scratch)
     count-tag   : IsTag (readReg (regs ls) Count)
-open RegTagWF public
+open RegTagWF
 
 -- The SHAPE form of the same fact, enumerated so that `IsTagP (SV-Ptr p)`
 -- reduces to `⊥`. This is what kills a non-tag route at a use site: the route's

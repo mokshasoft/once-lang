@@ -57,9 +57,11 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K;
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; Slot; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero)
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero)
+open import Once.CCC.Machine.Locations using (Slot)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
-open import Once.SigOp.Info using (SigOpInfo; sem)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
@@ -68,6 +70,9 @@ open import Once.CCC.Codegen.IRToTrace o using
 -- the o-independent segment machinery (`SlotBelow`, `SegState`, `AllSeg`,
 -- `SegOK`, …), split out so a program image shares one `AllSeg`
 open import Once.CCC.Codegen.SlotSeg
+open SegOK using (ok-all; ok-neu)
+open SegState using (cur)
+open SlotBelow using (below)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)

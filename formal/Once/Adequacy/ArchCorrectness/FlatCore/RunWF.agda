@@ -35,7 +35,8 @@
 ------------------------------------------------------------------------
 
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Data.Nat using (ℕ; _<_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
@@ -63,6 +64,8 @@ open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtDynamic; Slot; AtStack; ValueLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; ref-id; heap-ref)
 open MemOps {FS} using (readLoc)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
@@ -74,14 +77,18 @@ open import Once.CCC.Machine.FrameFree
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot
 open import Once.CCC.Machine.FlatStackSlot FS
+open SameFrames using (sf-slots; sf-saved; sf-ret)
 open import Once.CCC.Machine.FlatStackPtr FS
 open import Once.CCC.Machine.FlatPtrBounds FS
 open import Once.CCC.Codegen.AllocMin o
 open import Once.CCC.Codegen.ShapeTable as ST
+open Expect using (e-in1; e-out)
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written; site-out-word)
 open import Once.CCC.Codegen.LabelSeg
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotSeg
+open SegState using (cur; saved)
+open SlotBelow using (below)
 import Once.CCC.Codegen.SlotBudget as SB
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
@@ -92,13 +99,13 @@ open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
 open import Once.CCC.Label using (_≡ᵇᴱ_; _≟ᴱ_)
 open import Once.CanonicalName using (_≟ᶜ_)
-open import Once.IRTy using (_≟IRTy_)
+open import Once.IRTy using (_≟IRTy_; Unit)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Spec.Contract using (ISig)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
-open import Once.IR using (IR; Unit)
+open import Once.IR using (IR)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Once.Type using (fits-int)
@@ -596,7 +603,7 @@ record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
               → (frame-slots (falloc fs) ≡ 0) × Σ ℕ (λ r → flink fs ≡ just r)
                 × Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-open SegWF public
+open SegWF
 
 ------------------------------------------------------------------------
 -- HOW THE PC MOVES, per instruction. Everything a frame-free step can be
@@ -1544,20 +1551,20 @@ run-shape-check prog fs r =
 -- `sok` is how the caller says which site this is; every call passes `λ _ → refl`.
 slot-read-written : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
                   → fetch prog (fpc fs) ≡ just i
-                  → (∀ st → ST.site-ok st i ≡ ST.not-any (ST.slot-get (ST.e-slot st) slot))
+                  → (∀ st → ST.site-ok st i ≡ ST.not-any (ST.slot-get (ST.Expect.e-slot st) slot))
                   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing → ⊥
 slot-read-written prog fs slot i r ftq sok empty =
-  site-slot-written (ST.slot-get (ST.e-slot st) slot) claim met
+  site-slot-written (ST.slot-get (ST.Expect.e-slot st) slot) claim met
   where
     sc  = run-shape-check prog fs r
     env = proj₁ sc
     chk = proj₂ sc
     st  = state-at env (entry-expect Unit) prog (fpc fs)
-    claim : ST.not-any (ST.slot-get (ST.e-slot st) slot) ≡ true
+    claim : ST.not-any (ST.slot-get (ST.Expect.e-slot st) slot) ≡ true
     claim = trans (sym (sok st))
                   (proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
                             (trans (sym (fetch-at-pc prog (fpc fs))) ftq)))
-    met = subst (λ m → ST.Sem.MeetsSlot FS (ST.slot-get (ST.e-slot st) slot) (falloc fs) m (floc fs))
+    met = subst (λ m → ST.Sem.MeetsSlot FS (ST.slot-get (ST.Expect.e-slot st) slot) (falloc fs) m (floc fs))
                 empty
                 (proj₂ (proj₂ (run-meets prog fs r env chk)) slot)
 

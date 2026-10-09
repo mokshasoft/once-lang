@@ -52,6 +52,7 @@ open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once
 open import Once.CanonicalName using (bare)
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
+import Once.TypeCheck.Classify as Classify
 open import Once.Type.Rigid using (rigidOf; rigidFree?)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (honest?)
@@ -201,7 +202,7 @@ ce-syms-fun : ∀ (doOpt : Bool) (sc : C.CScope) (fi : FunInfo) (es : List Entry
 ce-syms doOpt sc [] cfs eq = cong C.emittedSyms (sym (inj₂-injective eq))
 ce-syms doOpt sc (e-fun fi ∷ es) cfs eq = ce-syms-fun doOpt sc fi es (FunInfo.funIsPrimitive fi) refl cfs eq
 ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
-  with C.checkOK (TE.checkElabV (TE.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
+  with C.checkOK (TE.checkElabV (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
 ... | inj₁ _ = case eq of λ ()
 ... | inj₂ _ = ce-syms doOpt (C.addEntry sc pfi) es cfs eq
 

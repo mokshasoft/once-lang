@@ -39,7 +39,8 @@ import Once.Word as OnceWord
 -- PLAN 0.74 J5: `module W = OnceWord.Word64` USED TO BE HERE, and it was the
 -- bug. These descriptors serve all three targets and one of them is 32-bit;
 -- the width now arrives as the `TargetNum` every `semM` takes.
-open import Once.Target.Arch using (TargetNum; int-bits)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits)
 
 -- | This target's modular arithmetic. The ONLY place the width is read.
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)

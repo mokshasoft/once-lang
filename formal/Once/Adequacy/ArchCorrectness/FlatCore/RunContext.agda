@@ -23,8 +23,10 @@
 -- lesson). So `RunAt` has to live one layer down. That is all this module is.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word; fs-interp)
-open import Once.Denotation.TraceMonad using (sig)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word; fs-interp)
+open import Once.Denotation.TraceMonad using (module Interp)
+open Interp using (sig)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -50,9 +52,11 @@ open import Data.List using ([])
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
-open import Once.IR using (IR; Unit)
+open import Once.IR using (IR)
+open import Once.IRTy using (Unit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
 open import Data.List using (List)

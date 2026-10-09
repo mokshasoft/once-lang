@@ -67,6 +67,7 @@ open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; Slot; ValueLocation)
 open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}
 open ExecFinal {FS}
@@ -124,7 +125,7 @@ record SPInv (ls : LocState FS) : Set where
              → StackPtrOK? (heapMem ls hl)
     sp-stack : ∀ (f : Frame) (k : Slot)
              → StackPtrOK? (stackMem ls f k)
-open SPInv public
+open SPInv
 
 StackPtrWF : FlatState → Set
 StackPtrWF fs = SPInv (floc fs)

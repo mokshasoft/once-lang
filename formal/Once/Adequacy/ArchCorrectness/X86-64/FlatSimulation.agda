@@ -30,7 +30,8 @@
 --   [ ] wire into Correct.agda (retires compile-ir).
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; shift-base; slot-addr; slot-addr-linear)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word; frame-base; shift-frame; shift-base; slot-addr; slot-addr-linear)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.Type using (fits-int)
 open import Data.Nat using (ℕ; _+_; _∸_; _*_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n)
@@ -61,6 +62,8 @@ module Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
   where
 
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
+open import Once.Memory.HeapAddress using (sucHL; ref-id; heap-ref)
 open import Data.Unit using (tt)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}

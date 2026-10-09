@@ -26,7 +26,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 -- Import types for layout construction
 open import Once.Memory.MemoryLayoutSemantics as MLS
-  using (MemoryLayout; RegionBounds; lower; upper)
+  using (MemoryLayout; RegionBounds; module RegionBounds)
+open RegionBounds using (lower; upper)
 
 -- Import RuntimeContract and the X86-32 instance
 open import Once.Memory.RuntimeContract as RC using ()
@@ -49,13 +50,13 @@ open import Once.CCC.Target.X86-32.StackGrowth
 
 -- Region bounds from RuntimeContract
 x86-32-stack-bounds : RegionBounds
-x86-32-stack-bounds = RC.stack-bounds RP.x86-32-runtime
+x86-32-stack-bounds = RC.RuntimeContract.stack-bounds RP.x86-32-runtime
 
 x86-32-heap-bounds : RegionBounds
-x86-32-heap-bounds = RC.heap-bounds RP.x86-32-runtime
+x86-32-heap-bounds = RC.RuntimeContract.heap-bounds RP.x86-32-runtime
 
 x86-32-code-bounds : RegionBounds
-x86-32-code-bounds = RC.code-bounds RP.x86-32-runtime
+x86-32-code-bounds = RC.RuntimeContract.code-bounds RP.x86-32-runtime
 
 -- x86-32 Memory Layout instance (constructed from RuntimeContract)
 x86-32-layout : MemoryLayout
@@ -63,7 +64,7 @@ x86-32-layout = record
   { stack-bounds = x86-32-stack-bounds
   ; heap-bounds = x86-32-heap-bounds
   ; code-bounds = x86-32-code-bounds
-  ; intervals-disjoint = RC.intervals-disjoint RP.x86-32-runtime
+  ; intervals-disjoint = RC.RuntimeContract.intervals-disjoint RP.x86-32-runtime
   }
 
 ------------------------------------------------------------------------

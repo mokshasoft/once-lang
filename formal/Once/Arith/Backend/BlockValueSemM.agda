@@ -35,7 +35,8 @@ open import Once.Arith.Machine.Compile using (compile-abs)
 import Once.Arith.Backend.Correct as Correct
 open import Once.Arith.SigOp.Block using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord; eval≡semM)
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
 
 -- PLAN 0.74 J5: `open Correct 64` was a THIRD bake of the same 64, and this
 -- module is where the abstract machine's output is compared with the block's

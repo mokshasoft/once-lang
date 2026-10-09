@@ -26,8 +26,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore public
-open import Once.CCC.Machine.SMPrimitives public
+open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef; HeapLocation; _≟HL_; ref-id; heap-ref)
+open import Once.CCC.Machine.SMPrimitives
 
 ------------------------------------------------------------------------
 -- Stack Allocation

@@ -41,6 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 import Once.CCC.Machine.SMPrimitives as SMP
 -- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
 -- D179: `⟦_⟧` in this module is now the MONADIC domain. `ValidAtWF` and
@@ -56,11 +57,13 @@ import Once.Denotation.TraceMonad as TM
 -- `SV-Lit` (SMCore's `SV-Lit` is Type-indexed) in the strengthened primitive leaves.
 open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.IR
+open import Once.IRTy using (IRTy; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; WellFormedFI; ⟦_⟧TI; ν-type; _+_; μ-type; Int; Float)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 import Once.Semantics.Machine as EvV
 open import Once.IR.Size
 open import Once.CCC.IR.Stack
-open import Once.CCC.Machine.Allocation hiding (AllocMode)
+open import Once.CCC.Machine.Allocation
+open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; TraceWritesAbove; TraceSlotReadsAbove; TraceWritesBelow; TraceSlotReadsBelow; TraceNoHeapWrites)
 
 -- Plan 0.14 structural-gap-elimination (2026-05-18): IRResultBase
 -- references `ir-to-trace-at-frontier` to force each producer's trace
@@ -91,7 +94,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- state's log). A pure IR (`out-μ`, `Ana`) returns the same value at every
   -- history; those sites read it at the empty one.
   ιᶠ : TM.Interp
-  ιᶠ = Once.CCC.FrameSemantics.fs-interp FS
+  ιᶠ = Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS
 
   open import Once.CCC.Machine.Validity
   open ReadLocEq {FS}

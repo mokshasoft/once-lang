@@ -38,7 +38,8 @@ open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; CompUnit; blocks; link; link-pre; link-post; link-block-split)
+  using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; CompUnit; link; link-pre; link-post; link-block-split; module CompUnit)
+open CompUnit using (blocks)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 -- `m ≢ n` ⇒ the boolean `m ≡ᵇ n` is `false` (induction on m,n, matching `≡ᵇ`).

@@ -81,7 +81,7 @@ record LabelId : Set where
     path  : List ℕ
     idx   : ℕ
 
-open LabelId public
+open LabelId
 
 -- D245: a CALLABLE ENTRY, a closure body or one of the program's functions.
 -- (Its equality and symbol are defined further down.)

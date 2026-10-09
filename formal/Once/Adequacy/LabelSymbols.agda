@@ -36,7 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.CanonicalName using (CanonicalName)
-open import Once.CCC.Label using (Label; once; callee; sigop; LabelId; idx; owner; path; e-thunk; e-fn; labelSym; showLabelId; showPath)
+open import Once.CCC.Label using (Label; once; callee; sigop; LabelId; e-thunk; e-fn; labelSym; showLabelId; showPath; module LabelId)
+open LabelId using (idx; owner; path)
 open import Once.Target.Symbol using (showNat; once-symbol-path; once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective using (toList-showNat; charsInBase-all-digits)
 
@@ -143,7 +144,7 @@ private
   thunk-head n = cong head-of (toList-++ ".L_thunk_" (showLabelId n))
 
   fn-head : ∀ (f : CanonicalName) → head-of (toList (once-symbol-path f)) ≡ 'o'
-  fn-head f = cong head-of (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.CanonicalName.parts f))))
+  fn-head f = cong head-of (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.CanonicalName.CanonicalName.parts f))))
 
   -- a counter symbol is no function symbol
   cnt≢fn : ∀ {s : String} (f : CanonicalName) → head-of (toList s) ≡ '.' → s ≢ once-symbol-path f

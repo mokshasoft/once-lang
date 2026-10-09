@@ -33,6 +33,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.Classify
 import Once.Parser
+import Once.Parser.Module as Module
 import Once.Parser.Module.Core as P
 import Once.Adequacy.NameClash as NC
 import Data.String.Properties as StrProp
@@ -162,7 +163,7 @@ lookup-head n L with StrProp._≟_ n n
 -- (D249: the extractor's guard).
 entries-distinct : ∀ (m : P.Module) {es : List C.Entry}
   → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map entryName es)
-entries-distinct (P.mkModule ds) eq = NC.guard-entries (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds C.nothing) eq
+entries-distinct (P.mkModule ds) eq = NC.guard-entries (C.extractFunctions-go (C.extractAliases (P.mkModule ds)) ds Module.nothing) eq
 
 none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (scopeNames C.emptyCScope)) xs
 none-in-empty []       = []

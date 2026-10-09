@@ -36,16 +36,20 @@ open import Once.Type
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; coerce-functor⁻¹-D; coerce-functor-D; cohᴰ; liftFn; CallEnv; ffiE; sigOpT; anaFᵈ; seqF)
-open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ)
+open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; CallEnv; sigOpT; module CallEnv)
+open CallEnv using (ffiE)
+open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰ; seqF; coerce-functor⁻¹-D; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.Float.Decimal using (round)
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
-open import Once.IR using (IR; ⌊_⌋)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.IR.Ref using (refIR)
 open import Once.Functor.Translate using (WellFormedF; con-base; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; ⟦_⟧F)
-open import Once.SigOp.Info using (SigOpInfo; conB; baseA)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (conB; baseA)
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
@@ -128,7 +132,7 @@ record DefsSem : Set where
     calls : CallEnv
     refs  : (x : String) (A : Type) → T ⟦ A ⟧ᴰ
 
-open DefsSem public
+open DefsSem
 
 internalDefs : TargetNum → CallEnv → DefsSem
 internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ (refIR A (bare x)) tt))

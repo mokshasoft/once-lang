@@ -16,6 +16,12 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Pair.Place (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.IRTy using (IRTy; _*_)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -112,7 +118,7 @@ module PairPlaceC {FS : FrameSemantics} where
     pair-loc : ValueLocation FS
     pair-loc = AtDynamic hl
 
-    FR : Once.CCC.FrameSemantics.Frame FS
+    FR : Once.CCC.FrameSemantics.FrameSemantics.Frame FS
     FR = current-frame alloc
 
     -- ── the frame, row by row ────────────────────────────────────────────

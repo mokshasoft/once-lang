@@ -15,6 +15,11 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
+open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.Memory.HeapAddress using (sucHL)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -23,6 +28,7 @@ import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
+import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
@@ -154,7 +160,7 @@ module TwoCellBuildC {FS : FrameSemantics} where
     -- same way — the pointer residence is the only one that has a sub-value.
     -- `{A}` is PINNED at every application: `⟦_⟧ᴰᴵ` is not constructor-headed
     -- (D180), so nothing here determines it from the value's type.
-    valid-transport : ∀ {mIn A} (x : DT.⟦ A ⟧ᴰᴵ) (loc : ValueLocation FS)
+    valid-transport : ∀ {mIn A} (x : ValueDomain.⟦ A ⟧ᴰᴵ) (loc : ValueLocation FS)
                     → BeforeFrontier alloc loc
                     → ValidAtWF mIn alloc {A} x loc s
                     → ValidAtWF mIn (falloc fs10) {A} x loc (floc fs10)

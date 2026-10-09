@@ -46,10 +46,12 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
-open import Once.SigOp.Info using (SigOpInfo; sem; sigop-owner; Internal; External; internal-pure)
+open import Once.SigOp.Info using (SigOpInfo; sigop-owner; Internal; External; internal-pure; module SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
@@ -72,6 +74,8 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   o FS slot-size word-eq Reg roles modulus E M T
+open FlatInv using (inv-run; inv-regtag; inv-ev; inv-env; inv-wf; inv-closure; inv-started)
+open StuckSteps using (st-c-jmp; st-c-branch-scratch-zero; st-c-branch-tag-zero; st-load-indirect; st-load-indirect-suc)
 open EI.Emitter   {FS} {Reg} E
 open EI.Machine   {FS} {Reg} {E} M
 open EI.TraceLoop {FS} {Reg} {E} {M} T
@@ -121,6 +125,8 @@ open RegRoles roles using (in1-reg; sp-reg; scratch-reg; out-reg)
 -- (`hiding (Instr)`: the abstract machine has an `Instr` of its own, and this
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
+open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation; AtStack)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; ref-id; heap-ref)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the
@@ -130,13 +136,15 @@ open FlatMachine {FS} using
   renaming (find-label to flat-find-label)
 open MemOps {FS} using (readLoc; writeLoc-halted)
 open import Once.CCC.Machine.FlatStoreWF FS using
-  (FlatWF; flat-wf-step; cl-step; sv-below; wf-regs; wf-heap; wf-stack; wf-fresh)
+  (FlatWF; flat-wf-step; cl-step; sv-below; module StoreWF)
+open StoreWF using (wf-regs; wf-heap; wf-stack; wf-fresh)
 open import Once.CCC.Machine.FlatRegTagWF FS using
   (FlatRegTag; flat-regtag-step; flat-scratch-is-tag; flat-count-is-tag)
 open import Once.CCC.Machine.FlatStackPtr FS using
   (stack-ptr-live; stack-ptr-suc-live)
 open import Once.CCC.Label using (thunk)
-open import Once.CCC.FrameSemantics using (slot-addr; slot-addr-linear)
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
+open FrameSemantics using (slot-addr; slot-addr-linear)
 open FrameSemantics FS using (Frame)
 
 
@@ -145,6 +153,7 @@ open FrameSemantics FS using (Frame)
 -- `slot-read-in-frame`, `load-indirect-target-wf`, `stack-ptr-current`,
 -- `frame-op-absurd`, `call-site-shape`, `ret-site-owes`, …
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
+open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of)
 

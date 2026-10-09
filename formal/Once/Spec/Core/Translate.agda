@@ -52,6 +52,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 import Once.Spec.Core.Telescope as TL
 open import Once.Spec.Core.PolyTy
+open Schema using (type; arity; kinds)
 open import Once.Spec.Core.AbsTy
 open import Once.Spec.Core.Schema using (schemaOf; schemaOf-cf; kindsOf; kinded-instance)
 open import Once.Spec.Core.Telescope using (Tele; def; Program; program; noKinds)

@@ -40,9 +40,9 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float;
-  _*_; _⇛_; μ-type; ν-type; K; Id; _⊕_; _⊗_)
+  _*_; _⇛_; μ-type; ν-type; K; Id; _⊕_; _⊗_; ⟦_⟧TI)
   renaming (_+_ to _+ᵗ_)
-open import Once.IR using (⟦_⟧TI; IR; AllocMode; Heap; Stack;
+open import Once.IR using (IR; AllocMode; Heap; Stack;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; In; out-μ; Cata; Out; in-ν; Ana;
   SigOp; Call; const)
@@ -86,7 +86,7 @@ record Expect : Set where
     e-in1  : RegExpect
     e-out  : RegExpect
     e-slot : SlotEnv
-open Expect public
+open Expect
 
 -- slot lookup (default: no claim)
 slot-get : SlotEnv → ℕ → RegExpect
@@ -629,7 +629,8 @@ module Sem (FS : FrameSemantics) where
   open import Once.Type using ()
     renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
   open import Once.CCC.Machine.SMCore as SM using
-    (LocState; ValueLocation; StoredValue; SV-Ptr; SV-Tag; SV-Lit; AtStack; AtDynamic; sucLoc; regs; readReg; Input1; Output; stackMem; heapMem; current-frame; AllocState; next-heap-ref)
+    (LocState; StoredValue; SV-Ptr; SV-Tag; SV-Lit; sucLoc; regs; readReg; Input1; Output; stackMem; heapMem; current-frame; AllocState; next-heap-ref)
+  open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
   open import Once.Memory.HeapAddress
     using (HeapLocation; heap-ref; heap-offset; ref-id; sucHL)
   open import Data.Nat using (suc; zero; _<_)

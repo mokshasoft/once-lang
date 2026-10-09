@@ -15,6 +15,7 @@ open import Data.Nat using (ℕ; suc; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_
 open import Data.Nat.Properties using (m<n+m; n<1+n; m≤m+n; m≤n+m; m≤n⇒m≤1+n)
 
 open import Once.IR
+open import Once.IRTy using (_*_)
 
 ------------------------------------------------------------------------
 -- Size Measure for Termination

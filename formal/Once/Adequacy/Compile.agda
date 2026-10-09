@@ -60,7 +60,8 @@ open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 -- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
 -- `check-complete` (the proven typechecker-completeness witness).
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.TraceMonad using (Interp; sig; interp)
+open import Once.Denotation.TraceMonad using (Interp; interp; module Interp)
+open Interp using (sig)
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Surface.Syntax as Srf2 using ()
@@ -88,6 +89,7 @@ open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
 import Once.Compile as C
 import Once.Grammar as G
 import Once.Parser.Module.Core as P
+import Once.Parser.Module as Module
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser using (parseStrict)
 -- Stage 1 adapter, now a real structural conversion (discharges the
@@ -449,7 +451,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   ...     | (F , file-eq) = file-bytes arch F , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
           p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
-          res-eq : C.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
+          res-eq : Module.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
           res-eq = RBR.resolvesModule-sound (Source.srcImports src)
                      (P.Module.decls mU) mR rmR
           stm-eq : srcToModule src ≡ just mR

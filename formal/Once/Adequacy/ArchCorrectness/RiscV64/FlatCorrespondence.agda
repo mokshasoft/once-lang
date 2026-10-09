@@ -21,7 +21,8 @@
 -- asserted.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -50,6 +51,7 @@ rreg s r = R.readReg (R.State.regs s) r
 open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
        FS slot-size word-eq Reg riscv64-roles R.State rreg memory rhalted
   public
+open SetsRole using (at-role; off-role)
 
 ------------------------------------------------------------------------
 -- riscv64 REALISES the four post-state records. Compare with x86-64's: the

@@ -26,7 +26,8 @@ open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Target.Arch using (Arch)
 open import Once.Compile
-  using (Module; Entry; CompiledFun; Heap; compileFileFromModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; extractFunctions; extractAliases; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
+  using (Entry; CompiledFun; Heap; compileFileFromModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; extractFunctions; extractAliases; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
+open import Once.Parser.Module using (Module)
 
 private
   inj₂-inj : ∀ {A B : Set} {x y : B} → inj₂ {A = A} x ≡ inj₂ y → x ≡ y

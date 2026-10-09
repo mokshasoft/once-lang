@@ -16,6 +16,11 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell.Run (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Label using (ℓ; LabelId)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
+open import Once.CCC.Machine.SMCore using (AllocState; next-slot; next-heap-ref)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

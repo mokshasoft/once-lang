@@ -40,7 +40,9 @@ open import Once.TypeCheck.Raw as Raw
 import Data.String.Properties
 import Once.Type.DecEq
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; inferElab; checkElab; success; failure; lookupLocal; lookupImport; extendNamedCtx)
+  using (inferElab; checkElab; success; failure)
+open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
+import Once.TypeCheck.Classify as Classify
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.ElaborateProofs
 open import Once.TypeCheck.Judgment
@@ -61,8 +63,8 @@ open import Once.Surface.Syntax as Surface using ()
 
 -- Soundness for integer literals.
 sound-RInt : ∀ (ctx : NamedCtx) (n : ℤ)
-             {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-             {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+             {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+             {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
            → inferElab ctx (RInt n) ≡ success A Ψ eE d f
            → ctx ⊢ RInt n ∶ A ⨾ Ψ
 sound-RInt ctx n refl = t-int n
@@ -71,16 +73,16 @@ sound-RInt ctx n refl = t-int n
 
 -- Soundness for unit literal.
 sound-RUnit : ∀ (ctx : NamedCtx)
-              {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-              {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+              {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+              {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
             → inferElab ctx RUnit ≡ success A Ψ eE d f
             → ctx ⊢ RUnit ∶ A ⨾ Ψ
 sound-RUnit ctx refl = t-unit
 
 -- Soundness for the `unit` variable builtin (monomorphic Unit).
 sound-RVar-unit : ∀ (ctx : NamedCtx)
-                  {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                  {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+                  {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+                  {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
                 → inferElab ctx (Raw.RResolved (gen "unit")) ≡ success A Ψ eE d f
                 → ctx ⊢ Raw.RResolved (gen "unit") ∶ A ⨾ Ψ
 sound-RVar-unit ctx refl = t-unit-var
@@ -123,10 +125,10 @@ checkBundle ctx e T = checkElab ctx e T , refl
 -- to `classifyAppHead f ≡ nothing`. See `view-other⇒classifyAppHead-nothing`.
 ViewBundle : RawExpr → Set
 ViewBundle f =
-  ∃[ v ] Once.TypeCheck.Elaborate.classifyAppHeadView f ≡ v
+  ∃[ v ] Classify.classifyAppHeadView f ≡ v
 
 viewBundle : (f : RawExpr) → ViewBundle f
-viewBundle f = Once.TypeCheck.Elaborate.classifyAppHeadView f , refl
+viewBundle f = Classify.classifyAppHeadView f , refl
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — postulate retirement scaffolding.
@@ -137,8 +139,8 @@ viewBundle f = Once.TypeCheck.Elaborate.classifyAppHeadView f , refl
 ------------------------------------------------------------------------
 
 check-soundV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
-  {Ψ : Surface.Usage (NamedCtx.size ctx)}
-  {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+  {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+  {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
   → Once.TypeCheck.ElaborateProofs.checkElabProj ctx e T ≡ success Ψ eE d f
   → ctx ⊢ᶜ e ∶ T ⨾ Ψ
 check-soundV ctx e T eq with Once.TypeCheck.Elaborate.checkElabV ctx e T
@@ -148,8 +150,8 @@ check-soundV ctx e T eq | failure _ , _ with eq
 ... | ()
 
 infer-soundV : ∀ (ctx : NamedCtx) (e : RawExpr)
-  {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-  {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+  {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → Once.TypeCheck.ElaborateProofs.inferElabProj ctx e ≡ success A Ψ eE d f
   → ctx ⊢ᵢ e ∶ A ⨾ Ψ
 infer-soundV ctx e eq with Once.TypeCheck.Elaborate.inferElabV ctx e
@@ -195,8 +197,8 @@ inferElab-eq-RUnit ctx = refl
 -- every other branch, the outer `eq` is `failure ≡ success`, absurd.
 sound-RUnaryOp-neg :
   ∀ (ctx : NamedCtx) (e : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx e ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ e ∶ A' ⨾ Ψ')
@@ -218,8 +220,8 @@ sound-RUnaryOp-neg ctx e IH eq | failure _ , _ with eq
 -- t-embed.
 sound-RAnnot :
   ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {Ψ' eE' d' f'}
         → checkElab ctx e T ≡ success Ψ' eE' d' f'
         → ctx ⊢ᶜ e ∶ T ⨾ Ψ')
@@ -236,8 +238,8 @@ sound-RAnnot ctx e T IH eq | failure _ , _ with eq
 -- is the product, and its usage is the per-position sum.
 sound-RPair :
   ∀ (ctx : NamedCtx) (a b : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IHa : ∀ {A' Ψ' eE' d' f'}
          → inferElab ctx a ≡ success A' Ψ' eE' d' f'
          → ctx ⊢ a ∶ A' ⨾ Ψ')
@@ -270,8 +272,8 @@ lookupBundle xs q = lookupImport xs q , refl
 
 sound-RQualified :
   ∀ (ctx : NamedCtx) (name alias : _)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → inferElab ctx (RQualified name alias) ≡ success A Ψ eE d f
   → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
 sound-RQualified ctx name alias eq
@@ -309,8 +311,8 @@ unitDecBundle x = Data.String.Properties._≟_ x "unit" , refl
 
 sound-RVar :
   ∀ (ctx : NamedCtx) (x : _)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → inferElab ctx (RVar x) ≡ success A Ψ eE d f
   → ctx ⊢ RVar x ∶ A ⨾ Ψ
 sound-RVar ctx x eq
@@ -328,8 +330,8 @@ sound-RVar ctx x eq | failure _ , _ with eq
 --   (3) Otherwise → elaborator failure, eq absurd.
 sound-check-RVar-id :
   ∀ (ctx : NamedCtx) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
   → checkElab ctx (Raw.RResolved (gen "id")) T ≡ success Ψ eE d f
   → ctx ⊢ᶜ Raw.RResolved (gen "id") ∶ T ⨾ Ψ
 sound-check-RVar-id ctx T eq
@@ -343,8 +345,8 @@ sound-check-RVar-id ctx T eq | failure _ , _ with eq
 -- the generic `sound-RVar` for consistency.
 sound-RVar-unit-generic :
   ∀ (ctx : NamedCtx)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → inferElab ctx (Raw.RResolved (gen "unit")) ≡ success A Ψ eE d f
   → ctx ⊢ Raw.RResolved (gen "unit") ∶ A ⨾ Ψ
 sound-RVar-unit-generic ctx = sound-RVar-unit ctx
@@ -368,8 +370,8 @@ sound-RVar-unit-generic ctx = sound-RVar-unit ctx
 
 sound-RBinOp :
   ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH₁ : ∀ {A' Ψ' eE' d' f'}
          → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
          → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
@@ -408,8 +410,8 @@ letBodyBundle ctx x A e₂ = inferElab (extendNamedCtx ctx x A) e₂ , refl
 
 sound-RLet :
   ∀ (ctx : NamedCtx) (x : _) (e₁ e₂ : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH₁ : ∀ {A' Ψ' eE' d' f'}
          → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
          → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
@@ -458,8 +460,8 @@ tyEqBundle A B = Once.Type.DecEq._≟T_ A B , refl
 sound-RDestruct :
   ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : _) (eL : RawExpr)
     (xR : _) (eR : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IHs : ∀ {T' Ψ' eE' d' f'}
          → inferElab ctx scrut ≡ success T' Ψ' eE' d' f'
          → ctx ⊢ scrut ∶ T' ⨾ Ψ')
@@ -514,8 +516,8 @@ leqBundle q' q = Once.TypeCheck.Elaborate.decideLeq q' q , refl
 sound-check-RLam :
   ∀ (ctx : NamedCtx) (x : _) (body : RawExpr)
     (A : Type) (q : Quantity) (B : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind q T.pure ] B)}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind q T.pure ] B)}
     {d f : ℕ}
   → (IH : ∀ {Ψ' eE' d' f'}
         → checkElab (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
@@ -543,8 +545,8 @@ sound-check-RLam ctx x body A q B IH eq | failure _ , _ with eq
 -- id applied: the argument can have any type, result has the same type.
 sound-RApp-id :
   ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
@@ -560,8 +562,8 @@ sound-RApp-id ctx arg IH eq | failure _ , _ with eq
 -- terminal applied: any-typed argument, Unit result.
 sound-RApp-terminal :
   ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
@@ -577,8 +579,8 @@ sound-RApp-terminal ctx arg IH eq | failure _ , _ with eq
 -- fst applied: argument must have product type.
 sound-RApp-fst :
   ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
@@ -594,8 +596,8 @@ sound-RApp-fst ctx arg IH eq | failure _ , _ with eq
 -- snd applied: same structure as fst.
 sound-RApp-snd :
   ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
@@ -614,8 +616,8 @@ sound-RApp-snd ctx arg IH eq | failure _ , _ with eq
 -- Plan 0.4 T0 (2026-04-30): closes spec-gap-apply-app-infer.
 sound-RApp-apply :
   ∀ (ctx : NamedCtx) (arg : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
@@ -655,9 +657,9 @@ sound-RApp-apply ctx arg IH eq | failure _ , _ with eq
 -- `tyEqBundle Af Ax` pair.
 sound-RApp-generic :
   ∀ (ctx : NamedCtx) (f x : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d fresh : ℕ}
-  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d fresh : ℕ}
+  → Classify.classifyAppHead f ≡ nothing
   → (IH_f : ∀ {F' Ψ' eE' d' f'}
          → inferElab ctx f ≡ success F' Ψ' eE' d' f'
          → ctx ⊢ f ∶ F' ⨾ Ψ')
@@ -699,32 +701,32 @@ import Data.String.Properties as StrProp
 -- internal `with StrProp._≟_` chain. Rewrites with these in the
 -- top-level helper `infer-sound-RApp` force the elaborator's eq
 -- type to match the per-shape lemma's expected shape.
-classifyAppHeadView-RVar-id : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "id"))
-  ≡ Once.TypeCheck.Elaborate.ahv-id
+classifyAppHeadView-RVar-id : Classify.classifyAppHeadView (Raw.RResolved (gen "id"))
+  ≡ Classify.ahv-id
 classifyAppHeadView-RVar-id = refl
-classifyAppHeadView-RVar-fst : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "fst"))
-  ≡ Once.TypeCheck.Elaborate.ahv-fst
+classifyAppHeadView-RVar-fst : Classify.classifyAppHeadView (Raw.RResolved (gen "fst"))
+  ≡ Classify.ahv-fst
 classifyAppHeadView-RVar-fst = refl
-classifyAppHeadView-RVar-snd : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "snd"))
-  ≡ Once.TypeCheck.Elaborate.ahv-snd
+classifyAppHeadView-RVar-snd : Classify.classifyAppHeadView (Raw.RResolved (gen "snd"))
+  ≡ Classify.ahv-snd
 classifyAppHeadView-RVar-snd = refl
-classifyAppHeadView-RVar-terminal : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "terminal"))
-  ≡ Once.TypeCheck.Elaborate.ahv-terminal
+classifyAppHeadView-RVar-terminal : Classify.classifyAppHeadView (Raw.RResolved (gen "terminal"))
+  ≡ Classify.ahv-terminal
 classifyAppHeadView-RVar-terminal = refl
-classifyAppHeadView-RVar-apply : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "apply"))
-  ≡ Once.TypeCheck.Elaborate.ahv-apply
+classifyAppHeadView-RVar-apply : Classify.classifyAppHeadView (Raw.RResolved (gen "apply"))
+  ≡ Classify.ahv-apply
 classifyAppHeadView-RVar-apply = refl
-classifyAppHeadView-RVar-inl : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "inl"))
-  ≡ Once.TypeCheck.Elaborate.ahv-inl
+classifyAppHeadView-RVar-inl : Classify.classifyAppHeadView (Raw.RResolved (gen "inl"))
+  ≡ Classify.ahv-inl
 classifyAppHeadView-RVar-inl = refl
-classifyAppHeadView-RVar-inr : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "inr"))
-  ≡ Once.TypeCheck.Elaborate.ahv-inr
+classifyAppHeadView-RVar-inr : Classify.classifyAppHeadView (Raw.RResolved (gen "inr"))
+  ≡ Classify.ahv-inr
 classifyAppHeadView-RVar-inr = refl
-classifyAppHeadView-RVar-initial : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "initial"))
-  ≡ Once.TypeCheck.Elaborate.ahv-initial
+classifyAppHeadView-RVar-initial : Classify.classifyAppHeadView (Raw.RResolved (gen "initial"))
+  ≡ Classify.ahv-initial
 classifyAppHeadView-RVar-initial = refl
-classifyAppHeadView-RVar-curry : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "curry"))
-  ≡ Once.TypeCheck.Elaborate.ahv-curry
+classifyAppHeadView-RVar-curry : Classify.classifyAppHeadView (Raw.RResolved (gen "curry"))
+  ≡ Classify.ahv-curry
 classifyAppHeadView-RVar-curry = refl
 -- Note: `pair` and `compose` are pba-pair-applied / pba-compose-applied
 -- which require the head to be RApp (Raw.RResolved (gen "pair") / "compose") _ — not
@@ -737,13 +739,13 @@ classifyAppHeadView-RVar-curry = refl
 -- the success-injectivity refinement on eq.
 mutual
   infer-sound : ∀ (ctx : NamedCtx) (e : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
     → inferElab ctx e ≡ success A Ψ eE d f
     → ctx ⊢ e ∶ A ⨾ Ψ
   check-sound : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
     → checkElab ctx e T ≡ success Ψ eE d f
     → ctx ⊢ᶜ e ∶ T ⨾ Ψ
 

@@ -15,9 +15,15 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Comp (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
+open import Once.CCC.Machine.SMCore using (next-slot)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
-open import Once.CCC.Label using (idx)
+open import Once.CCC.Label using (module LabelId)
+open LabelId using (idx)
 open import Data.Nat.Properties using (1+n≰n)
 
 import Once.CCC.FrameSemantics
@@ -27,6 +33,7 @@ import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
+import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
 open import Once.Res using (Res; stopped; returns; is-stopped)
 
@@ -281,7 +288,7 @@ module CompC {FS : FrameSemantics} where
       esF : DL.List SigOpEvent
       esF = eventsAt s (evalᴰ f x)
 
-      comp-run : ∀ (r : Res DT.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
+      comp-run : ∀ (r : Res ValueDomain.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
                → runAt s (evalᴰ (g ∘ f) x) ≡ TM.thenRes ιᶠ h esF r (evalᴰ g)
       comp-run r rfeq = trans (TM.run-bind ιᶠ h (evalᴰ f x) (evalᴰ g))
                               (cong (λ r′ → TM.thenRes ιᶠ h esF r′ (evalᴰ g)) rfeq)
@@ -290,7 +297,7 @@ module CompC {FS : FrameSemantics} where
       -- `returns vf` binds the value `g` consumes; `stopped` means `g` never
       -- runs and the composite's machine run IS `f`'s. Taken as an ARGUMENT
       -- with its own equation rather than `with`-abstracted.
-      go : (r : Res DT.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
+      go : (r : Res ValueDomain.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
          → (vr : ValueRealized prog base n l f x s alloc cl k)
          → chain-events (VR.run vr) ≡ eventsAt s (evalᴰ f x)
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k

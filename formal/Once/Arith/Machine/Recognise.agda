@@ -34,7 +34,9 @@ open import Data.List using ([]; _∷_)
 open import Data.Product using (_×_; _,_)
 
 open import Once.IR
-open import Once.SigOp.Info using (sem; SigOpSem; primV)
+open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
+open import Once.SigOp.Info using (SigOpSem; primV; module SigOpInfo; SigOpInfo)
+open SigOpInfo using (sem)
 open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 import Once.IRTy as II
 

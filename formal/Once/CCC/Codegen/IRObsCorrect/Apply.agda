@@ -15,10 +15,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Apply (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
+import Once.IRTy as IRTy′
 import Once.IR
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Res using (is-stopped)
@@ -69,7 +73,7 @@ module ApplyC {FS : FrameSemantics} where
       -- `≡ Unit`, both absurd), and D184 pins it to the HEAP — which is also
       -- the only shape `do-call` enters on, so the `AtStack` case is refuted
       -- by the witness's own `LocMatchesMode`.
-      go : CellAt alloc (A IRTy.⇛ B) (proj₁ x) pair-loc s
+      go : CellAt alloc (A IRTy′.⇛ B) (proj₁ x) pair-loc s
          → CellAt alloc A (proj₂ x) (sucLoc pair-loc) s
          → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl k
       go (cell-inline (rep-prim ()) _) _
@@ -148,7 +152,7 @@ module ApplyC {FS : FrameSemantics} where
                 cell-ptr q (OB.bf-advance abf) (OB.carry (proj₂ x) _ abf av)
               callee-arg (cell-inline rep ap) q = cell-inline rep q
 
-              callee-in : InputAt {E IRTy.* A} Heap (falloc ASP.a16)
+              callee-in : InputAt {E IRTy′.* A} Heap (falloc ASP.a16)
                             (env , proj₂ x) (floc ASP.a16)
               callee-in = in-loc (AtDynamic ASP.ahl)
                             (valid-pair-wf tt OB.before-ahl-suc
@@ -157,7 +161,7 @@ module ApplyC {FS : FrameSemantics} where
                             OB.before-ahl OB.input1-a16
 
               cinfo = BlockRuns.closures cr body env blbl
-                        (subst (λ f → ValidAtWF _ alloc {A IRTy.⇛ B} f fst-loc s)
+                        (subst (λ f → ValidAtWF _ alloc {A IRTy′.⇛ B} f fst-loc s)
                                (ClosureValidWF.f-is-closure cvw) fst-valid)
                         (ClosureValidWF.code-ptr cvw)
 
@@ -191,7 +195,7 @@ module ApplyC {FS : FrameSemantics} where
                        (trans (cong falloc call-eq) refl)
                        -- the call does not touch `floc`, but `do-call` is
                        -- stuck until `call-eq` says which branch it took.
-                       (subst (λ st → InputAt {E IRTy.* A} Heap (falloc ASP.a16)
+                       (subst (λ st → InputAt {E IRTy′.* A} Heap (falloc ASP.a16)
                                         (env , proj₂ x) st)
                               (sym (cong floc call-eq)) callee-in)
 

@@ -31,7 +31,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; _!!_; arity; GSub)
+open import Once.Spec.Core.PolyTy using (Sig; _!!_; GSub; module Schema)
+open Schema using (arity)
 
 -- Plan 0.103 phase 4: the core is relative to a DEFINITIONS SIGNATURE `S` —
 -- the schemas of the telescope's earlier definitions.

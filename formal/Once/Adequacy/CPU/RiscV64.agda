@@ -93,9 +93,9 @@ postulate
 
 run-trace-riscv64 : Interp → RF.Image → RV.State → Behavior
 run-trace-riscv64 ι P s =
-  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) (step-budget-riscv64 (RF.blocks P) (RF.code P) s) ev-riscv64
-    (block-env (RF.blocks P)) (RF.code P) s
-    (step-budget-riscv64-adequate ι (RF.blocks P) (RF.code P) s)
+  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) (step-budget-riscv64 (RF.Image.blocks P) (RF.Image.code P) s) ev-riscv64
+    (block-env (RF.Image.blocks P)) (RF.Image.code P) s
+    (step-budget-riscv64-adequate ι (RF.Image.blocks P) (RF.Image.code P) s)
 
 postulate
   -- The CPU's decoder (the ISA's encoding) — only ever used through
@@ -111,8 +111,8 @@ arch-semantics : ArchSemantics
 arch-semantics = record
   { Program      = RF.Image
   ; State        = RV.State
-  ; initialState = λ P → RV.initStateAt (Data.Maybe.fromMaybe 0 (RF.entry P))
-  ; run          = λ P → RV.run (RF.code P)
+  ; initialState = λ P → RV.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry P))
+  ; run          = λ P → RV.run (RF.Image.code P)
   ; run-trace    = run-trace-riscv64
   ; decode       = decode-riscv64
   ; assemble     = assemble-riscv64

@@ -52,7 +52,7 @@ record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᵈ F) : Set where
   field
     force-∼ᵖᵈ : RelT′ (⟦ F ⟧SF-rel (_∼ᵖᵈ_ {F})) (ret (forceᵖ x)) (forceᵈ y)
 
-open _∼ᵖᵈ_ public
+open _∼ᵖᵈ_
 
 ------------------------------------------------------------------------
 -- The relation, by recursion on the type.

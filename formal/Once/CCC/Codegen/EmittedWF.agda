@@ -42,7 +42,8 @@ open import Relation.Binary.PropositionalEquality using (_≢_)
 
 open import Once.CCC.Label using (Label; once; thunk; LabelId; e-fn)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo)
+open SigOpInfo using (sem; name)
 open import Once.CCC.Machine.SMCore using
   ( AbstractInstr; AbstractTrace
   ; instr-ctrl; instr-load-code-addr

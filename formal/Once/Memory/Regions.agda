@@ -16,7 +16,8 @@
 ------------------------------------------------------------------------
 
 open import Once.Memory.MemoryLayoutSemantics
-  using (MemoryLayout; RegionBounds; lower; upper)
+  using (MemoryLayout; RegionBounds; module RegionBounds)
+open RegionBounds using (lower; upper)
 
 module Once.Memory.Regions (layout : MemoryLayout) where
 

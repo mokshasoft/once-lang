@@ -31,6 +31,7 @@ open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Surface.Context using (Usage)
 open import Once.Spec.Core.PolyTy
+open Schema using (arity; kinds; type)
 import Once.Spec.Core.PolyTyping as PT
 import Once.Spec.Core.Meaning as GM
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)

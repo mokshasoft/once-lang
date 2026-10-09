@@ -116,7 +116,8 @@ import Data.String.Properties as StrProp
 open import Data.Maybe.Properties using (just-injective)
 open import Relation.Nullary using (yes; no)
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Core.PolyTy using (Schema; arity; kinds; type)
+open import Once.Spec.Core.PolyTy using (Schema; module Schema)
+open Schema using (arity; kinds; type)
 import Once.Compile as Cmp
 open import Once.Spec.Core.Translate using (SigSig; ImpSig; TeleSig; viewOf; telFind; i-def)
 import Once.Spec.Core.Translate as TR

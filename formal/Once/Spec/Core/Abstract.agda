@@ -39,6 +39,7 @@ open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; ba
 import Once.Functor.Translate as Tr
 open import Once.Surface.Context as C using (Ctx; Usage)
 open import Once.Spec.Core.PolyTy
+open Schema using (type)
 import Once.Spec.Core.Syntax S as G
 import Once.Spec.Core.Typing S as GT
 open import Once.Spec.Core.PolyTyping S

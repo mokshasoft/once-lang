@@ -30,6 +30,7 @@ open T using (Purity; pure; mk-kind; Many; One)
 open import Once.Type.Sub using (⊑π-refl)
 open import Once.Surface.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
+open Schema using (type)
 open import Once.Spec.Core.PolyTyping S
 import Once.Spec.Core.Syntax S as G
 open G using (primDom; primCod)

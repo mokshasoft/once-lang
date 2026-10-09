@@ -22,7 +22,7 @@
 module Once.Adequacy.FunBundle where
 
 
-open import Once.TypeCheck.Classify using (TopCtx)
+open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys; PolyCtx)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
@@ -50,11 +50,12 @@ open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
 open import Once.Surface.Syntax using (Expr; Usage)
 open import Once.TypeCheck.Elaborate as TE
-  using (checkElab; ctxWithImportsAndPolys; PolyCtx)
+  using (checkElab)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)
+import Once.Parser.Module as Module
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
@@ -95,7 +96,7 @@ data FunBundle : C.CScope → List C.Entry → Set where
     FunBundle (C.addEntry sc pfi) es →
     FunBundle sc (C.e-poly pfi ∷ es)
 
-compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : C.String → TopCtx)
+compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
@@ -106,7 +107,7 @@ compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
   AS.compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
     (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
-compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : C.String → TopCtx)
+compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
@@ -117,7 +118,7 @@ compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
-compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : C.String → TopCtx)
+compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : Module.String → TopCtx)
   (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
@@ -129,7 +130,7 @@ compileFun-aux-ce doOpt ctx polys impsOf name ty expr true eq =
 compileFun-aux-ce doOpt ctx polys impsOf name ty expr false eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
-compileFun-ce : ∀ (polys : PolyCtx) (impsOf : C.String → TopCtx)
+compileFun-ce : ∀ (polys : PolyCtx) (impsOf : Module.String → TopCtx)
   (ctx : TopCtx) (ty : Type) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun C.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
@@ -303,7 +304,7 @@ bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf res
 -- compile bundle, and the compile result it is.
 ------------------------------------------------------------------------
 
-ProgramNode : C.Module → Set
+ProgramNode : Module.Module → Set
 ProgramNode m =
   Σ-syntax (List C.Entry) (λ es →
   Σ-syntax (C.extractFunctions (C.extractAliases m) m ≡ inj₂ es) (λ _ →
@@ -311,7 +312,7 @@ ProgramNode m =
     C.compileResolvedModule C.Heap false m ≡ inj₂ (bundle→compiled b))))
 
 private
-  node-ce : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List C.Entry) (cv : String ⊎ List C.CompiledFun)
+  node-ce : ∀ (m : Module.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List C.Entry) (cv : String ⊎ List C.CompiledFun)
           → C.compileEntries C.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir
           → C.extractFunctions (C.extractAliases m) m ≡ inj₂ es → ProgramNode m
   node-ce m ir es (inj₁ _) ce mi ef = case mi of λ ()
@@ -320,12 +321,12 @@ private
        , trans (cong (C.compileResolvedModule-aux C.Heap false m) ef)
                (trans ce (cong inj₂ (sym (bundle→compiled≡compiled C.emptyCScope es compiled ce))))
 
-  node-ef : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List C.Entry)
+  node-ef : ∀ (m : Module.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List C.Entry)
           → C.extractFunctions (C.extractAliases m) m ≡ efv
           → moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → ProgramNode m
   node-ef m ir (inj₁ _)  ef mi = case mi of λ ()
   node-ef m ir (inj₂ es) ef mi = node-ce m ir es (C.compileEntries C.Heap false C.emptyCScope es) refl mi ef
 
-program-node : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → ProgramNode m
+program-node : ∀ (m : Module.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → ProgramNode m
 program-node m ir mi = node-ef m ir (C.extractFunctions (C.extractAliases m) m) refl mi
 

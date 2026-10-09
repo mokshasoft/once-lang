@@ -40,10 +40,12 @@ open import Data.Bool using (Bool; false)
 open import Data.Maybe using (Maybe; just)
 open import Data.Product using (Σ; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
+open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
+open FrameSemantics using (frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 open import Data.Nat using (NonZero)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open import Once.CCC.Label using (Label)
 open import Once.CanonicalName using (CanonicalName)
 

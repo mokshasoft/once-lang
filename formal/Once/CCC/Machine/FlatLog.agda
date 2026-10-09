@@ -29,6 +29,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
+open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.Flat
 
 LogFree : AbstractInstr → Set

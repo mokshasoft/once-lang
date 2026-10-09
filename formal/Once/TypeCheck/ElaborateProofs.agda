@@ -39,7 +39,8 @@ open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
 open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.Type
-open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.IR as IR
+open import Once.IRTy using (⌊_⌋)
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw

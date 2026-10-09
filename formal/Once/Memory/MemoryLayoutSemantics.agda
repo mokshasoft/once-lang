@@ -44,7 +44,7 @@ record RegionBounds : Set where
     upper : Addr
     bounds-valid : lower ≤ upper
 
-open RegionBounds public
+open RegionBounds
 
 -- | Address is in region if within [lower, upper]
 InRegion : RegionBounds → Addr → Set

@@ -19,7 +19,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; arity; kinds; type; Respects; _⟪_⟫; GSub)
+open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; Respects; _⟪_⟫; GSub; module Schema)
+open Schema using (arity; kinds; type)
 
 open import Once.Spec.Contract using (ISig)
 module Once.Spec.Core.Meaning {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
@@ -32,7 +33,8 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (refl)
 import Once.Word as OnceWord
 open import Once.Float.Decimal using (round)
-open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+open import Once.Target.Arch using (TargetNum; module TargetNum)
+open TargetNum using (int-bits; float-format)
 open import Once.Type
   using (Type; Zero; One; Many; mk-kind; Purity; pure; eff)
 open import Once.Surface.Context

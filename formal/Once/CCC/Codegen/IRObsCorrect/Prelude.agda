@@ -42,25 +42,24 @@ open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap) publi
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂) public
 open import Relation.Binary.PropositionalEquality using (_≡_) public
 
-open import Once.CCC.FrameSemantics using (FrameSemantics) public
+open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- SigOpInfo is over SURFACE Type (`SigOp : SigOpInfo A B → IR ⌊A⌋ ⌊B⌋`), so the
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ; Unit to Unitˢ) public
-open import Once.Float.Decimal using (Decimal; round) public
+open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ) public
-open import Once.IRTy using (WellFormedFI-irrelevant) public
+open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧) public
-open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Heap; Cata; SigOp; Call; SigOpInfo; out-μ; _∘_;
-  μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋;
+open import Once.IR using (IR; AllocMode; Stack; Heap; Cata; SigOp; Call; out-μ; _∘_;
   -- Plan 0.68 step 0: the enumeration needs EVERY constructor in scope, not
   -- just the ones with a clause of their own before it.
   id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
-  In; Out; in-ν; Ana; const;
- ν-type; _*_) public
+  In; Out; in-ν; Ana; const) public
+open import Once.IRTy using (FitsInRegI; ⌊_⌋; fits-int; fits-float) public
 open import Once.IRTy using (⟦_,_⟧-baseI) public
-open import Once.Memory.HeapAddress using (HeapRef; mkHeapRef; ref-id; HeapLocation; heap-loc; heap-ref; sucHL) public
-open import Once.Word using (Carrier) public
+open import Once.Memory.HeapAddress using (HeapRef; mkHeapRef; ref-id; HeapLocation; heap-loc; heap-ref; sucHL)
+open import Once.Word using (Carrier)
 open import Data.Unit using (tt) public
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
@@ -68,47 +67,46 @@ open import Data.Unit using (tt) public
 fits-erase : ∀ {B} → FitsInReg B → FitsInRegI ⌊ B ⌋
 fits-erase fits-intˢ   = fits-int
 fits-erase fits-floatˢ = fits-float
-open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts) public
+open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂; _≢_) public
 open import Once.IR.Size using (ir-size) public
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl; <-trans) public
 open import Function using (case_of_) public
 import Once.Semantics.Machine as EvV
-open import Once.CCC.Label using (LabelId; ℓ) public
+open import Once.CCC.Label using (LabelId; ℓ)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
+  using (LocState; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
          instr-sigop; mov-to-output; mov-to-input; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace;
          -- D155: the closure register's type — the entry state's one open
          -- component (see `entry-flat`).
          StoredValue; AbstractInstr; module AbstractExec; module MemOps;
          -- D171: the store instruction and the location vocabulary its
          -- read-back needs.
-         store-at-slot; restore-input; AtStack; current-frame;
+         store-at-slot; restore-input; current-frame;
          -- D174: the rest of `inl`/`inr`'s heap build — the first discharge in
          -- this file that ALLOCATES, so these are new to its vocabulary.
          instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code;
          instr-call-closure; instr-save-closure-reg; store-indirect; store-indirect-suc;
-         load-from-slot; load-indirect; load-indirect-suc;
-         AtDynamic; sucLoc; SV-Tag; writeReg-preserves; _≟HL_;
+         load-from-slot; load-indirect; load-indirect-suc; sucLoc; SV-Tag; writeReg-preserves;
          -- plan 0.91 S2: how a block is LAID OUT, so `BlocksAt` can say where
          -- it lives without restating `c-thunk … ∷ t ++ c-ret … ∷ []`.
          block-layout) public
-open import Once.CCC.Machine.Validity using (module ReadLocEq) public
+open import Once.CCC.Machine.Validity using (module ReadLocEq)
 open import Once.CCC.Machine.ValidAtWFHalted o tbl using (validAtWF-set-halted) public
-open import Once.CCC.Machine.Allocation using (AllocState; next-slot; next-heap-ref; module FrontierInvariant) public
-open import Once.CCC.Machine.Flat using (module FlatMachine) public
-open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics) public
-open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot) public
-open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI) public
+open import Once.CCC.Machine.Allocation using (module FrontierInvariant) public
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
+open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace') public
-open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot) public
+open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of) public
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable) public
 open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef) public
 import Once.CCC.Machine.ReadTypedAdequate as RTA
-open import Once.Denotation.Trace using (SigOpEvent) public
+open import Once.Denotation.Trace using (SigOpEvent)
 import Once.Denotation.DenotTrace as DT
-open import Once.Denotation.TraceMonad using () public
+open import Once.Denotation.TraceMonad using ()
 import Once.Denotation.TraceMonad as TM
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace) public
 

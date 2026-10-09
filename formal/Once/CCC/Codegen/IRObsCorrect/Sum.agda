@@ -16,10 +16,16 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Sum (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
+open import Once.CCC.Machine.SMCore using (next-heap-ref; next-slot)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
+import Once.IRTy as IRTy′
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
@@ -348,7 +354,7 @@ module SumC {FS : FrameSemantics} where
       -- patterns. Take it as an argument instead — the standing preference for
       -- a top-level helper over a with-block.
       place-of : InputAt mIn alloc x s
-               → ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
+               → ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                              (retVal (evalᴰ (inl {A} {B}) x)) (floc fs10)
       -- A register-resident payload needs NO payload location and NO payload
       -- validity — stage F's whole point. Fully proved.
@@ -397,7 +403,7 @@ module SumC {FS : FrameSemantics} where
             valid-inl-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
               (bf-advance bf) before-suc valid'
 
-      place : ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
+      place : ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                           (retVal (evalᴰ (inl {A} {B}) x)) (floc fs10)
       place = place-of inp
 
@@ -718,7 +724,7 @@ module SumC {FS : FrameSemantics} where
       -- patterns. Take it as an argument instead — the standing preference for
       -- a top-level helper over a with-block.
       place-of : InputAt mIn alloc x s
-               → ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
+               → ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                              (retVal (evalᴰ (inr {A} {B}) x)) (floc fs10)
       -- A register-resident payload needs NO payload location and NO payload
       -- validity — stage F's whole point. Fully proved.
@@ -767,7 +773,7 @@ module SumC {FS : FrameSemantics} where
             valid-inr-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
               (bf-advance bf) before-suc valid'
 
-      place : ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
+      place : ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                           (retVal (evalᴰ (inr {A} {B}) x)) (floc fs10)
       place = place-of inp
 

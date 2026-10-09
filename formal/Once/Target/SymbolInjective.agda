@@ -58,7 +58,8 @@ open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat)
 open import Once.Target.Symbol
   using (z-encode-char; z-encode-char-aux; z-encode; showNat; symbol-char?;
          mangle-component; join-us; once-prefix; once-symbol-path; once-symbol-own)
-open import Once.CanonicalName using (CanonicalName; canonical; parts)
+open import Once.CanonicalName using (CanonicalName; canonical; module CanonicalName)
+open CanonicalName using (parts)
 
 ------------------------------------------------------------------------
 -- Digit-character predicate.
