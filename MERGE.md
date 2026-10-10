@@ -296,7 +296,8 @@ that fires nothing (`RewritesNothing`), a moved name in a `using` list
 - **Per-module options need a reason** in a comment beside them (e.g.
   `--inversion-max-depth` for a long concrete trace).
 - Red islands outside the apex/compiler closure are not exempt: they stay red
-  until fixed, as before.
+  until fixed, and are listed with a reason in `formal/scripts/backstop.islands`
+  (§4f).
 
 ## 4e. Re-exports and imports (plan 0.92, D277)
 
@@ -318,6 +319,27 @@ importer's cone; the cost lands on modules the author never looked at. So:
   never occurs in its module.
 - **The scope is apex-live code** (the `--write-ast` dump, `run-ast-dumps.sh`);
   islands are left as they are, to be cleaned when they are hooked up.
+
+## 4f. The island backstop and `make merge-gate`
+
+Only the apex closure is checked by `make certified`; a module nothing on the apex
+imports can rot unseen (ErrorProofs did). The backstop checks the REST:
+
+    cd formal && make backstop           # = scripts/backstop.sh
+
+It generates `EverythingFiltered.agda` (untracked) importing every module except
+`scripts/backstop.islands`, and type-checks it. A new module is in the backstop
+from the day it lands. The islands list is a ratchet like `public-gate`'s
+baseline: an entry needs a one-line reason, the list only shrinks, and a repaired
+island loses its line in the same commit. `lint-imports` skips the same islands
+(their stale imports are why they are islands).
+
+All the mechanical gates run in one go, cheapest first:
+
+    cd formal && make merge-gate   # public-gate, pragma-gate, lint-imports, backstop, certified
+
+`make merge-gate` must pass before §5. It does not replace §1 (analysis), §4
+(extraction) or §4b (reachability).
 
 ## 5. Merge
 

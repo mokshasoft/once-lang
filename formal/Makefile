@@ -79,6 +79,17 @@ certified:
 lint-imports:
 	@./scripts/lint-imports.sh
 
+.PHONY: backstop
+# The island backstop: every module except scripts/backstop.islands (MERGE.md §4d).
+backstop:
+	@scripts/backstop.sh
+
+# Every mechanical merge gate in one go (MERGE.md §4): the ratchets first (seconds),
+# then the import lint, the backstop and the certified apex.
+.PHONY: merge-gate
+merge-gate: public-gate pragma-gate lint-imports backstop certified
+	@echo "merge-gate: OK"
+
 .PHONY: lint-pragmas
 lint-pragmas:
 	@$(CURDIR)/scripts/lint-pragmas.sh

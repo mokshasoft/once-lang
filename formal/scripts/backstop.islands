@@ -1,0 +1,29 @@
+# backstop.islands — modules the backstop does NOT check, each red for a recorded
+# reason. The list only shrinks: repair a module, then delete its line. A new
+# entry needs a reason and the reviewer's agreement (MERGE.md §4f).
+#
+# Stale import lists / dead names after a refactor (plan 0.35: the allocator is unwired)
+Once.Allocator.BumpAllocator        # AllocBump facade changed; unwired (plan 0.35)
+Once.Allocator.Mempool              # unwired allocator (plan 0.35)
+Once.Allocator.ReuseFreshness       # unwired allocator (plan 0.35)
+Once.Allocator.Slab                 # unwired allocator (plan 0.35)
+Once.CCC.Machine.IR.MuValidity      # Allocation no longer exports what it uses
+# The pre-D179 Category/optimizer stack (uses the retired `eval`)
+Once.Category.Laws                  # `eval` not in scope
+Once.Fusion.Correct                 # `eval` not in scope
+Once.Optimize.Correct               # imports Category.Laws
+Once.Optimize.Shape                 # Optimize no longer exports `_≟IR_`
+Once.Optimizer.Cost                 # `inl` arity changed
+Once.Optimizer.Depth                # imports Optimizer.Cost
+Once.Optimizer.IRReducible          # optimizer island
+Once.Optimizer.Normal               # optimizer island
+Once.Optimizer.PairCaseNormal       # optimizer island
+Once.Semantics.Value.Laws           # Functor no longer exports `unfoldS`
+Once.Semantics.Machine.Laws         # imports Semantics.Value.Laws
+Once.Spike.RelSpike                 # ValueDomain names moved (D179)
+# Refutation probes: each refuted a postulate that is gone; kept as records
+Once.Probe.ApexInconsistent         # CPU.Interface names moved
+Once.Probe.BlockRunsRefute          # refuted hypothesis removed
+Once.Probe.ClosureAmbiguous         # refuted hypothesis removed
+Once.Probe.CodeResolvesRefute       # refuted hypothesis removed
+Once.Probe.EntryBlocksRefute        # refuted hypothesis removed

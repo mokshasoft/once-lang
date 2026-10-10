@@ -24,7 +24,11 @@ printf '%s\nOnce.agda-lib\n' "$STD_LIB" > "$LIBFILE"
 WARNS='ModuleDoesntExport|DuplicateUsing|UselessPublic'
 bad=0
 
-find Once -name '*.agda' | LC_ALL=C sort > "$OUT.files"
+# The recorded red islands (scripts/backstop.islands) are skipped: their stale
+# imports are why they are islands.
+sed 's/#.*//; s/[[:space:]]*$//; /^$/d; s|\.|/|g; s|$|.agda|' scripts/backstop.islands > "$OUT.skip"
+find Once -name '*.agda' | LC_ALL=C sort | grep -vxF -f "$OUT.skip" > "$OUT.files"
+rm -f "$OUT.skip"
 while IFS= read -r f; do
   timeout 120 agda --library-file="$LIBFILE" --only-scope-checking "$f" > "$OUT" 2>&1
   if grep -qE "$WARNS" "$OUT"; then
