@@ -83,7 +83,7 @@ data T_DefSem_348
                    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                    MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
                   AgdaAny)
-                 MAlonzo.Code.Once.Spec.Contract.T_Impl_408
+                 MAlonzo.Code.Once.Spec.Contract.T_Impl_292
 -- Once.Spec.Core.Meaning.DefSem.defs
 d_defs_362 ::
   T_DefSem_348 ->
@@ -100,7 +100,7 @@ d_defs_362 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.Meaning.DefSem.impl
 d_impl_364 ::
-  T_DefSem_348 -> MAlonzo.Code.Once.Spec.Contract.T_Impl_408
+  T_DefSem_348 -> MAlonzo.Code.Once.Spec.Contract.T_Impl_292
 d_impl_364 v0
   = case coe v0 of
       C_defSem_366 v1 v2 -> coe v2
@@ -350,7 +350,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v21 v22 v23 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v9 v19
                                    (coe
@@ -382,7 +382,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v21 v22 v23 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v9 v19
                                    (coe
@@ -409,7 +409,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                             (coe v11) (coe v10)))
                                       (coe v23)))
                                 (coe
-                                   MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                   MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                    (coe
                                       du_'10214'_'10215'_460 v0 v1 v10 v20 v13 v5 v18 v21 v22
                                       (coe
@@ -448,7 +448,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v21 v22 v23 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v9 v19
                                    (coe
@@ -475,7 +475,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                             (coe v11) (coe v10)))
                                       (coe v23)))
                                 (coe
-                                   MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                   MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                    (coe
                                       du_'10214'_'10215'_460 v0 v1 v10 v20 v13 v5 v18 v21 v22
                                       (coe
@@ -546,7 +546,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v21 v22 v23 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v9 v19 v13 v5 v17 v21 v22
                                    (coe
@@ -616,7 +616,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v21 v22 v23 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v9 v19 v13 v5 v17 v21 v22
                                    (coe
@@ -694,7 +694,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v22 v23 v24 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v9 v18 v20 v5 v16 v22 v23
                                    (coe
@@ -711,7 +711,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                 (coe
                                    (\ v25 ->
                                       coe
-                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74
+                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28
                                         (coe v5)
                                         (coe
                                            du_'10214'_'10215'_460 v0 v1 v10 v19 v21 v5 v17 v22 v23
@@ -729,7 +729,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                         (coe
                                            (\ v26 ->
                                               coe
-                                                MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_102
+                                                MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_56
                                                 (coe v5)
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -742,7 +742,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                -> coe
                     (\ v16 v17 v18 ->
                        coe
-                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                          (coe
                             du_'10214'_'10215'_460 v0 v1 v2 v15
                             (coe MAlonzo.Code.Once.Type.C__'42'__124 (coe v4) (coe v12)) v5 v14
@@ -750,7 +750,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                          (coe
                             (\ v19 ->
                                coe
-                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_102 (coe v5)
+                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_56 (coe v5)
                                  (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v19)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Core.Typing.C_'8866'snd_374 v11 v14
@@ -759,7 +759,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                -> coe
                     (\ v16 v17 v18 ->
                        coe
-                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                          (coe
                             du_'10214'_'10215'_460 v0 v1 v2 v15
                             (coe MAlonzo.Code.Once.Type.C__'42'__124 (coe v11) (coe v4)) v5 v14
@@ -767,7 +767,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                          (coe
                             (\ v19 ->
                                coe
-                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_102 (coe v5)
+                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_56 (coe v5)
                                  (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v19)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Core.Typing.C_'8866'inl_390 v14
@@ -778,12 +778,12 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v18 v19 v20 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe du_'10214'_'10215'_460 v0 v1 v2 v15 v16 v5 v14 v18 v19 v20)
                                 (coe
                                    (\ v21 ->
                                       coe
-                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_102
+                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_56
                                         (coe v5)
                                         (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe v21)))))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -796,12 +796,12 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v18 v19 v20 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe du_'10214'_'10215'_460 v0 v1 v2 v15 v17 v5 v14 v18 v19 v20)
                                 (coe
                                    (\ v21 ->
                                       coe
-                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_102
+                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_56
                                         (coe v5)
                                         (coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe v21)))))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -812,7 +812,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                -> coe
                     (\ v26 v27 v28 ->
                        coe
-                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                          (coe
                             du_'10214'_'10215'_460 v0 v1 v9 v23
                             (coe MAlonzo.Code.Once.Type.C__'43'__126 (coe v14) (coe v15)) v5
@@ -880,7 +880,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                -> coe
                     (\ v15 v16 v17 ->
                        coe
-                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                          (coe
                             du_'10214'_'10215'_460 v0 v1 v2 v14
                             (coe MAlonzo.Code.Once.Type.C_Void_122) v5 v13 v15 v16 v17)
@@ -894,7 +894,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v17 v18 v19 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v2 v15
                                    (MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170
@@ -903,7 +903,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                 (coe
                                    (\ v20 ->
                                       coe
-                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_102
+                                        MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_56
                                         (coe v5)
                                         (coe
                                            MAlonzo.Code.Once.Denotation.GradedOps.d_in'45'value'7515'_220
@@ -916,7 +916,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                -> coe
                     (\ v21 v22 v23 ->
                        coe
-                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                          (coe
                             du_'10214'_'10215'_460 v0 v1 v9 v19
                             (coe
@@ -931,17 +931,38 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                             (coe
                                MAlonzo.Code.Once.Denotation.PhaseV.du_restrict'7515'_40 (coe v1)
                                (coe
-                                  MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116 (coe v9)
+                                  MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
+                                  (coe
+                                     MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                     (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
                                   (coe v10))
                                (coe v9)
                                (coe
-                                  MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''43''737'_322
-                                  (coe v9) (coe v10))
+                                  MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45'trans_376
+                                  (coe v9)
+                                  (coe
+                                     MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                     (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                  (coe
+                                     MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
+                                     (coe
+                                        MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                        (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                     (coe v10))
+                                  (coe
+                                     MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+                                     (coe v9))
+                                  (coe
+                                     MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''43''737'_322
+                                     (coe
+                                        MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                        (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                     (coe v10)))
                                (coe v23)))
                          (coe
                             (\ v24 ->
                                coe
-                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                  (coe
                                     du_'10214'_'10215'_460 v0 v1 v10 v20
                                     (coe MAlonzo.Code.Once.Type.C_μ'45'type_130 (coe v12)) v5 v18
@@ -951,11 +972,17 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                        (coe v1)
                                        (coe
                                           MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
-                                          (coe v9) (coe v10))
+                                          (coe
+                                             MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                             (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                          (coe v10))
                                        (coe v10)
                                        (coe
                                           MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''43''691'_338
-                                          (coe v9) (coe v10))
+                                          (coe
+                                             MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                             (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                          (coe v10))
                                        (coe v23)))
                                  (coe
                                     MAlonzo.Code.Once.Denotation.GradedOps.du_cata'45'sem'7515'_234
@@ -969,7 +996,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                       -> coe
                            (\ v24 v25 v26 ->
                               coe
-                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                                MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                                 (coe
                                    du_'10214'_'10215'_460 v0 v1 v10 v21 v14 v5 v19 v24 v25
                                    (coe
@@ -977,11 +1004,17 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                       (coe v1)
                                       (coe
                                          MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
-                                         (coe v9) (coe v10))
+                                         (coe
+                                            MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                            (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                         (coe v10))
                                       (coe v10)
                                       (coe
                                          MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''43''691'_338
-                                         (coe v9) (coe v10))
+                                         (coe
+                                            MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                            (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                         (coe v10))
                                       (coe v26)))
                                 (coe
                                    MAlonzo.Code.Once.Denotation.GradedOps.du_ana'45'sem'7515'_374
@@ -1002,11 +1035,32 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                                          (coe v1)
                                          (coe
                                             MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
-                                            (coe v9) (coe v10))
+                                            (coe
+                                               MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                            (coe v10))
                                          (coe v9)
                                          (coe
-                                            MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''43''737'_322
-                                            (coe v9) (coe v10))
+                                            MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45'trans_376
+                                            (coe v9)
+                                            (coe
+                                               MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                            (coe
+                                               MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
+                                               (coe
+                                                  MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                                  (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                               (coe v10))
+                                            (coe
+                                               MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+                                               (coe v9))
+                                            (coe
+                                               MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''43''737'_322
+                                               (coe
+                                                  MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                                  (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                               (coe v10)))
                                          (coe v26)))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1016,7 +1070,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                -> coe
                     (\ v16 v17 v18 ->
                        coe
-                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                          (coe
                             du_'10214'_'10215'_460 v0 v1 v2 v15
                             (coe MAlonzo.Code.Once.Type.C_ν'45'type_132 (coe v11) (coe v5)) v5
@@ -1067,7 +1121,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                -> coe
                     (\ v16 v17 v18 ->
                        coe
-                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_74 (coe v5)
+                         MAlonzo.Code.Once.Denotation.GradedDomain.du_bindM_28 (coe v5)
                          (coe
                             du_'10214'_'10215'_460 v0 v1 v2 v15
                             (coe MAlonzo.Code.Once.Spec.Core.Syntax.du_primDom_56 (coe v14)) v5
@@ -1075,7 +1129,7 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
                          (coe
                             (\ v19 ->
                                coe
-                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_102 (coe v5)
+                                 MAlonzo.Code.Once.Denotation.GradedDomain.du_returnM_56 (coe v5)
                                  (coe d_primSem_378 (coe v14) (coe v16) (coe v19)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Core.Typing.C_'8866'sigop_576 v11 v12 v13 v14
@@ -1105,6 +1159,6 @@ du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v5 v6
         -> coe
              (\ v16 v17 v18 ->
                 coe
-                  MAlonzo.Code.Once.Denotation.GradedDomain.du_subM_90 (coe v14)
+                  MAlonzo.Code.Once.Denotation.GradedDomain.du_subM_44 (coe v14)
                   (coe du_'10214'_'10215'_460 v0 v1 v2 v3 v4 v10 v15 v16 v17 v18))
       _ -> MAlonzo.RTE.mazUnreachableError

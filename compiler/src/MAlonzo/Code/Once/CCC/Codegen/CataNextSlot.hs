@@ -111,7 +111,7 @@ d_exec'45'abstract_340 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'abstract_340 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3240
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3210
       (coe v0)
 -- Once.CCC.Codegen.CataNextSlot.CataNextSlot._.exec-case-dispatch
 d_exec'45'case'45'dispatch_342 ::
@@ -124,7 +124,7 @@ d_exec'45'case'45'dispatch_342 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'case'45'dispatch_342 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'case'45'dispatch_3246
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'case'45'dispatch_3216
       (coe v0)
 -- Once.CCC.Codegen.CataNextSlot.CataNextSlot._.exec-load-from-slot-with-value
 d_exec'45'load'45'from'45'slot'45'with'45'value_344 ::
@@ -142,7 +142,7 @@ du_exec'45'load'45'from'45'slot'45'with'45'value_344 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'load'45'from'45'slot'45'with'45'value_344
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2648
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2618
 -- Once.CCC.Codegen.CataNextSlot.CataNextSlot._.exec-restore-input-with-value
 d_exec'45'restore'45'input'45'with'45'value_346 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -159,7 +159,7 @@ du_exec'45'restore'45'input'45'with'45'value_346 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'restore'45'input'45'with'45'value_346
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2660
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2630
 -- Once.CCC.Codegen.CataNextSlot.CataNextSlot._.exec-trace
 d_exec'45'trace_348 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -169,7 +169,7 @@ d_exec'45'trace_348 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'trace_348 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_3242 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_3212 (coe v0)
 -- Once.CCC.Codegen.CataNextSlot.CataNextSlot.elfs-alloc
 d_elfs'45'alloc_356 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

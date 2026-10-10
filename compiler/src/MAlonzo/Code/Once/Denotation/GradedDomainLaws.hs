@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Semantics.ValueIR where
+module MAlonzo.Code.Once.Denotation.GradedDomainLaws where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -18,39 +18,36 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Type
 
--- Once.Semantics.ValueIR._.⟦_⟧
-d_'10214'_'10215'_12 ::
-  () -> () -> MAlonzo.Code.Once.Type.T_Type_108 -> ()
-d_'10214'_'10215'_12 = erased
--- Once.Semantics.ValueIR.⟦_⟧ᴵ
-d_'10214'_'10215''7477'_16 ::
-  () -> () -> MAlonzo.Code.Once.IRTy.T_IRTy_6 -> ()
-d_'10214'_'10215''7477'_16 = erased
--- Once.Semantics.ValueIR.⟦_⟧Fᴵ
-d_'10214'_'10215'F'7477'_20 ::
-  () -> () -> MAlonzo.Code.Once.IRTy.T_IRFunctor_4 -> () -> ()
-d_'10214'_'10215'F'7477'_20 = erased
--- Once.Semantics.ValueIR.base-coh
-d_base'45'coh_28 ::
+-- Once.Denotation.GradedDomainLaws.>>=ᵖ-β
+d_'62''62''61''7510''45'β_14 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  AgdaAny ->
+  (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_base'45'coh_28 = erased
--- Once.Semantics.ValueIR.tF-coh
-d_tF'45'coh_62 ::
+d_'62''62''61''7510''45'β_14 = erased
+-- Once.Denotation.GradedDomainLaws.>>=ᵖ-assoc
+d_'62''62''61''7510''45'assoc_34 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  () ->
+  AgdaAny ->
+  (AgdaAny -> AgdaAny) ->
+  (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tF'45'coh_62 = erased
--- Once.Semantics.ValueIR.coh
-d_coh_76 ::
+d_'62''62''61''7510''45'assoc_34 = erased
+-- Once.Denotation.GradedDomainLaws.>>=ᵖ-idʳ
+d_'62''62''61''7510''45'id'691'_48 ::
+  () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'62''62''61''7510''45'id'691'_48 = erased
+-- Once.Denotation.GradedDomainLaws.bindM-idˡ
+d_bindM'45'id'737'_62 ::
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
   () ->
   () ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  AgdaAny ->
+  (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coh_76 = erased
+d_bindM'45'id'737'_62 = erased

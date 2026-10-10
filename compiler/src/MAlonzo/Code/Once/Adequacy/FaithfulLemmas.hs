@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
+import qualified MAlonzo.Code.Once.Denotation.Phase
 import qualified MAlonzo.Code.Once.Denotation.SourceDenote
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
@@ -36,16 +37,16 @@ import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.FaithfulLemmas.σ₀
-d_σ'8320'_32 ::
+d_σ'8320'_30 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Denotation.SourceDenote.T_DefsSem_70
-d_σ'8320'_32 v0 v1
+d_σ'8320'_30 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.SourceDenote.d_internalDefs_90
       (coe v0) (coe v1)
 -- Once.Adequacy.FaithfulLemmas.transport-apply-bind
-d_transport'45'apply'45'bind_60 ::
+d_transport'45'apply'45'bind_58 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   () ->
@@ -56,18 +57,18 @@ d_transport'45'apply'45'bind_60 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_transport'45'apply'45'bind_60 = erased
+d_transport'45'apply'45'bind_58 = erased
 -- Once.Adequacy.FaithfulLemmas.subst-T-returnT
-d_subst'45'T'45'returnT_76 ::
+d_subst'45'T'45'returnT_74 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   () ->
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45'T'45'returnT_76 = erased
+d_subst'45'T'45'returnT_74 = erased
 -- Once.Adequacy.FaithfulLemmas.subst-arrow
-d_subst'45'arrow_104 ::
+d_subst'45'arrow_102 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   () ->
@@ -78,9 +79,9 @@ d_subst'45'arrow_104 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45'arrow_104 = erased
+d_subst'45'arrow_102 = erased
 -- Once.Adequacy.FaithfulLemmas.morph-app-bridge
-d_morph'45'app'45'bridge_122 ::
+d_morph'45'app'45'bridge_120 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -89,9 +90,9 @@ d_morph'45'app'45'bridge_122 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_morph'45'app'45'bridge_122 = erased
+d_morph'45'app'45'bridge_120 = erased
 -- Once.Adequacy.FaithfulLemmas._.w'
-d_w''_140 ::
+d_w''_138 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -100,11 +101,11 @@ d_w''_140 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> AgdaAny
-d_w''_140 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 = du_w''_140 v7
-du_w''_140 :: AgdaAny -> AgdaAny
-du_w''_140 v0 = coe v0
+d_w''_138 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 = du_w''_138 v7
+du_w''_138 :: AgdaAny -> AgdaAny
+du_w''_138 v0 = coe v0
 -- Once.Adequacy.FaithfulLemmas._.app-⟨⟩-clean
-d_app'45''10216''10217''45'clean_146 ::
+d_app'45''10216''10217''45'clean_144 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -113,9 +114,9 @@ d_app'45''10216''10217''45'clean_146 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_app'45''10216''10217''45'clean_146 = erased
+d_app'45''10216''10217''45'clean_144 = erased
 -- Once.Adequacy.FaithfulLemmas._.ih-evalᴰ
-d_ih'45'eval'7472'_154 ::
+d_ih'45'eval'7472'_152 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -124,9 +125,9 @@ d_ih'45'eval'7472'_154 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ih'45'eval'7472'_154 = erased
+d_ih'45'eval'7472'_152 = erased
 -- Once.Adequacy.FaithfulLemmas.morph-app-bridge-fun
-d_morph'45'app'45'bridge'45'fun_170 ::
+d_morph'45'app'45'bridge'45'fun_168 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -135,9 +136,9 @@ d_morph'45'app'45'bridge'45'fun_170 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_morph'45'app'45'bridge'45'fun_170 = erased
+d_morph'45'app'45'bridge'45'fun_168 = erased
 -- Once.Adequacy.FaithfulLemmas.cataM-fold
-d_cataM'45'fold_182 ::
+d_cataM'45'fold_180 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
@@ -146,9 +147,9 @@ d_cataM'45'fold_182 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_cataM'45'fold_182 = erased
+d_cataM'45'fold_180 = erased
 -- Once.Adequacy.FaithfulLemmas._.c'
-d_c''_198 ::
+d_c''_196 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
@@ -157,13 +158,13 @@ d_c''_198 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
-d_c''_198 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 = du_c''_198 v6
-du_c''_198 ::
+d_c''_196 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 = du_c''_196 v6
+du_c''_196 ::
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
-du_c''_198 v0 = coe v0
+du_c''_196 v0 = coe v0
 -- Once.Adequacy.FaithfulLemmas._.applyIR
-d_applyIR_202 ::
+d_applyIR_200 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
@@ -172,11 +173,11 @@ d_applyIR_202 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.IR.T_IR_16
-d_applyIR_202 ~v0 ~v1 v2 v3 ~v4 ~v5 ~v6 = du_applyIR_202 v2 v3
-du_applyIR_202 ::
+d_applyIR_200 ~v0 ~v1 v2 v3 ~v4 ~v5 ~v6 = du_applyIR_200 v2 v3
+du_applyIR_200 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Type.T_Type_108 -> MAlonzo.Code.Once.IR.T_IR_16
-du_applyIR_202 v0 v1
+du_applyIR_200 v0 v1
   = coe
       MAlonzo.Code.Once.IR.C__'8728'__28
       (coe
@@ -198,7 +199,7 @@ du_applyIR_202 v0 v1
          (coe MAlonzo.Code.Once.IR.C_fst_42)
          (coe MAlonzo.Code.Once.IR.C_snd_48))
 -- Once.Adequacy.FaithfulLemmas._.apply-closure
-d_apply'45'closure_206 ::
+d_apply'45'closure_204 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
@@ -207,9 +208,9 @@ d_apply'45'closure_206 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_apply'45'closure_206 = erased
+d_apply'45'closure_204 = erased
 -- Once.Adequacy.FaithfulLemmas._.innerCata
-d_innerCata_212 ::
+d_innerCata_210 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
@@ -218,21 +219,21 @@ d_innerCata_212 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.IR.T_IR_16
-d_innerCata_212 ~v0 ~v1 v2 v3 ~v4 v5 ~v6
-  = du_innerCata_212 v2 v3 v5
-du_innerCata_212 ::
+d_innerCata_210 ~v0 ~v1 v2 v3 ~v4 v5 ~v6
+  = du_innerCata_210 v2 v3 v5
+du_innerCata_210 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_innerCata_212 v0 v1 v2
+du_innerCata_210 v0 v1 v2
   = coe
       MAlonzo.Code.Once.IR.C_Cata_106
       (MAlonzo.Code.Once.IRTy.WF.d_wf'45''8970''8971'_46
          (coe v0) (coe v2))
-      (coe du_applyIR_202 (coe v0) (coe v1))
+      (coe du_applyIR_200 (coe v0) (coe v1))
 -- Once.Adequacy.FaithfulLemmas.cata-body
-d_cata'45'body_250 ::
+d_cata'45'body_248 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
@@ -246,9 +247,9 @@ d_cata'45'body_250 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_cata'45'body_250 = erased
+d_cata'45'body_248 = erased
 -- Once.Adequacy.FaithfulLemmas._.ealg
-d_ealg_274 ::
+d_ealg_272 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
@@ -262,9 +263,9 @@ d_ealg_274 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.IR.T_IR_16
-d_ealg_274 ~v0 ~v1 v2 v3 v4 v5 v6 v7 ~v8 v9 ~v10 ~v11
-  = du_ealg_274 v2 v3 v4 v5 v6 v7 v9
-du_ealg_274 ::
+d_ealg_272 ~v0 ~v1 v2 v3 v4 v5 v6 v7 ~v8 v9 ~v10 ~v11
+  = du_ealg_272 v2 v3 v4 v5 v6 v7 v9
+du_ealg_272 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -273,19 +274,66 @@ du_ealg_274 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_ealg_274 v0 v1 v2 v3 v4 v5 v6
+du_ealg_272 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_402 (coe v0)
-      (coe v1) (coe v2)
+      MAlonzo.Code.Once.IR.C__'8728'__28
+      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
+         (coe
+            MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
+            (coe
+               MAlonzo.Code.Once.Surface.Context.du__'8638'__234 (coe v1)
+               (coe v2))))
       (coe
-         MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128
+         MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_402 (coe v0)
+         (coe v1) (coe v2)
          (coe
-            MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v3) (coe v4))
+            MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128
+            (coe
+               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v3) (coe v4))
+            (coe
+               MAlonzo.Code.Once.Type.C_mk'45'kind_50
+               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v5))
+            (coe v4))
+         (coe v6))
+      (coe
+         MAlonzo.Code.Once.Surface.Elaborate.du_restrictEnv_84 (coe v1)
          (coe
-            MAlonzo.Code.Once.Type.C_mk'45'kind_50
-            (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v5))
-         (coe v4))
-      (coe v6)
+            MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+            (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
+         (coe v2)
+         (coe
+            MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+            (coe v2)))
+-- Once.Adequacy.FaithfulLemmas._.dγ′
+d_dγ'8242'_274 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
+d_dγ'8242'_274 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10 ~v11
+  = du_dγ'8242'_274 v3 v4 v10
+du_dγ'8242'_274 ::
+  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 -> AgdaAny -> AgdaAny
+du_dγ'8242'_274 v0 v1 v2
+  = coe
+      MAlonzo.Code.Once.Denotation.Phase.du_restrict'7472'_40 (coe v0)
+      (coe
+         MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+         (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v1))
+      (coe v1)
+      (coe
+         MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+         (coe v1))
+      (coe v2)
 -- Once.Adequacy.FaithfulLemmas._.cataM'
 d_cataM''_276 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
@@ -967,18 +1015,66 @@ du_ecoalg_686 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ecoalg_686 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_402 (coe v0)
-      (coe v1) (coe v2)
+      MAlonzo.Code.Once.IR.C__'8728'__28
+      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
+         (coe
+            MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
+            (coe
+               MAlonzo.Code.Once.Surface.Context.du__'8638'__234 (coe v1)
+               (coe v2))))
       (coe
-         MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 (coe v4)
+         MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_402 (coe v0)
+         (coe v1) (coe v2)
          (coe
-            MAlonzo.Code.Once.Type.C_mk'45'kind_50
-            (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v5))
+            MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 (coe v4)
+            (coe
+               MAlonzo.Code.Once.Type.C_mk'45'kind_50
+               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v5))
+            (coe
+               MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v3) (coe v4)))
+         (coe v6))
+      (coe
+         MAlonzo.Code.Once.Surface.Elaborate.du_restrictEnv_84 (coe v1)
          (coe
-            MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v3) (coe v4)))
-      (coe v6)
+            MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+            (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
+         (coe v2)
+         (coe
+            MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+            (coe v2)))
+-- Once.Adequacy.FaithfulLemmas._.dγ′
+d_dγ'8242'_688 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
+d_dγ'8242'_688 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11 ~v12
+  = du_dγ'8242'_688 v3 v4 v11
+du_dγ'8242'_688 ::
+  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 -> AgdaAny -> AgdaAny
+du_dγ'8242'_688 v0 v1 v2
+  = coe
+      MAlonzo.Code.Once.Denotation.Phase.du_restrict'7472'_40 (coe v0)
+      (coe
+         MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+         (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v1))
+      (coe v1)
+      (coe
+         MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+         (coe v1))
+      (coe v2)
 -- Once.Adequacy.FaithfulLemmas._.anaM'
-d_anaM''_688 ::
+d_anaM''_690 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
@@ -993,19 +1089,19 @@ d_anaM''_688 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.IR.T_IR_16
-d_anaM''_688 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 ~v7 ~v8 v9 ~v10 ~v11 ~v12
-  = du_anaM''_688 v5 v6 v9
-du_anaM''_688 ::
+d_anaM''_690 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 ~v7 ~v8 v9 ~v10 ~v11 ~v12
+  = du_anaM''_690 v5 v6 v9
+du_anaM''_690 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_anaM''_688 v0 v1 v2
+du_anaM''_690 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Surface.Elaborate.du_anaM_382 (coe v0) (coe v1)
       (coe v2)
 -- Once.Adequacy.FaithfulLemmas._.liftAnaM
-d_liftAnaM_690 ::
+d_liftAnaM_692 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
@@ -1021,9 +1117,9 @@ d_liftAnaM_690 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
-d_liftAnaM_690 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 ~v10 ~v11 ~v12
-  = du_liftAnaM_690 v0 v1 v5 v6 v7 v8 v9
-du_liftAnaM_690 ::
+d_liftAnaM_692 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 ~v10 ~v11 ~v12
+  = du_liftAnaM_692 v0 v1 v5 v6 v7 v8 v9
+du_liftAnaM_692 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
@@ -1033,7 +1129,7 @@ du_liftAnaM_690 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
-du_liftAnaM_690 v0 v1 v2 v3 v4 v5 v6
+du_liftAnaM_692 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_392 (coe v0)
       (coe v1)
@@ -1050,9 +1146,9 @@ du_liftAnaM_690 v0 v1 v2 v3 v4 v5 v6
             MAlonzo.Code.Once.Type.C_mk'45'kind_50
             (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v4))
          (coe MAlonzo.Code.Once.Type.C_ν'45'type_132 (coe v2) (coe v5)))
-      (coe du_anaM''_688 (coe v2) (coe v3) (coe v6))
+      (coe du_anaM''_690 (coe v2) (coe v3) (coe v6))
 -- Once.Adequacy.FaithfulLemmas._.split
-d_split_692 ::
+d_split_694 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
@@ -1067,9 +1163,9 @@ d_split_692 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_split_692 = erased
+d_split_694 = erased
 -- Once.Adequacy.FaithfulLemmas._.unfold-step
-d_unfold'45'step_698 ::
+d_unfold'45'step_700 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
@@ -1084,4 +1180,4 @@ d_unfold'45'step_698 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_unfold'45'step_698 = erased
+d_unfold'45'step_700 = erased

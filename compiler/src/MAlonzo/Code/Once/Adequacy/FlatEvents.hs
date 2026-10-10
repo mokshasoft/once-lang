@@ -177,7 +177,7 @@ du_ev'45'of'45'loc_452 v0 v1
       (case coe v0 of
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'sigop_2296 v3 v4 v5
            -> coe
-                MAlonzo.Code.Once.CCC.Machine.SMCore.du_sigop'45'events_3112
+                MAlonzo.Code.Once.CCC.Machine.SMCore.du_sigop'45'events_3082
                 (coe v3) (coe v5) (coe v1)
          _ -> coe v2)
 -- Once.Adequacy.FlatEvents.FlatEventTrace.event-of

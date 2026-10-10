@@ -22,7 +22,6 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Nat.Base
-import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Denotation.Trace
 
 -- Once.Denotation.Behavior.Behavior
@@ -72,125 +71,22 @@ d_silent_42
            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) erased)
       (\ v0 -> coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26)
--- Once.Denotation.Behavior.behavior-by
-d_behavior'45'by_50 ::
-  T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  T_Behavior_6
-d_behavior'45'by_50 v0 v1 ~v2 = du_behavior'45'by_50 v0 v1
-du_behavior'45'by_50 ::
-  T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
-  T_Behavior_6
-du_behavior'45'by_50 v0 v1
-  = coe
-      C_mkBehavior_40 v1 (coe du_ext_66 (coe v0))
-      (coe du_bnd_74 (coe v0))
--- Once.Denotation.Behavior._.ext
-d_ext_66 ::
-  T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_ext_66 v0 ~v1 ~v2 v3 = du_ext_66 v0 v3
-du_ext_66 ::
-  T_Behavior_6 -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_ext_66 v0 v1
-  = coe
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe
-         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe d_extends_30 v0 v1))
-      erased
--- Once.Denotation.Behavior._.bnd
-d_bnd_74 ::
-  T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_bnd_74 v0 ~v1 ~v2 v3 = du_bnd_74 v0 v3
-du_bnd_74 ::
-  T_Behavior_6 -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_bnd_74 v0 v1 = coe d_bounded_34 v0 v1
--- Once.Denotation.Behavior._.sat
-d_sat_82 ::
-  T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
-  (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sat_82 = erased
--- Once.Denotation.Behavior.take-all
-d_take'45'all_94 ::
-  Integer ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_take'45'all_94 = erased
--- Once.Denotation.Behavior.take-++-≤
-d_take'45''43''43''45''8804'_114 ::
-  Integer ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_take'45''43''43''45''8804'_114 = erased
--- Once.Denotation.Behavior.step
-d_step_138 ::
-  T_Behavior_6 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_step_138 = erased
--- Once.Denotation.Behavior._.go
-d_go_152 ::
-  T_Behavior_6 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go_152 = erased
--- Once.Denotation.Behavior.at-stable
-d_at'45'stable_176 ::
-  T_Behavior_6 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at'45'stable_176 = erased
--- Once.Denotation.Behavior._.go
-d_go_192 ::
-  T_Behavior_6 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go_192 = erased
 -- Once.Denotation.Behavior.Source
-d_Source_196 = ()
-data T_Source_196
-  = C_mkSource_206 [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-                   MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_Source_44 = ()
+data T_Source_44
+  = C_mkSource_54 [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
+                  MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.Denotation.Behavior.Source.srcImports
-d_srcImports_202 ::
-  T_Source_196 -> [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_srcImports_202 v0
+d_srcImports_50 ::
+  T_Source_44 -> [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
+d_srcImports_50 v0
   = case coe v0 of
-      C_mkSource_206 v1 v2 -> coe v1
+      C_mkSource_54 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Behavior.Source.srcText
-d_srcText_204 ::
-  T_Source_196 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_srcText_204 v0
+d_srcText_52 ::
+  T_Source_44 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_srcText_52 v0
   = case coe v0 of
-      C_mkSource_206 v1 v2 -> coe v2
+      C_mkSource_54 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError

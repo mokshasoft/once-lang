@@ -102,7 +102,7 @@ du_cfb'45'aux'45'doOpt_30 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                    MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_398 (coe v0))))
                           (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v7))
                           (coe
-                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
+                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1016
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_394 (coe v0))
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_398 (coe v0))
                              (coe v11) (coe v7)
@@ -119,7 +119,7 @@ du_cfb'45'aux'45'doOpt_30 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                    MAlonzo.Code.Once.Denotation.Realize.d_realize_20 (coe v0)
                                    (coe v1) (coe v7) (coe v11) (coe v10)))))
                        (coe
-                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
+                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1016
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_394 (coe v0))
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_398 (coe v0))
                           (coe v11) (coe v7)
@@ -384,7 +384,7 @@ du_ce'45'prim'45'doOpt_288 v0 v1 v2 v3 v4 v5
         -> coe
              du_conc_402 (coe v0) (coe v1) (coe v2) (coe v3) (coe v6)
              (coe MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63'_52 (coe v6))
-             (coe MAlonzo.Code.Once.Type.Honest.d_honest'63'_86 (coe v6))
+             (coe MAlonzo.Code.Once.Type.Honest.d_honest'63'_190 (coe v6))
              (coe MAlonzo.Code.Once.Type.Rigid.d_rigidFree'63'_838 (coe v6))
              (coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError

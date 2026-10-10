@@ -75,7 +75,7 @@ d_step'45'budget'45'x86'45'32'45'adequate_32
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-32.step-budget-x86-32-adequate"
 -- Once.Adequacy.CPU.X86-32.run-trace-x86-32
 d_run'45'trace'45'x86'45'32_34 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_296 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6

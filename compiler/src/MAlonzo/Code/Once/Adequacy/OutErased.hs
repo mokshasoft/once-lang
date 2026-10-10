@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Once.Adequacy.CataBridge
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Meaning
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
+import qualified MAlonzo.Code.Once.Denotation.TraceMonadLaws
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
 import qualified MAlonzo.Code.Once.Denotation.ValueDomainLaws
 import qualified MAlonzo.Code.Once.Functor.Translate
@@ -539,7 +540,7 @@ du_layer'45'refl_830 v0 v1 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_240 v6
                -> coe
-                    MAlonzo.Code.Once.Adequacy.CataBridge.du_base'45'refl_26 (coe v4)
+                    MAlonzo.Code.Once.Adequacy.CataBridge.du_base'45'refl_22 (coe v4)
                     (coe v6) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Type.C_Id_114 -> coe seq (coe v1) (coe v2 v3)
@@ -585,7 +586,7 @@ du_out'45'rel_892 v0 v1 v2 v3 v4
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_K_112 v7
                -> coe
-                    MAlonzo.Code.Once.Adequacy.CataBridge.du_base'45'refl_26 (coe v7)
+                    MAlonzo.Code.Once.Adequacy.CataBridge.du_base'45'refl_22 (coe v7)
                     (coe v6)
                     (coe
                        MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_386
@@ -647,17 +648,17 @@ d_liftFn'45'Out'45'pair_944 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   MAlonzo.Code.Once.Denotation.ValueDomain.T_ν'7496'_8 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 d_liftFn'45'Out'45'pair_944 ~v0 ~v1 v2 ~v3 v4 v5
   = du_liftFn'45'Out'45'pair_944 v2 v4 v5
 du_liftFn'45'Out'45'pair_944 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   MAlonzo.Code.Once.Denotation.ValueDomain.T_ν'7496'_8 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 du_liftFn'45'Out'45'pair_944 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'refl_1206
+      MAlonzo.Code.Once.Denotation.TraceMonadLaws.du_RelT'8242''45'refl_496
       (coe
          du_layer'45'refl_830 (coe v0) (coe v1)
          (coe

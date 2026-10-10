@@ -73,7 +73,7 @@ d_step'45'budget'45'riscv64'45'adequate_32
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.RiscV64.step-budget-riscv64-adequate"
 -- Once.Adequacy.CPU.RiscV64.run-trace-riscv64
 d_run'45'trace'45'riscv64_34 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6

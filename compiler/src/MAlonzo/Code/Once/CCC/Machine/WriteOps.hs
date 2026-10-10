@@ -57,7 +57,7 @@ d_write'45'loc_60 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
 d_write'45'loc_60 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.Allocation.d_write'45'loc_336
+      MAlonzo.Code.Once.CCC.Machine.Allocation.d_write'45'loc_298
       (coe v0)
 -- Once.CCC.Machine.WriteOps.WriteWithDisjoint._.BeforeFrontier
 d_BeforeFrontier_74 a0 a1 a2 = ()
@@ -108,7 +108,7 @@ d_write'45'at'45'frontier'45'preserves'45'before_408 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_584 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_write'45'at'45'frontier'45'preserves'45'before_408 = erased
 -- Once.CCC.Machine.WriteOps.WriteWithDisjoint.write-at-suc-frontier-preserves-before
@@ -118,7 +118,7 @@ d_write'45'at'45'suc'45'frontier'45'preserves'45'before_532 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_584 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_write'45'at'45'suc'45'frontier'45'preserves'45'before_532
   = erased
@@ -129,7 +129,7 @@ d_write'45'sv'45'at'45'frontier'45'preserves'45'before_656 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_584 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_write'45'sv'45'at'45'frontier'45'preserves'45'before_656 = erased
 -- Once.CCC.Machine.WriteOps.WriteWithDisjoint.write-sv-at-suc-frontier-preserves-before
@@ -139,7 +139,7 @@ d_write'45'sv'45'at'45'suc'45'frontier'45'preserves'45'before_780 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_664 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_584 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_write'45'sv'45'at'45'suc'45'frontier'45'preserves'45'before_780
   = erased

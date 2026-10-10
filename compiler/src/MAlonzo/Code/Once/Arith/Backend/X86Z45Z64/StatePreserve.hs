@@ -25,19 +25,12 @@ import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
 
 -- Once.Arith.Backend.X86-64.StatePreserve._.PreservesCCCState
 d_PreservesCCCState_12 a0 a1 a2 = ()
--- Once.Arith.Backend.X86-64.StatePreserve._.mem≈
-d_mem'8776'_16 ::
-  MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'8776'_16 = erased
 -- Once.Arith.Backend.X86-64.StatePreserve._.preserves-state-refl
-d_preserves'45'state'45'refl_20 ::
+d_preserves'45'state'45'refl_18 ::
   Integer ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_376 ->
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56
-d_preserves'45'state'45'refl_20
+d_preserves'45'state'45'refl_18
   = coe
       MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.du_preserves'45'state'45'refl_78
       (coe
@@ -50,7 +43,7 @@ d_preserves'45'state'45'refl_20
               (coe v0)))
       erased erased
 -- Once.Arith.Backend.X86-64.StatePreserve._.preserves-state-trans
-d_preserves'45'state'45'trans_22 ::
+d_preserves'45'state'45'trans_20 ::
   Integer ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_376 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_376 ->
@@ -58,7 +51,7 @@ d_preserves'45'state'45'trans_22 ::
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56
-d_preserves'45'state'45'trans_22
+d_preserves'45'state'45'trans_20
   = coe
       MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.du_preserves'45'state'45'trans_92
       (coe
@@ -70,20 +63,15 @@ d_preserves'45'state'45'trans_22
             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_memory_390
               (coe v0)))
       erased erased
--- Once.Arith.Backend.X86-64.StatePreserve._.regs≈
-d_regs'8776'_24 ::
-  MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
-  MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Preserve.T_AgreeCCC_14
-d_regs'8776'_24 = erased
 -- Once.Arith.Backend.X86-64.StatePreserve._.PreservesCCCState.mem≈
-d_mem'8776'_28 ::
+d_mem'8776'_24 ::
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'8776'_28 = erased
+d_mem'8776'_24 = erased
 -- Once.Arith.Backend.X86-64.StatePreserve._.PreservesCCCState.regs≈
-d_regs'8776'_30 ::
+d_regs'8776'_26 ::
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
   MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Preserve.T_AgreeCCC_14
-d_regs'8776'_30 = erased
+d_regs'8776'_26 = erased

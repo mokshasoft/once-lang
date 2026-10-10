@@ -303,7 +303,7 @@ d_defs_648 v0
 -- Once.Adequacy.CoreAbsSem.GM.DefSem.impl
 d_impl_650 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
-  MAlonzo.Code.Once.Spec.Contract.T_Impl_408
+  MAlonzo.Code.Once.Spec.Contract.T_Impl_292
 d_impl_650 v0
   = coe MAlonzo.Code.Once.Spec.Core.Meaning.d_impl_364 (coe v0)
 -- Once.Adequacy.CoreAbsSem.tr
@@ -851,8 +851,8 @@ d_tr'45'coerce_1482 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

@@ -234,7 +234,7 @@ d_coeIR'45'lift_368 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coeIR'45'lift_368 = erased
 -- Once.Adequacy.CoerceFaithful.arr₀
@@ -246,8 +246,8 @@ d_arr'8320'_388 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
    MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
@@ -262,8 +262,8 @@ d_arr'8321'_408 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_arr'8321'_408 = erased
@@ -276,8 +276,8 @@ d_arrω_428 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_arrω_428 = erased
@@ -289,8 +289,8 @@ d_l_542 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_l_542 = erased
@@ -302,8 +302,8 @@ d_r_550 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_r_550 = erased
@@ -316,8 +316,8 @@ d_AB_656 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Once.Type.T_Type_108
 d_AB_656 ~v0 ~v1 v2 ~v3 v4 ~v5 v6 ~v7 ~v8 ~v9 ~v10
@@ -343,8 +343,8 @@ d_arg_658 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_arg_658 = erased
@@ -357,8 +357,8 @@ d_pr_666 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_pr_666 = erased
@@ -371,8 +371,8 @@ d_body_680 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_body_680 = erased
@@ -385,8 +385,8 @@ d_AB_716 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Once.Type.T_Type_108
 d_AB_716 ~v0 ~v1 v2 ~v3 v4 ~v5 v6 ~v7 ~v8 ~v9 ~v10
@@ -412,8 +412,8 @@ d_arg_718 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_arg_718 = erased
@@ -426,8 +426,8 @@ d_pr_726 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_pr_726 = erased
@@ -440,8 +440,8 @@ d_body_740 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_body_740 = erased
@@ -463,7 +463,7 @@ d_vf'45'sem_788 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 -> T_VfSem_760
 d_vf'45'sem_788 = erased
 -- Once.Adequacy.CoerceFaithful..extendedlambda0
@@ -474,8 +474,8 @@ d_'46'extendedlambda0_876 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -489,8 +489,8 @@ d_'46'extendedlambda0_894 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -503,7 +503,7 @@ d_coerce'45'lift'45'yes_914 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -515,7 +515,7 @@ d_E_934 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -527,7 +527,7 @@ d_s_936 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> T_VfSem_760
 d_s_936 = erased
@@ -538,7 +538,7 @@ d_x'8320'_938 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
 d_x'8320'_938 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8
@@ -552,7 +552,7 @@ d_m_940 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Surface.CoerceIR.T_VoidFree_58 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
@@ -577,7 +577,7 @@ d_coerce'45'lift'45'dec_958 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -589,7 +589,7 @@ d_coerce'45'lift_998 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'lift_998 = erased

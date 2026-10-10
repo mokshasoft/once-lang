@@ -39,7 +39,7 @@ data T_FrameSemantics_6
                       (AgdaAny -> Integer -> AgdaAny) Integer
                       MAlonzo.Code.Data.Nat.Base.T__'8804'__22
                       MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28
-                      MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458
+                      MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268
                       (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny)
                       (AgdaAny -> AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
 -- Once.CCC.FrameSemantics.FrameSemantics.Frame
@@ -126,7 +126,7 @@ d_float'45'format_126 v0
 -- Once.CCC.FrameSemantics.FrameSemantics.fs-interp
 d_fs'45'interp_128 ::
   T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268
 d_fs'45'interp_128 v0
   = case coe v0 of
       C_constructor_160 v2 v3 v4 v7 v8 v9 v12 v13 v15 v17 -> coe v13
@@ -176,7 +176,7 @@ d_fs'45'ffi_162 ::
   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 d_fs'45'ffi_162 v0
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.d_pureHalf_540
+      MAlonzo.Code.Once.Denotation.TraceMonad.d_pureHalf_350
       (coe d_fs'45'interp_128 (coe v0))
 -- Once.CCC.FrameSemantics.fs-numerics
 d_fs'45'numerics_166 ::

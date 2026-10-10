@@ -641,78 +641,45 @@ d__'8712'K'63'__176
       (coe
          MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties.du_decSetoid_406
          (coe d__'8799'K__140))
--- Once.Spec.Contract.yes-of
-d_yes'45'of_184 ::
-  T_Key_124 ->
-  [T_Key_124] ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_yes'45'of_184 v0 v1 ~v2 = du_yes'45'of_184 v0 v1
-du_yes'45'of_184 ::
-  T_Key_124 -> [T_Key_124] -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_yes'45'of_184 v0 v1
-  = coe du_go_200 (coe d__'8712'K'63'__176 v0 v1)
--- Once.Spec.Contract._.go
-d_go_200 ::
-  T_Key_124 ->
-  [T_Key_124] ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_go_200 ~v0 ~v1 ~v2 v3 = du_go_200 v3
-du_go_200 ::
-  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_go_200 v0
-  = case coe v0 of
-      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v1 v2
-        -> if coe v1
-             then case coe v2 of
-                    MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v3
-                      -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v3) erased
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             else coe
-                    seq (coe v2) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.ISig
-d_ISig_206 :: ()
-d_ISig_206 = erased
+d_ISig_178 :: ()
+d_ISig_178 = erased
 -- Once.Spec.Contract.Contract
-d_Contract_208 = ()
-data T_Contract_208
-  = C_value_210 T_Key_124 | C_answers_212 T_Key_124 | C_effect_214
+d_Contract_180 = ()
+data T_Contract_180
+  = C_value_182 T_Key_124 | C_answers_184 T_Key_124 | C_effect_186
 -- Once.Spec.Contract.contract-eff
-d_contract'45'eff_220 ::
+d_contract'45'eff_192 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  T_Contract_208
-d_contract'45'eff_220 v0 v1 v2 v3 v4
+  T_Contract_180
+d_contract'45'eff_192 v0 v1 v2 v3 v4
   = case coe v3 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
         -> if coe v5
-             then coe seq (coe v6) (coe C_effect_214)
+             then coe seq (coe v6) (coe C_effect_186)
              else coe
                     seq (coe v6)
                     (case coe v4 of
                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
                          -> if coe v7
-                              then coe seq (coe v8) (coe C_effect_214)
+                              then coe seq (coe v8) (coe C_effect_186)
                               else coe
                                      seq (coe v8)
-                                     (coe C_answers_212 (coe C_key_138 (coe v0) (coe v1) (coe v2)))
+                                     (coe C_answers_184 (coe C_key_138 (coe v0) (coe v1) (coe v2)))
                        _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.contractOf
-d_contractOf_240 ::
+d_contractOf_212 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> T_Contract_208
-d_contractOf_240 v0 v1
+  MAlonzo.Code.Once.Type.T_Type_108 -> T_Contract_180
+d_contractOf_212 v0 v1
   = let v2
           = coe
-              C_value_210
+              C_value_182
               (coe
                  C_key_138 (coe v0) (coe MAlonzo.Code.Once.Type.C_Unit_120)
                  (coe v1)) in
@@ -723,28 +690,37 @@ d_contractOf_240 v0 v1
                 MAlonzo.Code.Once.Type.C_mk'45'kind_50 v6 v7
                   -> case coe v6 of
                        MAlonzo.Code.Once.Type.C_Zero_6
-                         -> coe
-                              C_value_210
-                              (coe
-                                 C_key_138 (coe v0) (coe MAlonzo.Code.Once.Type.C_Unit_120)
-                                 (coe v5))
+                         -> case coe v7 of
+                              MAlonzo.Code.Once.Type.C_pure_34
+                                -> coe
+                                     C_value_182
+                                     (coe
+                                        C_key_138 (coe v0) (coe MAlonzo.Code.Once.Type.C_Unit_120)
+                                        (coe v5))
+                              MAlonzo.Code.Once.Type.C_eff_36
+                                -> coe
+                                     d_contract'45'eff_192 (coe v0)
+                                     (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v5)
+                                     (coe MAlonzo.Code.Once.Type.d_isVoid'63'_164 (coe v5))
+                                     (coe MAlonzo.Code.Once.Type.d_isUnit'63'_168 (coe v5))
+                              _ -> MAlonzo.RTE.mazUnreachableError
                        MAlonzo.Code.Once.Type.C_One_8
                          -> case coe v7 of
                               MAlonzo.Code.Once.Type.C_pure_34
-                                -> coe C_value_210 (coe C_key_138 (coe v0) (coe v3) (coe v5))
+                                -> coe C_value_182 (coe C_key_138 (coe v0) (coe v3) (coe v5))
                               MAlonzo.Code.Once.Type.C_eff_36
                                 -> coe
-                                     d_contract'45'eff_220 (coe v0) (coe v3) (coe v5)
+                                     d_contract'45'eff_192 (coe v0) (coe v3) (coe v5)
                                      (coe MAlonzo.Code.Once.Type.d_isVoid'63'_164 (coe v5))
                                      (coe MAlonzo.Code.Once.Type.d_isUnit'63'_168 (coe v5))
                               _ -> MAlonzo.RTE.mazUnreachableError
                        MAlonzo.Code.Once.Type.C_Many_10
                          -> case coe v7 of
                               MAlonzo.Code.Once.Type.C_pure_34
-                                -> coe C_value_210 (coe C_key_138 (coe v0) (coe v3) (coe v5))
+                                -> coe C_value_182 (coe C_key_138 (coe v0) (coe v3) (coe v5))
                               MAlonzo.Code.Once.Type.C_eff_36
                                 -> coe
-                                     d_contract'45'eff_220 (coe v0) (coe v3) (coe v5)
+                                     d_contract'45'eff_192 (coe v0) (coe v3) (coe v5)
                                      (coe MAlonzo.Code.Once.Type.d_isVoid'63'_164 (coe v5))
                                      (coe MAlonzo.Code.Once.Type.d_isUnit'63'_168 (coe v5))
                               _ -> MAlonzo.RTE.mazUnreachableError
@@ -752,156 +728,58 @@ d_contractOf_240 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> coe v2)
 -- Once.Spec.Contract.value-step
-d_value'45'step_278 :: T_Contract_208 -> [T_Key_124] -> [T_Key_124]
-d_value'45'step_278 v0 v1
+d_value'45'step_254 :: T_Contract_180 -> [T_Key_124] -> [T_Key_124]
+d_value'45'step_254 v0 v1
   = case coe v0 of
-      C_value_210 v2
+      C_value_182 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2) (coe v1)
-      C_answers_212 v2 -> coe v1
-      C_effect_214 -> coe v1
+      C_answers_184 v2 -> coe v1
+      C_effect_186 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.answer-step
-d_answer'45'step_280 ::
-  T_Contract_208 -> [T_Key_124] -> [T_Key_124]
-d_answer'45'step_280 v0 v1
+d_answer'45'step_256 ::
+  T_Contract_180 -> [T_Key_124] -> [T_Key_124]
+d_answer'45'step_256 v0 v1
   = case coe v0 of
-      C_value_210 v2 -> coe v1
-      C_answers_212 v2
+      C_value_182 v2 -> coe v1
+      C_answers_184 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2) (coe v1)
-      C_effect_214 -> coe v1
+      C_effect_186 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.valueKeys
-d_valueKeys_298 ::
+d_valueKeys_274 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> [T_Key_124]
-d_valueKeys_298 v0
+d_valueKeys_274 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
                -> coe
-                    d_value'45'step_278 (coe d_contractOf_240 (coe v3) (coe v4))
-                    (coe d_valueKeys_298 (coe v2))
+                    d_value'45'step_254 (coe d_contractOf_212 (coe v3) (coe v4))
+                    (coe d_valueKeys_274 (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.answerKeys
-d_answerKeys_300 ::
+d_answerKeys_276 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> [T_Key_124]
-d_answerKeys_300 v0
+d_answerKeys_276 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
                -> coe
-                    d_answer'45'step_280 (coe d_contractOf_240 (coe v3) (coe v4))
-                    (coe d_answerKeys_300 (coe v2))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Spec.Contract.value-there
-d_value'45'there_320 ::
-  T_Key_124 ->
-  [T_Key_124] ->
-  T_Contract_208 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-d_value'45'there_320 ~v0 ~v1 v2 v3 = du_value'45'there_320 v2 v3
-du_value'45'there_320 ::
-  T_Contract_208 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-du_value'45'there_320 v0 v1
-  = case coe v0 of
-      C_value_210 v2
-        -> coe MAlonzo.Code.Data.List.Relation.Unary.Any.C_there_54 v1
-      C_answers_212 v2 -> coe v1
-      C_effect_214 -> coe v1
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Spec.Contract.answer-there
-d_answer'45'there_334 ::
-  T_Key_124 ->
-  [T_Key_124] ->
-  T_Contract_208 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-d_answer'45'there_334 ~v0 ~v1 v2 v3 = du_answer'45'there_334 v2 v3
-du_answer'45'there_334 ::
-  T_Contract_208 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-du_answer'45'there_334 v0 v1
-  = case coe v0 of
-      C_value_210 v2 -> coe v1
-      C_answers_212 v2
-        -> coe MAlonzo.Code.Data.List.Relation.Unary.Any.C_there_54 v1
-      C_effect_214 -> coe v1
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Spec.Contract.value-∈
-d_value'45''8712'_350 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  T_Key_124 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-d_value'45''8712'_350 v0 ~v1 ~v2 ~v3 v4 ~v5
-  = du_value'45''8712'_350 v0 v4
-du_value'45''8712'_350 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-du_value'45''8712'_350 v0 v1
-  = case coe v0 of
-      (:) v2 v3
-        -> case coe v2 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
-               -> case coe v1 of
-                    MAlonzo.Code.Data.List.Relation.Unary.Any.C_here_46 v8
-                      -> coe MAlonzo.Code.Data.List.Relation.Unary.Any.C_here_46 erased
-                    MAlonzo.Code.Data.List.Relation.Unary.Any.C_there_54 v8
-                      -> coe
-                           du_value'45'there_320 (coe d_contractOf_240 (coe v4) (coe v5))
-                           (coe du_value'45''8712'_350 (coe v3) (coe v8))
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Spec.Contract.answer-∈
-d_answer'45''8712'_382 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  T_Key_124 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-d_answer'45''8712'_382 v0 ~v1 ~v2 ~v3 v4 ~v5
-  = du_answer'45''8712'_382 v0 v4
-du_answer'45''8712'_382 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34
-du_answer'45''8712'_382 v0 v1
-  = case coe v0 of
-      (:) v2 v3
-        -> case coe v2 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
-               -> case coe v1 of
-                    MAlonzo.Code.Data.List.Relation.Unary.Any.C_here_46 v8
-                      -> coe MAlonzo.Code.Data.List.Relation.Unary.Any.C_here_46 erased
-                    MAlonzo.Code.Data.List.Relation.Unary.Any.C_there_54 v8
-                      -> coe
-                           du_answer'45'there_334 (coe d_contractOf_240 (coe v4) (coe v5))
-                           (coe du_answer'45''8712'_382 (coe v3) (coe v8))
-                    _ -> MAlonzo.RTE.mazUnreachableError
+                    d_answer'45'step_256 (coe d_contractOf_212 (coe v3) (coe v4))
+                    (coe d_answerKeys_276 (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.Impl
-d_Impl_408 a0 = ()
-data T_Impl_408
-  = C_constructor_428 ([MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
+d_Impl_292 a0 = ()
+data T_Impl_292
+  = C_constructor_312 ([MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
                        T_Key_124 ->
                        MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
                        AgdaAny -> AgdaAny)
@@ -909,71 +787,64 @@ data T_Impl_408
                        MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
                        AgdaAny -> AgdaAny)
 -- Once.Spec.Contract.Impl.answerI
-d_answerI_422 ::
-  T_Impl_408 ->
+d_answerI_306 ::
+  T_Impl_292 ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
   T_Key_124 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   AgdaAny -> AgdaAny
-d_answerI_422 v0
+d_answerI_306 v0
   = case coe v0 of
-      C_constructor_428 v1 v2 -> coe v1
+      C_constructor_312 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.Impl.pureI
-d_pureI_426 ::
-  T_Impl_408 ->
+d_pureI_310 ::
+  T_Impl_292 ->
   T_Key_124 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   AgdaAny -> AgdaAny
-d_pureI_426 v0
+d_pureI_310 v0
   = case coe v0 of
-      C_constructor_428 v1 v2 -> coe v2
+      C_constructor_312 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.valueOf-at
-d_valueOf'45'at_434 ::
+d_valueOf'45'at_318 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  T_Impl_408 ->
+  T_Impl_292 ->
   T_Key_124 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   AgdaAny -> AgdaAny
-d_valueOf'45'at_434 ~v0 v1 v2 ~v3 v4
-  = du_valueOf'45'at_434 v1 v2 v4
-du_valueOf'45'at_434 ::
-  T_Impl_408 ->
+d_valueOf'45'at_318 ~v0 v1 v2 ~v3 v4
+  = du_valueOf'45'at_318 v1 v2 v4
+du_valueOf'45'at_318 ::
+  T_Impl_292 ->
   T_Key_124 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   AgdaAny -> AgdaAny
-du_valueOf'45'at_434 v0 v1 v2
+du_valueOf'45'at_318 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4
         -> if coe v3
              then case coe v4 of
                     MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v5
-                      -> coe d_pureI_426 v0 v1 v5
+                      -> coe d_pureI_310 v0 v1 v5
                     _ -> MAlonzo.RTE.mazUnreachableError
              else coe
                     seq (coe v4) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract.valueOf
-d_valueOf_456 ::
+d_valueOf_340 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  T_Impl_408 ->
+  T_Impl_292 ->
   T_Key_124 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   AgdaAny -> AgdaAny
-d_valueOf_456 v0 v1 v2 ~v3 = du_valueOf_456 v0 v1 v2
-du_valueOf_456 ::
+d_valueOf_340 v0 v1 v2 ~v3 = du_valueOf_340 v0 v1 v2
+du_valueOf_340 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  T_Impl_408 -> T_Key_124 -> AgdaAny -> AgdaAny
-du_valueOf_456 v0 v1 v2
+  T_Impl_292 -> T_Key_124 -> AgdaAny -> AgdaAny
+du_valueOf_340 v0 v1 v2
   = coe
-      du_valueOf'45'at_434 (coe v1) (coe v2)
-      (coe d__'8712'K'63'__176 v2 (d_valueKeys_298 (coe v0)))
--- Once.Spec.Contract.base-contract
-d_base'45'contract_470 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_base'45'contract_470 = erased
+      du_valueOf'45'at_318 (coe v1) (coe v2)
+      (coe d__'8712'K'63'__176 v2 (d_valueKeys_274 (coe v0)))

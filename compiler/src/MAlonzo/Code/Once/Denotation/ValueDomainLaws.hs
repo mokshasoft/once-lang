@@ -26,11 +26,11 @@ import qualified MAlonzo.Code.Once.Semantics.Functor
 -- Once.Denotation.ValueDomainLaws._∼ᵈ_
 d__'8764''7496'__12 a0 a1 a2 = ()
 data T__'8764''7496'__12
-  = C_constructor_24 MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  = C_constructor_24 MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 -- Once.Denotation.ValueDomainLaws._∼ᵈ_.force-∼
 d_force'45''8764'_22 ::
   T__'8764''7496'__12 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 d_force'45''8764'_22 v0
   = case coe v0 of
       C_constructor_24 v1 -> coe v1
@@ -53,19 +53,19 @@ d_tree'45'refl_38 ::
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 d_tree'45'refl_38 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182 v3
         -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088
+             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_678
              (d_SF'45'rel'45'refl_46 (coe v0) (coe v1) (coe v3))
       MAlonzo.Code.Once.Denotation.TraceMonad.C_call_186 v3 v4 v5
         -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_1100
+             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_690
              (\ v6 -> d_tree'45'refl_38 (coe v0) (coe v1) (coe v5 v6))
       MAlonzo.Code.Once.Denotation.TraceMonad.C_halt_190 v3 v4
-        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_1106
+        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_696
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.ValueDomainLaws.SF-rel-refl
 d_SF'45'rel'45'refl_46 ::
@@ -113,7 +113,7 @@ d_ana'7496''45''8764'_152 ::
   (AgdaAny ->
    AgdaAny ->
    AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666) ->
   AgdaAny -> AgdaAny -> AgdaAny -> T__'8764''7496'__12
 d_ana'7496''45''8764'_152 v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 v8 v9
   = du_ana'7496''45''8764'_152 v0 v4 v5 v6 v7 v8 v9
@@ -124,7 +124,7 @@ du_ana'7496''45''8764'_152 ::
   (AgdaAny ->
    AgdaAny ->
    AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666) ->
   AgdaAny -> AgdaAny -> AgdaAny -> T__'8764''7496'__12
 du_ana'7496''45''8764'_152 v0 v1 v2 v3 v4 v5 v6
   = coe
@@ -143,11 +143,11 @@ d_anaTree'45''8764'_170 ::
   (AgdaAny ->
    AgdaAny ->
    AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 d_anaTree'45''8764'_170 v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 v8 v9
   = du_anaTree'45''8764'_170 v0 v4 v5 v6 v7 v8 v9
 du_anaTree'45''8764'_170 ::
@@ -157,40 +157,40 @@ du_anaTree'45''8764'_170 ::
   (AgdaAny ->
    AgdaAny ->
    AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 du_anaTree'45''8764'_170 v0 v1 v2 v3 v4 v5 v6
   = case coe v6 of
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088 v9
+      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_678 v9
         -> case coe v4 of
              MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182 v10
                -> case coe v5 of
                     MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182 v11
                       -> coe
-                           MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088
+                           MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_678
                            (coe
                               du_mapAna'7496''45''8764'_190 (coe v0) (coe v0) (coe v1) (coe v2)
                               (coe v3) (coe v10) (coe v11) (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_1100 v11
+      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_690 v11
         -> case coe v4 of
              MAlonzo.Code.Once.Denotation.TraceMonad.C_call_186 v12 v13 v14
                -> case coe v5 of
                     MAlonzo.Code.Once.Denotation.TraceMonad.C_call_186 v15 v16 v17
                       -> coe
-                           MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_1100
+                           MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_690
                            (\ v18 ->
                               coe
                                 du_anaTree'45''8764'_170 (coe v0) (coe v1) (coe v2) (coe v3)
                                 (coe v14 v18) (coe v17 v18) (coe v11 v18))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_1106
-        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_1106
+      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_696
+        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_696
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.ValueDomainLaws.mapAnaᵈ-∼
 d_mapAna'7496''45''8764'_190 ::
@@ -204,7 +204,7 @@ d_mapAna'7496''45''8764'_190 ::
   (AgdaAny ->
    AgdaAny ->
    AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666) ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
 d_mapAna'7496''45''8764'_190 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
   = du_mapAna'7496''45''8764'_190 v0 v1 v5 v6 v7 v8 v9 v10
@@ -216,7 +216,7 @@ du_mapAna'7496''45''8764'_190 ::
   (AgdaAny ->
    AgdaAny ->
    AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076) ->
+   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666) ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
 du_mapAna'7496''45''8764'_190 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v1 of

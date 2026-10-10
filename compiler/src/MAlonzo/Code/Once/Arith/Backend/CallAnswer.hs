@@ -485,7 +485,7 @@ d_CallResolver_148 :: () -> ()
 d_CallResolver_148 = erased
 -- Once.Arith.Backend.CallAnswer.answering-word
 d_answering'45'word_156 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_CallOp_124 ->
   AgdaAny ->
@@ -500,14 +500,14 @@ d_answering'45'word_156 v0 v1 v2 v3 v4
                            d_answer'45'word_128
                            (coe MAlonzo.Code.Once.Denotation.TraceMonad.d_ccod_140 (coe v2))
                            (coe
-                              MAlonzo.Code.Once.Denotation.TraceMonad.d_answer_482 v0 v1 v2 v7
+                              MAlonzo.Code.Once.Denotation.TraceMonad.d_answer_292 v0 v1 v2 v7
                               v3)
                     _ -> MAlonzo.RTE.mazUnreachableError
              else coe seq (coe v6) (coe (0 :: Integer))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.CallAnswer.value-word
 d_value'45'word_180 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.Spec.Contract.T_Key_124 ->
   AgdaAny ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 -> Integer
@@ -521,13 +521,13 @@ d_value'45'word_180 v0 v1 v2 v3
                            d_answer'45'word_128
                            (coe MAlonzo.Code.Once.Spec.Contract.d_kcod_136 (coe v1))
                            (coe
-                              MAlonzo.Code.Once.Denotation.TraceMonad.d_pure_496 v0 v1 v6 v2)
+                              MAlonzo.Code.Once.Denotation.TraceMonad.d_pure_306 v0 v1 v6 v2)
                     _ -> MAlonzo.RTE.mazUnreachableError
              else coe seq (coe v5) (coe (0 :: Integer))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.CallAnswer.resolved-word
 d_resolved'45'word_196 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
   T_ResolvedCall_134 -> Integer
 d_resolved'45'word_196 v0 v1 v2
@@ -537,8 +537,8 @@ d_resolved'45'word_196 v0 v1 v2
              d_answering'45'word_156 (coe v0) (coe v1) (coe v3) (coe v4)
              (coe
                 MAlonzo.Code.Once.Spec.Contract.d__'8712'K'63'__176
-                (MAlonzo.Code.Once.Denotation.TraceMonad.d_callKey_454 (coe v3))
-                (MAlonzo.Code.Once.Denotation.TraceMonad.d_calls_470 (coe v0)))
+                (MAlonzo.Code.Once.Denotation.TraceMonad.d_callKey_264 (coe v3))
+                (MAlonzo.Code.Once.Denotation.TraceMonad.d_calls_280 (coe v0)))
       C_pure'45'ffi_146 v3 v4 v5 v6
         -> coe
              d_value'45'word_180 (coe v0)
@@ -553,12 +553,12 @@ d_resolved'45'word_196 v0 v1 v2
                    MAlonzo.Code.Once.Spec.Contract.C_key_138
                    (coe MAlonzo.Code.Once.CanonicalName.d_showCanonical_140 (coe v3))
                    (coe v4) (coe v5))
-                (MAlonzo.Code.Once.Denotation.TraceMonad.d_pures_472 (coe v0)))
+                (MAlonzo.Code.Once.Denotation.TraceMonad.d_pures_282 (coe v0)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.CallAnswer.answer-at
 d_answer'45'at_220 ::
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny -> Maybe T_ResolvedCall_134) ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
@@ -566,7 +566,7 @@ d_answer'45'at_220 ::
 d_answer'45'at_220 ~v0 v1 v2 v3 v4 v5
   = du_answer'45'at_220 v1 v2 v3 v4 v5
 du_answer'45'at_220 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny -> Maybe T_ResolvedCall_134) ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->

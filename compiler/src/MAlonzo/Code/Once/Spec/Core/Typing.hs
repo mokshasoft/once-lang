@@ -118,7 +118,7 @@ data T__'8866''91'_'93'_'8759'_'33'__244
     C_'8866'out_518 MAlonzo.Code.Once.Type.T_Functor_106
                     MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
                     T__'8866''91'_'93'_'8759'_'33'__244 |
-    C_'8866'coerce_534 MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+    C_'8866'coerce_534 MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
                        T__'8866''91'_'93'_'8759'_'33'__244 |
     C_'8866'lit'45'int_542 | C_'8866'lit'45'float_550 |
     C_'8866'prim_564 T__'8866''91'_'93'_'8759'_'33'__244 |

@@ -31,6 +31,7 @@ import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
+import qualified MAlonzo.Code.Once.Type.SubLaws
 
 -- Once.Spec.Core.PolyTyping.G.Lit
 d_Lit_18 a0 a1 a2 = ()
@@ -310,7 +311,7 @@ d_'60''58''8346''45''10218''10219'_682 ::
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_Type_108) ->
   T__'60''58''8346'__602 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_'60''58''8346''45''10218''10219'_682 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7
   = du_'60''58''8346''45''10218''10219'_682 v4 v5 v6 v7
 du_'60''58''8346''45''10218''10219'_682 ::
@@ -319,17 +320,17 @@ du_'60''58''8346''45''10218''10219'_682 ::
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_Type_108) ->
   T__'60''58''8346'__602 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
   = let v4
           = case coe v3 of
               C_sub'45'void_612
-                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
               C_sub'45'unit_614
-                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-              C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+              C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
               C_sub'45'float_618
-                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
               _ -> MAlonzo.RTE.mazUnreachableError in
     coe
       (case coe v0 of
@@ -339,30 +340,30 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_var_24 v7
                          -> coe
-                              MAlonzo.Code.Once.Type.Sub.d_'60''58''45'refl_170 (coe v2 v5)
+                              MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2 v5)
                        _ -> coe v4
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Once.Spec.Core.PolyTy.C__'42'__34 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
                 C_sub'45'prod_650 v11 v12
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C__'42'__34 v13 v14
                          -> coe
-                              MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_84
+                              MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_60
                               (coe
                                  du_'60''58''8346''45''10218''10219'_682 (coe v5) (coe v13) (coe v2)
                                  (coe v11))
@@ -374,17 +375,17 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
          MAlonzo.Code.Once.Spec.Core.PolyTy.C__'43'__36 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
                 C_sub'45'sum_660 v11 v12
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C__'43'__36 v13 v14
                          -> coe
-                              MAlonzo.Code.Once.Type.Sub.C_sub'45'sum_94
+                              MAlonzo.Code.Once.Type.Sub.C_sub'45'sum_70
                               (coe
                                  du_'60''58''8346''45''10218''10219'_682 (coe v5) (coe v13) (coe v2)
                                  (coe v11))
@@ -396,17 +397,17 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
          MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 v5 v6 v7
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
                 C_sub'45'arr_640 v15 v16 v17
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 v18 v19 v20
                          -> coe
-                              MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_74
+                              MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
                               (coe
                                  du_'60''58''8346''45''10218''10219'_682 (coe v18) (coe v5) (coe v2)
                                  (coe v15))
@@ -419,46 +420,46 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
          MAlonzo.Code.Once.Spec.Core.PolyTy.C_μ'45'type_40 v5
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
                 C_sub'45'μ_664
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_μ'45'type_40 v7
-                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'μ_98
+                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'μ_74
                        _ -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Once.Spec.Core.PolyTy.C_ν'45'type_42 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
                 C_sub'45'ν_672 v10
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_ν'45'type_42 v11 v12
-                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'ν_106 v10
+                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'ν_82 v10
                        _ -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Once.Spec.Core.PolyTy.C_rigid_44 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
+                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
                 C_sub'45'rigid_624
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_rigid_44 v9 v10
-                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'rigid_112
+                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'rigid_88
                        _ -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> coe v4)

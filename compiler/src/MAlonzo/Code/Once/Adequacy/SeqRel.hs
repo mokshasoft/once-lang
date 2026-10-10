@@ -20,6 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
+import qualified MAlonzo.Code.Once.Denotation.TraceMonadLaws
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
 import qualified MAlonzo.Code.Once.Type
 
@@ -36,20 +37,18 @@ d_seqF'45'rel_88 ::
   (AgdaAny -> AgdaAny -> ()) ->
   AgdaAny ->
   AgdaAny ->
-  AgdaAny ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 d_seqF'45'rel_88 v0 ~v1 ~v2 ~v3 v4 v5 v6
   = du_seqF'45'rel_88 v0 v4 v5 v6
 du_seqF'45'rel_88 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   AgdaAny ->
   AgdaAny ->
-  AgdaAny ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_1076
+  AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_666
 du_seqF'45'rel_88 v0 v1 v2 v3
   = case coe v0 of
       MAlonzo.Code.Once.Type.C_K_112 v4
-        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088 v3
+        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_678 v3
       MAlonzo.Code.Once.Type.C_Id_114 -> coe v3
       MAlonzo.Code.Once.Type.C__'8853'__116 v4 v5
         -> case coe v1 of
@@ -57,7 +56,7 @@ du_seqF'45'rel_88 v0 v1 v2 v3
                -> case coe v2 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v7
                       -> coe
-                           MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'fmap_1182
+                           MAlonzo.Code.Once.Denotation.TraceMonadLaws.du_RelT'8242''45'fmap_472
                            (coe
                               MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v4)
                               (coe v6))
@@ -71,7 +70,7 @@ du_seqF'45'rel_88 v0 v1 v2 v3
                -> case coe v2 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v7
                       -> coe
-                           MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'fmap_1182
+                           MAlonzo.Code.Once.Denotation.TraceMonadLaws.du_RelT'8242''45'fmap_472
                            (coe
                               MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v5)
                               (coe v6))
@@ -90,7 +89,7 @@ du_seqF'45'rel_88 v0 v1 v2 v3
                       -> case coe v3 of
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                              -> coe
-                                  MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'bind_1132
+                                  MAlonzo.Code.Once.Denotation.TraceMonadLaws.du_RelT'8242''45'bind_422
                                   (coe
                                      MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28 (coe v4)
                                      (coe v6))
@@ -101,7 +100,7 @@ du_seqF'45'rel_88 v0 v1 v2 v3
                                   (coe
                                      (\ v12 v13 v14 ->
                                         coe
-                                          MAlonzo.Code.Once.Denotation.TraceMonad.du_RelT'8242''45'bind_1132
+                                          MAlonzo.Code.Once.Denotation.TraceMonadLaws.du_RelT'8242''45'bind_422
                                           (coe
                                              MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                                              (coe v5) (coe v7))
@@ -113,7 +112,7 @@ du_seqF'45'rel_88 v0 v1 v2 v3
                                           (coe
                                              (\ v15 v16 v17 ->
                                                 coe
-                                                  MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_1088
+                                                  MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_678
                                                   (coe
                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                      (coe v14) (coe v17))))))

@@ -44,7 +44,7 @@ d_teleSem_36 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Spec.Contract.T_Impl_408 ->
+  MAlonzo.Code.Once.Spec.Contract.T_Impl_292 ->
   T_Tele_12 -> MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348
 d_teleSem_36 v0 v1 v2 v3 v4 v5
   = coe
@@ -59,7 +59,7 @@ d_teleDefs_50 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Spec.Contract.T_Impl_408 ->
+  MAlonzo.Code.Once.Spec.Contract.T_Impl_292 ->
   T_Tele_12 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
@@ -237,15 +237,15 @@ d_runProgram_146 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   T_Program_100 ->
-  MAlonzo.Code.Once.Spec.Contract.T_Impl_408 ->
+  MAlonzo.Code.Once.Spec.Contract.T_Impl_292 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
 d_runProgram_146 v0 v1 v2 v3 v4
   = case coe v2 of
       C_program_124 v5 v6 v7 v8
         -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_868
+             MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_542
              (coe
-                MAlonzo.Code.Once.Denotation.TraceMonad.C_interp_468 (coe v0)
+                MAlonzo.Code.Once.Denotation.TraceMonad.C_interp_278 (coe v0)
                 (coe v3))
              (coe
                 du_runEntry_136

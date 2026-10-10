@@ -92,7 +92,7 @@ data T_Expr_8
     C_ne_360 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
     C_coerce_372 MAlonzo.Code.Once.Type.T_Type_108
-                 MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 T_Expr_8 |
+                 MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 T_Expr_8 |
     C_sigOp_380 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
                 MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_222 |
     C_closure_388 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
@@ -110,10 +110,10 @@ data T_Expr_8
     C_fork''_484 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                  MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
     C_curry''_502 T_Expr_8 |
-    C_cata_516 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
-               T_Expr_8 |
-    C_ana_532 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
-              T_Expr_8
+    C_cata_516 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+               MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 T_Expr_8 |
+    C_ana_532 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+              MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 T_Expr_8
 -- Once.Surface.Syntax.svar→expr
 d_svar'8594'expr_542 ::
   Integer ->

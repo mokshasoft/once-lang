@@ -228,7 +228,7 @@ d_exec'45'abstract_192 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'abstract_192 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3240
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3210
       (coe v0)
 -- Once.CCC.Machine.FrameFree._._.exec-load-from-slot-with-value
 d_exec'45'load'45'from'45'slot'45'with'45'value_202 ::
@@ -246,7 +246,7 @@ du_exec'45'load'45'from'45'slot'45'with'45'value_202 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'load'45'from'45'slot'45'with'45'value_202
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2648
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2618
 -- Once.CCC.Machine.FrameFree._._.exec-restore-input-with-value
 d_exec'45'restore'45'input'45'with'45'value_212 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -263,7 +263,7 @@ du_exec'45'restore'45'input'45'with'45'value_212 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'restore'45'input'45'with'45'value_212
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2660
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2630
 -- Once.CCC.Machine.FrameFree._._.exec-trace
 d_exec'45'trace_222 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -273,7 +273,7 @@ d_exec'45'trace_222 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'trace_222 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_3242 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_3212 (coe v0)
 -- Once.CCC.Machine.FrameFree._.load-from-slot-alloc
 d_load'45'from'45'slot'45'alloc_292 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -381,7 +381,7 @@ d_exec'45'trace'45'nsi_1008 v0 v1 v2 v3 v4 v5
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3240
+                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3210
                                     (coe v0) (coe v6) (coe v2)
                                     (coe
                                        MAlonzo.Code.Once.CCC.Machine.SMCore.C_mkAllocState_608
@@ -404,7 +404,7 @@ d_exec'45'trace'45'nsi_1008 v0 v1 v2 v3 v4 v5
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3240
+                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3210
                                     (coe v0) (coe v6) (coe v2) (coe v3)))
                               (coe v4) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError

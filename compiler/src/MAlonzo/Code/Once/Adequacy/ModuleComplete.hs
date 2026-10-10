@@ -150,7 +150,7 @@ du_succ_78 v0 v1 v2 v3 v4 v5 v6
                             (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
                       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v4))
                       (coe
-                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
+                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1016
                          (coe (0 :: Integer))
                          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                          (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v4)
@@ -176,7 +176,7 @@ du_succ_78 v0 v1 v2 v3 v4 v5 v6
                                (coe v5) (coe v4)
                                (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v8)))))
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_996
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1016
                       (coe (0 :: Integer))
                       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                       (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v4)
@@ -249,7 +249,7 @@ du_compileFun'45'complete_96 v0 v1 v2 v3 v4 v5 v6
                        seq (coe v9)
                        (coe
                           du_compileFunBody'45'complete_48 (coe v0) (coe v1) (coe v2)
-                          (coe v3) (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_188) (coe v5)
+                          (coe v3) (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_148) (coe v5)
                           (coe v6))
                 else coe
                        seq (coe v9)

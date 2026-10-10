@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Sub
+import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
 import qualified MAlonzo.Code.Once.TypeCheck.ModeAgreement
@@ -76,28 +77,28 @@ d_sub'45'cod_58 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
   MAlonzo.Code.Once.Type.T_ArrowKind_40 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_sub'45'cod_58 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 = du_sub'45'cod_58 v6
 du_sub'45'cod_58 ::
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_sub'45'cod_58 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_74 v8 v9 v10 -> coe v9
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50 v8 v9 v10 -> coe v9
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.ModeSub.≡-sub
 d_'8801''45'sub_66 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_'8801''45'sub_66 v0 ~v1 ~v2 = du_'8801''45'sub_66 v0
 du_'8801''45'sub_66 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_'8801''45'sub_66 v0
-  = coe MAlonzo.Code.Once.Type.Sub.d_'60''58''45'refl_170 (coe v0)
+  = coe MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v0)
 -- Once.TypeCheck.ModeSub.sub-along
 d_sub'45'along_76 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -105,13 +106,13 @@ d_sub'45'along_76 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   () ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_sub'45'along_76 ~v0 ~v1 ~v2 ~v3 v4 v5 = du_sub'45'along_76 v4 v5
 du_sub'45'along_76 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_sub'45'along_76 v0 v1 = coe seq (coe v0) (coe v1)
 -- Once.TypeCheck.ModeSub.apply-sub
 d_apply'45'sub_90 ::
@@ -121,16 +122,16 @@ d_apply'45'sub_90 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   () ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_apply'45'sub_90 ~v0 ~v1 v2 ~v3 ~v4 v5 = du_apply'45'sub_90 v2 v5
 du_apply'45'sub_90 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_apply'45'sub_90 v0 v1
   = coe
       seq (coe v1)
-      (coe MAlonzo.Code.Once.Type.Sub.d_'60''58''45'refl_170 (coe v0))
+      (coe MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v0))
 -- Once.TypeCheck.ModeSub.di-cod
 d_di'45'cod_108 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -141,14 +142,14 @@ d_di'45'cod_108 ::
   (MAlonzo.Code.Once.Type.T_Type_108 ->
    MAlonzo.Code.Once.Type.T_Purity_32 -> ()) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_di'45'cod_108 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 v7
   = du_di'45'cod_108 v6 v7
 du_di'45'cod_108 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_di'45'cod_108 v0 v1
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
@@ -183,13 +184,13 @@ d_poly'45'sub_152 ::
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Type.T_Type_108) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_poly'45'sub_152 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11
                   ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
   = du_poly'45'sub_152 v9
 du_poly'45'sub_152 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_poly'45'sub_152 v0 = coe du_'8801''45'sub_66 (coe v0)
 -- Once.TypeCheck.ModeSub.ic-sub
 d_ic'45'sub_178 ::
@@ -201,7 +202,7 @@ d_ic'45'sub_178 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_ic'45'sub_178 v0 v1 v2 v3 ~v4 ~v5 v6 v7
   = du_ic'45'sub_178 v0 v1 v2 v3 v6 v7
 du_ic'45'sub_178 ::
@@ -211,7 +212,7 @@ du_ic'45'sub_178 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_ic'45'sub_178 v0 v1 v2 v3 v4 v5
   = case coe v5 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'check_428
@@ -238,9 +239,9 @@ du_ic'45'sub_178 v0 v1 v2 v3 v4 v5
         -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'curry'45'check_586 v14
         -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'cata'45'check_600 v12 v13
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'cata'45'check_600 v11 v12 v13
         -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'ana'45'check_616 v13 v14
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'ana'45'check_616 v12 v13 v14
         -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v8 v11 v12
         -> coe
@@ -259,7 +260,7 @@ du_ic'45'sub_178 v0 v1 v2 v3 v4 v5
                              -> case coe v2 of
                                   MAlonzo.Code.Once.Type.C__'42'__124 v28 v29
                                     -> coe
-                                         MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_84
+                                         MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_60
                                          (coe
                                             du_ic'45'sub_178 (coe v0) (coe v15) (coe v28) (coe v17)
                                             (coe v26) (coe v13))
@@ -329,7 +330,7 @@ d_dc'45'sub_196 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v8 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'infer_752 v13 v16 v18 v19 v20
@@ -499,7 +500,8 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
       MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'id_822
         -> case coe v9 of
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'check_428
-               -> coe MAlonzo.Code.Once.Type.Sub.d_'60''58''45'refl_170 (coe v2)
+               -> coe
+                    MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2)
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v15 v18 v19
                -> coe
                     du_di'45'cod_108
@@ -527,7 +529,8 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 MAlonzo.Code.Once.Type.C__'42'__124 v15 v16
                   -> case coe v9 of
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'fst'45'check_438
-                         -> coe MAlonzo.Code.Once.Type.Sub.d_'60''58''45'refl_170 (coe v3)
+                         -> coe
+                              MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v3)
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v19 v22 v23
                          -> coe
                               du_di'45'cod_108
@@ -557,7 +560,8 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 MAlonzo.Code.Once.Type.C__'42'__124 v15 v16
                   -> case coe v9 of
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'snd'45'check_448
-                         -> coe MAlonzo.Code.Once.Type.Sub.d_'60''58''45'refl_170 (coe v3)
+                         -> coe
+                              MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v3)
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v19 v22 v23
                          -> coe
                               du_di'45'cod_108
@@ -573,7 +577,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v9 of
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'morph'45'check_456
                -> coe
-                    MAlonzo.Code.Once.Type.Sub.d_'60''58''45'refl_170
+                    MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
                     (coe MAlonzo.Code.Once.Type.C_Unit_120)
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v15 v18 v19
                -> coe
@@ -588,7 +592,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
       MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'initial_856
         -> case coe v9 of
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'initial'45'morph'45'check_464
-               -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+               -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v14 v17 v18
                -> coe
                     du_di'45'cod_108
@@ -732,7 +736,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                              -> case coe v4 of
                                                   MAlonzo.Code.Once.Type.C__'42'__124 v41 v42
                                                     -> coe
-                                                         MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_84
+                                                         MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_60
                                                          (d_dc'45'sub_196
                                                             (coe v0) (coe v26) (coe v2) (coe v28)
                                                             (coe v41) (coe v5) (coe v17) (coe v37)
@@ -758,7 +762,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                     _ -> coe v27)
                           _ -> coe v24)
                 _ -> coe v21)
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v16 v17
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v15 v16 v17
         -> let v18
                  = case coe v9 of
                      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v20 v23 v24
@@ -767,7 +771,8 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             (coe
                                MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v20) (coe v6) (coe v7)
-                               (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v16 v17)
+                               (coe
+                                  MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v15 v16 v17)
                                (coe v23))
                             (coe v24)
                      _ -> MAlonzo.RTE.mazUnreachableError in
@@ -783,8 +788,8 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                          MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
                                          (coe v0) (coe v1) (coe v3) (coe v23) (coe v6) (coe v7)
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v16
-                                            v17)
+                                            MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v15
+                                            v16 v17)
                                          (coe v26))
                                       (coe v27)
                                _ -> MAlonzo.RTE.mazUnreachableError in
@@ -792,7 +797,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        (case coe v2 of
                           MAlonzo.Code.Once.Type.C_μ'45'type_130 v22
                             -> case coe v9 of
-                                 MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'cata'45'check_600 v29 v30
+                                 MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'cata'45'check_600 v28 v29 v30
                                    -> coe
                                         du_sub'45'cod_58
                                         (coe
@@ -824,7 +829,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                            (coe v0) (coe v1) (coe v3) (coe v25) (coe v6) (coe v7)
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910
-                                              v16 v17)
+                                              v15 v16 v17)
                                            (coe v28))
                                         (coe v29)
                                  _ -> MAlonzo.RTE.mazUnreachableError
@@ -845,7 +850,7 @@ d_cg'45'sub_216 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 d_cg'45'sub_216 v0 v1 v2 ~v3 v4 v5 v6 v7 v8 ~v9 v10 v11
   = du_cg'45'sub_216 v0 v1 v2 v4 v5 v6 v7 v8 v10 v11
 du_cg'45'sub_216 ::
@@ -859,7 +864,7 @@ du_cg'45'sub_216 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_cg'45'sub_216 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
       d_dc'45'sub_196 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)

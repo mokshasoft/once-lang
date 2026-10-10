@@ -1635,32 +1635,65 @@ du_'10214'_'10215''738'_122 v0 v1 v2 v3 v4 v5 v6
                        MAlonzo.Code.Once.Type.C_mk'45'kind_50 v16 v17
                          -> case coe v16 of
                               MAlonzo.Code.Once.Type.C_Zero_6
-                                -> case coe v11 of
-                                     MAlonzo.Code.Once.Functor.Translate.C_con'45'fun_234 v21 v22
-                                       -> coe
-                                            MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_194
-                                            (\ v23 ->
-                                               d_sigOp'738'_104
-                                                 (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v15)
-                                                 (coe v4) (coe v5)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
-                                                    (coe v10)
-                                                    (coe
-                                                       MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
-                                                    (coe v22))
-                                                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-                                     MAlonzo.Code.Once.Functor.Translate.C_con'45'base_226 v19
-                                       -> coe
-                                            d_sigOp'738'_104 (coe MAlonzo.Code.Once.Type.C_Unit_120)
-                                            (coe v2) (coe v4) (coe v5)
-                                            (coe
-                                               MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
-                                               (coe v10)
-                                               (coe
-                                                  MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
-                                               (coe v19))
-                                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                -> case coe v17 of
+                                     MAlonzo.Code.Once.Type.C_pure_34
+                                       -> case coe v11 of
+                                            MAlonzo.Code.Once.Functor.Translate.C_con'45'fun_234 v21 v22
+                                              -> coe
+                                                   MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_194
+                                                   (\ v23 ->
+                                                      d_sigOp'738'_104
+                                                        (coe MAlonzo.Code.Once.Type.C_Unit_120)
+                                                        (coe v15) (coe v4) (coe v5)
+                                                        (coe
+                                                           MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
+                                                           (coe v10)
+                                                           (coe
+                                                              MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
+                                                           (coe v22))
+                                                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
+                                            MAlonzo.Code.Once.Functor.Translate.C_con'45'base_226 v19
+                                              -> coe
+                                                   d_sigOp'738'_104
+                                                   (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v2)
+                                                   (coe v4) (coe v5)
+                                                   (coe
+                                                      MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
+                                                      (coe v10)
+                                                      (coe
+                                                         MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
+                                                      (coe v19))
+                                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                            _ -> MAlonzo.RTE.mazUnreachableError
+                                     MAlonzo.Code.Once.Type.C_eff_36
+                                       -> case coe v11 of
+                                            MAlonzo.Code.Once.Functor.Translate.C_con'45'fun_234 v21 v22
+                                              -> coe
+                                                   MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_194
+                                                   (\ v23 ->
+                                                      d_sigOp'738'_104
+                                                        (coe MAlonzo.Code.Once.Type.C_Unit_120)
+                                                        (coe v15) (coe v4) (coe v5)
+                                                        (coe
+                                                           MAlonzo.Code.Once.Arith.SigOp.Builders.du_arrow'45'info_364
+                                                           (coe v15) (coe v14) (coe v10)
+                                                           (coe
+                                                              MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
+                                                           (coe v22))
+                                                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
+                                            MAlonzo.Code.Once.Functor.Translate.C_con'45'base_226 v19
+                                              -> coe
+                                                   d_sigOp'738'_104
+                                                   (coe MAlonzo.Code.Once.Type.C_Unit_120) (coe v2)
+                                                   (coe v4) (coe v5)
+                                                   (coe
+                                                      MAlonzo.Code.Once.Arith.SigOp.Builders.du_value'45'info_332
+                                                      (coe v10)
+                                                      (coe
+                                                         MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198)
+                                                      (coe v19))
+                                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                            _ -> MAlonzo.RTE.mazUnreachableError
                                      _ -> MAlonzo.RTE.mazUnreachableError
                               MAlonzo.Code.Once.Type.C_One_8
                                 -> case coe v11 of
@@ -2044,7 +2077,7 @@ du_'10214'_'10215''738'_122 v0 v1 v2 v3 v4 v5 v6
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Surface.Syntax.C_cata_516 v13 v14
+      MAlonzo.Code.Once.Surface.Syntax.C_cata_516 v9 v13 v14
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v15 v16 v17
                -> case coe v15 of
@@ -2064,7 +2097,18 @@ du_'10214'_'10215''738'_122 v0 v1 v2 v3 v4 v5 v6
                                            MAlonzo.Code.Once.Type.C_mk'45'kind_50
                                            (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v20))
                                         (coe v17))
-                                     (coe v14) (coe v4) (coe v5) (coe v6))
+                                     (coe v14) (coe v4) (coe v5)
+                                     (coe
+                                        MAlonzo.Code.Once.Denotation.Phase.du_restrict'7472'_40
+                                        (coe v1)
+                                        (coe
+                                           MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                           (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                        (coe v9)
+                                        (coe
+                                           MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+                                           (coe v9))
+                                        (coe v6)))
                                   (coe
                                      (\ v21 ->
                                         coe
@@ -2080,7 +2124,7 @@ du_'10214'_'10215''738'_122 v0 v1 v2 v3 v4 v5 v6
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Surface.Syntax.C_ana_532 v14 v15
+      MAlonzo.Code.Once.Surface.Syntax.C_ana_532 v9 v14 v15
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v16 v17 v18
                -> case coe v18 of
@@ -2097,7 +2141,17 @@ du_'10214'_'10215''738'_122 v0 v1 v2 v3 v4 v5 v6
                                  (coe
                                     MAlonzo.Code.Once.Type.d_'10214'_'10215'T_170 (coe v19)
                                     (coe v16)))
-                              (coe v15) (coe v4) (coe v5) (coe v6))
+                              (coe v15) (coe v4) (coe v5)
+                              (coe
+                                 MAlonzo.Code.Once.Denotation.Phase.du_restrict'7472'_40 (coe v1)
+                                 (coe
+                                    MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
+                                    (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9))
+                                 (coe v9)
+                                 (coe
+                                    MAlonzo.Code.Once.Surface.Context.du_'8849''7512''45''42'Many_402
+                                    (coe v9))
+                                 (coe v6)))
                            (coe
                               (\ v21 ->
                                  coe

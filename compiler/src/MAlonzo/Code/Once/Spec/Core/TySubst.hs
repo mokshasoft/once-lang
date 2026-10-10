@@ -31,6 +31,7 @@ import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
+import qualified MAlonzo.Code.Once.Type.SubLaws
 
 -- Once.Spec.Core.TySubst._._<:ₚ_
 d__'60''58''8346'__20 a0 a1 a2 a3 a4 a5 = ()
@@ -254,14 +255,14 @@ du_'60''58''8346''45'refl_688 v0
                     MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'arr_640
                     (coe du_'60''58''8346''45'refl_688 (coe v1))
                     (coe du_'60''58''8346''45'refl_688 (coe v3))
-                    (MAlonzo.Code.Once.Type.Sub.d_'8849'π'45'refl_36 (coe v5))
+                    (MAlonzo.Code.Once.Type.SubLaws.d_'8849'π'45'refl_18 (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Core.PolyTy.C_μ'45'type_40 v1
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'μ_664
       MAlonzo.Code.Once.Spec.Core.PolyTy.C_ν'45'type_42 v1 v2
         -> coe
              MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'ν_672
-             (MAlonzo.Code.Once.Type.Sub.d_'8849'π'45'refl_36 (coe v2))
+             (MAlonzo.Code.Once.Type.SubLaws.d_'8849'π'45'refl_18 (coe v2))
       MAlonzo.Code.Once.Spec.Core.PolyTy.C_rigid_44 v1 v2
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'rigid_624
       _ -> MAlonzo.RTE.mazUnreachableError

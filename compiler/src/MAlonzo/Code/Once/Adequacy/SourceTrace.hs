@@ -30,6 +30,7 @@ import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
+import qualified MAlonzo.Code.Once.Denotation.TraceMonadLaws
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Parser
@@ -373,7 +374,7 @@ du_rewrite'45'program'45'linked_244 v0 v1
 d_'10214'_'10215'IR_252 ::
   Maybe MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_'10214'_'10215'IR_252 v0 v1 v2
   = case coe v0 of
@@ -381,11 +382,11 @@ d_'10214'_'10215'IR_252 v0 v1 v2
         -> coe
              MAlonzo.Code.Once.Denotation.Behavior.C_mkBehavior_40
              (coe
-                MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_868 (coe v2)
+                MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_542 (coe v2)
                 (coe d_m_264 (coe v3) (coe v1) (coe v2)))
-             (MAlonzo.Code.Once.Denotation.TraceMonad.d_coh_980
+             (MAlonzo.Code.Once.Denotation.TraceMonad.d_coh_606
                 (coe d_pf_266 (coe v3) (coe v1) (coe v2)))
-             (MAlonzo.Code.Once.Denotation.TraceMonad.d_bnd_976
+             (MAlonzo.Code.Once.Denotation.TraceMonad.d_bnd_602
                 (coe d_pf_266 (coe v3) (coe v1) (coe v2)))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe MAlonzo.Code.Once.Denotation.Behavior.d_silent_42
@@ -394,23 +395,23 @@ d_'10214'_'10215'IR_252 v0 v1 v2
 d_m_264 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 d_m_264 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Denotation.Program.d_runIR_392 (coe v1)
       (coe
-         MAlonzo.Code.Once.Denotation.TraceMonad.d_pureHalf_540 (coe v2))
+         MAlonzo.Code.Once.Denotation.TraceMonad.d_pureHalf_350 (coe v2))
       (coe v0)
 -- Once.Adequacy.SourceTrace._.pf
 d_pf_266 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_PrefixFamily_966
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_PrefixFamily_592
 d_pf_266 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace'45'pf_1004
+      MAlonzo.Code.Once.Denotation.TraceMonadLaws.du_projTrace'45'pf_382
       (coe v2) (coe d_m_264 (coe v0) (coe v1) (coe v2))
 -- Once.Adequacy.SourceTrace.eitherToMaybe
 d_eitherToMaybe_268 ::
@@ -440,22 +441,21 @@ d_srcToModule'45'aux_272 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.SourceTrace.srcToModule
 d_srcToModule_280 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   Maybe MAlonzo.Code.Once.Parser.Module.Core.T_Module_32
 d_srcToModule_280 v0
   = coe
       d_srcToModule'45'aux_272
       (coe
-         MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_202 (coe v0))
+         MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_50 (coe v0))
       (coe
          d_eitherToMaybe_268
          (coe
             MAlonzo.Code.Once.Parser.d_parseStrict_72
-            (coe
-               MAlonzo.Code.Once.Denotation.Behavior.d_srcText_204 (coe v0))))
+            (coe MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v0))))
 -- Once.Adequacy.SourceTrace.srcToModule-just
 d_srcToModule'45'just_290 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -490,25 +490,25 @@ du_srcToModule'45'inv'45'p_332 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.SourceTrace.srcToModule-inv
 d_srcToModule'45'inv_352 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_srcToModule'45'inv_352 v0 ~v1 ~v2 = du_srcToModule'45'inv_352 v0
 du_srcToModule'45'inv_352 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_srcToModule'45'inv_352 v0
   = coe
       du_srcToModule'45'inv'45'p_332
       (coe
          MAlonzo.Code.Once.Parser.d_parseStrict_72
-         (coe MAlonzo.Code.Once.Denotation.Behavior.d_srcText_204 (coe v0)))
+         (coe MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v0)))
 -- Once.Adequacy.SourceTrace.sourceTrace-aux
 d_sourceTrace'45'aux_360 ::
   Maybe MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_sourceTrace'45'aux_360 v0 v1
   = case coe v0 of
@@ -522,23 +522,23 @@ d_sourceTrace'45'aux_360 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.SourceTrace.sourceTrace
 d_sourceTrace_366 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_sourceTrace_366 v0 v1
   = coe
       d_sourceTrace'45'aux_360 (coe d_srcToModule_280 (coe v0)) (coe v1)
 -- Once.Adequacy.SourceTrace.⟦_⟧
 d_'10214'_'10215'_372 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_'10214'_'10215'_372 v0 = coe d_sourceTrace_366 (coe v0)
 -- Once.Adequacy.SourceTrace.⟦⟧-via-module
 d_'10214''10215''45'via'45'module_382 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->

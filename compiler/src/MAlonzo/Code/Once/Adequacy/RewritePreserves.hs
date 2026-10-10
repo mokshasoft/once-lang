@@ -182,7 +182,7 @@ d_table'45'sound_548 = erased
 -- Once.Adequacy.RewritePreserves.rewrite-program-preserves
 d_rewrite'45'program'45'preserves_566 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_rewrite'45'program'45'preserves_566 = erased

@@ -453,7 +453,7 @@ du_Te_204 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 du_Te_204 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_trace'45'of_120
+      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_trace'45'of_114
       (coe du_Y_202 (coe v0) (coe v1))
 -- Once.Adequacy.ImageResolved.Fns._.Le
 d_Le_206 ::
@@ -487,7 +487,7 @@ du_Le_206 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Machine.SMCore.d_blocks'45'layout_2350
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_bodies'45'of_1758
+         MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_bodies'45'of_1750
          (coe du_Y_202 (coe v0) (coe v1)))
 -- Once.Adequacy.ImageResolved.Fns._.unit⊆
 d_unit'8838'_210 ::
@@ -813,7 +813,7 @@ du_T_270 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 du_T_270 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_trace'45'of_120
+      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_trace'45'of_114
       (coe du_X_268 (coe v0) (coe v1))
 -- Once.Adequacy.ImageResolved.Prog.L
 d_L_272 ::
@@ -830,7 +830,7 @@ du_L_272 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Machine.SMCore.d_blocks'45'layout_2350
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_bodies'45'of_1758
+         MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_bodies'45'of_1750
          (coe du_X_268 (coe v0) (coe v1)))
 -- Once.Adequacy.ImageResolved.Prog.done
 d_done_274 ::
@@ -1367,7 +1367,7 @@ d_σ_438 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_σ_438 v0
-  = coe MAlonzo.Code.Once.Spec.Module.d_moduleSig_172 (coe v0)
+  = coe MAlonzo.Code.Once.Spec.Module.d_moduleSig_132 (coe v0)
 -- Once.Adequacy.ImageResolved.Lib.G
 d_G_440 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -1416,7 +1416,7 @@ du_ce'45'linked_456 v0 v1 v2
         -> coe
              MAlonzo.Code.Once.Adequacy.ProgramLinked.d_link'45'walk_2300
              (coe
-                MAlonzo.Code.Once.Spec.Module.d_moduleSig'45'ef_168
+                MAlonzo.Code.Once.Spec.Module.d_moduleSig'45'ef_128
                 (coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe v1)))
              (coe
                 MAlonzo.Code.Once.Compile.C_cscope_392

@@ -32,7 +32,7 @@ d_ArchSemantics_10 = ()
 data T_ArchSemantics_10
   = C_constructor_90 (AgdaAny -> AgdaAny)
                      (AgdaAny -> AgdaAny -> Maybe AgdaAny)
-                     (MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+                     (MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
                       AgdaAny ->
                       AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6)
                      ([MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe AgdaAny)
@@ -62,7 +62,7 @@ d_run_44 v0
 -- Once.Adequacy.CPU.Interface.ArchSemantics.run-trace
 d_run'45'trace_46 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_run'45'trace_46 v0
@@ -115,7 +115,7 @@ d_as'45'faithful_62 = erased
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-dec
 d_exec'45'dec_64 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   Maybe AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_exec'45'dec_64 v0 v1 v2
   = case coe v2 of
@@ -127,7 +127,7 @@ d_exec'45'dec_64 v0 v1 v2
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-bytes
 d_exec'45'bytes_72 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_exec'45'bytes_72 v0 v1 v2
@@ -135,7 +135,7 @@ d_exec'45'bytes_72 v0 v1 v2
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-print
 d_exec'45'print_82 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_exec'45'print_82 = erased

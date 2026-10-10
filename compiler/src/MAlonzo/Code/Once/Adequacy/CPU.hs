@@ -45,7 +45,7 @@ d_arch'45'semantics_6 v0
 -- Once.Adequacy.CPU.exec
 d_exec_8 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_458 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_exec_8 v0 v1 v2

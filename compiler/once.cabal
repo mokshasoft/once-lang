@@ -76,10 +76,10 @@ library
       MAlonzo.Code.Once.Denotation.Sub
       MAlonzo.Code.Once.Res
       MAlonzo.Code.Once.Surface.CoerceIR
-      MAlonzo.Code.Once.Surface.Seq
       MAlonzo.Code.Once.Type.DecEq
       MAlonzo.Code.Once.Type.Honest
       MAlonzo.Code.Once.Type.Sub
+      MAlonzo.Code.Once.Type.SubLaws
       MAlonzo.Code.Once.TypeCheck.ModeAgreement
       Paths_once
       MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
@@ -311,7 +311,6 @@ library
       MAlonzo.Code.Once.Arith.SigOp.Block
       MAlonzo.Code.Once.Arith.SigOp.Compare
       MAlonzo.Code.Once.Arith.SigOp.Builders
-      MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable
       MAlonzo.Code.Once.CCC.Codegen.AllocMin
@@ -390,14 +389,12 @@ library
       MAlonzo.Code.Once.Functor.Translate
       MAlonzo.Code.Once.Float.Dyadic
       MAlonzo.Code.Once.Grammar
-      MAlonzo.Code.Once.Grammar.ConcreteDec
       MAlonzo.Code.Once.Grammar.Convert
       MAlonzo.Code.Once.Grammar.ExprBridge
       MAlonzo.Code.Once.Grammar.ExprConvert
       MAlonzo.Code.Once.Grammar.ExprPrinter
       MAlonzo.Code.Once.Grammar.ExprRelRoundtrip
       MAlonzo.Code.Once.Grammar.ExprRoundtrip
-      MAlonzo.Code.Once.Grammar.ModuleConvert
       MAlonzo.Code.Once.Grammar.ParserBridge
       MAlonzo.Code.Once.Grammar.ParserInvariant
       MAlonzo.Code.Once.Grammar.ParserRelation
@@ -417,7 +414,6 @@ library
       MAlonzo.Code.Once.Parser.Core
       MAlonzo.Code.Once.Parser.Expr
       MAlonzo.Code.Once.Parser.ExprRelation
-      MAlonzo.Code.Once.Parser.Inline
       MAlonzo.Code.Once.Parser.Lexer
       MAlonzo.Code.Once.Parser.Module
       MAlonzo.Code.Once.Parser.Module.Core
@@ -456,9 +452,7 @@ library
       MAlonzo.Code.Once.Postulates
       MAlonzo.Code.Once.Semantics.Value
       MAlonzo.Code.Once.Semantics.Machine
-      MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate
-      MAlonzo.Code.Once.Surface.IR
       MAlonzo.Code.Once.Surface.Properties
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
@@ -525,13 +519,13 @@ library
       MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Judgment
-      MAlonzo.Code.Once.TypeCheck.Morph
       MAlonzo.Code.Once.TypeCheck.Principal
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Once.Adequacy
       MAlonzo.Code.Once.Adequacy.ArchCorrectness
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64
       MAlonzo.Code.Once.Denotation.Behavior
+      MAlonzo.Code.Once.Denotation.BehaviorLaws
       MAlonzo.Code.Once.Adequacy.Compile
       MAlonzo.Code.Once.Adequacy.EmitFile
       MAlonzo.Code.Once.Adequacy.FileWF
@@ -548,6 +542,7 @@ library
       MAlonzo.Code.Once.Spec.Grammar.Decl
       MAlonzo.Code.Once.Spec.Parsing
       MAlonzo.Code.Once.Spec.Module
+      MAlonzo.Code.Once.Spec.ModuleLaws
       MAlonzo.Code.Once.Spec.Program
       MAlonzo.Code.Once.Spec.Resolution
       MAlonzo.Code.Once.Spec.Syntax
@@ -565,8 +560,8 @@ library
       MAlonzo.Code.Once.Adequacy.SourceTrace
       MAlonzo.Code.Once.Denotation.Admissible
       MAlonzo.Code.Once.Denotation.Trace
-      MAlonzo.Code.Once.Denotation.TraceDenote
       MAlonzo.Code.Once.Denotation.TraceMonad
+      MAlonzo.Code.Once.Denotation.TraceMonadLaws
       MAlonzo.Code.Once.Word
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimPathLoad
@@ -663,11 +658,13 @@ library
       MAlonzo.Code.Once.Denotation.DefEnv
       MAlonzo.Code.Once.Denotation.EnvAlgebraV
       MAlonzo.Code.Once.Denotation.GradedDomain
+      MAlonzo.Code.Once.Denotation.GradedDomainLaws
       MAlonzo.Code.Once.Denotation.GradedOps
       MAlonzo.Code.Once.Denotation.PhaseV
       MAlonzo.Code.Once.Denotation.Program
       MAlonzo.Code.Once.IR.Ref
       MAlonzo.Code.Once.Spec.Contract
+      MAlonzo.Code.Once.Spec.ContractLaws
       MAlonzo.Code.Once.Spec.Core.AbsTy
       MAlonzo.Code.Once.Spec.Core.Abstract
       MAlonzo.Code.Once.Spec.Core.Derived

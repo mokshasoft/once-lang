@@ -106,7 +106,7 @@ d_abs'45''60''58'_626 ::
    MAlonzo.Code.Once.Type.T_TKind_110) ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'60''58''8346'__602
 d_abs'45''60''58'_626 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7
   = du_abs'45''60''58'_626 v3 v4 v5 v6 v7
@@ -116,19 +116,19 @@ du_abs'45''60''58'_626 ::
    MAlonzo.Code.Once.Type.T_TKind_110) ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'60''58''8346'__602
 du_abs'45''60''58'_626 v0 v1 v2 v3 v4
   = case coe v4 of
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'void_52
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'void_612
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_54
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'unit_614
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'int_56
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'int_616
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'float_58
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'float_618
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_74 v12 v13 v14
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50 v12 v13 v14
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v15 v16 v17
                -> case coe v3 of
@@ -144,7 +144,7 @@ du_abs'45''60''58'_626 v0 v1 v2 v3 v4
                            v14
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_84 v9 v10
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_60 v9 v10
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'42'__124 v11 v12
                -> case coe v3 of
@@ -159,7 +159,7 @@ du_abs'45''60''58'_626 v0 v1 v2 v3 v4
                               (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'sum_94 v9 v10
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'sum_70 v9 v10
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'43'__126 v11 v12
                -> case coe v3 of
@@ -174,11 +174,11 @@ du_abs'45''60''58'_626 v0 v1 v2 v3 v4
                               (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'μ_98
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'μ_74
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'μ_664
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'ν_106 v8
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'ν_82 v8
         -> coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'ν_672 v8
-      MAlonzo.Code.Once.Type.Sub.C_sub'45'rigid_112
+      MAlonzo.Code.Once.Type.Sub.C_sub'45'rigid_88
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C_rigid_138 v7 v8
                -> coe

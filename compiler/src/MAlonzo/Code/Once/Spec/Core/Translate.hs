@@ -337,7 +337,7 @@ d_coerceE_200 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_coerceE_200 ~v0 ~v1 ~v2 = du_coerceE_200
@@ -347,7 +347,7 @@ du_coerceE_200 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__48 ->
+  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_coerceE_200 v0 v1 v2 v3 v4 v5
@@ -1474,7 +1474,7 @@ d_monoPick_888 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                 (coe ("main" :: Data.Text.Text)))
              (coe
                 MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v5)
-                (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_188))
+                (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_148))
              (coe v17)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.Translate.monoDispatch

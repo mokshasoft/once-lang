@@ -90,7 +90,7 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
                 (coe v7 v0 v6))
       MAlonzo.Code.Once.SigOp.Info.C_ffiV_150
         -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.du_resT_516
+             MAlonzo.Code.Once.Denotation.TraceMonad.du_resT_326
              (coe
                 v1 (MAlonzo.Code.Once.SigOp.Info.d_name_178 (coe v4)) v2 v3 v6)
       MAlonzo.Code.Once.SigOp.Info.C_callsV_152

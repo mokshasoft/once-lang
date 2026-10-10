@@ -353,7 +353,7 @@ du_ce'45'prim'45'sound_342 v0 v1 v2 v3 v4 v5
         -> coe
              du_conc_460 (coe v0) (coe v1) (coe v2) (coe v3) (coe v6)
              (coe MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63'_52 (coe v6))
-             (coe MAlonzo.Code.Once.Type.Honest.d_honest'63'_86 (coe v6))
+             (coe MAlonzo.Code.Once.Type.Honest.d_honest'63'_190 (coe v6))
              (coe MAlonzo.Code.Once.Type.Rigid.d_rigidFree'63'_838 (coe v6))
              (coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError

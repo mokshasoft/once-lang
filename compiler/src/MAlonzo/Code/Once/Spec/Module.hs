@@ -200,17 +200,11 @@ du_teleSig_116 v0 v1
              (:) v8 v9 -> coe du_teleSig_116 (coe v9) (coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Spec.Module.teleSig≡entrySig
-d_teleSig'8801'entrySig_134 ::
-  T_Scope_6 ->
-  [MAlonzo.Code.Once.Parser.T_Entry_132] ->
-  T_ModTele_50 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_teleSig'8801'entrySig_134 = erased
 -- Once.Spec.Module.moduleSig-ef
-d_moduleSig'45'ef_168 ::
+d_moduleSig'45'ef_128 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_moduleSig'45'ef_168 v0
+d_moduleSig'45'ef_128 v0
   = case coe v0 of
       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
@@ -218,28 +212,28 @@ d_moduleSig'45'ef_168 v0
         -> coe d_entrySig_104 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Module.moduleSig
-d_moduleSig_172 ::
+d_moduleSig_132 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_moduleSig_172 v0
+d_moduleSig_132 v0
   = coe
-      d_moduleSig'45'ef_168
+      d_moduleSig'45'ef_128
       (coe
          MAlonzo.Code.Once.Parser.d_extractFunctions_572
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
          (coe v0))
 -- Once.Spec.Module.ModuleTyped-ef
-d_ModuleTyped'45'ef_176 ::
+d_ModuleTyped'45'ef_136 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> ()
-d_ModuleTyped'45'ef_176 = erased
+d_ModuleTyped'45'ef_136 = erased
 -- Once.Spec.Module.ModuleTyped
-d_ModuleTyped_184 ::
+d_ModuleTyped_144 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> ()
-d_ModuleTyped_184 = erased
+d_ModuleTyped_144 = erased
 -- Once.Spec.Module.EffUU
-d_EffUU_188 :: MAlonzo.Code.Once.Type.T_Type_108
-d_EffUU_188
+d_EffUU_148 :: MAlonzo.Code.Once.Type.T_Type_108
+d_EffUU_148
   = coe
       MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128
       (coe MAlonzo.Code.Once.Type.C_Unit_120)
@@ -249,21 +243,21 @@ d_EffUU_188
          (coe MAlonzo.Code.Once.Type.C_eff_36))
       (coe MAlonzo.Code.Once.Type.C_Unit_120)
 -- Once.Spec.Module.MainsEffUU
-d_MainsEffUU_194 ::
+d_MainsEffUU_154 ::
   T_Scope_6 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] -> T_ModTele_50 -> ()
-d_MainsEffUU_194 = erased
+d_MainsEffUU_154 = erased
 -- Once.Spec.Module.MainIn
-d_MainIn_210 ::
+d_MainIn_170 ::
   T_Scope_6 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] -> T_ModTele_50 -> ()
-d_MainIn_210 = erased
+d_MainIn_170 = erased
 -- Once.Spec.Module.HasValidMain-ef
-d_HasValidMain'45'ef_226 ::
+d_HasValidMain'45'ef_186 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> AgdaAny -> ()
-d_HasValidMain'45'ef_226 = erased
+d_HasValidMain'45'ef_186 = erased
 -- Once.Spec.Module.HasValidMain
-d_HasValidMain_234 ::
+d_HasValidMain_194 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> AgdaAny -> ()
-d_HasValidMain_234 = erased
+d_HasValidMain_194 = erased

@@ -162,7 +162,7 @@ du_fns'45'frame'45'free_52 v0 v1
              (coe
                 MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                (MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.d_ir'45'to'45'trace'45'lab'45'frame'45'free_1020
+                (MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.d_ir'45'to'45'trace'45'lab'45'frame'45'free_1008
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -202,7 +202,7 @@ d_body'45'frame'45'free_66 v0 v1 v2
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v2))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_ir'45'to'45'trace'45'top'45'frame'45'free_1038
+         MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_ir'45'to'45'trace'45'top'45'frame'45'free_1026
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v2)
          (coe
@@ -312,7 +312,7 @@ du_fns'45'alloc'45'min_100 v0 v1
              (coe
                 MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                (MAlonzo.Code.Once.CCC.Codegen.AllocMin.d_ir'45'to'45'trace'45'lab'45'alloc'45'min_922
+                (MAlonzo.Code.Once.CCC.Codegen.AllocMin.d_ir'45'to'45'trace'45'lab'45'alloc'45'min_910
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
@@ -350,7 +350,7 @@ d_image'45'alloc'45'min_114 v0 v1 v2
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v2))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_ir'45'to'45'trace'45'top'45'alloc'45'min_936
+            MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_ir'45'to'45'trace'45'top'45'alloc'45'min_924
             (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v2))
          (coe
@@ -414,7 +414,7 @@ du_fns'45'slots_128 v0 v1 v2 v3
              (coe
                 MAlonzo.Code.Once.CCC.Codegen.SlotSeg.C__'8759'__236
                 (coe MAlonzo.Code.Once.CCC.Codegen.SlotSeg.du_sb'45'none_40)
-                (MAlonzo.Code.Once.CCC.Codegen.SlotBudget.d_ir'45'slots'45'below'45'under'45'lab_1944
+                (MAlonzo.Code.Once.CCC.Codegen.SlotBudget.d_ir'45'slots'45'below'45'under'45'lab_1936
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v4))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v4))
                    (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v4))
@@ -449,7 +449,7 @@ d_image'45'slots_152 v0 v1 v2
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v2))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_ir'45'slots'45'below'45'top_1982
+            MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_ir'45'slots'45'below'45'top_1974
             (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v2)
             (coe
@@ -500,7 +500,7 @@ du_fn'45'labels_170 v0 v1
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
       (coe MAlonzo.Code.Once.CCC.Codegen.LabelSeg.du_li'45'none_54)
-      (MAlonzo.Code.Once.CCC.Codegen.LabelScope.d_linked'45'labels'45'lab_3540
+      (MAlonzo.Code.Once.CCC.Codegen.LabelScope.d_linked'45'labels'45'lab_3534
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v1))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v1))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v1))

@@ -87,7 +87,7 @@ d_tableCalls_32 ::
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
   = case coe v2 of
-      [] -> coe MAlonzo.Code.Once.Denotation.TraceMonad.du_unlinkedT_512
+      [] -> coe MAlonzo.Code.Once.Denotation.TraceMonad.du_unlinkedT_322
       (:) v7 v8
         -> coe
              d_tableEnv'45'at_42 (coe v0) (coe v1) (coe v7) (coe v8) (coe v3)
