@@ -18110,3 +18110,15 @@ Not a vacuity (accepted programs exist; soundness ties them to the Spec) but a S
 ### Consequences
 - Until 0.114 lands, MERGE.md's Spec review reads `Classify`, `Compile`'s `resolveFunType`/`findMain` and `Parser.extractFunctions` as part of the Spec.
 
+## D301 — THE SPEC'S MEANING IS PARAMETRIC IN THE TARGET'S NUMBERS (2026-10-10)
+
+**Relates**: D250 (graded meaning), D124 (floats), "arith needs no value spec", plan 0.113 (merge walk-through)
+
+### Context
+The per-edit walk-through of the merge found `Spec.Core.Meaning.⟦_⟧` (and `primSem`) taking a `TargetNum`: integer literals and primitives are fixed-width, at the target's `int-bits`, and floats at its `float-format`. Nowhere did the Spec say so.
+
+### Decision
+This is intended: the Spec does not pretend to unbounded integers, so overflow is part of the meaning, not undefined behaviour. "The meaning of a program" is therefore the meaning AT a target: one program may behave differently on targets of different word widths, and the correctness theorem is per target (`exec arch … ≈ ⟦ arch ⟧ˢ …`).
+
+### Consequences
+- A portable program is one whose meaning agrees at every `TargetNum` it is compiled for; nothing checks that today.

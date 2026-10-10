@@ -70,6 +70,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
+import Once.Denotation.TraceMonadLaws as TML
 open import Once.Res using (Res; returns; is-stopped)
 
 module PairProofC {FS : FrameSemantics} where
@@ -226,7 +227,7 @@ module PairProofC {FS : FrameSemantics} where
       pair-run : ∀ (r : Res ⟦ B ⟧) → resultAt (floc PC.PR.p2) (evalᴰ f x) ≡ r
                → runAt s (evalᴰ ⟨ f , g ⟩ x) ≡ TM.thenRes ιᶠ h esF r innerT
       pair-run r q =
-        trans (TM.run-bind ιᶠ h (evalᴰ f x) innerT)
+        trans (TML.run-bind ιᶠ h (evalᴰ f x) innerT)
               (cong₂ (λ es r′ → TM.thenRes ιᶠ h es r′ innerT)
                      (sym (cong proj₁ RF)) (trans (sym (cong proj₂ RF)) q))
 
@@ -382,7 +383,7 @@ module PairProofC {FS : FrameSemantics} where
           inner-run r q =
             trans (pair-run (returns vB) rfeq)
                   (cong (TM.appE esF)
-                    (trans (TM.run-bind ιᶠ (h ++ esF) (evalᴰ g x) (λ c → TM.returnT (vB , c)))
+                    (trans (TML.run-bind ιᶠ (h ++ esF) (evalᴰ g x) (λ c → TM.returnT (vB , c)))
                            (cong₂ (λ es r′ → TM.thenRes ιᶠ (h ++ esF) es r′ (λ c → TM.returnT (vB , c)))
                                   (sym (cong proj₁ RG)) (trans (sym (cong proj₂ RG)) q))))
 

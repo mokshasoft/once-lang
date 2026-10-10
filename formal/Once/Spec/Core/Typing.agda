@@ -179,9 +179,9 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
            → π ⊑π π′ → Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ ] t ∷ A ! π′
 
 ------------------------------------------------------------------------
--- D276: the JOIN is derived. The surface's `case` (each arm at its own usage,
--- the conclusion at their per-position max) is `⊢case` with each arm sub-used
--- to the join — no longer a primitive of the Spec.
+-- D276: the JOIN is derived: arms at their own usages are `⊢case` with each
+-- arm sub-used to the join — no longer a primitive of the Spec. (The surface's
+-- `case` still charges the SUM of its arms, stricter than this; plan 0.114 item 6.)
 ------------------------------------------------------------------------
 
 ⊑ᵘ-keep : ∀ {n} (q : Quantity) {Ψ Ψ′ : Usage n} → Ψ ⊑ᵘ Ψ′ → (q ∷ Ψ) ⊑ᵘ (q ∷ Ψ′)

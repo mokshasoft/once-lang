@@ -42,7 +42,6 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
-open import Once.Postulates using (extensionality)
 open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
 open import Once.Type using (Type; isUnit?) renaming (Unit to UnitT)
 import Once.Type as Ty
@@ -236,28 +235,6 @@ thenRes ι h es (returns x) f = appE es (run ι (h ++ es) (f x))
 
 then : ∀ {X Y} → Interp → List SigOpEvent → Run X → (X → T Y) → Run Y
 then ι h r f = thenRes ι h (proj₁ r) (proj₂ r) f
-
--- THE RUN OF A BIND IS THE RUNS OF ITS PARTS, the history threaded.
-mutual
-  run-bind : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (m : T X) (f : X → T Y)
-           → run ι h (m >>=T f) ≡ then ι h (run ι h m) f
-  run-bind ι h (ret x)      f = cong (λ hh → run ι hh (f x)) (sym (++-identityʳ h))
-  run-bind ι h (call o a k) f = run-bind-call ι h o a k f (callAnswer ι h o a)
-  run-bind ι h (halt o a)   f = refl
-
-  run-bind-call : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (o : CallOp) (a : M.⟦ cdom o ⟧)
-                    (k : M.⟦ ccod o ⟧ → T X) (f : X → T Y) (mb : Maybe M.⟦ ccod o ⟧)
-                → run-call ι h o a (λ b → k b >>=T f) mb ≡ then ι h (run-call ι h o a k mb) f
-  run-bind-call ι h o a k f (just b) =
-    trans (cong (consE (callEvent o a)) (run-bind ι (h ++ [ callEvent o a ]) (k b) f))
-          (cons-then ι h (callEvent o a)
-             (proj₁ (run ι (h ++ [ callEvent o a ]) (k b))) (proj₂ (run ι (h ++ [ callEvent o a ]) (k b))) f)
-  run-bind-call ι h o a k f nothing = refl
-
-  cons-then : ∀ {X Y} ι h e es (r : Res X) (f : X → T Y)
-            → consE e (then ι (h ++ [ e ]) (es , r) f) ≡ then ι h (consE e (es , r)) f
-  cons-then ι h e es stopped     f = refl
-  cons-then ι h e es (returns x) f = cong (λ hh → appE (e ∷ es) (run ι hh (f x))) (++-assoc h [ e ] es)
 
 ------------------------------------------------------------------------
 -- The observable (D058): the first n calls of a run from the empty history.

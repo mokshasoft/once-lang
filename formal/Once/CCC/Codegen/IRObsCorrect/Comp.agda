@@ -38,6 +38,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
+import Once.Denotation.TraceMonadLaws as TML
 open import Once.Res using (Res; stopped; returns; is-stopped)
 
 module CompC {FS : FrameSemantics} where
@@ -293,7 +294,7 @@ module CompC {FS : FrameSemantics} where
 
       comp-run : ∀ (r : Res ValueDomain.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
                → runAt s (evalᴰ (g ∘ f) x) ≡ TM.thenRes ιᶠ h esF r (evalᴰ g)
-      comp-run r rfeq = trans (TM.run-bind ιᶠ h (evalᴰ f x) (evalᴰ g))
+      comp-run r rfeq = trans (TML.run-bind ιᶠ h (evalᴰ f x) (evalᴰ g))
                               (cong (λ r′ → TM.thenRes ιᶠ h esF r′ (evalᴰ g)) rfeq)
 
       -- D203: `go` builds BOTH halves, split on `f`'s RESULT (plan 0.98):
