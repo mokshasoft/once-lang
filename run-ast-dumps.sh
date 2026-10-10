@@ -11,7 +11,7 @@
 # Agda. Staging trees keep their _build across runs: a run that dies partway
 # (OOM, Ctrl-C, reboot) resumes from the interfaces already written.
 #
-#   ./run-ast-dumps.sh              # both refs
+#   ./run-ast-dumps.sh              # master and the current branch
 #   ./run-ast-dumps.sh master       # one ref
 #   HEAP=3G ./run-ast-dumps.sh      # tighter heap cap on a smaller machine
 #
@@ -80,7 +80,7 @@ read -r -a _rts_extra <<< "${RTS_EXTRA:-}"
 [ ${#_rts_extra[@]} -gt 0 ] && RTS_OPTS+=("${_rts_extra[@]}")
 
 # Refs to dump. Order matters only for readability of the log.
-REFS=("${@:-master plan-0.89-relocatable-units}")
+REFS=("${@:-master $(git -C "$REPO" rev-parse --abbrev-ref HEAD)}")
 read -r -a REFS <<< "${REFS[*]}"
 
 say()  { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*"; }
