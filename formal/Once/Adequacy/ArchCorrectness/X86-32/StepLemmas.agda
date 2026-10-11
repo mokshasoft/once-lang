@@ -36,6 +36,7 @@
 
 module Once.Adequacy.ArchCorrectness.X86-32.StepLemmas where
 
+open import Once.Memory.Memory using (≡ᵇ-refl)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<_; s≤s; z≤n)
 open import Data.Bool using (true; false; if_then_else_)
 open import Data.Maybe using (just; nothing)
@@ -56,10 +57,6 @@ open Flags using (zf)
 -- every proof below clear of the function-typed `Memory` (splitting on it is
 -- `SplitError.NotADatatype`).
 ------------------------------------------------------------------------
-
-≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
-≡ᵇ-refl zero    = refl
-≡ᵇ-refl (suc n) = ≡ᵇ-refl n
 
 -- An address never equals itself plus a positive offset.
 self≢plus : ∀ n k → (n ≡ᵇ (n + suc k)) ≡ false

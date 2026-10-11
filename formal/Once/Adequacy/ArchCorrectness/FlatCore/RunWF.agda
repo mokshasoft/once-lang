@@ -101,7 +101,7 @@ import Once.CCC.Codegen.CallsLinked as CLk
 open import Once.CCC.Codegen.CallOK using (CallOKI)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
-open import Once.CCC.Label using (_≡ᵇᴱ_; _≟ᴱ_)
+open import Once.CCC.Label using (_≡ᵇᴱ_; _≟ᴱ_; ≡ᵇᴱ-refl)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_; Unit)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram)
@@ -178,11 +178,6 @@ private
              → Any (λ x → entry-of? x ≡ just (e-fn f)) (fns-image l es)
   entries-in l (e ∷ es) f (here p)  = Any++⁺ˡ {xs = fn-image l e} {ys = fns-image (fn-next l e) es} (here (cong (λ g → just (e-fn g)) p))
   entries-in l (e ∷ es) f (there a) = Any++⁺ʳ (fn-image l e) (entries-in (fn-next l e) es f a)
-
-  ≡ᵇᴱ-refl : ∀ (a : EntryId) → (a ≡ᵇᴱ a) ≡ true
-  ≡ᵇᴱ-refl a with a ≟ᴱ a
-  ... | yes _ = refl
-  ... | no ¬p = ⊥-elim (¬p refl)
 
   -- the scan finds a marker that is there
   ft-at-complete : ∀ (m : Maybe EntryId) (is : AbstractTrace) (tg : EntryId) (i : ℕ)
