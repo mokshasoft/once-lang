@@ -36,6 +36,7 @@ open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.Subst S using (sub-⊢; single-ty; single-usage; subst-⊢)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Core.TermModel S using (TermModel)
+open import Once.Adequacy.TySubst S using (tsubst)
 open import Once.Adequacy.CoreSubstSem S
   using (Live; l-one; l-many; l-suc; look; env-ext; look-bind; subst-restr; ⟦retype⟧; single-⊑; module Rows)
 
@@ -112,4 +113,5 @@ termModel : TermModel
 termModel = record
   { subst-⊢ = subst-⊢
   ; let-β   = λ dt du fmt δ x → let-β-sem fmt δ dt du x
+  ; ty-subst-⊢ = tsubst
   }

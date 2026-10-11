@@ -255,6 +255,11 @@ start it during step 1 and read it here. Three checks, in order of severity:
   three ways before cutting — superseded (something on the path replaced it),
   unwired prize (it proves what the apex postulates: plan 0.64's content test),
   or never wired.
+  A METATHEOREM (a property of the language itself, not a premise of the
+  compiler proof) is none of the three: it proves nothing the apex postulates,
+  so it always looks unwired. It belongs in `CertifiedBuild.language` (stated in
+  `Once.Spec.Core.TermModel`, proved under `Once.Adequacy`) — wire it there or
+  delete it, never leave it as an island (D303: `tsubst` was deleted this way).
 
 READ THE COUNTS CORRECTLY. `counts` are DECLARATIONS, not source sites, and the
 gap is large: 202 `terminating-pragma` entries in one dump were 22 actual

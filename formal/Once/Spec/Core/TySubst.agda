@@ -2,15 +2,16 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Spec.Core.TySubst — plan 0.103 phase 5: type substitution over the
--- core's open types: ground types are fixed by it (`⌈⌉-⟨⟩`), and subtyping is
--- reflexive (`<:ₚ-refl`).
+-- Once.Spec.Core.TySubst — plan 0.103 phase 5: SUBSTITUTION OF OPEN TYPES,
+-- the vocabulary of the type-substitution lemma (D303).
 --
--- The TYPE-SUBSTITUTION LEMMA itself (`tsubst`: a typing at `Δ` gives one at
--- every kind-respecting instance) was proved here, postulate-free, but nothing
--- on the apex used it — `PolyTyping.instantiate` is the ground-target form the
--- proof needs — and the merge's island pass (2026-10-11) removed it with the
--- term/context substitutions it needed. It is in git at 320bb3eb9.
+--     Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π   ⟹   Δ′ ⊩ Γ⟨σ⟩ ⊢[ Ψ ] t⟨σ⟩ₜ ∷ A⟨σ⟩ ! π
+--
+-- for every substitution `σ` that respects the kinds (`KSub`). The lemma is
+-- STATED in `Once.Spec.Core.TermModel` (`ty-subst-⊢`, a field of the
+-- language's metatheory on the apex) and PROVED in `Once.Adequacy.TySubst`;
+-- this module holds the definitions the statement needs, plus two small facts
+-- (`⌈⌉-⟨⟩`, read by the proof; `<:ₚ-refl`, read by `Spec.Core.Abstract`).
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
@@ -38,6 +39,11 @@ open G using (primDom; primCod)
 ------------------------------------------------------------------------
 -- Substitution respecting kinds
 ------------------------------------------------------------------------
+
+-- A substitution RESPECTS the kinds when it sends every base variable of `Δ`
+-- to a type that is base under `Δ′`.
+KSub : ∀ {m k} → KCtx m → KCtx k → Sub m k → Set
+KSub Δ Δ′ σ = ∀ i → Δ i ≡ Once.Type.k-base → Base Δ′ (σ i)
 
 -- Ground types are fixed by substitution.
 mutual
@@ -72,3 +78,36 @@ mutual
 <:ₚ-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:ₚ-refl A) (<:ₚ-refl B) (⊑π-refl π)
 <:ₚ-refl (μ-type F) = sub-μ
 <:ₚ-refl (ν-type F π) = sub-ν (⊑π-refl π)
+
+------------------------------------------------------------------------
+-- Substitution on contexts and terms
+------------------------------------------------------------------------
+
+_⟨_⟩ᶜ : ∀ {m k n} → PCtx m n → Sub m k → PCtx k n
+∅           ⟨ σ ⟩ᶜ = ∅
+(Γ , A ^ q) ⟨ σ ⟩ᶜ = (Γ ⟨ σ ⟩ᶜ) , (A ⟨ σ ⟩) ^ q
+
+_⟨_⟩ₜ : ∀ {m k n} → PTm m n → Sub m k → PTm k n
+var i        ⟨ σ ⟩ₜ = var i
+lam t        ⟨ σ ⟩ₜ = lam (t ⟨ σ ⟩ₜ)
+app t u      ⟨ σ ⟩ₜ = app (t ⟨ σ ⟩ₜ) (u ⟨ σ ⟩ₜ)
+let′ t u     ⟨ σ ⟩ₜ = let′ (t ⟨ σ ⟩ₜ) (u ⟨ σ ⟩ₜ)
+unit         ⟨ σ ⟩ₜ = unit
+pair t u     ⟨ σ ⟩ₜ = pair (t ⟨ σ ⟩ₜ) (u ⟨ σ ⟩ₜ)
+fst t        ⟨ σ ⟩ₜ = fst (t ⟨ σ ⟩ₜ)
+snd t        ⟨ σ ⟩ₜ = snd (t ⟨ σ ⟩ₜ)
+inl t        ⟨ σ ⟩ₜ = inl (t ⟨ σ ⟩ₜ)
+inr t        ⟨ σ ⟩ₜ = inr (t ⟨ σ ⟩ₜ)
+case s l r   ⟨ σ ⟩ₜ = case (s ⟨ σ ⟩ₜ) (l ⟨ σ ⟩ₜ) (r ⟨ σ ⟩ₜ)
+absurd t     ⟨ σ ⟩ₜ = absurd (t ⟨ σ ⟩ₜ)
+roll t       ⟨ σ ⟩ₜ = roll (t ⟨ σ ⟩ₜ)
+fold a t     ⟨ σ ⟩ₜ = fold (a ⟨ σ ⟩ₜ) (t ⟨ σ ⟩ₜ)
+unfold c t   ⟨ σ ⟩ₜ = unfold (c ⟨ σ ⟩ₜ) (t ⟨ σ ⟩ₜ)
+out t        ⟨ σ ⟩ₜ = out (t ⟨ σ ⟩ₜ)
+coerce A B t ⟨ σ ⟩ₜ = coerce (A ⟨ σ ⟩) (B ⟨ σ ⟩) (t ⟨ σ ⟩ₜ)
+lit l        ⟨ σ ⟩ₜ = lit l
+prim p t     ⟨ σ ⟩ₜ = prim p (t ⟨ σ ⟩ₜ)
+sigop c A    ⟨ σ ⟩ₜ = sigop c A
+ref d τ      ⟨ σ ⟩ₜ = ref d (λ i → τ i ⟨ σ ⟩)
+
+infixl 60 _⟨_⟩ᶜ _⟨_⟩ₜ

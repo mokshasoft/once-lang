@@ -18139,3 +18139,19 @@ The merge's island pass (§4b) found `Probe/RuntimeContractModel` and `Probe/Int
 - A model shows a type INHABITED, not a postulate TRUE.
 - Not covered yet: `BlockRunsHyp-<arch>`, the 22 `ResourceBounds`, the propositional CPU postulates (`as-faithful-*`, `step-budget-*-adequate`). Plan 0.11 phases B–F.
 - MERGE.md §1's emptiness probe: a new assumption whose type is not obviously inhabited owes a `NonVacuous` field, not a scratch probe.
+
+## D303 — THE LANGUAGE'S METATHEORY IS A FIELD OF THE APEX; THE TYPE-SUBSTITUTION LEMMA JOINS IT (2026-10-11)
+
+**Relates**: D276 (`CertifiedBuild.language`, the term model), D243 (a polymorphic definition is typed once), D140 (no proofs in the Spec closure), D302 (models on the apex), plan 0.103 phase 5
+
+### Context
+The merge of `plan-0.91-program-facts` deleted `tsubst` — the postulate-free type-substitution lemma over the core's open types (`Spec.Core.TySubst`, plan 0.103 phase 5) — as an island: nothing on the apex used it, and it proves no postulate, so the island rule's "unwired prize" exception did not apply. That is true of EVERY metatheorem: it is an additional claim about the language, never a premise of the compiler proof, so off the apex it always reads as dead code.
+
+### Decision
+1. A metatheorem lives in `CertifiedBuild.language`: STATED in `Once.Spec.Core.TermModel` (proof-free), PROVED under `Once.Adequacy`, so it is reachable, rots red, and is never an island.
+2. `TermModel` gains `ty-subst-⊢`: a derivation `Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π` over open types gives `Δ′ ⊩ Γ⟨σ⟩ᶜ ⊢[ Ψ ] t⟨σ⟩ₜ ∷ A⟨σ⟩ ! π` for every kind-respecting `σ` (`KSub`). Same usage, same purity. `Spec.Core.TySubst` keeps the vocabulary (`KSub`, `_⟨_⟩ᶜ`, `_⟨_⟩ₜ`); the proof (`tsubst` and its lemmas `base-⟨⟩`, `wf-⟨⟩`, `<:ₚ-⟨⟩`, `⟦⟧F-⟨⟩`, `lookup-⟨⟩`) moves to `Once.Adequacy.TySubst`, restored from 320bb3eb9 unchanged — it covers D276's `⊢sub-use`.
+3. MERGE.md §4b: a metatheorem is wired into `language` or deleted, never left as an island.
+
+### Consequences
+- "Typed once, instances for free" (D243) is now a theorem on the apex, not an argument in a comment; the compiler proof still uses the ground-target form `PolyTyping.instantiate`.
+- Nothing extracted changes (proof-only).
