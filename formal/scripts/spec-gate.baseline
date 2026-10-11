@@ -4,7 +4,6 @@
 # A re-exports an implementation module. `reexport-wholesale A B`: A
 # re-exports B with no `using` list. `spec-public|spec-renaming|spec-hiding M`:
 # the Spec module M uses that keyword (the goal is none of the three).
-import Once.Adequacy
 import Once.Allocator.AbstractInstance
 import Once.Allocator.Interface
 import Once.Arith.Backend.RiscV64.Emit
@@ -165,7 +164,6 @@ reexport-impl Once.Parser.Expr Once.Parser.ExprRelation
 reexport-impl Once.Parser.PolyType Once.Parser.CharClass
 reexport-impl Once.Semantics.Machine Once.Semantics.Value
 reexport-impl Once.Semantics.Machine Once.Semantics.ValueIR
-reexport-impl Once.Spec.Correct Once.Adequacy
 reexport-impl Once.Spec.Meaning Once.Denotation.Admissible
 reexport-impl Once.Spec.Meaning Once.Denotation.Behavior
 reexport-impl Once.Spec.Meaning Once.Denotation.GradedDomain
@@ -184,7 +182,6 @@ reexport-wholesale Once.Spec.Typing Once.TypeCheck.Judgment
 reexport-wholesale Once.Surface.Syntax Once.Surface.Context
 spec-public Once.Spec.Contract
 spec-public Once.Spec.Core.Meaning
-spec-public Once.Spec.Correct
 spec-public Once.Spec.Grammar.Decl
 spec-public Once.Spec.Meaning
 spec-public Once.Spec.Metatheory

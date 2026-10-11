@@ -5,7 +5,7 @@
 -- Once.Compiler — ASSEMBLY POINT
 --
 -- This module wires together:
---   - the abstract spec     (`Once.Adequacy`)
+--   - the abstract spec     (`Once.Spec.Correct`)
 --   - the meaning           (`Once.Denotation.Behavior`)
 --   - the trusted CPU base  (`Once.Adequacy.CPU`)
 --   - the proof + compile   (`Once.Adequacy.Compile`)
@@ -60,7 +60,7 @@ open import Data.List using (List)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Adequacy
+open import Once.Spec.Correct using (CorrectCompiler)
 open import Once.Denotation.Behavior using (Source; Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
