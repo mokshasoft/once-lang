@@ -1,6 +1,6 @@
 # backstop.islands — modules the backstop does NOT check, each red for a recorded
 # reason. The list only shrinks: repair a module, then delete its line. A new
-# entry needs a reason and the reviewer's agreement (MERGE.md §4f).
+# entry needs a reason and the reviewer's agreement (MERGE.md §5).
 #
 # Stale import lists / dead names after a refactor (plan 0.35: the allocator is unwired)
 Once.Allocator.BumpAllocator        # AllocBump facade changed; unwired (plan 0.35)
@@ -20,4 +20,5 @@ Once.Optimizer.Normal               # optimizer island
 Once.Optimizer.PairCaseNormal       # optimizer island
 Once.Semantics.Value.Laws           # Functor no longer exports `unfoldS`
 Once.Semantics.Machine.Laws         # imports Semantics.Value.Laws
+Once.Spike.RelSpike                 # plan 0.93 S3 in progress; ValueDomain names moved (D179)
 # Refutation probes: each refuted a postulate that is gone; kept as records
