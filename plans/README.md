@@ -1,6 +1,6 @@
 # Plans
 
-Open work only. A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (27 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11.
@@ -22,7 +22,7 @@ This index is a map and was last re-derived from the code on 2026-10-11.
 
 | Plan | State | What remains |
 |---|---|---|
-| 0.114 the Spec stands alone | not started | seven borrowings, §8: no compiler module in the Spec's import closure |
+| 0.114 the Spec stands alone | A (gate) done | the Spec imports only the Spec, names its exports, is proof-free and tidy: phases B–H |
 | 0.59 oracle principality | open | C1/C3 coverage, P1–P4 (mgu, completeness, principality, diagnostics) |
 | 0.50 named defs are morphisms | ABI landed | retire `classifyAppHead` from the judgment (moved here by D293) |
 | 0.96 `IO` is not a language construct | not started | decide (§3), remove the parser sites |
@@ -48,7 +48,6 @@ This index is a map and was last re-derived from the code on 2026-10-11.
 | Plan | State | What remains |
 |---|---|---|
 | 0.60 rename value/meaning layers | not started | `Once.Semantics` → `Once.Value` (about 82 importers, re-extraction) |
-| 0.85 split deciders from `Once.Type` | not started | mechanical move |
 
 ## Bootstrap track
 

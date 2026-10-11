@@ -89,7 +89,7 @@ backstop:
 # then the backstop and the certified apex. (lint-imports is not part of it:
 # under -W error, the backstop and the apex already fail on a stale import.)
 .PHONY: merge-gate
-merge-gate: public-gate pragma-gate metatheory-gate backstop certified
+merge-gate: public-gate pragma-gate metatheory-gate spec-gate backstop certified
 	@echo "merge-gate: OK"
 
 .PHONY: lint-pragmas
@@ -228,6 +228,11 @@ pragma-gate:
 # Plan 0.92 S0: no new `public` re-export; the baseline only shrinks.
 public-gate:
 	@scripts/public-gate.sh
+
+.PHONY: spec-gate
+# The Spec imports only the Spec (plan 0.114): a ratchet on its full import closure.
+spec-gate:
+	@python3 scripts/spec-import-closure.py --gate
 
 .PHONY: metatheory-gate
 # D304: the language's metatheory (Once/Metatheory) imports only the Spec side.

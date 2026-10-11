@@ -128,6 +128,7 @@ It runs the following, cheapest first:
 | `public-gate` | `scripts/public-gate.sh` | a module gains `public` re-exports beyond `public-gate.baseline` |
 | `pragma-gate` | `scripts/pragma-gate.sh` | the apex/compiler closure gains a check-disabling pragma beyond `pragma-gate.baseline` |
 | `metatheory-gate` | `scripts/metatheory-gate.sh` | a proof under `Once/Metatheory` imports outside the Spec side |
+| `spec-gate` | `scripts/spec-import-closure.py --gate` | the Spec's full import closure gains a non-Spec module, an implementation re-export or a re-export without `using`, beyond `spec-gate.baseline` |
 | `backstop` | `scripts/backstop.sh` | any module outside `backstop.islands` fails to check |
 | `certified` | `scripts/agda-safe.sh` | the apex fails to check |
 
