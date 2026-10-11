@@ -497,9 +497,18 @@ Next: Lib, then Examples, then the Knot.
   agda): `-A64m` → 143 at 6m51s (scope peak 4.9 GB + 2 GB swap);
   `-A64m -c` → **285 s, 3.8 GB + 1.7 GB swap**. The 175 s after the SD fix
   was at `-A64m`, so Red got slower and bigger since 10-10, or that run
-  was close to the cap already. Not explained yet. ⬜ Profile Red
-  (`agda-profile.sh`, HEAP below 5.5G) for further `M._.name` copies;
-  until then the sweep's ladder covers it.
+  was close to the cap already.
+  - Profiled (`agda-profile.sh`, HEAP=5G; killed at the cap, snapshot at
+    189 s covering ~5000 of 7358 lines): **no instance-copy blowup**. At
+    most 52 k unfoldings per site (LeEq: 55 M in one), heads canonical
+    (`Spec.Syntax.renTm`, `Spec.Base.⌊_⌋`); the `Red._.Tel`/`._.⌜Tm⌝`
+    copies are the module's own instance, hundreds of hits. Cost is spread
+    over ~16 k sites and ~1640 blocks: Red is SIZE plus the accepted
+    module-argument overhead.
+  - ✅ So, per `agda-oom-is-a-gc-choice`: `gen-judge.py` now gives Red the
+    COMPACTING COLLECTOR header, and the sweep starts it at `-A64m -c`
+    instead of losing ~7 min to a 143 first. Splitting Red is the fallback
+    if it outgrows `-c`.
 - **Rule:** a parameterised module never `public`-re-exports a
   non-parameterised one. A regression after a parameterisation: look in the
   profile's conversion/unfolding heads for `M._.name` / `Inst.…name`
