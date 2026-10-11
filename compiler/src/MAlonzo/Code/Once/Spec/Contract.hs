@@ -509,9 +509,9 @@ d__'8799'K__140 v0 v1
                        MAlonzo.Code.Data.String.Properties.d__'8799'__54 (coe v2)
                        (coe v5))
                     (coe
-                       MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v3) (coe v6))
+                       MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v3) (coe v6))
                     (coe
-                       MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v4) (coe v7))
+                       MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v4) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Contract._.go

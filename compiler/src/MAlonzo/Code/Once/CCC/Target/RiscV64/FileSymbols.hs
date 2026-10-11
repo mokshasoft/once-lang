@@ -23,23 +23,23 @@ import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
 
 -- Once.CCC.Target.RiscV64.FileSymbols.defs-step
 d_defs'45'step_14 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_defs'45'step_14 = erased
 -- Once.CCC.Target.RiscV64.FileSymbols.refs-step
 d_refs'45'step_172 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_refs'45'step_172 = erased
 -- Once.CCC.Target.RiscV64.FileSymbols.defs-lower
 d_defs'45'lower_328 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_defs'45'lower_328 = erased
 -- Once.CCC.Target.RiscV64.FileSymbols.refs-lower
 d_refs'45'lower_338 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_refs'45'lower_338 = erased

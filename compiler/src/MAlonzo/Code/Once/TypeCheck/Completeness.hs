@@ -808,7 +808,7 @@ du_given'45'cata'45'complete_1442 v0 v1 v2 v3 v4
                         = coe
                             MAlonzo.Code.Once.Type.DecEq.du_'8799'T'45''8658''45'aux_116
                             (coe
-                               MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                               MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                (coe
                                   MAlonzo.Code.Once.Spec.Type.d_'10214'_'10215'T_62 (coe v0)
                                   (coe v1))
@@ -816,14 +816,14 @@ du_given'45'cata'45'complete_1442 v0 v1 v2 v3 v4
                                   MAlonzo.Code.Once.Spec.Type.d_'10214'_'10215'T_62 (coe v0)
                                   (coe v1)))
                             (coe
-                               MAlonzo.Code.Once.Type.du_'8799'k'45'aux_34
+                               MAlonzo.Code.Once.Type.du_'8799'k'45'aux_26
                                (coe
                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
                                   (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
                                   (coe MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 erased))
-                               (coe MAlonzo.Code.Once.Type.d__'8799'p__24 (coe v2) (coe v2)))
+                               (coe MAlonzo.Code.Once.Type.d__'8799'p__16 (coe v2) (coe v2)))
                             (coe
-                               MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v1) (coe v1)) in
+                               MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v1) (coe v1)) in
                   coe
                     (case coe v12 of
                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v13 v14
@@ -3065,7 +3065,7 @@ du_given'45'complete_2490 v0 v1 v2 v3 v4 v5
                                                                                                              (coe
                                                                                                                 v50)
                                                                                                              (let v51
-                                                                                                                    = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                                                                                                    = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                                                                                                         (coe
                                                                                                                            v27)
                                                                                                                         (coe

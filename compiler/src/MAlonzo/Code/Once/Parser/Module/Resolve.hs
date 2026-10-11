@@ -434,7 +434,7 @@ d_pdn'45'go_260 v0 v1
            coe
              (case coe v2 of
                 MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_22 v5 v6
-                  -> let v7 = MAlonzo.Code.Once.Type.d_isGround_136 (coe v6) in
+                  -> let v7 = MAlonzo.Code.Once.Type.d_isGround_124 (coe v6) in
                      coe
                        (case coe v7 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8

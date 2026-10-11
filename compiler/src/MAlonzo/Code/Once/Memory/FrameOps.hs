@@ -60,7 +60,7 @@ du_slot'45'addr_30 ::
   Integer -> Integer
 du_slot'45'addr_30 v0
   = coe
-      MAlonzo.Code.Once.Memory.StackSlots.du_slot'45'addr_46 (coe v0)
+      MAlonzo.Code.Once.Memory.StackSlots.du_slot'45'addr_104 (coe v0)
 -- Once.Memory.FrameOps.frameSlot
 d_frameSlot_32 ::
   MAlonzo.Code.Once.Memory.MemoryLayoutSemantics.T_MemoryLayout_30 ->
@@ -78,7 +78,7 @@ du_frameSlot_32 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Memory.Memory.d_readMem_88 (coe v1)
       (coe
-         MAlonzo.Code.Once.Memory.StackSlots.du_slot'45'addr_46 (coe v0)
+         MAlonzo.Code.Once.Memory.StackSlots.du_slot'45'addr_104 (coe v0)
          (coe v2) (coe v3))
 -- Once.Memory.FrameOps.stackAddr-write-preserves-heap
 d_stackAddr'45'write'45'preserves'45'heap_48 ::

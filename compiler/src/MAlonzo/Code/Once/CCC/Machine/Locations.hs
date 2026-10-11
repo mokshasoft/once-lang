@@ -27,4 +27,4 @@ d_Slot_8 = erased
 d_ValueLocation_12 a0 = ()
 data T_ValueLocation_12
   = C_AtStack_16 AgdaAny Integer |
-    C_AtDynamic_18 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42
+    C_AtDynamic_18 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38

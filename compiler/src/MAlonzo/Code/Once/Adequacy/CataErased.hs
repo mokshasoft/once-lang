@@ -471,14 +471,14 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                  (coe
                     MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                     (coe
-                       MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                       MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                        (coe
                           MAlonzo.Code.Once.IRTy.d_eraseF_50
                           (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
                     (coe
                        MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                          MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                           (coe
                              MAlonzo.Code.Once.IRTy.d_eraseF_50
                              (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
@@ -514,14 +514,14 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                              (coe
                                 MAlonzo.Code.Once.IRTy.d_eraseF_50
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
                           (coe
                              MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                 (coe
                                    MAlonzo.Code.Once.IRTy.d_eraseF_50
                                    (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
@@ -550,14 +550,14 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                              (coe
                                 MAlonzo.Code.Once.IRTy.d_eraseF_50
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
                           (coe
                              MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                 (coe
                                    MAlonzo.Code.Once.IRTy.d_eraseF_50
                                    (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
@@ -587,12 +587,12 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                                      (coe
                                         MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                                         (coe
-                                           MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                           MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                            (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v6)))
                                         (coe
                                            MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                                            (coe
-                                              MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                              MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                               (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v6)))
                                            (coe
                                               MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -619,12 +619,12 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                                      (coe
                                         MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                                         (coe
-                                           MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                           MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                            (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v7)))
                                         (coe
                                            MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                                            (coe
-                                              MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                              MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                               (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v7)))
                                            (coe
                                               MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -653,14 +653,14 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                              (coe
                                 MAlonzo.Code.Once.IRTy.d_eraseF_50
                                 (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
                           (coe
                              MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                 (coe
                                    MAlonzo.Code.Once.IRTy.d_eraseF_50
                                    (coe MAlonzo.Code.Once.Spec.Type.C_Id_14)))
@@ -692,12 +692,12 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                                             (coe
                                                MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                                                (coe
-                                                  MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                                  MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                                   (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v6)))
                                                (coe
                                                   MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                                                   (coe
-                                                     MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                                     MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                                      (coe
                                                         MAlonzo.Code.Once.IRTy.d_eraseF_50
                                                         (coe v6)))
@@ -725,14 +725,14 @@ du_layer'45'rel_764 v0 v1 v2 v3 v4
                                                     (coe
                                                        MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                                                        (coe
-                                                          MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                                          MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                                           (coe
                                                              MAlonzo.Code.Once.IRTy.d_eraseF_50
                                                              (coe v7)))
                                                        (coe
                                                           MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                                                           (coe
-                                                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                                                             MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                                              (coe
                                                                 MAlonzo.Code.Once.IRTy.d_eraseF_50
                                                                 (coe v7)))
@@ -900,7 +900,7 @@ du_algL_916 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
       MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_10
       (coe
-         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
          (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v3)))
       (coe
          MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -914,7 +914,7 @@ du_algL_916 v0 v1 v2 v3 v4 v5 v6 v7 v8
       (coe
          MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
          (coe
-            MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+            MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
             (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v3)))
          (coe
             MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -1114,12 +1114,12 @@ du_mL_976 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
       (coe
-         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
          (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v0)))
       (coe
          MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
          (coe
-            MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+            MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
             (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v0)))
          (coe
             MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -1188,7 +1188,7 @@ du_contL_982 v0 v1 v2 v3 v4 v5 v6 v7 v8
       (coe
          MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_440
          (coe
-            MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+            MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
             (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v3)))
          (coe
             MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -1281,12 +1281,12 @@ d_rc_1022 v0 v1 v2 v3 v4 v5 v6 v7 v8
               (coe
                  MAlonzo.Code.Once.Denotation.ValueDomain.du_seqF_28
                  (coe
-                    MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                    MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                     (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v3)))
                  (coe
                     MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928
                     (coe
-                       MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                       MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                        (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v3)))
                     (coe
                        MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -1312,7 +1312,7 @@ d_rc_1022 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          (coe
                             MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_440
                             (coe
-                               MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+                               MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
                                (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v3)))
                             (coe
                                MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20

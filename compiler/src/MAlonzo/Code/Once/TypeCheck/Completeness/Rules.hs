@@ -2457,7 +2457,7 @@ du_infer'45'complete'45'RDestruct_1858 v0 v1 v2 v3 v4 v5 v6
                                                                   -> case coe v32 of
                                                                        MAlonzo.Code.Once.Spec.Context.C__'8759'__52 v37 v38
                                                                          -> let v39
-                                                                                  = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                                                                  = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                                                                       (coe v6)
                                                                                       (coe v6) in
                                                                             coe

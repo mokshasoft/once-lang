@@ -30,14 +30,14 @@ import qualified MAlonzo.Code.Once.Spec.Name
 d_fn'45'image_8 ::
   Integer ->
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246]
 d_fn'45'image_8 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2318
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2314
          (coe
-            MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2236
+            MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2232
             (coe
                MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26
                (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v1)))
@@ -71,7 +71,7 @@ d_fn'45'next_14 v0 v1
 d_fns'45'image_20 ::
   Integer ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246]
 d_fns'45'image_20 v0 v1
   = case coe v1 of
       [] -> coe v1
@@ -100,12 +100,12 @@ d_top'45'done_30 v0 v1
 d_image'45'body_36 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246]
 d_image'45'body_36 v0 v1
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
       (coe
-         MAlonzo.Code.Once.CCC.Machine.SMCore.d_link'45'top_2376
+         MAlonzo.Code.Once.CCC.Machine.SMCore.d_link'45'top_2372
          (coe d_top'45'done_30 (coe v0) (coe v1))
          (coe
             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_854 v0
@@ -126,14 +126,14 @@ d_image'45'body_36 v0 v1
 d_program'45'image_42 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246]
 d_program'45'image_42 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2318
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2314
          (coe
-            MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2242
+            MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2238
             (coe
                MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_878
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)

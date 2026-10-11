@@ -42,7 +42,7 @@ d_FlatState_52 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.FlatState.falloc
 d_falloc_68 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_500
 d_falloc_68 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_falloc_84 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.FlatState.fclosure
@@ -59,7 +59,7 @@ d_flink_72 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.FlatState.floc
 d_floc_74 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 d_floc_74 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_floc_82 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.FlatState.fpc
@@ -88,28 +88,28 @@ d_readLoc_82 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 d_readLoc_82 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
              ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
   = du_readLoc_82
 du_readLoc_82 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 du_readLoc_82
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_666
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_662
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.writeLoc
 d_writeLoc_84 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -126,31 +126,31 @@ d_writeLoc_84 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 d_writeLoc_84 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
               ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
   = du_writeLoc_84 v1
 du_writeLoc_84 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 du_writeLoc_84 v0
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.d_writeLoc_832 (coe v0)
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.d_writeLoc_828 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.writeLocToHeap
 d_writeLocToHeap_86 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -167,30 +167,30 @@ d_writeLocToHeap_86 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 d_writeLocToHeap_86 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
                     ~v11 ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
   = du_writeLocToHeap_86
 du_writeLocToHeap_86 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 du_writeLocToHeap_86
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_writeLocToHeap_824
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_writeLocToHeap_820
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.fetch
 d_fetch_90 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -207,26 +207,26 @@ d_fetch_90 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   Integer ->
-  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250
+  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246
 d_fetch_90 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
   = du_fetch_90
 du_fetch_90 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   Integer ->
-  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250
+  Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246
 du_fetch_90 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_246
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.sv-below
 d_sv'45'below_96 ::
@@ -244,13 +244,13 @@ d_sv'45'below_96 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
@@ -273,13 +273,13 @@ d_svm'45'below_98 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
@@ -310,13 +310,13 @@ d_RetAddrs_124 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
@@ -342,13 +342,13 @@ d_descend'45'view_166 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
@@ -386,20 +386,20 @@ d_extend'45'view_208 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
   Integer ->
   Integer ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    AgdaAny -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22) ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462
@@ -411,7 +411,7 @@ du_extend'45'view_208 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
   Integer ->
   Integer ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    AgdaAny -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22) ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462
@@ -435,23 +435,23 @@ d_frames'45'of_210 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_500 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_frames'45'of_210 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
                    ~v11 ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
   = du_frames'45'of_210
 du_frames'45'of_210 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_500 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 du_frames'45'of_210
   = coe
@@ -472,13 +472,13 @@ d_slots_388 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer -> Integer -> Integer
@@ -503,7 +503,7 @@ d_count'45'eq_466 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.FlatCorr.dom-fresh
 d_dom'45'fresh_468 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_FlatCorr_1082 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_dom'45'fresh_468 v0
   = coe
@@ -512,7 +512,7 @@ d_dom'45'fresh_468 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.FlatCorr.dom-sized
 d_dom'45'sized_470 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_FlatCorr_1082 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 -> AgdaAny
 d_dom'45'sized_470 v0
   = coe
@@ -521,7 +521,7 @@ d_dom'45'sized_470 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.FlatCorr.dom-written
 d_dom'45'written_472 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_FlatCorr_1082 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
 d_dom'45'written_472 v0
@@ -541,7 +541,7 @@ d_halt'45'eq_476 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.FlatCorr.heap-eq
 d_heap'45'eq_478 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_FlatCorr_1082 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_heap'45'eq_478 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.FlatCorr.in1-eq
@@ -591,7 +591,7 @@ d_untouched_492 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.HeapView.HDom
 d_HDom_496 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 -> ()
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 -> ()
 d_HDom_496 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.HeapView.caddr
 d_caddr_498 ::
@@ -604,7 +604,7 @@ d_caddr_498 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.HeapView.dom-below
 d_dom'45'below_500 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_dom'45'below_500 v0
   = coe
@@ -621,7 +621,7 @@ d_front'45'lo_502 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.HeapView.haddr
 d_haddr_504 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 -> Integer
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 -> Integer
 d_haddr_504 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.d_haddr_490
@@ -629,8 +629,8 @@ d_haddr_504 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.HeapView.haddr-inj
 d_haddr'45'inj_506 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -639,7 +639,7 @@ d_haddr'45'inj_506 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.HeapView.haddr-suc
 d_haddr'45'suc_508 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_haddr'45'suc_508 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.HeapView.hfront
@@ -715,13 +715,13 @@ d_count'45'reg_614 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer -> AgdaAny
@@ -751,13 +751,13 @@ d_in1'45'reg_616 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer -> AgdaAny
@@ -787,13 +787,13 @@ d_out'45'reg_618 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer -> AgdaAny
@@ -823,13 +823,13 @@ d_scratch'45'reg_620 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer -> AgdaAny
@@ -859,13 +859,13 @@ d_sp'45'reg_622 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer -> AgdaAny
@@ -929,17 +929,17 @@ d_fetch'45'nothing'45'drop_672 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -960,19 +960,19 @@ d_fetch'45'just'45'drop_696 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   Integer ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_fetch'45'just'45'drop_696 = erased
@@ -981,7 +981,7 @@ d_above'45'frontier'45'disj_728 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
@@ -1002,13 +1002,13 @@ d_slot'45'heap'45'disj_752 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
@@ -1017,7 +1017,7 @@ d_slot'45'heap'45'disj_752 ::
   AgdaAny ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_FlatCorr_1082 ->
   Integer ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
@@ -1038,18 +1038,18 @@ d_store'45'guard_768 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_store'45'guard_768 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.go
@@ -1068,18 +1068,18 @@ d_go_780 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -1100,22 +1100,22 @@ d_BlockStepAt_826 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 -> ()
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 -> ()
 d_BlockStepAt_826 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.BlockStep
 d_BlockStep_842 ::
@@ -1133,21 +1133,21 @@ d_BlockStep_842 ::
   (AgdaAny -> Integer -> Integer -> ()) ->
   (AgdaAny -> Integer) ->
   () ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    AgdaAny) ->
   (AgdaAny ->
    MAlonzo.Code.Once.CCC.Label.T_Label_28 -> Maybe Integer) ->
-  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
    Integer -> Integer) ->
-  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
    Integer) ->
   (Integer -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
   Integer ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 -> ()
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 -> ()
 d_BlockStep_842 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.BlockSteps
 d_BlockSteps_846 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
@@ -1155,7 +1155,7 @@ d_BlockSteps_846 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
   = ()
 data T_BlockSteps_846
   = C_constructor_2072 (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         T_CompiledCorr_632 ->
@@ -1163,7 +1163,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         T_CompiledCorr_632 ->
@@ -1171,7 +1171,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         T_CompiledCorr_632 ->
@@ -1179,7 +1179,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         T_CompiledCorr_632 ->
@@ -1187,7 +1187,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         T_CompiledCorr_632 ->
@@ -1195,7 +1195,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         T_CompiledCorr_632 ->
@@ -1203,7 +1203,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1212,7 +1212,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1221,7 +1221,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1230,7 +1230,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1239,7 +1239,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1249,7 +1249,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_416 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         T_CompiledCorr_632 ->
@@ -1257,7 +1257,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1267,10 +1267,10 @@ data T_BlockSteps_846
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
-                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                         MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
                         T_CompiledCorr_632 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1280,35 +1280,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-                        AgdaAny ->
-                        AgdaAny ->
-                        Integer ->
-                        MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-                        T_CompiledCorr_632 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
-                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-                        AgdaAny ->
-                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
-                        MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-                        T_CompiledCorr_632 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        AgdaAny ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
-                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         AgdaAny ->
@@ -1323,7 +1295,35 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
+                        AgdaAny ->
+                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
+                        MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
+                        T_CompiledCorr_632 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        AgdaAny ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
+                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
+                        AgdaAny ->
+                        AgdaAny ->
+                        Integer ->
+                        MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
+                        T_CompiledCorr_632 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
+                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1335,7 +1335,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1347,7 +1347,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1359,7 +1359,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1367,13 +1367,13 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                          AgdaAny ->
                          MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                          MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1381,16 +1381,16 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                          AgdaAny ->
                          MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                          MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
-                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                         T_CompiledCorr_632 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1399,36 +1399,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-                        AgdaAny ->
-                        AgdaAny ->
-                        Integer ->
-                        T_CompiledCorr_632 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
-                         AgdaAny ->
-                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                         MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
-                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
-                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-                        AgdaAny ->
-                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
-                        T_CompiledCorr_632 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        AgdaAny ->
-                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
-                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         AgdaAny ->
@@ -1439,13 +1410,42 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                          AgdaAny ->
                          MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                          MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
+                        AgdaAny ->
+                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
+                        T_CompiledCorr_632 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        AgdaAny ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
+                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+                        MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
+                        AgdaAny ->
+                        AgdaAny ->
+                        Integer ->
+                        T_CompiledCorr_632 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                        MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
+                         AgdaAny ->
+                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+                         MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
+                        MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
+                       (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1456,7 +1456,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1469,7 +1469,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1480,7 +1480,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1496,7 +1496,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1510,7 +1510,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1522,7 +1522,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1533,7 +1533,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1544,7 +1544,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
@@ -1566,7 +1566,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1583,7 +1583,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1602,7 +1602,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1612,7 +1612,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
@@ -1622,7 +1622,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1633,10 +1633,10 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
-                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                         MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
                         Integer ->
                         T_CompiledCorr_632 ->
@@ -1655,7 +1655,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -1673,7 +1673,7 @@ data T_BlockSteps_846
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+                        [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
                         Integer ->
@@ -1684,10 +1684,10 @@ data T_BlockSteps_846
                         AgdaAny ->
                         AgdaAny ->
                         AgdaAny ->
-                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                          AgdaAny -> AgdaAny) ->
                         (AgdaAny -> Integer -> AgdaAny) ->
-                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+                        (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
                          MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                          MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
                         MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -1697,7 +1697,7 @@ data T_BlockSteps_846
 d_bs'45'mov'45'to'45'output_1468 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   T_CompiledCorr_632 ->
@@ -1713,7 +1713,7 @@ d_bs'45'mov'45'to'45'output_1468 v0
 d_bs'45'mov'45'to'45'input_1478 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   T_CompiledCorr_632 ->
@@ -1729,7 +1729,7 @@ d_bs'45'mov'45'to'45'input_1478 v0
 d_bs'45'scratch'45'one_1488 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   T_CompiledCorr_632 ->
@@ -1745,7 +1745,7 @@ d_bs'45'scratch'45'one_1488 v0
 d_bs'45'scratch'45'zero_1498 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   T_CompiledCorr_632 ->
@@ -1761,7 +1761,7 @@ d_bs'45'scratch'45'zero_1498 v0
 d_bs'45'count'45'zero_1508 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   T_CompiledCorr_632 ->
@@ -1777,7 +1777,7 @@ d_bs'45'count'45'zero_1508 v0
 d_bs'45'scratch'45'load'45'count_1518 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   T_CompiledCorr_632 ->
@@ -1793,7 +1793,7 @@ d_bs'45'scratch'45'load'45'count_1518 v0
 d_bs'45'c'45'label_1530 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -1810,7 +1810,7 @@ d_bs'45'c'45'label_1530 v0
 d_bs'45'reclaim'45'to_1542 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -1827,7 +1827,7 @@ d_bs'45'reclaim'45'to_1542 v0
 d_bs'45'worklist'45'init_1554 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -1844,7 +1844,7 @@ d_bs'45'worklist'45'init_1554 v0
 d_bs'45'worklist'45'check_1566 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -1861,7 +1861,7 @@ d_bs'45'worklist'45'check_1566 v0
 d_bs'45'lea'45'slot_1578 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -1879,7 +1879,7 @@ d_bs'45'lea'45'slot_1578 v0
 d_bs'45'save'45'closure'45'reg_1588 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   T_CompiledCorr_632 ->
@@ -1895,7 +1895,7 @@ d_bs'45'save'45'closure'45'reg_1588 v0
 d_bs'45'load'45'tag'45'lit_1600 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -1913,10 +1913,10 @@ d_bs'45'load'45'tag'45'lit_1600 v0
 d_bs'45'load'45'indirect_1614 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   T_CompiledCorr_632 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1934,7 +1934,7 @@ d_bs'45'load'45'indirect_1614 v0
 d_bs'45'load'45'indirect'45'stack_1630 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   AgdaAny ->
@@ -1957,10 +1957,10 @@ d_bs'45'load'45'indirect'45'stack_1630 v0
 d_bs'45'load'45'indirect'45'suc_1644 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   T_CompiledCorr_632 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1978,7 +1978,7 @@ d_bs'45'load'45'indirect'45'suc_1644 v0
 d_bs'45'load'45'indirect'45'suc'45'stack_1660 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   AgdaAny ->
@@ -2001,7 +2001,7 @@ d_bs'45'load'45'indirect'45'suc'45'stack_1660 v0
 d_bs'45'load'45'from'45'slot_1674 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2021,7 +2021,7 @@ d_bs'45'load'45'from'45'slot_1674 v0
 d_bs'45'restore'45'input_1688 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2041,7 +2041,7 @@ d_bs'45'restore'45'input_1688 v0
 d_bs'45'worklist'45'pop_1702 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2061,7 +2061,7 @@ d_bs'45'worklist'45'pop_1702 v0
 d_bs'45'store'45'at'45'slot_1716 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2069,7 +2069,7 @@ d_bs'45'store'45'at'45'slot_1716 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    AgdaAny ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
@@ -2083,7 +2083,7 @@ d_bs'45'store'45'at'45'slot_1716 v0
 d_bs'45'worklist'45'push_1730 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2091,7 +2091,7 @@ d_bs'45'worklist'45'push_1730 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    AgdaAny ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
@@ -2105,10 +2105,10 @@ d_bs'45'worklist'45'push_1730 v0
 d_bs'45'store'45'indirect_1742 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   T_CompiledCorr_632 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2125,7 +2125,7 @@ d_bs'45'store'45'indirect_1742 v0
 d_bs'45'store'45'indirect'45'stack_1758 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   AgdaAny ->
@@ -2136,7 +2136,7 @@ d_bs'45'store'45'indirect'45'stack_1758 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    AgdaAny ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
@@ -2150,10 +2150,10 @@ d_bs'45'store'45'indirect'45'stack_1758 v0
 d_bs'45'store'45'indirect'45'suc_1770 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   T_CompiledCorr_632 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2170,7 +2170,7 @@ d_bs'45'store'45'indirect'45'suc_1770 v0
 d_bs'45'store'45'indirect'45'suc'45'stack_1786 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   AgdaAny ->
@@ -2181,7 +2181,7 @@ d_bs'45'store'45'indirect'45'suc'45'stack_1786 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    AgdaAny ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
@@ -2195,7 +2195,7 @@ d_bs'45'store'45'indirect'45'suc'45'stack_1786 v0
 d_bs'45'c'45'jmp_1800 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -2214,7 +2214,7 @@ d_bs'45'c'45'jmp_1800 v0
 d_bs'45'c'45'branch'45'scratch'45'zero_1816 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -2235,7 +2235,7 @@ d_bs'45'c'45'branch'45'scratch'45'zero_1816 v0
 d_bs'45'c'45'branch'45'nz_1830 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -2254,7 +2254,7 @@ d_bs'45'c'45'branch'45'nz_1830 v0
 d_bs'45'c'45'branch'45'tag'45'zero_1848 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -2278,7 +2278,7 @@ d_bs'45'c'45'branch'45'tag'45'zero_1848 v0
 d_bs'45'c'45'branch'45'tag'45'nz_1864 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -2300,7 +2300,7 @@ d_bs'45'c'45'branch'45'tag'45'nz_1864 v0
 d_bs'45'scratch'45'dec_1876 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2320,7 +2320,7 @@ d_bs'45'scratch'45'dec_1876 v0
 d_bs'45'count'45'inc_1888 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2339,7 +2339,7 @@ d_bs'45'count'45'inc_1888 v0
 d_bs'45'out'45'nz_1900 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2358,7 +2358,7 @@ d_bs'45'out'45'nz_1900 v0
 d_bs'45'c'45'thunk_1926 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_EntryId_22 ->
@@ -2388,7 +2388,7 @@ d_bs'45'c'45'thunk_1926 v0
 d_bs'45'c'45'start_1944 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2413,7 +2413,7 @@ d_bs'45'c'45'start_1944 v0
 d_bs'45'c'45'ret_1966 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2440,7 +2440,7 @@ d_bs'45'c'45'ret_1966 v0
 d_bs'45'load'45'const_1978 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2458,7 +2458,7 @@ d_bs'45'load'45'const_1978 v0
 d_bs'45'load'45'const'45'float_1990 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
@@ -2476,7 +2476,7 @@ d_bs'45'load'45'const'45'float_1990 v0
 d_bs'45'load'45'code'45'addr_2004 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -2495,10 +2495,10 @@ d_bs'45'load'45'code'45'addr_2004 v0
 d_bs'45'call_2026 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   Integer ->
   T_CompiledCorr_632 ->
@@ -2525,7 +2525,7 @@ d_bs'45'call_2026 v0
 d_bs'45'call'45'fn_2046 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -2551,7 +2551,7 @@ d_bs'45'call'45'fn_2046 v0
 d_bs'45'alloc'45'heap_2070 ::
   T_BlockSteps_846 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   Integer ->
@@ -2562,10 +2562,10 @@ d_bs'45'alloc'45'heap_2070 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    AgdaAny -> AgdaAny) ->
   (AgdaAny -> Integer -> AgdaAny) ->
-  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  (MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->

@@ -43,7 +43,7 @@ data T_IR_16
     C_Out_110 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 |
     C_in'45'ν_114 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 |
     C_Ana_122 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 T_IR_16 |
-    C_const_126 MAlonzo.Code.Once.IRTy.T_FitsInRegI_518 AgdaAny |
+    C_const_126 MAlonzo.Code.Once.IRTy.T_FitsInRegI_510 AgdaAny |
     C_SigOp_132 MAlonzo.Code.Once.Spec.Type.T_Type_8
                 MAlonzo.Code.Once.Spec.Type.T_Type_8
                 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 |

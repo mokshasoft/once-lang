@@ -96,7 +96,7 @@ d_extendSubst'45'aux_46 v0 v1 v2 v3
         -> coe
              du_decide_42
              (coe
-                MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v1) (coe v4))
+                MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v1) (coe v4))
              (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -290,8 +290,7 @@ d_instantiateAcc_102 v0 v1 v2
                       -> case coe v10 of
                            MAlonzo.Code.Once.Spec.Type.Grade.C_pure_30
                              -> coe
-                                  du_decide_42
-                                  (coe MAlonzo.Code.Once.Type.d__'8799'q__8 (coe v4) (coe v9))
+                                  du_decide_42 (coe MAlonzo.Code.Once.Type.d__'8799'q__4 v4 v9)
                                   (coe
                                      du_maybe'45'bind_74
                                      (coe d_instantiateAcc_102 (coe v5) (coe v8))

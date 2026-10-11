@@ -901,7 +901,7 @@ du_checkElab'45'fallback'45'RVar'45'id_2634 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_checkElab'45'fallback'45'RVar'45'id_2634 v0
   = let v1
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v0) in
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
@@ -942,7 +942,7 @@ du_checkElab'45'fallback'45'RVar'45'fst_2674 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_checkElab'45'fallback'45'RVar'45'fst_2674 v0
   = let v1
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v0) in
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
@@ -976,7 +976,7 @@ du_checkElab'45'fallback'45'RVar'45'snd_2714 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_checkElab'45'fallback'45'RVar'45'snd_2714 v0
   = let v1
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v0) in
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
@@ -1077,7 +1077,7 @@ du_checkElab'45'fallback'45'RVar'45'inl_2810 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_checkElab'45'fallback'45'RVar'45'inl_2810 v0
   = let v1
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v0) in
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
@@ -1111,7 +1111,7 @@ du_checkElab'45'fallback'45'RVar'45'inr_2850 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_checkElab'45'fallback'45'RVar'45'inr_2850 v0
   = let v1
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v0) in
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
@@ -1298,7 +1298,7 @@ du_apply'45'pure_3058 ::
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_apply'45'pure_3058 v0 v1 v2 v3 v4 v5
   = let v6
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v0) in
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v0) in
     coe
       (case coe v6 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
@@ -1349,7 +1349,7 @@ du_apply'45'eff_3096 ::
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_apply'45'eff_3096 v0 v1 v2 v3 v4 v5
   = let v6
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v0) in
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v0) in
     coe
       (case coe v6 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8

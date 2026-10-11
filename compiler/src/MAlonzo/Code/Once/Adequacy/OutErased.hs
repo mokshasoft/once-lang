@@ -222,7 +222,7 @@ du_out'45'layer'45'gen_332 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_440
       (coe
-         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
          (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v0)))
       (coe
          MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
@@ -232,7 +232,7 @@ du_out'45'layer'45'gen_332 v0 v1 v2
             (coe v1)))
       (coe
          MAlonzo.Code.Once.Semantics.Value.du_coerce'45'ν'45'out_1126
-         (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584
+         (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
             (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v0)))
          (MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
             (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v0))

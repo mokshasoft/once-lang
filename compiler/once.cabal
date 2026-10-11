@@ -800,6 +800,8 @@ library
       MAlonzo.Code.Data.Vec.Relation.Unary.Unique.Setoid.Properties
       MAlonzo.Code.Function.Nary.NonDependent
       MAlonzo.Code.Function.Nary.NonDependent.Base
+      MAlonzo.Code.Once.Metatheory.Grade
+      MAlonzo.Code.Once.Metatheory.Monad
       MAlonzo.Code.Once.Spec.Context
       MAlonzo.Code.Once.Spec.Correct
       MAlonzo.Code.Once.Spec.Name

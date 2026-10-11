@@ -484,5 +484,5 @@ d_'10214'_'10215''7477'_134 = erased
 -- Once.Semantics.Machine.LitPayload
 d_LitPayload_138 ::
   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_68 -> ()
+  MAlonzo.Code.Once.Type.T_FitsInReg_56 -> ()
 d_LitPayload_138 = erased

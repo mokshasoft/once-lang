@@ -655,7 +655,7 @@ d_tyEqBundle_1378 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v1))
+         MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v1))
       erased
 -- Once.TypeCheck.Soundness.sound-RDestruct
 d_sound'45'RDestruct_1446 ::

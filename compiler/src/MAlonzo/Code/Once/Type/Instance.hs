@@ -24,10 +24,10 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Empty
 import qualified MAlonzo.Code.Data.Irrelevant
+import qualified MAlonzo.Code.Once.Metatheory.Grade
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Spec.Type.Grade
 import qualified MAlonzo.Code.Once.Spec.Type.Poly
-import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.DecEq
 import qualified MAlonzo.Code.Once.Type.Match
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -93,7 +93,7 @@ d_extend'45'ok_144 v0 v1 v2 v3
       (case coe v4 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
            -> let v6
-                    = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                    = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                         (coe v0 v2) (coe v5) in
               coe
                 (case coe v6 of
@@ -183,7 +183,8 @@ d_inst'45'ok_230 v0 v1 v2 v3
              (coe d_inst'45'ok_230 (coe v0) (coe v5))
       MAlonzo.Code.Once.Spec.Type.Poly.C__P'8658''91'_'93'__28 v4 v5 v6
         -> let v7
-                 = MAlonzo.Code.Once.Type.d__'8799'q__8 (coe v5) (coe v5) in
+                 = MAlonzo.Code.Once.Metatheory.Grade.d__'8799'q__178
+                     (coe v5) (coe v5) in
            coe
              (case coe v7 of
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v8 v9
@@ -344,7 +345,7 @@ du_var'45'sound_512 v0 v1 v2
       (case coe v3 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
            -> let v5
-                    = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v1) (coe v4) in
+                    = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v1) (coe v4) in
               coe
                 (case coe v5 of
                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v6 v7
@@ -496,7 +497,8 @@ du_inst'45'sound_798 v0 v1 v2 v3
                       -> coe
                            seq (coe v11)
                            (let v12
-                                  = MAlonzo.Code.Once.Type.d__'8799'q__8 (coe v5) (coe v10) in
+                                  = MAlonzo.Code.Once.Metatheory.Grade.d__'8799'q__178
+                                      (coe v5) (coe v10) in
                             coe
                               (case coe v12 of
                                  MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v13 v14

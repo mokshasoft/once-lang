@@ -490,7 +490,7 @@ du_given'45'cata_560 v0 v1 v2 v3
                               du_given'45'cata'45'dec_496 (coe v2) (coe v14) (coe v7) (coe v8)
                               (coe v9) (coe v10) (coe v5)
                               (coe
-                                 MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v6)
+                                 MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v6)
                                  (coe
                                     MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28
                                     (coe
@@ -1548,7 +1548,7 @@ du_matchInferResult_1016 v0 v1
   = case coe v0 of
       C_success_88 v2 v3 v4 v5 v6
         -> let v7
-                 = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v1) (coe v2) in
+                 = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v1) (coe v2) in
            coe
              (case coe v7 of
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v8 v9
@@ -2311,7 +2311,7 @@ du_given'45'poly_1750 v0 v1 v2 v3 v4 v5 v6 v7
                                     -> coe
                                          du_given'45'poly'45'g_1690 (coe v0) (coe v1) (coe v2)
                                          (coe v3) (coe v4) (coe v9) (coe v11) (coe v12)
-                                         (coe MAlonzo.Code.Once.Type.d_isGround_136 (coe v9))
+                                         (coe MAlonzo.Code.Once.Type.d_isGround_124 (coe v9))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2506,7 +2506,7 @@ du_checkElabV'45'RVar'45'poly'45'check'45'aux_1954 v0 v1 v2 v3 v4
                                          du_checkElabV'45'RVar'45'poly'45'ground'45'aux_1900
                                          (coe v0) (coe v1) (coe v2) (coe v3) (coe v8) (coe v10)
                                          (coe v11)
-                                         (coe MAlonzo.Code.Once.Type.d_isGround_136 (coe v8))
+                                         (coe MAlonzo.Code.Once.Type.d_isGround_124 (coe v8))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2600,7 +2600,7 @@ du_inferElabV'45'RVar'45'poly'45'lookup'45'aux_2048 v0 v1 v2
                -> coe
                     du_inferElabV'45'RVar'45'poly'45'ground'45'aux_2010 (coe v0)
                     (coe v1) (coe v4) (coe v5)
-                    (coe MAlonzo.Code.Once.Type.d_isGround_136 (coe v4))
+                    (coe MAlonzo.Code.Once.Type.d_isGround_124 (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -3152,7 +3152,7 @@ du_inferApplyAt_2486 v0 v1 v2 v3 v4 v5 v6 v7
                              -> case coe v18 of
                                   MAlonzo.Code.Once.Spec.Type.Grade.C_pure_30
                                     -> let v19
-                                             = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                             = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                                  (coe v14) (coe v13) in
                                        coe
                                          (case coe v19 of
@@ -3216,7 +3216,7 @@ du_inferApplyAt_2486 v0 v1 v2 v3 v4 v5 v6 v7
                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                   MAlonzo.Code.Once.Spec.Type.Grade.C_eff_32
                                     -> let v19
-                                             = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                             = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                                  (coe v14) (coe v13) in
                                        coe
                                          (case coe v19 of
@@ -4840,7 +4840,7 @@ du_inferElabV'45'RDestruct'45'auxR_4066 v0 v1 v2 v3 v4 v5 v6 v7 v8
                -> case coe v16 of
                     MAlonzo.Code.Once.Spec.Context.C__'8759'__52 v21 v22
                       -> let v23
-                               = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                               = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                    (coe v6) (coe v15) in
                          coe
                            (case coe v23 of
@@ -5707,7 +5707,7 @@ d_checkElabV'45'RVar'45'bbc'45'id'45'failure'45'aux_4788 v0 v1 v2
                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
                       -> let v8
-                               = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v3) (coe v5) in
+                               = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v3) (coe v5) in
                          coe
                            (case coe v8 of
                               MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v9 v10
@@ -5824,7 +5824,7 @@ d_checkElabV'45'RVar'45'bbc'45'fst'45'failure'45'aux_4878 v0 v1 v2
                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                            MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
                              -> let v10
-                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                           (coe v6) (coe v5) in
                                 coe
                                   (case coe v10 of
@@ -5978,7 +5978,7 @@ d_checkElabV'45'RVar'45'bbc'45'snd'45'failure'45'aux_5014 v0 v1 v2
                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                            MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
                              -> let v10
-                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                           (coe v7) (coe v5) in
                                 coe
                                   (case coe v10 of
@@ -6398,7 +6398,7 @@ d_checkElabV'45'RVar'45'bbc'45'inl'45'failure'45'aux_5358 v0 v1 v2
                       -> case coe v5 of
                            MAlonzo.Code.Once.Spec.Type.C__'43'__26 v8 v9
                              -> let v10
-                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                           (coe v3) (coe v8) in
                                 coe
                                   (case coe v10 of
@@ -6556,7 +6556,7 @@ d_checkElabV'45'RVar'45'bbc'45'inr'45'failure'45'aux_5494 v0 v1 v2
                       -> case coe v5 of
                            MAlonzo.Code.Once.Spec.Type.C__'43'__26 v8 v9
                              -> let v10
-                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                      = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                           (coe v3) (coe v9) in
                                 coe
                                   (case coe v10 of
@@ -7747,7 +7747,7 @@ d_elabGivenApp_6068 v0 v1 v2 v3 v4 v5 v6
                                                        -> case coe v23 of
                                                             C_success_258 v25 v26 v27 v28 v29
                                                               -> let v30
-                                                                       = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                                                       = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                                                            (coe v25) (coe v17) in
                                                                  coe
                                                                    (case coe v30 of
@@ -10175,11 +10175,11 @@ d_checkApply_9860 v0 v1 v2
                                               -> case coe v17 of
                                                    MAlonzo.Code.Once.Spec.Type.Grade.C_pure_30
                                                      -> let v18
-                                                              = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                                              = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                                                   (coe v13) (coe v12) in
                                                         coe
                                                           (let v19
-                                                                 = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+                                                                 = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
                                                                      (coe v2) (coe v15) in
                                                            coe
                                                              (case coe v18 of

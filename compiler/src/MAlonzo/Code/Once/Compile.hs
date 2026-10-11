@@ -118,7 +118,7 @@ d_validateMain_10 v0
                  ("main must have type IO Unit (= Eff Unit Unit), but got: "
                   ::
                   Data.Text.Text)
-                 (MAlonzo.Code.Once.Type.d_showType_78 (coe v0))) in
+                 (MAlonzo.Code.Once.Type.d_showType_66 (coe v0))) in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v2 v3 v4
@@ -288,7 +288,7 @@ du_compileFunBody'45'aux_70 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe
                        MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
                        (coe
-                          MAlonzo.Code.Once.Optimize.d_optimize_1238
+                          MAlonzo.Code.Once.Optimize.d_optimize_1234
                           (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                              (coe
                                 MAlonzo.Code.Once.Spec.Context.du_'10214'_'10215''7580'_38
@@ -902,7 +902,7 @@ d_ce'45'prim'45'conc_474 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  (coe
                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                     ("` is not ground: " :: Data.Text.Text)
-                                    (MAlonzo.Code.Once.Type.d_showType_78 (coe v5)))))
+                                    (MAlonzo.Code.Once.Type.d_showType_66 (coe v5)))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                -> coe
@@ -916,7 +916,7 @@ d_ce'45'prim'45'conc_474 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
                              ("` hides an effect: " :: Data.Text.Text)
-                             (MAlonzo.Code.Once.Type.d_showType_78 (coe v5)))))
+                             (MAlonzo.Code.Once.Type.d_showType_66 (coe v5)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -930,7 +930,7 @@ d_ce'45'prim'45'conc_474 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       ("` is not concrete: " :: Data.Text.Text)
-                      (MAlonzo.Code.Once.Type.d_showType_78 (coe v5)))))
+                      (MAlonzo.Code.Once.Type.d_showType_66 (coe v5)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.ce-mono
 d_ce'45'mono_478 ::
@@ -984,7 +984,7 @@ d_ce'45'mono'45'g_484 v0 v1 v2 v3 v4 v5 v6
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       ("` mentions a type parameter: " :: Data.Text.Text)
-                      (MAlonzo.Code.Once.Type.d_showType_78 (coe v5)))))
+                      (MAlonzo.Code.Once.Type.d_showType_66 (coe v5)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.ce-mono-ir
 d_ce'45'mono'45'ir_490 ::
@@ -1160,7 +1160,7 @@ d_isEffUU'63'_794 ::
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_isEffUU'63'_794 v0
   = let v1
-          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192
+          = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180
               (coe v0) (coe d_EffUU_790) in
     coe
       (case coe v1 of
@@ -1570,7 +1570,7 @@ d_printFile_964 v0
 -- Once.Compile.image-of
 d_image'45'of_966 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246]
 d_image'45'of_966 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_42
@@ -1726,7 +1726,7 @@ d_emitProgram_1008 v0
 -- Once.Compile.lib-image
 d_lib'45'image_1010 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246]
 d_lib'45'image_1010 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
@@ -1921,7 +1921,7 @@ d_showFunInfo_1100 v0
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" : " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.Type.d_showType_78 (coe v2)))
+                   (MAlonzo.Code.Once.Type.d_showType_66 (coe v2)))
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -1939,7 +1939,7 @@ d_showPolyFunInfo_1114 v0
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (" : " :: Data.Text.Text)
-         (MAlonzo.Code.Once.Type.d_showPolyType_168
+         (MAlonzo.Code.Once.Type.d_showPolyType_156
             (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v0))))
 -- Once.Compile.showFunInfos
 d_showFunInfos_1118 ::
@@ -2002,7 +2002,7 @@ d_compile_1134 v0 v1 v2 v3 v4
                           (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                           (coe (0 :: Integer)))
                        (coe
-                          MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
+                          MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                           (coe
                              MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                              (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
@@ -2037,7 +2037,7 @@ d_compile_1134 v0 v1 v2 v3 v4
                              (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                              (coe (0 :: Integer)))
                           (coe
-                             MAlonzo.Code.Once.Parser.Core.d_skipNewlines_282
+                             MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                              (coe
                                 MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_640
                                 (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)

@@ -28,11 +28,11 @@ import qualified MAlonzo.Code.Once.Memory.HeapAddress
 
 -- Once.Allocator.AbstractInstance.hl-slot-at
 d_hl'45'slot'45'at_6 ::
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
-  Integer -> MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
+  Integer -> MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38
 d_hl'45'slot'45'at_6 v0 v1
   = coe
-      MAlonzo.Code.Once.Memory.HeapAddress.d_offsetHL_98 (coe v0)
+      MAlonzo.Code.Once.Memory.HeapAddress.d_offsetHL_90 (coe v0)
       (coe v1)
 -- Once.Allocator.AbstractInstance.State
 d_State_12 :: ()
@@ -71,7 +71,7 @@ du_alloc'45'impl_52 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.Memory.HeapAddress.C_heap'45'loc_52
+         MAlonzo.Code.Once.Memory.HeapAddress.C_heap'45'loc_48
          (coe MAlonzo.Code.Once.Memory.HeapAddress.C_mkHeapRef_14 (coe v0))
          (coe (0 :: Integer)))
       (coe
@@ -99,8 +99,8 @@ du_block'45'in'45'region'45'impl_66
 d_blocks'45'disjoint'45'impl_84 ::
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Integer ->
   Integer ->
   T_Allocated_22 ->
@@ -116,7 +116,7 @@ d_blocks'45'disjoint'45'impl_84 ::
 d_blocks'45'disjoint'45'impl_84 = erased
 -- Once.Allocator.AbstractInstance.free-impl
 d_free'45'impl_100 ::
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Integer -> Integer
 d_free'45'impl_100 ~v0 v1 = du_free'45'impl_100 v1
 du_free'45'impl_100 :: Integer -> Integer
@@ -125,7 +125,7 @@ du_free'45'impl_100 v0 = coe v0
 d_alloc'45'fresh'45'impl_112 ::
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Integer ->
   T_Allocated_22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -143,7 +143,7 @@ d_abstract'45'allocator_124
 -- Once.Allocator.AbstractInstance.fresh-loc-disjoint
 d_fresh'45'loc'45'disjoint_138 ::
   Integer ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
@@ -151,7 +151,7 @@ d_fresh'45'loc'45'disjoint_138 = erased
 -- Once.Allocator.AbstractInstance.fresh-cell-disjoint
 d_fresh'45'cell'45'disjoint_158 ::
   Integer ->
-  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_38 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

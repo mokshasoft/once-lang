@@ -34,11 +34,11 @@ d_ref'45'id_12 v0
       C_mkHeapRef_14 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Memory.HeapAddress._≟H_
-d__'8799'H__20 ::
+d__'8799'H__16 ::
   T_HeapRef_8 ->
   T_HeapRef_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'H__20 v0 v1
+d__'8799'H__16 v0 v1
   = case coe v0 of
       C_mkHeapRef_14 v2
         -> case coe v1 of
@@ -76,22 +76,22 @@ d__'8799'H__20 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Memory.HeapAddress.HeapLocation
-d_HeapLocation_42 = ()
-data T_HeapLocation_42 = C_heap'45'loc_52 T_HeapRef_8 Integer
+d_HeapLocation_38 = ()
+data T_HeapLocation_38 = C_heap'45'loc_48 T_HeapRef_8 Integer
 -- Once.Memory.HeapAddress.HeapLocation.heap-ref
-d_heap'45'ref_48 :: T_HeapLocation_42 -> T_HeapRef_8
-d_heap'45'ref_48 v0
+d_heap'45'ref_44 :: T_HeapLocation_38 -> T_HeapRef_8
+d_heap'45'ref_44 v0
   = case coe v0 of
-      C_heap'45'loc_52 v1 v2 -> coe v1
+      C_heap'45'loc_48 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Memory.HeapAddress.HeapLocation.heap-offset
-d_heap'45'offset_50 :: T_HeapLocation_42 -> Integer
-d_heap'45'offset_50 v0
+d_heap'45'offset_46 :: T_HeapLocation_38 -> Integer
+d_heap'45'offset_46 v0
   = case coe v0 of
-      C_heap'45'loc_52 v1 v2 -> coe v2
+      C_heap'45'loc_48 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Memory.HeapAddress.≟HL-aux
-d_'8799'HL'45'aux_62 ::
+d_'8799'HL'45'aux_58 ::
   T_HeapRef_8 ->
   T_HeapRef_8 ->
   Integer ->
@@ -99,13 +99,13 @@ d_'8799'HL'45'aux_62 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_'8799'HL'45'aux_62 ~v0 ~v1 ~v2 ~v3 v4 v5
-  = du_'8799'HL'45'aux_62 v4 v5
-du_'8799'HL'45'aux_62 ::
+d_'8799'HL'45'aux_58 ~v0 ~v1 ~v2 ~v3 v4 v5
+  = du_'8799'HL'45'aux_58 v4 v5
+du_'8799'HL'45'aux_58 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-du_'8799'HL'45'aux_62 v0 v1
+du_'8799'HL'45'aux_58 v0 v1
   = case coe v0 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
         -> if coe v2
@@ -144,37 +144,37 @@ du_'8799'HL'45'aux_62 v0 v1
                        _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Memory.HeapAddress._≟HL_
-d__'8799'HL__80 ::
-  T_HeapLocation_42 ->
-  T_HeapLocation_42 ->
+d__'8799'HL__72 ::
+  T_HeapLocation_38 ->
+  T_HeapLocation_38 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'HL__80 v0 v1
+d__'8799'HL__72 v0 v1
   = case coe v0 of
-      C_heap'45'loc_52 v2 v3
+      C_heap'45'loc_48 v2 v3
         -> case coe v1 of
-             C_heap'45'loc_52 v4 v5
+             C_heap'45'loc_48 v4 v5
                -> coe
-                    du_'8799'HL'45'aux_62 (coe d__'8799'H__20 (coe v2) (coe v4))
+                    du_'8799'HL'45'aux_58 (coe d__'8799'H__16 (coe v2) (coe v4))
                     (coe
                        MAlonzo.Code.Data.Nat.Properties.d__'8799'__2796 (coe v3) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Memory.HeapAddress.hl-ref
-d_hl'45'ref_90 :: T_HeapLocation_42 -> T_HeapRef_8
-d_hl'45'ref_90 v0 = coe d_heap'45'ref_48 (coe v0)
+d_hl'45'ref_82 :: T_HeapLocation_38 -> T_HeapRef_8
+d_hl'45'ref_82 v0 = coe d_heap'45'ref_44 (coe v0)
 -- Once.Memory.HeapAddress.sucHL
-d_sucHL_92 :: T_HeapLocation_42 -> T_HeapLocation_42
-d_sucHL_92 v0
+d_sucHL_84 :: T_HeapLocation_38 -> T_HeapLocation_38
+d_sucHL_84 v0
   = case coe v0 of
-      C_heap'45'loc_52 v1 v2
+      C_heap'45'loc_48 v1 v2
         -> coe
-             C_heap'45'loc_52 (coe v1)
+             C_heap'45'loc_48 (coe v1)
              (coe addInt (coe (1 :: Integer)) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Memory.HeapAddress.offsetHL
-d_offsetHL_98 :: T_HeapLocation_42 -> Integer -> T_HeapLocation_42
-d_offsetHL_98 v0 v1
+d_offsetHL_90 :: T_HeapLocation_38 -> Integer -> T_HeapLocation_38
+d_offsetHL_90 v0 v1
   = case coe v0 of
-      C_heap'45'loc_52 v2 v3
-        -> coe C_heap'45'loc_52 (coe v2) (coe addInt (coe v1) (coe v3))
+      C_heap'45'loc_48 v2 v3
+        -> coe C_heap'45'loc_48 (coe v2) (coe addInt (coe v1) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError

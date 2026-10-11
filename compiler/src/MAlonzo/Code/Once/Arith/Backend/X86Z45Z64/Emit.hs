@@ -943,7 +943,7 @@ d_block'45'payload_192 v0
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_904
+                       MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_900
                        (coe
                           MAlonzo.Code.Once.Arith.Machine.Compile.d_compile'45'abs_280
                           (coe v1) (coe v2)
@@ -958,7 +958,7 @@ d_block'45'payload_192 v0
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_904
+                       MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_900
                        (coe
                           MAlonzo.Code.Once.Arith.Machine.Compile.d_compile'45'abs_280
                           (coe v1) (coe v2) (coe v3)))

@@ -287,21 +287,21 @@ du_fresh'45'above_182 v0
       (coe v0)
 -- Once.CCC.Codegen.LabelDefs.ctrl-clab
 d_ctrl'45'clab_190 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_FlatCtrl_2226 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_FlatCtrl_2222 ->
   Maybe Integer
 d_ctrl'45'clab_190 v0
   = case coe v0 of
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2228 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2224 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.CCC.Label.d_idx_18 (coe v1))
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'jmp_2230 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'jmp_2226 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'scratch'45'zero_2232 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'scratch'45'zero_2228 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'tag'45'zero_2234 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'tag'45'zero_2230 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2236 v1 v2
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2232 v1 v2
         -> case coe v1 of
              MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 v3
                -> coe
@@ -310,22 +310,22 @@ d_ctrl'45'clab_190 v0
              MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26 v3
                -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'ret_2238 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'ret_2234 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2240 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'call'45'fn_2236 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2242 v1
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2238 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelDefs.clab-of
 d_clab'45'of_196 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
   Maybe Integer
 d_clab'45'of_196 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2318 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2314 v2
            -> coe d_ctrl'45'clab_190 (coe v2)
          _ -> coe v1)
 -- Once.CCC.Codegen.LabelDefs.cl-at
@@ -339,7 +339,7 @@ d_cl'45'at_200 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelDefs.clabs
 d_clabs_208 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   [Integer]
 d_clabs_208 v0
   = case coe v0 of
@@ -351,28 +351,28 @@ d_clabs_208 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelDefs.clabs-++
 d_clabs'45''43''43'_218 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_clabs'45''43''43'_218 = erased
 -- Once.CCC.Codegen.LabelDefs._.go
 d_go_234 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   Maybe Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_go_234 = erased
 -- Once.CCC.Codegen.LabelDefs.fdef-of
 d_fdef'45'of_240 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
   [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6]
 d_fdef'45'of_240 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2318 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2314 v2
            -> case coe v2 of
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2236 v3 v4
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2232 v3 v4
                   -> case coe v3 of
                        MAlonzo.Code.Once.CCC.Label.C_e'45'fn_26 v5
                          -> coe
@@ -383,7 +383,7 @@ d_fdef'45'of_240 v0
          _ -> coe v1)
 -- Once.CCC.Codegen.LabelDefs.fdefs
 d_fdefs_244 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6]
 d_fdefs_244 v0
   = case coe v0 of
@@ -395,21 +395,21 @@ d_fdefs_244 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelDefs.NoFn
 d_NoFn_250 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] -> ()
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] -> ()
 d_NoFn_250 = erased
 -- Once.CCC.Codegen.LabelDefs.nf
 d_nf_258 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_nf_258 = erased
 -- Once.CCC.Codegen.LabelDefs._.go
 d_go_282 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2246] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->

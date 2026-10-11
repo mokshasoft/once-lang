@@ -301,7 +301,7 @@ du_lw'45'cat_218 v0 v1 v2
   = coe
       du_lw'45''43''43'_194
       (coe
-         MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_904
+         MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_900
          (coe v0))
       (coe v1) (coe v2)
 -- Once.Adequacy.ArchCorrectness.ArithSimCore.At.lw-mul-choose
@@ -584,7 +584,7 @@ du_compile'45'loads_354 v0 v1 v2 v3
                        (coe
                           du_lw'45''43''43'_194
                           (coe
-                             MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit_28
+                             MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit_24
                              (coe
                                 MAlonzo.Code.Once.Arith.Machine.Compile.du_mul'45'op_164 (coe v6)))
                           (coe du_lw'45'mul'45'op_270 (coe v6))
@@ -621,7 +621,7 @@ du_compile'45'loads_354 v0 v1 v2 v3
                        (coe
                           du_lw'45''43''43'_194
                           (coe
-                             MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit_28
+                             MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit_24
                              (coe
                                 MAlonzo.Code.Once.Arith.Machine.Compile.du_div'45'op_176 (coe v6)))
                           (coe du_lw'45'div'45'op_280 (coe v6))
@@ -661,7 +661,7 @@ du_compile'45'loads_354 v0 v1 v2 v3
                 (coe
                    du_lw'45''43''43'_194
                    (coe
-                      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit_28
+                      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit_24
                       (coe
                          MAlonzo.Code.Once.Arith.Machine.Compile.du_rem'45'op_58 (coe v5)))
                    (coe du_lw'45'rem'45'op_290 (coe v5))
@@ -5726,7 +5726,7 @@ du_pre_3534 ::
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24]
 du_pre_3534 v0 v1
   = coe
-      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_904
+      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_900
       (coe
          MAlonzo.Code.Once.Arith.Machine.Compile.d_compile'45'go_184
          (coe v0) (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8)

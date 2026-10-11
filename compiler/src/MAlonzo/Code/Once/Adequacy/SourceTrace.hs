@@ -55,11 +55,11 @@ d_linkedAt'45'rewrite_14 v0 v1 v2 v3 v4
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v5))
                 (coe v1))
              (coe
-                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__200
+                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__196
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v5))
                 (coe v2))
              (coe
-                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__200
+                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__196
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v5))
                 (coe v3))
              (coe v4)

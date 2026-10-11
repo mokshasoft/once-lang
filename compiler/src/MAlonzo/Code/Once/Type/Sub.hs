@@ -560,8 +560,7 @@ d__'60''58''63'__160 v0 v1
                       -> case coe v8 of
                            MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v10 v11
                              -> coe
-                                  du_arr'45'aux_28
-                                  (coe MAlonzo.Code.Once.Type.d__'8799'q__8 (coe v5) (coe v10))
+                                  du_arr'45'aux_28 (coe MAlonzo.Code.Once.Type.d__'8799'q__4 v5 v10)
                                   (coe d__'60''58''63'__160 (coe v7) (coe v2))
                                   (coe d__'60''58''63'__160 (coe v4) (coe v9))
                                   (coe d__'8849'π'63'__10 (coe v6) (coe v11))
@@ -624,7 +623,7 @@ d__'60''58''63'__160 v0 v1
                -> coe
                     du_μ'45'aux_114
                     (coe
-                       MAlonzo.Code.Once.Type.DecEq.d__'8799'F__186 (coe v2) (coe v3))
+                       MAlonzo.Code.Once.Type.DecEq.d__'8799'F__178 (coe v2) (coe v3))
              MAlonzo.Code.Once.Spec.Type.C_ν'45'type_32 v3 v4
                -> coe
                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
@@ -682,7 +681,7 @@ d__'60''58''63'__160 v0 v1
                -> coe
                     du_ν'45'aux_128
                     (coe
-                       MAlonzo.Code.Once.Type.DecEq.d__'8799'F__186 (coe v2) (coe v4))
+                       MAlonzo.Code.Once.Type.DecEq.d__'8799'F__178 (coe v2) (coe v4))
                     (coe d__'8849'π'63'__10 (coe v3) (coe v5))
              MAlonzo.Code.Once.Spec.Type.C_Int_34
                -> coe
@@ -861,6 +860,6 @@ d__'60''58''63'__160 v0 v1
                -> coe
                     du_rigid'45'aux_150
                     (coe
-                       MAlonzo.Code.Once.Type.DecEq.d__'8799'T__192 (coe v0) (coe v1))
+                       MAlonzo.Code.Once.Type.DecEq.d__'8799'T__180 (coe v0) (coe v1))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
