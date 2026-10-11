@@ -22,6 +22,7 @@
 module Once.TypeCheck.Identities where
 
 import Once.Metatheory.Grade as G
+import Once.Surface.Properties as P
 import Relation.Binary.PropositionalEquality as Eq
 
 open import Data.Bool using (true; false)
@@ -369,19 +370,14 @@ open Once.Spec.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 
 -- +ᵘ is commutative.
 +ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ +ᵘ Ψ₂ ≡ Ψ₂ +ᵘ Ψ₁
-+ᵘ-comm {zero}  []ᵘ []ᵘ = refl
-+ᵘ-comm {suc n} (q₁ ∷ᵘ Ψ₁) (q₂ ∷ᵘ Ψ₂)
-  rewrite +q-comm q₁ q₂ | +ᵘ-comm Ψ₁ Ψ₂ = refl
++ᵘ-comm = P.+ᵘ-comm
 
 -- zeroUsage is the identity of +ᵘ on both sides.
 +ᵘ-identity-left : ∀ {n} (Ψ : Usage n) → zeroUsage +ᵘ Ψ ≡ Ψ
-+ᵘ-identity-left {zero}  []ᵘ = refl
-+ᵘ-identity-left {suc n} (q ∷ᵘ Ψ) rewrite +ᵘ-identity-left Ψ = refl
++ᵘ-identity-left = P.+ᵘ-identityˡ
 
 +ᵘ-identity-right : ∀ {n} (Ψ : Usage n) → Ψ +ᵘ zeroUsage ≡ Ψ
-+ᵘ-identity-right {zero}  []ᵘ = refl
-+ᵘ-identity-right {suc n} (q ∷ᵘ Ψ)
-  rewrite +q-identity-right q | +ᵘ-identity-right Ψ = refl
++ᵘ-identity-right = P.+ᵘ-identityʳ
 
 -- ⊔ᵘ is commutative.
 ⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ ⊔ᵘ Ψ₂ ≡ Ψ₂ ⊔ᵘ Ψ₁
@@ -406,9 +402,7 @@ open Once.Spec.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 
 -- +ᵘ associativity.
 +ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Usage n) → Ψ₁ +ᵘ (Ψ₂ +ᵘ Ψ₃) ≡ (Ψ₁ +ᵘ Ψ₂) +ᵘ Ψ₃
-+ᵘ-assoc {zero}  []ᵘ []ᵘ []ᵘ = refl
-+ᵘ-assoc {suc n} (q₁ ∷ᵘ Ψ₁) (q₂ ∷ᵘ Ψ₂) (q₃ ∷ᵘ Ψ₃)
-  rewrite +q-assoc q₁ q₂ q₃ | +ᵘ-assoc Ψ₁ Ψ₂ Ψ₃ = refl
++ᵘ-assoc Ψ₁ Ψ₂ Ψ₃ = Eq.sym (P.+ᵘ-assoc Ψ₁ Ψ₂ Ψ₃)
 
 -- ⊔ᵘ associativity.
 ⊔ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Usage n) → Ψ₁ ⊔ᵘ (Ψ₂ ⊔ᵘ Ψ₃) ≡ (Ψ₁ ⊔ᵘ Ψ₂) ⊔ᵘ Ψ₃
@@ -418,14 +412,11 @@ open Once.Spec.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 
 -- *ᵘ identity: multiplying by `One` acts as an identity scalar.
 *ᵘ-identity-One : ∀ {n} (Ψ : Usage n) → One *ᵘ Ψ ≡ Ψ
-*ᵘ-identity-One {zero}  []ᵘ = refl
-*ᵘ-identity-One {suc n} (q ∷ᵘ Ψ)
-  rewrite *q-identity-left q | *ᵘ-identity-One Ψ = refl
+*ᵘ-identity-One = P.*ᵘ-identityˡ
 
 -- *ᵘ absorbs zero scalar.
 *ᵘ-Zero : ∀ {n} (Ψ : Usage n) → Zero *ᵘ Ψ ≡ zeroUsage
-*ᵘ-Zero {zero}  []ᵘ = refl
-*ᵘ-Zero {suc n} (q ∷ᵘ Ψ) rewrite *ᵘ-Zero Ψ = refl
+*ᵘ-Zero = P.*ᵘ-zeroˡ
 
 ------------------------------------------------------------------------
 -- ≤q monotonicity w.r.t. quantity operators
