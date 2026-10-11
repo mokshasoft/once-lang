@@ -22,7 +22,8 @@ open import Data.List using (List; []; _∷_; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
-open import Data.Char using (Char; isAlpha; isDigit) renaming (_≟_ to _≟c_)
+open import Data.Char using (Char; isAlpha; isDigit)
+import Data.Char as Ch
 open import Relation.Nullary using (does)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _≤_; _<_; s≤s; z≤n)
 -- `+` alone is ℤ's prefix constructor here (Data.Integer is imported below), so
@@ -245,24 +246,24 @@ skipBlock-length n cs = proj₂ (skipBlockB n cs)
 data Dash3  : Set where d-comment d-arrow d-minus : Dash3
 data Caret4 : Set where c-1 c-0 c-w c-gen : Caret4
 
--- Defined via DECIDABLE char equality (`does (c ≟c X)`) — NOT literal pattern
--- matching — so a proof can reduce them under `with c ≟c X` (the `no`/`yes`
+-- Defined via DECIDABLE char equality (`does (c Ch.≟ X)`) — NOT literal pattern
+-- matching — so a proof can reduce them under `with c Ch.≟ X` (the `no`/`yes`
 -- decision makes `does …` compute, and `yes refl` refines the char). See the
 -- LexerBridge doc.
 nlIndent : List Char → Bool
-nlIndent (c ∷ _) = does (c ≟c ' ') ∨ does (c ≟c '\t')
+nlIndent (c ∷ _) = does (c Ch.≟ ' ') ∨ does (c Ch.≟ '\t')
 nlIndent []      = false
 isEqHead : List Char → Bool
-isEqHead (c ∷ _) = does (c ≟c '=')
+isEqHead (c ∷ _) = does (c Ch.≟ '=')
 isEqHead []      = false
 isDashHead : List Char → Bool
-isDashHead (c ∷ _) = does (c ≟c '-')
+isDashHead (c ∷ _) = does (c Ch.≟ '-')
 isDashHead []      = false
 dashClass : List Char → Dash3
-dashClass (c ∷ _) = if does (c ≟c '-') then d-comment else (if does (c ≟c '>') then d-arrow else d-minus)
+dashClass (c ∷ _) = if does (c Ch.≟ '-') then d-comment else (if does (c Ch.≟ '>') then d-arrow else d-minus)
 dashClass []      = d-minus
 caretClass : List Char → Caret4
-caretClass (c ∷ _) = if does (c ≟c '1') then c-1 else (if does (c ≟c '0') then c-0 else (if does (c ≟c 'w') then c-w else c-gen))
+caretClass (c ∷ _) = if does (c Ch.≟ '1') then c-1 else (if does (c Ch.≟ '0') then c-0 else (if does (c Ch.≟ 'w') then c-w else c-gen))
 caretClass []      = c-gen
 
 -- | Drop the first char (uniform tail). Lets the multi-char helpers recurse on
@@ -291,31 +292,31 @@ data HeadK : Set where
 
 headK : Char → HeadK
 headK c =
-  if does (c ≟c ' ') ∨ does (c ≟c '\t') ∨ does (c ≟c '\r') then hkWS
-  else if does (c ≟c '\n') then hkNL
-  else if does (c ≟c '^') then hkCaret
-  else if does (c ≟c '-') then hkDash
-  else if does (c ≟c '{') then hkLBrace
-  else if does (c ≟c '<') then hkLt
-  else if does (c ≟c '>') then hkGt
-  else if does (c ≟c '=') then hkEq
-  else if does (c ≟c '!') then hkBang
-  else if does (c ≟c '(') then hkLParen
-  else if does (c ≟c ')') then hkRParen
-  else if does (c ≟c '}') then hkRBrace
-  else if does (c ≟c ':') then hkColon
-  else if does (c ≟c '\\') then hkLambda
-  else if does (c ≟c ',') then hkComma
-  else if does (c ≟c ';') then hkSemi
-  else if does (c ≟c '@') then hkAt
-  else if does (c ≟c '|') then hkPipe
-  else if does (c ≟c '+') then hkPlus
-  else if does (c ≟c '*') then hkStar
-  else if does (c ≟c '/') then hkSlash
-  else if does (c ≟c '%') then hkPct
-  else if does (c ≟c '&') then hkAmp
-  else if does (c ≟c '.') then hkDot
-  else if does (c ≟c '"') then hkStr
+  if does (c Ch.≟ ' ') ∨ does (c Ch.≟ '\t') ∨ does (c Ch.≟ '\r') then hkWS
+  else if does (c Ch.≟ '\n') then hkNL
+  else if does (c Ch.≟ '^') then hkCaret
+  else if does (c Ch.≟ '-') then hkDash
+  else if does (c Ch.≟ '{') then hkLBrace
+  else if does (c Ch.≟ '<') then hkLt
+  else if does (c Ch.≟ '>') then hkGt
+  else if does (c Ch.≟ '=') then hkEq
+  else if does (c Ch.≟ '!') then hkBang
+  else if does (c Ch.≟ '(') then hkLParen
+  else if does (c Ch.≟ ')') then hkRParen
+  else if does (c Ch.≟ '}') then hkRBrace
+  else if does (c Ch.≟ ':') then hkColon
+  else if does (c Ch.≟ '\\') then hkLambda
+  else if does (c Ch.≟ ',') then hkComma
+  else if does (c Ch.≟ ';') then hkSemi
+  else if does (c Ch.≟ '@') then hkAt
+  else if does (c Ch.≟ '|') then hkPipe
+  else if does (c Ch.≟ '+') then hkPlus
+  else if does (c Ch.≟ '*') then hkStar
+  else if does (c Ch.≟ '/') then hkSlash
+  else if does (c Ch.≟ '%') then hkPct
+  else if does (c Ch.≟ '&') then hkAmp
+  else if does (c Ch.≟ '.') then hkDot
+  else if does (c Ch.≟ '"') then hkStr
   else hkGen
 
 -- | Tokenize worker. The head is dispatched via `headK` + `tok-head`; the

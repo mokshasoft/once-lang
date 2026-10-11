@@ -499,7 +499,7 @@ ap-reverse {x ∷ xs} (px ∷ pxs) =
 open import Data.Char using (Char; isDigit)
 open import Data.String using (toList) renaming (_++_ to _++ˢ_)
 open import Data.String.Unsafe using (toList-++)
-open import Data.String.Properties using () renaming (_≟_ to _≟ˢ_)
+import Data.String.Properties as Str
 open import Data.Nat.Show using (charsInBase)
 open import Data.Digit using (toDigits)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -631,7 +631,7 @@ BlockSym s = Σ[ d ∈ String ] (s ≡ once-symbol-own ("arith.block." ++ˢ d))
 
 private
   ==-false : ∀ {x s : String} → (x Data.String.== s) ≡ false → x ≢ s
-  ==-false {x} {s} e eq with x ≟ˢ s
+  ==-false {x} {s} e eq with x Str.≟ s
   ... | yes _ = case e of λ ()
     where open import Function using (case_of_)
   ... | no ne = ne eq

@@ -126,7 +126,7 @@ stack-slot-injective refl = refl
 module MemoryOps {FS : FrameSemantics} where
   open MemOps {FS}
   open FrameSemantics FS using (_≟F_; _≺_; ≺-irrefl)
-  open import Data.Nat using () renaming (_≟_ to _≟ℕ_)
+  import Data.Nat as Nat
   open import Data.Empty using (⊥-elim)
 
   ------------------------------------------------------------------------
@@ -192,7 +192,7 @@ module MemoryOps {FS : FrameSemantics} where
     (v : StoredValue FS) →
     j < k →
     readLoc (writeLoc s (AtStack f k) v) (AtStack f j) ≡ readLoc s (AtStack f j)
-  readLoc-writeLoc-stack-slot-lt s f j k v j<k with f ≟F f | k ≟ℕ j
+  readLoc-writeLoc-stack-slot-lt s f j k v j<k with f ≟F f | k Nat.≟ j
   ... | yes _ | yes k≡j = ⊥-elim (<⇒≢ j<k (sym k≡j))
   ... | yes _ | no _ = refl
   ... | no f≢f | _ = ⊥-elim (f≢f refl)
@@ -202,7 +202,7 @@ module MemoryOps {FS : FrameSemantics} where
     (v : StoredValue FS) →
     j < k →
     readLoc (writeLoc s (AtStack f j) v) (AtStack f k) ≡ readLoc s (AtStack f k)
-  readLoc-writeLoc-stack-slot-gt s f j k v j<k with f ≟F f | j ≟ℕ k
+  readLoc-writeLoc-stack-slot-gt s f j k v j<k with f ≟F f | j Nat.≟ k
   ... | yes _ | yes j≡k = ⊥-elim (<⇒≢ j<k j≡k)
   ... | yes _ | no _ = refl
   ... | no f≢f | _ = ⊥-elim (f≢f refl)

@@ -36,7 +36,9 @@
 
 module Once.CCC.Label where
 
-open import Data.Nat using (ℕ; _≡ᵇ_) renaming (_≟_ to _≟ⁿ_)
+open import Data.Nat using (ℕ; _≡ᵇ_)
+
+import Data.Nat as Nat
 open import Data.List using (List; []; _∷_)
 open import Data.List.Properties using (≡-dec)
 open import Data.String using (String) renaming (_==_ to _==ˢ_)
@@ -111,9 +113,9 @@ pattern thunk n = callee (e-thunk n)
 _≟ᴵ_ : DecidableEquality LabelId
 mkLabelId o p i ≟ᴵ mkLabelId o' p' i' with o ≟ᶜ o'
 ... | no ¬q = no λ where refl → ¬q refl
-... | yes refl with ≡-dec _≟ⁿ_ p p'
+... | yes refl with ≡-dec Nat._≟_ p p'
 ...   | no ¬q = no λ where refl → ¬q refl
-...   | yes refl with i ≟ⁿ i'
+...   | yes refl with i Nat.≟ i'
 ...     | no ¬q = no λ where refl → ¬q refl
 ...     | yes refl = yes refl
 

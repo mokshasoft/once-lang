@@ -34,7 +34,8 @@ open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Data.String using (String)
+import Data.String as Str
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥)
 open import Data.Bool using (false)
@@ -306,7 +307,7 @@ inv-poly : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {pfi : Pa
 inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = record
   { irf   = Inv.irf inv
   ; irs   = Inv.irs inv
-  ; iself = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (y ≟str y)
+  ; iself = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (y Str.≟ y)
             ∷ iself-step (pfi , C.ctop csc) (C.CScope.ctele csc) (C.CScope.ctele csc) frT (Inv.iself inv)
   ; rel   = rel′
   }

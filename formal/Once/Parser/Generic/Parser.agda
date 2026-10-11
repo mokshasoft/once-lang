@@ -13,7 +13,7 @@ module Once.Parser.Generic.Parser where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; _∷_)
-open import Data.String using () renaming (_≟_ to _≟s_)
+import Data.String as Str
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Nullary using (yes; no)
@@ -26,7 +26,7 @@ open import Once.Parser.Generic.Relation
 -- D233: does the token stream start `( Eff`? The equation is what lets the
 -- soundness proof recover the shape without enumerating tokens.
 effHead? : (rest : List Token) → Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Eff" ∷ r)
-effHead? (TLParen ∷ TWord w ∷ r) with w ≟s "Eff"
+effHead? (TLParen ∷ TWord w ∷ r) with w Str.≟ "Eff"
 ... | yes refl = just (r , refl)
 ... | no _     = nothing
 {-# CATCHALL #-}
@@ -52,32 +52,32 @@ module Make (alg : TyAlg) where
   atomP toks with extraP toks
   ... | just (a , rest , _) = just (a , rest)
   ... | nothing = atomKw toks
-  atomKw (TWord name ∷ rest) with name ≟s "Unit"
+  atomKw (TWord name ∷ rest) with name Str.≟ "Unit"
   ... | yes refl = just (aUnit , rest)
-  ... | no _ with name ≟s "Void"
+  ... | no _ with name Str.≟ "Void"
   ...   | yes refl = just (aVoid , rest)
-  ...   | no _ with name ≟s "Int"
+  ...   | no _ with name Str.≟ "Int"
   ...     | yes refl = just (aInt , rest)
-  ...     | no _ with name ≟s "Float"
+  ...     | no _ with name Str.≟ "Float"
   ...       | yes refl = just (aFloat , rest)
-  ...       | no _ with name ≟s "Eff"
+  ...       | no _ with name Str.≟ "Eff"
   ...         | yes refl with atomP rest
   ...           | nothing = nothing
   ...           | just (A , r1) with atomP r1
   ...             | nothing = nothing
   ...             | just (B , r2) = just (aEff A B , r2)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ with name ≟s "IO"
+    | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
   ... | yes refl with atomP rest
   ...   | nothing = nothing
   ...   | just (A , r1) = just (aEff aUnit A , r1)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Mu"
+    | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
   ... | yes refl with fSumP rest
   ...   | nothing = nothing
   ...   | just (F , r1) = just (aMu F , r1)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
   ... | yes refl = nuP rest
   atomKw (TWord name ∷ rest)
     | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
@@ -138,7 +138,7 @@ module Make (alg : TyAlg) where
       ... | nothing = nothing
       ... | just (B , r) = just (aArrow q l B , r)
 
-  fAtomP (TWord name ∷ rest) with name ≟s "Id" | name ≟s "K"
+  fAtomP (TWord name ∷ rest) with name Str.≟ "Id" | name Str.≟ "K"
   ... | yes refl | _ = just (fId , rest)
   ... | no _ | yes refl with atomP rest
   ...   | nothing = nothing

@@ -17,7 +17,8 @@ open import Once.Spec.Name
 
 open import Data.List using (List; []; _∷_)
 open import Data.List.Properties using (≡-dec)
-open import Data.String using (String) renaming (_≟_ to _≟ˢ_; _++_ to _++ˢ_)
+open import Data.String using (String) renaming (_++_ to _++ˢ_)
+import Data.String as Str
 open import Relation.Binary using (DecidableEquality)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.Any using (Any; any?)
@@ -52,7 +53,7 @@ gen-inj refl = refl
 -- | Its decider. `Resolve.isBuiltinName` is the BOOLEAN form the resolver
 -- computes with; this is the form that discharges the rule's premise.
 genWord? : (x : String) → Dec (GenWord x)
-genWord? x = any? (λ g → x ≟ˢ g) genWords
+genWord? x = any? (λ g → x Str.≟ g) genWords
 
 -- | Drive the decider to its `no` branch from the PROPERTY. The elaborator
 -- de-withes `genWord? x`, so completeness has to name the reduced form.
@@ -77,6 +78,6 @@ bare-NotGenerator x =
 
 -- Decidable equality — the trace's `ev-name` comparison needs it.
 _≟ᶜ_ : DecidableEquality CanonicalName
-canonical ps ≟ᶜ canonical qs with ≡-dec _≟ˢ_ ps qs
+canonical ps ≟ᶜ canonical qs with ≡-dec Str._≟_ ps qs
 ... | yes p = yes (cong canonical p)
 ... | no ¬p = no λ where refl → ¬p refl

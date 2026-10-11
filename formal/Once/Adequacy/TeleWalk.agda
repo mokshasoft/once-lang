@@ -47,7 +47,7 @@ open import Data.Maybe.Properties using (just-injective)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Product using (_×_; _,_)
-open import Data.String using () renaming (_≟_ to _≟str_)
+import Data.String as Str
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
@@ -233,7 +233,7 @@ mutual
   walk-mono {csc} {es} {ft = ft} {bd} er g D rest cf rest-b (inj₁ (refl , refl)) {S = S} tl ss is ts sg pre inv u ((hd ∷ _) , _) n =
     here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D cf {es} rest rest-b inv u hd n
   walk-mono {x = x} {ty = ty} er g D rest cf rest-b (inj₂ mi′) tl ss is ts sg pre inv u fr n =
-    walk-mono-d er g D rest cf rest-b mi′ tl ss is ts sg pre inv u fr (x ≟str "main") (ty ≟T EffUU) n
+    walk-mono-d er g D rest cf rest-b mi′ tl ss is ts sg pre inv u fr (x Str.≟ "main") (ty ≟T EffUU) n
 
   walk-mono-d : ∀ {csc es x ft bd ty} (er : C.resolveFunType (C.ctop csc) (C.cpolys csc) ft bd ≡ inj₂ ty)
                 (g : RigidFree ty) (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ ty ⨾ Ctx.Usage.[])

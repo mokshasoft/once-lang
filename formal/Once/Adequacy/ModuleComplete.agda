@@ -24,7 +24,8 @@ open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Data.String using (String)
+import Data.String as Str
 open import Once.Spec.Name using (bare)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -88,7 +89,7 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
 
 ------------------------------------------------------------------------
 -- (2) ⇒ the function compiles. `compileFun` dispatches on `name == "main"`
--- = `isYes (name ≟ "main")`, so casing `name ≟str "main"` reduces it.
+-- = `isYes (name ≟ "main")`, so casing `name Str.≟ "main"` reduces it.
 ------------------------------------------------------------------------
 
 compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
@@ -97,7 +98,7 @@ compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.Stri
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFun IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
-compileFun-complete ctx polys impsOf name ty body main-ok deriv with name ≟str "main"
+compileFun-complete ctx polys impsOf name ty body main-ok deriv with name Str.≟ "main"
 ... | no ¬p = compileFunBody-complete ctx polys impsOf name ty body deriv
 ... | yes p with main-ok p
 ...   | refl = compileFunBody-complete ctx polys impsOf name EffUU body deriv
@@ -174,7 +175,7 @@ ce-find-complete sc (poly {pfi = pfi} {es = es} deriv rest) mrest mi =
       (cfs , ir , rec , fm) = ce-find-complete (C.addEntry sc pfi) rest mrest mi
   in cfs , ir , trans (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce)) rec , fm
 ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er g deriv rest) (main-ok , mrest) mi =
-  step mi (funName fi ≟str "main")
+  step mi (funName fi Str.≟ "main")
   where
     cfc = compileFun-complete (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
             (funName fi) ty (funBody fi) main-ok deriv
@@ -272,7 +273,7 @@ ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er g deriv rest) {cfs} {
                   (funName fi) ty (funBody fi) ≡ ri
        → ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest
     go (inj₁ _) cf = case subst (λ r → C.ce-mono-ir IR.Heap false sc fi es ty r ≡ inj₂ cfs) cf eq′ of λ ()
-    go (inj₂ irFun) cf = decide (funName fi ≟str "main")
+    go (inj₂ irFun) cf = decide (funName fi Str.≟ "main")
       where
         decide : Dec (funName fi ≡ "main") → ((funName fi ≡ "main") × (ty ≡ EffUU)) ⊎ MainIn rest
         decide (yes p) = inj₁ (p , compileFun-main-EffUU (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) ty (funBody fi) irFun

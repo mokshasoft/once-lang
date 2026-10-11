@@ -23,7 +23,8 @@ open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans)
 open import Data.List using (List; []; _∷_; length)
-open import Data.String using (String) renaming (_≟_ to _≟s_)
+open import Data.String using (String)
+import Data.String as Str
 open import Data.Maybe using (Maybe; just; nothing; is-just)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ-syntax; _,_)
@@ -212,7 +213,7 @@ sound-alias : ∀ {path toks d rest bnd} → parseImportAliasB path toks ≡ jus
 sound-alias {path} {toks} h with anyWordB toks in aw
 ... | nothing with refl ← just-injective h = pia-nonword-r (cong is-just aw)
 ... | just (s , rest , bnd) with anyWordB-inv aw
-...   | refl with s ≟s "as"
+...   | refl with s Str.≟ "as"
 ...     | no ¬p with refl ← just-injective h = pia-neq-r ¬p
 ...     | yes refl with anyWordB rest in aw2
 ...       | nothing with () ← h
@@ -222,7 +223,7 @@ sound-alias {path} {toks} h with anyWordB toks in aw
 complete-alias : ∀ {path toks d rest} → ParsesImportAlias path toks d rest →
   Σ[ bnd ∈ (length rest ≤ length toks) ] parseImportAliasB path toks ≡ just (d , rest , bnd)
 complete-alias (pia-alias-r {alias} {rest}) = _ , refl
-complete-alias (pia-neq-r {s} {rest} ¬p) with s ≟s "as"
+complete-alias (pia-neq-r {s} {rest} ¬p) with s Str.≟ "as"
 ... | yes p = ⊥-elim (¬p p)
 ... | no _ = ≤-refl , refl
 complete-alias {path} (pia-nonword-r {toks} wf) rewrite ij-false wf = ≤-refl , refl

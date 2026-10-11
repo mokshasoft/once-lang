@@ -12,7 +12,7 @@ module Once.Parser.Generic.Sound where
 
 open import Data.Bool using (true; false)
 open import Data.List using (List; _∷_; length)
-open import Data.String using () renaming (_≟_ to _≟s_)
+import Data.String as Str
 open import Data.Nat using (_<_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-trans; <-≤-trans)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -53,32 +53,32 @@ module Make (alg : TyAlg) where
     {-# TERMINATING #-}
     sound-kw : ∀ (toks : List Token) (a : Acc _<_ (length toks)) {T rest} →
       atomKw toks ≡ just (T , rest) → ParsesAtomG toks T rest
-    sound-kw (TWord name ∷ rest) (acc rec) h with name ≟s "Unit"
+    sound-kw (TWord name ∷ rest) (acc rec) h with name Str.≟ "Unit"
     ... | yes refl with refl ← just-injective h = pa-unit rest
-    ... | no _ with name ≟s "Void"
+    ... | no _ with name Str.≟ "Void"
     ...   | yes refl with refl ← just-injective h = pa-void rest
-    ...   | no _ with name ≟s "Int"
+    ...   | no _ with name Str.≟ "Int"
     ...     | yes refl with refl ← just-injective h = pa-int rest
-    ...     | no _ with name ≟s "Float"
+    ...     | no _ with name Str.≟ "Float"
     ...       | yes refl with refl ← just-injective h = pa-float rest
-    ...       | no _ with name ≟s "Eff"
+    ...       | no _ with name Str.≟ "Eff"
     ...         | yes refl with atomP rest in eq1
     ...           | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
     ...             | dA with atomP r1 in eq2
     ...               | just (B , r2) with sound-atom r1 (rec (<-trans (atomShrink dA) (s≤s ≤-refl))) eq2
     ...                 | dB with refl ← just-injective h = pa-eff dA dB
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ with name ≟s "IO"
+      | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
     ... | yes refl with atomP rest in eq1
     ...   | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
     ...     | dA with refl ← just-injective h = pa-io dA
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Mu"
+      | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-mu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-nu dF
@@ -148,7 +148,7 @@ module Make (alg : TyAlg) where
     {-# TERMINATING #-}
     sound-fAtom : ∀ (toks : List Token) (a : Acc _<_ (length toks)) {F rest} →
       fAtomP toks ≡ just (F , rest) → ParsesFuncAtomG toks F rest
-    sound-fAtom (TWord name ∷ rest) (acc rec) h with name ≟s "Id" | name ≟s "K"
+    sound-fAtom (TWord name ∷ rest) (acc rec) h with name Str.≟ "Id" | name Str.≟ "K"
     ... | yes refl | _ with refl ← just-injective h = pfa-id rest
     ... | no _ | yes refl with atomP rest in eq1
     ...   | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1

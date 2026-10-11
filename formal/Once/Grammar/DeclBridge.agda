@@ -13,7 +13,7 @@ module Once.Grammar.DeclBridge where
 
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; length)
-open import Data.String using () renaming (_≟_ to _≟s_)
+import Data.String as Str
 open import Data.Nat using (_<_)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_)
@@ -45,13 +45,13 @@ open import Once.Grammar.OpDeclBridge using (sound-opDecl; complete-opDecl)
 ------------------------------------------------------------------------
 
 sound-decl : ∀ {toks d rest bnd} → parseDeclB toks ≡ just (d , rest , bnd) → ParsesDecl toks d rest
-sound-decl {TWord w ∷ rest} h with w ≟s "import"
+sound-decl {TWord w ∷ rest} h with w Str.≟ "import"
 ... | yes refl with parseImportB rest in pi
 ...   | just _ with refl ← h = pd-import (sound-import pi)
-sound-decl {TWord w ∷ rest} h | no ne1 with w ≟s "type"
+sound-decl {TWord w ∷ rest} h | no ne1 with w Str.≟ "type"
 ... | yes refl with parseTypeAliasB rest in pt
 ...   | just _ with refl ← h = pd-typealias (sound-typealias pt)
-sound-decl {TWord w ∷ rest} h | no ne1 | no ne2 with w ≟s "signature"
+sound-decl {TWord w ∷ rest} h | no ne1 | no ne2 with w Str.≟ "signature"
 ... | yes refl with parseSignatureB rest in ps
 ...   | just _ with refl ← h = pd-signature (sound-signature ps)
 sound-decl {TWord w ∷ rest} h | no ne1 | no ne2 | no ne3 with colonHead rest in ch
@@ -74,19 +74,19 @@ complete-decl (pd-typealias dt) with complete-typealias dt
 ... | (_ , pt) rewrite pt = _ , refl
 complete-decl (pd-signature ds) with complete-signature ds
 ... | (_ , ps) rewrite ps = _ , refl
-complete-decl (pd-typesig {w} ne1 ne2 ne3 ch dpt eqf) with w ≟s "import"
+complete-decl (pd-typesig {w} ne1 ne2 ne3 ch dpt eqf) with w Str.≟ "import"
 ... | yes p = ⊥-elim (ne1 p)
-... | no _ with w ≟s "type"
+... | no _ with w Str.≟ "type"
 ...   | yes p = ⊥-elim (ne2 p)
-...   | no _ with w ≟s "signature"
+...   | no _ with w Str.≟ "signature"
 ...     | yes p = ⊥-elim (ne3 p)
 ...     | no _ rewrite ch with parsePolyTypeB-complete dpt
 ...       | (_ , pp) rewrite pp rewrite eqf = _ , refl
-complete-decl (pd-fundef {w} ne1 ne2 ne3 ch dfd) with w ≟s "import"
+complete-decl (pd-fundef {w} ne1 ne2 ne3 ch dfd) with w Str.≟ "import"
 ... | yes p = ⊥-elim (ne1 p)
-... | no _ with w ≟s "type"
+... | no _ with w Str.≟ "type"
 ...   | yes p = ⊥-elim (ne2 p)
-...   | no _ with w ≟s "signature"
+...   | no _ with w Str.≟ "signature"
 ...     | yes p = ⊥-elim (ne3 p)
 ...     | no _ rewrite ch with complete-fundef dfd
 ...       | (_ , pf) rewrite pf = _ , refl

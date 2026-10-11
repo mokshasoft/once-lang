@@ -37,7 +37,8 @@ open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (tt)
 open import Data.Bool using (false)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Data.String using (String)
+import Data.String as Str
 import Data.String.Properties as StrProp
 import Data.List
 open import Induction.WellFounded using (Acc; acc)
@@ -435,14 +436,14 @@ private
   imp-cons : ∀ {imps : Imports} {pre : List IRFun} (x : String) (ty : Type) (e : IRFun)
            → RefLinked σ (e ∷ pre) x ty → (∀ {y A} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
            → ∀ {y A} → lookupImport ((x , ty) ∷ imps) y ≡ just A → RefLinked σ (e ∷ pre) y A
-  imp-cons {σ = σ} {pre = pre} x ty e hr old {y} {A} lk with x ≟str y
+  imp-cons {σ = σ} {pre = pre} x ty e hr old {y} {A} lk with x Str.≟ y
   ... | yes refl = subst (RefLinked σ (e ∷ pre) x) (just-injective lk) hr
   ... | no _     = RefLinked-mono (linkedAt-cons e pre) {y} {A} (old lk)
 
   sig-cons : ∀ {sg : Imports} (x : String) (ty : Type) → (x , ty) ∈ σ
            → (∀ {y A} → lookupImport sg y ≡ just A → (y , A) ∈ σ)
            → ∀ {y A} → lookupImport ((x , ty) ∷ sg) y ≡ just A → (y , A) ∈ σ
-  sig-cons {σ = σ} x ty new old {y} {A} lk with x ≟str y
+  sig-cons {σ = σ} x ty new old {y} {A} lk with x Str.≟ y
   ... | yes refl = subst (λ B → (x , B) ∈ σ) (just-injective lk) new
   ... | no _     = old lk
 
@@ -514,7 +515,7 @@ linv-poly : ∀ {csc pre} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0}
 linv-poly {σ = σ} {csc} {pre} {pfi} {Usage.[]} D fr inv = record
   { irf    = LInv.irf inv
   ; irs    = LInv.irs inv
-  ; iself  = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (pfunName pfi ≟str pfunName pfi)
+  ; iself  = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (pfunName pfi Str.≟ pfunName pfi)
              ∷ iself-step (pfi , C.ctop csc) (C.CScope.ctele csc) (C.CScope.ctele csc)
                           (++⁻ʳ (Data.List.map proj₁ (C.CScope.cimps csc)) fr) (LInv.iself inv)
   ; imp-ok = LInv.imp-ok inv

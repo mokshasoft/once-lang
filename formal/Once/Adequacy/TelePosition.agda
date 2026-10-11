@@ -18,7 +18,8 @@ open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Maybe using (just)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String) renaming (_≟_ to _≟str_)
+open import Data.String using (String)
+import Data.String as Str
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
@@ -68,7 +69,7 @@ ImportsRF : Imports → Set
 ImportsRF imps = ∀ {x T} → Once.Spec.Typing.Scope.lookupImport imps x ≡ just T → RigidFree T
 
 irf-cons : ∀ {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps → ImportsRF ((y , ty) ∷ imps)
-irf-cons {y = y} g old {x} lk with y ≟str x
+irf-cons {y = y} g old {x} lk with y Str.≟ x
 ... | yes _ = subst RigidFree (just-injective lk) g
 ... | no _  = old lk
 
@@ -103,7 +104,7 @@ iself-step : ∀ (e : Parser.PolyFunInfo × TopCtx) (tele : List (Parser.PolyFun
            → IAgree (C.declImps tele) qs → IAgree (C.declImps (e ∷ tele)) qs
 iself-step e tele []       []       []       = []
 iself-step e tele (q ∷ qs) (h ∷ hs) (a ∷ as) =
-  trans (declImps-skip e tele (pfunName (proj₁ q)) (pfunName (proj₁ e) ≟str pfunName (proj₁ q)) h) a ∷ iself-step e tele qs hs as
+  trans (declImps-skip e tele (pfunName (proj₁ q)) (pfunName (proj₁ e) Str.≟ pfunName (proj₁ q)) h) a ∷ iself-step e tele qs hs as
 
 ++⁻ʳ : ∀ {x : String} (as : List String) {bs : List String} → All (x ≢_) (as ++ bs) → All (x ≢_) bs
 ++⁻ʳ []       a        = a
@@ -221,6 +222,6 @@ irFun-form : ∀ (ctx : TopCtx) (polys : Once.Spec.Typing.Scope.PolyCtx) (impsOf
            → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0
                        (realize (sound-of (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce)))
 irFun-form ctx polys impsOf x ty body cf ce =
-  inj₂-injective (trans (sym (irFun-body ctx polys impsOf x ty body (Relation.Nullary.isYes (x ≟str "main")) cf))
+  inj₂-injective (trans (sym (irFun-body ctx polys impsOf x ty body (Relation.Nullary.isYes (x Str.≟ "main")) cf))
                         (aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce))
 
