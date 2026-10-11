@@ -132,11 +132,11 @@ stage_ref() {
   tmp="$(mktemp -d)"
 
   git -C "$REPO" ls-tree -r "$ref" formal/ \
-    | awk '$2=="blob"{print $3"  "substr($4,8)}' | sort > "$tmp/expected"
+    | awk '$2=="blob" && $4!="formal/Once.agda-lib"{print $3"  "substr($4,8)}' | sort > "$tmp/expected"
 
   if [ -d "$dir" ]; then
     ( cd "$dir" \
-      && find . -type f -not -path './.git/*' -not -path './_build/*' -printf '%P\n' | sort > "$tmp/names" \
+      && find . -type f -not -path './.git/*' -not -path './_build/*' -not -path './Once.agda-lib' -printf '%P\n' | sort > "$tmp/names" \
       && sed 's|^|./|' "$tmp/names" | git hash-object --stdin-paths 2>/dev/null \
          | paste -d'\0' - <(sed 's|^|  |' "$tmp/names") | sort > "$tmp/actual" ) || true
     if [ -s "$tmp/actual" ] && cmp -s "$tmp/expected" "$tmp/actual"; then
@@ -284,6 +284,12 @@ for ref in "${REFS[@]}"; do
   say "ref $ref ($sha)"
   stage_ref "$ref" "$dir"
 
+  # The fork REPORTS the reachable trust base as a warning; under the library's
+  # `-W error` that aborts before the AST is written (rc 42). Library flags beat
+  # the command line, so drop `-W error` from the STAGED copy only (warnings are
+  # the merge gate's job, not this dump's). stage_ref leaves Once.agda-lib out of
+  # its staleness check, so this edit does not discard the cached interfaces.
+  sed -i 's/[[:space:]]*-W error//' "$dir/Once.agda-lib"
   printf '%s\n%s\n' "$STDLIB" "$dir/Once.agda-lib" > "$libs"
   : > "$log"
 
