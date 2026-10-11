@@ -869,6 +869,8 @@ record VerifiedTypeChecker : Set₁ where
                          Once.Spec.Type.Grade._⊔p_ Once.Spec.Type.Grade.pure
     usage-semimodule : ∀ {n} → Algebra.Module.Structures.IsLeftSemimodule GM.quantity-semiring _≡_
                          (Once.Spec.Context._+ᵘ_ {n}) Once.Spec.Context.zeroUsage Once.Spec.Context._*ᵘ_
+    usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Spec.Context.Usage n} _≡_
+                         Once.Spec.Context._⊔ᵘ_
     -- The orders are partial orders (plan 0.112 B6).
     subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Type} _≡_ Once.Spec.Type.Sub._<:_
     effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Type.Grade.Purity} _≡_
@@ -995,6 +997,7 @@ verifiedTypeChecker = record
   ; grade-order                   = Grade.quantity-≤-isDecTotalOrder
   ; effect-monoid                 = Grade.purity-isCommutativeMonoid
   ; usage-semimodule              = GM.usage-isLeftSemimodule
+  ; usage-join                    = GM.usage-⊔-isCommutativeBand
   ; subtype-order                 = Ord.subtype-isPartialOrder
   ; effect-order                  = Ord.purity-⊑-isPartialOrder
   ; usage-order                   = Ord.usage-⊑-isPartialOrder

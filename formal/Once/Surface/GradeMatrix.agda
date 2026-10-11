@@ -24,7 +24,7 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
-open import Once.Spec.Context using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Context using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroˡ; *ᵘ-zeroʳ; *ᵘ-identityˡ; +q-identityʳ)
 
 ------------------------------------------------------------------------
@@ -243,3 +243,18 @@ usage-isLeftSemimodule = record
     ; *ₗ-assoc = *ᵘ-assoc
     ; *ₗ-zeroʳ = λ q → *ᵘ-zeroʳ q
     ; *ₗ-distribˡ = *ᵘ-distribˡ } }
+
+-- The pointwise join `⊔ᵘ` (the usage of a case) is a semilattice.
+open import Algebra.Structures using (IsCommutativeBand)
+import Once.TypeCheck.Identities as Identities
+import Relation.Binary.PropositionalEquality as Eq
+
+usage-⊔-isCommutativeBand : ∀ {n} → IsCommutativeBand {A = Usage n} _≡_ _⊔ᵘ_
+usage-⊔-isCommutativeBand = record
+  { isBand = record
+    { isSemigroup = record
+      { isMagma = record { isEquivalence = isEquivalence ; ∙-cong = cong₂ _⊔ᵘ_ }
+      ; assoc = λ Ψ₁ Ψ₂ Ψ₃ → Eq.sym (Identities.⊔ᵘ-assoc Ψ₁ Ψ₂ Ψ₃) }
+    ; idem = Identities.⊔ᵘ-idem }
+  ; comm = Identities.⊔ᵘ-comm }
+
