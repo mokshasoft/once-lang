@@ -26,7 +26,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
-open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-natrecⁿ; ⟶*-dρʲ )
+open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( _⟶ᵀ*_; red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-dρʲ; ⟶*-appˡ; ⟶*-appʳ; ⟶*-fst; ⟶*-snd; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using () renaming ( wk-sub to wkS )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
@@ -50,6 +50,7 @@ open import DirectedHoTT.Examples.Knot.RefJudge 𝒮 wf core using ( T⊢ref; T�
 open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( sigT; boundT; typesQ )
 open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; t𝒮; homLt; typesQ-at )
 open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( El-homNat )
+open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num )
 open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( εwkK )
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf using ( εwk-agree-ty )
 open import DirectedHoTT.Examples.Knot.JudgeDecodeBase 𝒮 wf core
@@ -64,7 +65,7 @@ jdref : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (d : ℕ) (A : RTy ⌊ Γ
 jdref _ _ Γ d A {w} _ dq nq =
   pay-σ dq done nq
   ▷ λ { (h , (_ , (_ , ((dH , dR) , (_ , nR))))) →
-  pay-σ dR (step (β _ h) (subst (λ z → z ⟶* _) (sym (EQ h)) done)) nR
+  pay-σ dR (step (β _ h) (subst (λ z → z ⟶* ⌜ T⊢refT t𝒮 j n' (snd c) ⌝ᵗ) (sym (EQ h)) done)) nR
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   quoteTy-inj A (εwkTy (Defs.type 𝒮 d))
     (nf-≅ (quoteTy-normal {Γ = ⌊ Γ ⌋} A) (quoteTy-normal {Γ = ⌊ Γ ⌋} (εwkTy (Defs.type 𝒮 d)))

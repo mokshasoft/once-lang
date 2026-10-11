@@ -70,6 +70,7 @@ import DirectedHoTT.Examples.Id
 import DirectedHoTT.Examples.IrrProbe
 import DirectedHoTT.Examples.KripkeIx
 import DirectedHoTT.Examples.KripkeSub
+import DirectedHoTT.Examples.Lib0
 import DirectedHoTT.Examples.MaxLib
 import DirectedHoTT.Examples.MuNest
 import DirectedHoTT.Examples.Mutual
@@ -92,6 +93,7 @@ import DirectedHoTT.Examples.Scoped
 import DirectedHoTT.Examples.ScopedDepth
 import DirectedHoTT.Examples.ScopedSize
 import DirectedHoTT.Examples.ScopedTy
+import DirectedHoTT.Examples.Sig0
 import DirectedHoTT.Examples.SigBuild
 import DirectedHoTT.Examples.SigCore
 import DirectedHoTT.Examples.SigCoreEval

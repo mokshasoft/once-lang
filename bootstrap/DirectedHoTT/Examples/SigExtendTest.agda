@@ -17,12 +17,13 @@ open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( ε; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
-open import DirectedHoTT.Spec.Signature using ( Sig )
+open import DirectedHoTT.Spec.Signature using ( Sig; kernel )
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )
 open import DirectedHoTT.Algorithm.Surface
 open import DirectedHoTT.Algorithm.SigBuild using ( module SigExtend )
-open import DirectedHoTT.Algorithm.NbE using ( nbe )
-open import DirectedHoTT.Lib.NatNum using ( num )
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Algorithm.NbETable using ( mkTbl )
+open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
 import DirectedHoTT.Examples.SigCore as Base
 
 -- references are ABSOLUTE (the base has 22 entries); the tables below are
@@ -50,9 +51,11 @@ open SigExtend Base.S Base.abody Base.wf 2 tys tms 1000 public
 wf : WfSig S
 wf = fromJust wfSig _
 
--- and the extended signature computes: four = 4
+-- and the extended signature computes: four = 4 (evaluated at its table)
+open import DirectedHoTT.Algorithm.NbE (mkTbl (kernel S)) using ( nbe )
+
 ⟪_⟫ : {Γ : R.Cx} → ℕ → R.RTm Γ
-⟪ d ⟫ = R.ref d (Sig.body S d)
+⟪ d ⟫ = R.ref d
 
 four : nbe {ε} 100000 ⟪ #four ⟫ ≡ num 4
 four = refl

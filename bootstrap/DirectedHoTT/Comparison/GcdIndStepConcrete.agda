@@ -36,26 +36,27 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Comparison.GcdIndStepConcrete where
+import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Examples.Gcd.DvdL public
 open import DirectedHoTT.Examples.Gcd.DvdLs public
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom; Π
         ; var; nzero; nsuc; fst; snd; app; natrec; ⌜Nat⌝; Sub; subTm; subTy; extS )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nsuc; ⊢fst; ⊢snd; ⊢app; ⊢natrec
         ; ⊢conv; _≅ᵀ_; csymᵀ; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢ )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; cong₃; cong₄; sub-w-single )
-open import DirectedHoTT.Lib.Pair using ( PairT )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
-open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvTm; prvOk; prv-cast )
-open import DirectedHoTT.Lib.AmrecInd using ( IndStep )
-open import DirectedHoTT.Lib.Natrec using ( ⊢natrec-var )
-open import DirectedHoTT.Lib.DvdArith using ( QCode; QCode-sub; QCode-conv )
+open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢ )
+open Lib0.Lib-Wk using ( w; sub-w; sub-w²; cong₃; cong₄; sub-w-single )
+open Lib0.Lib-Pair using ( PairT )
+open Lib0.Lib-Nat using ( plusTm; ⊢plus )
+open Lib0.Lib-Monus using ( monusTm; ⊢monus )
+open Lib0.Lib-ArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
+open Lib0.Lib-Amrec using ( Prv; prv; prvTm; prvOk; prv-cast )
+open Lib0.Lib-AmrecInd using ( IndStep )
+open Lib0.Lib-Natrec using ( ⊢natrec-var )
+open Lib0.Lib-DvdArith using ( QCode; QCode-sub; QCode-conv )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( gcdStp; gcdBody; msr; gcdIH; ⊢gcdIH
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1

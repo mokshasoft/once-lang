@@ -22,7 +22,7 @@ open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
 open import DirectedHoTT.Lib.Sugar ∅ᴷ 0 ok₀ using ( tag )
 open import DirectedHoTT.Lib.Tel ∅ᴷ 0 ok₀ using ( ⌜_⌝ᵗ )
 import DirectedHoTT.Lib.Syn ∅ᴷ 0 ok₀ as L
-open import DirectedHoTT.Examples.Knot.Sig using ( sh-kPi; sh-kFin; sh-kvar; sh-klam; sh-kref; sh-knatrec )
+open import DirectedHoTT.Examples.Knot.Sig ∅ᴷ wf₀ using ( sh-kPi; sh-kFin; sh-kvar; sh-klam; sh-kref; sh-knatrec )
 open import DirectedHoTT.Examples.SigCore
 open import DirectedHoTT.Examples.SigCoreEval
 
@@ -38,8 +38,11 @@ private
   libTel s sh = ⌜ L.tel sh (ixK s) ⌝ᵗ
 
 -- (1) the Lib-form decoder IS the Lib's `SD` (the λ-calculus, whole)
-sd-lib : nfOf {ε} (⟪ #SD ⟫ ⋆ (num 1 ∷ tag 0 ∷ ⟪ #lamΣ ⟫ ∷ [])) ≡ nfOf (L.SD libΣ)
-sd-lib = refl
+--   (`SD` is opaque: evaluating it needs its constructors)
+opaque
+  unfolding L.SD
+  sd-lib : nfOf {ε} (⟪ #SD ⟫ ⋆ (num 1 ∷ tag 0 ∷ ⟪ #lamΣ ⟫ ∷ [])) ≡ nfOf (L.SD libΣ)
+  sd-lib = refl
 
 -- (2) the decoder, constructor by constructor: the λ-calculus …
 sd-faithful : (nfOf (coreTel 1 0 #lamΣ 0 0) ≡ nfOf (libTel 0 L.vʰ))

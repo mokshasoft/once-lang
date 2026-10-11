@@ -26,10 +26,11 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Lib.NatNum using ( num )
+open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
 open import DirectedHoTT.Algorithm.DecEq using ( _≟Tm_; _≟Ty_; yes; no )
-open import DirectedHoTT.Algorithm.Eval using ( eval; evalᵀ; nfd; out; nfdᵀ; outᵀ )
-open import DirectedHoTT.Algorithm.NbE using ( nbe; nbeᵀ )
+open import DirectedHoTT.Spec.Signature using ( Sig; mkSig; ⟨_∣_⟩; kernel ) renaming ( ∅ to ∅ˢ; _▸_ to _▸ˢ_ )
+import DirectedHoTT.Spec.Annotated as A
+open import DirectedHoTT.Algorithm.NbETable using ( mkTbl )
 
 private
   Γ₃ : Cx
@@ -37,17 +38,6 @@ private
 
   fuel : ℕ
   fuel = 100000
-
-  -- the certified evaluator's normal form
-  nfE : {Γ : Cx} → RTm Γ → RTm Γ
-  nfE t with eval fuel t
-  ... | nfd u _ _ = u
-  ... | out u _   = u
-
-  nfEᵀ : {Γ : Cx} → RTy Γ → RTy Γ
-  nfEᵀ A with evalᵀ fuel A
-  ... | nfdᵀ B _ _ = B
-  ... | outᵀ B _   = B
 
   same : {Γ : Cx} → RTm Γ → RTm Γ → Bool
   same t u with t ≟Tm u
@@ -112,6 +102,29 @@ private
   -- method: λ i p h. case (fst p) of 0 ↦ 0 ; 1 ↦ suc (fst h)
   count : {Γ : Cx} → RTm Γ
   count = lam (lam (lam (fcase (fst v1) nzero (nsuc (fst v1)))))
+
+-- the signature the lazy-δ rows refer into (D082: a reference is a NAME,
+--   its body is the entry's): 3 ↦ 0, 4 ↦ ack, 7 ↦ suc; the rest fillers
+δS : Sig
+δS = mkSig 8 (∅ˢ ▸ˢ u ▸ˢ u ▸ˢ u ▸ˢ ⟨ A.Nat ∣ nzero ⟩ ▸ˢ ⟨ A.Π A.Nat (A.Π A.Nat A.Nat) ∣ ack ⟩
+                 ▸ˢ u ▸ˢ u ▸ˢ ⟨ A.Π A.Nat A.Nat ∣ lam (nsuc v0) ⟩)
+  where u = ⟨ A.Unit ∣ unit ⟩
+
+-- both evaluators at that signature
+open import DirectedHoTT.Algorithm.Eval (kernel δS) using ( eval; evalᵀ; nfd; out; nfdᵀ; outᵀ )
+open import DirectedHoTT.Algorithm.NbE (mkTbl (kernel δS)) using ( nbe; nbeᵀ )
+
+private
+  -- the certified evaluator's normal form
+  nfE : {Γ : Cx} → RTm Γ → RTm Γ
+  nfE t with eval fuel t
+  ... | nfd u _ _ = u
+  ... | out u _   = u
+
+  nfEᵀ : {Γ : Cx} → RTy Γ → RTy Γ
+  nfEᵀ A with evalᵀ fuel A
+  ... | nfdᵀ B _ _ = B
+  ... | outᵀ B _   = B
 
 ------------------------------------------------------------------------
 -- ★ TERMS
@@ -179,9 +192,9 @@ rows =
   ∷ fcase fzero x₀ x₁
   ∷ I (fcase0 x₀)
   -- lazy δ
-  ∷ app (ref 7 (lam (nsuc v0))) (num 1)
-  ∷ ref 3 nzero
-  ∷ app (ref 4 ack) (num 1)
+  ∷ app (ref 7) (num 1)
+  ∷ ref 3
+  ∷ app (ref 4) (num 1)
   ∷ []
 
 terms-agree : fails (λ t → same (nbe fuel t) (nfE t)) 0 rows ≡ []

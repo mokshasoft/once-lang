@@ -154,7 +154,7 @@ def convert_text(text):
             need.append((mod, a, al))
         return f'{lead}open {al}{rest}'
     need = []
-    body = re.sub(r'^(\s+(?:where\s+)?|\S.*\bwhere\s+)open import (DirectedHoTT\.[A-Za-z.]+) (' + ARGRE + r')((?: (?:using|hiding|renaming)\b.*)?)$',
+    body = re.sub(r'^([ \t]+(?:where\s+)?|\S.*\bwhere\s+)open import (DirectedHoTT\.[A-Za-z.]+) (' + ARGRE + r')((?: (?:using|hiding|renaming)\b.*)?)$',
                   local, body, flags=re.M)
     if need:
         # a top-level open of the same instance becomes the alias, else add one

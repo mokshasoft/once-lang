@@ -459,7 +459,7 @@ open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appʳ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; ⟶*-fsuc )
 open import DirectedHoTT.Lib.Syn
 open import DirectedHoTT.Lib.SynRed using ( _∙ⁿ_ )
-open import DirectedHoTT.Lib.SynTrav using ( module Trav )
+open import DirectedHoTT.Lib.SynTrav using ( module Trav; module Kit )
 open import DirectedHoTT.Lib.SynTravRed
 open import DirectedHoTT.Examples.Knot.Sig
 open import DirectedHoTT.Examples.Knot.Terms
@@ -472,8 +472,19 @@ private
     Γ Δ Θ : Cx
 
 open Trav KOK subKit using ( LIFTS )
-module TS = TravRed KOK subKit KR.KVars (λ σ → refl) (λ σ → refl)
-module ES = EnvRed KOK subKit (λ σ → refl) (λ σ → refl)
+
+private
+  -- the substitution kit's LIFT mentions the (opaque) description: closed by unfolding it
+  opaque
+    unfolding SD
+    LIFTˢ-sub : (σ : Sub Δ Θ) → subTm σ (Trav.LIFT KOK subKit {Δ}) ≡ Trav.LIFT KOK subKit
+    LIFTˢ-sub σ = refl
+
+    WKˢ-sub : (σ : Sub Δ Θ) → subTm σ (Kit.WK subKit {Δ}) ≡ Kit.WK subKit
+    WKˢ-sub σ = refl
+
+module TS = TravRed KOK subKit KR.KVars LIFTˢ-sub (λ σ → refl)
+module ES = EnvRed KOK subKit (λ σ → refl) WKˢ-sub
 module TRR = TravRed KOK KR.renKit KR.KVars (λ σ → refl) (λ σ → refl)
 
 private
@@ -499,13 +510,15 @@ repR-wk x = step (β _ _) done
 -- …and the lifted environment the lifted substitution: at the fresh
 --   variable its node, at an old one the old value WEAKENED — which is
 --   renaming agreement at `vs`
-repS-lift : {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → RepS (extS σ) (ES.LIFT· (dep Δ) (dep Γ) f)
-repS-lift {Δ = Δ} r vz     = ⟶*-trans ES.lift-z (step (β _ (dep Δ)) done)
-repS-lift {Δ = Δ} {σ = σ} {f = f} r (vs x) =
-  ⟶*-trans ES.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _)
-    (subst (λ z → KR.trav 1 z (app f (quoteVar x)) (nsuc z) KR.WKρ ⟶* quoteTm (renTm vs (σ x)))
-           (sym (dep-wk (app f (quoteVar x)) Δ))
-           (⟶*-trans (TRR.trav-t-mono (r x)) (ren-agree-tm (σ x) repR-wk)))))
+opaque
+  unfolding SD
+  repS-lift : {σ : Sub Γ Δ} {f : RTm Θ} → RepS σ f → RepS (extS σ) (ES.LIFT· (dep Δ) (dep Γ) f)
+  repS-lift {Δ = Δ} r vz     = ⟶*-trans ES.lift-z (step (β _ (dep Δ)) done)
+  repS-lift {Δ = Δ} {σ = σ} {f = f} r (vs x) =
+    ⟶*-trans ES.lift-s (step (ξ-appˡ (β _ _)) (step (β _ _)
+      (subst (λ z → KR.trav 1 z (app f (quoteVar x)) (nsuc z) KR.WKρ ⟶* quoteTm (renTm vs (σ x)))
+             (sym (dep-wk (app f (quoteVar x)) Δ))
+             (⟶*-trans (TRR.trav-t-mono (r x)) (ren-agree-tm (σ x) repR-wk)))))
 
 extSⁿ : (k : ℕ) → Sub Γ Δ → Sub (Γ ∙ⁿ k) (Δ ∙ⁿ k)
 extSⁿ zero    σ = σ

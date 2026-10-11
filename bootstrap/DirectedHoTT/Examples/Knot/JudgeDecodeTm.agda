@@ -109,7 +109,7 @@ jdlam₍0₎ᴸ ihTy ihTm Γ a0 Q0 Q1 {w} hq dq nq =
     R₀ : (PT⊢lam.CX t𝒮 j p c) ⟶* ⌜ T⊢lam⁽0⁾ j g f0 q0 q1 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢lam.CX t𝒮 j p c)} {u = PT⊢lam.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢lam⁽0⁾ j g f0 q0 q1 ⌝ᵗ} (PT⊢lam.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢lam.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢lam.CASE t𝒮 j X0 c'} {v = ⌜ T⊢lam⁽0⁾ j g f0 q0 q1 ⌝ᵗ} (PT⊢lam.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢lam.CASE t𝒮 j X0 c'} {u = ⌜ T⊢lam j q c' ⌝ᵗ} {v = ⌜ T⊢lam⁽0⁾ j g f0 q0 q1 ⌝ᵗ} (PT⊢lam.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 2)) R₁))
+           (⟶*-trans {t = PT⊢lam.CASE t𝒮 j X0 c'} {u = ⌜ T⊢lam t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢lam⁽0⁾ j g f0 q0 q1 ⌝ᵗ} (PT⊢lam.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 2)) R₁))
 
 jdlam₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋ ∙)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢lam.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (lam a0) ∷ A
@@ -128,7 +128,7 @@ jdlam₍0₎ ihTy ihTm Γ a0 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢lam.CX t𝒮 j p c)} {u = PT⊢lam.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢lam.CASE t𝒮 j X0 c'} (PT⊢lam.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢lam.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢lam.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢lam.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢lam.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdapp₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢app t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (app a0 a1) ∷ A
@@ -199,7 +199,7 @@ jdpair₍0₎ᴸ ihTy ihTm Γ a0 a1 Q0 Q1 {w} hq dq nq =
     R₀ : (PT⊢pair.CX t𝒮 j p c) ⟶* ⌜ T⊢pair⁽0⁾ j g f0 f1 q0 q1 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢pair.CX t𝒮 j p c)} {u = PT⊢pair.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢pair⁽0⁾ j g f0 f1 q0 q1 ⌝ᵗ} (PT⊢pair.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢pair.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢pair.CASE t𝒮 j X0 c'} {v = ⌜ T⊢pair⁽0⁾ j g f0 f1 q0 q1 ⌝ᵗ} (PT⊢pair.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢pair.CASE t𝒮 j X0 c'} {u = ⌜ T⊢pair j q c' ⌝ᵗ} {v = ⌜ T⊢pair⁽0⁾ j g f0 f1 q0 q1 ⌝ᵗ} (PT⊢pair.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 3)) R₁))
+           (⟶*-trans {t = PT⊢pair.CASE t𝒮 j X0 c'} {u = ⌜ T⊢pair t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢pair⁽0⁾ j g f0 f1 q0 q1 ⌝ᵗ} (PT⊢pair.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 3)) R₁))
 
 jdpair₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢pair.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (a0 ,ₚ a1) ∷ A
@@ -219,7 +219,7 @@ jdpair₍0₎ ihTy ihTm Γ a0 a1 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢pair.CX t𝒮 j p c)} {u = PT⊢pair.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢pair.CASE t𝒮 j X0 c'} (PT⊢pair.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢pair.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢pair.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢pair.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢pair.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdabsurd₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢absurd t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (absurd a0 a1) ∷ A
@@ -365,7 +365,7 @@ jdcbase₍0₎ᴸ ihTy ihTm Γ {w} hq dq nq =
     R₀ : (PT⊢cbase.CX t𝒮 j p c) ⟶* ⌜ T⊢cbase⁽0⁾ ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cbase.CX t𝒮 j p c)} {u = PT⊢cbase.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cbase⁽0⁾ ⌝ᵗ} (PT⊢cbase.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cbase.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cbase.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cbase⁽0⁾ ⌝ᵗ} (PT⊢cbase.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cbase.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cbase j q c' ⌝ᵗ} {v = ⌜ T⊢cbase⁽0⁾ ⌝ᵗ} (PT⊢cbase.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cbase.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cbase t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cbase⁽0⁾ ⌝ᵗ} (PT⊢cbase.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcbase₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cbase.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜base⌝ {⌊ Γ ⌋}) ∷ A
@@ -383,7 +383,7 @@ jdcbase₍0₎ ihTy ihTm Γ A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cbase.CX t𝒮 j p c)} {u = PT⊢cbase.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cbase.CASE t𝒮 j X0 c'} (PT⊢cbase.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cbase.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cbase.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cbase.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cbase.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdcPi₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋ ∙)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cPi.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜Π⌝ a0 a1) ∷ (U {⌊ Γ ⌋})
@@ -412,7 +412,7 @@ jdcPi₍0₎ᴸ ihTy ihTm Γ a0 a1 {w} hq dq nq =
     R₀ : (PT⊢cPi.CX t𝒮 j p c) ⟶* ⌜ T⊢cPi⁽0⁾ j g f0 f1 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cPi.CX t𝒮 j p c)} {u = PT⊢cPi.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cPi⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cPi.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cPi.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cPi.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cPi⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cPi.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cPi.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cPi j q c' ⌝ᵗ} {v = ⌜ T⊢cPi⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cPi.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cPi.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cPi t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cPi⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cPi.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcPi₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋ ∙)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cPi.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Π⌝ a0 a1) ∷ A
@@ -432,7 +432,7 @@ jdcPi₍0₎ ihTy ihTm Γ a0 a1 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cPi.CX t𝒮 j p c)} {u = PT⊢cPi.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cPi.CASE t𝒮 j X0 c'} (PT⊢cPi.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cPi.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cPi.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cPi.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cPi.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdcSg₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋ ∙)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cSg.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜Σ⌝ a0 a1) ∷ (U {⌊ Γ ⌋})
@@ -461,7 +461,7 @@ jdcSg₍0₎ᴸ ihTy ihTm Γ a0 a1 {w} hq dq nq =
     R₀ : (PT⊢cSg.CX t𝒮 j p c) ⟶* ⌜ T⊢cSg⁽0⁾ j g f0 f1 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cSg.CX t𝒮 j p c)} {u = PT⊢cSg.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cSg⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cSg.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cSg.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cSg.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cSg⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cSg.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cSg.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cSg j q c' ⌝ᵗ} {v = ⌜ T⊢cSg⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cSg.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cSg.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cSg t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cSg⁽0⁾ j g f0 f1 ⌝ᵗ} (PT⊢cSg.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcSg₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋ ∙)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cSg.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Σ⌝ a0 a1) ∷ A
@@ -481,7 +481,7 @@ jdcSg₍0₎ ihTy ihTm Γ a0 a1 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cSg.CX t𝒮 j p c)} {u = PT⊢cSg.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cSg.CASE t𝒮 j X0 c'} (PT⊢cSg.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cSg.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cSg.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cSg.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cSg.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdcHom₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cHom.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜Hom⌝ a0 a1 a2) ∷ (U {⌊ Γ ⌋})
@@ -515,7 +515,7 @@ jdcHom₍0₎ᴸ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
     R₀ : (PT⊢cHom.CX t𝒮 j p c) ⟶* ⌜ T⊢cHom⁽0⁾ j g f0 f1 f2 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cHom.CX t𝒮 j p c)} {u = PT⊢cHom.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cHom⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cHom.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cHom.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cHom.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cHom⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cHom.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cHom.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cHom j q c' ⌝ᵗ} {v = ⌜ T⊢cHom⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cHom.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cHom.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cHom t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cHom⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cHom.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcHom₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cHom.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Hom⌝ a0 a1 a2) ∷ A
@@ -536,7 +536,7 @@ jdcHom₍0₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cHom.CX t𝒮 j p c)} {u = PT⊢cHom.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cHom.CASE t𝒮 j X0 c'} (PT⊢cHom.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cHom.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cHom.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cHom.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cHom.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdhrefl₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢hrefl t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (hrefl a0 a1) ∷ A
@@ -785,7 +785,7 @@ jdcId₍0₎ᴸ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
     R₀ : (PT⊢cId.CX t𝒮 j p c) ⟶* ⌜ T⊢cId⁽0⁾ j g f0 f1 f2 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cId.CX t𝒮 j p c)} {u = PT⊢cId.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cId⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cId.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cId.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cId.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cId⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cId.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cId.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cId j q c' ⌝ᵗ} {v = ⌜ T⊢cId⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cId.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cId.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cId t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cId⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cId.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcId₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cId.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Id⌝ a0 a1 a2) ∷ A
@@ -806,7 +806,7 @@ jdcId₍0₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cId.CX t𝒮 j p c)} {u = PT⊢cId.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cId.CASE t𝒮 j X0 c'} (PT⊢cId.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cId.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cId.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cId.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cId.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdidrefl₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢idrefl t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (idrefl a0 a1) ∷ A
@@ -908,7 +908,7 @@ jdunit₍0₎ᴸ ihTy ihTm Γ {w} hq dq nq =
     R₀ : (PT⊢unit.CX t𝒮 j p c) ⟶* ⌜ T⊢unit⁽0⁾ ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢unit.CX t𝒮 j p c)} {u = PT⊢unit.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢unit⁽0⁾ ⌝ᵗ} (PT⊢unit.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢unit.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢unit.CASE t𝒮 j X0 c'} {v = ⌜ T⊢unit⁽0⁾ ⌝ᵗ} (PT⊢unit.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢unit.CASE t𝒮 j X0 c'} {u = ⌜ T⊢unit j q c' ⌝ᵗ} {v = ⌜ T⊢unit⁽0⁾ ⌝ᵗ} (PT⊢unit.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 6)) R₁))
+           (⟶*-trans {t = PT⊢unit.CASE t𝒮 j X0 c'} {u = ⌜ T⊢unit t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢unit⁽0⁾ ⌝ᵗ} (PT⊢unit.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 6)) R₁))
 
 jdunit₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢unit.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (unit {⌊ Γ ⌋}) ∷ A
@@ -926,7 +926,7 @@ jdunit₍0₎ ihTy ihTm Γ A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢unit.CX t𝒮 j p c)} {u = PT⊢unit.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢unit.CASE t𝒮 j X0 c'} (PT⊢unit.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢unit.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢unit.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢unit.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢unit.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdnzero₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢nzero.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy (Nat {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (nzero {⌊ Γ ⌋}) ∷ (Nat {⌊ Γ ⌋})
@@ -947,7 +947,7 @@ jdnzero₍0₎ᴸ ihTy ihTm Γ {w} hq dq nq =
     R₀ : (PT⊢nzero.CX t𝒮 j p c) ⟶* ⌜ T⊢nzero⁽0⁾ ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢nzero.CX t𝒮 j p c)} {u = PT⊢nzero.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢nzero⁽0⁾ ⌝ᵗ} (PT⊢nzero.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢nzero.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢nzero.CASE t𝒮 j X0 c'} {v = ⌜ T⊢nzero⁽0⁾ ⌝ᵗ} (PT⊢nzero.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢nzero.CASE t𝒮 j X0 c'} {u = ⌜ T⊢nzero j q c' ⌝ᵗ} {v = ⌜ T⊢nzero⁽0⁾ ⌝ᵗ} (PT⊢nzero.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 7)) R₁))
+           (⟶*-trans {t = PT⊢nzero.CASE t𝒮 j X0 c'} {u = ⌜ T⊢nzero t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢nzero⁽0⁾ ⌝ᵗ} (PT⊢nzero.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 7)) R₁))
 
 jdnzero₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢nzero.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (nzero {⌊ Γ ⌋}) ∷ A
@@ -965,7 +965,7 @@ jdnzero₍0₎ ihTy ihTm Γ A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢nzero.CX t𝒮 j p c)} {u = PT⊢nzero.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢nzero.CASE t𝒮 j X0 c'} (PT⊢nzero.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢nzero.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢nzero.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢nzero.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢nzero.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdnsuc₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢nsuc.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (Nat {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (nsuc a0) ∷ (Nat {⌊ Γ ⌋})
@@ -989,7 +989,7 @@ jdnsuc₍0₎ᴸ ihTy ihTm Γ a0 {w} hq dq nq =
     R₀ : (PT⊢nsuc.CX t𝒮 j p c) ⟶* ⌜ T⊢nsuc⁽0⁾ j g f0 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢nsuc.CX t𝒮 j p c)} {u = PT⊢nsuc.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢nsuc⁽0⁾ j g f0 ⌝ᵗ} (PT⊢nsuc.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢nsuc.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢nsuc.CASE t𝒮 j X0 c'} {v = ⌜ T⊢nsuc⁽0⁾ j g f0 ⌝ᵗ} (PT⊢nsuc.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢nsuc.CASE t𝒮 j X0 c'} {u = ⌜ T⊢nsuc j q c' ⌝ᵗ} {v = ⌜ T⊢nsuc⁽0⁾ j g f0 ⌝ᵗ} (PT⊢nsuc.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 7)) R₁))
+           (⟶*-trans {t = PT⊢nsuc.CASE t𝒮 j X0 c'} {u = ⌜ T⊢nsuc t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢nsuc⁽0⁾ j g f0 ⌝ᵗ} (PT⊢nsuc.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 7)) R₁))
 
 jdnsuc₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢nsuc.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (nsuc a0) ∷ A
@@ -1008,7 +1008,7 @@ jdnsuc₍0₎ ihTy ihTm Γ a0 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢nsuc.CX t𝒮 j p c)} {u = PT⊢nsuc.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢nsuc.CASE t𝒮 j X0 c'} (PT⊢nsuc.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢nsuc.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢nsuc.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢nsuc.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢nsuc.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdnatrec₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋ ∙ ∙)) (a2 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢natrec t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (natrec a0 a1 a2) ∷ A
@@ -1088,7 +1088,7 @@ jdcon₍0₎ᴸ ihTy ihTm Γ a0 Q0 Q1 Q2 {w} hq dq nq =
     R₀ : (PT⊢con.CX t𝒮 j p c) ⟶* ⌜ T⊢con⁽0⁾ j g f0 q0 q1 q2 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢con.CX t𝒮 j p c)} {u = PT⊢con.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢con⁽0⁾ j g f0 q0 q1 q2 ⌝ᵗ} (PT⊢con.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢con.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢con.CASE t𝒮 j X0 c'} {v = ⌜ T⊢con⁽0⁾ j g f0 q0 q1 q2 ⌝ᵗ} (PT⊢con.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢con.CASE t𝒮 j X0 c'} {u = ⌜ T⊢con j q c' ⌝ᵗ} {v = ⌜ T⊢con⁽0⁾ j g f0 q0 q1 q2 ⌝ᵗ} (PT⊢con.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 9)) R₁))
+           (⟶*-trans {t = PT⊢con.CASE t𝒮 j X0 c'} {u = ⌜ T⊢con t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢con⁽0⁾ j g f0 q0 q1 q2 ⌝ᵗ} (PT⊢con.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 9)) R₁))
 
 jdcon₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢con.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (con a0) ∷ A
@@ -1107,7 +1107,7 @@ jdcon₍0₎ ihTy ihTm Γ a0 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢con.CX t𝒮 j p c)} {u = PT⊢con.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢con.CASE t𝒮 j X0 c'} (PT⊢con.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢con.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢con.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢con.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢con.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdielim₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) (a3 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢ielim t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (ielim a0 a1 a2 a3) ∷ A
@@ -1185,7 +1185,7 @@ jddI₍0₎ᴸ ihTy ihTm Γ Q0 {w} hq dq nq =
     R₀ : (PT⊢dI.CX t𝒮 j p c) ⟶* ⌜ T⊢dI⁽0⁾ j g q0 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢dI.CX t𝒮 j p c)} {u = PT⊢dI.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢dI⁽0⁾ j g q0 ⌝ᵗ} (PT⊢dI.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢dI.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢dI.CASE t𝒮 j X0 c'} {v = ⌜ T⊢dI⁽0⁾ j g q0 ⌝ᵗ} (PT⊢dI.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢dI.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dI j q c' ⌝ᵗ} {v = ⌜ T⊢dI⁽0⁾ j g q0 ⌝ᵗ} (PT⊢dI.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 10)) R₁))
+           (⟶*-trans {t = PT⊢dI.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dI t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢dI⁽0⁾ j g q0 ⌝ᵗ} (PT⊢dI.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 10)) R₁))
 
 jddI₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dI.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (dι {⌊ Γ ⌋}) ∷ A
@@ -1203,7 +1203,7 @@ jddI₍0₎ ihTy ihTm Γ A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢dI.CX t𝒮 j p c)} {u = PT⊢dI.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢dI.CASE t𝒮 j X0 c'} (PT⊢dI.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢dI.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dI.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dI.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dI.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jddS₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (Q0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dS.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (Desc Q0))))) → IsNormal w → Γ ⊢ (dσ a0 a1) ∷ (Desc Q0)
@@ -1237,7 +1237,7 @@ jddS₍0₎ᴸ ihTy ihTm Γ a0 a1 Q0 {w} hq dq nq =
     R₀ : (PT⊢dS.CX t𝒮 j p c) ⟶* ⌜ T⊢dS⁽0⁾ j g f0 f1 q0 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢dS.CX t𝒮 j p c)} {u = PT⊢dS.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢dS⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dS.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢dS.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢dS.CASE t𝒮 j X0 c'} {v = ⌜ T⊢dS⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dS.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢dS.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dS j q c' ⌝ᵗ} {v = ⌜ T⊢dS⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dS.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 10)) R₁))
+           (⟶*-trans {t = PT⊢dS.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dS t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢dS⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dS.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 10)) R₁))
 
 jddS₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dS.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (dσ a0 a1) ∷ A
@@ -1257,7 +1257,7 @@ jddS₍0₎ ihTy ihTm Γ a0 a1 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢dS.CX t𝒮 j p c)} {u = PT⊢dS.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢dS.CASE t𝒮 j X0 c'} (PT⊢dS.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢dS.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dS.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dS.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dS.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jddR₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (Q0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dR.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (Desc Q0))))) → IsNormal w → Γ ⊢ (dρ a0 a1) ∷ (Desc Q0)
@@ -1291,7 +1291,7 @@ jddR₍0₎ᴸ ihTy ihTm Γ a0 a1 Q0 {w} hq dq nq =
     R₀ : (PT⊢dR.CX t𝒮 j p c) ⟶* ⌜ T⊢dR⁽0⁾ j g f0 f1 q0 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢dR.CX t𝒮 j p c)} {u = PT⊢dR.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢dR⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dR.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢dR.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢dR.CASE t𝒮 j X0 c'} {v = ⌜ T⊢dR⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dR.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢dR.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dR j q c' ⌝ᵗ} {v = ⌜ T⊢dR⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dR.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 10)) R₁))
+           (⟶*-trans {t = PT⊢dR.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dR t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢dR⁽0⁾ j g f0 f1 q0 ⌝ᵗ} (PT⊢dR.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 10)) R₁))
 
 jddR₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dR.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (dρ a0 a1) ∷ A
@@ -1311,7 +1311,7 @@ jddR₍0₎ ihTy ihTm Γ a0 a1 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢dR.CX t𝒮 j p c)} {u = PT⊢dR.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢dR.CASE t𝒮 j X0 c'} (PT⊢dR.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢dR.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dR.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dR.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dR.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jddpay₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dpay.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (dpay a0 a1 a2) ∷ (U {⌊ Γ ⌋})
@@ -1345,7 +1345,7 @@ jddpay₍0₎ᴸ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
     R₀ : (PT⊢dpay.CX t𝒮 j p c) ⟶* ⌜ T⊢dpay⁽0⁾ j g f0 f1 f2 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢dpay.CX t𝒮 j p c)} {u = PT⊢dpay.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢dpay⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢dpay.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢dpay.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢dpay.CASE t𝒮 j X0 c'} {v = ⌜ T⊢dpay⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢dpay.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢dpay.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dpay j q c' ⌝ᵗ} {v = ⌜ T⊢dpay⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢dpay.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢dpay.CASE t𝒮 j X0 c'} {u = ⌜ T⊢dpay t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢dpay⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢dpay.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jddpay₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dpay.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (dpay a0 a1 a2) ∷ A
@@ -1366,7 +1366,7 @@ jddpay₍0₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢dpay.CX t𝒮 j p c)} {u = PT⊢dpay.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢dpay.CASE t𝒮 j X0 c'} (PT⊢dpay.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢dpay.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢dpay.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dpay.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢dpay.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jddih₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) (a3 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢dih t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)) ⌝ᵗ) → IsNormal w → Γ ⊢ (dih a0 a1 a2 a3) ∷ A
@@ -1622,7 +1622,7 @@ jdcNat₍0₎ᴸ ihTy ihTm Γ {w} hq dq nq =
     R₀ : (PT⊢cNat.CX t𝒮 j p c) ⟶* ⌜ T⊢cNat⁽0⁾ ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cNat.CX t𝒮 j p c)} {u = PT⊢cNat.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cNat⁽0⁾ ⌝ᵗ} (PT⊢cNat.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cNat.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cNat.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cNat⁽0⁾ ⌝ᵗ} (PT⊢cNat.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cNat.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cNat j q c' ⌝ᵗ} {v = ⌜ T⊢cNat⁽0⁾ ⌝ᵗ} (PT⊢cNat.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cNat.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cNat t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cNat⁽0⁾ ⌝ᵗ} (PT⊢cNat.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcNat₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cNat.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Nat⌝ {⌊ Γ ⌋}) ∷ A
@@ -1640,7 +1640,7 @@ jdcNat₍0₎ ihTy ihTm Γ A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cNat.CX t𝒮 j p c)} {u = PT⊢cNat.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cNat.CASE t𝒮 j X0 c'} (PT⊢cNat.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cNat.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cNat.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cNat.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cNat.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdcIMu₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cIMu.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜IMu⌝ a0 a1 a2) ∷ (U {⌊ Γ ⌋})
@@ -1674,7 +1674,7 @@ jdcIMu₍0₎ᴸ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
     R₀ : (PT⊢cIMu.CX t𝒮 j p c) ⟶* ⌜ T⊢cIMu⁽0⁾ j g f0 f1 f2 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cIMu.CX t𝒮 j p c)} {u = PT⊢cIMu.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cIMu⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cIMu.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cIMu.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cIMu.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cIMu⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cIMu.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cIMu.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cIMu j q c' ⌝ᵗ} {v = ⌜ T⊢cIMu⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cIMu.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cIMu.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cIMu t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cIMu⁽0⁾ j g f0 f1 f2 ⌝ᵗ} (PT⊢cIMu.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcIMu₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cIMu.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜IMu⌝ a0 a1 a2) ∷ A
@@ -1695,7 +1695,7 @@ jdcIMu₍0₎ ihTy ihTm Γ a0 a1 a2 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cIMu.CX t𝒮 j p c)} {u = PT⊢cIMu.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cIMu.CASE t𝒮 j X0 c'} (PT⊢cIMu.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cIMu.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cIMu.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cIMu.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cIMu.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdcFin₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cFin.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜Fin⌝ a0) ∷ (U {⌊ Γ ⌋})
@@ -1719,7 +1719,7 @@ jdcFin₍0₎ᴸ ihTy ihTm Γ a0 {w} hq dq nq =
     R₀ : (PT⊢cFin.CX t𝒮 j p c) ⟶* ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cFin.CX t𝒮 j p c)} {u = PT⊢cFin.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ} (PT⊢cFin.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cFin.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cFin.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ} (PT⊢cFin.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cFin.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cFin j q c' ⌝ᵗ} {v = ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ} (PT⊢cFin.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cFin.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cFin t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cFin⁽0⁾ j g f0 ⌝ᵗ} (PT⊢cFin.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcFin₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cFin.CX t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Fin⌝ a0) ∷ A
@@ -1738,7 +1738,7 @@ jdcFin₍0₎ ihTy ihTm Γ a0 A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cFin.CX t𝒮 j p c)} {u = PT⊢cFin.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cFin.CASE t𝒮 j X0 c'} (PT⊢cFin.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cFin.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cFin.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cFin.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cFin.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 
 jdcUnit₍0₎ᴸ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cUnit.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy (U {⌊ Γ ⌋}))))) → IsNormal w → Γ ⊢ (⌜Unit⌝ {⌊ Γ ⌋}) ∷ (U {⌊ Γ ⌋})
@@ -1759,7 +1759,7 @@ jdcUnit₍0₎ᴸ ihTy ihTm Γ {w} hq dq nq =
     R₀ : (PT⊢cUnit.CX t𝒮 j p c) ⟶* ⌜ T⊢cUnit⁽0⁾ ⌝ᵗ
     R₀ = ⟶*-trans {t = (PT⊢cUnit.CX t𝒮 j p c)} {u = PT⊢cUnit.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = ⌜ T⊢cUnit⁽0⁾ ⌝ᵗ} (PT⊢cUnit.CASE-⟶ᵃ (step (βsnd g X0) done))
            (⟶*-trans {t = PT⊢cUnit.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {u = PT⊢cUnit.CASE t𝒮 j X0 c'} {v = ⌜ T⊢cUnit⁽0⁾ ⌝ᵗ} (PT⊢cUnit.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))
-           (⟶*-trans {t = PT⊢cUnit.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cUnit j q c' ⌝ᵗ} {v = ⌜ T⊢cUnit⁽0⁾ ⌝ᵗ} (PT⊢cUnit.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
+           (⟶*-trans {t = PT⊢cUnit.CASE t𝒮 j X0 c'} {u = ⌜ T⊢cUnit t𝒮 j q c' ⌝ᵗ} {v = ⌜ T⊢cUnit⁽0⁾ ⌝ᵗ} (PT⊢cUnit.case-β {q = t𝒮} {j = j} {pl = q} {c = c'} (atᵍ 0) (atʰ 1)) R₁))
 
 jdcUnit₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {w : RTm ε} → sz w < N →
   ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cUnit.CX t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ (quoteTy A)))) → IsNormal w → Γ ⊢ (⌜Unit⌝ {⌊ Γ ⌋}) ∷ A
@@ -1777,5 +1777,5 @@ jdcUnit₍0₎ ihTy ihTm Γ A {w} hq dq nq =
     c' = pair g p
     dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (⟶*-trans {t = (PT⊢cUnit.CX t𝒮 j p c)} {u = PT⊢cUnit.CASE t𝒮 j X0 ((fst c) ,ₚ p)} {v = PT⊢cUnit.CASE t𝒮 j X0 c'} (PT⊢cUnit.CASE-⟶ᵃ (step (βsnd g X0) done)) (PT⊢cUnit.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))))))
     dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (PT⊢cUnit.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁
-    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cUnit.case-any {j = j} {q = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
+    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (PT⊢cUnit.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))
 

@@ -111,7 +111,7 @@ syn-dec : {sg : Sig n} {shs : Shapes c} {t d : RTm ε} → NthG sg s shs →
 syn-dec {n = n} {s = s} {sg = sg} {shs = shs} {d = d} ng dt nrm
   with con-dec (⊢SK→IMu {sg = sg} {s = s} dt) nrm
 ... | q , (refl , (dq , nq))
-  with pay-σ dq (fibₛ-β d (nth-⌜⌝ₛₛ (nth-stels ng))) nq
+  with pay-σ dq (SD-β d ng) nq
 ...   | a , (b , (refl , ((da , db) , (na , nb))))
   with tag-decᶜ da na
 ...     | k , (lt , refl) with nthSh-lt shs lt

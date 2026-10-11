@@ -18,19 +18,23 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.NbETravAgree where
-open import normalizer.Syntax.Types using ( _≡_; refl; ⊤; tt; ⊥ )
+open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Sugar using ( tag )
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀ )
+-- the Lib's and the Knot's terms carry no references: the empty signature
+open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
+open import DirectedHoTT.Lib.Sugar ∅ᴷ 0 ok₀ using ( tag )
+import DirectedHoTT.Lib.Syn ∅ᴷ 0 ok₀ as LS
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; _≟Tm_; yes; no )
 open import DirectedHoTT.Examples.SigCore using ( #KΣ )
 open import DirectedHoTT.Examples.SigMeth using ( #trav; #rVF; #rWK; #rV0; #rNK )
 open import DirectedHoTT.Examples.SigCoreEval using ( nfᴺ; ⟪_⟫; _⋆_ )
-import DirectedHoTT.Examples.Knot.Ren as KR
+import DirectedHoTT.Examples.Knot.Ren ∅ᴷ wf₀ as KR
 
 private
   Γ₂ = (ε ∙) ∙
@@ -44,23 +48,24 @@ private
   wkCore s = ⟪ #trav ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ ⟪ #rVF ⟫ ∷ ⟪ #rWK ⟫ ∷ ⟪ #rV0 ⟫ ∷ ⟪ #rNK ⟫
                          ∷ tag s ∷ d ∷ t ∷ R.nsuc d ∷ R.lam (R.fsuc (R.var vz)) ∷ [])
 
-  IsYes : {P : Set} → Dec P → Set
-  IsYes (yes _) = ⊤
-  IsYes (no _)  = ⊥
-  fromYes : {P : Set} (p : Dec P) → IsYes p → P
-  fromYes (yes p) _ = p
-
   differs : R.RTm Γ₂ → R.RTm Γ₂ → Bool
   differs a b with a ≟Tm b
   ... | yes _ = false
   ... | no _  = true
 
+  -- equality FROM the Boolean (`IsYes`/`fromYes` on concrete normal forms
+  --   is the slow path: see Examples/NbEPwAgree)
+  same : (a b : R.RTm Γ₂) → differs a b ≡ false → a ≡ b
+  same a b e with a ≟Tm b
+  ... | yes p = p
+  same a b () | no _
+
 opaque
-  unfolding KR.wk
+  unfolding KR.wk LS.SD
 
   -- ★ the core's traversal at the Knot's signature IS the Knot's weakening
   trav-is-wk : nfᴺ (wkCore 1) ≡ nfᴺ (KR.wk 1 d t)
-  trav-is-wk = fromYes (nfᴺ (wkCore 1) ≟Tm nfᴺ (KR.wk 1 d t)) tt
+  trav-is-wk = same _ _ refl
 
   trav-is-wk✗ : differs (nfᴺ (wkCore 0)) (nfᴺ (KR.wk 1 d t)) ≡ true
   trav-is-wk✗ = refl

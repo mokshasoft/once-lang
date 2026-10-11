@@ -135,32 +135,34 @@ module TravM {sg : Sig n} (ok : SigOK n sg) (κ : Kit n sg) (vok : VarsAt sg (Ki
   sortMs (shs ∷ᵍ sg') = lam (methAt (mTs shs zero)) ∷ sortMs sg'
 
   private
-    -- a shape's method, typed: the variable, or a fields row
-    ⊢mT : {Γ : Ctx} {s k c : ℕ} {shs : Shapes c} {sh : Shape} → ShOK n sh → NthG sg s shs → NthSh shs k sh →
-          (Γ ▹ El ⌜Nat⌝) ⊢ mT sh k ∷ MethKAt (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M TM) (ιₛ s)
-                                             (subTm (σₛ s) ⌜ tel sh (var vz) ⌝ᵗ) k
-    ⊢mT (fᵒʰ []ᶠ)       ng nh = ⊢mT-f []ᶠ ng nh
-    ⊢mT (fᵒʰ (f ∷ᶠ fs)) ng nh = ⊢mT-f (f ∷ᶠ fs) ng nh
-    ⊢mT vᵒʰ             ng nh = ⊢mTv ng nh
+    opaque
+      unfolding SD
+      -- a shape's method, typed: the variable, or a fields row
+      ⊢mT : {Γ : Ctx} {s k c : ℕ} {shs : Shapes c} {sh : Shape} → ShOK n sh → NthG sg s shs → NthSh shs k sh →
+            (Γ ▹ El ⌜Nat⌝) ⊢ mT sh k ∷ MethKAt (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M TM) (ιₛ s)
+                                               (subTm (σₛ s) ⌜ tel sh (var vz) ⌝ᵗ) k
+      ⊢mT (fᵒʰ []ᶠ)       ng nh = ⊢mT-f []ᶠ ng nh
+      ⊢mT (fᵒʰ (f ∷ᶠ fs)) ng nh = ⊢mT-f (f ∷ᶠ fs) ng nh
+      ⊢mT vᵒʰ             ng nh = ⊢mTv ng nh
 
-    perT : {Γ : Ctx} {s c c' k : ℕ} {shsAll : Shapes c} {shs : Shapes c'} →
-           NthG sg s shsAll → ShsOK n shs →
-           ({j : ℕ} {sh : Shape} → NthSh shs j sh → NthSh shsAll (j +' k) sh) →
-           PerKAt (Γ ▹ El ⌜Nat⌝) (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M TM) (ιₛ s)
-                  (selF (subC (σₛ s) ⌜ tels shsAll ⌝ₛ)) k (mTs shs k)
-    perT ng []ᵒˢ look = []ₐ
-    perT {s = s} ng (shok ∷ᵒˢ oks) look =
-      (selF-β (nth-sub (σₛ s) (nth-⌜⌝ (nth-tels (look nthʰ-z)))) , ⊢mT shok ng (look nthʰ-z))
-      ∷ₐ perT ng oks (λ n' → look (nthʰ-s n'))
+      perT : {Γ : Ctx} {s c c' k : ℕ} {shsAll : Shapes c} {shs : Shapes c'} →
+             NthG sg s shsAll → ShsOK n shs →
+             ({j : ℕ} {sh : Shape} → NthSh shs j sh → NthSh shsAll (j +' k) sh) →
+             PerKAt (Γ ▹ El ⌜Nat⌝) (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M TM) (ιₛ s)
+                    (selF (subC (σₛ s) ⌜ tels shsAll ⌝ₛ)) k (mTs shs k)
+      perT ng []ᵒˢ look = []ₐ
+      perT {s = s} ng (shok ∷ᵒˢ oks) look =
+        (selF-β (nth-sub (σₛ s) (nth-⌜⌝ (nth-tels (look nthʰ-z)))) , ⊢mT shok ng (look nthʰ-z))
+        ∷ₐ perT ng oks (λ n' → look (nthʰ-s n'))
 
-    perS : {Γ : Ctx} {m s₀ : ℕ} {sg' : Sig m} →
-           SigOK n sg' → ({j c : ℕ} {shs : Shapes c} → NthG sg' j shs → NthG sg (j +' s₀) shs) →
-           PerS Γ (SortT (SI n) (SD sg) TM ⌜Nat⌝) s₀ (sortMs sg')
-    perS []ᵒᵍ look = []ₚ
-    perS {Γ = Γ} (oks ∷ᵒᵍ okss) look =
-      ⊢sortMeth ⊢⌜Nat⌝ (allSD ⊢SI (sigOK ok)) ⊢TM (nth-⌜⌝ₛₛ (nth-stels (look nthᵍ-z)))
-                (perT (look nthᵍ-z) oks (λ {j} n' → subst (λ m → NthSh _ m _) (sym (+'-zero j)) n'))
-      ∷ₚ perS okss (λ n' → look (nthᵍ-s n'))
+      perS : {Γ : Ctx} {m s₀ : ℕ} {sg' : Sig m} →
+             SigOK n sg' → ({j c : ℕ} {shs : Shapes c} → NthG sg' j shs → NthG sg (j +' s₀) shs) →
+             PerS Γ (SortT (SI n) (SD sg) TM ⌜Nat⌝) s₀ (sortMs sg')
+      perS []ᵒᵍ look = []ₚ
+      perS {Γ = Γ} (oks ∷ᵒᵍ okss) look =
+        ⊢sortMeth ⊢⌜Nat⌝ (allSD ⊢SI (sigOK ok)) ⊢TM (nth-⌜⌝ₛₛ (nth-stels (look nthᵍ-z)))
+                  (perT (look nthᵍ-z) oks (λ {j} n' → subst (λ m → NthSh _ m _) (sym (+'-zero j)) n'))
+        ∷ₚ perS okss (λ n' → look (nthᵍ-s n'))
 
   ------------------------------------------------------------------------
   -- 3. ★★★ THE TRAVERSAL.

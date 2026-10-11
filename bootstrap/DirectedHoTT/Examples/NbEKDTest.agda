@@ -14,17 +14,23 @@ module DirectedHoTT.Examples.NbEKDTest where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.List using ( List; []; _∷_ )
-open import DirectedHoTT.Spec.Syntax using ( ε )
+open import DirectedHoTT.Spec.Syntax using ( ε; ∅ᴷ )
 import DirectedHoTT.Spec.Syntax as R
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Sugar using ( tag )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀ )
+-- the Lib's terms carry no references: read at the empty signature
+open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
+open import DirectedHoTT.Lib.Sugar ∅ᴷ 0 ok₀ using ( tag )
+open import DirectedHoTT.Lib.Syn ∅ᴷ 0 ok₀ using ( SD )
 open import DirectedHoTT.Algorithm.DecEq using ( _≟Tm_; yes; no )
-open import DirectedHoTT.Examples.Knot.Sig using ( KD )
+open import DirectedHoTT.Examples.Knot.Sig ∅ᴷ wf₀ using ( KD )
 open import DirectedHoTT.Examples.SigCore
 open import DirectedHoTT.Examples.SigCoreEval
 
-kd-whole : nfᴺ {ε} (⟪ #SD ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ [])) ≡ nfᴺ KD
-kd-whole = refl
+-- (`KD` is the opaque `SD KSig`: evaluating it needs its constructors)
+opaque
+  unfolding SD
+  kd-whole : nfᴺ {ε} (⟪ #SD ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ [])) ≡ nfᴺ KD
+  kd-whole = refl
 
 -- negative control: the λ-calculus's description is not the Knot's
 private
@@ -43,10 +49,20 @@ kd-whole✗ = refl
 --   either normal form.)
 ------------------------------------------------------------------------
 
-open import DirectedHoTT.Spec.Typing using ( _≅_; ctrn; csym )
-open import DirectedHoTT.Algorithm.NbESound using ( nbe-sound )
+open import DirectedHoTT.Spec.Signature using ( kernel )
+-- at the signature `SigCoreEval` evaluates in (SigMeth extends SigCore)
+import DirectedHoTT.Examples.SigMeth as M
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Algorithm.NbETable using ( mkTbl; mkTbl-ok )
+open import DirectedHoTT.Spec.Typing (kernel M.S) (Defs.size (kernel M.S)) using ( _≅_; ctrn; csym )
+open import DirectedHoTT.Algorithm.NbESound (kernel M.S) (mkTbl (kernel M.S)) (mkTbl-ok (kernel M.S)) using ( nbe-sound )
 open import normalizer.Syntax.Types using ( subst )
 
+-- generic in the terms: `nbe-sound`'s evaluator and `nfᴺ` are two
+--   instances of `Algorithm/NbE`, matched here on VARIABLES (one unfolding
+--   each); joined at the concrete `KD`, Agda evaluated both sides (OOM)
+byNbE : {Γ : R.Cx} (t u : R.RTm Γ) → nfᴺ t ≡ nfᴺ u → t ≅ u
+byNbE t u e = ctrn (nbe-sound 100000 t) (subst (λ z → z ≅ u) (sym e) (csym (nbe-sound 100000 u)))
+
 kd-conv : (⟪ #SD ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ [])) ≅ KD {ε}
-kd-conv = ctrn (nbe-sound 100000 (⟪ #SD ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ [])))
-               (subst (λ z → z ≅ KD) (sym kd-whole) (csym (nbe-sound 100000 KD)))
+kd-conv = byNbE _ KD kd-whole

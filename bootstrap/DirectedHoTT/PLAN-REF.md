@@ -308,10 +308,10 @@ Next: Lib, then Examples, then the Knot.
 - 🟡 K4 (✅ δ, ⊢ref, RefCon; ⬜ the SigWf image). Hand rows: δ (`Knot/Ref`: `kref n ⟶ εwkK 1 j (bodies q n)` under
   `n < size q`), `⊢ref` (`Knot/RefJudge`: `kref n : εwkK 0 j (types q n)`
   under `n < bound`), `Knot/RefCon`; the internal image of `Spec/SigWf`.
-- 🟡 K5 (written, not yet checked; HANDOFF-2026-10-08). Decoders and agreement at `q = ⌜𝒮⌝` (`RedDecode`, `JudgeDecodeHand`,
+- ✅ K5 (green in the 2026-10-10 sweep). Decoders and agreement at `q = ⌜𝒮⌝` (`RedDecode`, `JudgeDecodeHand`,
   `RedAgree`, `TypingAgree`): `n < size` from the `Hom Nat` premise, the
   body from `quoteTm` injectivity after the lookup computes.
-- 🟡 K6 (✅ SigCore/SigMeth/PwCore). The signature-building examples (SigCore, SigMeth, PwCore, the NbE
+- ✅ K6 (all signature examples green in the 2026-10-10 sweep). The signature-building examples (SigCore, SigMeth, PwCore, the NbE
   agreement tests) at their `kernel S`; then MEASURE (step 5 of §4).
 
 ### 2026-10-07 — Knot stage: K2 done, K3 underway
@@ -413,3 +413,37 @@ Next: Lib, then Examples, then the Knot.
     BY CONSTRUCTION. A reference (to a core entry for `⌜QSig⌝`) is closed
     under substitution definitionally (`⌜Pw⌝-sub` is `refl`), which is
     the R4 direction anyway.
+
+### 2026-10-09/10 — K5 + K6 green; the regression explained; full sweep
+
+- **K5 green.** All K5 modules pass (generator fixes in `gen-judge.py`/`gen-knot.py`).
+  Sweep times: TypingAgree 44 s, JudgeDecode 28 s, Exact 17 s.
+- **The regression is NOT the parameter `q`** (profiled, Red at `604f34c07`
+  vs `plan-ref`): q-free lemmas with byte-identical text regressed 25–50×;
+  `Sig.KD` unfolded 0 → 1058, SD/SI ~100 → ~6000. Cause: every file builds
+  its own module instance (`open import M 𝒮 wf`), so one name reached
+  through two files has two heads, syntactic equality fails, and Agda
+  normalises the description under renamings. **Fix:** `SD` OPAQUE in
+  `Lib/Syn` (+ `SD-def`, explicit `unfolding SD` where the code is read:
+  ⊢SD, SD-sub, ⊢conSyn, SynTravM/SynFib, Knot/Sub+SubEnv, Knot/PwCore's
+  byNbE). Red 540 → 175 s. The residual ~1.65× over the baseline is
+  conversion overhead from module ARGUMENTS (`Defs.size`, `okᵂ`, `tag`
+  as new top conversion entries) — an artefact of Agda's encoding of an
+  ambient signature; accepted, not optimised, unless a module hits the
+  memory ceiling. The `q`-closed-by-construction candidate (2026-10-08)
+  is therefore unneeded.
+- **K6 green.** SigCoreEval, NbEKDTest, NbEPwAgree, SigCoreTest,
+  NbESigCoreTest, NbESigSubKnotTest, NbESigTravTest, NbETravAgree,
+  SigExtendTest, Signature, Elab, NbEAgree at their `kernel S` instances
+  (all 2–8 s). Two patterns were needed:
+  - joining two NbE copies at a concrete code: a generic
+    `byNbE t u : nfᴺ t ≡ nfᴺ u → t ≅ u` (NbEKDTest: OOM → 22 s);
+  - deciding a concrete equality: a `with`-defined Boolean `differs ≡
+    false` + `same`, never `IsYes`/`fromYes` (NbEPwAgree: OOM → 16 s).
+- **Sweep 2026-10-10** (`sweep-planref.log`, gen-trust regenerated, lint
+  clean): 279/283 green; the 4 failures were the Comparison benchmarks
+  (still on unparameterised imports) and `Trust.Comparison` importing
+  them — ported to the `Examples/Lib0` instances afterwards.
+- ⚠ **To check:** `Gcd.LeMid` 61 → 14 872 s and `Gcd.LeEq` 4 → 1037 s in
+  that sweep. LeMid followed a 143 kill and may have rebuilt the closure
+  (`sweep-first-module-eats-the-closure`); re-time each alone.
