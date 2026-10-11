@@ -21,6 +21,9 @@
 
 module Once.TypeCheck.Identities where
 
+import Once.Metatheory.Grade as G
+import Relation.Binary.PropositionalEquality as Eq
+
 open import Data.Bool using (true; false)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (just; nothing)
@@ -252,27 +255,15 @@ open import Once.Spec.Type.Grade using (_+q_; _*q_; _⊔q_)
 
 -- Quantity addition is commutative.
 +q-comm : ∀ (q₁ q₂ : Quantity) → q₁ +q q₂ ≡ q₂ +q q₁
-+q-comm Zero Zero = refl
-+q-comm Zero One  = refl
-+q-comm Zero Many = refl
-+q-comm One  Zero = refl
-+q-comm One  One  = refl
-+q-comm One  Many = refl
-+q-comm Many Zero = refl
-+q-comm Many One  = refl
-+q-comm Many Many = refl
++q-comm = G.+q-comm
 
 -- Zero is the left identity of +q.
 +q-identity-left : ∀ (q : Quantity) → Zero +q q ≡ q
-+q-identity-left Zero = refl
-+q-identity-left One  = refl
-+q-identity-left Many = refl
++q-identity-left = G.+q-identityˡ
 
 -- Zero is also the right identity (by commutativity).
 +q-identity-right : ∀ (q : Quantity) → q +q Zero ≡ q
-+q-identity-right Zero = refl
-+q-identity-right One  = refl
-+q-identity-right Many = refl
++q-identity-right = G.+q-identityʳ
 
 -- Many is absorbing for +q.
 +q-absorbs-Many-left : ∀ (q : Quantity) → Many +q q ≡ Many
@@ -287,41 +278,25 @@ open import Once.Spec.Type.Grade using (_+q_; _*q_; _⊔q_)
 
 -- Quantity multiplication: Zero is absorbing.
 *q-absorbs-Zero-left : ∀ (q : Quantity) → Zero *q q ≡ Zero
-*q-absorbs-Zero-left _ = refl
+*q-absorbs-Zero-left = G.*q-zeroˡ
 
 *q-absorbs-Zero-right : ∀ (q : Quantity) → q *q Zero ≡ Zero
-*q-absorbs-Zero-right Zero = refl
-*q-absorbs-Zero-right One  = refl
-*q-absorbs-Zero-right Many = refl
+*q-absorbs-Zero-right = G.*q-zeroʳ
 
 -- One is the identity for *q.
 *q-identity-left : ∀ (q : Quantity) → One *q q ≡ q
-*q-identity-left Zero = refl
-*q-identity-left One  = refl
-*q-identity-left Many = refl
+*q-identity-left = G.*q-identityˡ
 
 *q-identity-right : ∀ (q : Quantity) → q *q One ≡ q
-*q-identity-right Zero = refl
-*q-identity-right One  = refl
-*q-identity-right Many = refl
+*q-identity-right = G.*q-identityʳ
 
 -- Quantity join (⊔q) is commutative.
 ⊔q-comm : ∀ (q₁ q₂ : Quantity) → q₁ ⊔q q₂ ≡ q₂ ⊔q q₁
-⊔q-comm Zero Zero = refl
-⊔q-comm Zero One  = refl
-⊔q-comm Zero Many = refl
-⊔q-comm One  Zero = refl
-⊔q-comm One  One  = refl
-⊔q-comm One  Many = refl
-⊔q-comm Many Zero = refl
-⊔q-comm Many One  = refl
-⊔q-comm Many Many = refl
+⊔q-comm = G.⊔q-comm
 
 -- ⊔q is idempotent.
 ⊔q-idem : ∀ (q : Quantity) → q ⊔q q ≡ q
-⊔q-idem Zero = refl
-⊔q-idem One  = refl
-⊔q-idem Many = refl
+⊔q-idem = G.⊔q-idem
 
 -- Zero is the bottom of ⊔q.
 ⊔q-Zero-left : ∀ (q : Quantity) → Zero ⊔q q ≡ q
@@ -346,60 +321,16 @@ open import Once.Spec.Type.Grade using (_+q_; _*q_; _⊔q_)
 -- Associativity of +q. Zero absorbs on the left side; Many absorbs
 -- completely; the interesting cases are One × One × {Zero, One, Many}.
 +q-assoc : ∀ (q₁ q₂ q₃ : Quantity) → q₁ +q (q₂ +q q₃) ≡ (q₁ +q q₂) +q q₃
-+q-assoc Zero _    _    = refl
-+q-assoc Many Zero _    = refl
-+q-assoc Many One  _    = refl
-+q-assoc Many Many _    = refl
-+q-assoc One  Zero _    = refl
-+q-assoc One  One  Zero = refl
-+q-assoc One  One  One  = refl
-+q-assoc One  One  Many = refl
-+q-assoc One  Many Zero = refl
-+q-assoc One  Many One  = refl
-+q-assoc One  Many Many = refl
++q-assoc q₁ q₂ q₃ = Eq.sym (G.+q-assoc q₁ q₂ q₃)
 
 -- Associativity of *q. The clauses of `_*q_` overlap for concrete
 -- arguments, so we enumerate all 27 cases to force reduction.
 *q-assoc : ∀ (q₁ q₂ q₃ : Quantity) → q₁ *q (q₂ *q q₃) ≡ (q₁ *q q₂) *q q₃
-*q-assoc Zero Zero Zero = refl
-*q-assoc Zero Zero One  = refl
-*q-assoc Zero Zero Many = refl
-*q-assoc Zero One  Zero = refl
-*q-assoc Zero One  One  = refl
-*q-assoc Zero One  Many = refl
-*q-assoc Zero Many Zero = refl
-*q-assoc Zero Many One  = refl
-*q-assoc Zero Many Many = refl
-*q-assoc One  Zero Zero = refl
-*q-assoc One  Zero One  = refl
-*q-assoc One  Zero Many = refl
-*q-assoc One  One  Zero = refl
-*q-assoc One  One  One  = refl
-*q-assoc One  One  Many = refl
-*q-assoc One  Many Zero = refl
-*q-assoc One  Many One  = refl
-*q-assoc One  Many Many = refl
-*q-assoc Many Zero Zero = refl
-*q-assoc Many Zero One  = refl
-*q-assoc Many Zero Many = refl
-*q-assoc Many One  Zero = refl
-*q-assoc Many One  One  = refl
-*q-assoc Many One  Many = refl
-*q-assoc Many Many Zero = refl
-*q-assoc Many Many One  = refl
-*q-assoc Many Many Many = refl
+*q-assoc q₁ q₂ q₃ = Eq.sym (G.*q-assoc q₁ q₂ q₃)
 
 -- Associativity of ⊔q.
 ⊔q-assoc : ∀ (q₁ q₂ q₃ : Quantity) → q₁ ⊔q (q₂ ⊔q q₃) ≡ (q₁ ⊔q q₂) ⊔q q₃
-⊔q-assoc Zero _    _    = refl
-⊔q-assoc One  Zero _    = refl
-⊔q-assoc One  One  Zero = refl
-⊔q-assoc One  One  One  = refl
-⊔q-assoc One  One  Many = refl
-⊔q-assoc One  Many _    = refl
-⊔q-assoc Many Zero _    = refl
-⊔q-assoc Many One  _    = refl
-⊔q-assoc Many Many _    = refl
+⊔q-assoc q₁ q₂ q₃ = Eq.sym (G.⊔q-assoc q₁ q₂ q₃)
 
 -- Left-distributivity: q₁ *q (q₂ +q q₃) ≡ (q₁ *q q₂) +q (q₁ *q q₃).
 *q-distrib-+q-left :

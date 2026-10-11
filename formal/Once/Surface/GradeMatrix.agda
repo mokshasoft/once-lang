@@ -18,6 +18,8 @@
 
 module Once.Surface.GradeMatrix where
 
+import Once.Metatheory.Grade as G
+
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
@@ -30,101 +32,19 @@ open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identity�
 ------------------------------------------------------------------------
 
 *q-assoc : ∀ (a b c : Quantity) → (a *q b) *q c ≡ a *q (b *q c)
-*q-assoc Zero Zero Zero = refl
-*q-assoc Zero Zero One = refl
-*q-assoc Zero Zero Many = refl
-*q-assoc Zero One Zero = refl
-*q-assoc Zero One One = refl
-*q-assoc Zero One Many = refl
-*q-assoc Zero Many Zero = refl
-*q-assoc Zero Many One = refl
-*q-assoc Zero Many Many = refl
-*q-assoc One Zero Zero = refl
-*q-assoc One Zero One = refl
-*q-assoc One Zero Many = refl
-*q-assoc One One Zero = refl
-*q-assoc One One One = refl
-*q-assoc One One Many = refl
-*q-assoc One Many Zero = refl
-*q-assoc One Many One = refl
-*q-assoc One Many Many = refl
-*q-assoc Many Zero Zero = refl
-*q-assoc Many Zero One = refl
-*q-assoc Many Zero Many = refl
-*q-assoc Many One Zero = refl
-*q-assoc Many One One = refl
-*q-assoc Many One Many = refl
-*q-assoc Many Many Zero = refl
-*q-assoc Many Many One = refl
-*q-assoc Many Many Many = refl
+*q-assoc = G.*q-assoc
 
 *q-distribˡ : ∀ (a b c : Quantity) → a *q (b +q c) ≡ (a *q b) +q (a *q c)
-*q-distribˡ Zero Zero Zero = refl
-*q-distribˡ Zero Zero One = refl
-*q-distribˡ Zero Zero Many = refl
-*q-distribˡ Zero One Zero = refl
-*q-distribˡ Zero One One = refl
-*q-distribˡ Zero One Many = refl
-*q-distribˡ Zero Many Zero = refl
-*q-distribˡ Zero Many One = refl
-*q-distribˡ Zero Many Many = refl
-*q-distribˡ One Zero Zero = refl
-*q-distribˡ One Zero One = refl
-*q-distribˡ One Zero Many = refl
-*q-distribˡ One One Zero = refl
-*q-distribˡ One One One = refl
-*q-distribˡ One One Many = refl
-*q-distribˡ One Many Zero = refl
-*q-distribˡ One Many One = refl
-*q-distribˡ One Many Many = refl
-*q-distribˡ Many Zero Zero = refl
-*q-distribˡ Many Zero One = refl
-*q-distribˡ Many Zero Many = refl
-*q-distribˡ Many One Zero = refl
-*q-distribˡ Many One One = refl
-*q-distribˡ Many One Many = refl
-*q-distribˡ Many Many Zero = refl
-*q-distribˡ Many Many One = refl
-*q-distribˡ Many Many Many = refl
+*q-distribˡ = G.*q-distribˡ
 
 *q-distribʳ : ∀ (a b c : Quantity) → (a +q b) *q c ≡ (a *q c) +q (b *q c)
-*q-distribʳ Zero Zero Zero = refl
-*q-distribʳ Zero Zero One = refl
-*q-distribʳ Zero Zero Many = refl
-*q-distribʳ Zero One Zero = refl
-*q-distribʳ Zero One One = refl
-*q-distribʳ Zero One Many = refl
-*q-distribʳ Zero Many Zero = refl
-*q-distribʳ Zero Many One = refl
-*q-distribʳ Zero Many Many = refl
-*q-distribʳ One Zero Zero = refl
-*q-distribʳ One Zero One = refl
-*q-distribʳ One Zero Many = refl
-*q-distribʳ One One Zero = refl
-*q-distribʳ One One One = refl
-*q-distribʳ One One Many = refl
-*q-distribʳ One Many Zero = refl
-*q-distribʳ One Many One = refl
-*q-distribʳ One Many Many = refl
-*q-distribʳ Many Zero Zero = refl
-*q-distribʳ Many Zero One = refl
-*q-distribʳ Many Zero Many = refl
-*q-distribʳ Many One Zero = refl
-*q-distribʳ Many One One = refl
-*q-distribʳ Many One Many = refl
-*q-distribʳ Many Many Zero = refl
-*q-distribʳ Many Many One = refl
-*q-distribʳ Many Many Many = refl
+*q-distribʳ a b c = G.*q-distribʳ c a b
 
 *q-zeroʳ : ∀ (a : Quantity) → a *q Zero ≡ Zero
-*q-zeroʳ Zero = refl
-*q-zeroʳ One = refl
-*q-zeroʳ Many = refl
+*q-zeroʳ = G.*q-zeroʳ
 
 *q-oneʳ : ∀ (a : Quantity) → a *q One ≡ a
-*q-oneʳ Zero = refl
-*q-oneʳ One = refl
-*q-oneʳ Many = refl
+*q-oneʳ = G.*q-identityʳ
 
 +q-mono : ∀ {a a′ b b′ : Quantity} → a ≤q' a′ → b ≤q' b′ → (a +q b) ≤q' (a′ +q b′)
 +q-mono z≤z z≤z = z≤z

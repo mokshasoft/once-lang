@@ -10,6 +10,8 @@
 
 module Once.Surface.Properties where
 
+import Once.Metatheory.Grade as G
+
 open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
@@ -53,35 +55,19 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 -- | Quantity addition is commutative
 +q-comm : ∀ (q₁ q₂ : Quantity) → q₁ +q q₂ ≡ q₂ +q q₁
-+q-comm Zero Zero = refl
-+q-comm Zero One = refl
-+q-comm Zero Many = refl
-+q-comm One Zero = refl
-+q-comm One One = refl
-+q-comm One Many = refl
-+q-comm Many Zero = refl
-+q-comm Many One = refl
-+q-comm Many Many = refl
++q-comm = G.+q-comm
 
 -- | Quantity addition is associative
 +q-assoc : ∀ (q₁ q₂ q₃ : Quantity) → (q₁ +q q₂) +q q₃ ≡ q₁ +q (q₂ +q q₃)
-+q-assoc Zero q₂ q₃ = refl
-+q-assoc One Zero q₃ = refl
-+q-assoc One One Zero = refl
-+q-assoc One One One = refl
-+q-assoc One One Many = refl
-+q-assoc One Many q₃ = refl
-+q-assoc Many q₂ q₃ = refl
++q-assoc = G.+q-assoc
 
 -- | Zero is left identity for addition
 +q-identityˡ : ∀ (q : Quantity) → Zero +q q ≡ q
-+q-identityˡ q = refl
++q-identityˡ = G.+q-identityˡ
 
 -- | Zero is right identity for addition
 +q-identityʳ : ∀ (q : Quantity) → q +q Zero ≡ q
-+q-identityʳ Zero = refl
-+q-identityʳ One = refl
-+q-identityʳ Many = refl
++q-identityʳ = G.+q-identityʳ
 
 -- | Many is absorbing for addition
 +q-absorb : ∀ (q : Quantity) → Many +q q ≡ Many

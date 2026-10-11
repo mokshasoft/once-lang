@@ -84,6 +84,7 @@ import Once.IRTy.WF
 import Once.Memory.HeapAddress
 import Once.Memory.Memory
 import Once.Memory.MemoryLayoutSemantics
+import Once.Metatheory.Grade
 import Once.Metatheory.SubLaws
 import Once.Optimize
 import Once.Parser

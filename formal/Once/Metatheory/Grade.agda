@@ -1,0 +1,344 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Metatheory.Grade — the grades are the algebraic structures they are
+-- meant to be (plan 0.112 B2, B4).
+--
+--   * usage `(Quantity, +q, *q, Zero, One)` is a commutative semiring;
+--   * `⊔q` is a semilattice (the usage of a case), and the order relation
+--     `_≤q'_` is a decidable total order whose Boolean form is `_≤q_`;
+--   * effect `(Purity, ⊔p, pure)` is a commutative monoid and a semilattice,
+--     bounded by `pure` and `eff`, and `_⊑π_` is its order.
+--
+-- The carriers are finite, so every law is proved by exhausting the cases.
+-- The structures are record VALUES; whether the Agda code later resolves them
+-- by instance search or names them at the use site is plan 0.112's decision X.
+------------------------------------------------------------------------
+
+module Once.Metatheory.Grade where
+
+import Algebra.Structures as Structures
+open import Data.Bool using (Bool; true; false)
+open import Data.Product using (_,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Relation.Binary.Definitions using (DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; isEquivalence; cong₂)
+open import Relation.Binary.Structures using (IsDecTotalOrder)
+open import Relation.Nullary using (Dec; yes; no)
+open import Once.Spec.Type.Grade
+  using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; eff; _⊔p_)
+open import Once.Spec.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
+
+------------------------------------------------------------------------
+-- Usage: a commutative semiring
+------------------------------------------------------------------------
+
++q-assoc : ∀ a b c → (a +q b) +q c ≡ a +q (b +q c)
++q-assoc Zero b c = refl
++q-assoc One Zero c = refl
++q-assoc One One Zero = refl
++q-assoc One One One = refl
++q-assoc One One Many = refl
++q-assoc One Many c = refl
++q-assoc Many b c = refl
+
++q-comm : ∀ a b → a +q b ≡ b +q a
++q-comm Zero Zero = refl
++q-comm Zero One = refl
++q-comm Zero Many = refl
++q-comm One Zero = refl
++q-comm One One = refl
++q-comm One Many = refl
++q-comm Many Zero = refl
++q-comm Many One = refl
++q-comm Many Many = refl
+
++q-identityˡ : ∀ a → Zero +q a ≡ a
++q-identityˡ a = refl
+
++q-identityʳ : ∀ a → a +q Zero ≡ a
++q-identityʳ Zero = refl
++q-identityʳ One = refl
++q-identityʳ Many = refl
+
+*q-assoc : ∀ a b c → (a *q b) *q c ≡ a *q (b *q c)
+*q-assoc Zero b c = refl
+*q-assoc One Zero c = refl
+*q-assoc One One Zero = refl
+*q-assoc One One One = refl
+*q-assoc One One Many = refl
+*q-assoc One Many Zero = refl
+*q-assoc One Many One = refl
+*q-assoc One Many Many = refl
+*q-assoc Many Zero c = refl
+*q-assoc Many One Zero = refl
+*q-assoc Many One One = refl
+*q-assoc Many One Many = refl
+*q-assoc Many Many Zero = refl
+*q-assoc Many Many One = refl
+*q-assoc Many Many Many = refl
+
+*q-comm : ∀ a b → a *q b ≡ b *q a
+*q-comm Zero Zero = refl
+*q-comm Zero One = refl
+*q-comm Zero Many = refl
+*q-comm One Zero = refl
+*q-comm One One = refl
+*q-comm One Many = refl
+*q-comm Many Zero = refl
+*q-comm Many One = refl
+*q-comm Many Many = refl
+
+*q-identityˡ : ∀ a → One *q a ≡ a
+*q-identityˡ Zero = refl
+*q-identityˡ One = refl
+*q-identityˡ Many = refl
+
+*q-identityʳ : ∀ a → a *q One ≡ a
+*q-identityʳ Zero = refl
+*q-identityʳ One = refl
+*q-identityʳ Many = refl
+
+*q-zeroˡ : ∀ a → Zero *q a ≡ Zero
+*q-zeroˡ a = refl
+
+*q-zeroʳ : ∀ a → a *q Zero ≡ Zero
+*q-zeroʳ Zero = refl
+*q-zeroʳ One = refl
+*q-zeroʳ Many = refl
+
+*q-distribʳ : ∀ c a b → (a +q b) *q c ≡ (a *q c) +q (b *q c)
+*q-distribʳ Zero Zero Zero = refl
+*q-distribʳ Zero Zero One = refl
+*q-distribʳ Zero Zero Many = refl
+*q-distribʳ Zero One Zero = refl
+*q-distribʳ Zero One One = refl
+*q-distribʳ Zero One Many = refl
+*q-distribʳ Zero Many Zero = refl
+*q-distribʳ Zero Many One = refl
+*q-distribʳ Zero Many Many = refl
+*q-distribʳ One Zero Zero = refl
+*q-distribʳ One Zero One = refl
+*q-distribʳ One Zero Many = refl
+*q-distribʳ One One Zero = refl
+*q-distribʳ One One One = refl
+*q-distribʳ One One Many = refl
+*q-distribʳ One Many Zero = refl
+*q-distribʳ One Many One = refl
+*q-distribʳ One Many Many = refl
+*q-distribʳ Many Zero Zero = refl
+*q-distribʳ Many Zero One = refl
+*q-distribʳ Many Zero Many = refl
+*q-distribʳ Many One Zero = refl
+*q-distribʳ Many One One = refl
+*q-distribʳ Many One Many = refl
+*q-distribʳ Many Many Zero = refl
+*q-distribʳ Many Many One = refl
+*q-distribʳ Many Many Many = refl
+
+*q-distribˡ : ∀ c a b → c *q (a +q b) ≡ (c *q a) +q (c *q b)
+*q-distribˡ c a b rewrite *q-comm c (a +q b) | *q-comm c a | *q-comm c b = *q-distribʳ c a b
+
+quantity-isCommutativeSemiring : Structures.IsCommutativeSemiring {A = Quantity} _≡_ _+q_ _*q_ Zero One
+quantity-isCommutativeSemiring = record
+  { isSemiring = record
+    { isSemiringWithoutAnnihilatingZero = record
+      { +-isCommutativeMonoid = record
+        { isMonoid = record
+          { isSemigroup = record
+            { isMagma = record { isEquivalence = isEquivalence ; ∙-cong = cong₂ _+q_ }
+            ; assoc = +q-assoc }
+          ; identity = +q-identityˡ , +q-identityʳ }
+        ; comm = +q-comm }
+      ; *-cong = cong₂ _*q_
+      ; *-assoc = *q-assoc
+      ; *-identity = *q-identityˡ , *q-identityʳ
+      ; distrib = *q-distribˡ , *q-distribʳ }
+    ; zero = *q-zeroˡ , *q-zeroʳ }
+  ; *-comm = *q-comm }
+
+------------------------------------------------------------------------
+-- Usage: the join of a case (a semilattice: a commutative band)
+------------------------------------------------------------------------
+
+⊔q-assoc : ∀ a b c → (a ⊔q b) ⊔q c ≡ a ⊔q (b ⊔q c)
+⊔q-assoc Zero b c = refl
+⊔q-assoc One Zero c = refl
+⊔q-assoc One One Zero = refl
+⊔q-assoc One One One = refl
+⊔q-assoc One One Many = refl
+⊔q-assoc One Many c = refl
+⊔q-assoc Many b c = refl
+
+⊔q-comm : ∀ a b → a ⊔q b ≡ b ⊔q a
+⊔q-comm Zero Zero = refl
+⊔q-comm Zero One = refl
+⊔q-comm Zero Many = refl
+⊔q-comm One Zero = refl
+⊔q-comm One One = refl
+⊔q-comm One Many = refl
+⊔q-comm Many Zero = refl
+⊔q-comm Many One = refl
+⊔q-comm Many Many = refl
+
+⊔q-idem : ∀ a → a ⊔q a ≡ a
+⊔q-idem Zero = refl
+⊔q-idem One = refl
+⊔q-idem Many = refl
+
+quantity-⊔-isCommutativeBand : Structures.IsCommutativeBand {A = Quantity} _≡_ _⊔q_
+quantity-⊔-isCommutativeBand = record
+  { isBand = record
+    { isSemigroup = record
+      { isMagma = record { isEquivalence = isEquivalence ; ∙-cong = cong₂ _⊔q_ }
+      ; assoc = ⊔q-assoc }
+    ; idem = ⊔q-idem }
+  ; comm = ⊔q-comm }
+
+------------------------------------------------------------------------
+-- Usage: the order 0 ≤ 1 ≤ ω
+------------------------------------------------------------------------
+
+≤q'-refl : ∀ {a} → a ≤q' a
+≤q'-refl {Zero} = z≤z
+≤q'-refl {One} = o≤o
+≤q'-refl {Many} = m≤m
+
+≤q'-trans : ∀ {a b c} → a ≤q' b → b ≤q' c → a ≤q' c
+≤q'-trans z≤z q = q
+≤q'-trans z≤o o≤o = z≤o
+≤q'-trans z≤o o≤m = z≤m
+≤q'-trans z≤m m≤m = z≤m
+≤q'-trans o≤o q = q
+≤q'-trans o≤m m≤m = o≤m
+≤q'-trans m≤m m≤m = m≤m
+
+≤q'-antisym : ∀ {a b} → a ≤q' b → b ≤q' a → a ≡ b
+≤q'-antisym z≤z _ = refl
+≤q'-antisym o≤o _ = refl
+≤q'-antisym m≤m _ = refl
+
+≤q'-total : ∀ a b → (a ≤q' b) ⊎ (b ≤q' a)
+≤q'-total Zero Zero = inj₁ z≤z
+≤q'-total Zero One = inj₁ z≤o
+≤q'-total Zero Many = inj₁ z≤m
+≤q'-total One Zero = inj₂ z≤o
+≤q'-total One One = inj₁ o≤o
+≤q'-total One Many = inj₁ o≤m
+≤q'-total Many Zero = inj₂ z≤m
+≤q'-total Many One = inj₂ o≤m
+≤q'-total Many Many = inj₁ m≤m
+
+_≟q_ : DecidableEquality Quantity
+Zero ≟q Zero = yes refl
+Zero ≟q One = no λ ()
+Zero ≟q Many = no λ ()
+One ≟q Zero = no λ ()
+One ≟q One = yes refl
+One ≟q Many = no λ ()
+Many ≟q Zero = no λ ()
+Many ≟q One = no λ ()
+Many ≟q Many = yes refl
+
+_≤q'?_ : ∀ a b → Dec (a ≤q' b)
+Zero ≤q'? Zero = yes z≤z
+Zero ≤q'? One = yes z≤o
+Zero ≤q'? Many = yes z≤m
+One ≤q'? Zero = no λ ()
+One ≤q'? One = yes o≤o
+One ≤q'? Many = yes o≤m
+Many ≤q'? Zero = no λ ()
+Many ≤q'? One = no λ ()
+Many ≤q'? Many = yes m≤m
+
+quantity-≤-isDecTotalOrder : IsDecTotalOrder _≡_ _≤q'_
+quantity-≤-isDecTotalOrder = record
+  { isTotalOrder = record
+    { isPartialOrder = record
+      { isPreorder = record
+        { isEquivalence = isEquivalence
+        ; reflexive = λ { refl → ≤q'-refl }
+        ; trans = ≤q'-trans }
+      ; antisym = ≤q'-antisym }
+    ; total = ≤q'-total }
+  ; _≟_ = _≟q_
+  ; _≤?_ = _≤q'?_ }
+
+-- The Boolean `_≤q_` decides the relation `_≤q'_`.
+≤q-sound : ∀ a b → a ≤q b ≡ true → a ≤q' b
+≤q-sound Zero Zero _ = z≤z
+≤q-sound Zero One _ = z≤o
+≤q-sound Zero Many _ = z≤m
+≤q-sound One Zero ()
+≤q-sound One One _ = o≤o
+≤q-sound One Many _ = o≤m
+≤q-sound Many Zero ()
+≤q-sound Many One ()
+≤q-sound Many Many _ = m≤m
+
+≤q-complete : ∀ {a b} → a ≤q' b → a ≤q b ≡ true
+≤q-complete z≤z = refl
+≤q-complete z≤o = refl
+≤q-complete z≤m = refl
+≤q-complete o≤o = refl
+≤q-complete o≤m = refl
+≤q-complete m≤m = refl
+
+------------------------------------------------------------------------
+-- Effect: the two-point lattice pure ≤ eff
+------------------------------------------------------------------------
+
+⊔p-assoc : ∀ a b c → (a ⊔p b) ⊔p c ≡ a ⊔p (b ⊔p c)
+⊔p-assoc pure b c = refl
+⊔p-assoc eff b c = refl
+
+⊔p-comm : ∀ a b → a ⊔p b ≡ b ⊔p a
+⊔p-comm pure pure = refl
+⊔p-comm pure eff = refl
+⊔p-comm eff pure = refl
+⊔p-comm eff eff = refl
+
+⊔p-identityˡ : ∀ a → pure ⊔p a ≡ a
+⊔p-identityˡ a = refl
+
+⊔p-identityʳ : ∀ a → a ⊔p pure ≡ a
+⊔p-identityʳ pure = refl
+⊔p-identityʳ eff = refl
+
+⊔p-idem : ∀ a → a ⊔p a ≡ a
+⊔p-idem pure = refl
+⊔p-idem eff = refl
+
+-- `eff` absorbs.
+⊔p-zeroʳ : ∀ a → a ⊔p eff ≡ eff
+⊔p-zeroʳ pure = refl
+⊔p-zeroʳ eff = refl
+
+-- The grade monoid: composing two arrows takes the join of their grades.
+purity-isCommutativeMonoid : Structures.IsCommutativeMonoid {A = Purity} _≡_ _⊔p_ pure
+purity-isCommutativeMonoid = record
+  { isMonoid = record
+    { isSemigroup = record
+      { isMagma = record { isEquivalence = isEquivalence ; ∙-cong = cong₂ _⊔p_ }
+      ; assoc = ⊔p-assoc }
+    ; identity = ⊔p-identityˡ , ⊔p-identityʳ }
+  ; comm = ⊔p-comm }
+
+-- `⊔p` is the join of `_⊑π_`.
+⊔p-upperˡ : ∀ a b → a ⊑π (a ⊔p b)
+⊔p-upperˡ pure pure = ⊑-pure
+⊔p-upperˡ pure eff = ⊑-pe
+⊔p-upperˡ eff b = ⊑-eff
+
+⊔p-upperʳ : ∀ a b → b ⊑π (a ⊔p b)
+⊔p-upperʳ pure pure = ⊑-pure
+⊔p-upperʳ pure eff = ⊑-eff
+⊔p-upperʳ eff pure = ⊑-pe
+⊔p-upperʳ eff eff = ⊑-eff
+
+⊔p-least : ∀ {a b c} → a ⊑π c → b ⊑π c → (a ⊔p b) ⊑π c
+⊔p-least ⊑-pure q = q
+⊔p-least ⊑-pe q = q
+⊔p-least ⊑-eff _ = ⊑-eff
