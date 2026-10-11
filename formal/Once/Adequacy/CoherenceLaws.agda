@@ -36,7 +36,7 @@ open import Once.Metatheory.SubLaws using (<:-refl; <:-trans; <:-unique; ⊑π-r
 open import Once.Spec.Context using (Ctx; Usage; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT)
-open import Once.Denotation.TraceMonadLaws using (>>=T-assoc)
+open import Once.Metatheory.Monad using (T-monad; module LawfulMonad)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-id; <:-trans-∘)
@@ -89,11 +89,11 @@ record _≈_ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (a b : Expr Γ Ψ A) : Set wher
 
 fmap-bind : ∀ {X Y Z : Set} (f : Y → Z) (m : T X) (k : X → T Y)
           → fmapT f (m >>=T k) ≡ (m >>=T λ x → fmapT f (k x))
-fmap-bind f m k = >>=T-assoc m k (λ y → ret (f y))
+fmap-bind f m k = LawfulMonad.assoc T-monad m k (λ y → ret (f y))
 
 bind-fmap : ∀ {X Y Z : Set} (f : X → Y) (m : T X) (k : Y → T Z)
           → (fmapT f m >>=T k) ≡ (m >>=T λ x → k (f x))
-bind-fmap f m k = >>=T-assoc m (λ x → ret (f x)) k
+bind-fmap f m k = LawfulMonad.assoc T-monad m (λ x → ret (f x)) k
 
 ret-bind : ∀ {X Y : Set} (h : X) (f : X → T Y) → (returnT h >>=T f) ≡ f h
 ret-bind h f = refl
