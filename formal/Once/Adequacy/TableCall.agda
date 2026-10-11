@@ -31,8 +31,8 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans)
 
 open import Once.Postulates using (extensionality)
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Zero; One; Many;
-  μ-type; ν-type; rigid)
+open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
 open import Once.CanonicalName using (CanonicalName; bare; _≟ᶜ_)

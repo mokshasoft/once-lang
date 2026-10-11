@@ -29,7 +29,8 @@ open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-sym-subst; subst-subst-sym)
 
-open import Once.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T; Purity; mk-kind; Many)
+open import Once.Spec.Type.Grade using (Purity; mk-kind; Many)
+open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 import Once.Semantics.Machine as Val
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; Ana)
 open import Once.Functor.Translate using (WellFormedF)
@@ -174,7 +175,7 @@ cataM-fold {F} {A} {π} wfF c =
     -- Applying the carried closure IS the algebra: `⟨fst,snd⟩` is pair-η and
     -- `liftFn apply` is application, so the fold's per-layer algebra is `c`.
     apply-closure : ∀ (z : ⟦ ⟦ F ⟧T A ⟧ᴰ)
-                  → liftFn fmt ρ {(⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Once.Type.* (⟦ F ⟧T A)} {A}
+                  → liftFn fmt ρ {(⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Once.Spec.Type.* (⟦ F ⟧T A)} {A}
                            applyIR (c , z)
                     ≡ c z
     apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {π})
@@ -290,7 +291,7 @@ anaM-unfold {F} {A} {π₀} {π} wf c =
 
     -- Applying the carried closure IS the coalgebra (pair-η, then application).
     apply-closure : ∀ (z : ⟦ A ⟧ᴰ)
-                  → liftFn fmt ρ {Arr Once.Type.* A} {⟦ F ⟧T A} applyIR (c , z) ≡ c z
+                  → liftFn fmt ρ {Arr Once.Spec.Type.* A} {⟦ F ⟧T A} applyIR (c , z) ≡ c z
     apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {A} {⟦ F ⟧T A} {π})
 
     -- The IR-side coalgebra, as `anaFᵈ` receives it.

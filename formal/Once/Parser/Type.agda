@@ -44,7 +44,8 @@ open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Zero; One; Many; mk-kind; pure; eff; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind; pure; eff)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.TypeRelation

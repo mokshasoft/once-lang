@@ -32,9 +32,12 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open ArrowKind using (quantity)
-open import Once.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.Rigid using (RigidFree; KindedInstance; extractGround-rf)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF)

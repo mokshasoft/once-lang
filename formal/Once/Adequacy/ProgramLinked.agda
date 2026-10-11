@@ -22,6 +22,8 @@
 
 module Once.Adequacy.ProgramLinked where
 
+import Once.Spec.Type.Grade
+
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Nat using (ℕ; _<_)
 open import Data.List using (List; []; _∷_; length)
@@ -43,7 +45,8 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-open import Once.Type using (Type; PolyType; Unit)
+open import Once.Spec.Type using (Type; Unit)
+open import Once.Spec.Type.Poly using (PolyType)
 open import Once.Type.Rigid using (KindedInstance; RigidFree; rigidOf)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Once.Spec.Contract using (ISig)
@@ -72,7 +75,7 @@ open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; O
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.IRTy using (⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ-type; ν-type)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; LinkedProgram)
 open Once.Denotation.Program.IRFun using (fbody)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; ModuleTyped-ef; EffUU; teleSig; moduleSig; moduleSig-ef)
@@ -246,11 +249,11 @@ realize-refs-i (t-fst-app d)      = tt , realize-refs-i d
 realize-refs-i (t-snd-app d)      = tt , realize-refs-i d
 realize-refs-i (t-Out-app-infer {F = F} wfF ceq d) =
   Refs-substA ceq _
-    ( Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Type.pure))) (IR.Out (wf-⌊⌋ wfF)) tt
+    ( Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.pure))) (IR.Out (wf-⌊⌋ wfF)) tt
     , realize-refs-i d)
 realize-refs-i (t-Out-eff-app-infer {F = F} wfF ceq d) =
-  Refs-substF (λ Z → Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] Z) ceq _
-    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Type.eff))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
+  Refs-substF (λ Z → Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] Z) ceq _
+    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.eff))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
     , realize-refs-i d)
 realize-refs-i (t-terminal-app d) = tt , realize-refs-i d
 realize-refs-i (t-apply-app-infer d) = tt , realize-refs-i d
@@ -360,35 +363,35 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
 -- The direct-call form (`directCallIR`) of a linked body is linked.
 dc-linked : ∀ (tbl : List IRFun) (ty : Type) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
           → Linked σ tbl ir → Linked σ tbl (proj₂ (proj₂ (C.directCallIR ty ir)))
-dc-linked tbl (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero π ] B) ir l = tt , ((l , tt) , tt)
-dc-linked tbl (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One  π ] B) ir l = tt , ((l , tt) , tt)
-dc-linked tbl (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ir l = tt , ((l , tt) , tt)
-dc-linked tbl Once.Type.Unit           ir l = l
-dc-linked tbl Once.Type.Void           ir l = l
-dc-linked tbl (A Once.Type.* B)        ir l = l
-dc-linked tbl (A Once.Type.+ B)        ir l = l
-dc-linked tbl (Once.Type.μ-type F)     ir l = l
-dc-linked tbl (Once.Type.ν-type F π)   ir l = l
-dc-linked tbl Once.Type.Int            ir l = l
-dc-linked tbl Once.Type.Float          ir l = l
-dc-linked tbl (Once.Type.rigid k i)    ir l = l
+dc-linked tbl (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero π ] B) ir l = tt , ((l , tt) , tt)
+dc-linked tbl (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One  π ] B) ir l = tt , ((l , tt) , tt)
+dc-linked tbl (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B) ir l = tt , ((l , tt) , tt)
+dc-linked tbl Once.Spec.Type.Unit           ir l = l
+dc-linked tbl Once.Spec.Type.Void           ir l = l
+dc-linked tbl (A Once.Spec.Type.* B)        ir l = l
+dc-linked tbl (A Once.Spec.Type.+ B)        ir l = l
+dc-linked tbl (Once.Spec.Type.μ-type F)     ir l = l
+dc-linked tbl (Once.Spec.Type.ν-type F π)   ir l = l
+dc-linked tbl Once.Spec.Type.Int            ir l = l
+dc-linked tbl Once.Spec.Type.Float          ir l = l
+dc-linked tbl (Once.Spec.Type.rigid k i)    ir l = l
 
 -- A reference to an entry is linked once the entry is in the table: the
 -- reference's call (`refIR`) is at the entry's direct-call objects (D245).
 ref-entry : ∀ (tbl : List IRFun) (x : String) (ty : Type) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
           → RefLinked σ (irFunOf (C.mkCompiledFun (bare x) ty ir) ∷ tbl) x ty
-ref-entry tbl x ty@(A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One  π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Type.Unit         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Type.Void         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Type.* B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Type.+ B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Type.μ-type F)   ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Type.ν-type F π) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Type.Int          ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Type.Float        ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Type.rigid k i)  ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One  π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Unit         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Void         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.* B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.+ B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Spec.Type.μ-type F)   ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Spec.Type.ν-type F π) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Int          ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Float        ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Spec.Type.rigid k i)  ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 
 RefLinked-mono : ∀ {tbl tbl′ : List IRFun} → (∀ {f A B} → LinkedAt tbl f A B → LinkedAt tbl′ f A B)
                → ∀ {x A} → RefLinked σ tbl x A → RefLinked σ tbl′ x A

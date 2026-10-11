@@ -33,7 +33,10 @@ open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj�
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Data.String.Properties as StrProp using ()
-open import Once.Type as T using (Type; Unit; _*_)
+open import Once.Spec.Type as T using (Type; Unit; _*_)
+import Once.Type as T
+import Once.Spec.Type.Poly as T
+import Once.Spec.Type.Grade as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RResolved)
 open import Once.CanonicalName using (CanonicalName; gen; own; bare-NotGenerator; NotGenerator)
@@ -60,8 +63,9 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Surface.Syntax as Srf using ()
-open import Once.Type using (Functor; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)
+open import Once.Spec.Type using (Functor; ⟦_⟧T)
+open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)
+open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport; classifyAppHead-nothing⇒view-other)

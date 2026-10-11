@@ -15,7 +15,8 @@
 
 module Once.Grammar.ParserRelation where
 
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Many; mk-kind; pure; eff)
+open import Once.Spec.Type.Grade using (Many; mk-kind; pure; eff)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 
 import Once.Grammar as G
 open G using (GType)

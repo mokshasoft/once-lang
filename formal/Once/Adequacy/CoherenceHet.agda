@@ -28,8 +28,10 @@ open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
-open import Once.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Many; Purity; Quantity; _≤q_; ⟦_⟧T)
-open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
+open import Once.Spec.Type.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
+import Once.Spec.Type.Poly as T
+open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
+open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
 open import Once.Metatheory.SubLaws using (<:-refl; ⊑π-refl)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.CanonicalName using (NotGenerator; showCanonical)

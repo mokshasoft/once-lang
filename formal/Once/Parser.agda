@@ -22,7 +22,10 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (Dec; yes; no; does)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType; Unit; _⇒[_]_; mk-kind; Many; eff)
+open import Once.Spec.Type.Grade using (mk-kind; Many; eff)
+open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
+open import Once.Spec.Type.Poly using (PolyType; extractGround)
+open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.

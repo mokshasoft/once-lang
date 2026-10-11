@@ -16,7 +16,7 @@ open import Data.Product using (_×_; proj₁; proj₂)
 import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
-open import Once.Type using (PolyType)
+open import Once.Spec.Type.Poly using (PolyType)
 open import Once.Type.Rigid using (KindedInstance; rigidOf)
 import Once.Surface.Context as C
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)

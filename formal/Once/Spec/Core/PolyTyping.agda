@@ -22,6 +22,7 @@
 
 import Once.Metatheory.SubLaws
 open import Data.Nat using (ℕ)
+import Once.Spec.Type
 import Once.Type
 open import Once.Spec.Core.PolyTy using (Sig)
 
@@ -33,10 +34,10 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
+import Once.Spec.Type as T
 import Once.Type as T
-open T using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_)
-open import Once.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid;
-  sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_)
+open import Once.Spec.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Rigid using (RigidFree)
@@ -262,7 +263,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
   -- instantiation respects the schema's kinds (a base variable gets a type
   -- that is base under `Δ`).
   ⊢ref : ∀ {n} {Γ : PCtx m n} (d : Fin s) (τ : Sub (arity (S !! d)) m)
-       → (∀ i → kinds (S !! d) i ≡ Once.Type.k-base → Base Δ (τ i))
+       → (∀ i → kinds (S !! d) i ≡ Once.Spec.Type.k-base → Base Δ (τ i))
        → Δ ⊩ Γ ⊢[ zeroUsage ] ref d τ ∷ type (S !! d) ⟨ τ ⟩ ! pure
 
 ------------------------------------------------------------------------

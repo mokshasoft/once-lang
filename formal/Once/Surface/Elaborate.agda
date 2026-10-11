@@ -10,6 +10,9 @@
 
 module Once.Surface.Elaborate where
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Float.Decimal using (Decimal)
 open import Once.IR

@@ -24,7 +24,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-open import Once.Type using (Type; Purity; pure; eff; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; Zero; One; Many)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
 open import Once.Denotation.GradedOps using (prjB; injB; embν; mapEmbν)

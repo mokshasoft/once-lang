@@ -34,6 +34,9 @@ open import Data.Unit using (⊤; tt)
 open import Function using (case_of_)
 
 -- Re-export types
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 
 -- Re-export Core IR
@@ -92,7 +95,7 @@ open import Once.Parser
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Module)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (no; yes)
 open FunInfo

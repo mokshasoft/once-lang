@@ -10,8 +10,11 @@
 
 module Once.Surface.Syntax where
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Type.Sub using (_<:_)
+open import Once.Spec.Type.Sub using (_<:_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)

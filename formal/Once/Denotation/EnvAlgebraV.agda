@@ -12,7 +12,8 @@ module Once.Denotation.EnvAlgebraV where
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
-open import Once.Type using (Type; Quantity; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Spec.Type using (Type)
 open import Once.Surface.Context
   using (Ctx; ∅; _,_^_; Usage; _∷_; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)

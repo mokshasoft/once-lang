@@ -23,7 +23,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
 
-open import Once.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Type.Rigid using (RigidFree)
 import Once.Compile as C
 import Once.IR as IR
@@ -47,6 +47,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
+import Once.Spec.Type
 import Once.Type
 import Once.Surface.Context as Ctx
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; TopCtx)
@@ -188,14 +189,14 @@ tableOf-go-++ (cf ∷ cfs) xs pre = tableOf-go-++ cfs (irFunOf cf ∷ xs) pre
 -- A definition compiles to its resolved body's elaboration (D253: `main`
 -- too — its type check passes, and it is not rewritten).
 irFun-main : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → TopCtx)
-               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋} {r : _}
+               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋} {r : _}
                (v : _) → C.compileFun-main-aux IR.Heap false ctx polys impsOf x ty body v ≡ inj₂ irFun
            → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ r → r ≡ inj₂ irFun
 irFun-main ctx polys impsOf x ty body (inj₁ _) () _
 irFun-main ctx polys impsOf x ty body (inj₂ _) cf eq = trans (sym eq) cf
 
 irFun-body : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → TopCtx)
-               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋} (b : Bool)
+               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋} (b : Bool)
            → C.compileFun-aux IR.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
            → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
 irFun-body ctx polys impsOf x ty body true  cf = irFun-main ctx polys impsOf x ty body (C.validateMain ty) cf refl
@@ -210,7 +211,7 @@ aux-form : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf 
 aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
 irFun-form : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Classify.PolyCtx) (impsOf : String → TopCtx)
-               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
+               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
                {se : _} {d f : ℕ}
            → C.compileFun IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
            → (ce : Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty

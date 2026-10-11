@@ -31,8 +31,8 @@ open import Data.Empty using (⊥-elim)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 
-open import Once.Type
-  using (Type; Unit; _⇒[_]_; ⟦_⟧T; Zero; One; Many; mk-kind)
+open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind)
+open import Once.Spec.Type using (Type; Unit; _⇒[_]_; ⟦_⟧T)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
@@ -354,11 +354,11 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- D143: split on the arrow's quantity. At an ERASED arrow the symbol never
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Type.pure ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Type.Grade.pure ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
 -- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Type.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Type.eff) name base-Unit bCod) tt)
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Type.Grade.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff) name base-Unit bCod) tt)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =

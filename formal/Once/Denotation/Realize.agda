@@ -33,8 +33,9 @@ module Once.Denotation.Realize where
 
 open import Data.Integer using ()   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
-open import Once.Type using (Type; Many; μ-type; ν-type; Purity; mk-kind; _⇒[_]_)
-open import Once.Type.Sub using (sub-arr)
+open import Once.Spec.Type.Grade using (Many; Purity; mk-kind)
+open import Once.Spec.Type using (Type; μ-type; ν-type; _⇒[_]_)
+open import Once.Spec.Type.Sub using (sub-arr)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
@@ -235,17 +236,17 @@ realize-infer (t-snd-app d)      = morph-app IR.snd      (realize-infer d)
 -- direction — `In` lands AT `⌊ μ-type F ⌋`, `Out` STARTS there.
 realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _ Z) ceq
-    (morph-app (subst (λ o → IR ⌊ ν-type F Once.Type.pure ⌋ o)
-                      (sym (⌊⟧T-commute F (ν-type F Once.Type.pure)))
+    (morph-app (subst (λ o → IR ⌊ ν-type F Once.Spec.Type.Grade.pure ⌋ o)
+                      (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.pure)))
                       (IR.Out (wf-⌊⌋ wfF)))
                (realize-infer d))
 -- D233: at an EFFECTFUL stream the force is suspended (`curry (Out ∘ fst)`),
 -- as `t-apply-eff-app-infer` suspends `apply` — the elaborator's term exactly.
 realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _
-                 (Once.Type.Unit ⇒[ mk-kind Many Once.Type.eff ] Z)) ceq
-    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F Once.Type.eff ⌋ o)
-                                (sym (⌊⟧T-commute F (ν-type F Once.Type.eff)))
+                 (Once.Spec.Type.Unit ⇒[ mk-kind Many Once.Spec.Type.Grade.eff ] Z)) ceq
+    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F Once.Spec.Type.Grade.eff ⌋ o)
+                                (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.eff)))
                                 (IR.Out (wf-⌊⌋ wfF))
                           IR.∘ IR.fst))
                (realize-infer d))

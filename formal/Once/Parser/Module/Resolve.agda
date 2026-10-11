@@ -44,7 +44,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 
 open import Once.Parser.Module.Core
 open import Once.TypeCheck.Raw using (RLam; RawExpr)
-open import Once.Type using (isGround; extractGround)
+open import Once.Spec.Type.Poly using (extractGround)
+open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
 open import Once.TypeCheck.Principal using (siglessSchema)

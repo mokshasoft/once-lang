@@ -27,7 +27,8 @@ import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Target.Arch using (TargetNum)
-open import Once.Type using (Type; PolyType)
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Type.Poly using (PolyType)
 open import Once.Type.Rigid using (KindedInstance; rigidOf)
 import Once.Surface.Context as C
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects; _⟪_⟫)

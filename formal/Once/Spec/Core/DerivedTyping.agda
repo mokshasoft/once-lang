@@ -18,8 +18,9 @@ open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; subst; cong; cong₂)
 
-open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; mk-kind; Many; One; Zero; Purity; pure; eff; μ-type; ν-type; Functor; ⟦_⟧T)
-open import Once.Type.Sub using (⊑-pe; pure⊑)
+open import Once.Spec.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff)
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
+open import Once.Spec.Type.Sub using (⊑-pe; pure⊑)
 open import Once.Surface.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Surface.Thinning using (thin-usage-refl)
@@ -67,7 +68,7 @@ open import Once.Spec.Core.Derived S
 
 -- The usage arithmetic the derived typings transport along (public: the 6b
 -- bridge names these transports when it moves them onto the environment).
-z+qz : ∀ {n} (q : Once.Type.Quantity) → zeroUsage {n} +ᵘ q *ᵘ zeroUsage ≡ zeroUsage
+z+qz : ∀ {n} (q : Once.Spec.Type.Grade.Quantity) → zeroUsage {n} +ᵘ q *ᵘ zeroUsage ≡ zeroUsage
 z+qz q = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ q)) (+ᵘ-identityˡ _)
 
 z⊔z : ∀ {n} → zeroUsage {n} ⊔ᵘ zeroUsage ≡ zeroUsage
@@ -75,7 +76,7 @@ z⊔z {0}     = refl
 z⊔z {suc n} = cong (Zero ∷_) (z⊔z {n})
 
 -- `Z +ᵘ q *ᵘ Ψ₂ +ᵘ One *ᵘ Ψ₁ ≡ Ψ₁ +ᵘ q *ᵘ Ψ₂` once `Z` is zero.
-arms : ∀ {n} (q : Once.Type.Quantity) {Z : Usage n} (Ψ₁ Ψ₂ : Usage n) → Z ≡ zeroUsage
+arms : ∀ {n} (q : Once.Spec.Type.Grade.Quantity) {Z : Usage n} (Ψ₁ Ψ₂ : Usage n) → Z ≡ zeroUsage
      → Z +ᵘ q *ᵘ Ψ₂ +ᵘ One *ᵘ Ψ₁ ≡ Ψ₁ +ᵘ q *ᵘ Ψ₂
 arms q Ψ₁ Ψ₂ refl =
   trans (cong₂ _+ᵘ_ (+ᵘ-identityˡ (q *ᵘ Ψ₂)) (*ᵘ-identityˡ Ψ₁)) (+ᵘ-comm (q *ᵘ Ψ₂) Ψ₁)

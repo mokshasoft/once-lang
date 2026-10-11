@@ -34,7 +34,7 @@ import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU; bare-injective)
 
-open import Once.Type using (Type; Unit)
+open import Once.Spec.Type using (Type; Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Surface.Syntax using (Usage; [])

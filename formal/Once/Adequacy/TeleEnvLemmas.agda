@@ -41,8 +41,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Induction.WellFounded using (Acc; acc)
 
 open import Once.Postulates using (extensionality)
-open import Once.Type using (Type; PolyType; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind;
-  Zero; One; Many; μ-type; ν-type; rigid)
+open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Spec.Type.Poly using (PolyType)
 open import Once.IRTy using (IRTy)
 open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)
@@ -64,7 +65,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; re
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
 open import Once.Adequacy.GradedRelation fmt using (RelGM)
-open import Once.Type using (pure)
+open import Once.Spec.Type.Grade using (pure)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip)
 
 ------------------------------------------------------------------------

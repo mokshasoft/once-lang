@@ -24,7 +24,8 @@ module Once.Arith.SigOp.Builders where
 import Data.Integer as ℤ
 import Data.Nat as ℕ
 
-open import Once.Type using (Unit; Void; Int; _*_; _+_; ArrowKind; mk-kind; pure; eff; isUnit?; isVoid?)
+open import Once.Spec.Type.Grade using (ArrowKind; mk-kind; pure; eff)
+open import Once.Spec.Type using (Unit; Void; Int; _*_; _+_; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
@@ -134,22 +135,22 @@ neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) base-Int base-Int
 -- Float arithmetic (plan 0.75 F4). Distinct NAMES, not overloads: the SigOp
 -- name is the identity the backend dispatches on, and `arith.add.int` and
 -- `arith.add.float` are different instructions on every target.
-base-F×F : IsBaseType (Once.Type.Float * Once.Type.Float)
+base-F×F : IsBaseType (Once.Spec.Type.Float * Once.Spec.Type.Float)
 base-F×F = base-Prod base-Float base-Float
 
-fadd-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fadd-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F base-Float
 
-fsub-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fsub-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F base-Float
 
-fmul-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fmul-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F base-Float
 
-fdiv-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fdiv-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F base-Float
 
-i2f-info : SigOpInfo Int Once.Type.Float
+i2f-info : SigOpInfo Int Once.Spec.Type.Float
 i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int base-Float
 
 -- Comparisons

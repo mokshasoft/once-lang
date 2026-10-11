@@ -26,6 +26,9 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
 open import Once.Res using (Res)
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
 open import Once.Functor.Translate using (⟦_,_⟧-base; translateF)

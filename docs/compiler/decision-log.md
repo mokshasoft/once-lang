@@ -18186,3 +18186,22 @@ D303 put the type-substitution lemma into `CertifiedBuild.language`, with its st
 
 ### Consequences
 - Not here, deliberately: coherence of the bidirectional judgment (`Adequacy.Coherence`) and the meaning domain's laws (`TraceMonadLaws`, `GradedDomainLaws`, `BehaviorLaws`) — metatheory by content, but their proofs import IR, Arith, `Semantics.Machine`, `Parser.Module.Resolve`; they join when plan 0.114 makes the meaning stand alone. The grade semiring laws are plan 0.112's (one structure, not twenty lemmas).
+
+## D306 — THE SPEC IS THE DIRECTORY `Once/Spec`: IT IMPORTS ONLY ITSELF, RE-EXPORTS NOTHING, AND OWNS ITS DEFINITIONS (2026-10-11)
+
+**Relates**: plan 0.114 (rules R1–R10, phases), D140 (the Spec is proof-free), D277 (re-exports), D304/D305 (metatheory), D054 (the meaning of `Int`)
+
+### Context
+The Spec was a set of re-export shells: `Spec.Type`, `Spec.Syntax`, `Spec.Typing`, `Spec.Meaning` and `Spec.Correct` re-exported implementation modules (`Once.Type`, `TypeCheck.Raw`, `TypeCheck.Judgment`, six `Denotation.*`, `Once.Adequacy`), and `Once.Spec` re-exported the shells. A reviewer had to resolve a re-export closure to know what the language definition was, and its full import closure (187 modules) reached the compiler.
+
+### Decision
+1. The Spec is the modules under `Once/Spec` (plus `Once/Spec.agda`). They import only each other and the standard library, use no `public`, `renaming` or `hiding`, name what they import, are `--safe`, contain definitions only, and say in their headers what they define (plan 0.114's rules R1–R10). `make spec-gate` ratchets R1–R4 down to zero.
+2. `Once.Spec` is an index: it imports every Spec module and exports nothing. A client imports a name from the module that defines it (`Once.Certified` takes `CorrectCompiler` from `Spec.Correct`).
+3. A definition the Spec needs moves into the Spec, and the implementation imports it from there. No shell is left behind; importers are rewritten (`scripts/move-names.py`). Moved so far:
+   - `CorrectCompiler` → `Spec.Correct` (`Once.Adequacy` deleted);
+   - the type language → `Spec.Type` (objects, functors, `isVoid?`/`isUnit?`, which the contract form is defined by), `Spec.Type.Grade` (usage and effect grades), `Spec.Type.Poly` (schemas), `Spec.Type.Sub` (`<:`, `⊑π`, `pure⊑`). `Once.Type` and `Once.Type.Sub` keep the deciders, printing and the register classification `FitsInReg`, which the Spec never used and which is a machine notion: it leaves the Spec's surface.
+4. One re-export line was split in two by the move (`CCC.Codegen.IRObsCorrect.Prelude`, a parameterised module's shared instance, D277): its names now come from two modules. The public-gate baseline for that module goes 27 → 28; the re-exported surface is unchanged except `Unitˢ`, unused, which is dropped.
+
+### Consequences
+- The type modules are the first `--safe` Spec modules.
+- Extraction: the MAlonzo modules move with the definitions (`Once.Adequacy` → `Once.Spec.Correct`; `Once.Type`'s datatypes → `Once.Spec.Type*`); `once.cabal` and the NameIds in `Bridge.hs` follow at the branch's extraction.

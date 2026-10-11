@@ -22,8 +22,9 @@ module Once.Metatheory.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 open import Data.Nat using (suc)
 open import Data.Fin using (suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
-open import Once.Type using (Type; Quantity; Zero; One; Many; Purity; pure)
-open import Once.Type.Sub using (pure⊑)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Type.Sub using (pure⊑)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Surface.Context
   using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)

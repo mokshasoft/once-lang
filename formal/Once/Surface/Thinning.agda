@@ -22,6 +22,9 @@ open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Surface.Context using (_⊑ᵘ_; ⊑[]; _⊑∷_; z≤z)
 open import Once.Surface.Syntax as Surface

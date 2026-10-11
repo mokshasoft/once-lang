@@ -26,8 +26,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
-open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_;
-                               Unit; Void; Int; Float; _*_; _+_; rigid)
+open import Once.Spec.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _*_; _+_; rigid)
 open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧F; sem-fmap)
 import Once.SPF as SPF
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_,_⟧-base; ⟦_,_⟧F-base; base-rigid;

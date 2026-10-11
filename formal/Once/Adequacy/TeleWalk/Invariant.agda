@@ -18,6 +18,8 @@ open import Once.Spec.Contract using (ISig; Impl)
 -- run against the same one.
 module Once.Adequacy.TeleWalk.Invariant (fmt : TargetNum) (Fs : ISig) (Ip : Impl Fs) where
 
+import Once.Spec.Type.Grade
+
 -- The world: the program's signatures with the implementation `Ip`.
 ι : Interp
 ι = interp Fs Ip
@@ -38,7 +40,7 @@ open import Data.Empty using (⊥)
 open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Type.Rigid using (RigidFree; KindedInstance)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.CanonicalName using (bare)
@@ -194,7 +196,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
                 (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} (g : RigidFree ty)
                 (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ctx.Usage.[])
-                {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
+                {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
                 (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
                 (inv : Inv {S = S} csc tl ss is ts pre) where
@@ -227,22 +229,22 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
         (trans ((RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′) tt))
                (realize-invariant D′ D σx tt)))
 
-  relA : RelGM Once.Type.pure ty (MeaningM.⟦_⟧ᶜ D fmt ρ tt) (SD.⟦ realize D ⟧ˢ fmt σx tt)
+  relA : RelGM Once.Spec.Type.Grade.pure ty (MeaningM.⟦_⟧ᶜ D fmt ρ tt) (SD.⟦ realize D ⟧ˢ fmt σx tt)
   relA = MB.bridge-c fmt σx D {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
            (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   entry≡ : GM.⟦_⟧ S Dc fmt δ tt ≡ CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)
   entry≡ = sym (CAS.mono-entry-sem S noKinds _ _ sg g Dc fmt δ)
 
-  relM : RelGM Once.Type.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T (cohᴰ ty) (abiT ty M))
+  relM : RelGM Once.Spec.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T (cohᴰ ty) (abiT ty M))
   relM = TE.abi-rel ty (GM.⟦_⟧ S Dc fmt δ tt) M
-           (subst (RelGM Once.Type.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym chain)
-                  (subst (λ m → RelGM Once.Type.pure ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
+           (subst (RelGM Once.Spec.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym chain)
+                  (subst (λ m → RelGM Once.Spec.Type.Grade.pure ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
                          (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D tt) relA))
 
 inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
-             {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
+             {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
          → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
@@ -280,9 +282,9 @@ inv-mono {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]}
         callEq : MB.callSD fmt σ x ty ≡ subst T (cohᴰ ty) (abiT ty M)
         callEq = trans (callSD-later later (e ∷ pre) (C.cpolys csc) I uf′ x ty (ns-head later (C.CScope.cimps csc) ns))
                        (cong (subst T (cohᴰ ty)) (abi ty x pre irFun))
-        new : RelGM Once.Type.pure ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
-        new = subst (λ m → RelGM Once.Type.pure ty m (MB.callSD fmt σ x ty)) entry≡
-                    (subst (RelGM Once.Type.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym callEq) relM)
+        new : RelGM Once.Spec.Type.Grade.pure ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
+        new = subst (λ m → RelGM Once.Spec.Type.Grade.pure ty m (MB.callSD fmt σ x ty)) entry≡
+                    (subst (RelGM Once.Spec.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym callEq) relM)
 
 ------------------------------------------------------------------------
 -- A telescope entry: typed once at its rigid schema; each reference to it is
@@ -352,14 +354,14 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
 
         -- the new entry: its splice at an instance is its core instance (6e)
         head : ∀ (U : Type) (ki : KindedInstance scT U)
-             → RelGM Once.Type.pure U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
+             → RelGM Once.Spec.Type.Grade.pure U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
                       (SD.DefsSem.refs σ y U)
         head U ki =
-          subst (λ m → RelGM Once.Type.pure U m (SD.DefsSem.refs σ y U))
+          subst (λ m → RelGM Once.Spec.Type.Grade.pure U m (SD.DefsSem.refs σ y U))
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D-U tt)
                        (EI.poly-instance-sem S (viewOf {S = S} ss is ts) sg fmt δ scT
                          (λ ki′ → EI.viewOf-natural S (kindsOf scT) _ _ ss is ts) (Inv.irf inv , Inv.irs inv) D ki))
-                (subst (RelGM Once.Type.pure U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
+                (subst (RelGM Once.Spec.Type.Grade.pure U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
                        (MB.bridge-c fmt σo D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
           where
             D-U = EI.inst-at S scT (Inv.irf inv , Inv.irs inv) D ki

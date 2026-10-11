@@ -29,7 +29,7 @@ module Once.Spec.Core.Derived {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Core.Syntax S
 
 private

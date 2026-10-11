@@ -35,8 +35,7 @@ import Once.Word as OnceWord
 open import Once.Float.Decimal using (round)
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
-open import Once.Type
-  using (Zero; One; Many)
+open import Once.Spec.Type.Grade using (Zero; One; Many)
 open import Once.Surface.Context
   using ( Ctx; Usage; _↾_; _*ᵘ_
         ; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many )

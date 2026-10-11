@@ -35,9 +35,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using ()
 open import Once.IRTy using (IRTy; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; _+_; WellFormedFI; ⟦_⟧TI; μ-type; ν-type; Int; Float)
-open import Once.Type using ()
-  renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ;
-            Int to Intˢ; Float to Floatˢ)
+open import Once.Spec.Type using () renaming (Int to Intˢ; Float to Floatˢ)
+open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰ to ⟦_⟧; ⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
   hiding (AllocMode; Stack; Heap)

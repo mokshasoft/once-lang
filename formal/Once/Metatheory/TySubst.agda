@@ -23,8 +23,9 @@ module Once.Metatheory.TySubst {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
+import Once.Spec.Type as T
 import Once.Type as T
-open T using (Purity; pure; mk-kind; Many; One)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One)
 open import Once.Surface.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)

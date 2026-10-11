@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; trans; sym; subst; subst-subst-sym)
 
 open import Once.Word using (Carrier)
-open import Once.Type using (Functor; μ-type; ⟦_⟧T)
+open import Once.Spec.Type using (Functor; μ-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF; translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)

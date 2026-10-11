@@ -47,7 +47,10 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 
-open import Once.Type using (Type; Int; Float; Unit; _+_; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Zero; One; Many)
+open import Once.Spec.Type using (Type; Int; Float; Unit; _+_)
+import Once.Spec.Type.Grade as T
+import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Functor.Translate using (IsConcrete; con-fun; con-base)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)

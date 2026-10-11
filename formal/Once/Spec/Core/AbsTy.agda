@@ -14,8 +14,9 @@ open import Data.Fin using (Fin; fromℕ<)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
+import Once.Spec.Type as T
 import Once.Type as T
-open T using (TKind; k-base)
+open import Once.Spec.Type using (TKind; k-base)
 open import Once.Type.DecEq using (_≟tk_)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float;
   rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)

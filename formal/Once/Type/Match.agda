@@ -19,6 +19,9 @@ open import Data.String using (String)
 import Data.String as Str
 open import Relation.Nullary using (Dec; yes; no)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Type.DecEq using (_≟T_)
 

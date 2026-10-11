@@ -35,7 +35,8 @@ open import Data.Unit using (tt)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Once.Postulates using (extensionality)
-open import Once.Type using (Type; Quantity; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Spec.Type using (Type)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Surface.Context
   using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_;

@@ -23,7 +23,7 @@
 module Once.Denotation.Trace where
 
 
-open import Once.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; baseA)

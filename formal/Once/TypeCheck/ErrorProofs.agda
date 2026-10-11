@@ -32,13 +32,17 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Type using (Type; Unit; Void; Int)
+open import Once.Spec.Type using (Type; Unit; Void; Int)
 open import Once.CanonicalName using (gen)
+import Once.Spec.Type.Grade as T
+import Once.Spec.Type as T
+import Once.Spec.Type.Poly as T
 import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RLam; RQualified)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.Type.Sub using (_<:?_; sub-int; sub-unit)
+open import Once.Spec.Type.Sub using (sub-int; sub-unit)
+open import Once.Type.Sub using (_<:?_)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
 open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; lookupPoly)

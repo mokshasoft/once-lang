@@ -54,7 +54,7 @@ open import Data.Bool using (false)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-open import Once.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Rigid using (RigidFree)
 open import Once.CanonicalName using (bare)
@@ -165,7 +165,7 @@ from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep 
   from-sem (TR.monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D) ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest u n
 
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} (g : RigidFree EffUU)
-              (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ EffUU ⌋}
+              (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ EffUU ⌋}
               (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" EffUU bd ≡ Data.Sum.inj₂ irFun)
               {es} (rest : ModTele (AS.scopeOf (C.extendScope csc "main" EffUU)) es)
@@ -177,7 +177,7 @@ here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} 
 here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {es} rest rest-b inv u hs n =
   -- Plan 0.105: related computations make the same calls under any
   -- interpretation (`RelT′-events`), so their first `n` events agree.
-  trans ir-side (trans (sym (cong (take n) (RelT′-events ι [] (RelGT-bind {EffUU} {Once.Type.Unit} relM (λ rv → rv {tt} {tt} tt)))))
+  trans ir-side (trans (sym (cong (take n) (RelT′-events ι [] (RelGT-bind {EffUU} {Once.Spec.Type.Unit} relM (λ rv → rv {tt} {tt} tt)))))
                        (trans (cong (λ (v : ⟦ EffUU ⟧ᵛ) → projTrace ι (v tt) n) (sym core≡))
                               (sym (from-sem tl′ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero refl rest u n))))
   where
@@ -189,7 +189,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {e
       trans (cong (λ tbl → RunAt tbl n) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))
         (cong (λ t → projTrace ι t n)
           (trans (skip-later later (e ∷ pre) tt (later-not-main rest-b hs))
-            (trans (tableEnv-hit (bare "main") ⌊ Once.Type.Unit ⌋ ⌊ Once.Type.Unit ⌋
+            (trans (tableEnv-hit (bare "main") ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Unit ⌋
                       (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)
                    (uncurry-app (tableEnv fmt φ pre) irFun tt))))
 

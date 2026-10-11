@@ -24,7 +24,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
-open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Type; Functor; K; Id; _⊕_; _⊗_)
 
 ------------------------------------------------------------------------
 -- Guarded Functor Values (Universe Polymorphic)
@@ -155,19 +155,19 @@ gmapA {F = F ⊕ G} f (GInr gg) = GInr (gmapA f gg)
 ------------------------------------------------------------------------
 
 -- | Unit (for K Unit) - requires Sem Unit = ⊤
-gunit : ∀ {ℓ} {Sem : Type → Set ℓ} {A} → Sem Once.Type.Unit → Guarded Sem (K Once.Type.Unit) A
+gunit : ∀ {ℓ} {Sem : Type → Set ℓ} {A} → Sem Once.Spec.Type.Unit → Guarded Sem (K Once.Spec.Type.Unit) A
 gunit u = GConst u
 
 -- | Build guarded natural number successor: n → Guarded NatF Nat
-gsuc : ∀ {ℓ} {Sem : Type → Set ℓ} {A} → A → Guarded Sem (Once.Type.K Once.Type.Unit ⊕ Id) A
+gsuc : ∀ {ℓ} {Sem : Type → Set ℓ} {A} → A → Guarded Sem (Once.Spec.Type.K Once.Spec.Type.Unit ⊕ Id) A
 gsuc n = GInr (GRec n)
 
 -- | Build guarded list cons: (a, xs) → Guarded (ListF A) (List A)
-gcons : ∀ {ℓ} {Sem : Type → Set ℓ} {A B} → Sem A → B → Guarded Sem (Once.Type.K Once.Type.Unit ⊕ (Once.Type.K A ⊗ Id)) B
+gcons : ∀ {ℓ} {Sem : Type → Set ℓ} {A B} → Sem A → B → Guarded Sem (Once.Spec.Type.K Once.Spec.Type.Unit ⊕ (Once.Spec.Type.K A ⊗ Id)) B
 gcons a xs = GInr (GProd (GConst a) (GRec xs))
 
 -- | Build guarded list nil
-gnil : ∀ {ℓ} {Sem : Type → Set ℓ} {A B} → Sem Once.Type.Unit → Guarded Sem (Once.Type.K Once.Type.Unit ⊕ (Once.Type.K A ⊗ Id)) B
+gnil : ∀ {ℓ} {Sem : Type → Set ℓ} {A B} → Sem Once.Spec.Type.Unit → Guarded Sem (Once.Spec.Type.K Once.Spec.Type.Unit ⊕ (Once.Spec.Type.K A ⊗ Id)) B
 gnil u = GInl (GConst u)
 
 ------------------------------------------------------------------------

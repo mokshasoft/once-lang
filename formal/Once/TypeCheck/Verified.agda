@@ -38,8 +38,10 @@ open import Data.Product using (_,_; _×_; ∃-syntax)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Functor.Translate using (IsConcrete)
+import Once.Spec.Type.Grade
+import Once.Spec.Type
 import Once.Type
 import Once.Surface.Syntax
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -272,14 +274,14 @@ record VerifiedTypeChecker : Set₁ where
     tc-err-fst-non-pair-Unit :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Spec.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-fst-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Spec.Type.Int Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
@@ -287,9 +289,9 @@ record VerifiedTypeChecker : Set₁ where
     tc-err-neg-non-Int-Unit :
       ∀ (ctx : NamedCtx) (e : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx e ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx e ≡ success Once.Spec.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ TypeMismatch Once.Type.Int Once.Type.Unit
+      → err ≡ TypeMismatch Once.Spec.Type.Int Once.Spec.Type.Unit
 
 
     -- D136: a bare name not in local/import scope. No `unit` exception any
@@ -306,14 +308,14 @@ record VerifiedTypeChecker : Set₁ where
     tc-err-snd-non-pair-Unit :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Spec.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-snd-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Spec.Type.Int Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
@@ -322,7 +324,7 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx scrut ≡ success Once.Spec.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
@@ -330,23 +332,23 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx scrut ≡ success Once.Spec.Type.Int Ψ' eE' d' f'
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
     -- Check-mode RInt at non-Int target → TypeMismatch
     tc-err-check-RInt-type-mismatch :
       ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
-      → ¬ (T ≡ Once.Type.Int)
+      → ¬ (T ≡ Once.Spec.Type.Int)
       → tcCheck ctx (Raw.RInt n) T ≡ failure err
-      → err ≡ (TypeMismatch T Once.Type.Int)
+      → err ≡ (TypeMismatch T Once.Spec.Type.Int)
 
     -- Check-mode RUnit at non-Unit target → TypeMismatch
     tc-err-check-RUnit-type-mismatch :
       ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
-      → ¬ (T ≡ Once.Type.Unit)
+      → ¬ (T ≡ Once.Spec.Type.Unit)
       → tcCheck ctx Raw.RUnit T ≡ failure err
-      → err ≡ (TypeMismatch T Once.Type.Unit)
+      → err ≡ (TypeMismatch T Once.Spec.Type.Unit)
 
     -- RDestruct branches with mismatched types → CaseBranchMismatch.
     tc-err-case-branch-mismatch :
@@ -356,7 +358,7 @@ record VerifiedTypeChecker : Set₁ where
         {Ψs scrutE ds fs}
         (C₁ C₂ : Type) {qℓ qr}
         {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
-      → tcInfer ctx scrut ≡ success (A Once.Type.+ B) Ψs scrutE ds fs
+      → tcInfer ctx scrut ≡ success (A Once.Spec.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
           ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
@@ -383,7 +385,7 @@ record VerifiedTypeChecker : Set₁ where
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
       → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
-      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ≡ failure err
+      → tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B) ≡ failure err
       → err ≡ UsageViolation x q q'
 
     -- Previously-blocked: BinOp's operand sub-error is wrapped in
@@ -418,26 +420,26 @@ record VerifiedTypeChecker : Set₁ where
     -- Exhaustive per-Type G4 wiring (Float, Buffer, Sum, Product, Fun).
     tc-err-fst-non-pair-Float :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-snd-non-pair-Float :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-neg-non-Int-Float :
       ∀ (ctx : NamedCtx) (e : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx e ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx e ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ TypeMismatch Once.Type.Int Once.Type.Float
+      → err ≡ TypeMismatch Once.Spec.Type.Int Once.Spec.Type.Float
 
     tc-err-case-scrut-Float :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx scrut ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
@@ -544,13 +546,13 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
         (A : Type) (q : _) (B : Type)
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B)}
+        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B)}
         {d f : _}
       → (IH : ∀ {Ψ' eE' d' f'}
             → tcCheck (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
             → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
-      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ≡ success Ψ eE d f
-      → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ⨾ Ψ
+      → tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B) ≡ success Ψ eE d f
+      → ctx ⊢ᶜ RLam x body ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B) ⨾ Ψ
 
     tcInfer-sound-RLet :
       ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
@@ -575,18 +577,18 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-complete-RInt :
       ∀ (ctx : NamedCtx) (n : ℤ)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RInt n) ≡ success Once.Type.Int Surface.zeroUsage eE d f
+          tcInfer ctx (RInt n) ≡ success Once.Spec.Type.Int Surface.zeroUsage eE d f
 
     tcInfer-complete-RUnit :
       ∀ (ctx : NamedCtx)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx RUnit ≡ success Once.Type.Unit Surface.zeroUsage eE d f
+          tcInfer ctx RUnit ≡ success Once.Spec.Type.Unit Surface.zeroUsage eE d f
 
 
     tcInfer-complete-RVar-unit :
       ∀ (ctx : NamedCtx)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RResolved (gen "unit")) ≡ success Once.Type.Unit Surface.zeroUsage eE d f
+          tcInfer ctx (RResolved (gen "unit")) ≡ success Once.Spec.Type.Unit Surface.zeroUsage eE d f
 
     tcInfer-complete-RQualified :
       ∀ (ctx : NamedCtx) (name alias : String) (T : Type)
@@ -605,17 +607,17 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx a ≡ success A Ψ₁ aE dA fA
       → tcInfer ctx b ≡ success B Ψ₂ bE dB fB
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RPair a b) ≡ success (A Once.Type.* B) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+          tcInfer ctx (RPair a b) ≡ success (A Once.Spec.Type.* B) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
     -- RUnaryOp OpNeg: sub at Int → outer success at Int.
     tcInfer-complete-RUnaryOp-neg :
       ∀ (ctx : NamedCtx) (e : RawExpr)
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Once.Type.Int}
+        {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Once.Spec.Type.Int}
         {d' f' : _}
-      → tcInfer ctx e ≡ success Once.Type.Int Ψ eE' d' f'
+      → tcInfer ctx e ≡ success Once.Spec.Type.Int Ψ eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RUnaryOp OpNeg e) ≡ success Once.Type.Int Ψ eE d f
+          tcInfer ctx (RUnaryOp OpNeg e) ≡ success Once.Spec.Type.Int Ψ eE d f
 
     -- RAnnot: check-mode sub success → infer-mode success.
     tcInfer-complete-RAnnot :
@@ -653,27 +655,27 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "id")) arg)
-            ≡ success T (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success T (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-fst :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {A B : Type}
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Type.* B)}
+        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Spec.Type.* B)}
         {d' f' : _}
-      → tcInfer ctx arg ≡ success (A Once.Type.* B) Ψ argE d' f'
+      → tcInfer ctx arg ≡ success (A Once.Spec.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "fst")) arg)
-            ≡ success A (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success A (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-snd :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {A B : Type}
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Type.* B)}
+        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Spec.Type.* B)}
         {d' f' : _}
-      → tcInfer ctx arg ≡ success (A Once.Type.* B) Ψ argE d' f'
+      → tcInfer ctx arg ≡ success (A Once.Spec.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "snd")) arg)
-            ≡ success B (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success B (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-terminal :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {T : Type}
@@ -683,7 +685,7 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "terminal")) arg)
-            ≡ success Once.Type.Unit (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success Once.Spec.Type.Unit (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     -- RVar local and import
     tcInfer-complete-RVar-local :
@@ -710,33 +712,33 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (op : BinOp) (arithEq : Raw.isArithmeticOp op ≡ Data.Bool.true)
         (e₁ e₂ : RawExpr)
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Type.Int}
-        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Type.Int}
+        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Spec.Type.Int}
+        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Spec.Type.Int}
         {d₁ d₂ f₁ f₂ : _}
-      → tcInfer ctx e₁ ≡ success Once.Type.Int Ψ₁ e₁E d₁ f₁
-      → tcInfer ctx e₂ ≡ success Once.Type.Int Ψ₂ e₂E d₂ f₂
+      → tcInfer ctx e₁ ≡ success Once.Spec.Type.Int Ψ₁ e₁E d₁ f₁
+      → tcInfer ctx e₂ ≡ success Once.Spec.Type.Int Ψ₂ e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RBinOp op e₁ e₂) ≡ success Once.Type.Int (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+          tcInfer ctx (RBinOp op e₁ e₂) ≡ success Once.Spec.Type.Int (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
     tcInfer-complete-RBinOp-cmp :
       ∀ (ctx : NamedCtx) (op : BinOp) (cmpEq : Raw.isComparisonOp op ≡ Data.Bool.true)
         (e₁ e₂ : RawExpr)
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Type.Int}
-        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Type.Int}
+        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Spec.Type.Int}
+        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Spec.Type.Int}
         {d₁ d₂ f₁ f₂ : _}
-      → tcInfer ctx e₁ ≡ success Once.Type.Int Ψ₁ e₁E d₁ f₁
-      → tcInfer ctx e₂ ≡ success Once.Type.Int Ψ₂ e₂E d₂ f₂
+      → tcInfer ctx e₁ ≡ success Once.Spec.Type.Int Ψ₁ e₁E d₁ f₁
+      → tcInfer ctx e₂ ≡ success Once.Spec.Type.Int Ψ₂ e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RBinOp op e₁ e₂)
-            ≡ success (Once.Type.Unit Once.Type.+ Once.Type.Unit) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+            ≡ success (Once.Spec.Type.Unit Once.Spec.Type.+ Once.Spec.Type.Unit) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
     -- RDestruct (case/sum elim)
     tcInfer-complete-RDestruct :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr) {A B : Type}
         {Ψs : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A Once.Type.+ B)}
+        {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A Once.Spec.Type.+ B)}
         {ds fs : _}
         (C : Type) {qℓ qr : _}
         {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -747,7 +749,7 @@ record VerifiedTypeChecker : Set₁ where
         {eRE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xR B))
                      (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) C}
         {dR fR : _}
-      → tcInfer ctx scrut ≡ success (A Once.Type.+ B) Ψs scrutE ds fs
+      → tcInfer ctx scrut ≡ success (A Once.Spec.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
           ≡ success C (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
@@ -762,13 +764,13 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-complete-RApp-generic :
       ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) {B : Type} {q : _}
         {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B)}
+        {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B)}
         {df ff : _}
         {Ψx : Surface.Usage (Classify.NamedCtx.size ctx)}
         {xE : SExpr (Classify.NamedCtx.debruijn ctx) Ψx A}
         {dx fx : _}
       → Classify.classifyAppHead f ≡ nothing
-      → tcInfer ctx f ≡ success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψf fE df ff
+      → tcInfer ctx f ≡ success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B) Ψf fE df ff
       → tcCheck ctx x A ≡ success Ψx xE dx fx
       → ∃[ eE ] ∃[ d ] ∃[ f' ]
           tcInfer ctx (RApp f x) ≡ success B (Ψf Surface.+ᵘ (q Surface.*ᵘ Ψx)) eE d f'
@@ -780,12 +782,12 @@ record VerifiedTypeChecker : Set₁ where
         {Ψ' : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE' : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
                      (q' Once.Surface.Syntax.Usage.∷ Ψ') B}
-        {d' f' : _} {π : Once.Type.Purity}
-      → (q' Once.Type.≤q q) ≡ Data.Bool.true
+        {d' f' : _} {π : Once.Spec.Type.Grade.Purity}
+      → (q' Once.Spec.Type.Grade.≤q q) ≡ Data.Bool.true
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q π ] B) ≡ success Ψ' eE d f
+          tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q π ] B) ≡ success Ψ' eE d f
 
     ----------------------------------------------------------------
     -- G7 (first pass): algebraic identities
@@ -793,10 +795,10 @@ record VerifiedTypeChecker : Set₁ where
 
     id-decideLeq-iff :
       ∀ (q' q : _)
-      → ((q' Once.Type.≤q q) ≡ Data.Bool.true
+      → ((q' Once.Spec.Type.Grade.≤q q) ≡ Data.Bool.true
           → ∃[ p ] Once.TypeCheck.Elaborate.decideLeq q' q ≡ just p)
       × (∀ {p} → Once.TypeCheck.Elaborate.decideLeq q' q ≡ just p
-             → (q' Once.Type.≤q q) ≡ Data.Bool.true)
+             → (q' Once.Spec.Type.Grade.≤q q) ≡ Data.Bool.true)
 
     id-binop-classification-exhaustive :
       ∀ (op : BinOp)
@@ -809,28 +811,28 @@ record VerifiedTypeChecker : Set₁ where
       → Raw.isComparisonOp op ≡ Data.Bool.true
       → Data.Empty.⊥
 
-    id-≤q-refl : ∀ (q : _) → (q Once.Type.≤q q) ≡ Data.Bool.true
+    id-≤q-refl : ∀ (q : _) → (q Once.Spec.Type.Grade.≤q q) ≡ Data.Bool.true
 
     id-≤q-trans :
       ∀ (q₁ q₂ q₃ : _)
-      → (q₁ Once.Type.≤q q₂) ≡ Data.Bool.true
-      → (q₂ Once.Type.≤q q₃) ≡ Data.Bool.true
-      → (q₁ Once.Type.≤q q₃) ≡ Data.Bool.true
+      → (q₁ Once.Spec.Type.Grade.≤q q₂) ≡ Data.Bool.true
+      → (q₂ Once.Spec.Type.Grade.≤q q₃) ≡ Data.Bool.true
+      → (q₁ Once.Spec.Type.Grade.≤q q₃) ≡ Data.Bool.true
 
-    id-Zero-≤q-all : ∀ (q : _) → (Once.Type.Zero Once.Type.≤q q) ≡ Data.Bool.true
+    id-Zero-≤q-all : ∀ (q : _) → (Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.≤q q) ≡ Data.Bool.true
 
-    id-all-≤q-Many : ∀ (q : _) → (q Once.Type.≤q Once.Type.Many) ≡ Data.Bool.true
+    id-all-≤q-Many : ∀ (q : _) → (q Once.Spec.Type.Grade.≤q Once.Spec.Type.Grade.Many) ≡ Data.Bool.true
 
     -- Quantity algebra
-    id-+q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Type.+q q₂ ≡ q₂ Once.Type.+q q₁
+    id-+q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Spec.Type.Grade.+q q₂ ≡ q₂ Once.Spec.Type.Grade.+q q₁
     id-+q-assoc : ∀ (q₁ q₂ q₃ : _)
-                → q₁ Once.Type.+q (q₂ Once.Type.+q q₃)
-                  ≡ (q₁ Once.Type.+q q₂) Once.Type.+q q₃
+                → q₁ Once.Spec.Type.Grade.+q (q₂ Once.Spec.Type.Grade.+q q₃)
+                  ≡ (q₁ Once.Spec.Type.Grade.+q q₂) Once.Spec.Type.Grade.+q q₃
     id-*q-distrib-+q :
-      ∀ (q₁ q₂ q₃ : _) → q₁ Once.Type.*q (q₂ Once.Type.+q q₃)
-                        ≡ (q₁ Once.Type.*q q₂) Once.Type.+q (q₁ Once.Type.*q q₃)
-    id-⊔q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Type.⊔q q₂ ≡ q₂ Once.Type.⊔q q₁
-    id-⊔q-idem : ∀ (q : _) → q Once.Type.⊔q q ≡ q
+      ∀ (q₁ q₂ q₃ : _) → q₁ Once.Spec.Type.Grade.*q (q₂ Once.Spec.Type.Grade.+q q₃)
+                        ≡ (q₁ Once.Spec.Type.Grade.*q q₂) Once.Spec.Type.Grade.+q (q₁ Once.Spec.Type.Grade.*q q₃)
+    id-⊔q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Spec.Type.Grade.⊔q q₂ ≡ q₂ Once.Spec.Type.Grade.⊔q q₁
+    id-⊔q-idem : ∀ (q : _) → q Once.Spec.Type.Grade.⊔q q ≡ q
 
     -- Usage-vector algebra
     id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Surface.Syntax.Usage n)
@@ -842,7 +844,7 @@ record VerifiedTypeChecker : Set₁ where
                 → Ψ₁ Surface.⊔ᵘ Ψ₂ ≡ Ψ₂ Surface.⊔ᵘ Ψ₁
     id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
     id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n)
-                       → Once.Type.One Surface.*ᵘ Ψ ≡ Ψ
+                       → Once.Spec.Type.Grade.One Surface.*ᵘ Ψ ≡ Ψ
     id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n)
                         → Surface.zeroUsage Surface.+ᵘ Ψ ≡ Ψ
 

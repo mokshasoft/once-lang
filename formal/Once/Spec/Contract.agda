@@ -21,8 +21,9 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Data.List.Membership.DecPropositional as DecMem
-open import Once.Type using (Type; _⇒[_]_; mk-kind; Zero; One; Many; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
-import Once.Type as Ty
+open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many)
+open import Once.Spec.Type using (Type; _⇒[_]_; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
+import Once.Spec.Type.Grade as Ty
 open import Once.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)

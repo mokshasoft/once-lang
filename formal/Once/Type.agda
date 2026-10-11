@@ -2,10 +2,12 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Type
+-- Once.Type — the implementation's operations on types.
 --
--- Definition of types in the Once language.
--- These are the objects of a Cartesian Closed Category.
+-- The types themselves are the Spec's (`Once.Spec.Type`, `.Grade`, `.Poly`).
+-- This module holds what the compiler needs beyond them: decidable equality,
+-- Boolean equality, the groundness decider, printing for error messages, the
+-- register-resident classification and a few example functors.
 ------------------------------------------------------------------------
 
 module Once.Type where
@@ -18,63 +20,17 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (_×_; _,_)
+open import Data.Unit using (⊤; tt)
+open import Once.Spec.Type.Grade
+  using (Quantity; Zero; One; Many; Purity; pure; eff; ArrowKind; mk-kind)
+open import Once.Spec.Type
+  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any;
+         Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type.Poly
+  using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff;
+         Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
 
-------------------------------------------------------------------------
--- Quantitative Type Theory: Usage Grades
-------------------------------------------------------------------------
-
--- | Usage quantities (grades) for QTT
---
--- These track how many times a variable is used:
--- - Zero: Erased (compile-time only, zero runtime cost)
--- - One:  Linear (used exactly once, enforce resource safety)
--- - Many: Unrestricted (used 0+ times)
---
-data Quantity : Set where
-  Zero  : Quantity  -- 0: Erased
-  One   : Quantity  -- 1: Linear
-  Many  : Quantity  -- ω: Unrestricted
-
--- | Quantity addition (usage combination)
---
--- When two branches both use a variable, we add their usage:
--- - 0 + q = q (erased doesn't contribute)
--- - 1 + 0 = 1 (linear, other branch erased)
--- - 1 + 1 = ω (both branches use → unrestricted needed)
--- - ω + _ = ω (unrestricted propagates)
---
-_+q_ : Quantity → Quantity → Quantity
-Zero  +q q     = q
-One   +q Zero  = One
-One   +q One   = Many
-One   +q Many  = Many
-Many  +q _     = Many
-
-infixl 60 _+q_
-
--- | Quantity multiplication (usage scaling)
---
--- When a variable is used inside a context with quantity q:
--- - 0 * _ = 0 (erased context → variable erased)
--- - 1 * q = q (linear context → preserve variable usage)
--- - ω * q = ω (unrestricted context → variable unrestricted)
---
--- Note: `Zero *q _ = Zero` keeps the first arg's case-tree branch as
--- a single clause, preserving `Zero *q q ≡ Zero` for any `q` (and
--- avoiding fully-enumerated reduction loss). The reverse direction
--- `_ *q Zero ≡ Zero` is NOT preserved here — switching that to a
--- catch-all would re-introduce overlap. Downstream proofs needing
--- the right-zero-absorb law should reduce by case-splitting `q`.
-_*q_ : Quantity → Quantity → Quantity
-Zero  *q _     = Zero
-One   *q Zero  = Zero
-One   *q One   = One
-One   *q Many  = Many
-Many  *q Zero  = Zero
-Many  *q One   = Many
-Many  *q Many  = Many
-
-infixl 70 _*q_
 
 -- | Decidable equality for quantities
 _≟q_ : (q₁ q₂ : Quantity) → Dec (q₁ ≡ q₂)
@@ -88,47 +44,6 @@ Many  ≟q Zero  = no (λ ())
 Many  ≟q One   = no (λ ())
 Many  ≟q Many  = yes refl
 
--- | Quantity maximum (per-branch upper bound)
---
--- Used for case analysis: exactly one branch runs, so the effective usage
--- at each position is the maximum over branches in the QTT lattice.
---
--- Lattice order: Zero ≤ One ≤ Many
---
--- - Zero ⊔q q = q
--- - q ⊔q Zero = q
--- - One ⊔q One = One
--- - One ⊔q Many = Many
--- - Many ⊔q _ = Many
---
-_⊔q_ : Quantity → Quantity → Quantity
-Zero ⊔q q    = q
-One  ⊔q Zero = One
-One  ⊔q One  = One
-One  ⊔q Many = Many
-Many ⊔q _    = Many
-
-infixl 55 _⊔q_
-
--- | Subusaging order (q₁ ≤ q₂ means q₁ can be used where q₂ is expected)
---
--- - 0 ≤ q for all q (can always erase)
--- - 1 ≤ ω (linear can be used as unrestricted)
--- - q ≤ q (reflexive)
---
--- Note: `Zero ≤q _ = true` keeps the first arg's case-tree branch
--- as a single clause, preserving the definitional equality
--- `Zero ≤q q ≡ true` for any `q`. Switching to fully-enumerated
--- `Zero ≤q Zero/One/Many = true` would lose this reduction and
--- break downstream proofs that pattern-match on this judgment.
-_≤q_ : Quantity → Quantity → Bool
-Zero  ≤q _     = true
-One   ≤q Zero  = false
-One   ≤q One   = true
-One   ≤q Many  = true
-Many  ≤q Zero  = false
-Many  ≤q One   = false
-Many  ≤q Many  = true
 
 -- | Show function for Quantity (for error messages)
 showQuantity : Quantity → String
@@ -136,67 +51,17 @@ showQuantity Zero = "0"
 showQuantity One  = "1"
 showQuantity Many = "ω"
 
-------------------------------------------------------------------------
--- Plan 0.5.1: Arrow Kinds — Orthogonal Quantity × Purity
-------------------------------------------------------------------------
---
--- An arrow type `A ⇒ B` in Once carries two independent annotations:
---
---   * Quantity (from QTT): tracks how many times the arrow's input
---     is consumed. Zero / One / Many.
---   * Purity (from D032): tracks whether the arrow's execution has
---     observable side effects. pure / eff.
---
--- These are **categorically independent** annotations on the same
--- exponential object. No structural law couples them; all four
--- combinations are coherent morphism types.
---
--- `ArrowKind` packages both annotations into a single record. This
--- replaces the earlier design where `Eff A B` was a distinct Type
--- constructor and `A ⇒[q] B` carried only the quantity — that design
--- had redundant type-level tagging (Eff duplicated the information
--- the kind could carry) and foreclosed linear effects by omission.
---
--- See plan 0.5.1 for the full refactor design.
-
-data Purity : Set where
-  pure : Purity   -- No observable side effects
-  eff  : Purity   -- Effectful (D032: arrow-based effects)
 
 -- | Show function for Purity
 showPurity : Purity → String
 showPurity pure = "pure"
 showPurity eff  = "eff"
 
-record ArrowKind : Set where
-  constructor mk-kind
-  field
-    quantity : Quantity
-    purity   : Purity
-
-open ArrowKind
 
 -- | Show function for ArrowKind
 showArrowKind : ArrowKind → String
 showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
 
--- | Common ArrowKind values (conveniences)
-pureK : Quantity → ArrowKind
-pureK q = mk-kind q pure
-
-effK : ArrowKind
-effK = mk-kind Many eff
-
--- | Purity join (Plan 0.36 Phase 1): the 2-point lattice `pure ≤ eff`.
--- Composition of morphisms takes the join of their grades — `pure` is the
--- unit (a pure factor adds no effect), `eff` absorbs. This is D032's
--- single-category "uniform composition": one composition, the grade is a
--- tracked property, not a separate structure.
-_⊔p_ : Purity → Purity → Purity
-pure ⊔p p = p
-eff  ⊔p _ = eff
-
-infixr 5 _⊔p_
 
 -- | Decidable equality on Purity (plan 0.5.1)
 _≟p_ : (p₁ p₂ : Purity) → Dec (p₁ ≡ p₂)
@@ -220,159 +85,6 @@ eff  ≟p eff  = yes refl
 _≟k_ : (k₁ k₂ : ArrowKind) → Dec (k₁ ≡ k₂)
 mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p p₂)
 
-------------------------------------------------------------------------
--- Types and Functors (Mutually Recursive)
-------------------------------------------------------------------------
---
--- Types correspond to objects in a Cartesian Closed Category:
--- - Unit is the terminal object (1)
--- - Void is the initial object (0)
--- - _*_ is the categorical product (×)
--- - _+_ is the categorical coproduct (+)
--- - _⇒_ is the exponential object (function space, pure)
--- - Eff is the effectful morphism (D032: arrow-based effects)
--- - Fix is the fixed point (for recursive types)
---
--- Functors are polynomial type expressions with an explicit recursive
--- position, used by the structured recursion scheme IR constructors.
---
--- Additional base types for practical programming:
--- - Int is machine integers
--- - Float is IEEE 754 double-precision floats
---
--- Note: Type variables (TVar) are now in PolyType, not Type.
--- This separation enables clean decidable equality on Type and
--- simpler pattern matching in optimization functions.
---
-
-mutual
-  -- | Functor codes (strictly positive type expressions)
-  --
-  -- K A    - Constant type (no recursion)
-  -- Id     - Recursive position
-  -- F ⊕ G  - Sum (coproduct)
-  -- F ⊗ G  - Product
-  --
-  data Functor : Set where
-    K    : Type → Functor           -- Constant
-    Id   : Functor                  -- Recursive position
-    _⊕_  : Functor → Functor → Functor  -- Sum
-    _⊗_  : Functor → Functor → Functor  -- Product
-
-  data Type : Set where
-    -- Categorical structure
-    Unit   : Type                    -- Terminal object
-    Void   : Type                    -- Initial object
-    _*_    : Type → Type → Type      -- Product
-    _+_    : Type → Type → Type      -- Coproduct (sum)
-    -- Kinded function arrow: single exponential with ArrowKind carrying
-    -- both quantity (QTT) and purity (D032) as orthogonal annotations.
-    -- Plan 0.5.1 unified `_⇒[_]_` (was Quantity-parameterized) and
-    -- `Eff` (was a distinct constructor) under this single type former.
-    _⇒[_]_ : Type → ArrowKind → Type → Type
-    -- Polynomial functor fixed points (OCP-0003: total/productive)
-    μ-type : Functor → Type          -- Initial algebra (inductive, total)
-    -- D233: ν is CODATA, so it carries the effect grade of its layers: `ν-type F
-    -- eff` is ν(T ∘ F), the effectful stream (surface `Nu (Eff F)`).
-    ν-type : Functor → Purity → Type  -- Final coalgebra (coinductive, productive)
-    -- Base types for practical programming
-    Int    : Type                    -- Machine integers
-    Float  : Type                    -- IEEE 754 double-precision floats
-    -- machine holds their content (their residence carried none, so a SigOp
-    -- argument holding one could not be decoded). A later plan brings them back.
-    -- D243: a polymorphic definition's `i`-th type PARAMETER, of kind `k`,
-    -- held RIGID while its body is typed once at its schema. Nothing is known
-    -- about it but its kind (`IsBaseType (rigid k-base i)`), so the body is
-    -- parametric by construction; it becomes the core's `var i`. It never
-    -- reaches a runtime type: a definition is USED at ground instances.
-    rigid  : TKind → ℕ → Type
-
-  -- D243: the kind of a type parameter — what it may be instantiated at.
-  -- `k-base`: a base type (it occurs under a functor constant, so
-  -- `WellFormedF` needs it); `k-any`: any type.
-  data TKind : Set where
-    k-base k-any : TKind
-
-infixr 40 _⊕_
-infixr 50 _⊗_
-
-infixr 30 _⇒[_]_
-infixr 40 _+_
-infixr 50 _*_
-
--- | Smart constructors for common quantity patterns
-_⊸_ : Type → Type → Type  -- Linear function (quantity = 1)
-A ⊸ B = A ⇒[ mk-kind One pure ] B
-
-_⇒_ : Type → Type → Type  -- Unrestricted function (quantity = ω)
-A ⇒ B = A ⇒[ mk-kind Many pure ] B
-
-_⇒₀_ : Type → Type → Type  -- Erased function (quantity = 0)
-A ⇒₀ B = A ⇒[ mk-kind Zero pure ] B
-
-infixr 30 _⊸_
-infixr 30 _⇒_
-infixr 30 _⇒₀_
-
--- | Is this type the terminal `Unit`? A LOW-level decision (so SD's
--- `arrow-info` and the elaborator's `ext-resolved-info` can BOTH dispatch on
--- the same `Dec`, without SD importing the elaborator). The codomain-is-Unit
--- check is what `EffectShape`'s `Emits`/`Halts` coherence needs; sharing the
--- one decision keeps the masquerade a single case-split rather than an
--- 11-constructor enumeration. ([[feedback_with_clauses_painful]] — the
--- constructor-pattern analogue: dispatch on a reducible decision, not a
--- scrutinee opaque to the proof's variables.)
--- | Is this type the empty `Void`? plan 0.98: a halting SigOp's codomain.
--- Same LOW-level placement and rationale as `isUnit?` below — SD's
--- `arrow-info` and the elaborator both dispatch on this one decision, so the
--- two presentations of the meaning cannot disagree about which ops halt.
-isVoid? : (T : Type) → Dec (T ≡ Void)
-isVoid? Void          = yes refl
-isVoid? Unit          = no (λ ())
-isVoid? (_ * _)       = no (λ ())
-isVoid? (_ + _)       = no (λ ())
-isVoid? (_ ⇒[ _ ] _)  = no (λ ())
-isVoid? (μ-type _)    = no (λ ())
-isVoid? (ν-type _ _)    = no (λ ())
-isVoid? Int           = no (λ ())
-isVoid? Float         = no (λ ())
-isVoid? (rigid _ _)   = no (λ ())
-
-isUnit? : (T : Type) → Dec (T ≡ Unit)
-isUnit? Unit          = yes refl
-isUnit? Void          = no (λ ())
-isUnit? (_ * _)       = no (λ ())
-isUnit? (_ + _)       = no (λ ())
-isUnit? (_ ⇒[ _ ] _)  = no (λ ())
-isUnit? (μ-type _)    = no (λ ())
-isUnit? (ν-type _ _)    = no (λ ())
-isUnit? Int           = no (λ ())
-isUnit? Float         = no (λ ())
-isUnit? (rigid _ _)   = no (λ ())
-
--- Note: IO sugar removed for clarity in error messages.
--- The parser desugars "IO A" to "Eff Unit A" at parse time.
--- Use Eff Unit A directly in Agda code.
-
-------------------------------------------------------------------------
--- Type-Level Functor Interpretation
---
--- Interprets a Functor code as a Type → Type function.
--- Used by IR constructors for recursion schemes.
-------------------------------------------------------------------------
-
--- | Interpret functor code at a carrier Type
---
--- ⟦ K A ⟧T X = A         (constant, ignores X)
--- ⟦ Id ⟧T X = X          (recursive position)
--- ⟦ F ⊕ G ⟧T X = ⟦ F ⟧T X + ⟦ G ⟧T X
--- ⟦ F ⊗ G ⟧T X = ⟦ F ⟧T X * ⟦ G ⟧T X
---
-⟦_⟧T : Functor → Type → Type
-⟦ K A ⟧T X = A
-⟦ Id ⟧T X = X
-⟦ F ⊕ G ⟧T X = ⟦ F ⟧T X + ⟦ G ⟧T X
-⟦ F ⊗ G ⟧T X = ⟦ F ⟧T X * ⟦ G ⟧T X
 
 ------------------------------------------------------------------------
 -- Common Functor Patterns
@@ -389,6 +101,7 @@ ListF A = K Unit ⊕ (K A ⊗ Id)
 -- | Binary tree: Tree A = μ (K A ⊕ Id ⊗ Id)
 TreeF : Type → Functor
 TreeF A = K A ⊕ (Id ⊗ Id)
+
 
 ------------------------------------------------------------------------
 -- FitsInReg (Plan 0.2.4.5)
@@ -424,6 +137,7 @@ fits-in-reg? Float = just fits-float
 {-# CATCHALL #-}
 fits-in-reg? _     = nothing
 
+
 ------------------------------------------------------------------------
 -- Type Pretty Printing
 ------------------------------------------------------------------------
@@ -452,114 +166,6 @@ mutual
   showFunctor (F ⊕ G) = "(" ++ showFunctor F ++ " ⊕ " ++ showFunctor G ++ ")"
   showFunctor (F ⊗ G) = "(" ++ showFunctor F ++ " ⊗ " ++ showFunctor G ++ ")"
 
-------------------------------------------------------------------------
--- PolyType: Parser-boundary staging area for type variables
---
--- Ground `Type` carries no type variables — that invariant is
--- load-bearing for clean `_≟T_`, clean IR pattern-matching, and the
--- optimizer's fully-proved status (plan 0.2.5 rationale).
--- `PolyType` is a *separate* data type that mirrors `Type` plus a
--- `PTVar` constructor, used strictly at the parser/signature boundary
--- for user-declared polymorphic signatures like `swap : a * b → b * a`.
---
--- Data flow (plan 0.6 Phase B/C):
---
---   parser returns PolyType in DTypeSig / DSignature
---        ↓
---   extractFunctions projects PolyType → Type if Ground
---        ↓ (else: package TVars for Phase C monomorphization)
---   SExpr / IR / optimizer / semantics all see ground Type only
---
--- Nothing downstream of `extractFunctions` ever receives a `PTVar`.
--- The April-17 split's invariant is preserved.
-------------------------------------------------------------------------
-
-mutual
-  data PolyFunctor : Set where
-    PK   : PolyType → PolyFunctor
-    PId  : PolyFunctor
-    _P⊕_ : PolyFunctor → PolyFunctor → PolyFunctor
-    _P⊗_ : PolyFunctor → PolyFunctor → PolyFunctor
-
-  data PolyType : Set where
-    -- Categorical structure
-    PUnit   : PolyType
-    PVoid   : PolyType
-    _P*_    : PolyType → PolyType → PolyType
-    _P+_    : PolyType → PolyType → PolyType
-    _P⇒[_]_ : PolyType → Quantity → PolyType → PolyType
-    PEff    : PolyType → PolyType → PolyType
-    -- Polynomial functor fixed points
-    Pμ-type : PolyFunctor → PolyType
-    Pν-type : PolyFunctor → Purity → PolyType
-    -- Base types
-    PInt    : PolyType
-    PFloat  : PolyType
-    -- Type variable (the whole reason this type exists)
-    PTVar   : String → PolyType
-
-infixr 40 _P⊕_
-infixr 50 _P⊗_
-infixr 30 _P⇒[_]_
-infixr 40 _P+_
-infixr 50 _P*_
-
-------------------------------------------------------------------------
--- Ground predicate: this PolyType contains no TVars
---
--- `Ground A` is a proof that every subterm of `A` is a non-TVar
--- constructor. It's the precondition for the total projection
--- `extractGround : PolyType → Type` (Lambek-style: Ground is an
--- iso-class predicate; `extractGround` is its witness).
-------------------------------------------------------------------------
-
-open import Data.Product using (_×_; _,_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
-
-mutual
-  GroundF : PolyFunctor → Set
-  GroundF (PK A)   = Ground A
-  GroundF PId      = ⊤
-  GroundF (F P⊕ G) = GroundF F × GroundF G
-  GroundF (F P⊗ G) = GroundF F × GroundF G
-
-  Ground : PolyType → Set
-  Ground PUnit           = ⊤
-  Ground PVoid           = ⊤
-  Ground (A P* B)        = Ground A × Ground B
-  Ground (A P+ B)        = Ground A × Ground B
-  Ground (A P⇒[ _ ] B)   = Ground A × Ground B
-  Ground (PEff A B)      = Ground A × Ground B
-  Ground (Pμ-type F)     = GroundF F
-  Ground (Pν-type F _)   = GroundF F
-  Ground PInt            = ⊤
-  Ground PFloat          = ⊤
-  Ground (PTVar _)       = ⊥     -- the only non-Ground case
-
-------------------------------------------------------------------------
--- Total projection PolyType → Type given Ground witness
-------------------------------------------------------------------------
-
-mutual
-  extractGroundF : (F : PolyFunctor) → GroundF F → Functor
-  extractGroundF (PK A) g          = K (extractGround A g)
-  extractGroundF PId _             = Id
-  extractGroundF (F P⊕ G) (gF , gG) = extractGroundF F gF ⊕ extractGroundF G gG
-  extractGroundF (F P⊗ G) (gF , gG) = extractGroundF F gF ⊗ extractGroundF G gG
-
-  extractGround : (A : PolyType) → Ground A → Type
-  extractGround PUnit            _        = Unit
-  extractGround PVoid            _        = Void
-  extractGround (A P* B)         (gA , gB) = extractGround A gA * extractGround B gB
-  extractGround (A P+ B)         (gA , gB) = extractGround A gA + extractGround B gB
-  extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ mk-kind q pure ] extractGround B gB
-  extractGround (PEff A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many eff ] extractGround B gB
-  extractGround (Pμ-type F)      g        = μ-type (extractGroundF F g)
-  extractGround (Pν-type F π)    g        = ν-type (extractGroundF F g) π
-  extractGround PInt             _        = Int
-  extractGround PFloat           _        = Float
-  -- PTVar case is unreachable (its Ground = ⊥)
 
 ------------------------------------------------------------------------
 -- Decidable Ground check
@@ -598,6 +204,7 @@ mutual
   isGround PFloat       = inj₁ tt
   isGround (PTVar _)    = inj₂ tt
 
+
 ------------------------------------------------------------------------
 -- PolyType Pretty Printing
 ------------------------------------------------------------------------
@@ -622,6 +229,7 @@ mutual
   showPolyFunctor PId           = "Id"
   showPolyFunctor (F P⊕ G)      = "(" ++ showPolyFunctor F ++ " ⊕ " ++ showPolyFunctor G ++ ")"
   showPolyFunctor (F P⊗ G)      = "(" ++ showPolyFunctor F ++ " ⊗ " ++ showPolyFunctor G ++ ")"
+
 
 ------------------------------------------------------------------------
 -- Bool-valued Type / Functor equality
@@ -763,69 +371,3 @@ mutual
   functorEqBool (_ ⊗ _) Id = false
   functorEqBool (_ ⊗ _) (_ ⊕ _) = false
   functorEqBool (f ⊗ g) (f' ⊗ g') = functorEqBool f f' ∧ functorEqBool g g'
-
-------------------------------------------------------------------------
--- PolyType ↔ Type structural instantiation
-------------------------------------------------------------------------
--- | Plan 0.103 phase 2a: SUBSTITUTION of a total type-variable assignment into
--- a schema — the declarative meaning of "an instance of a schema", part of the
--- type language (unlike `Subst`/`instantiate`, the decider's machinery).
-mutual
-  substPoly : (String → Type) → PolyType → Type
-  substPoly θ (PTVar x)     = θ x
-  substPoly θ PUnit         = Unit
-  substPoly θ PVoid         = Void
-  substPoly θ PInt          = Int
-  substPoly θ PFloat        = Float
-  substPoly θ (A P* B)      = substPoly θ A * substPoly θ B
-  substPoly θ (A P+ B)      = substPoly θ A + substPoly θ B
-  substPoly θ (A P⇒[ q ] B) = substPoly θ A ⇒[ mk-kind q pure ] substPoly θ B
-  substPoly θ (PEff A B)    = substPoly θ A ⇒[ mk-kind Many eff ] substPoly θ B
-  substPoly θ (Pμ-type F)   = μ-type (substPolyF θ F)
-  substPoly θ (Pν-type F π) = ν-type (substPolyF θ F) π
-
-  substPolyF : (String → Type) → PolyFunctor → Functor
-  substPolyF θ (PK A)   = K (substPoly θ A)
-  substPolyF θ PId      = Id
-  substPolyF θ (F P⊕ G) = substPolyF θ F ⊕ substPolyF θ G
-  substPolyF θ (F P⊗ G) = substPolyF θ F ⊗ substPolyF θ G
-
--- Plan 0.103 phase 2b: the FREE TYPE VARIABLES of a schema.
-open import Data.List using () renaming (List to Listₗ; _++_ to _++ₗ_; [] to []ₗ; _∷_ to _∷ₗ_)
-open import Data.List.Membership.Propositional using () renaming (_∈_ to _∈ₗ_)
-mutual
-  ftv : PolyType → Listₗ String
-  ftv (PTVar x)     = x ∷ₗ []ₗ
-  ftv PUnit         = []ₗ
-  ftv PVoid         = []ₗ
-  ftv PInt          = []ₗ
-  ftv PFloat        = []ₗ
-  ftv (A P* B)      = ftv A ++ₗ ftv B
-  ftv (A P+ B)      = ftv A ++ₗ ftv B
-  ftv (A P⇒[ _ ] B) = ftv A ++ₗ ftv B
-  ftv (PEff A B)    = ftv A ++ₗ ftv B
-  ftv (Pμ-type F)   = ftvF F
-  ftv (Pν-type F _) = ftvF F
-
-  ftvF : PolyFunctor → Listₗ String
-  ftvF (PK A)   = ftv A
-  ftvF PId      = []ₗ
-  ftvF (F P⊕ G) = ftvF F ++ₗ ftvF G
-  ftvF (F P⊗ G) = ftvF F ++ₗ ftvF G
-
--- An ARROW schema, split into its domain, codomain and grade (`A -> B` is the
--- pure `Many` arrow, `Eff A B` the effectful one).
-data ArrowSchema : PolyType → PolyType → PolyType → Purity → Set where
-  as-pure : ∀ {sd sc} → ArrowSchema (sd P⇒[ Many ] sc) sd sc pure
-  as-eff  : ∀ {sd sc} → ArrowSchema (PEff sd sc) sd sc eff
-
--- The codomain's variables occur in the domain, so an instance's domain
--- determines its codomain (local type inference, Pierce–Turner).
-CodVarsInDom : PolyType → PolyType → Set
-CodVarsInDom sd sc = ∀ {x} → x ∈ₗ ftv sc → x ∈ₗ ftv sd
-
--- `T` is an INSTANCE of the schema `s`.
-IsInstance : PolyType → Type → Set
-IsInstance s T = Σ (String → Type) (λ θ → substPoly θ s ≡ T)
-  where open import Data.Product using (Σ)
-

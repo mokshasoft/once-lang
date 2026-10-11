@@ -19,7 +19,7 @@ open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Many)
+open import Once.Spec.Type.Grade using (Many)
 open import Once.Parser.Token
 open import Once.Parser.Generic.Relation
 

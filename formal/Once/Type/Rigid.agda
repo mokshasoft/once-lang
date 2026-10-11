@@ -29,6 +29,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Functor.Translate using (IsBaseType)
 

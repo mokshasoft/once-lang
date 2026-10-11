@@ -12,6 +12,9 @@
 
 module Once.Optimizer.Cost where
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IR
 

@@ -23,6 +23,9 @@
 
 module Once.Optimize where
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IR
 open import Once.IRTy using (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; IRTy; _≟IRTy_)

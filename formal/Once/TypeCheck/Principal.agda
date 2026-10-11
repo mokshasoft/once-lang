@@ -42,6 +42,9 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 import Relation.Nullary
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS; _≟ᶜ_)
 open import Once.TypeCheck.Raw as Raw

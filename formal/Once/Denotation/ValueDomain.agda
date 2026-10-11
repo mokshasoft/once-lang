@@ -22,6 +22,9 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; cong; sym; subst)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val

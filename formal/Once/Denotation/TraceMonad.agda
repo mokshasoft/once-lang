@@ -43,7 +43,7 @@ open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
-open import Once.Type using (Type; isUnit?) renaming (Unit to UnitT)
+open import Once.Spec.Type using (Type; isUnit?) renaming (Unit to UnitT)
 import Once.Type as Ty
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen)

@@ -46,7 +46,7 @@ open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Word using (Carrier)
-open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
+open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; translateF; ⟦_,_⟧-base; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
@@ -60,6 +60,7 @@ open import Once.Semantics.ValueIR Carrier Carrier using (base-coh)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Postulates using (extensionality)
 open import Data.Sum using (_⊎_)
+import Once.Spec.Type as TT
 import Once.Type as TT
 import Once.IRTy as II
 import Once.IR as IR

@@ -37,8 +37,11 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
+import Once.Spec.Type.Grade as T
+import Once.Spec.Type as T
 import Once.Type as T
-open T using (Type; One)
+open import Once.Spec.Type.Grade using (One)
+open import Once.Spec.Type using (Type)
 import Once.Grammar as G
 open G using (GType)
 

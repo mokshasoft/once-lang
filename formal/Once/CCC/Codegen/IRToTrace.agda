@@ -88,7 +88,7 @@ open import Once.CCC.Label using (LabelId; ℓ)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.Type as Ty
 

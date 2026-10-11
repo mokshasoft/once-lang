@@ -27,7 +27,7 @@ open import Data.Maybe using (just)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseType; parseTypeAtom)
 open import Once.Parser.TypeRelation

@@ -21,7 +21,8 @@ open import Data.Product using (_,_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (refl)
 
-open import Once.Type using (Type; Quantity; Many)
+open import Once.Spec.Type.Grade using (Quantity; Many)
+open import Once.Spec.Type using (Type)
 
 ------------------------------------------------------------------------
 -- Bindings

@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Type using (Unit)
+open import Once.Spec.Type using (Unit)
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P

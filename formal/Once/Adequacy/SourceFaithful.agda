@@ -44,7 +44,8 @@ open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym; subst-sym-subst)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; mk-kind; pure; eff; Quantity; Zero; One; Many)
+open import Once.Spec.Type.Grade using (mk-kind; pure; eff; Quantity; Zero; One; Many)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (con-base; con-fun; base-Unit)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅;
                                        _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m;
@@ -1587,7 +1588,7 @@ faithful {Γ = Γ} (sigOp {A = Unit}     name (con-base ib)) dγ = sigop-value {
 faithful {Γ = Γ} (sigOp {A = Void}     name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = Int}      name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = Float}    name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
-faithful {Γ = Γ} (sigOp {A = Once.Type.rigid _ _} name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
+faithful {Γ = Γ} (sigOp {A = Once.Spec.Type.rigid _ _} name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = _ * _}    name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful {Γ = Γ} (sigOp {A = _ + _}    name (con-base ib)) dγ = sigop-value {⟦ Γ ↾ zeroUsage ⟧ᶜ} (value-info name base-Unit ib) dγ
 faithful (sigOp {A = μ-type _} name (con-base ()))

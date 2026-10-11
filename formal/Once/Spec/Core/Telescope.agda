@@ -24,7 +24,7 @@ open import Data.List using ([])
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
-import Once.Type as T
+import Once.Spec.Type.Grade as T
 open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.TraceMonad using (T; projTrace; interp)
 open import Once.Spec.Contract using (ISig; Impl)

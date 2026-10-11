@@ -30,8 +30,8 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; mk-kind; Zero; One; Many; pure;
-  μ-type; ν-type; rigid)
+open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many; pure)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.IRTy using (⌊_⌋)
 import Once.Surface.Syntax as Srf
 import Once.Compile as C

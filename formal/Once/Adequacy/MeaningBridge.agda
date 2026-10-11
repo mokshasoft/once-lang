@@ -38,7 +38,8 @@ open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
-open import Once.Type using (Type; Purity; Quantity; mk-kind; Zero; One; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
+open import Once.Spec.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; eff)
+open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
   IsConcrete; con-base; con-fun)
@@ -65,8 +66,9 @@ open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix; 
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
 open import Once.IR.Ref using (refIR)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
-open import Once.Type using (extractGround)
+open import Once.Spec.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
+open import Once.Spec.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
 open import Once.Denotation.Sub using (⟦_⟧<:)
@@ -758,7 +760,7 @@ bridge-i (t-let {A = A} {B = B} {q = Many} d₁ d₂) re er =
 -- transcription, not new content.
 bridge-i {ctx = ctx} (t-case {A = A} {B = B} {C = C} {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr)
          {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-  RelGᵖ-bind {A = A Once.Type.+ B} {B = C}
+  RelGᵖ-bind {A = A Once.Spec.Type.+ B} {B = C}
     {m = (⟦ ds ⟧ᵢ fmt _) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₁)}
     {t₂ = (SD.⟦ realize-infer ds ⟧ˢ fmt σ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₂)}
     {k = λ v → [ (λ a → (⟦ dl ⟧ᵢ fmt _) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} qL
@@ -909,29 +911,29 @@ bridge-i (t-binop-arith {op = OpNe} () _ _)
 
 -- Comparison binops — bind both, pure `semM <op>-info` (Unit+Unit value).
 bridge-i (t-binop-cmp {op = OpLt} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP lt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ lt-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Spec.Type.+ Unit} (λ a b → semP lt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ lt-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP lt-info int-prim fmt) (SD.sigOpˢ fmt σ lt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Spec.Type.+ Unit} (semP lt-info int-prim fmt) (SD.sigOpˢ fmt σ lt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpLe} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP le-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ le-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Spec.Type.+ Unit} (λ a b → semP le-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ le-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP le-info int-prim fmt) (SD.sigOpˢ fmt σ le-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Spec.Type.+ Unit} (semP le-info int-prim fmt) (SD.sigOpˢ fmt σ le-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpGt} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP gt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ gt-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Spec.Type.+ Unit} (λ a b → semP gt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ gt-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP gt-info int-prim fmt) (SD.sigOpˢ fmt σ gt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Spec.Type.+ Unit} (semP gt-info int-prim fmt) (SD.sigOpˢ fmt σ gt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpGe} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP ge-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ge-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Spec.Type.+ Unit} (λ a b → semP ge-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ge-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP ge-info int-prim fmt) (SD.sigOpˢ fmt σ ge-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Spec.Type.+ Unit} (semP ge-info int-prim fmt) (SD.sigOpˢ fmt σ ge-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpEq} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP eq-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ eq-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Spec.Type.+ Unit} (λ a b → semP eq-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ eq-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP eq-info int-prim fmt) (SD.sigOpˢ fmt σ eq-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Spec.Type.+ Unit} (semP eq-info int-prim fmt) (SD.sigOpˢ fmt σ eq-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpNe} _ d₁ d₂) {ρ = ρ} re er =
-  bind2-rel {A = Int} {B = Int} {C = Unit Once.Type.+ Unit} (λ a b → semP ne-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ne-info (a , b))
+  bind2-rel {A = Int} {B = Int} {C = Unit Once.Spec.Type.+ Unit} (λ a b → semP ne-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ne-info (a , b))
             (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-            (λ ra rb → step-≡ {C = Unit Once.Type.+ Unit} (semP ne-info int-prim fmt) (SD.sigOpˢ fmt σ ne-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+            (λ ra rb → step-≡ {C = Unit Once.Spec.Type.+ Unit} (semP ne-info int-prim fmt) (SD.sigOpˢ fmt σ ne-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
 bridge-i (t-binop-cmp {op = OpAdd} () _ _)
 bridge-i (t-binop-cmp {op = OpSub} () _ _)
 bridge-i (t-binop-cmp {op = OpMul} () _ _)
@@ -1033,8 +1035,8 @@ bridge-c (t-snd-check {A = A} {B = B} {π = π}) re er =
   rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM π (proj₂ ab)))
                (sym (liftFn-snd {A} {B})) (λ rv → RelGM-return π {B} (proj₂ rv)))
 bridge-c (t-terminal-morph-check {A = A} {π = π}) re er =
-  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Type.Unit) (λ _ → returnM π tt))
-               (sym (liftFn-terminal {A})) (λ _ → RelGM-return π {Once.Type.Unit} tt))
+  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM π tt))
+               (sym (liftFn-terminal {A})) (λ _ → RelGM-return π {Once.Spec.Type.Unit} tt))
 bridge-c (t-initial-morph-check) re er = rel-ret (λ { {a = ()} })
 bridge-c (t-inl-morph-check {A = A} {B = B} {π = π}) re er =
   rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] (A + B)) (λ a → returnM π (inj₁ a)))
@@ -1161,7 +1163,7 @@ bridge-c {ctx = ctx} (t-inr-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ�
 -- The old clause read that value unconditionally; `RelGᵖ-bind` puts the ⊥ where
 -- it is actually bound, and the stopped branch closes on its own.
 bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) {ρ = ρ} re er =
-  RelGᵖ-bind {A = Once.Type.Void} {B = A} (bridge-c d {ρ = ρ} (reᵐ re) er) (λ {a} _ → ⊥-elim a)
+  RelGᵖ-bind {A = Once.Spec.Type.Void} {B = A} (bridge-c d {ρ = ρ} (reᵐ re) er) (λ {a} _ → ⊥-elim a)
 -- D243: a polymorphic reference is the definition variable at its kinded
 -- instance on both sides — the environments' families at that instance.
 bridge-c {ctx = ctx} {A = U} (t-var-poly-instantiate {x = x} _ _ lp _ ki) re er =
@@ -1194,8 +1196,8 @@ bridge-d (d-snd {A = A} {B = B} {π = π}) re er =
   rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM π (proj₂ ab)))
                (sym (liftFn-snd {A} {B})) (λ rv → RelGM-return π {B} (proj₂ rv)))
 bridge-d (d-terminal {A = A} {π = π}) re er =
-  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Type.Unit) (λ _ → returnM π tt))
-               (sym (liftFn-terminal {A})) (λ _ → RelGM-return π {Once.Type.Unit} tt))
+  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM π tt))
+               (sym (liftFn-terminal {A})) (λ _ → RelGM-return π {Once.Spec.Type.Unit} tt))
 bridge-d d-initial re er = rel-ret (λ { {a = ()} })
 bridge-d (d-case {A = A} {B = B} {C = C} {π = π} df dg) re er =
   RelGᵖ-bind {A = A ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}

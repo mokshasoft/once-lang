@@ -39,6 +39,9 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw

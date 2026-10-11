@@ -41,7 +41,8 @@ open import Function using (case_of_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
+open import Once.Spec.Type.Grade using (mk-kind; Many; eff)
+open import Once.Spec.Type using (Unit; Type; _⇒[_]_)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser

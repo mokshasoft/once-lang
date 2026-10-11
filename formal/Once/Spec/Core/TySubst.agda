@@ -15,6 +15,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
+import Once.Spec.Type
 import Once.Type
 open import Once.Spec.Core.PolyTy using (Sig)
 
@@ -26,8 +27,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
 import Once.Type as T
-open T using (Purity; pure; mk-kind; Many; One)
-open import Once.Type.Sub using ()
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One)
 open import Once.Metatheory.SubLaws using (⊑π-refl)
 open import Once.Surface.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
@@ -43,7 +43,7 @@ open G using (primDom; primCod)
 -- A substitution RESPECTS the kinds when it sends every base variable of `Δ`
 -- to a type that is base under `Δ′`.
 KSub : ∀ {m k} → KCtx m → KCtx k → Sub m k → Set
-KSub Δ Δ′ σ = ∀ i → Δ i ≡ Once.Type.k-base → Base Δ′ (σ i)
+KSub Δ Δ′ σ = ∀ i → Δ i ≡ Once.Spec.Type.k-base → Base Δ′ (σ i)
 
 -- Subtyping over open types is reflexive, hence stable under substitution.
 <:ₚ-refl : ∀ {m} (A : Ty m) → A <:ₚ A

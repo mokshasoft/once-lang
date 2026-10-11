@@ -33,7 +33,8 @@ open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl)
 
-open import Once.Type as T using (Type; Quantity)
+open import Once.Spec.Type.Grade as T using (Quantity)
+open import Once.Spec.Type as T using (Type)
 open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)

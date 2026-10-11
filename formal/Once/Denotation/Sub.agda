@@ -26,7 +26,9 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Type using (Type; Zero; One; Many; mk-kind; _⇒[_]_; Void)
+open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind)
+open import Once.Spec.Type using (Type; _⇒[_]_; Void)
+open import Once.Spec.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)

@@ -626,8 +626,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 module Sem (FS : FrameSemantics) where
   open import Data.Unit using (⊤; tt)
   open import Data.Empty using (⊥; ⊥-elim)
-  open import Once.Type using ()
-    renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
+  open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
   open import Once.CCC.Machine.SMCore as SM using
     (LocState; StoredValue; SV-Ptr; SV-Tag; SV-Lit; sucLoc; readReg; Input1; Output; AllocState; module AllocState; module LocState)
   open AllocState using (next-heap-ref; current-frame)

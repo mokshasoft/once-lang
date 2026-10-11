@@ -10,6 +10,8 @@
 
 module Once.Parser.Generic.PolyInst where
 
+import Once.Spec.Type.Grade
+
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; length)
 open import Data.String using (String)
@@ -20,10 +22,7 @@ open import Data.Nat.Properties using (≤-refl)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Axiom.UniquenessOfIdentityProofs.WithK using (uip)
 
-open import Once.Type
-  using ( PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type
-        ; PInt; PFloat; PTVar
-        ; PolyFunctor; PK; PId; _P⊕_; _P⊗_ )
+open import Once.Spec.Type.Poly using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PInt; PFloat; PTVar; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
 open import Once.Parser.Token
 open import Once.Parser.CharClass using (isLowerWord)
 open import Once.Parser.Generic.Relation
@@ -75,8 +74,8 @@ PolyAlg = record
   ; aProd = _P*_ ; aSum = _P+_ ; aEff = PEff
   ; aArrow = λ q A B → A P⇒[ q ] B
   ; aMu = Pμ-type
-  ; aNu = λ F → Pν-type F Once.Type.pure
-  ; aNuEff = λ F → Pν-type F Once.Type.eff
+  ; aNu = λ F → Pν-type F Once.Spec.Type.Grade.pure
+  ; aNuEff = λ F → Pν-type F Once.Spec.Type.Grade.eff
   ; fK = PK ; fId = PId ; fSum = _P⊕_ ; fProd = _P⊗_
   ; Extra = TVarRel ; extraShrink = tvar-shrink ; extraP = tvarP
   ; extraComplete = tvar-complete

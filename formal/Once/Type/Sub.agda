@@ -2,95 +2,32 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Type.Sub — the subtyping judgment `A <: B` (plan 0.99, D226).
+-- Once.Type.Sub — deciding subtyping.
 --
--- ONE judgment on types. A generator is admitted iff its conversion is
--- CANONICAL (forced, not chosen) and OBSERVATION-FREE (it can never lose
--- anything the program observes):
---
---   * `Void <: B` — `¡`, the unique map out of the initial object, which never
---     runs because there is no value to run it on;
---   * `pure ⊑ eff` on an arrow's grade — the Freyd embedding (D068), which `⟦_⟧`
---     erases.
---
--- NOT admitted: `A <: Unit` (`!` is unique too, but it ERASES a value and breaks
--- linearity) and `Int <: Float` (a chosen map, not injective at fixed width; D125).
---
--- Closed under the type formers: arrows contravariant in the domain, covariant in
--- the codomain and grade; products and sums covariant; `μ`/`ν` reflexive only (no
--- functor variance yet); the quantity is not varied (sub-usage is QTT's axis).
---
--- COHERENCE BY CONSTRUCTION. The rules are syntax-directed on the LEFT type and
--- there is no transitivity rule, so each `A <: B` has at most one derivation
--- (`<:-unique`): every derivation denotes the same conversion. Reflexivity and
--- transitivity are admissible (`<:-refl`, `<:-trans`). Every premise is a
--- judgment on types, never a computation on syntax (plan 0.94 §2).
+-- The judgment `A <: B` and the effect order `_⊑π_` are the Spec's
+-- (`Once.Spec.Type.Sub`). This module decides them.
 ------------------------------------------------------------------------
 
 module Once.Type.Sub where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Type using (Type; rigid; Purity; pure; eff; mk-kind; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; _≟q_)
+open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind)
+open import Once.Spec.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Spec.Type.Sub
+  using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Type using (_≟q_)
 open import Once.Type.DecEq using (_≟F_; _≟T_)
 
 ------------------------------------------------------------------------
--- The grade order: pure ⊑ eff.
+-- The effect order.
 ------------------------------------------------------------------------
-
-infix 4 _⊑π_ _<:_
-
-data _⊑π_ : Purity → Purity → Set where
-  ⊑-pure : pure ⊑π pure
-  ⊑-eff  : eff  ⊑π eff
-  ⊑-pe   : pure ⊑π eff
-
--- Every grade is above `pure` (D068; D250: the unit of every grade's monad is
--- this subeffecting applied to a pure value).
-pure⊑ : ∀ π → pure ⊑π π
-pure⊑ pure = ⊑-pure
-pure⊑ eff  = ⊑-pe
 
 _⊑π?_ : (π π′ : Purity) → Dec (π ⊑π π′)
 pure ⊑π? pure = yes ⊑-pure
 pure ⊑π? eff  = yes ⊑-pe
 eff  ⊑π? pure = no λ ()
 eff  ⊑π? eff  = yes ⊑-eff
-
-
-
-
-------------------------------------------------------------------------
--- The judgment. One rule per head of the LEFT type — that disjointness is
--- what makes derivations unique.
-------------------------------------------------------------------------
-
-data _<:_ : Type → Type → Set where
-  sub-void   : ∀ {B} → Void <: B
-  sub-unit   : Unit <: Unit
-  sub-int    : Int <: Int
-  sub-float  : Float <: Float
-  sub-arr    : ∀ {A A′ B B′ q π π′}
-             → A′ <: A → B <: B′ → π ⊑π π′
-             → (A ⇒[ mk-kind q π ] B) <: (A′ ⇒[ mk-kind q π′ ] B′)
-  sub-prod   : ∀ {A A′ B B′} → A <: A′ → B <: B′ → (A * B) <: (A′ * B′)
-  sub-sum    : ∀ {A A′ B B′} → A <: A′ → B <: B′ → (A + B) <: (A′ + B′)
-  sub-μ      : ∀ {F} → μ-type F <: μ-type F
-  -- D233: a pure stream is an effectful one with no effects — covariant in the grade.
-  sub-ν      : ∀ {F π π′} → π ⊑π π′ → ν-type F π <: ν-type F π′
-  -- D243: a rigid parameter is related only to itself (and, as every type, above Void).
-  sub-rigid  : ∀ {k i} → rigid k i <: rigid k i
-
-------------------------------------------------------------------------
--- Coherence: at most one derivation.
-------------------------------------------------------------------------
-
-
-------------------------------------------------------------------------
--- Admissible reflexivity and transitivity.
-------------------------------------------------------------------------
-
-
 
 ------------------------------------------------------------------------
 -- Decidability. Mismatched heads are refuted clause by clause (no catch-all:

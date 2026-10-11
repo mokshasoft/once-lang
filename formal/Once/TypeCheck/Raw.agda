@@ -15,7 +15,7 @@ module Once.TypeCheck.Raw where
 open import Data.String using (String)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
-open import Once.Type using (Type; Functor)
+open import Once.Spec.Type using (Type; Functor)
 open import Once.CanonicalName using (CanonicalName)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

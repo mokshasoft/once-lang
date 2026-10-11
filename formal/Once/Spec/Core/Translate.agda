@@ -33,7 +33,9 @@ import Data.String.Properties as StrProp
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
-import Once.Type as T
+import Once.Spec.Type.Grade as T
+import Once.Spec.Type as T
+import Once.Spec.Type.Poly as T
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; ground-kinded; rigidOf;

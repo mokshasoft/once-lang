@@ -30,9 +30,11 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
+import Once.Spec.Type as T
 import Once.Type as T
-open T using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff;
-  Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; k-base; k-any; mk-kind; Many; eff; pure)
+open import Once.Spec.Type.Grade using (mk-kind; Many; eff; pure)
+open import Once.Spec.Type using (k-base; k-any)
+open import Once.Spec.Type.Poly using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF)
 open import Once.Type.DecEq using (_≟tk_)
 open import Once.Type.Rigid using (params; nubFrom; arityOf; kindOf; indexOf; memberB; rigidSubst; rigidOf; ftvK;
   KindedInstance; RespectsKinds)

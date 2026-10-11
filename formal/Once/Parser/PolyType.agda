@@ -42,6 +42,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.String.Properties as StrProp using ()
 import Data.String as StrLib
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Parser.Token
 

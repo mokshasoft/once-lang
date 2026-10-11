@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Type using (Unit)
+open import Once.Spec.Type using (Unit)
 
 open import Once.Denotation.Behavior using (Source; Behavior)
 

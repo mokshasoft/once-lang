@@ -25,7 +25,7 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 ------------------------------------------------------------------------
 -- Semantic Functor (Set-level)
 --
--- Unlike Once.Type.Functor where K takes a Type, here K takes a Set
+-- Unlike Once.Spec.Type.Functor where K takes a Type, here K takes a Set
 -- directly. This breaks the dependency on the type interpretation.
 ------------------------------------------------------------------------
 

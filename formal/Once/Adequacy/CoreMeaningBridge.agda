@@ -30,7 +30,8 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Type using (Type; Ground; extractGround)
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Type.Poly using (Ground; extractGround)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.CanonicalName using (bare; showCanonical)
@@ -95,16 +96,18 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
 ------------------------------------------------------------------------
 
 open import Once.Surface.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
-open import Once.Type using (Quantity; Zero; One; _*_; Functor; ⟦_⟧T)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One)
+open import Once.Spec.Type using (_*_; Functor; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Surface.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Denotation.PhaseV using (bindᵛ)
 open import Data.Fin using (zero; suc)
-open import Once.Type using (Many; mk-kind; _⇒[_]_; pure; eff)
+open import Once.Spec.Type.Grade using (Many; mk-kind; pure; eff)
+open import Once.Spec.Type using (_⇒[_]_)
 open import Once.Denotation.PhaseV using (restrictᵛ)
 open import Once.Spec.Core.Syntax S
-open import Once.Type.Sub using (pure⊑; sub-arr)
+open import Once.Spec.Type.Sub using (pure⊑; sub-arr)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.DerivedTyping S

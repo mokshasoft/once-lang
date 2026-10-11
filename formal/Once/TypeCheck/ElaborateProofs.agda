@@ -19,7 +19,8 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.Type.Sub using (_<:_; _<:?_; sub-int; sub-float)
+open import Once.Spec.Type.Sub using (_<:_; sub-int; sub-float)
+open import Once.Type.Sub using (_<:?_)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Data.Integer using (+_)
 
@@ -39,6 +40,9 @@ open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj�
 open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
 open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IR as IR
 open import Once.IRTy using (⌊_⌋)
@@ -474,9 +478,9 @@ inferElabV-RVar-fail-bridge ctx x eqLoc eqImp polyFail =
 -- previously-postulated lemmas: with-abstract over `inferElabV` and
 -- the inspect-views, then the elaborator's reduction is computational.
 checkElab-fallback-RVar-id :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (T : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (T : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RResolved (gen "id")) (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
+      checkElab ctx (Raw.RResolved (gen "id")) (T Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] T)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-id {ctx} T
   with T ≟T T
@@ -487,9 +491,9 @@ just≢nothing-Maybe : ∀ {A : Set} {x : A} → just x ≡ nothing → Data.Emp
 just≢nothing-Maybe ()
 
 checkElab-fallback-RVar-fst :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A B : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RResolved (gen "fst")) ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+      checkElab ctx (Raw.RResolved (gen "fst")) ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-fst {ctx} A B
   with A ≟T A
@@ -497,9 +501,9 @@ checkElab-fallback-RVar-fst {ctx} A B
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 checkElab-fallback-RVar-snd :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A B : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RResolved (gen "snd")) ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+      checkElab ctx (Raw.RResolved (gen "snd")) ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-snd {ctx} A B
   with B ≟T B
@@ -507,9 +511,9 @@ checkElab-fallback-RVar-snd {ctx} A B
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 checkElab-fallback-RVar-terminal :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RResolved (gen "terminal")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
+      checkElab ctx (Raw.RResolved (gen "terminal")) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Unit)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-terminal {ctx} A = _ , _ , _ , refl
 
@@ -517,24 +521,24 @@ checkElab-fallback-RVar-terminal {ctx} A = _ , _ , _ , refl
 -- strong-completeness migration's gd-completeV g-terminal case). Same reduction
 -- path as the weak one, so the body is identical modulo the extra witness slot.
 checkElab-fallback-RVar-terminalV :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      Σ-syntax (ctx ⊢ᶜ Raw.RResolved (gen "terminal") ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) ⨾ Surface.zeroUsage) (λ w →
-        checkElabV ctx (Raw.RResolved (gen "terminal")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
+      Σ-syntax (ctx ⊢ᶜ Raw.RResolved (gen "terminal") ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Unit) ⨾ Surface.zeroUsage) (λ w →
+        checkElabV ctx (Raw.RResolved (gen "terminal")) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Unit)
           ≡ (success Surface.zeroUsage eE d f , w)))))
 checkElab-fallback-RVar-terminalV {ctx} A = _ , _ , _ , _ , refl
 
 checkElab-fallback-RVar-initial :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RResolved (gen "initial")) (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+      checkElab ctx (Raw.RResolved (gen "initial")) (Void Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-initial {ctx} A = _ , _ , _ , refl
 
 checkElab-fallback-RVar-inl :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A B : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RResolved (gen "inl")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RResolved (gen "inl")) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A Once.Spec.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inl {ctx} A B
   with A ≟T A
@@ -542,9 +546,9 @@ checkElab-fallback-RVar-inl {ctx} A B
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 checkElab-fallback-RVar-inr :
-  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A B : Type)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RResolved (gen "inr")) (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RResolved (gen "inr")) (B Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A Once.Spec.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inr {ctx} A B
   with B ≟T B
@@ -558,37 +562,37 @@ checkElab-fallback-RVar-inr {ctx} A B
 -- IR. This helper threads the two sub-equations through the
 -- pattern-matching reduction chain to close completeness.
 checkInGo-J :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Spec.Type.Functor)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → Data.Product.proj₁ (checkInGo ctx arg F (wellFormedF? F) refl)
       ≡ Data.Product.proj₁ (checkInGo ctx arg F mw eq)
 checkInGo-J ctx arg F .(wellFormedF? F) refl = refl
 
 checkInGo-just-success :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Spec.Type.Functor)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.⟦ F ⟧T (Once.Type.μ-type F))}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.⟦ F ⟧T (Once.Spec.Type.μ-type F))}
     {d fr : ℕ}
-  → checkElab ctx arg (Once.Type.⟦ F ⟧T (Once.Type.μ-type F)) ≡ success Ψ argE d fr
+  → checkElab ctx arg (Once.Spec.Type.⟦ F ⟧T (Once.Spec.Type.μ-type F)) ≡ success Ψ argE d fr
   → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
       Data.Product.proj₁ (checkInGo ctx arg F (just wfF) eqW)
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' fr')))
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d' fr')))
 checkInGo-just-success ctx arg F wfF eqW eqArg
-  with checkElabV ctx arg (Once.Type.⟦ F ⟧T (Once.Type.μ-type F)) | eqArg
+  with checkElabV ctx arg (Once.Spec.Type.⟦ F ⟧T (Once.Spec.Type.μ-type F)) | eqArg
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 checkElab-fallback-RApp-In :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) (F : Once.Type.Functor)
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (F : Once.Spec.Type.Functor)
     {wfF : Once.Functor.Translate.WellFormedF F}
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.⟦ F ⟧T (Once.Type.μ-type F))}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.⟦ F ⟧T (Once.Spec.Type.μ-type F))}
     {d fr : ℕ}
   → wellFormedF? F ≡ just wfF
-  → checkElab ctx arg (Once.Type.⟦ F ⟧T (Once.Type.μ-type F)) ≡ success Ψ argE d fr
+  → checkElab ctx arg (Once.Spec.Type.⟦ F ⟧T (Once.Spec.Type.μ-type F)) ≡ success Ψ argE d fr
   → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
-      checkElab ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Type.μ-type F)
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' fr')))
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Spec.Type.μ-type F)
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d' fr')))
 checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
   let (_ , _ , _ , eqGo) = checkInGo-just-success ctx arg F wfF eqWF eqArg
   in _ , _ , _ , trans (checkInGo-J ctx arg F (just wfF) eqWF) eqGo
@@ -616,19 +620,19 @@ via rule (success _ _ _ _ _ , w) refl k = k w
 
 -- `apply` at a pure / effectful closure whose domain is the argument's type.
 apply-pure : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
-               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)) (d fr : ℕ) w
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.pure ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
            → ∃[ eE ] ∃[ d' ] ∃[ f' ]
-               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.pure B A))
-                 ≡ success B (Surface.zeroUsage +ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' f'
+               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.pure B A))
+                 ≡ success B (Surface.zeroUsage +ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
 apply-pure A _ _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
 
 apply-eff : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
-              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A)) (d fr : ℕ) w
+              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
-              proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Type.eff B A))
-                ≡ success (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) (Surface.zeroUsage +ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' f'
+              proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.eff B A))
+                ≡ success (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
 apply-eff A _ _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
@@ -636,13 +640,13 @@ apply-eff A _ _ _ _ _ _ with A ≟T A
 checkElab-fallback-RApp-apply :
   ∀ {ctx : NamedCtx} {τ : Type} (p : RawExpr) (A B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.pure ] B) Once.Spec.Type.* A)}
     {d fr : ℕ}
-  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
+  → inferElab ctx p ≡ success ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.pure ] B) Once.Spec.Type.* A) Ψ eE d fr
   → B <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) τ
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-apply {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
   with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-pure A B Ψ eE d fr)
 ... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p B eqApp sb
@@ -653,14 +657,14 @@ checkElab-fallback-RApp-apply {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
 checkElab-fallback-RApp-apply-effclosure :
   ∀ {ctx : NamedCtx} {τ : Type} (p : RawExpr) (A B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) Once.Spec.Type.* A)}
     {d fr : ℕ}
-  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A) Ψ eE d fr
-  → (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) <: τ
+  → inferElab ctx p ≡ success ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) Once.Spec.Type.* A) Ψ eE d fr
+  → (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p)
                 τ
-        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-apply-effclosure {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
   with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-eff A B Ψ eE d fr)
 ... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p _ eqApp sb
@@ -834,9 +838,9 @@ resolveExpr-var _ _ _ _ _ = refl
 
 -- Resolution commutes with lam.
 resolveExpr-lam :
-  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {q' A B} {π : Once.Type.Purity}
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {q' A B} {π : Once.Spec.Type.Grade.Purity}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (q : Quantity) (prf : (q' Once.Type.≤q q) ≡ true)
+    (q : Quantity) (prf : (q' Once.Spec.Type.Grade.≤q q) ≡ true)
     (b : Surface.Expr (Γ Surface., A) (q' Surface.∷ Ψ) B)
   → resolveExpr polys imps userFns fresh (Surface.lam {π = π} q prf b)
       ≡ Surface.lam {π = π} q prf (resolveExpr polys imps userFns fresh b)
@@ -846,7 +850,7 @@ resolveExpr-lam _ _ _ _ _ _ _ = refl
 resolveExpr-app :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B q}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B))
+    (f : Surface.Expr Γ Ψ₁ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B))
     (a : Surface.Expr Γ Ψ₂ A)
   → resolveExpr polys imps userFns fresh (Surface.app f a)
       ≡ Surface.app (resolveExpr polys imps userFns fresh f) (resolveExpr polys imps userFns fresh a)
@@ -865,7 +869,7 @@ resolveExpr-pair _ _ _ _ _ _ = refl
 resolveExpr-effApp :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)) (a : Surface.Expr Γ Ψ₂ A)
+    (f : Surface.Expr Γ Ψ₁ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B)) (a : Surface.Expr Γ Ψ₂ A)
   → resolveExpr polys imps userFns fresh (Surface.effApp f a)
       ≡ Surface.effApp (resolveExpr polys imps userFns fresh f) (resolveExpr polys imps userFns fresh a)
 resolveExpr-effApp _ _ _ _ _ _ = refl
@@ -874,7 +878,7 @@ resolveExpr-effApp _ _ _ _ _ _ = refl
 resolveExpr-fst' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (p : Surface.Expr Γ Ψ (A Once.Type.* B))
+    (p : Surface.Expr Γ Ψ (A Once.Spec.Type.* B))
   → resolveExpr polys imps userFns fresh (Surface.fst' p)
       ≡ Surface.fst' (resolveExpr polys imps userFns fresh p)
 resolveExpr-fst' _ _ _ _ _ = refl
@@ -883,7 +887,7 @@ resolveExpr-fst' _ _ _ _ _ = refl
 resolveExpr-snd' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (p : Surface.Expr Γ Ψ (A Once.Type.* B))
+    (p : Surface.Expr Γ Ψ (A Once.Spec.Type.* B))
   → resolveExpr polys imps userFns fresh (Surface.snd' p)
       ≡ Surface.snd' (resolveExpr polys imps userFns fresh p)
 resolveExpr-snd' _ _ _ _ _ = refl
@@ -910,7 +914,7 @@ resolveExpr-inr' _ _ _ _ _ = refl
 resolveExpr-case' :
   ∀ {n} {Γ : Surface.Ctx n} {Ψs Ψₗ Ψᵣ : Surface.Usage n} {qℓ qr A B C}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (s : Surface.Expr Γ Ψs (A Once.Type.+ B))
+    (s : Surface.Expr Γ Ψs (A Once.Spec.Type.+ B))
     (l : Surface.Expr (Γ Surface., A) (qℓ Surface.∷ Ψₗ) C)
     (r : Surface.Expr (Γ Surface., B) (qr Surface.∷ Ψᵣ) C)
   → resolveExpr polys imps userFns fresh (Surface.case' s l r)
@@ -929,7 +933,7 @@ resolveExpr-unit _ _ _ _ = refl
 resolveExpr-absurd :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (e : Surface.Expr Γ Ψ Once.Type.Void)
+    (e : Surface.Expr Γ Ψ Once.Spec.Type.Void)
   → resolveExpr {A = A} polys imps userFns fresh (Surface.absurd e)
       ≡ Surface.absurd (resolveExpr polys imps userFns fresh e)
 resolveExpr-absurd _ _ _ _ _ = refl
@@ -1219,10 +1223,10 @@ checkElab-fallback-RApp-generic {ctx} {τ} f x T eqAH eqInf sb
 -- because the equation it would rewrite by mentions the very term being
 -- abstracted.
 inferOutGo-J :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor) (π : Once.Type.Purity)
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Spec.Type.Functor) (π : Once.Spec.Type.Grade.Purity)
     (Ψ : Surface.Usage (NamedCtx.size ctx))
-    (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F π))
-    (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ Once.Type.ν-type F π ⨾ Ψ)
+    (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.ν-type F π))
+    (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ Once.Spec.Type.ν-type F π ⨾ Ψ)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl
     ≡ inferOutGo ctx arg F π Ψ argE d fr w mw eq
@@ -1233,8 +1237,8 @@ inferOutGo-J ctx arg F π Ψ argE d fr w .(wellFormedF? F) refl = refl
 -- the `(wellFormedF? F, refl)` form that `checkElabV`/`checkCata` actually produce
 -- to the `(just wfF, eqW)` form that `checkCataGo-just-success` concludes at.
 cata-go-canonical :
-  ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Once.Type.Functor} {A : Type}
-    {π : Once.Type.Purity} {mw : Maybe (Once.Functor.Translate.WellFormedF F)}
+  ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Once.Spec.Type.Functor} {A : Type}
+    {π : Once.Spec.Type.Grade.Purity} {mw : Maybe (Once.Functor.Translate.WellFormedF F)}
     (p : wellFormedF? F ≡ mw)
   → checkCataGo ctx alg F A π mw p ≡ checkCataGo ctx alg F A π (wellFormedF? F) refl
 cata-go-canonical refl = refl
@@ -1249,18 +1253,18 @@ cata-go-canonical refl = refl
 -- pure; this bridges the decision at any grade, which the eff clause needs
 -- because it `with`s on the go rather than returning it.
 checkCataGo-J :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (π : Once.Type.Purity)
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
+    (π : Once.Spec.Type.Grade.Purity)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkCataGo ctx alg F A π (wellFormedF? F) refl ≡ checkCataGo ctx alg F A π mw eq
 checkCataGo-J ctx alg F A π .(wellFormedF? F) refl = refl
 
 checkCataGoV-pure-J :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
-              (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
-      ≡ checkCataGo ctx alg F A Once.Type.pure mw eq
+              (Once.Spec.Type.μ-type F Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.pure ] A)
+      ≡ checkCataGo ctx alg F A Once.Spec.Type.Grade.pure mw eq
 checkCataGoV-pure-J ctx alg F A .(wellFormedF? F) refl = refl
 
 -- Plan 0.54 (cata-morph-strong), D127-simplified: `checkCataGo` at grade π
@@ -1269,24 +1273,24 @@ checkCataGoV-pure-J ctx alg F A .(wellFormedF? F) refl = refl
 -- `extractMorphWitness` premise are gone: the algebra's own check-derivation IS
 -- the rule's premise now, so there is nothing left to recover.
 checkCataGo-just-success :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type) (π : Once.Spec.Type.Grade.Purity)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {algE : SExpr (NamedCtx.debruijn ctx)
-                  Ψ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)}
+                  Ψ (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)}
     {d fr : ℕ}
     {w : ctx
-           ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+           ⊢ᶜ alg ∶ (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)
            ⨾ Ψ}
   → checkElabV ctx
-              alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+              alg (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)
       ≡ (success Ψ algE d fr , w)
   → checkCataGo ctx alg F A π (just wfF) eqW
-      ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
+      ≡ (success (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
 checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
   with checkElabV ctx
-                  alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) | eqAlgV
+                  alg (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A) | eqAlgV
 ... | (success _ _ _ _ , w) | refl = refl
 
 -- D192: the ANA bridges. `checkAna` has no eff/pure split — it is grade-
@@ -1294,40 +1298,40 @@ checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
 -- there is no morphism witness to recover — so it needs TWO helpers where the
 -- cata needs five: the dispatch bridge at any grade, and the success lemma.
 checkAnaGo-J :
-  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (π₀ π : Once.Type.Purity)
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
+    (π₀ π : Once.Spec.Type.Grade.Purity)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π₀ π mw eq
 checkAnaGo-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGoV-J :
-  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
-    (π₀ π : Once.Type.Purity)
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
+    (π₀ π : Once.Spec.Type.Grade.Purity)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
-              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] Once.Type.ν-type F π)
+              (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π₀ ] Once.Spec.Type.ν-type F π)
       ≡ checkAnaGo ctx coalg F A π₀ π mw eq
 checkAnaGoV-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGo-just-success :
-  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type) (π₀ π : Once.Type.Purity)
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type) (π₀ π : Once.Spec.Type.Grade.Purity)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {coalgE : SExpr (NamedCtx.debruijn ctx)
-                  Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)}
+                  Ψ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A)}
     {d fr : ℕ}
     {w : ctx
-           ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
+           ⊢ᶜ coalg ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A)
            ⨾ Ψ}
   → checkElabV ctx
-              coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
+              coalg (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A)
       ≡ (success Ψ coalgE d fr , w)
   → checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
-      ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.ana wfF coalgE) (suc d) fr
+      ≡ (success (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ) (Surface.ana wfF coalgE) (suc d) fr
           , t-ana-check wfF w)
 checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV
   with checkElabV ctx
-                  coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A) | eqCoalgV
+                  coalg (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
 
 -- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause
@@ -1337,23 +1341,23 @@ checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV
 -- result explicitly (mirrors compose-eff-hlp) so the with-tree case-splits on a
 -- constructor; the failure branch is refuted by `eqStrong`.
 checkCata-eff-strong-hlp :
-  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
     {wfF : Once.Functor.Translate.WellFormedF F} {eqW : wellFormedF? F ≡ just wfF}
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {algE : SExpr (NamedCtx.debruijn ctx)
-                  Ψ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
+                  Ψ (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] A)}
     {d fr : ℕ}
     {w : ctx
-           ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+           ⊢ᶜ alg ∶ (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] A)
            ⨾ Ψ}
     (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
-           (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A))
-  → checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl ≡ r
-  → r ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
+           (Once.Spec.Type.μ-type F Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] A))
+  → checkCataGo ctx alg F A Once.Spec.Type.Grade.eff (wellFormedF? F) refl ≡ r
+  → r ≡ (success (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
-              (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
-      ≡ (success (Once.Type.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
+              (Once.Spec.Type.μ-type F Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] A)
+      ≡ (success (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
           , t-cata-check wfF w)
 checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr , w) eqr eqStrong
   rewrite eqr = eqStrong

@@ -21,7 +21,11 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (refl)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
+open import Once.Spec.Type.Sub
 open import Once.Type.Sub
 open import Once.Functor.Translate
   using ( WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod

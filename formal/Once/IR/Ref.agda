@@ -18,7 +18,8 @@
 module Once.IR.Ref where
 
 open import Once.CanonicalName using (CanonicalName)
-open import Once.Type using (Type; _⇒[_]_; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many)
+open import Once.Spec.Type using (Type; _⇒[_]_)
 open import Once.IR using (IR; Call; curry; snd; terminal; _∘_)
 open import Once.IRTy using (⌊_⌋; Unit)
 

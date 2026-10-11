@@ -34,11 +34,11 @@ open import Function using (case_of_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Type using (Unit)
+open import Once.Spec.Type using (Unit)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-import Once.Type as Type
+import Once.Spec.Type as Type
 import Once.CanonicalName
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf

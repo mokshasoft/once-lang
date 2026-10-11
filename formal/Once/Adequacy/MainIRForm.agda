@@ -32,8 +32,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Compile using (findMain; findMain-here; isEffUU?)
 import Once.IR as IR
 
-open import Once.Type
-  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Zero; One; Many; pure; eff)
+open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many; pure; eff)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.TypeCheck.Raw using (RawExpr)

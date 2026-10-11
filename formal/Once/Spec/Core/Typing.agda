@@ -39,11 +39,9 @@ module Once.Spec.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Type
-  using ( Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_
-        ; μ-type; ν-type; Functor; ⟦_⟧T
-        ; Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind )
-open import Once.Type.Sub using (_<:_; _⊑π_)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
+open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Rigid using (RigidFree)

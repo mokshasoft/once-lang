@@ -32,7 +32,9 @@
 module Once.TypeCheck.Error where
 
 open import Data.String using (String; _++_)
-open import Once.Type using (Type; Quantity; showQuantity; showType)
+open import Once.Spec.Type.Grade using (Quantity)
+open import Once.Spec.Type using (Type)
+open import Once.Type using (showQuantity; showType)
 
 ------------------------------------------------------------------------
 -- Structured error categories

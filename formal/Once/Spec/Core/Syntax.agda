@@ -44,7 +44,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Integer using (ℤ)
 open import Once.Float.Decimal using (Decimal)
 open import Once.CanonicalName using (CanonicalName)
-open import Once.Type using (Type; Unit; Int; Float; _*_; _+_)
+open import Once.Spec.Type using (Type; Unit; Int; Float; _*_; _+_)
 
 ------------------------------------------------------------------------
 -- Literals and primitive operations

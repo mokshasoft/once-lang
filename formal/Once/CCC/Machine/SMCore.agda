@@ -53,8 +53,10 @@ open import Once.CanonicalName using (CanonicalName)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Type using (Type; Unit; Int; Float; _*_; FitsInReg; fits-int; fits-float; fits-in-reg?)
+open import Once.Spec.Type using (Type; Unit; Int; Float; _*_)
+open import Once.Type using (FitsInReg; fits-int; fits-float; fits-in-reg?)
 import Once.Type as Ty
+import Once.Spec.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
 open SigOpInfo using (name; baseA)

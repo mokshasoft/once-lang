@@ -37,7 +37,7 @@ Once/Arith/Backend/X86-64/RunTrace.agda 1
 Once/Arith/Backend/X86-64/StatePreserve.agda 1
 Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
 Once/CCC/Codegen/IRObsCorrect/Machine.agda 2
-Once/CCC/Codegen/IRObsCorrect/Prelude.agda 27
+Once/CCC/Codegen/IRObsCorrect/Prelude.agda 28
 Once/CCC/Codegen/IRObsCorrectFlat.agda 14
 Once/CCC/Codegen/ThunkScope.agda 1
 Once/CCC/Machine/Allocation.agda 1
@@ -60,7 +60,6 @@ Once/Spec/Meaning.agda 9
 Once/Spec/Metatheory.agda 1
 Once/Spec/Parsing.agda 1
 Once/Spec/Syntax.agda 1
-Once/Spec/Type.agda 2
 Once/Spec/Typing.agda 1
 Once/Spike/RelSpike.agda 1
 Once/Surface/Syntax.agda 1

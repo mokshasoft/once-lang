@@ -21,6 +21,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 
 -- Plan 0.113 B2: HALTING and EMITTING are properties UP TO ISOMORPHISM — a codomain

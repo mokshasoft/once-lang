@@ -29,7 +29,9 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.Type as Ty using (Type; Zero; One; Many; mk-kind; _⇒[_]_; _*_; _+_; Unit)
+open import Once.Spec.Type.Grade as Ty using (Zero; One; Many; mk-kind)
+open import Once.Spec.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
+open import Once.Spec.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)

@@ -33,8 +33,9 @@ open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (_++_)
 
-open import Once.Type
-  using (Type; Unit; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Zero; One; Many; extractGround)
+open import Once.Spec.Type.Grade using (Purity; mk-kind; Zero; One; Many)
+open import Once.Spec.Type using (Type; Unit; _⇒[_]_; μ-type; Functor; ⟦_⟧T)
+open import Once.Spec.Type.Poly using (extractGround)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Data.Maybe using (just)
@@ -60,7 +61,7 @@ open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semP; int-prim)
-open import Once.Type.Sub using (sub-arr)
+open import Once.Spec.Type.Sub using (sub-arr)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.SigOp.Info using (SigOpInfo; FFIAnswers; module SigOpInfo)
 open SigOpInfo using (conB)
@@ -115,9 +116,9 @@ cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
 -- other side of `⌈_⌉`).
 out-sem : ∀ {F : Functor} {π : Purity} → WellFormedF F
-        → ⟦ Once.Type.ν-type F π ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Type.ν-type F π) ⟧ᴰ
+        → ⟦ Once.Spec.Type.ν-type F π ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Spec.Type.ν-type F π) ⟧ᴰ
 out-sem {F} {π} wf v =
-  fmapT (λ layer → coerce-functor⁻¹-D wf (Once.Type.ν-type F π)
+  fmapT (λ layer → coerce-functor⁻¹-D wf (Once.Spec.Type.ν-type F π)
                      (coerce-ν-out wf _ layer))
         (forceᵈ v)
 
@@ -158,12 +159,12 @@ sigOpRefᴰ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcr
 sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
 -- D143: at an ERASED arrow the symbol never receives its argument, so the
 -- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Type.pure} bDom bCod) =
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Type.Grade.pure} bDom bCod) =
   returnT (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
 -- plan 0.113 A3: only a PURE erased arrow is a value; an effectful one is a call
 -- with the erased slot `tt` (as `Elaborate` and `SourceDenote`).
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Type.eff} bDom bCod) =
-  returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Type.eff) cn base-Unit bCod) tt))
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Type.Grade.eff} bDom bCod) =
+  returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff) cn base-Unit bCod) tt))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
   returnT (λ arg → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =
@@ -178,7 +179,7 @@ fmapᵖ f x = f x
 svarᵛRun : ∀ {n} {Γ : Ctx n} {Ψ A} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ → ⟦ A ⟧ᵛ
 svarᵛRun {Γ = Γ} (svar i) dγ = lookupᵛUsed Γ i dγ
 
-DefFamily : Once.Type.PolyType → Set
+DefFamily : Once.Spec.Type.Poly.PolyType → Set
 DefFamily s = (U : Type) → KindedInstance s U → ⟦ U ⟧ᵛ
 
 DefMeanings : PolyCtx → Set
@@ -428,13 +429,13 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
   subst (λ Z → ⟦ Z ⟧ᵛ) ceq
     ((⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx}
                     (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)
-       >>=ᵖ out-semᵛ Once.Type.pure wfF)
+       >>=ᵖ out-semᵛ Once.Spec.Type.Grade.pure wfF)
 -- D233: forcing an EFFECTFUL stream at the surface — the stream is evaluated
 -- now, the force runs when the suspension is applied (as `t-apply-eff-app-infer`).
 ⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) fmt ρ dγ =
   (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx}
                   (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ v →
-  returnᵖ (λ _ → subst (λ Z → T ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Type.eff wfF v))
+  returnᵖ (λ _ → subst (λ Z → T ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Spec.Type.Grade.eff wfF v))
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ _ → returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ fa → proj₁ fa (proj₂ fa)
 -- D222 / plan 0.95 A′: the EFF closure's elimination is a SUSPENSION — but only

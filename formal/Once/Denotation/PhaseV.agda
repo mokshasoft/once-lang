@@ -13,7 +13,7 @@ open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Type using (Quantity; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
 -- Imported from `Surface.Context` (the DEFINING module) rather than through
 -- `Surface.Syntax`'s re-export: `_↾_` is recursive, and a recursive function
 -- reached through a re-export does not always reduce at the use site.

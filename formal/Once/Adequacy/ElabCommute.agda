@@ -13,6 +13,7 @@
 -- (`CoreInst.c-*`), and a reference's is the view's naturality.
 ------------------------------------------------------------------------
 
+import Once.Spec.Type.Sub
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; KCtx; GSub; Respects)
 import Once.Spec.Core.Abstract as Abs
@@ -35,9 +36,10 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
+import Once.Spec.Type as T
 import Once.Type as T
-open T using (mk-kind; Many; pure; eff; μ-type; ν-type)
-open import Once.Type.Sub using ()
+open import Once.Spec.Type.Grade using (mk-kind; Many; pure; eff)
+open import Once.Spec.Type using (μ-type; ν-type)
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
@@ -132,7 +134,7 @@ private
   closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
   closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
 
-  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Type.Sub.<: B}
+  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Spec.Type.Sub.<: B}
               {d₁ : Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ ] t₂ ∷ A ! π}
           → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢coerce p₁ d₁ ≅ GT.⊢coerce p₂ d₂
   ≅coerce {p₁ = p₁} {p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl
@@ -447,7 +449,7 @@ mutual
       TE = trans (⇝ᶜ-tm q _) (tm-c dc)
   dr-c (t-sub d p)           = ≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) refl (tm-i d) (dr-i d)
   dr-c (t-lam {π = π} le d)  =
-    ≅lam refl (tm-c d) (≅1 _ _ (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π)) refl (tm-c d) (dr-c d))
+    ≅lam refl (tm-c d) (≅1 _ _ (GT.⊢sub-eff (Once.Spec.Type.Sub.pure⊑ π)) refl (tm-c d) (dr-c d))
   dr-c (t-pair-lit-check a b) = ≅2 _ _ GT.⊢pair refl (tm-c a) (dr-c a) refl (tm-c b) (dr-c b)
   dr-c (t-In-app-check {F = F} wf d) =
     ≅app (sym (ρ̂-⟦⟧ F (μ-type F))) refl refl (H.sym (c-in wf))
@@ -466,7 +468,7 @@ mutual
     ≅coerce (cong (G.ref (entry lp)) (nat-inst lp ng ki))
             (refE-dr (entry lp) (inst lp ng (ρ̂-ki {sc} ki)) (inst lp ng ki) (nat-inst lp ng ki))
   dr-d (d-lam {π = π} le d) =
-    ≅lam refl (tm-i d) (≅1 _ _ (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π)) refl (tm-i d) (dr-i d))
+    ≅lam refl (tm-i d) (≅1 _ _ (GT.⊢sub-eff (Once.Spec.Type.Sub.pure⊑ π)) refl (tm-i d) (dr-i d))
   dr-d (d-compose dg df)   =
     H.trans (≅2 _ _ DT.⊢composeᶜ refl (tm-d df) (dr-d df) refl (tm-d dg) (dr-d dg)) (H.sym (c-compose (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg))))
   dr-d d-id                = H.refl

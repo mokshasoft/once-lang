@@ -17,7 +17,7 @@ open import Data.Product using (_,_; proj₁)
 import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Type using (Ground)
+open import Once.Spec.Type.Poly using (Ground)
 open import Once.Type.Rigid using (KindedInstance)
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects)
 open import Once.TypeCheck.Classify using (Imports; PolyCtx; lookupPolyPrefix)

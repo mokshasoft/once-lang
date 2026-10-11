@@ -4,7 +4,7 @@
 -- Translation from syntactic Functor (with Type) to semantic SFunctor (with Set).
 --
 -- This module provides the bridge between:
---   - Once.Type.Functor (K takes Type)
+--   - Once.Spec.Type.Functor (K takes Type)
 --   - Once.Semantics.Functor.SFunctor (K takes Set)
 --
 -- The translation uses a base type interpretation that handles only
@@ -21,6 +21,9 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Semantics.Functor
 

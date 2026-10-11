@@ -30,7 +30,8 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Quantity; Zero; One; Many; _≤q_)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_)
+open import Once.Spec.Type using (Type)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
 open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Elaborate
@@ -247,7 +248,7 @@ typeToGType-injective {t₁} {t₂} {g} eq₁ eq₂ =
 -- QTT quantity algebra: commutativity, associativity, identity
 ------------------------------------------------------------------------
 
-open Once.Type using (_+q_; _*q_; _⊔q_)
+open import Once.Spec.Type.Grade using (_+q_; _*q_; _⊔q_)
 
 -- Quantity addition is commutative.
 +q-comm : ∀ (q₁ q₂ : Quantity) → q₁ +q q₂ ≡ q₂ +q q₁

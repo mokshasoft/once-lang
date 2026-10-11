@@ -28,7 +28,8 @@ open import Data.Unit using (⊤)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (PolyType; Type)
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Type.Poly using (PolyType)
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.TypeCheck.Raw using (RawExpr)
 

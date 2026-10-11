@@ -18,6 +18,9 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Match

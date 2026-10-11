@@ -35,7 +35,7 @@ open import Data.Maybe using (Maybe; maybe′)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Data.String using (String)
 
-open import Once.Type using (Type; Int; Float)
+open import Once.Spec.Type using (Type; Int; Float)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent)

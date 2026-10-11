@@ -36,9 +36,8 @@ open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Data.String.Properties as StrProp using ()
-open import Once.Type as T using (Type; Unit; Int; Void; Float;
-                                  _*_; _+_; _⇒[_]_; Quantity; _≤q_;
-                                  Zero; One; Many)
+open import Once.Spec.Type.Grade as T using (Quantity; _≤q_; Zero; One; Many)
+open import Once.Spec.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord; genWord?; genWord?-no)

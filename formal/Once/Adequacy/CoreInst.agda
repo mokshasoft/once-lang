@@ -26,8 +26,11 @@ import Data.Nat
 open import Relation.Binary.PropositionalEquality using (cong₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
+import Once.Spec.Type.Grade as T
+import Once.Spec.Type as T
 import Once.Type as T
-open T using (Type; mk-kind; Many; pure; μ-type; ν-type; ⟦_⟧T)
+open import Once.Spec.Type.Grade using (mk-kind; Many; pure)
+open import Once.Spec.Type using (Type; μ-type; ν-type; ⟦_⟧T)
 import Once.Surface.Context as C
 open import Once.Spec.Core.PolyTy using (_⟪_⟫; _!!_; ⟨⟩-⟪⟫; ⌈⌉-⟪⟫; ⟦⟧F-⟪⟫; module Schema)
 open Schema using (type)
@@ -40,7 +43,7 @@ import Once.Spec.Core.PolyTyping S as PT
 import Once.Spec.Core.Rename S as RN
 import Once.Surface.Thinning as TH
 import Once.Spec.Core.DerivedTyping S as DT
-import Once.Type.Sub
+import Once.Spec.Type.Sub
 open import Once.Functor.Translate using (WellFormedF)
 open PT using (_⟪_⟫ᶜ; _⟪_⟫ₜ)
 open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; primDom-abs; primCod-abs; absCtx-lookup)
@@ -532,8 +535,8 @@ module WithSG (sg : SigGround) where
              → ρ̂ᶜ (DT.⊢effAppᶜ a b) ≅ DT.⊢effAppᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
     c-effApp {f = f} {x} a b =
       ≅lam refl (cong₂ G.app (ρ̂ₜ-ren suc f) (ρ̂ₜ-ren suc x))
-        (≅2 _ _ GT.⊢app refl (ρ̂ₜ-ren suc f) (≅1 _ _ (GT.⊢sub-eff Once.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc f) (wk≅ T.Unit a))
-                        refl (ρ̂ₜ-ren suc x) (≅1 _ _ (GT.⊢sub-eff Once.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc x) (wk≅ T.Unit b)))
+        (≅2 _ _ GT.⊢app refl (ρ̂ₜ-ren suc f) (≅1 _ _ (GT.⊢sub-eff Once.Spec.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc f) (wk≅ T.Unit a))
+                        refl (ρ̂ₜ-ren suc x) (≅1 _ _ (GT.⊢sub-eff Once.Spec.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc x) (wk≅ T.Unit b)))
 
   -- The functor combinators: the substituted combinator sits at `⟦ ρ̂F F ⟧T`,
   -- the image of the original at `ρ̂ (⟦ F ⟧T _)`; one J on that equation.
@@ -580,9 +583,9 @@ module WithSG (sg : SigGround) where
       ana-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ c π π₀} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
                   (Y : Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many π ] X ! pure)
               → GT.⊢unfold w (subst (λ Z → (Δ₀ C., R) ⊢[ T.Zero C.∷ Ψ ] G.wk c ∷ R T.⇒[ mk-kind Many π ] Z ! π₀) e
-                                     (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π₀) (DT.wk-⊢′ R Y)))
+                                     (GT.⊢sub-eff (Once.Spec.Type.Sub.pure⊑ π₀) (DT.wk-⊢′ R Y)))
                              (DT.⊢var′ zero π₀)
-                ≅ GT.⊢unfold w (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π₀)
+                ≅ GT.⊢unfold w (GT.⊢sub-eff (Once.Spec.Type.Sub.pure⊑ π₀)
                                   (DT.wk-⊢′ R (subst (λ Z → Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many π ] Z ! pure) e Y)))
                                (DT.⊢var′ zero π₀)
       ana-gen w refl Y = H.refl
@@ -606,7 +609,7 @@ module WithSG (sg : SigGround) where
         (H.trans (ρ̂ᶜ-sUf (T.One C.∷_) (+ᵘ-identityʳ (Many C.*ᵘ Ψ)))
           (H.trans (≅2 _ _ (GT.⊢unfold (ρ̂-wf wf)) refl (ρ̂ₜ-ren suc c)
                        (H.trans (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many π ] Z) (ρ̂-⟦⟧ F A))
-                         (H.trans (≅1 _ _ (GT.⊢sub-eff (Once.Type.Sub.pure⊑ π₀)) refl (ρ̂ₜ-ren suc c) (wk≅ A dc))
+                         (H.trans (≅1 _ _ (GT.⊢sub-eff (Once.Spec.Type.Sub.pure⊑ π₀)) refl (ρ̂ₜ-ren suc c) (wk≅ A dc))
                                   (H.sym (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many π ] Z) (ρ̂-⟦⟧ F A)))))
                        refl refl H.refl)
             (H.trans (ana-gen (ρ̂-wf wf) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))

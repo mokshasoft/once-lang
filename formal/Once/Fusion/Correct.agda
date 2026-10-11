@@ -22,6 +22,9 @@
 
 module Once.Fusion.Correct where
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IR
 -- plan 0.98: RED, and the red is the work-list. This module is stated over

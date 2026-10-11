@@ -22,14 +22,14 @@
 -- This aligns with Once's CCC foundation. Initial algebras of polynomial
 -- functors always exist in Set.
 --
--- OCP-0003 Phase 6: This module now uses Once.Type.Functor instead of
+-- OCP-0003 Phase 6: This module now uses Once.Spec.Type.Functor instead of
 -- defining its own, enabling the semantic coherence layer.
 --
 ------------------------------------------------------------------------
 
 module Once.SPF where
 
-open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Type; Functor; K; Id; _⊕_; _⊗_)
 open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧F)
 -- OCP-0003 Phase 6: Import base functor for coherence
 open import Once.Semantics.Functor as Base using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; νS; sfmap)
@@ -455,11 +455,11 @@ unfold-fold F ⟨ x ⟩ = refl
 
 -- | Unit functor (terminal coalgebra carrier)
 UnitF : Functor
-UnitF = K Once.Type.Unit
+UnitF = K Once.Spec.Type.Unit
 
 -- | Natural numbers: Nat = Fix (Unit + X) = μ (K Unit ⊕ Id)
 NatF : Functor
-NatF = K Once.Type.Unit ⊕ Id
+NatF = K Once.Spec.Type.Unit ⊕ Id
 
 Nat : Set
 Nat = μ NatF
@@ -473,11 +473,11 @@ sucNat n = ⟨ inj₂ n ⟩
 -- | Maybe A = Fix (Unit + A) = μ (K Unit ⊕ K A)
 -- Note: Maybe is NOT recursive, but can still be expressed
 MaybeF : Type → Functor
-MaybeF A = K Once.Type.Unit ⊕ K A
+MaybeF A = K Once.Spec.Type.Unit ⊕ K A
 
 -- | List A = Fix (Unit + A * X) = μ (K Unit ⊕ K A ⊗ Id)
 ListF : Type → Functor
-ListF A = K Once.Type.Unit ⊕ (K A ⊗ Id)
+ListF A = K Once.Spec.Type.Unit ⊕ (K A ⊗ Id)
 
 List : Type → Set
 List A = μ (ListF A)

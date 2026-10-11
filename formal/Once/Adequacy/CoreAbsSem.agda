@@ -31,8 +31,9 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
+import Once.Spec.Type.Grade as T
+import Once.Spec.Type as T
 import Once.Type as T
-open import Once.Type.Sub using ()
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
 open import Once.Target.Arch using (TargetNum)

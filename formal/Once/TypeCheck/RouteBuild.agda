@@ -23,8 +23,9 @@ open import Data.List.Relation.Unary.All using (_∷_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
-open import Once.Type as T using (Type; _+_; _⇒[_]_)
-open import Once.Type.Sub using (_<:_; _⊑π_)
+open import Once.Spec.Type as T using (Type; _+_; _⇒[_]_)
+import Once.Spec.Type.Grade as T
+open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.TypeCheck.Raw as Raw using (BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; classifyAppHead)
 open import Once.TypeCheck.Judgment

@@ -56,6 +56,9 @@ open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Function using (_∘_)
 
+open import Once.Spec.Type.Grade
+open import Once.Spec.Type
+open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Res using (Res; stopped; returns; mapRes)
 
