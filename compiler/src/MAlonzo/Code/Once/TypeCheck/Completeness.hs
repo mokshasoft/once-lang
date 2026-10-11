@@ -36,6 +36,7 @@ import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
@@ -44,7 +45,6 @@ import qualified MAlonzo.Code.Once.Type.Instance
 import qualified MAlonzo.Code.Once.Type.Match
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Completeness.Rules
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
@@ -270,9 +270,9 @@ du_at'45'π_406 v0 v1 v2 v3 v4 v5 v6 v7
                                                                         (coe v7) (coe v6)))
                                                                   (coe
                                                                      MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
-                                                                     (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+                                                                     (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
                                                                         (coe v2))
-                                                                     (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+                                                                     (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
                                                                         (coe
                                                                            MAlonzo.Code.Once.Type.d_substPoly_562
                                                                            (coe v7) (coe v6)))
@@ -321,9 +321,9 @@ du_at'45'π_406 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                           (coe v6)))
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
-                                                                                       (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+                                                                                       (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
                                                                                           (coe v2))
-                                                                                       (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+                                                                                       (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
                                                                                           (coe
                                                                                              MAlonzo.Code.Once.Type.d_substPoly_562
                                                                                              (coe
@@ -749,7 +749,7 @@ du_given'45'infer'45'complete_1356 v0 v1 v2 v3 v4 v5
                                                                        (coe
                                                                           MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
                                                                           v17
-                                                                          (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+                                                                          (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
                                                                              (coe v2))
                                                                           v20)
                                                                        v10)
@@ -2024,7 +2024,8 @@ du_iFromInfer_2432 ::
 du_iFromInfer_2432 v0 v1 v2 v3
   = coe
       du_iFromInferSub_2358 v0 v1 v2 v2 v3
-      (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2))
+      (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+         (coe v2))
 -- Once.TypeCheck.Completeness.infer-complete
 d_infer'45'complete_2448 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 ->

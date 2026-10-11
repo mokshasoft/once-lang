@@ -37,6 +37,7 @@ import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
@@ -46,7 +47,6 @@ import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
@@ -4145,7 +4145,8 @@ d_'10214'_'10215''7496'_376 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                    (coe v4))
                 (coe
                    MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50 v19
-                   (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v4))
+                   (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                      (coe v4))
                    v20))
              (coe
                 d_'10214'_'10215''7522'_362 v0 v1
@@ -4177,8 +4178,10 @@ d_'10214'_'10215''7496'_376 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                           (coe v4))
                        (coe
                           MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
-                          (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2))
-                          (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v4))
+                          (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                             (coe v2))
+                          (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                             (coe v4))
                           v28))
                     (coe
                        MAlonzo.Code.Once.Denotation.DefEnv.du_defAt_64

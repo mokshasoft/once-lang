@@ -24,13 +24,13 @@ import qualified MAlonzo.Code.Agda.Primitive
 import qualified MAlonzo.Code.Data.Empty
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
+import qualified MAlonzo.Code.Once.Metatheory.ModeAgreement
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
-import qualified MAlonzo.Code.Once.TypeCheck.ModeAgreement
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
 -- Once.TypeCheck.ModeSub.just≢nothing
@@ -98,7 +98,8 @@ du_'8801''45'sub_66 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
 du_'8801''45'sub_66 v0
-  = coe MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v0)
+  = coe
+      MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86 (coe v0)
 -- Once.TypeCheck.ModeSub.sub-along
 d_sub'45'along_76 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -131,7 +132,9 @@ du_apply'45'sub_90 ::
 du_apply'45'sub_90 v0 v1
   = coe
       seq (coe v1)
-      (coe MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v0))
+      (coe
+         MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+         (coe v0))
 -- Once.TypeCheck.ModeSub.di-cod
 d_di'45'cod_108 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -247,7 +250,7 @@ du_ic'45'sub_178 v0 v1 v2 v3 v4 v5
         -> coe
              du_sub'45'along_76
              (coe
-                MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'ii_444
+                MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'ii_444
                 (coe v0) (coe v1) (coe v2) (coe v8) (coe v4) (coe v11))
              (coe v12)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'pair'45'lit'45'check_664 v11 v12 v13 v14
@@ -281,7 +284,7 @@ du_ic'45'sub_178 v0 v1 v2 v3 v4 v5
                       -> coe
                            du_apply'45'sub_90 (coe v2)
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'ii_444
+                              MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'ii_444
                               (coe v0) (coe v13)
                               (coe
                                  MAlonzo.Code.Once.Type.C__'42'__124
@@ -358,7 +361,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v31) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'poly_776 v15 v16 v17
@@ -374,7 +377,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          -> coe
                               du_di'45'cod_108
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                 MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                  (coe v0) (coe v1) (coe v3) (coe v33) (coe v6) (coe v7)
                                  (coe
                                     MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'poly_776 v15 v16 v17
@@ -400,7 +403,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v22) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'lam_794 v15 v19)
                                (coe v25))
@@ -414,7 +417,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          -> coe
                               du_di'45'cod_108
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                 MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                  (coe v0) (coe v1) (coe v3) (coe v25) (coe v6) (coe v7)
                                  (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'lam_794 v15 v19)
                                  (coe v28))
@@ -435,7 +438,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v23) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'compose_814 v14 v17
@@ -452,7 +455,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_108
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                         MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                          (coe v0) (coe v1) (coe v3) (coe v26) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'compose_814
@@ -472,7 +475,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    -> coe
                                         du_di'45'cod_108
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                           MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                            (coe v0) (coe v26) (coe v3)
                                            (coe
                                               MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128
@@ -487,7 +490,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    -> coe
                                         du_di'45'cod_108
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                           MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                            (coe v0) (coe v1) (coe v3) (coe v29) (coe v6) (coe v7)
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'compose_814
@@ -501,12 +504,12 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v9 of
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'check_428
                -> coe
-                    MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2)
+                    MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86 (coe v2)
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v15 v18 v19
                -> coe
                     du_di'45'cod_108
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                       MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                        (coe v0) (coe v1) (coe v3) (coe v15) (coe v6) (coe v7)
                        (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'id_822) (coe v18))
                     (coe v19)
@@ -518,7 +521,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v16) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'fst_832)
                                (coe v19))
@@ -530,12 +533,12 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                   -> case coe v9 of
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'fst'45'check_438
                          -> coe
-                              MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v3)
+                              MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86 (coe v3)
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v19 v22 v23
                          -> coe
                               du_di'45'cod_108
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                 MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                  (coe v0) (coe v1) (coe v3) (coe v19) (coe v6) (coe v7)
                                  (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'fst_832)
                                  (coe v22))
@@ -549,7 +552,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v16) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'snd_842)
                                (coe v19))
@@ -561,12 +564,12 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                   -> case coe v9 of
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'snd'45'check_448
                          -> coe
-                              MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v3)
+                              MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86 (coe v3)
                        MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v19 v22 v23
                          -> coe
                               du_di'45'cod_108
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                 MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                  (coe v0) (coe v1) (coe v3) (coe v19) (coe v6) (coe v7)
                                  (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'snd_842)
                                  (coe v22))
@@ -577,13 +580,13 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v9 of
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'morph'45'check_456
                -> coe
-                    MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+                    MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
                     (coe MAlonzo.Code.Once.Type.C_Unit_120)
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628 v15 v18 v19
                -> coe
                     du_di'45'cod_108
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                       MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                        (coe v0) (coe v1) (coe v3) (coe v15) (coe v6) (coe v7)
                        (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'terminal_850)
                        (coe v18))
@@ -597,7 +600,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                -> coe
                     du_di'45'cod_108
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                       MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                        (coe v0) (coe v1) (coe v3) (coe v14) (coe v6) (coe v7)
                        (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'initial_856)
                        (coe v17))
@@ -610,7 +613,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v23) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'case_876 v17 v18 v19
@@ -627,7 +630,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_108
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                         MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                          (coe v0) (coe v1) (coe v3) (coe v26) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'case_876 v17
@@ -644,7 +647,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                            -> coe
                                                 du_di'45'cod_108
                                                 (coe
-                                                   MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                                   MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                                    (coe v0) (coe v1) (coe v3) (coe v29) (coe v6)
                                                    (coe v7)
                                                    (coe
@@ -666,7 +669,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                              -> coe
                                                   du_di'45'cod_108
                                                   (coe
-                                                     MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                                     MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                                      (coe v0) (coe v1) (coe v3) (coe v32) (coe v6)
                                                      (coe v7)
                                                      (coe
@@ -685,7 +688,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v23) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'pair_896 v17 v18 v19
@@ -702,7 +705,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_108
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                         MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                          (coe v0) (coe v1) (coe v3) (coe v26) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'pair_896 v17
@@ -719,7 +722,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                            -> coe
                                                 du_di'45'cod_108
                                                 (coe
-                                                   MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                                   MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                                    (coe v0) (coe v1) (coe v3) (coe v29) (coe v6)
                                                    (coe v7)
                                                    (coe
@@ -750,7 +753,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                              -> coe
                                                   du_di'45'cod_108
                                                   (coe
-                                                     MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                                     MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                                      (coe v0) (coe v1) (coe v3) (coe v32) (coe v6)
                                                      (coe v7)
                                                      (coe
@@ -769,7 +772,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_108
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                               MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                (coe v0) (coe v1) (coe v3) (coe v20) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v15 v16 v17)
@@ -785,7 +788,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_108
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                         MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                          (coe v0) (coe v1) (coe v3) (coe v23) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v15
@@ -825,7 +828,7 @@ d_dc'45'sub_196 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    -> coe
                                         du_di'45'cod_108
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.ModeAgreement.du_agree'45'di_510
+                                           MAlonzo.Code.Once.Metatheory.ModeAgreement.du_agree'45'di_510
                                            (coe v0) (coe v1) (coe v3) (coe v25) (coe v6) (coe v7)
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910

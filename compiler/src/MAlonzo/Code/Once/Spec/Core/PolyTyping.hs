@@ -24,6 +24,7 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Core.Typing
@@ -31,7 +32,6 @@ import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 
 -- Once.Spec.Core.PolyTyping.G.Lit
 d_Lit_18 a0 a1 a2 = ()
@@ -340,7 +340,8 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_var_24 v7
                          -> coe
-                              MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2 v5)
+                              MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                              (coe v2 v5)
                        _ -> coe v4
                 C_sub'45'void_612
                   -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28

@@ -62,11 +62,11 @@ import Data.String.Properties
 open import Once.Surface.Syntax as Srf using ()
 open import Once.Type using (Functor; ⟦_⟧T)
 open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)
-open import Once.Type.SubLaws using (<:-refl)
+open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-open import Once.TypeCheck.ModeAgreement using (mode-agree-ic; mode-agree-dc)
+open import Once.Metatheory.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success)
 
 

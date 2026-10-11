@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Type.SubLaws where
+module MAlonzo.Code.Once.Metatheory.SubLaws where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Sub
 
--- Once.Type.SubLaws.⊑π-unique
+-- Once.Metatheory.SubLaws.⊑π-unique
 d_'8849'π'45'unique_14 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
@@ -29,7 +29,7 @@ d_'8849'π'45'unique_14 ::
   MAlonzo.Code.Once.Type.Sub.T__'8849'π__6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8849'π'45'unique_14 = erased
--- Once.Type.SubLaws.⊑π-refl
+-- Once.Metatheory.SubLaws.⊑π-refl
 d_'8849'π'45'refl_18 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Type.Sub.T__'8849'π__6
@@ -40,7 +40,7 @@ d_'8849'π'45'refl_18 v0
       MAlonzo.Code.Once.Type.C_eff_36
         -> coe MAlonzo.Code.Once.Type.Sub.C_'8849''45'eff_10
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Type.SubLaws.⊑π-trans
+-- Once.Metatheory.SubLaws.⊑π-trans
 d_'8849'π'45'trans_26 ::
   MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Type.T_Purity_32 ->
@@ -62,7 +62,7 @@ du_'8849'π'45'trans_26 v0 v1
       MAlonzo.Code.Once.Type.Sub.C_'8849''45'pe_12
         -> coe seq (coe v1) (coe v0)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Type.SubLaws.<:-unique
+-- Once.Metatheory.SubLaws.<:-unique
 d_'60''58''45'unique_38 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -70,7 +70,7 @@ d_'60''58''45'unique_38 ::
   MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'60''58''45'unique_38 = erased
--- Once.Type.SubLaws.<:-refl
+-- Once.Metatheory.SubLaws.<:-refl
 d_'60''58''45'refl_86 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
@@ -109,7 +109,7 @@ d_'60''58''45'refl_86 v0
       MAlonzo.Code.Once.Type.C_rigid_138 v1 v2
         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'rigid_88
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Type.SubLaws.<:-trans
+-- Once.Metatheory.SubLaws.<:-trans
 d_'60''58''45'trans_116 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->

@@ -69,7 +69,7 @@ open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)
 open import Once.Float.Decimal using (decimalOf)
 import Once.Float.Decimal as Decimal
 open import Once.Type.Sub using (_<:_; _<:?_; _⊑π_; _⊑π?_; sub-arr)
-open import Once.Type.SubLaws using (<:-refl)
+open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)

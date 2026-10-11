@@ -28,7 +28,7 @@ open import Once.Type.Sub using (_<:_; _⊑π_)
 open import Once.TypeCheck.Raw as Raw using (BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; classifyAppHead)
 open import Once.TypeCheck.Judgment
-open import Once.TypeCheck.ModeAgreement
+open import Once.Metatheory.ModeAgreement
 open import Once.TypeCheck.Route
 import Once.Surface.Context as Surface
 

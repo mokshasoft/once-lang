@@ -68,7 +68,7 @@ open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Type using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Type.Sub
-open import Once.Type.SubLaws
+open import Once.Metatheory.SubLaws
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;

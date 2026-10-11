@@ -2,11 +2,12 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Type.SubLaws — the lemmas about `Once.Type.Sub`, moved out so that module
--- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
+-- Once.Metatheory.SubLaws — the lemmas about `Once.Type.Sub`, moved out so that module
+-- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free). The
+-- order laws are promised as `TypeSystem` in `Once.Spec.Metatheory` (D305).
 ------------------------------------------------------------------------
 
-module Once.Type.SubLaws where
+module Once.Metatheory.SubLaws where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)

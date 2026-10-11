@@ -18174,3 +18174,15 @@ D303 put the type-substitution lemma into `CertifiedBuild.language`, with its st
 ### Consequences
 - A reviewer reading `Once.Spec` now sees what the language promises about itself.
 - The metatheory rests on `Once.Postulates.extensionality` (through `CoreSubstSem`), like the rest of the semantics.
+
+## D305 — THE TYPE SYSTEM'S LAWS JOIN THE SPEC'S METATHEORY (2026-10-11)
+
+**Relates**: D304 (metatheory statements in the Spec, proofs Spec-side only), D226 (one subtyping judgment), plan 0.94 C3 (mode agreement), D300 / plan 0.114 (the Spec's import closure reaches the compiler)
+
+### Decision
+1. `Once.Spec.Metatheory.Metatheory` is a record: `term-model` (D303/D304) and `type-system : TypeSystem`. `TypeSystem` promises: `<:` and `⊑π` are reflexive, transitive, with unique derivations (a coercion has one meaning); and a term's usage does not depend on the mode that typed it — synthesis unique (`synth-unique`), checking at one type gives one usage, checking agrees with synthesis, the domain-given mode agrees with checking and with synthesis, and is exact. `Once.Spec` re-exports `TypeSystem`.
+2. The proofs move: `Type.SubLaws` → `Metatheory.SubLaws`, `TypeCheck.ModeAgreement` → `Metatheory.ModeAgreement` (both extracted, so the MAlonzo modules are renamed). `Once.Metatheory` (new) assembles `metatheory : Metatheory`; `CertifiedBuild.language = metatheory`.
+3. `metatheory-gate` allows, beyond its prefixes, every module of the PUBLIC Spec closure (generated: `TypeCheck.Judgment`, `TypeCheck.Raw`, …) and two named exceptions that the Spec itself depends on: `TypeCheck.Classify` (the judgment's premises, MERGE.md §1, plan 0.80/D134) and `CanonicalName` (the Spec's name type). Not "everything `Once.Spec` imports": measured 2026-10-11, that closure is 176 modules and reaches `Once.Compile`, 14 CCC, 17 Arith and 29 Parser modules (D300, plan 0.114) — it would make the gate vacuous. The gate refuses to run if `spec-closure.py` yields an implausibly small closure.
+
+### Consequences
+- Not here, deliberately: coherence of the bidirectional judgment (`Adequacy.Coherence`) and the meaning domain's laws (`TraceMonadLaws`, `GradedDomainLaws`, `BehaviorLaws`) — metatheory by content, but their proofs import IR, Arith, `Semantics.Machine`, `Parser.Module.Resolve`; they join when plan 0.114 makes the meaning stand alone. The grade semiring laws are plan 0.112's (one structure, not twenty lemmas).

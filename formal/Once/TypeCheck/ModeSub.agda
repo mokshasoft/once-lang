@@ -27,12 +27,12 @@ open import Data.Product using (Σ; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 open import Once.Type as T using (Type; _*_; _⇒[_]_)
 open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
-open import Once.Type.SubLaws using (<:-refl)
+open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx)
 import Once.TypeCheck.Classify
 open import Once.TypeCheck.Judgment
-open import Once.TypeCheck.ModeAgreement
+open import Once.Metatheory.ModeAgreement
 import Once.Surface.Context as Surface
 
 private

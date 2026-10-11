@@ -61,7 +61,7 @@ open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Type.Sub using (sub-arr)
-open import Once.Type.SubLaws using (<:-refl)
+open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.SigOp.Info using (SigOpInfo; FFIAnswers; module SigOpInfo)
 open SigOpInfo using (conB)
 open import Once.Arith.SigOp.Builders

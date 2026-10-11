@@ -24,11 +24,11 @@ import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Context
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
@@ -1129,7 +1129,8 @@ d_realize'45'd_44 v0 v1 v2 v3 v4 v5 v6
                 (coe v3))
              (coe
                 MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50 v16
-                (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v3))
+                (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                   (coe v3))
                 v17)
              (d_realize'45'infer_30
                 (coe v0) (coe v1)
@@ -1153,8 +1154,10 @@ d_realize'45'd_44 v0 v1 v2 v3 v4 v5 v6
                        (coe v3))
                     (coe
                        MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
-                       (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2))
-                       (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v3))
+                       (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                          (coe v2))
+                       (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                          (coe v3))
                        v25)
                     (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_398 v26)
              _ -> MAlonzo.RTE.mazUnreachableError

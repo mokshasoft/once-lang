@@ -90,7 +90,7 @@ open import Once.Compiler x86-64-heap-room x86-64-stack-room x86-64-call-room
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 -- Plan 0.102 phase B (D276, D304): the language's own metatheory, stated in the
 -- Spec (`Once.Spec.Metatheory`), proved under `Once.Metatheory`.
-open import Once.Metatheory.TermModel using (termModel)
+open import Once.Metatheory using (metatheory)
 open import Once.Certified.Models using (NonVacuous; models)
 
 record CertifiedBuild : Set₁ where
@@ -99,7 +99,8 @@ record CertifiedBuild : Set₁ where
     typechecker : VerifiedTypeChecker    -- determinism ∧ totality ∧ errors ∧ identities
     -- what the language promises about itself (the Spec's metatheory): the term
     -- model is a graded category, ⟦_⟧ a functor out of it — substitution of terms
-    -- and of types is typed, a pure term may replace its `let`
+    -- and of types is typed, a pure term may replace its `let`; subtyping is a
+    -- partial order with unique derivations, and usage does not depend on mode
     language    : Metatheory
     -- the assumptions are satisfiable: the claim is not about an empty set (D302)
     nonvacuous  : NonVacuous
@@ -130,6 +131,6 @@ once-certified : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-ri
 once-certified b64 b32 brv = record
   { correctness = once-compiler b64 b32 brv
   ; typechecker = verifiedTypeChecker
-  ; language    = termModel
+  ; language    = metatheory
   ; nonvacuous  = models
   }

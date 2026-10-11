@@ -41,6 +41,7 @@ import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
@@ -51,7 +52,6 @@ import qualified MAlonzo.Code.Once.Type.Instance
 import qualified MAlonzo.Code.Once.Type.Match
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Error
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
@@ -272,7 +272,7 @@ du_given'45'infer'45'dec_338 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                                       (coe
                                                          MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
                                                          v14
-                                                         (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+                                                         (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
                                                             (coe v2))
                                                          v17)
                                                       v6)
@@ -1925,8 +1925,10 @@ du_given'45'poly'45'k_1318 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                     (coe v3))
                                  (coe
                                     MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
-                                    (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v2))
-                                    (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v3))
+                                    (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                                       (coe v2))
+                                    (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                                       (coe v3))
                                     v13)
                                  (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_398 v1))
                               (coe (0 :: Integer))

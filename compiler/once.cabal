@@ -79,8 +79,8 @@ library
       MAlonzo.Code.Once.Type.DecEq
       MAlonzo.Code.Once.Type.Honest
       MAlonzo.Code.Once.Type.Sub
-      MAlonzo.Code.Once.Type.SubLaws
-      MAlonzo.Code.Once.TypeCheck.ModeAgreement
+      MAlonzo.Code.Once.Metatheory.SubLaws
+      MAlonzo.Code.Once.Metatheory.ModeAgreement
       Paths_once
       MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
       MAlonzo.Code.Once.CanonicalName

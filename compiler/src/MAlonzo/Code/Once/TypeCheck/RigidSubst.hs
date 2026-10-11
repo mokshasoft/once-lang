@@ -23,13 +23,13 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Spec.Core.AbsTy
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Context
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
@@ -274,7 +274,7 @@ du_ρ'770''45''60''58'_60 v0 v1 v2 v3 v4 v5
         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'ν_82 v9
       MAlonzo.Code.Once.Type.Sub.C_sub'45'rigid_88
         -> coe
-             MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86
+             MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
              (coe du_ρ'770'_14 (coe v0) (coe v1) (coe v2) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.RigidSubst.substPoly-ρ̂

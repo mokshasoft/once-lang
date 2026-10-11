@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Postulates using (extensionality)
 import Once.Type as T
 open import Once.Type.Sub using ()
-open import Once.Type.SubLaws using (<:-unique)
+open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M)

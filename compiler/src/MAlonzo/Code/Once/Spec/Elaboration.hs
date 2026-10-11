@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Spec.Core.Derived
 import qualified MAlonzo.Code.Once.Spec.Core.DerivedTyping
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
@@ -37,7 +38,6 @@ import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
-import qualified MAlonzo.Code.Once.Type.SubLaws
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Context
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
@@ -2365,7 +2365,8 @@ d_elab'7496'_800 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 (coe v6))
              (coe
                 MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50 v20
-                (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v6))
+                (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                   (coe v6))
                 v21)
              (d_elab'7522'_786
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
@@ -2395,8 +2396,10 @@ d_elab'7496'_800 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                        (coe v6))
                     (coe
                        MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
-                       (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v5))
-                       (MAlonzo.Code.Once.Type.SubLaws.d_'60''58''45'refl_86 (coe v6))
+                       (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                          (coe v5))
+                       (MAlonzo.Code.Once.Metatheory.SubLaws.d_'60''58''45'refl_86
+                          (coe v6))
                        v29)
                     (coe
                        du_refE_720 (coe d_entry_578 v9 v30 v17 v20 v21 erased)

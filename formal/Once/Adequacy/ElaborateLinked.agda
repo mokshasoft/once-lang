@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.Type using (Type; Zero; One; Many; mk-kind)
 open import Once.Type.Sub
-open import Once.Type.SubLaws
+open import Once.Metatheory.SubLaws
 open import Once.CanonicalName using (CanonicalName; bare; _≟ᶜ_; showCanonical)
 open import Once.IR using (IR)
 import Once.IR as IR

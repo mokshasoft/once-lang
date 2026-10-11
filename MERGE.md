@@ -261,8 +261,9 @@ start it during step 1 and read it here. Three checks, in order of severity:
   A METATHEOREM (a property of the language itself, not a premise of the
   compiler proof) is none of the three: it proves nothing the apex postulates,
   so it always looks unwired. Its STATEMENT belongs in the Spec
-  (`Once.Spec.Metatheory`, D304), its proof under `Once/Metatheory` (Spec-side
-  imports only: `make metatheory-gate`), and `CertifiedBuild.language` carries it
+  (`Once.Spec.Metatheory`, D304/D305), its proof under `Once/Metatheory`
+  (Spec-side imports only: `make metatheory-gate`), assembled in `Once.Metatheory`,
+  and `CertifiedBuild.language` carries it
   — wire it there or delete it, never leave it as an island (D303: `tsubst` was
   deleted this way).
 

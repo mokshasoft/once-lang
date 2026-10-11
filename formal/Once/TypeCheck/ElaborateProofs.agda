@@ -20,7 +20,7 @@ open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Sub using (_<:_; _<:?_; sub-int; sub-float)
-open import Once.Type.SubLaws using (<:-refl)
+open import Once.Metatheory.SubLaws using (<:-refl)
 open import Data.Integer using (+_)
 
 open import Data.String using (String)
