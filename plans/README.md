@@ -1,157 +1,59 @@
 # Plans
 
-This folder tracks active and recent planning. Completed plans with no
-unfinished downstream are archived in git history — see D045, D044, etc.
-in `docs/compiler/decision-log.md` for durable records of landed work.
+Open work only. A finished plan is deleted (MERGE.md §1), after its durable content has gone
+into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
+keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
+This index is a map and was last re-derived from the code on 2026-10-11.
 
-## Active Plan Tree
+## Trust base and the apex claim
 
-```
-0-ocp3 (active root)
-│
-├── 0.9-exhaustive-semantics (Phases A-F partial — bug-hiding class closed, see D049; ~85-site discipline backlog remains, error promotion deferred)
-│
-├── 0.2-cata-postulates (completed — retained for 0.2.4 context)
-│   └── 0.2.2-cata-remaining (completed)
-│       └── 0.2.3-positive-invariants (completed)
-│           └── 0.2.4-categorical-layer-0 ← ACTIVE (compiler-side Layer 0 integration)
-│               ├── 0.2.4.1-sigop-framework (design — unblocks Layer 0 end-to-end)
-│               ├── 0.2.4.2-closure-codegen-fix (design — partly superseded by 0.2.4.3 D1)
-│               ├── 0.2.4.3-slot-model-alignment (active — no-frame model across spec / abstract trace / target trace)
-│               ├── 0.2.4.4-closure-pointer-pin (active — close the closure[1] hiding place at the spec level)
-│               ├── 0.2.4.5-allocmode-semantic-clarification (active, re-scoped — drop AllocMode; IR destination passing; Allocator sum type)
-│               ├── 0.2.4.5-morphism-realm-split (D2 landed 2026-05-08 — `lift-morphism`/`morph-app` realm split + compose bypass; closure-realm ABI fix open)
-│               ├── 0.2.4.6-place-pass (design — static analysis that decides destinations + lifetimes; subsumes Once.Escape)
-│               └── 0.2.4.7-irtracecorrect-frontier (design — discharge 4 ir-to-trace-correct postulates by parameterising on frontier + slot-shift lemma)
-│
-├── 0.3-frontend-verification-gaps (completed 2026-04-19 — retained for 0.4 context)
-│   └── 0.4-frontend-completeness-and-bridges (planning)
-│       ├── 0.4-T3-pipeline-composition (T3 partial — Verified.Compile per-stage decomposition landed)
-│       └── 0.4.2-end-to-end-connector (planning)
-│
-├── 0.6-user-polymorphism-and-strict-parser (planning — Section A landed 2026-04-20)
-│   ├── 0.6.1-phase-c-design (design)
-│   └── 0.7-parser-strictness-relational (planning)
-│
-├── 0.11-parameterized-trusted-base (design — `--safe` proof modules + TrustedBase parameter; orthogonal to 0.10)
-│
-├── 0.12-categorical-layer-1 (active — Products. Ground-pair tests landed; thunk-label collision fixed; user fns hit closure-realm ABI bug)
-│
-├── 0.13-layer-survey-2026-05-09 (design — cross-layer failure-mode survey identifying two independent codegen gaps: closure-realm ABI + Layer 2/5/6 stubs)
-│   ├── 0.13.1-layer2-sums-codegen (Phase 1 landed — instr-case-on-tag halts at abstract level + named postulate; Phases 2-7 deferred until 0.13.2 lands)
-│   ├── 0.13.2-stored-value-type (WIP commit `73a1a679` — separate `ValueLocation` (address) from `StoredValue` (content). Phase A complete (SMCore lifted, encode-const/encode-code-addr postulates deleted). Phase B partial. Blocked on `iph-load-indirect`-style constructors that turned out to be unsound — see 0.13.3.)
-│   │
-│   └── 0.13.3-honest-instr-preserves-halted (design — drop `iph-load-indirect`/`iph-load-from-slot`/etc. from `InstrPreservesHalted`; the backing `*-preserves-halted = !!` postulates are unsound (load-indirect halts when register holds non-pointer). Validity-aware trace-WF predicate replaces the marker constructors.)
-│
-├── 0.19-sigop-closure-split (design — split Surface `sigOp` into external `sigOp` + user-defined `closure`; align Surface type with asm signature; narrow `sigOp-arrow-eta` postulate. Subsumes morph-app outermost-app open item from 0.2.4.5 + A3 from 0.13 + Gap #4 fix path (b) from 0.12.)
-```
-
-## Status Summary
-
-| Plan | Status | Notes |
+| Plan | State | What remains |
 |---|---|---|
-| `0-ocp3` | active | Root proposal |
-| `0.2-cata-postulates` | completed | Kept for 0.2.4 context |
-| `0.2.2-cata-remaining` | completed | Kept for 0.2.4 context |
-| `0.2.3-positive-invariants` | completed | Kept for 0.2.4 context |
-| `0.2.4-categorical-layer-0` | active | Compiler Layer 0 integration |
-| `0.2.4.1-sigop-framework` | design | SigOp framework for effectful ops; unblocks Layer 0's end-to-end (exit, print, readline) |
-| `0.2.4.2-closure-codegen-fix` | design (partly superseded) | B1/B2/B3 catalog kept for context; D2 (per-thunk SysV frame) replaced by 0.2.4.3 D1 (no frames) |
-| `0.2.4.3-slot-model-alignment` | active | No-frame model across the three layers (SM*/WF spec, abstract trace, target trace). ApplyWF spec landed (`3760c10b`); IRToTrace.curry frontier-threading + target prologue cleanup pending. |
-| `0.2.4.4-closure-pointer-pin` | active | Close the closure[1] hiding place. `body-label` field + `encode-decode-code-addr` bijection. Stage 1 (spec pin) in progress; Stage 2 (couple `instr-call-closure` to `closure[1]`) deferred. |
-| `0.2.4.5-allocmode-semantic-clarification` | active (re-scoped 2026-05-05) | Drop `AllocMode` entirely. Introduce `Allocator = Stack \| Dynamic` sum type. Rename `ValueLocation` constructors `OnStack`/`OnHeap` → `AtStack`/`AtDynamic` to mirror Allocator. Two input registers (`Input1`, `Input2`) — apply doesn't pack. `IsPrimitive` collapses to `FitsInReg`; Unit erased; Str/Buffer reclassified as compound. IRs take destinations, don't choose. No `free` IR — alloc/free are SigOps. (Stage E `InReg : AbstractReg → ValueLocation` constructor was added 2026-05-07 commit `53c0af52` and **retired same day** — broke `preserves-mem` lemmas universally. Register-residency lands as a separate `Place` sum type at handover points.) |
-| `0.2.4.5-morphism-realm-split` | D2 landed 2026-05-08 (commit `eb639573`) | Surface `lift-morphism`/`morph-app` realm split. Typechecker emits morphism-realm directly for id/fst/snd/terminal/initial/inl/inr-app and for compose-of-morphisms (via `extract-morph` codomain trick). Side fix: DirectSimulation `[rbp+d]`→`[rsp+d]` for the Plan 0.2.4.5 D1 frameless ABI. Closure-realm dangling-returned-pointer ABI bug remains but no current frontend-accepted program triggers it. |
-| `0.2.4.6-place-pass` | design | Static analysis pass (`Once.Place`) that walks IR, decides each value's destination + lifetime, inserts alloc/free SigOps for Dynamic values. Subsumes (or consumes) `Once.Escape`. Layer 0 Place is trivial (next-slot bump-allocator). |
-| `0.2.4.7-irtracecorrect-frontier` | design | Discharge `ir-to-trace-correct-{compose,pair,curry,apply}` postulates in `IRTraceCorrect.agda`. Hybrid Option 2+5: parameterise the theorem on a slot frontier `n`, prove a `shift-trace` translation lemma + `exec-trace` translation invariance. ~3-4 days. Runtime is unaffected (these are verification-side gaps, not runtime bugs). |
-| `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
-| `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
-| `0.4-T3-pipeline-composition` | T3 partial | `Verified.Compile.correct` decomposed into named per-stage postulates (commit `4dd740cc`). Discharge of `module-to-asm-correct` chains through 0.10 + 0.2.4.3 + 0.2.4.4. |
-| `0.4.2-end-to-end-connector` | planning | Depends on 0.4 — composed surface→machine theorem |
-| `0.6-user-polymorphism-and-strict-parser` | planning | Section A landed; B/C in progress via children |
-| `0.6.1-phase-c-design` | design | Phase C design + classifier migration |
-| `0.7-parser-strictness-relational` | planning | Relational parser + proofs |
-| `0.9-exhaustive-semantics` | partial | `--exact-split` enabled; bug-hiding class closed in `exec-x86` (Phase B) and `instr-consumed-slots` (Phase D). 17 CATCHALLs in DirectSim route to named postulates. ~85 safe-class warnings remain as discipline backlog. **D049** in decision log. Error promotion deferred until backlog clears. |
-| `0.11-parameterized-trusted-base` | design | Make all proof modules `--safe` by parameterizing them over a single `TrustedBase` module. Closes the "is this theorem axiom-free?" audit question structurally. Orthogonal to 0.10. |
-| `0.12-categorical-layer-1` | active | Layer 1: Products. Ground-pair tests landed (`layer1-{fst,snd-deep,compose-snd}.once` all pass). Thunk-label collision fixed (commit `b1ec94ac`). **Open**: user-defined pair functions compile but exit-wrong at runtime — the closure-realm ABI dangling-pointer bug; same gap as Layer 4 user curried fns. |
-| `0.13-layer-survey-2026-05-09` | design | Cross-layer failure-mode survey. Identifies two **independent** codegen gaps blocking Layers 2, 4, 5, 6 and Layer 1-with-user-fns: (A) closure-realm ABI dangling-pointer (Layer 1 user fns + Layer 4); (B) codegen stubs (Layer 2 inl/inr/case + Layer 5/6 In/Cata/Para/in-ν/Ana/Hylo/Fuse). Recommends priority ordering. Layer 0 + Layer 1-ground are the only fully-running paths today. |
-| `0.13.1-layer2-sums-codegen` | Phase 1 landed (commit `e4de7543`) | Layer 2 sums codegen across proof + abstract + target. Phase 1: `instr-case-on-tag` added to AbstractInstr, halts at abstract level (with named postulate `case-codegen-faithful-phase1` for the per-arch correspondence), per-arch x86-64 lowers to `ud2`. Phases 2-7 (real tag dispatch, SumRecWF traces, IRToTrace, real branches per-arch, tests, DirectSim) **deferred until Plan 0.13.2 lands** — they need a real way to put a tag in memory. |
-| `0.13.2-stored-value-type` | WIP (commit `73a1a679`) | Architectural refactor: separate `ValueLocation` (address) from `StoredValue` (content). Memory cells hold a sum type with `SV-Ptr`/`SV-Tag`/`SV-Lit`/`SV-Code` constructors. Replaces `encode-const`/`encode-code-addr` postulates with real constructors (two trusted-base axioms removed). **Phase A complete** (SMCore.agda lifted; ~400 lines). Phase B (SMPrimitives) partial; blocked on iph-* unsoundness — split out as Plan 0.13.3. |
-| `0.13.3-honest-instr-preserves-halted` | design | Plan 0.13.2 surfaced that `iph-load-indirect` / `iph-load-from-slot` / etc. in `InstrPreservesHalted` are backed by **unsound postulates** (`load-indirect-preserves-halted = !!` is conditionally true at best). Drop them from the enum; replace with a validity-aware `TraceWF` precondition that surfaces the IR-compilation invariant. ~3-5 days proof refactor. Net postulate removal: ~5 unsound `*-preserves-halted` postulates deleted, replaced with real provable lemmas. |
-| `0.36-general-cata-sigop-trace` | design (2026-06-07) | **General catamorphisms, proven by SigOp-trace preservation.** Strict top-down successor to 0.32, **effectful-general from the start** (no pure-first/M1 — that's middle-out and re-narrows the definition). Step 1 = a covering **test suite as the north star** (functor shapes Nat/List/Tree/multi-ctor/degenerate × value-into-effect + effect-emitting via a new minimal `emit.int` Emits op). Then: correct full-trace definitions (`obs` Cata fold + trace-valued `exec-flat`), functor-general `ir-to-trace(Cata)` (today Nat-shaped — wrong for non-Nat F), μ-induction proof over `exec-flat`, and **delete the fossils** (`CataLayer`/`RecTrace` over loop-blind `exec-trace`, the `ir-to-trace-correct` catchall, `rec-scheme-semantic`, `StraightIR`, orphan `NatCataProof`/`RecSchemeProof`). No parallel structures; codegen + proof move together. Deps: 0.35 M6 (alloc-heap), 0.24 D/E (trace-valued exec, cata-scoped slice). |
-| `0.19-sigop-closure-split` | design | Split Surface `sigOp` into `sigOp` (external primitive, asm-direct arrow) + `closure` (user-defined entry, asm Unit-curry-returning-closure). User-defined morphism aliases route through `resolveExprWF` substitution; user-defined captures get `closure name` with a Surface type that matches the asm signature. Narrows the inline `sigOp-arrow-eta` postulate in `Once.Surface.Correct` to external primitives only. Subsumes the morph-app outermost-app open item from `0.2.4.5-morphism-realm-split`, A3 from `0.13-layer-survey`, and Gap #4 fix path (b) from `0.12-categorical-layer-1`. Diagnosed session 2026-05-23 from `myid = id; main = exit@S (myid 42)` exiting 80 on heap-only-pivot — not a dangling-pointer bug; a Surface-vs-asm type mismatch the postulate hid. Est. 4-6 days. |
+| 0.11 parameterized trusted base | A done (D302) | B `ArchModel`, C world/resources, D models, E `--safe` cone, F one concrete instance |
+| 0.93 relation, not datatype | S3 in progress (`Once/Spike/RelSpike.agda`) | S3–S6: discharge `BlockRunsHyp` ×3 on `once-certified` |
+| 0.88 discharge obs-correct | open | `cata-correct`, `obs-correct-sigop-rest`, `obs-correct-In`, `obs-correct-in-ν` |
+| 0.62 shape correctness | M1/M2 done | M2b, M3: `emitted-shape-check`, `run-meets` (two of `RunWF` ×7) |
+| 0.67 wire arith proofs | route obsolete | owns `arith-sigop-contract` ×3; `ev`/`step-budget` definitions |
+| 0.110 start state assumes less | not started | boot registers/flags |
+| 0.111 interpretation ABI in the Spec | not started | the calling-convention obligation; 0.113's A3 runtime test |
+| 0.89 relocatable compilation units | mostly done | B step 4 (deferred), C (may fold into 0.93), F (optional), closing entry |
 
-## Recently Closed (in git history + decision log)
+## The Spec
 
-| Plan | Closed | Reference |
+| Plan | State | What remains |
 |---|---|---|
-| `0.1` / `0.1.2` / `0.1.3` / `0.1.4` (normalizer chain) | 2025-03-24 | initial bootstrap |
-| `0.2.5-type-polytype-split` | 2026-04-17 | closed via direct landing |
-| `0.2.6-usage-indexed-expr` | 2026-04-17 | closed via direct landing |
-| `0.6.2-polymorphic-schema-instantiation` | 2026-04-23 | **D045** — two-phase elaborator, 0 pragmas, 0 postulates |
-| `0.5-ir-extension-hygiene` | 2026-04-23 | Phase A/B (view catch-alls, `≟IRHead`) landed; Phase C superseded by 0.5.1 |
-| `0.5.1-kind-unified-arrow` | 2026-04-23 | **D046** — unified `Eff` + `_⇒[_]_`; `applyEff` + placeholder postulate eliminated |
-| `0.8-dot-sugar-for-compose` | 2026-04-21 | dot-sugar lands as `compose` |
+| 0.114 the Spec stands alone | not started | seven borrowings, §8: no compiler module in the Spec's import closure |
+| 0.59 oracle principality | open | C1/C3 coverage, P1–P4 (mgu, completeness, principality, diagnostics) |
+| 0.50 named defs are morphisms | ABI landed | retire `classifyAppHead` from the judgment (moved here by D293) |
+| 0.96 `IO` is not a language construct | not started | decide (§3), remove the parser sites |
+| 0.79 categorical laws | not started | decide whether source-level laws are Spec metatheory |
+| 0.112 categorical structures | draft | lawful structure records, then the renames |
+| 0.115 rejections check why | not started | about 68 bare `isLeft` test assertions |
 
-## Current Focus
+## Compiler and codegen
 
-- **`0.2.4` family** — Layer 0 backend integration. Active/design children:
-  - `0.2.4.3` — slot-model alignment (no frames, slot-frontier threading) across spec + abstract trace + target trace. ApplyWF spec landed (`3760c10b`); IRToTrace.curry frontier-threading + target prologue cleanup pending.
-  - `0.2.4.4` — close the closure[1] hiding place at the spec level (`body-label` + `encode-decode-code-addr` bijection).
-  - `0.2.4.5` (re-scoped) — drop `AllocMode`; introduce `Allocator = Stack \| Dynamic`; rename `ValueLocation` constructors (`AtStack` / `AtDynamic`); two input registers; `FitsInReg` replaces `IsPrimitive`; Unit erased; alloc/free as SigOps. Register-residency (originally `InReg : AbstractReg → ValueLocation`) arrives later as a separate `Place` sum type — Stage E's value-typed-in-ValueLocation approach was retired after one-day cascade audit.
-  - `0.2.4.5-morphism-realm-split` — D2 **landed 2026-05-08** (commit `eb639573`). `(id . id . id) 42` regression now passes. Closure-realm ABI fix open but unreachable from current frontend.
-  - `0.2.4.6` — `Once.Place` pass: static analysis deciding destinations + lifetimes, inserting alloc/free SigOps. Subsumes `Once.Escape`.
-- **`0.4-T3`** — top-level pipeline composition for `Verified.Compile.correct` landed (commit `4dd740cc`). Per-stage discharge follows once `0.10` + `0.2.4.3` + `0.2.4.4` close.
-- **`0.4` / `0.4.2`** — frontend completeness closure + end-to-end composed theorem. Natural follow-on from recently-landed `0.6.2`.
+| Plan | State | What remains |
+|---|---|---|
+| 0.86 allocation is mechanical | open | the machine half of step D, B′, C, F, `Allocator` rename |
+| 0.87 stack-resident I/O | not started | re-prove the correspondence with stack pointers |
+| 0.35 allocator interface | M1 done | M2–M8 (free, wiring, leak-freedom, variable-size) |
+| 0.39 trace-correct optimizer | open | restate over traces, discharge `opt-trace` |
+| 0.64 proof-island audit | open | group O (the optimizer chain; overlaps 0.39) and verdicts |
+| 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
+| 0.56 register-budget arith | parked | steps A–E |
+| 0.100 AVR port | P0 done | phase A onward |
 
-## Live regression test
+## Hygiene
 
-`(id . id . id) 42` is the canonical Layer 0 end-to-end regression for the 0.2.4 family. Current state (2026-05-08 after Plan 0.2.4.5 D2):
+| Plan | State | What remains |
+|---|---|---|
+| 0.60 rename value/meaning layers | not started | `Once.Semantics` → `Once.Value` (about 82 importers, re-extraction) |
+| 0.85 split deciders from `Once.Type` | not started | mechanical move |
 
-- `id 42` → exit 42 ✓
-- `(id . id) 42` → exit 42 ✓
-- `(id . id . id) 42` → exit 42 ✓ (was segfaulting at `RIP=0x2a`; fixed by morphism-realm split routing compose chains through pure CCC compose, no `apply`-chain).
+## Bootstrap track
 
-The closure-realm `apply`-with-returned-closure path has two
-distinct sub-issues (diagnosed session 2026-05-23):
-
-- **Surface/asm type mismatch** (causes `myid = id; exit@S (myid 42)`
-  → exit 80 on heap-only-pivot, independent of dangling pointers).
-  Tracked in `0.19-sigop-closure-split.md` — split `sigOp` into
-  external `sigOp` + user-defined `closure`; align Surface type
-  with asm signature; narrow the inline `sigOp-arrow-eta`
-  postulate.
-- **Branch-returned-closure dangling pointer** (Plan 0.2.4.5 D1
-  frameless `%rsp` ABI). Still tracked in
-  `0.2.4.5-morphism-realm-split.md`; orthogonal to 0.19 and not
-  required for user-fn invocation correctness.
-
-## Notes on Layout
-
-**Completed plans kept for context**: a plan is retained if it is finished but has unfinished downstream children (so the unfinished children's context remains readable). `0.2` / `0.2.2` / `0.2.3` are kept because `0.2.4` is still active; `0.3` is kept because `0.4` depends on it.
-
-**Completed leaf plans are removed** once their durable record is in `docs/compiler/decision-log.md` or equivalent. Git history preserves the plan file.
-
-## Numbering Scheme
-
-- **Branches from same parent**: new first-level number (0.1, 0.2, 0.3)
-- **Linear chain**: increment last number (0.1 → 0.1.2 → 0.1.3)
-- **Branch mid-chain**: add new level (0.1.3.1, 0.1.3.2)
-
-## File Format
-
-Each plan has a YAML header:
-```yaml
----
-parent: <parent-plan-id> | null
-status: active | planning | design | completed | blocked | abandoned
-date: YYYY-MM-DD
-closed: YYYY-MM-DD  # optional — when status became completed
----
-```
-
-## Related Documents
-
-- `docs/compiler/decision-log.md` — durable record of landed architectural decisions
-- `docs/proposals/OCP-0003-total-productive-ir.md` — Root proposal
-- `docs/proposals/OCP-0004-zero-trust-verification.md` — Bootstrap tower
-- `docs/design/ir-stack-layout.md` — Stack layout and categorical layers
+| Plan | State | What remains |
+|---|---|---|
+| 0-ocp3 | root | the OCP-0003 anchor that several plans name as `parent` |
+| evaluator-instance | nearly done | migrate or retire the leftover bootstrap modules |
+| tcb0-gap-closure | open | phases 1–5 (OCP-0004) |
