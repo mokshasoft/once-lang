@@ -8,10 +8,10 @@
 --     Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π   ⟹   Δ′ ⊩ Γ⟨σ⟩ ⊢[ Ψ ] t⟨σ⟩ₜ ∷ A⟨σ⟩ ! π
 --
 -- for every substitution `σ` that respects the kinds (`KSub`). The lemma is
--- STATED in `Once.Spec.Core.TermModel` (`ty-subst-⊢`, a field of the
--- language's metatheory on the apex) and PROVED in `Once.Adequacy.TySubst`;
--- this module holds the definitions the statement needs, plus two small facts
--- (`⌈⌉-⟨⟩`, read by the proof; `<:ₚ-refl`, read by `Spec.Core.Abstract`).
+-- STATED in `Once.Spec.Core.TermModel` (`ty-subst-⊢`, part of the
+-- Spec's metatheory, `Once.Spec.Metatheory`) and PROVED in `Once.Metatheory.TySubst`;
+-- this module holds the definitions the statement needs, plus one small fact
+-- `Spec.Core.Abstract` reads (`<:ₚ-refl`).
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
@@ -44,26 +44,6 @@ open G using (primDom; primCod)
 -- to a type that is base under `Δ′`.
 KSub : ∀ {m k} → KCtx m → KCtx k → Sub m k → Set
 KSub Δ Δ′ σ = ∀ i → Δ i ≡ Once.Type.k-base → Base Δ′ (σ i)
-
--- Ground types are fixed by substitution.
-mutual
-  ⌈⌉-⟨⟩ : ∀ {m k} (A : T.Type) (σ : Sub m k) → ⌈ A ⌉ ⟨ σ ⟩ ≡ ⌈ A ⌉
-  ⌈⌉-⟨⟩ T.Unit σ = refl
-  ⌈⌉-⟨⟩ T.Void σ = refl
-  ⌈⌉-⟨⟩ T.Int σ = refl
-  ⌈⌉-⟨⟩ T.Float σ = refl
-  ⌈⌉-⟨⟩ (T.rigid k i) σ = refl
-  ⌈⌉-⟨⟩ (A T.* B) σ = cong₂ _*_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
-  ⌈⌉-⟨⟩ (A T.+ B) σ = cong₂ _+_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
-  ⌈⌉-⟨⟩ (A T.⇒[ k ] B) σ = cong₂ (λ a b → a ⇒[ k ] b) (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
-  ⌈⌉-⟨⟩ (T.μ-type F) σ = cong μ-type (⌈⌉F-⟨⟩ F σ)
-  ⌈⌉-⟨⟩ (T.ν-type F π) σ = cong (λ G → ν-type G π) (⌈⌉F-⟨⟩ F σ)
-
-  ⌈⌉F-⟨⟩ : ∀ {m k} (F : T.Functor) (σ : Sub m k) → ⌈ F ⌉F ⟨ σ ⟩F ≡ ⌈ F ⌉F
-  ⌈⌉F-⟨⟩ (T.K A) σ = cong K (⌈⌉-⟨⟩ A σ)
-  ⌈⌉F-⟨⟩ T.Id σ = refl
-  ⌈⌉F-⟨⟩ (F T.⊕ G) σ = cong₂ _⊕_ (⌈⌉F-⟨⟩ F σ) (⌈⌉F-⟨⟩ G σ)
-  ⌈⌉F-⟨⟩ (F T.⊗ G) σ = cong₂ _⊗_ (⌈⌉F-⟨⟩ F σ) (⌈⌉F-⟨⟩ G σ)
 
 -- Subtyping over open types is reflexive, hence stable under substitution.
 <:ₚ-refl : ∀ {m} (A : Ty m) → A <:ₚ A

@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Adequacy.CoreRenameSem where
+module MAlonzo.Code.Once.Metatheory.CoreRenameSem where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -39,7 +39,7 @@ import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
 
--- Once.Adequacy.CoreRenameSem._.ren-⊢
+-- Once.Metatheory.CoreRenameSem._.ren-⊢
 d_ren'45''8866'_18 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -72,11 +72,11 @@ du_ren'45''8866'_18 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
       MAlonzo.Code.Once.Spec.Core.Rename.du_ren'45''8866'_578 v2 v3 v4 v5
       v6 v7 v8 v9
--- Once.Adequacy.CoreRenameSem._._⊢[_]_∷_!_
+-- Once.Metatheory.CoreRenameSem._._⊢[_]_∷_!_
 d__'8866''91'_'93'_'8759'_'33'__22 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
--- Once.Adequacy.CoreRenameSem.GM.DefSem
+-- Once.Metatheory.CoreRenameSem.GM.DefSem
 d_DefSem_128 a0 a1 a2 = ()
--- Once.Adequacy.CoreRenameSem.GM.⟦_⟧
+-- Once.Metatheory.CoreRenameSem.GM.⟦_⟧
 d_'10214'_'10215'_142 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -108,7 +108,7 @@ du_'10214'_'10215'_142 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.Spec.Core.Meaning.du_'10214'_'10215'_460 (coe v0)
       v2 v3 v4 v5 v6 v7
--- Once.Adequacy.CoreRenameSem.GM.DefSem.defs
+-- Once.Metatheory.CoreRenameSem.GM.DefSem.defs
 d_defs_146 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
@@ -120,20 +120,20 @@ d_defs_146 ::
   AgdaAny
 d_defs_146 v0
   = coe MAlonzo.Code.Once.Spec.Core.Meaning.d_defs_362 (coe v0)
--- Once.Adequacy.CoreRenameSem.GM.DefSem.impl
+-- Once.Metatheory.CoreRenameSem.GM.DefSem.impl
 d_impl_148 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   MAlonzo.Code.Once.Spec.Contract.T_Impl_292
 d_impl_148 v0
   = coe MAlonzo.Code.Once.Spec.Core.Meaning.d_impl_364 (coe v0)
--- Once.Adequacy.CoreRenameSem.Env
+-- Once.Metatheory.CoreRenameSem.Env
 d_Env_152 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 -> ()
 d_Env_152 = erased
--- Once.Adequacy.CoreRenameSem.thinᴰ
+-- Once.Metatheory.CoreRenameSem.thinᴰ
 d_thin'7472'_170 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -194,7 +194,7 @@ du_thin'7472'_170 v0 v1 v2 v3 v4
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.CoreRenameSem.restrictᵛ-irr
+-- Once.Metatheory.CoreRenameSem.restrictᵛ-irr
 d_restrict'7515''45'irr_212 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
@@ -205,7 +205,7 @@ d_restrict'7515''45'irr_212 ::
   MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_restrict'7515''45'irr_212 = erased
--- Once.Adequacy.CoreRenameSem.thin-⊑
+-- Once.Metatheory.CoreRenameSem.thin-⊑
 d_thin'45''8849'_238 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
@@ -231,7 +231,7 @@ du_thin'45''8849'_238 v0 v1
   = coe
       MAlonzo.Code.Once.Surface.Thinning.du_thin'45'usage'45''8849''7512'_298
       (coe v0) (coe v1)
--- Once.Adequacy.CoreRenameSem.thin-restrict
+-- Once.Metatheory.CoreRenameSem.thin-restrict
 d_thin'45'restrict_258 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -246,7 +246,7 @@ d_thin'45'restrict_258 ::
   MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_thin'45'restrict_258 = erased
--- Once.Adequacy.CoreRenameSem.thin-restrict′
+-- Once.Metatheory.CoreRenameSem.thin-restrict′
 d_thin'45'restrict'8242'_330 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -262,7 +262,7 @@ d_thin'45'restrict'8242'_330 ::
   MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_thin'45'restrict'8242'_330 = erased
--- Once.Adequacy.CoreRenameSem.thin-bind
+-- Once.Metatheory.CoreRenameSem.thin-bind
 d_thin'45'bind_362 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -278,7 +278,7 @@ d_thin'45'bind_362 ::
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_thin'45'bind_362 = erased
--- Once.Adequacy.CoreRenameSem.⟦⟧-substΨ
+-- Once.Metatheory.CoreRenameSem.⟦⟧-substΨ
 d_'10214''10215''45'substΨ_414 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -296,7 +296,7 @@ d_'10214''10215''45'substΨ_414 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'10214''10215''45'substΨ_414 = erased
--- Once.Adequacy.CoreRenameSem.⟦⟧-substt
+-- Once.Metatheory.CoreRenameSem.⟦⟧-substt
 d_'10214''10215''45'substt_450 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -314,7 +314,7 @@ d_'10214''10215''45'substt_450 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'10214''10215''45'substt_450 = erased
--- Once.Adequacy.CoreRenameSem.⟦⟧-substA
+-- Once.Metatheory.CoreRenameSem.⟦⟧-substA
 d_'10214''10215''45'substA_488 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -332,7 +332,7 @@ d_'10214''10215''45'substA_488 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'10214''10215''45'substA_488 = erased
--- Once.Adequacy.CoreRenameSem.thin-restr
+-- Once.Metatheory.CoreRenameSem.thin-restr
 d_thin'45'restr_522 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -350,7 +350,7 @@ d_thin'45'restr_522 ::
   MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_thin'45'restr_522 = erased
--- Once.Adequacy.CoreRenameSem.bindC
+-- Once.Metatheory.CoreRenameSem.bindC
 d_bindC_548 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -366,7 +366,7 @@ d_bindC_548 ::
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_bindC_548 = erased
--- Once.Adequacy.CoreRenameSem.back
+-- Once.Metatheory.CoreRenameSem.back
 d_back_568 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
@@ -376,7 +376,7 @@ d_back_568 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_back_568 = erased
--- Once.Adequacy.CoreRenameSem.tail≡
+-- Once.Metatheory.CoreRenameSem.tail≡
 d_tail'8801'_582 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -388,7 +388,7 @@ d_tail'8801'_582 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_tail'8801'_582 = erased
--- Once.Adequacy.CoreRenameSem.peel0
+-- Once.Metatheory.CoreRenameSem.peel0
 d_peel0_600 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -402,7 +402,7 @@ d_peel0_600 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_peel0_600 = erased
--- Once.Adequacy.CoreRenameSem.peel1
+-- Once.Metatheory.CoreRenameSem.peel1
 d_peel1_640 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -417,7 +417,7 @@ d_peel1_640 ::
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_peel1_640 = erased
--- Once.Adequacy.CoreRenameSem.lookup-thin
+-- Once.Metatheory.CoreRenameSem.lookup-thin
 d_lookup'45'thin_684 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -431,7 +431,7 @@ d_lookup'45'thin_684 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_lookup'45'thin_684 = erased
--- Once.Adequacy.CoreRenameSem.envEq
+-- Once.Metatheory.CoreRenameSem.envEq
 d_envEq_754 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -449,7 +449,7 @@ d_envEq_754 ::
   MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_envEq_754 = erased
--- Once.Adequacy.CoreRenameSem.ren-sem
+-- Once.Metatheory.CoreRenameSem.ren-sem
 d_ren'45'sem_800 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -468,7 +468,7 @@ d_ren'45'sem_800 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_ren'45'sem_800 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_958 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -491,7 +491,7 @@ d_E_958 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_958 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_986 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -514,7 +514,7 @@ d_E_986 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_986 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_1016 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -537,7 +537,7 @@ d_E_1016 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1016 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_1048 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -560,7 +560,7 @@ d_E_1048 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1048 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_1076 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -583,7 +583,7 @@ d_E_1076 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1076 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_1108 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -606,7 +606,7 @@ d_E_1108 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1108 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_1236 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -634,7 +634,7 @@ d_E_1236 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1236 = erased
--- Once.Adequacy.CoreRenameSem._..extendedlambda0
+-- Once.Metatheory.CoreRenameSem._..extendedlambda0
 d_'46'extendedlambda0_1238 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -664,7 +664,7 @@ d_'46'extendedlambda0_1238 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'46'extendedlambda0_1238 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_1302 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -688,7 +688,7 @@ d_E_1302 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1302 = erased
--- Once.Adequacy.CoreRenameSem._.E
+-- Once.Metatheory.CoreRenameSem._.E
 d_E_1336 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -713,7 +713,7 @@ d_E_1336 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1336 = erased
--- Once.Adequacy.CoreRenameSem._.wk-⊢′
+-- Once.Metatheory.CoreRenameSem._.wk-⊢′
 d_wk'45''8866''8242'_1474 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -742,7 +742,7 @@ du_wk'45''8866''8242'_1474 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.Spec.Core.DerivedTyping.du_wk'45''8866''8242'_548
       v1 v2 v3 v4 v5 v6 v7
--- Once.Adequacy.CoreRenameSem.thin-refl
+-- Once.Metatheory.CoreRenameSem.thin-refl
 d_thin'45'refl_1492 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -753,7 +753,7 @@ d_thin'45'refl_1492 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_thin'45'refl_1492 = erased
--- Once.Adequacy.CoreRenameSem._.peel0'
+-- Once.Metatheory.CoreRenameSem._.peel0'
 d_peel0''_1520 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -770,7 +770,7 @@ d_peel0''_1520 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_peel0''_1520 = erased
--- Once.Adequacy.CoreRenameSem._.peel1'
+-- Once.Metatheory.CoreRenameSem._.peel1'
 d_peel1''_1570 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -789,7 +789,7 @@ d_peel1''_1570 ::
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_peel1''_1570 = erased
--- Once.Adequacy.CoreRenameSem._.peelm'
+-- Once.Metatheory.CoreRenameSem._.peelm'
 d_peelm''_1630 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -808,7 +808,7 @@ d_peelm''_1630 ::
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_peelm''_1630 = erased
--- Once.Adequacy.CoreRenameSem.⟦⟧-substΨ0
+-- Once.Metatheory.CoreRenameSem.⟦⟧-substΨ0
 d_'10214''10215''45'substΨ0_1690 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
@@ -827,7 +827,7 @@ d_'10214''10215''45'substΨ0_1690 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'10214''10215''45'substΨ0_1690 = erased
--- Once.Adequacy.CoreRenameSem.wk-sem
+-- Once.Metatheory.CoreRenameSem.wk-sem
 d_wk'45'sem_1722 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->

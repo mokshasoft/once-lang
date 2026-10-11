@@ -12,7 +12,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-P='(^|[[:space:]])public[[:space:]]*$'
+P='(^|[[:space:]])public[[:space:]]*(--.*)?$'  # a trailing comment does not hide a re-export
 baseline=scripts/public-gate.baseline
 declare -A allowed=()
 while read -r path count; do

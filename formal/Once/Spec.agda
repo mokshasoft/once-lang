@@ -47,6 +47,8 @@ open import Once.Spec.Resolution public -- what each written reference DENOTES
         ; AliasMap ; UnaliasedMap ; Absent ; FirstAt ; fa-here ; fa-there )
 open import Once.Spec.Meaning public   -- the denotation (source meaning)
 open import Once.Spec.Correct public   -- the CorrectCompiler criterion
+open import Once.Spec.Metatheory public -- what the language promises about itself
+  using ( Metatheory ; TermModel )     -- (D304; proofs: Once.Metatheory.*)
 open import Once.Spec.Contract public  -- WHAT AN INTERPRETATION OWES (D061, D257):
   using ( Key ; key ; ISig             -- the declared signatures a program is
         ; Contract ; value ; answers   -- compiled against, the contract each

@@ -78,7 +78,7 @@ module Once.Certified
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.
-open import Once.Spec using (CorrectCompiler)
+open import Once.Spec using (CorrectCompiler; Metatheory)
 open import Once.Compiler x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-heap-room riscv64-stack-room riscv64-call-room
@@ -88,20 +88,19 @@ open import Once.Compiler x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
        using (once-compiler; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
--- Plan 0.102 phase B (D276): the language's own metatheory, stated in the Spec.
-open import Once.Spec.Contract using (ISig)
-open import Once.Spec.Core.PolyTy using (Sig)
-import Once.Spec.Core.TermModel as TM
-open import Once.Adequacy.TermModel using (termModel)
+-- Plan 0.102 phase B (D276, D304): the language's own metatheory, stated in the
+-- Spec (`Once.Spec.Metatheory`), proved under `Once.Metatheory`.
+open import Once.Metatheory.TermModel using (termModel)
 open import Once.Certified.Models using (NonVacuous; models)
 
 record CertifiedBuild : Set₁ where
   field
     correctness : CorrectCompiler       -- soundness + completeness (the minimal claim)
     typechecker : VerifiedTypeChecker    -- determinism ∧ totality ∧ errors ∧ identities
-    -- the term model is a graded category, ⟦_⟧ a functor out of it: substitution
-    -- is typed, and a pure term may replace its `let` (referential transparency)
-    language    : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → TM.TermModel S
+    -- what the language promises about itself (the Spec's metatheory): the term
+    -- model is a graded category, ⟦_⟧ a functor out of it — substitution of terms
+    -- and of types is typed, a pure term may replace its `let`
+    language    : Metatheory
     -- the assumptions are satisfiable: the claim is not about an empty set (D302)
     nonvacuous  : NonVacuous
 

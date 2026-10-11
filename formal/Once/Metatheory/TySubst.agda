@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.TySubst — the proof of THE TYPE-SUBSTITUTION LEMMA (D303),
+-- Once.Metatheory.TySubst — the proof of THE TYPE-SUBSTITUTION LEMMA (D303),
 -- stated as `ty-subst-⊢` in `Once.Spec.Core.TermModel`:
 --
 --     Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π   ⟹   Δ′ ⊩ Γ⟨σ⟩ ⊢[ Ψ ] t⟨σ⟩ₜ ∷ A⟨σ⟩ ! π
@@ -18,10 +18,10 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
 
-module Once.Adequacy.TySubst {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+module Once.Metatheory.TySubst {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
 import Once.Type as T
 open T using (Purity; pure; mk-kind; Many; One)
@@ -36,6 +36,26 @@ open import Once.Spec.Core.TySubst S
 ------------------------------------------------------------------------
 -- Kinds, functors and subtyping are stable under a kind-respecting σ
 ------------------------------------------------------------------------
+
+-- Ground types are fixed by substitution.
+mutual
+  ⌈⌉-⟨⟩ : ∀ {m k} (A : T.Type) (σ : Sub m k) → ⌈ A ⌉ ⟨ σ ⟩ ≡ ⌈ A ⌉
+  ⌈⌉-⟨⟩ T.Unit σ = refl
+  ⌈⌉-⟨⟩ T.Void σ = refl
+  ⌈⌉-⟨⟩ T.Int σ = refl
+  ⌈⌉-⟨⟩ T.Float σ = refl
+  ⌈⌉-⟨⟩ (T.rigid k i) σ = refl
+  ⌈⌉-⟨⟩ (A T.* B) σ = cong₂ _*_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
+  ⌈⌉-⟨⟩ (A T.+ B) σ = cong₂ _+_ (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
+  ⌈⌉-⟨⟩ (A T.⇒[ k ] B) σ = cong₂ (λ a b → a ⇒[ k ] b) (⌈⌉-⟨⟩ A σ) (⌈⌉-⟨⟩ B σ)
+  ⌈⌉-⟨⟩ (T.μ-type F) σ = cong μ-type (⌈⌉F-⟨⟩ F σ)
+  ⌈⌉-⟨⟩ (T.ν-type F π) σ = cong (λ G → ν-type G π) (⌈⌉F-⟨⟩ F σ)
+
+  ⌈⌉F-⟨⟩ : ∀ {m k} (F : T.Functor) (σ : Sub m k) → ⌈ F ⌉F ⟨ σ ⟩F ≡ ⌈ F ⌉F
+  ⌈⌉F-⟨⟩ (T.K A) σ = cong K (⌈⌉-⟨⟩ A σ)
+  ⌈⌉F-⟨⟩ T.Id σ = refl
+  ⌈⌉F-⟨⟩ (F T.⊕ G) σ = cong₂ _⊕_ (⌈⌉F-⟨⟩ F σ) (⌈⌉F-⟨⟩ G σ)
+  ⌈⌉F-⟨⟩ (F T.⊗ G) σ = cong₂ _⊗_ (⌈⌉F-⟨⟩ F σ) (⌈⌉F-⟨⟩ G σ)
 
 base-⟨⟩ : ∀ {m k} {Δ : KCtx m} {Δ′ : KCtx k} {σ : Sub m k} {A} → KSub Δ Δ′ σ → Base Δ A → Base Δ′ (A ⟨ σ ⟩)
 base-⟨⟩ r (b-var {i} e) = r i e

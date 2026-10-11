@@ -18142,6 +18142,8 @@ The merge's island pass (§4b) found `Probe/RuntimeContractModel` and `Probe/Int
 
 ## D303 — THE LANGUAGE'S METATHEORY IS A FIELD OF THE APEX; THE TYPE-SUBSTITUTION LEMMA JOINS IT (2026-10-11)
 
+**Status (2026-10-11, later)**: locations superseded by D304 — the statement is part of the Spec (`Once.Spec.Metatheory`, re-exported by `Once.Spec`), the proofs moved from `Once.Adequacy.{TermModel,TySubst}` to `Once.Metatheory.*`.
+
 **Relates**: D276 (`CertifiedBuild.language`, the term model), D243 (a polymorphic definition is typed once), D140 (no proofs in the Spec closure), D302 (models on the apex), plan 0.103 phase 5
 
 ### Context
@@ -18155,3 +18157,20 @@ The merge of `plan-0.91-program-facts` deleted `tsubst` — the postulate-free t
 ### Consequences
 - "Typed once, instances for free" (D243) is now a theorem on the apex, not an argument in a comment; the compiler proof still uses the ground-target form `PolyTyping.instantiate`.
 - Nothing extracted changes (proof-only).
+
+## D304 — A METATHEOREM IS A CLAIM ABOUT THE SPEC: ITS STATEMENT IS IN THE SPEC, ITS PROOF IMPORTS ONLY THE SPEC (2026-10-11)
+
+**Relates**: D303 (amends its locations), D276 (affine grades: the Spec changed so substitution holds), D140 (no proofs in the Spec closure), D277 (the Spec door may re-export), MERGE.md §1 and §4b
+
+### Context
+D303 put the type-substitution lemma into `CertifiedBuild.language`, with its statement in `Spec.Core.TermModel` — a module `Once.Spec` did not export — and its proof in `Once.Adequacy`, the compiler-to-Spec bridge. Both placements read the metatheory as a compiler matter. It is not: a metatheorem mentions no compiler, and when one fails the LANGUAGE is wrong, not the compiler (D276 changed the grades precisely so that `subst-⊢` holds). The metatheory's statements are the Spec's own acceptance criteria.
+
+### Decision
+1. **Statements in the Spec.** `Once.Spec.Metatheory` defines `Metatheory = ∀ S → TermModel S` and is re-exported by `Once.Spec` (with `TermModel`). `CertifiedBuild.language : Metatheory`. The Spec closure grows 32 → 34 (`Spec.Metatheory`, `Spec.Core.TermModel`), both proof-free (D140). This is a deliberate Spec ADDITION: no syntax, rule or meaning changes.
+2. **Proofs under `Once.Metatheory`, Spec-side imports only.** `Once.Metatheory.{TermModel,TySubst,CoreSubstSem,CoreRenameSem}` (moved from `Once.Adequacy`; the last two were Spec-only semantic lemmas filed there). They may import the Spec, its semantic domain (`Denotation`, `Surface`, `Type`), `Target.Arch`, `Postulates` and each other — never the compiler or its proofs. `scripts/metatheory-gate.sh` (`make metatheory-gate`, part of `merge-gate`) enforces it. The converse is allowed: `Adequacy.CoreMeaningBridge` uses `Metatheory.CoreRenameSem`.
+3. `⌈⌉-⟨⟩` (used only by the proof) moved from `Spec.Core.TySubst` to `Metatheory.TySubst`; `<:ₚ-refl` stays (`Spec.Core.Abstract` reads it).
+4. **public-gate hole closed.** The gate counted only lines ENDING in `public`, so the Spec door's nine `public  -- comment` lines were invisible to the ratchet. The pattern now allows a trailing comment; `Once/Spec.agda 9` and `Once/Spec/Metatheory.agda 1` enter the baseline (the Spec door is D277's designed exception).
+
+### Consequences
+- A reviewer reading `Once.Spec` now sees what the language promises about itself.
+- The metatheory rests on `Once.Postulates.extensionality` (through `CoreSubstSem`), like the rest of the semantics.

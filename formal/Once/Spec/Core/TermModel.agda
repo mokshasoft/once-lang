@@ -5,7 +5,7 @@
 -- Once.Spec.Core.TermModel — plan 0.102 phase B (§4 B, §7; D276): THE TERM
 -- MODEL IS A GRADED CATEGORY AND ⟦_⟧ IS A FUNCTOR OUT OF IT.
 --
--- SPEC (a statement; the proof is `Once.Adequacy.TermModel`). Objects are
+-- SPEC (a statement; the proof is `Once.Metatheory.TermModel`). Objects are
 -- contexts, a morphism is a typed term, the identity is a variable and
 -- COMPOSITION IS SUBSTITUTION. Three fields:
 --

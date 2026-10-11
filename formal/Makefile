@@ -84,10 +84,11 @@ lint-imports:
 backstop:
 	@scripts/backstop.sh
 
-# Every mechanical merge gate in one go (MERGE.md §4): the ratchets first (seconds),
+# Every mechanical merge gate in one go (MERGE.md §4): the ratchets and the
+# metatheory boundary first (seconds),
 # then the import lint, the backstop and the certified apex.
 .PHONY: merge-gate
-merge-gate: public-gate pragma-gate lint-imports backstop certified
+merge-gate: public-gate pragma-gate metatheory-gate lint-imports backstop certified
 	@echo "merge-gate: OK"
 
 .PHONY: lint-pragmas
@@ -226,6 +227,11 @@ pragma-gate:
 # Plan 0.92 S0: no new `public` re-export; the baseline only shrinks.
 public-gate:
 	@scripts/public-gate.sh
+
+.PHONY: metatheory-gate
+# D304: the language's metatheory (Once/Metatheory) imports only the Spec side.
+metatheory-gate:
+	@scripts/metatheory-gate.sh
 
 .PHONY: malonzo
 malonzo:

@@ -182,7 +182,7 @@ du_abs'45''60''58'_624 v0 v1 v2 v3 v4
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C_rigid_138 v7 v8
                -> coe
-                    MAlonzo.Code.Once.Spec.Core.TySubst.du_'60''58''8346''45'refl_598
+                    MAlonzo.Code.Once.Spec.Core.TySubst.du_'60''58''8346''45'refl_524
                     (coe
                        MAlonzo.Code.Once.Spec.Core.AbsTy.d_absRigid_68 (coe v0) (coe v1)
                        (coe v7) (coe v8))

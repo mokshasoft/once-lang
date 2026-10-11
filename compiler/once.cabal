@@ -618,7 +618,7 @@ library
       MAlonzo.Code.Once.Adequacy.CoreEnv
       MAlonzo.Code.Once.Adequacy.CoreInst
       MAlonzo.Code.Once.Adequacy.CoreMeaningBridge
-      MAlonzo.Code.Once.Adequacy.CoreRenameSem
+      MAlonzo.Code.Once.Metatheory.CoreRenameSem
       MAlonzo.Code.Once.Adequacy.ElabCommute
       MAlonzo.Code.Once.Adequacy.ElabInst
       MAlonzo.Code.Once.Adequacy.ElaborateLinked

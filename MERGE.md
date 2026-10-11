@@ -45,7 +45,8 @@ Special scrutiny, in order:
   `formal/scripts/spec-closure.py` resolves the transitive `open import …
   public` closure of `Once.Spec` and prints it as paths, so the list is
   GENERATED rather than maintained — a hand-written one goes stale and is the
-  same hole again. It is 27 modules today (regenerate, do not trust this copy):
+  same hole again. It is 34 modules today (regenerate, do not trust this copy;
+  the list below is the 27 of plan 0.84 plus later additions, not maintained):
 
       Once/Spec.agda + Once/Spec/{Type,Syntax,Typing,Meaning,Correct}.agda
       Once/Spec/{Program,Resolution,Lexing,Parsing,Module}.agda
@@ -54,6 +55,8 @@ Special scrutiny, in order:
       Once/TypeCheck/Judgment.agda                       (= Once.Spec.Typing)
       Once/Denotation/{Admissible,Trace,ValueDomain,Behavior,Meaning,MainMeaning}.agda
       Once/Adequacy.agda                                 (= Once.Spec.Correct)
+      Once/Spec/Metatheory.agda + Once/Spec/Core/TermModel.agda   (D304: the
+                                 metatheory's STATEMENTS; proofs in Once/Metatheory)
 
   **Every module in this list is PROOF-FREE, and that is the invariant to
   check — not the count.** Plan 0.84 / D140 established it: a `-sound` or
@@ -257,9 +260,11 @@ start it during step 1 and read it here. Three checks, in order of severity:
   or never wired.
   A METATHEOREM (a property of the language itself, not a premise of the
   compiler proof) is none of the three: it proves nothing the apex postulates,
-  so it always looks unwired. It belongs in `CertifiedBuild.language` (stated in
-  `Once.Spec.Core.TermModel`, proved under `Once.Adequacy`) — wire it there or
-  delete it, never leave it as an island (D303: `tsubst` was deleted this way).
+  so it always looks unwired. Its STATEMENT belongs in the Spec
+  (`Once.Spec.Metatheory`, D304), its proof under `Once/Metatheory` (Spec-side
+  imports only: `make metatheory-gate`), and `CertifiedBuild.language` carries it
+  — wire it there or delete it, never leave it as an island (D303: `tsubst` was
+  deleted this way).
 
 READ THE COUNTS CORRECTLY. `counts` are DECLARATIONS, not source sites, and the
 gap is large: 202 `terminating-pragma` entries in one dump were 22 actual
@@ -346,7 +351,7 @@ island loses its line in the same commit. `lint-imports` skips the same islands
 
 All the mechanical gates run in one go, cheapest first:
 
-    cd formal && make merge-gate   # public-gate, pragma-gate, lint-imports, backstop, certified
+    cd formal && make merge-gate   # public-gate, pragma-gate, metatheory-gate, lint-imports, backstop, certified
 
 `make merge-gate` must pass before §5. It does not replace §1 (analysis), §4
 (extraction) or §4b (reachability).

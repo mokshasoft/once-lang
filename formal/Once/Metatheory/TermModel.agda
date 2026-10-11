@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.TermModel — plan 0.102 phase B (D276): THE PROOF of
+-- Once.Metatheory.TermModel — plan 0.102 phase B (D276, D304): THE PROOF of
 -- `Once.Spec.Core.TermModel`.
 --
 --   * `subst-⊢` is `Once.Spec.Core.Subst.subst-⊢` (composition is defined);
@@ -17,7 +17,7 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
 
-module Once.Adequacy.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+module Once.Metatheory.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (suc)
@@ -36,8 +36,8 @@ open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.Subst S using (sub-⊢; single-ty; single-usage; subst-⊢)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Core.TermModel S using (TermModel)
-open import Once.Adequacy.TySubst S using (tsubst)
-open import Once.Adequacy.CoreSubstSem S
+open import Once.Metatheory.TySubst S using (tsubst)
+open import Once.Metatheory.CoreSubstSem S
   using (Live; l-one; l-many; l-suc; look; env-ext; look-bind; subst-restr; ⟦retype⟧; single-⊑; module Rows)
 
 module _ (fmt : TargetNum) (δ : GM.DefSem) where

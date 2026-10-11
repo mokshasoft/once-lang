@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.CoreSubstSem — plan 0.102 phase B (D276): ⟦_⟧ PRESERVES
+-- Once.Metatheory.CoreSubstSem — plan 0.102 phase B (D276): ⟦_⟧ PRESERVES
 -- COMPOSITION.
 --
 --   ⟦ sub-⊢ d h ⟧ fmt δ x ≡ ⟦ d ⟧ fmt δ (rowsᴰ h Ψ x)
@@ -16,7 +16,7 @@
 --   * naturality under restriction (`rows-nat`) — the sub-usaging rule and
 --     every multi-premise rule's split of the environment;
 --   * the binder (`rows-ext`, `rows-ext0`) — `extS`;
---   * (in `Once.Adequacy.TermModel`) single substitution's environment.
+--   * (in `Once.Metatheory.TermModel`) single substitution's environment.
 -- Every transport of an environment is itself a restriction (`subst-restr`),
 -- and the usage order is proof-irrelevant, so all restriction chains with the
 -- same ends agree (`EnvAlgebraV.restrict-≡`).
@@ -26,7 +26,7 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
 
-module Once.Adequacy.CoreSubstSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+module Once.Metatheory.CoreSubstSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -50,7 +50,7 @@ open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.Subst S using (SubTy; tailᴿ; ext-ty; retype)
 open SubTy using (row)
 import Once.Spec.Core.Meaning S as GM
-open import Once.Adequacy.CoreRenameSem S using (wk-sem; bindC)
+open import Once.Metatheory.CoreRenameSem S using (wk-sem; bindC)
 open import Once.Denotation.GradedDomain using (bindM; subM)
 open import Once.Denotation.GradedOps using (fmapM; ana-semᵛ)
 open import Once.Spec.Core.Subst S using (sub-⊢)

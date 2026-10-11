@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.CoreRenameSem — plan 0.103 6b, step B.1: the core meaning is
+-- Once.Metatheory.CoreRenameSem — plan 0.103 6b, step B.1: the core meaning is
 -- STABLE UNDER RENAMING.
 --
 --   ⟦ ren-⊢ θ d ⟧ fmt δ dΔ ≡ ⟦ d ⟧ fmt δ (thinᴰ θ Ψ dΔ)
@@ -25,7 +25,7 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 
 open import Once.Spec.Contract using (ISig)
-module Once.Adequacy.CoreRenameSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+module Once.Metatheory.CoreRenameSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
