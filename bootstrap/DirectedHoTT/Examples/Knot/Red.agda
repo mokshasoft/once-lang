@@ -9,6 +9,12 @@
 -- per recursive field (the reduct a σ-field, the premise a row of the
 -- same stratum or a σ-field of the lower one, the target Forded) and the
 -- head's computation rules.
+--
+-- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`; read by tools/sweep.sh):
+--   alone, deps built, 2026-10-11: 285 s / 3.8 GB + 1.7 GB swap at
+--   `-A64m -c`; at `-A64m` it is killed at the 5.5 GB cap. A partial
+--   profile shows no instance-copy blowup (PLAN-REF 2026-10-11): it is
+--   size, ~1640 blocks.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}

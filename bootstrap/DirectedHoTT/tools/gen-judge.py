@@ -1874,6 +1874,7 @@ def gen_red(fam, only=None):
     heads = TYHEADS if fam == "⟶ᵀ" else TMHEADS
     modname, m = REDMOD[fam]
     hdr = RHDR.replace(RDOC, PWDOC + "\n") if fam == "Pw" else RHDR
+    if fam == "⟶": hdr = hdr.replace(RDOC, RDOC + REDGC)
     L = [hdr.replace("MODNAME", modname).replace("FAMNAME", fam).replace("EXTRA", REDEXTRA[fam])]
     for h in heads:
         if h in rules and (only is None or h in only):
@@ -1928,6 +1929,13 @@ RDOC = """-- The reduction judgement `FAMNAME` as a family fibred by its SUBJECT
 -- per recursive field (the reduct a σ-field, the premise a row of the
 -- same stratum or a σ-field of the lower one, the target Forded) and the
 -- head's computation rules.
+"""
+REDGC = """--
+-- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`; read by tools/sweep.sh):
+--   alone, deps built, 2026-10-11: 285 s / 3.8 GB + 1.7 GB swap at
+--   `-A64m -c`; at `-A64m` it is killed at the 5.5 GB cap. A partial
+--   profile shows no instance-copy blowup (PLAN-REF 2026-10-11): it is
+--   size, ~1640 blocks.
 """
 PWDOC = """-- `pwBody c ≡ b` on the codes `pw? c` accepts (`Spec/Variance`), the
 -- premise of `hrefl-pw` and `tr-pw`, as a LOWER-STRATUM family (D077/D078)
