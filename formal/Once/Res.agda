@@ -40,20 +40,6 @@ is-stopped : ∀ {X} → Res X → Bool
 is-stopped stopped     = true
 is-stopped (returns _) = false
 
--- | INVERTING THE FLAG (plan 0.98).
---
---   A lemma whose subject is the TRACE does not care what the value was, only
---   whether there was one — so the boolean premise is the right statement for
---   it, and over-specifying it with a value parameter would say less about
---   more. But its PROOF has to reduce `bindRes`, and that needs the
---   constructor. These two are the bridge, and they are proofs: the flag and
---   the result carry exactly the same information about stopping.
-res-returns : ∀ {X} {r : Res X} → is-stopped r ≡ false → Σ[ v ∈ X ] r ≡ returns v
-res-returns {r = returns v} _ = v , refl
-
-res-stopped : ∀ {X} {r : Res X} → is-stopped r ≡ true → r ≡ stopped
-res-stopped {r = stopped} _ = refl
-
 -- | `returns` is injective — it is a constructor. Needed wherever an
 --   obligation BINDS the returned value and a proof knows what it was.
 returns-inj : ∀ {X} {x y : X} → returns x ≡ returns y → x ≡ y
@@ -63,29 +49,6 @@ returns-inj refl = refl
 mapRes : ∀ {X Y} → (X → Y) → Res X → Res Y
 mapRes f stopped     = stopped
 mapRes f (returns x) = returns (f x)
-
--- | The functor laws for `mapRes`, and congruence. Every one is a two-case
---   split, and the `stopped` case is `refl` in each — a computation with no
---   result has nothing to map.
-mapRes-id : ∀ {X} (r : Res X) → mapRes (λ x → x) r ≡ r
-mapRes-id stopped     = refl
-mapRes-id (returns _) = refl
-
-mapRes-∘ : ∀ {X Y Z} (g : Y → Z) (f : X → Y) (r : Res X)
-         → mapRes g (mapRes f r) ≡ mapRes (λ x → g (f x)) r
-mapRes-∘ g f stopped     = refl
-mapRes-∘ g f (returns _) = refl
-
-mapRes-cong : ∀ {X Y} {f g : X → Y} → (∀ x → f x ≡ g x)
-            → (r : Res X) → mapRes f r ≡ mapRes g r
-mapRes-cong h stopped     = refl
-mapRes-cong h (returns x) = cong returns (h x)
-
--- | Mapping does not change WHETHER it stopped.
-is-stopped-mapRes : ∀ {X Y} (f : X → Y) (r : Res X)
-                  → is-stopped (mapRes f r) ≡ is-stopped r
-is-stopped-mapRes f stopped     = refl
-is-stopped-mapRes f (returns _) = refl
 
 -- | Lift a relation on values to one on results. Two results are related
 --   when they stop together, or both return related values. This is what a
@@ -110,7 +73,3 @@ data Res-rel {X Y : Set} (R : X → Y → Set) : Res X → Res Y → Set where
   rel-stopped : Res-rel R stopped stopped
   rel-returns : ∀ {x y} → R x y → Res-rel R (returns x) (returns y)
 
--- | `stopped` and `returns` are distinct — the discrimination every
---   "a stopped run has no result" argument spends.
-returns≢stopped : ∀ {X} {x : X} → returns x ≡ stopped → ∀ {W : Set} → W
-returns≢stopped ()

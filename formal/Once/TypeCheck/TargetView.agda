@@ -94,11 +94,6 @@ data SumTarget : Type → Set where
   sum-at    : ∀ A B → SumTarget (A + B)
   sum-other : ∀ {T} → SumTarget T
 
-sumTarget : (T : Type) → SumTarget T
-sumTarget (A + B) = sum-at A B
-{-# CATCHALL #-}
-sumTarget _ = sum-other
-
 ------------------------------------------------------------------------
 -- Argument views of the infer-mode builtins whose argument's type decides
 -- the rule: `Out` (a stream) and `apply` (a closure paired with its argument).

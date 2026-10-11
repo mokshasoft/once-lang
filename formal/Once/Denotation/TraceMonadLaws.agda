@@ -75,14 +75,6 @@ fmapT-cong : ∀ {X Y} {f g : X → Y} → (∀ x → f x ≡ g x) → (m : T X)
 
 fmapT-cong h m = >>=T-cong m λ x → cong ret (h x)
 
-fmapT->>=T : ∀ {X Y Z : Set} (g : X → Y) (m : T X) (f : Y → T Z) → (fmapT g m >>=T f) ≡ (m >>=T λ x → f (g x))
-
-fmapT->>=T g m f = >>=T-assoc m _ f
-
->>=T-fmapT : ∀ {X Y Z : Set} (g : Y → Z) (m : T X) (f : X → T Y) → fmapT g (m >>=T f) ≡ (m >>=T λ x → fmapT g (f x))
-
->>=T-fmapT g m f = >>=T-assoc m f _
-
 length-take-≤ : ∀ k (xs : List SigOpEvent) → length (take k xs) ≤ k
 
 length-take-≤ zero    _        = z≤n
@@ -114,10 +106,6 @@ take-pf xs = prefixFamily (λ k → length-take-≤ k xs) (λ k → take-sat k x
 projTrace-pf : ∀ {X} (ι : Interp) (m : T X) → PrefixFamily (projTrace ι m)
 
 projTrace-pf ι m = take-pf (eventsT ι m)
-
-resVal-returns : ∀ {X} (r : Res X) (p : Returns? r) → r ≡ returns (resVal r p)
-
-resVal-returns (returns x) _ = refl
 
 RelT′-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
              {m : T X} {m′ : T X′} {f : X → T Y} {f′ : X′ → T Y′}
@@ -178,44 +166,6 @@ RelT′-events ι h (rel-call {o} {a} hk) = go (callAnswer ι h o a)
         go nothing  = refl
 
 RelT′-events ι h rel-halt     = refl
-
-RelT′-result : ∀ {X Y : Set} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T X} {m′ : T Y}
-             → RelT′ R m m′ → RelRes R (resultAt ι h m) (resultAt ι h m′)
-
-RelT′-result ι h (rel-ret r)  = rel-returns r
-
-RelT′-result ι h (rel-call {o} {a} hk) = go (callAnswer ι h o a)
-  where go : (mb : Maybe M.⟦ ccod o ⟧) → RelRes _ (proj₂ (run-call ι h o a _ mb)) (proj₂ (run-call ι h o a _ mb))
-        go (just b) = RelT′-result ι (h ++ [ callEvent o a ]) (hk b)
-        go nothing  = rel-stopped
-
-RelT′-result ι h rel-halt     = rel-stopped
-
-take-++-split : ∀ {A : Set} (k : ℕ) (as bs : List A)
-              → take k (as ++ bs) ≡ take k as ++ take (k ∸ length as) bs
-
-take-++-split zero    as       bs = sym (cong (λ m → take m bs) (0∸n≡0 (length as)))
-
-take-++-split (suc k) []       bs = refl
-
-take-++-split (suc k) (a ∷ as) bs = cong (a ∷_) (take-++-split k as bs)
-
-minus-take : ∀ {A : Set} (k : ℕ) (as : List A)
-           → k ∸ length (take k as) ≡ k ∸ length as
-
-minus-take zero    as       = sym (0∸n≡0 (length as))
-
-minus-take (suc k) []       = refl
-
-minus-take (suc k) (a ∷ as) = minus-take k as
-
-take-++-threaded : ∀ {A : Set} (k : ℕ) (as bs : List A)
-                 → take k (as ++ bs)
-                   ≡ take k as ++ take (k ∸ length (take k as)) bs
-
-take-++-threaded k as bs =
-  trans (take-++-split k as bs)
-        (cong (λ m → take k as ++ take m bs) (sym (minus-take k as)))
 
 -- THE RUN OF A BIND IS THE RUNS OF ITS PARTS, the history threaded.
 mutual

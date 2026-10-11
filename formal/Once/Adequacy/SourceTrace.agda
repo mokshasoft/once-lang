@@ -86,7 +86,6 @@ open import Once.IRTy using (IRTy; _≟IRTy_)
 
 -- | Recognise `main`'s type, `IO Unit`.
 
-
 -- D253: `main` is an entry like any other; the program's own `main` is the CALL
 -- of it, `once_main`, which is exactly what `_start` runs.
 
@@ -117,14 +116,11 @@ open import Once.IRTy using (IRTy; _≟IRTy_)
 
 -- D253: every entry, `main` included — it is the callee of the program's `main`.
 
-
 -- The table of a compile RESULT (a failed compile has none), and of a module.
-
 
 -- The program at a table, given `main`. Stated over `moduleToIR` so that every
 -- apex step that already has `moduleToIR m ≡ just ir` reaches the program by
 -- rewriting with it.
-
 
 ------------------------------------------------------------------------
 -- D165: THE IR THE BACKEND ACTUALLY COMPILES.
@@ -145,25 +141,10 @@ open import Once.IRTy using (IRTy; _≟IRTy_)
 --
 -- Naming the emitted IR is what lets that assumption be split out and counted.
 ------------------------------------------------------------------------
-map-rewrite : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-map-rewrite nothing   = nothing
-map-rewrite (just ir) = just (proj₁ (rewrite-ir ir))
-
-moduleToIR-emitted : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
 
 -- D244: …and the whole PROGRAM the backend compiles. The emitter runs the arith
 -- lifting on EVERY definition (`compileFunWithTarget`), so the emitted program
 -- rewrites `main` and each table entry alike.
-
-
-
-map-rewrite-program : Maybe IRProgram → Maybe IRProgram
-map-rewrite-program nothing  = nothing
-map-rewrite-program (just p) = just (rewrite-program p)
-
-moduleToProgram-emitted : P.Module → Maybe IRProgram
-moduleToProgram-emitted mod = map-rewrite-program (moduleToProgram mod)
 
 ------------------------------------------------------------------------
 -- LINKEDNESS of the compiled program (D245). The backend's correctness is for

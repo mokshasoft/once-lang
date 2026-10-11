@@ -88,7 +88,6 @@ open Once.Surface.Syntax.Expr
 -- induction can recurse into open subterms). Pointwise in the depth `k`.
 ------------------------------------------------------------------------
 
-
 -- `var i` ↦ `proj i` (`proj zero = snd`, `proj (suc i) = proj i ∘ fst`), which
 -- mirrors `lookupᴰ`; `∘`/`fst` reduce (returnT, []++X) so `proj (suc i)` peels to
 -- the sub-env. Pure structural induction on the de-Bruijn index.
@@ -133,8 +132,6 @@ void-bind p m f g = void-bind′ m f g p
 -- Infix, because these statements apply a computation to its budget at the
 -- END of a multi-line expression — which is exactly where the old
 -- juxtaposition sat. Binds tighter than `≡`, looser than application.
-
-
 
 pair-subst⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A') (b : B')
   → subst id (sym (cong₂ _×_ p q)) (a , b) ≡ (subst id (sym p) a , subst id (sym q) b)
@@ -200,7 +197,6 @@ ihᴰ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) (dγ : ⟦ �
     → (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A} (elaborate IR.Heap e) dγ ≡ SD.⟦ e ⟧ˢ fmt σ₀ dγ)
     → evalᴰ fmt ρ (elaborate IR.Heap e) (subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ) ≡ subst T (sym (cohᴰ A)) (SD.⟦ e ⟧ˢ fmt σ₀ dγ)
 ihᴰ {A = A} e dγ ih = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (ih))
-
 
 -- D143: a variable's RUNTIME environment is a SINGLETON — `var i` has usage
 -- `singleUse i One`, so `↾` has already dropped every other slot. `projUsed`
@@ -274,7 +270,6 @@ mutual
   liftFn-restrictEnv {Γ = Γ , A ^ q} (o≤m ⊑∷ ule) dγ = restrictEnv-keep {Γ = Γ} {A = A} ule dγ
   liftFn-restrictEnv {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) dγ = restrictEnv-keep {Γ = Γ} {A = A} ule dγ
 
-
 -- THE WORKHORSE: `elaborate e ∘ restrictEnv le` denotes `⟦e⟧ˢ` run on the
 -- NARROWED environment. Every compound clause of `faithful` is an instance —
 -- the elaborator narrows with an IR morphism, the denotation with `restrictᴰ`,
@@ -292,15 +287,12 @@ liftFn-∘-restrictEnv {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule h dγ =
         (cong (λ t → (t >>=T liftFn fmt ρ {⟦ Γ ↾ Ψ' ⟧ᶜ} {A} h))
               ((liftFn-restrictEnv {Γ = Γ} ule dγ)))
 
-
-
 -- `ihᴰ` for an arbitrary IR morphism (not just an elaborated `Expr`).
 ihᴰgen : ∀ {X A : Type} (h : IR.IR ⌊ X ⌋ ⌊ A ⌋) (sh : T ⟦ A ⟧ᴰ) (dγ : ⟦ X ⟧ᴰ)
        → (liftFn fmt ρ {X} {A} h dγ ≡ sh)
        → evalᴰ fmt ρ h (subst id (sym (cohᴰ X)) dγ) ≡ subst T (sym (cohᴰ A)) sh
 ihᴰgen {A = A} h sh dγ ih =
   trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (ih))
-
 
 -- D143: THE ARITHMETIC NODE. `<op>IR = SigOp <op>-info`, so every two-operand
 -- arithmetic clause is `SigOp info ∘ ⟨ ea , eb ⟩`. Stating it as a lemma with
@@ -535,17 +527,6 @@ ihᴰ∘ {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule e dγ ih =
                  trans (liftFn-∘-restrictEnv {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A}
                                              ule (elaborate IR.Heap e) dγ) (ih))))
 
-
-
-
--- D179: the `++ []` residuals the three `*-trace` helpers above paper over are
--- intermediate `returnT`s. Under a threaded budget it is no longer enough to
--- fix the TRACE — the residual also sits inside the continuation's budget — so
--- the whole computation is rewritten instead. This is right identity, lifted
--- to a function equality (the `*-trace` helpers are trace-only and cannot).
-drop-pure : ∀ {X : Set} (m : T X) → (m >>=T returnT) ≡ m
-drop-pure m = >>=T-identityʳ m
-
 -- Double transport-apply-bind: the `cohᴰ`-transported closure computation
 -- applied to the `cohᴰ`-back-transported argument computation, transported,
 -- equals the untransported apply-bind (all `refl`).
@@ -762,7 +743,6 @@ fork-body {X = X} {A = A} {B = B} {C = C} ef eg sf sg dγ ihf ihg =
                      >>=T-assoc (evalᴰ fmt ρ eg dγ') (λ c → returnT (vf , c))
                                 (evalᴰ fmt ρ (forkIR {⌊ A ⌋} {⌊ B ⌋} {⌊ C ⌋} IR.Heap)))))))
 
-
 copair-transport : ∀ {AI AT BI BT CI CT : Set}
     (pA : AI ≡ AT) (pB : BI ≡ BT) (pC : CI ≡ CT)
     (hf : T (AT → T CT)) (hg : T (BT → T CT))
@@ -828,7 +808,6 @@ copair-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ ihf ihg =
                                     cong returnT (extensionality
                                       (λ { (inj₁ x) → refl
                                          ; (inj₂ y) → refl }))))))))))
-
 
 -- D143: `apply` needs `⌊A ⇒[k] B⌋ ≡ ⌊A⌋ ⇛ ⌊B⌋`, so the arrow must be NON-erased
 -- — the quantity cannot stay a variable. `One` and `Many` share the proof; the
@@ -905,13 +884,11 @@ app-body-One {X = X} {A = A} {B = B} ef ex sf sx dγ ihf ihx =
                      >>=T-assoc (evalᴰ fmt ρ ex dγ') (λ c → returnT (b , c))
                                 (evalᴰ fmt ρ (apply {⌊ A ⌋} {⌊ B ⌋})))))))
 
-
 -- D143: the ERASED arrow's `cohᴰ` is a ONE-equation `cong` (both sides forget
 -- the argument), so the two-equation `subst-arrowᴰ` does not apply.
 subst-arrow₀ᴰ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → T B)
   → subst id (cong (λ y → U → T y) q) g ≡ (λ u → subst T q (g u))
 subst-arrow₀ᴰ refl g = refl
-
 
 -- D143: over the RUNTIME environment `Γ ↾ Ψ`. `elaborate` and `⟦_⟧ˢ` are both
 -- phase-indexed, so faithfulness is a statement about the variables the term

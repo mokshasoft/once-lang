@@ -244,22 +244,12 @@ subst-fam-fmap : ∀ {W : Set₁} (P : W → Set) {w w' : W} (eq : w ≡ w') {X 
   → subst (λ Z → T (P Z)) eq (fmapT f m) ≡ fmapT (λ x → subst P eq (f x)) m
 subst-fam-fmap P refl f m = refl
 
--- `subst` along a `cong`ed equation is `subst` along the equation itself.
-subst-id-cong : ∀ {W : Set₁} (P : W → Set) {w w' : W} (eq : w ≡ w') (v : P w)
-  → subst (λ z → z) (cong P eq) v ≡ subst P eq v
-subst-id-cong P refl v = refl
-
 -- `coerce-ν-in` is natural in the carrier, so a carrier transport passes
 -- through it.
 coerce-ν-in-subst : ∀ (G : Functor) {X Y : Set} (eq : X ≡ Y) (v : ⟦ G ⟧F X)
   → subst (λ Z → ⟦ translateF Carrier Carrier G ⟧SF Z) eq (coerce-ν-in G X v)
     ≡ coerce-ν-in G Y (subst (λ Z → ⟦ G ⟧F Z) eq v)
 coerce-ν-in-subst G refl v = refl
-
--- A family-form `subst` over `T` is a `subst T` along the `cong`ed equation.
-subst-fam-T : ∀ {W : Set₁} (P : W → Set) {w w' : W} (eq : w ≡ w') (m : T (P w))
-  → subst (λ Z → T (P Z)) eq m ≡ subst T (cong P eq) m
-subst-fam-T P refl m = refl
 
 -- plan 0.98: the `valueT`-transport lemma is GONE. A transport moves the
 -- RESULT, not a value — `subst-T-resT` (CataErased) is its replacement, and it

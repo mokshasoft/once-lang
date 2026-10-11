@@ -39,7 +39,6 @@ record CanonicalName : Set where
   constructor canonical
   field parts : List String
 
-
 -- A bare/single-component identity (local def, builtin, compiler-generated
 -- block). Qualified refs build `canonical (path ++ [name])` at resolution.
 bare : String → CanonicalName
@@ -70,13 +69,6 @@ pattern gen g = canonical ("Generators" ∷ g ∷ [])
 -- D248: the canonical name of an OWN-module entry — one part, the entry's name
 -- (the resolver's `rv-own`/`name@this`). `bare x` as a PATTERN.
 pattern own x = canonical (x ∷ [])
-
--- D248: a name that is not an own-module entry's — a resolved path into another
--- module (or the empty name).
-NotOwn : CanonicalName → Set
-NotOwn (own _) = ⊥
-{-# CATCHALL #-}
-NotOwn _       = ⊤
 
 -- A user path can never BE a generator name: `bare x = canonical [x]` has one
 -- component and `gen g` has two, so the two families are disjoint by length —

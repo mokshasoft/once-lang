@@ -90,10 +90,6 @@ a ⊆ b = ∀ {i} → i ∈ a → i ∈ b
 -- The two layout equations every composite clause needs.
 ------------------------------------------------------------------------
 
-layout-++ : ∀ (bs cs : List (LabelId × ℕ × AbstractTrace))
-          → blocks-layout (bs ++ cs) ⊆ blocks-layout bs ++ blocks-layout cs
-layout-++ bs cs m = subst (_ ∈_) (blocks-layout-++ bs cs) m
-
 layout-++⁻ : ∀ (bs cs : List (LabelId × ℕ × AbstractTrace))
            → blocks-layout bs ++ blocks-layout cs ⊆ blocks-layout (bs ++ cs)
 layout-++⁻ bs cs m = subst (_ ∈_) (sym (blocks-layout-++ bs cs)) m
@@ -131,7 +127,6 @@ module _ (G : String → Set) where
 
   thk∈ : ∀ {D t} (m : LabelId) {b : ℕ} → Defd D t → instr-ctrl (c-thunk m b) ∈ t → thunkSym m ∈ D
   thk∈ m d mem = d mem (here refl)
-
 
   ------------------------------------------------------------------------
   -- THE CATA SKELETONS. Each strategy is the call setup, its loop fragments,
@@ -218,7 +213,6 @@ module _ (G : String → Set) where
         (inj₁ (lab∈ (ℓ o (suc (suc (suc l1)))) d (I₃⊆ (there (there (here refl))))) ∷ [])
         (inj₁ (lab∈ (ℓ o (suc (suc l1))) d (I₂⊆ (here refl))) ∷ [])
         (body-closes _ _ bb at (defd-⊆ B⊆ d) cat)
-
 
   ------------------------------------------------------------------------
   -- THE COMPILE-TIME FUNCTOR WALKS. A `⊕` level owns `lb` and `suc lb`: it
@@ -401,7 +395,6 @@ module _ (G : String → Set) where
   cata-closes strat-nat bb n1 l1 at {D} d cat = NatS.closes bb n1 l1 at d cat
   cata-closes strat-linear bb n1 l1 at {D} d cat = LinS.closes bb n1 l1 at d cat
   cata-closes (strat-branching F) bb n1 l1 at {D} d cat = BrS.closes F bb n1 l1 at d cat
-
 
   ------------------------------------------------------------------------
   -- THE INDUCTION.

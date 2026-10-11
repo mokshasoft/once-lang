@@ -358,9 +358,6 @@ calls-blocks (Cata {F} _ alg) n l la = calls-blocks alg 0 l la
 -- Over the public entry points.
 ------------------------------------------------------------------------
 
-ir-to-trace-calls : ∀ {A B} (ir : IR A B) → Linked σ tbl ir → CLTrace (ir-to-trace ir)
-ir-to-trace-calls ir lk = ++⁺ (calls-trace' ir 0 0 lk) (tt ∷ calls-blocks ir 0 0 lk)
-
 ir-to-trace-lab-calls : ∀ {A B} (ir : IR A B) (l : ℕ) → Linked σ tbl ir → CLTrace (ir-to-trace-lab l ir)
 ir-to-trace-lab-calls ir l lk = ++⁺ (calls-trace' ir 0 l lk) (tt ∷ calls-blocks ir 0 l lk)
 

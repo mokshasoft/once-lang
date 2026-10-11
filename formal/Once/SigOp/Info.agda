@@ -221,25 +221,6 @@ open SigOpInfo
 FFIAnswers : Set
 FFIAnswers = CanonicalName → (A B : Type) → M.⟦ A ⟧ → Res M.⟦ B ⟧
 
--- A base value in the graded domain (they coincide at first-order types).
-liftᵇ : ∀ {B} → IsBaseType B → M.⟦ B ⟧ → M.⟦ B ⟧ᵍ
-liftᵇ base-Unit        x       = x
-liftᵇ base-Void        x       = x
-liftᵇ base-Int         x       = x
-liftᵇ base-Float       x       = x
-liftᵇ (base-Prod a b)  (x , y) = liftᵇ a x , liftᵇ b y
-liftᵇ (base-Sum a b)   (inj₁ x) = inj₁ (liftᵇ a x)
-liftᵇ (base-Sum a b)   (inj₂ y) = inj₂ (liftᵇ b y)
-
-eraseᵇ-liftᵇ : ∀ {B} (b : IsBaseType B) (x : M.⟦ B ⟧) → M.eraseᵍ (liftᵇ b x) ≡ x
-eraseᵇ-liftᵇ base-Unit        x        = refl
-eraseᵇ-liftᵇ base-Void        x        = refl
-eraseᵇ-liftᵇ base-Int         x        = refl
-eraseᵇ-liftᵇ base-Float       x        = refl
-eraseᵇ-liftᵇ (base-Prod a b)  (x , y)  = cong₂ _,_ (eraseᵇ-liftᵇ a x) (eraseᵇ-liftᵇ b y)
-eraseᵇ-liftᵇ (base-Sum a b)   (inj₁ x) = cong inj₁ (eraseᵇ-liftᵇ a x)
-eraseᵇ-liftᵇ (base-Sum a b)   (inj₂ y) = cong inj₂ (eraseᵇ-liftᵇ b y)
-
 semM-of : ∀ {A B} → FFIAnswers → CanonicalName → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
 semM-of ans n (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))
 semM-of ans n (emitsV refl) = λ _ _ → returns tt
@@ -301,15 +282,6 @@ semP {A} {B} si = semP-of (sem si)
     semP-of : (s : SigOpSem A B) → Internal s → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
     semP-of (pureV f) int-pure = f
     semP-of (primV p) int-prim = primSem p
-
--- | WHICH CONTRACT SHAPES END THE PROGRAM. 0.97 called this `stops-D-of` and
---   kept it in the denotation; it belongs beside the contract it reads.
-stops-shape : ∀ {B} → EffectShape B → Bool
-stops-shape Pure      = false
-stops-shape (Emits _) = false
-stops-shape (Halts _) = true
-stops-shape Answers   = false
-
 
 ------------------------------------------------------------------------
 -- Compatibility constructor — maps the old `(value, effect)` pair into

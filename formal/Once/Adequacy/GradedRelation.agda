@@ -24,12 +24,10 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-open import Once.Type using (Type; Purity; pure; eff; Unit; Void; Int; Float;
-                             _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid;
-                             mk-kind; Zero; One; Many)
+open import Once.Type using (Type; Purity; pure; eff; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; mk-kind; Zero; One; Many)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
-open import Once.Denotation.GradedOps using (prjB; injB; injBᵍ; embν; mapEmbν)
+open import Once.Denotation.GradedOps using (prjB; injB; embν; mapEmbν)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; RelT′; rel-ret)
@@ -164,16 +162,6 @@ injB-rel (base-Prod ia ib) (x , y) = injB-rel ia x , injB-rel ib y
 injB-rel (base-Sum ia ib) (inj₁ x) = injB-rel ia x
 injB-rel (base-Sum ia ib) (inj₂ y) = injB-rel ib y
 injB-rel base-rigid  ()
-
-injBᵍ-rel : ∀ {A} (ib : IsBaseType A) (x : Val.⟦ A ⟧ᵍ) → RelGV A (injBᵍ ib x) (injectᵇ ib (Val.eraseᵍ {A} x))
-injBᵍ-rel base-Unit   x = tt
-injBᵍ-rel base-Void   ()
-injBᵍ-rel base-Int    x = refl
-injBᵍ-rel base-Float  x = refl
-injBᵍ-rel (base-Prod ia ib) (x , y) = injBᵍ-rel ia x , injBᵍ-rel ib y
-injBᵍ-rel (base-Sum ia ib) (inj₁ x) = injBᵍ-rel ia x
-injBᵍ-rel (base-Sum ia ib) (inj₂ y) = injBᵍ-rel ib y
-injBᵍ-rel base-rigid  ()
 
 ------------------------------------------------------------------------
 -- `pure ⊑ eff` at ν: embedding a pure stream keeps it related. Its layers are

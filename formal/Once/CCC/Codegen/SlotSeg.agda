@@ -13,7 +13,6 @@ open import Once.CCC.Label using (LabelId)
 
 module Once.CCC.Codegen.SlotSeg where
 
-
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans)
@@ -30,7 +29,6 @@ open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; lea-slot; instr-ctrl; c-thunk; c-entry; c-start; c-ret; c-label)
 open import Once.CCC.Machine.Locations using (Slot)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
-
 
 ------------------------------------------------------------------------
 -- "every slot this instruction addresses is below `b`"
@@ -70,15 +68,6 @@ sb-slot : ∀ {b} {k} {i} → slot-of i ≡ just k → k < b
 sb-slot {b} eq lt pb = mkSlotBelow (λ slot eq' → subst (_< b) (just-inj (trans (sym eq) eq')) lt) pb
   where just-inj : ∀ {m n : ℕ} → just m ≡ just n → m ≡ n
         just-inj refl = refl
-
--- the frontier only grows, so a bound at an inner frontier is a bound at the
--- outer one
-sb-weaken : ∀ {b b'} {t} → b ≤ b' → All (SlotBelow b) t → All (SlotBelow b') t
-sb-weaken le []         = []
-sb-weaken le (px ∷ pxs) =
-  mkSlotBelow (λ slot eq → ≤-trans (below px slot eq) le)
-              (λ slot eq → ≤-trans (pair-below px slot eq) le)
-  ∷ sb-weaken le pxs
 
 sb-le : ∀ {b b'} {i} → b ≤ b' → SlotBelow b i → SlotBelow b' i
 sb-le le px = mkSlotBelow (λ slot eq → ≤-trans (below px slot eq) le)

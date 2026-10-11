@@ -8,7 +8,6 @@
 -- `SegAgree` has to be one predicate, not one per owner.
 ------------------------------------------------------------------------
 
-
 module Once.CCC.Codegen.LabelSeg where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; s≤s)
@@ -26,7 +25,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.Machine.SMCore
 open Label.LabelId using (idx)
 open import Once.CCC.Codegen.SlotSeg
-
 
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
@@ -116,25 +114,6 @@ SegAgree t = ∀ (p q : ℕ) (m : LabelId) (st : SegState)
            → mention-at t p ≡ just m
            → fetch-at t q ≡ just (instr-ctrl (c-label m))
            → seg-at t q st ≡ seg-at t p st
-
--- AN EMPTY RANGE MEANS NO LABELS, so the property is vacuous. This is the
--- workhorse: `label-mono` gives `l ≤ l'`, and for every leaf clause of
--- `ir-to-trace'` the counter does not move at all, so `labels-in` hands back a
--- window `[l, l)` that nothing can inhabit.
-segagree-empty : ∀ (lo : ℕ) (t : AbstractTrace) → LabelsIn lo lo t → SegAgree t
-segagree-empty lo t ls p q m st mq _ = ⊥-elim (no-mention p mq)
-  where
-    no-mention : ∀ (p' : ℕ) → mention-at t p' ≡ just m → ⊥
-    no-mention p' eq = go t p' ls eq
-      where
-        go : ∀ (t' : AbstractTrace) (r : ℕ) → LabelsIn lo lo t' → mention-at t' r ≡ just m → ⊥
-        go []       r       _         ()
-        go (i ∷ is) zero    (x ∷ _)  e = absurd (in-range x m e)
-          where absurd : (lo ≤ idx m) × (idx m < lo) → ⊥
-                absurd (le , lt) = <-irrefl-aux (≤-trans lt le)
-                  where <-irrefl-aux : ∀ {a} → suc a ≤ a → ⊥
-                        <-irrefl-aux {suc a} (s≤s p) = <-irrefl-aux p
-        go (i ∷ is) (suc r) (_ ∷ xs) e = go is r xs e
 
 -- AN IDLE TRACE has a constant fold, so any two positions agree outright.
 segagree-idle : ∀ (t : AbstractTrace) → seg-idle? t ≡ true → SegAgree t

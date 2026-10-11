@@ -141,8 +141,3 @@ arrowSchema? (_ P+ _)           = nothing
 arrowSchema? (Pμ-type _)        = nothing
 arrowSchema? (Pν-type _ _)      = nothing
 
--- An arrow schema's instance at the domain `A` whose codomain is read off.
-arrow-instance : ∀ {s sd sc π′} → ArrowSchema s sd sc π′ → ∀ (θ : String → Type) {A}
-  → substPoly θ sd ≡ A → IsInstance s (A ⇒[ mk-kind Many π′ ] substPoly θ sc)
-arrow-instance as-pure θ eθ = θ , cong (λ a → a ⇒[ mk-kind Many pure ] _) eθ
-arrow-instance as-eff  θ eθ = θ , cong (λ a → a ⇒[ mk-kind Many eff ] _) eθ

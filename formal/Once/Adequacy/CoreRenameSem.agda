@@ -130,12 +130,6 @@ thin-bind θ Many Ψ x a = refl
           → GM.⟦ subst (λ X → Γ ⊢[ Ψ ] t ∷ X ! π) e d ⟧ fmt δ x ≡ subst (λ X → M π ⟦ X ⟧ᵛ) e (GM.⟦ d ⟧ fmt δ x)
 ⟦⟧-substA refl d fmt δ x = refl
 
--- Restricting a transported environment is restricting the original.
-restrict-subst : ∀ {n} {Γ : Ctx n} {U U' Ψ' : Usage n} (e : U ≡ U')
-                   (u : Ψ' ⊑ᵘ U') (x : Env Γ U)
-               → restrictᵛ {Γ = Γ} u (subst (Env Γ) e x) ≡ restrictᵛ {Γ = Γ} (subst (Ψ' ⊑ᵘ_) (sym e) u) x
-restrict-subst refl u x = refl
-
 ------------------------------------------------------------------------
 -- The general move: restriction after a usage transport, thinned.
 ------------------------------------------------------------------------
@@ -196,7 +190,6 @@ envEq : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n} 
       → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} u' (subst (Env Δ) e x)) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ x)
 envEq {Γ = Γ} {Δ = Δ} θ {Ψ = Ψ} u e u' x =
   trans (thin-restr θ u e u' (subst (Env Δ) e x)) (cong (λ z → restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ z)) (back {Δ = Δ} e x))
-
 
 ------------------------------------------------------------------------
 -- THE RENAMING LEMMA
@@ -395,10 +388,3 @@ wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =
 
 open import Once.Spec.Core.Rename S using (⊢close; ∅⊆)
 
-close-sem : ∀ {n} {Γ : Ctx n} {t A π} (d : ∅ ⊢[ zeroUsage ] t ∷ A ! π)
-              (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ zeroUsage)
-          → GM.⟦ ⊢close {Γ = Γ} d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ tt
-close-sem {Γ = Γ} {t = t} d fmt δ x =
-  trans (⟦⟧-substt (ren-cong {ρ = thin-var (∅⊆ {Γ = Γ})} {ρ′ = λ ()} (λ ()) t) _ fmt δ x)
-  (trans (⟦⟧-substΨ (thin-usage-zeroUsage (∅⊆ {Γ = Γ})) (ren-⊢ (∅⊆ {Γ = Γ}) d) fmt δ x)
-         (ren-sem (∅⊆ {Γ = Γ}) d fmt δ _))

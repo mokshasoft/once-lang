@@ -180,17 +180,6 @@ guard-true : (r : String ⊎ List Entry) {es : List Entry}
   → (namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es))) ≡ true
 guard-true r eq = ∧-elimˡ (guard-all r eq)
 
--- A suffix of a distinct list is distinct.
-namesDistinct-++ʳ : ∀ (xs ys : List String) → namesDistinct (xs ++ ys) ≡ true → namesDistinct ys ≡ true
-namesDistinct-++ʳ []       ys eq = eq
-namesDistinct-++ʳ (x ∷ xs) ys eq = namesDistinct-++ʳ xs ys (∧-elimʳ eq)
-
-guard-polys : (r : String ⊎ List Entry) {es : List Entry}
-  → guardDistinct r ≡ inj₂ es
-  → AllPairs _≢_ (map PolyFunInfo.pfunName (polysOf es))
-guard-polys r {es} eq =
-  namesDistinct-sound _ (namesDistinct-++ʳ (emittedNames (funsOf es)) _ (∧-elimʳ (guard-all r eq)))
-
 -- The telescope walk emits exactly the monomorphic definitions' symbols.
 ce-syms : ∀ (doOpt : Bool) (sc : C.CScope) (es : List Entry) (cfs : List C.CompiledFun)
   → C.compileEntries IR.Heap doOpt sc es ≡ inj₂ cfs

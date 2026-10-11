@@ -29,8 +29,7 @@ open import Once.Type using (Quantity; Zero; One; Many)
 -- `Surface.Syntax`'s re-export: `_↾_` is recursive, and a recursive function
 -- reached through a re-export does not always reduce at the use site.
 open import Once.Surface.Context
-  using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_;
-         z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
+  using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 
 --
@@ -75,52 +74,6 @@ bindᴰ Many dγ a = dγ , a
 bindᴰ0 : ∀ {n} {Γ : Ctx n} {Ψ' : Usage n} {A}
        → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ → ⟦ ⟦ (Γ , A ^ Many) ↾ (Zero ∷ Ψ') ⟧ᶜ ⟧ᴰ
 bindᴰ0 dγ = dγ
-
-
--- | `erase` at the denotation: the FULL environment projected onto the RUNTIME
---   one. The value-level twin of `Once.Surface.Elaborate.eraseCtx`, and the
---   direct counterpart of `NbEPQTT.erase : Tm ⟦Γ⟧full ⟦Γ⟧run`.
---
---   Statements quantifying over a full environment (adequacy bridges,
---   faithfulness proofs) go through this, so the narrowing lives in ONE place
---   rather than once per clause.
-eraseᴰ : ∀ {n} (Γ : Ctx n) (Ψ : Usage n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ
-eraseᴰ ∅           []         dγ = dγ
-eraseᴰ (Γ , A ^ q) (Zero ∷ Ψ) dγ = eraseᴰ Γ Ψ (proj₁ dγ)
-eraseᴰ (Γ , A ^ q) (One  ∷ Ψ) dγ = eraseᴰ Γ Ψ (proj₁ dγ) , proj₂ dγ
-eraseᴰ (Γ , A ^ q) (Many ∷ Ψ) dγ = eraseᴰ Γ Ψ (proj₁ dγ) , proj₂ dγ
-
--- | THE COHERENCE that makes the factoring work: narrowing an already-erased
---   environment is the same as erasing at the smaller usage directly.
---
---       restrictᴰ le (eraseᴰ Γ Ψ dγ) ≡ eraseᴰ Γ Ψ' dγ      (le : Ψ' ⊑ᵘ Ψ)
---
---   Without it, a proof stated over the full environment cannot apply its own
---   induction hypothesis: the goal carries `restrictᴰ … (eraseᴰ Γ Ψ dγ)` while
---   the IH is about `eraseᴰ Γ Ψ' dγ`. With it, every clause of such a proof
---   goes through unchanged.
-eraseᴰ-restrict : ∀ {n} (Γ : Ctx n) {Ψ Ψ' : Usage n} (le : Ψ' ⊑ᵘ Ψ)
-                  (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ)
-                → restrictᴰ {Γ = Γ} le (eraseᴰ Γ Ψ dγ) ≡ eraseᴰ Γ Ψ' dγ
-eraseᴰ-restrict ∅           ⊑[]            dγ = refl
-eraseᴰ-restrict (Γ , A ^ q) (z≤z ⊑∷ ule) dγ = eraseᴰ-restrict Γ ule (proj₁ dγ)
-eraseᴰ-restrict (Γ , A ^ q) (z≤o ⊑∷ ule) dγ = eraseᴰ-restrict Γ ule (proj₁ dγ)
-eraseᴰ-restrict (Γ , A ^ q) (z≤m ⊑∷ ule) dγ = eraseᴰ-restrict Γ ule (proj₁ dγ)
-eraseᴰ-restrict (Γ , A ^ q) (o≤o ⊑∷ ule) dγ = cong (_, proj₂ dγ) (eraseᴰ-restrict Γ ule (proj₁ dγ))
-eraseᴰ-restrict (Γ , A ^ q) (o≤m ⊑∷ ule) dγ = cong (_, proj₂ dγ) (eraseᴰ-restrict Γ ule (proj₁ dγ))
-eraseᴰ-restrict (Γ , A ^ q) (m≤m ⊑∷ ule) dγ = cong (_, proj₂ dγ) (eraseᴰ-restrict Γ ule (proj₁ dγ))
-
--- | The BINDER coherence, dual to `eraseᴰ-restrict`: erasing an environment that
---   has already been extended by a binder is the same as extending the erased
---   base with `bindᴰ`. Both sides case-split on `q`; with `q` a variable neither
---   reduces, so the equation has to be proved (three refls) rather than assumed.
-eraseᴰ-bind : ∀ {n} (Γ : Ctx n) {A} (q : Quantity) (Ψ : Usage n)
-              (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (a : ⟦ A ⟧ᴰ)
-            → eraseᴰ (Γ , A ^ Many) (q ∷ Ψ) (dγ , a)
-                ≡ bindᴰ {Γ = Γ} {A = A} q (eraseᴰ Γ Ψ dγ) a
-eraseᴰ-bind Γ Zero Ψ dγ a = refl
-eraseᴰ-bind Γ One  Ψ dγ a = refl
-eraseᴰ-bind Γ Many Ψ dγ a = refl
 
 -- | The runtime environment at the EMPTY context. Every `Usage 0` restricts
 --   `∅` to `∅`, so the environment does not depend on the usage — but `_↾_` is

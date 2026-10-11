@@ -73,14 +73,4 @@ private
       ... | r , ext = sym (trans (cong (take n) ext)
                                  (take-++-≤ n (at b m) r (subst (n ≤_) (sym eq) n≤m)))
 
-at-stable : ∀ (b : Behavior) n m → n ≤ m → at b n ≡ take n (at b m)
 
--- `n ≤ 0` forces `n ≡ 0` (matching `z≤n`), and `bounded` then forces
--- `at b 0 ≡ []`, which is what `take 0` gives.
-at-stable b .zero zero z≤n = sym (take-all zero (at b zero) (bounded b zero))
-
-at-stable b n (suc m) n≤sm = go (m≤n⇒m<n∨m≡n n≤sm)
-  where
-    go : n < suc m ⊎ n ≡ suc m → at b n ≡ take n (at b (suc m))
-    go (inj₁ (s≤s n≤m)) = trans (at-stable b n m n≤m) (step b n m n≤m)
-    go (inj₂ refl)      = sym (take-all n (at b n) (bounded b n))

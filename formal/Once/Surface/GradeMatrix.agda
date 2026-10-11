@@ -23,8 +23,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.Type using (Quantity; Zero; One; Many; _+q_; _*q_)
 open import Once.Surface.Context
-  using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_;
-         _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+  using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroˡ; *ᵘ-zeroʳ; *ᵘ-identityˡ; +q-identityʳ)
 
 ------------------------------------------------------------------------
@@ -186,26 +185,6 @@ open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identity�
 *q-monoˡ One m≤m = m≤m
 *q-monoˡ Many m≤m = m≤m
 
-*q-monoʳ : ∀ {a a′ : Quantity} (c : Quantity) → a ≤q' a′ → (c *q a) ≤q' (c *q a′)
-*q-monoʳ Zero z≤z = z≤z
-*q-monoʳ One z≤z = z≤z
-*q-monoʳ Many z≤z = z≤z
-*q-monoʳ Zero z≤o = z≤z
-*q-monoʳ One z≤o = z≤o
-*q-monoʳ Many z≤o = z≤m
-*q-monoʳ Zero z≤m = z≤z
-*q-monoʳ One z≤m = z≤m
-*q-monoʳ Many z≤m = z≤m
-*q-monoʳ Zero o≤o = z≤z
-*q-monoʳ One o≤o = o≤o
-*q-monoʳ Many o≤o = m≤m
-*q-monoʳ Zero o≤m = z≤z
-*q-monoʳ One o≤m = o≤m
-*q-monoʳ Many o≤m = m≤m
-*q-monoʳ Zero m≤m = z≤z
-*q-monoʳ One m≤m = m≤m
-*q-monoʳ Many m≤m = m≤m
-
 ≤q'-refl : ∀ (q : Quantity) → q ≤q' q
 ≤q'-refl Zero = z≤z
 ≤q'-refl One = o≤o
@@ -241,10 +220,6 @@ open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identity�
 *ᵘ-monoˡ : ∀ {n} {a a′ : Quantity} (Ψ : Usage n) → a ≤q' a′ → (a *ᵘ Ψ) ⊑ᵘ (a′ *ᵘ Ψ)
 *ᵘ-monoˡ []      p = ⊑[]
 *ᵘ-monoˡ (q ∷ Ψ) p = *q-monoˡ q p ⊑∷ *ᵘ-monoˡ Ψ p
-
-*ᵘ-monoʳ : ∀ {n} (c : Quantity) {Ψ Ψ′ : Usage n} → Ψ ⊑ᵘ Ψ′ → (c *ᵘ Ψ) ⊑ᵘ (c *ᵘ Ψ′)
-*ᵘ-monoʳ c ⊑[]      = ⊑[]
-*ᵘ-monoʳ c (p ⊑∷ u) = *q-monoʳ c p ⊑∷ *ᵘ-monoʳ c u
 
 ------------------------------------------------------------------------
 -- The grade matrix and its action

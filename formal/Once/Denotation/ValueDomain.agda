@@ -127,18 +127,6 @@ mutual
   mapAnaᵈ H (G₁ S⊕ G₂) coalg (inj₂ y) = inj₂ (mapAnaᵈ H G₂ coalg y)
   mapAnaᵈ H (G₁ S⊗ G₂) coalg (x , y)  = (mapAnaᵈ H G₁ coalg x , mapAnaᵈ H G₂ coalg y)
 
--- Transport across the functor index. Because `anaᵈ` is indexed by the
--- SFunctor and the `⟦_⟧F → ⟦_⟧SF` coercion happens OUTSIDE it, this is a
--- match-to-refl. `sem-ana` bakes `coerce-ν-in` in, which is exactly why its
--- erasure round-trip has to go through the `sem-ana-anaS` bisimulation and
--- the `bisimS-to-eq` axiom; keeping the coercion at the boundary means the
--- effectful side needs neither.
-anaᵈ-subst-nat : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂) {A : Set}
-                 (c : A → T (⟦ H₁ ⟧SF A)) (a : A)
-               → subst νᵈ eq (anaᵈ H₁ c a)
-                 ≡ anaᵈ H₂ (subst (λ H → A → T (⟦ H ⟧SF A)) eq c) a
-anaᵈ-subst-nat refl c a = refl
-
 -- Erasure round-trip, functor index only. Matching `heq` to `refl` reduces it
 -- to "the two coalgebras are the same function" — which is what the coalgebra
 -- IH gives. No bisimulation and no axiom, because `anaᵈ` is indexed by the

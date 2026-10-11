@@ -140,19 +140,10 @@ compileFun-sound doOpt ctx polys impsOf name ty expr eq =
 scopeOf : C.CScope → Scope
 scopeOf sc = scope (C.CScope.csig sc) (C.CScope.cimps sc) (C.telePolys (C.CScope.ctele sc))
 
--- Every usage over the empty local context is `zeroUsage`.
-usage0 : (Ψ : Srf.Usage 0) → Ψ ≡ zeroUsage
-usage0 Once.Surface.Context.Usage.[] = refl
-
 consCF-inj : ∀ {cf} (r : String ⊎ List C.CompiledFun) {cfs} → C.consCF cf r ≡ inj₂ cfs
   → Σ-syntax (List C.CompiledFun) (λ rest → r ≡ inj₂ rest)
 consCF-inj (inj₁ _) ()
 consCF-inj (inj₂ rest) _ = rest , refl
-
-checkOK-sound : ∀ {ctx e T} (r : TE.VerifiedCheckResult ctx e T) → C.checkOK r ≡ inj₂ tt
-  → Σ-syntax (Srf.Usage (NamedCtx.size ctx)) (λ Ψ → ctx ⊢ᶜ e ∶ T ⨾ Ψ)
-checkOK-sound (TE.failure _ , _) ()
-checkOK-sound (TE.success Ψ _ _ _ , w) _ = Ψ , w
 
 ce-sound      : ∀ (doOpt : Bool) (sc : C.CScope) (es : List Parser.Entry) {cfs}
               → C.compileEntries IR.Heap doOpt sc es ≡ inj₂ cfs → ModTele (scopeOf sc) es

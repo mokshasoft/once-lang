@@ -240,7 +240,6 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
                   (subst (λ m → RelGM Once.Type.pure ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
                          (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D tt) relA))
 
-
 inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
              {irFun : IR ⌊ Once.Type.Unit ⌋ ⌊ ty ⌋}
@@ -405,11 +404,6 @@ ns-of : ∀ {y : String} (imps : C.FunCtx) → All (λ p → y ≢ proj₁ p) im
 ns-of []       []       e eq = []
 ns-of (p ∷ ps) (h ∷ hs) e eq = (λ q → h (MIF.bare-injective (trans (sym eq) q))) ∷ ns-of ps hs e eq
 
-names-imps : ∀ {y : String} (imps : C.FunCtx) (rest : List String) → All (y ≢_) (map proj₁ imps ++ rest)
-           → All (λ p → y ≢ proj₁ p) imps
-names-imps []       rest hs       = []
-names-imps (p ∷ ps) rest (h ∷ hs) = h ∷ names-imps ps rest hs
-
 -- Every entry the rest of the walk adds to the table has a name new to the scope.
 later-ns : ∀ {sc es} (b : FB.FunBundle sc es) (imps : C.FunCtx)
          → All (λ y → All (λ p → y ≢ proj₁ p) imps) (map entryName es)
@@ -420,11 +414,4 @@ later-ns (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ rest) imps (h �
   later-ns rest imps hs (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ xs)
            (ns-of imps h (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun)) refl ∷ a)
 later-ns (FB.bpoly _ rest) imps (_ ∷ hs) xs a = later-ns rest imps hs xs a
-
--- …so, after an entry, the table does not shadow the scope before it.
-later-noshadow : ∀ {csc sc′ e es} (b : FB.FunBundle sc′ es) → Fresh csc (e ∷ es)
-               → NoShadow (tableOf-go (FB.bundle→compiled b) []) (C.CScope.cimps csc)
-later-noshadow {csc} b (_ , (_ ∷ hs)) =
-  later-ns b (C.CScope.cimps csc)
-    (All.map (names-imps (C.CScope.cimps csc) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc))) hs) [] []
 

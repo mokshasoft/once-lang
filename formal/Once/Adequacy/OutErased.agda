@@ -49,8 +49,6 @@ open νᵈ using (forceᵈ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (out-sem)
 open import Once.Adequacy.CataErased fmt ρ using (subst-T-fmap)
-open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
-open import Once.Adequacy.CataBridge fmt ρ using (base-refl)
 open import Once.Adequacy.AnaErased fmt ρ using (push-⊎fam₁; push-⊎fam₂; push-×fam; push⊎₁; push⊎₂; push×; push⊎₁⁻; push⊎₂⁻; push×⁻)
 import Once.IR as IR
 
@@ -75,17 +73,6 @@ subst-TI-fmap : ∀ {o₁ o₂ : IRTy} (p : o₁ ≡ o₂) (h : T ⟦ o₁ ⟧�
   → subst (λ o → T ⟦ o ⟧ᴰᴵ) p h ≡ fmapT (subst ⟦_⟧ᴰᴵ p) h
 subst-TI-fmap refl h = sym (fmapT-id h)
 
--- `subst id (cong νᵈ p) = subst νᵈ p`, the ν twin of `InErased.subst-id-μS`.
-subst-id-νᵈ : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H₁)
-  → subst id (cong νᵈ p) v ≡ subst νᵈ p v
-subst-id-νᵈ refl v = refl
-
--- Forcing a transported ν. Match-to-refl in both components.
-forceᵈ-subst : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H₁)
-  → forceᵈ (subst νᵈ p v)
-    ≡ subst (λ H → T (⟦ H ⟧SF (νᵈ H))) p (forceᵈ v)
-forceᵈ-subst refl v = refl
-
 -- Forcing a ν transported BACKWARDS along the coherence maps the forced
 -- tree's leaves the same way — `forceᵈ` is a field, so a transport of the
 -- record is a transport of it.
@@ -93,17 +80,6 @@ force-subst-fmap : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H�
   → forceᵈ (subst id (sym (cong νᵈ p)) v)
     ≡ fmapT (subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym p)) (forceᵈ v)
 force-subst-fmap refl v = sym (fmapT-id (forceᵈ v))
-
--- The ⌈⌉-side layer map that `evalᴰ (Out …)` applies, transcribed from
--- `DenotTrace`'s `Out` clause at `wf := wf-⌊⌋ wfG`. Naming it is what lets the
--- proof `cong` over the LAYER rather than over the whole computation.
-out-layerᴵ : ∀ (G : Functor) (wfG : WellFormedF G)
-    (layer : ⟦ translateF Carrier Carrier ⌈ eraseF G ⌉F ⟧SF ⟦ IT.ν-type (eraseF G) ⟧ᴰᴵ)
-  → ⟦ IT.⟦ eraseF G ⟧TI (IT.ν-type (eraseF G)) ⟧ᴰᴵ
-out-layerᴵ G wfG layer =
-  subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute (eraseF G) (IT.ν-type (eraseF G))))
-    (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ IT.ν-type (eraseF G) ⌉
-      (coerce-ν-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ layer))
 
 ------------------------------------------------------------------------
 -- Transport vocabulary the OUT direction needs and the IN direction did not
@@ -138,24 +114,6 @@ pushS⊗⁻ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor}
   → subst (λ H → ⟦ H ⟧SF X) (sym (cong₂ _S⊗_ p q)) (a , b)
     ≡ (subst (λ H → ⟦ H ⟧SF X) (sym p) a , subst (λ H → ⟦ H ⟧SF X) (sym q) b)
 pushS⊗⁻ refl refl a b = refl
-
--- Pushing a transport through an injection / pair at the ᴰ interpretation of
--- a Type-level sum or product. All match-to-refl; the `⟦_⟧ᴰ` motive is what
--- `AnaErased`'s `push⊎₁`/`push×` (stated at `id`) cannot serve.
-push-+ᴰ₁ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (z : ⟦ A ⟧ᴰ)
-  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ Once.Type._+_ p q) (inj₁ z)
-    ≡ inj₁ (subst (λ Ty → ⟦ Ty ⟧ᴰ) p z)
-push-+ᴰ₁ refl refl z = refl
-
-push-+ᴰ₂ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (z : ⟦ B ⟧ᴰ)
-  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ Once.Type._+_ p q) (inj₂ z)
-    ≡ inj₂ (subst (λ Ty → ⟦ Ty ⟧ᴰ) q z)
-push-+ᴰ₂ refl refl z = refl
-
-push-*ᴰ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (a : ⟦ A ⟧ᴰ) (b : ⟦ B ⟧ᴰ)
-  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ Once.Type._*_ p q) (a , b)
-    ≡ (subst (λ Ty → ⟦ Ty ⟧ᴰ) p a , subst (λ Ty → ⟦ Ty ⟧ᴰ) q b)
-push-*ᴰ refl refl a b = refl
 
 -- The `sym` forms. `sym (cong₂ f p q)` is not definitionally `cong₂ f (sym p)
 -- (sym q)`, so the inverse direction needs its own statements rather than a
@@ -384,53 +342,3 @@ liftFn-Out {F} {π} wfF v =
 -- The bridge's two halves, packaged
 ------------------------------------------------------------------------
 
--- `RelV` at a LAYER is structural, not `≡` — so even though both sides of the
--- bridge force the same value, the relation has to be rebuilt from it. At a
--- polynomial functor the leaves are base types (`base-refl`) and `Id`
--- positions (the carrier's own reflexivity, which at a ν is `refl`), so this
--- is a plain structural induction — no funext, and no arrow case, because
--- `IsBaseType` has none.
-layer-refl : ∀ {A : Type} (G : Functor) (wfG : WellFormedF G)
-             (rA : (x : ⟦ A ⟧ᴰ) → RelV A x x)
-             (x : ⟦ ⟦ G ⟧T A ⟧ᴰ) → RelV (⟦ G ⟧T A) x x
-layer-refl (Once.Type.K B) (wf-K ib) rA x = base-refl ib x
-layer-refl Once.Type.Id    wf-Id     rA x = rA x
-layer-refl (F Once.Type.⊕ G) (wf-Sum a b) rA (inj₁ x) = layer-refl F a rA x
-layer-refl (F Once.Type.⊕ G) (wf-Sum a b) rA (inj₂ y) = layer-refl G b rA y
-layer-refl (F Once.Type.⊗ G) (wf-Prod a b) rA (x , y) =
-  layer-refl F a rA x , layer-refl G b rA y
-
--- D201: the DUAL of `GradedAnaBridge.in-relᵍ`, and the relational content that
--- `RelV (ν-type F π) = _≡_` used to hide.
---
--- `out-sem` forces and then coerces, so relating two forces means pushing a
--- functor-lifted BISIMILARITY out through `coerce-ν-out` / `coerce-functor⁻¹-D`
--- — structurally, exactly as `in-rel` pushes one in. At a `K` position the
--- lifted relation is already an equality and the carrier is a base type
--- (`base-refl`); at an `Id` position it is bisimilarity, which is precisely
--- what `RelV` at a ν now is, so that clause is the identity.
-out-rel : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
-            {x y : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᴰ}
-        → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelV A) x y
-        → RelV (⟦ G ⟧T A)
-            (coerce-functor⁻¹-D wf A (coerce-ν-out wf ⟦ A ⟧ᴰ x))
-            (coerce-functor⁻¹-D wf A (coerce-ν-out wf ⟦ A ⟧ᴰ y))
-out-rel (wf-K ib) rel rewrite rel = base-refl ib _
-out-rel wf-Id     rel = rel
-out-rel (wf-Sum wfF wfG) {x = inj₁ _} {y = inj₁ _} rel = out-rel wfF rel
-out-rel (wf-Sum wfF wfG) {x = inj₂ _} {y = inj₂ _} rel = out-rel wfG rel
-out-rel (wf-Sum wfF wfG) {x = inj₁ _} {y = inj₂ _} rel = ⊥-elim rel
-out-rel (wf-Sum wfF wfG) {x = inj₂ _} {y = inj₁ _} rel = ⊥-elim rel
-out-rel (wf-Prod wfF wfG) {x = _ , _} {y = _ , _} (rF , rG) =
-  out-rel wfF rF , out-rel wfG rG
-
--- The direct meaning and the IR's, related (direct first, as `RelT` wants:
--- `RelV` is not symmetric at an arrow). They are one tree (`liftFn-Out`), so
--- this is the tree relation's reflexivity at the layer's reflexivity — which
--- at a ν position is the coinductive `∼ᵈ-refl` (D201).
-liftFn-Out-pair : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
-  → RelT (⟦ F ⟧T (ν-type F π)) (out-sem {π = π} wfF v)
-         (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v)
-liftFn-Out-pair {F} {π} wfF v =
-  subst (RelT (⟦ F ⟧T (ν-type F π)) (out-sem {π = π} wfF v)) (sym (liftFn-Out wfF v))
-        (RelT′-refl (layer-refl F wfF (λ z → ∼ᵈ-refl z)) (out-sem {π = π} wfF v))

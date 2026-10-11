@@ -110,23 +110,6 @@ cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
          → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
 cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 
--- D192: the DUAL of `cata-sem`. A ν is a suspension in the meaning too — the
--- coalgebra is stored, not run, so this emits nothing and `out` is where the
--- events appear. Mirrors `⟦ ana … ⟧ˢ` (SourceDenote) exactly, which is what
--- the two-meanings agreement will need.
--- The coalgebra arrives as a COMPUTATION and is bound INSIDE the suspension,
--- not outside. That is deliberate and it is not the cata's shape: `⟦ ana ⟧ˢ`
--- and `evalᴰ (Ana …)` both read the closed coalgebra at the budget the layer
--- is forced at, and `FaithfulLemmas` relates the surface node to `IR.Ana`
--- through exactly that. Binding it outside would make this clause disagree
--- with both.
--- D233: at any grade — the value domain of a stream does not depend on it.
-ana-sem : ∀ {F : Functor} {A : Type} {π : Purity} → WellFormedF F
-        → T (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → ⟦ A ⟧ᴰ → T ⟦ Once.Type.ν-type F π ⟧ᴰ
-ana-sem {F} {A} wf cT a =
-  returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A)
-                             (cT >>=T λ clo → clo a')) a)
-
 -- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
 -- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
@@ -151,7 +134,6 @@ named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → 
 named-sem {A} {B} fmt φ cn bA bB a =
   fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a))
 
-
 ------------------------------------------------------------------------
 -- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
 ------------------------------------------------------------------------
@@ -162,13 +144,6 @@ lookupᴰ (Γ , A ^ q) (suc i) (dγ , a) = lookupᴰ Γ i dγ
 
 svarᴰ : ∀ {n} {Γ : Ctx n} {Ψ A} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
 svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
-
--- | D142/D143: the RUNTIME reading. `SVar Γ Ψ A` carries its own usage
---   (`svar i : SVar Γ (singleUse i One) _`), so the environment holds exactly
---   that one variable — the chain collapses to a single projection, as
---   `lookupᴰUsed` does.
-svarᴰRun : ∀ {n} {Γ : Ctx n} {Ψ A} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
-svarᴰRun {Γ = Γ} (svar i) dγ = lookupᴰUsed Γ i dγ
 
 -- A closed named/sigop value reference, IR-free: the contract's computation
 -- (`sigOpT`, the IR's own dispatch), read into the value domain.
@@ -249,12 +224,6 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 ⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
 ⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
--- Plan 0.94 §10: a domain-given derivation denotes the term AS the arrow
--- `A ⇒[π] B` it is determined to be.
--- Plan 0.94 §13: evaluate both, keep the second — what `seq` emits. A subterm
--- evaluation REACHES is run even where its value is not used.
-seqᴰ : ∀ {X Y : Set} → T X → T Y → T Y
-seqᴰ m₁ m₂ = (m₁ >>=T λ x → m₂ >>=T λ y → returnT (x , y)) >>=T λ v → returnT (proj₂ v)
 
 ⟦_⟧ᵈ : ∀ {ctx e A π B Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
      → ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ

@@ -77,7 +77,6 @@ Imports = List (String × Type)
 emptyImports : Imports
 emptyImports = []
 
-
 -- | Polymorphic-definition context (plan 0.6.2). Carries each
 -- user-declared poly def's schema and body so they can be
 -- specialised at call sites via schema instantiation. Structurally
@@ -215,7 +214,6 @@ emptyTopCtx = topCtx emptyImports emptyImports
 -- | Create a top-level context with polymorphic defs. Plan 0.6.2.
 ctxWithImportsAndPolys : TopCtx → PolyCtx → NamedCtx
 ctxWithImportsAndPolys tc polys = mkCtx 0 ∅ S∅ 0 (TopCtx.tdefs tc) polys (TopCtx.tsig tc)
-
 
 -- | Extend context with a new binding (preserves fresh counter, imports, polys)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx

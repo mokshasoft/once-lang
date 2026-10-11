@@ -154,9 +154,6 @@ lk-nothing {suc n} x (b ∷ Γ) (D S, B ^ q) eq | no _ with lookupLocal-go x Γ 
 lk-nothing {suc n} x (b ∷ Γ) (D S, B ^ q) eq | no _ | nothing rewrite lk-nothing x Γ D e₀ = refl
 lk-nothing {suc n} x (b ∷ Γ) (D S, B ^ q) () | no _ | just (_ , _ , svar _)
 
-lkL-nothing : ∀ (ctx : NamedCtx) (x : String) → lookupLocal ctx x ≡ nothing → lookupLocal (ρ̂C ctx) x ≡ nothing
-lkL-nothing (mkCtx n Γ D fr imps polys sg) x = lk-nothing x Γ D
-
 ------------------------------------------------------------------------
 -- The scope's imports are ground.
 ------------------------------------------------------------------------

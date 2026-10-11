@@ -43,10 +43,6 @@ Dj xs ys = All (λ x → All (x ≢_) ys) xs
 Win : ℕ → ℕ → List ℕ → Set
 Win lo hi = All (λ k → (lo ≤ k) × (k < hi))
 
-dj-[] : ∀ (xs : List ℕ) → Dj xs []
-dj-[] []       = []
-dj-[] (_ ∷ xs) = [] ∷ dj-[] xs
-
 dj-sym : ∀ {xs ys} → Dj xs ys → Dj ys xs
 dj-sym {xs} {ys} d = tabulate (λ {y} y∈ → tabulate (λ {x} x∈ eq → lookup (lookup d x∈) y∈ (sym eq)))
 
@@ -117,7 +113,6 @@ clabs-++ (i ∷ is) y = go (clab-of i)
     go : ∀ (mo : Maybe ℕ) → cl-at mo (clabs (is ++ y)) ≡ cl-at mo (clabs is) ++ clabs y
     go (just k) = cong (k ∷_) (clabs-++ is y)
     go nothing  = clabs-++ is y
-
 
 fdef-of : AbstractInstr → List CanonicalName
 fdef-of (instr-ctrl (c-entry (e-fn f) _)) = f ∷ []

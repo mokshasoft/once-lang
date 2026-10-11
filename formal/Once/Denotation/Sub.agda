@@ -112,8 +112,3 @@ open import Once.Postulates using (extensionality)
 -- stopped, so the bind never reaches `f`.
 ------------------------------------------------------------------------
 
-void-middle : ∀ {B C : Type} (f : ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ) (m : T ⟦ Void ⟧ᴰ)
-            → (fmapT ⟦ sub-void {B} ⟧<: m >>=T f) ≡ fmapT ⟦ sub-void {C} ⟧<: m
-void-middle f (ret ())
-void-middle f (call o a k) = cong (call o a) (extensionality λ b → void-middle f (k b))
-void-middle f (halt o a)   = refl

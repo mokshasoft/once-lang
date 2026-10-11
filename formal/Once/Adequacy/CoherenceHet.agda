@@ -28,8 +28,7 @@ open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
-open import Once.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Many;
-  Purity; Quantity; _≤q_; ⟦_⟧T)
+open import Once.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; Many; Purity; Quantity; _≤q_; ⟦_⟧T)
 open import Once.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
 open import Once.Type.SubLaws using (<:-refl; ⊑π-refl)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
@@ -102,9 +101,6 @@ open _≅_
 
 ≅-sym : {a : Expr Γ Ψ A} {b : Expr Γ Ψ′ A′} → a ≅ b → b ≅ a
 ≅-sym (≅i refl refl h) = ≅i refl refl (≈-sym h)
-
-≅-trans : {a : Expr Γ Ψ A} {b : Expr Γ Ψ′ A′} {c : Expr Γ Ψ₁ B} → a ≅ b → b ≅ c → a ≅ c
-≅-trans (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (≈-trans h k)
 
 ≅-≈ : {a b : Expr Γ Ψ A} → a ≅ b → a ≈ b
 ≅-≈ (≅i refl refl h) = h

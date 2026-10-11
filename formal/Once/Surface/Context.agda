@@ -281,11 +281,9 @@ infixr 5 _⊑∷_
 -- with no enforcement, which is exactly OCP-0005's "prose decisions are
 -- silently violable". Encoding it (rung 1) is what makes it real.
 
-
 -- NB `*ᵘ-zeroˡ` and `+ᵘ-idʳ` already live in `Once.Surface.Properties`; they
 -- are not restated here. `erase-arg-usage` is stated in terms of them below,
 -- in that module, to keep the algebra in one place.
-
 
 -- | Transitivity, and "scaling by a non-Zero quantity only grows usage".
 --   Together with `⊑ᵘ-+ʳ` these give the argument's narrowing at `app`, whose
@@ -350,8 +348,3 @@ infixr 5 _⊑∷_
 ⊑ᵘ-⊔ʳ []       []       = ⊑[]
 ⊑ᵘ-⊔ʳ (q ∷ Ψ₁) (r ∷ Ψ₂) = ≤q'-⊔ʳ q r ⊑∷ ⊑ᵘ-⊔ʳ Ψ₁ Ψ₂
 
--- | `∅ ↾ [] ≡ ∅`, proved HERE because `_↾_` reduces in its defining module but
---   not always at a use site (the recursive-function opacity this codebase has
---   hit before). Consumers transport along it instead of relying on reduction.
-↾-∅ : (∅ ↾ []) ≡ ∅
-↾-∅ = refl

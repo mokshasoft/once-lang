@@ -178,13 +178,6 @@ a ≡ᵇᴱ b = ⌊ a ≟ᴱ b ⌋
 ... | no ¬q = ⊥-elim (¬q refl)
   where open import Data.Empty using (⊥-elim)
 
-≢⇒≡ᵇᴱfalse : ∀ (a b : EntryId) → ¬ (a ≡ b) → (a ≡ᵇᴱ b) ≡ false
-≢⇒≡ᵇᴱfalse a b ¬q with a ≟ᴱ b
-... | yes q = ⊥-elim (¬q q)
-  where open import Data.Empty using (⊥-elim)
-... | no  _ = refl
-
-
 -- Cross-provenance is `false` by the catch-all (the definitional
 -- disjointness that makes collisions impossible between compiler, SigOp and
 -- closure-body labels — D033, D082). That catch-all is why

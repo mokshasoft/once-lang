@@ -210,7 +210,6 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
                → tr eΓ et eA GT.⊢lit-float ≡ GT.⊢lit-float
   tr-lit-float {eΓ = refl} {refl} {refl} = refl
 
-
   tr-prim : ∀ {Ψ π} {t' t : G.Tm n} {p}
               {eΓ : Γ' ≡ Γ} {et : G.prim p t' ≡ G.prim p t} {eA : G.primCod p ≡ G.primCod p}
               (ed : t' ≡ t) (d : Γ' ⊢[ Ψ ] t' ∷ G.primDom p ! π)
@@ -381,15 +380,6 @@ tr-sem : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
        → GM.⟦ tr eΓ et eA D ⟧ fmt δ γ
          ≡ subst (λ X → M π ⟦ X ⟧ᵛ) eA (GM.⟦ D ⟧ fmt δ (subst (λ G → GM.Env G Ψ) (sym eΓ) γ))
 tr-sem refl refl refl D fmt δ γ = refl
-
--- A CLOSED entry (a telescope body) means, read back from the telescope at
--- arity 0, what it meant before abstraction.
-rt-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
-           {t A π} (D : C.∅ ⊢[ [] ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem)
-       → GM.⟦ D ⟧ fmt δ tt ≡ subst (λ X → M π ⟦ X ⟧ᵛ) (RoundTrip.rt-id Δ σ r sg A) (GM.⟦ RoundTrip.RT Δ σ r sg D ⟧ fmt δ tt)
-rt-sem Δ σ r sg {t} {A} D fmt δ =
-  trans (cong (λ E → GM.⟦ E ⟧ fmt δ tt) (sym (RoundTrip.RT-id Δ σ r sg D)))
-        (tr-sem refl (RoundTrip.rtT-id Δ σ r sg t) (RoundTrip.rt-id Δ σ r sg A) (RoundTrip.RT Δ σ r sg D) fmt δ tt)
 
 -- A MONOMORPHIC ENTRY (`Translate.monoBody`: the abstraction, retyped at the
 -- embedded ground type) read back at arity 0 means its elaboration.
