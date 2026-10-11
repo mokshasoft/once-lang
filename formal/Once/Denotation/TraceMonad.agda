@@ -46,7 +46,7 @@ open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stop
 open import Once.Spec.Type using (Type; isUnit?) renaming (Unit to UnitT)
 import Once.Type as Ty
 open import Once.Functor.Translate using (IsBaseType)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
+open import Once.Spec.Name using (CanonicalName; showCanonical; gen)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)

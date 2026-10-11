@@ -25,7 +25,7 @@
 -- vacuous witnesses, one per instruction.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.ThunkScope (o : CanonicalName) where
 

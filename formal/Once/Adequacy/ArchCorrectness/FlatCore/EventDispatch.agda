@@ -53,7 +53,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Once.SigOp.Info using (SigOpInfo; sigop-owner; Internal; External; internal-pure; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 

@@ -28,7 +28,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open FrameSemantics using (frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 -- imported UNAPPLIED, so the module's own `FS`/`word-eq` can be threaded into
 -- the resource parameter's type — a parameter's type is elaborated before the
 -- body, where the applied `open import … FS word-eq` has not run.

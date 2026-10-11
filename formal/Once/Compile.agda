@@ -42,7 +42,7 @@ open import Once.Type
 -- Re-export Core IR
 open import Once.IR
 open import Once.IRTy using (Unit; ⌊_⌋)
-open import Once.CanonicalName using (CanonicalName; bare)
+open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Target.Symbol using (once-symbol-path; once-symbol-own)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms)
 open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_; _∈_ to _∈ˢ_)
@@ -94,7 +94,7 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 open import Once.Parser
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Module)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
 open import Once.Spec.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (no; yes)

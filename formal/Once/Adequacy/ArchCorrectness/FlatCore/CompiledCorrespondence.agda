@@ -49,7 +49,7 @@ open AllocState using (current-frame; frame-slots; saved-frames; next-heap-ref)
 open LocState using (regs; halted; heapMem; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open import Once.CCC.Label using (Label)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)

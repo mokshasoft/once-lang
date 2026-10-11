@@ -28,7 +28,7 @@ open import Once.CCC.Label using (e-thunk; e-fn; module LabelId)
 open LabelId using (idx)
 open import Once.CCC.Machine.SMCore
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 ------------------------------------------------------------------------
 -- Distinctness, as a small algebra.

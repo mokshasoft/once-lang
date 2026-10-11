@@ -21,7 +21,7 @@
 -- readable) routes to `obs-correct-sigop-rest`.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
@@ -54,7 +54,7 @@ open import Once.Spec.ContractLaws using (yes-of)
 open import Relation.Nullary using (Dec)
 open import Once.Spec.Type using (isUnit?)
 open import Once.Denotation.Program using (Declared; Declared-at)
-open import Once.CanonicalName using (showCanonical)
+open import Once.Spec.Name using (showCanonical)
 open import Once.Res using (is-stopped)
 open import Once.SigOp.Info using (SigOpSem; effect-of; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo; Pure)
 open SigOpInfo using (baseA; conB; sem; name)

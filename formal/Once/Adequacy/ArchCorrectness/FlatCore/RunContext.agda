@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- labels. `o` is constant for a whole definition, so it belongs on the module
 -- rather than on every lemma — which is what keeps the statements below
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RunContext (o : CanonicalName)
   (FS : FrameSemantics)

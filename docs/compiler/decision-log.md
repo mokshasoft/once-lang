@@ -18199,6 +18199,7 @@ The Spec was a set of re-export shells: `Spec.Type`, `Spec.Syntax`, `Spec.Typing
 2. `Once.Spec` is an index: it imports every Spec module and exports nothing. A client imports a name from the module that defines it (`Once.Certified` takes `CorrectCompiler` from `Spec.Correct`).
 3. A definition the Spec needs moves into the Spec, and the implementation imports it from there. No shell is left behind; importers are rewritten (`scripts/move-names.py`). Moved so far:
    - `CorrectCompiler` → `Spec.Correct` (`Once.Adequacy` deleted);
+   - the written terms → `Spec.Syntax` (from `TypeCheck.Raw`, which keeps the `ClosedLiftShape` decider; `RawType`, defined but never used, is deleted) and canonical names → `Spec.Name` (from `CanonicalName`, which keeps decidable equality, the reserved-word decider and the disjointness lemmas);
    - the type language → `Spec.Type` (objects, functors, `isVoid?`/`isUnit?`, which the contract form is defined by), `Spec.Type.Grade` (usage and effect grades), `Spec.Type.Poly` (schemas), `Spec.Type.Sub` (`<:`, `⊑π`, `pure⊑`). `Once.Type` and `Once.Type.Sub` keep the deciders, printing and the register classification `FitsInReg`, which the Spec never used and which is a machine notion: it leaves the Spec's surface.
 4. One re-export line was split in two by the move (`CCC.Codegen.IRObsCorrect.Prelude`, a parameterised module's shared instance, D277): its names now come from two modules. The public-gate baseline for that module goes 27 → 28; the re-exported surface is unchanged except `Unitˢ`, unused, which is dropped.
 

@@ -43,7 +43,7 @@ open import Data.Integer using (ℤ)
 --   `Once.Arith.SigOp.IntLit` — integer-literal family
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
 open import Once.Arith.SigOp.Builders
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 open import Once.Functor.Translate using (con-base; con-fun; base-Unit; WellFormedF)
 
 -- Literals: constant morphisms that ignore input environment.

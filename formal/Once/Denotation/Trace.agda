@@ -27,7 +27,7 @@ open import Once.Spec.Type using (Type)
 open import Once.Functor.Translate using (IsBaseType)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; baseA)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 

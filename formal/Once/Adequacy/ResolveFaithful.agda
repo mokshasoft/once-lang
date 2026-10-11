@@ -64,7 +64,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; 
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV)
 import Once.TypeCheck.Elaborate as Elaborate
 open import Once.TypeCheck.Classify using (lookupPolyPrefix; ctxWithImportsAndPolys)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------

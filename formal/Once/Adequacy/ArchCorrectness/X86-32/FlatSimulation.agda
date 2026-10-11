@@ -36,7 +36,7 @@ open import Once.CCC.Target.X86-32.Syntax using (slot-size)
 open import Once.Type using (fits-int)
 open import Data.Nat using (ℕ; _+_; _∸_; _*_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
 open import Once.Float.Dyadic using (binary32)

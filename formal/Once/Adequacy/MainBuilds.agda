@@ -39,12 +39,12 @@ import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
 import Once.Spec.Type as Type
-import Once.CanonicalName
+import Once.Spec.Name
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.TypeCheck.Classify as Classify
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
 open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P
 import Data.String as String
@@ -159,7 +159,7 @@ ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq = grd (rigidFree? ty) eq
             let (ir-d , cfd) = cfun-doOpt doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                                  (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf-eq
                 (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es rec
-            in _ , trans (cong (C.ce-mono-ir IR.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.CanonicalName.bare (Parser.FunInfo.funName fi)) ty ir-d)) recd)
+            in _ , trans (cong (C.ce-mono-ir IR.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.Spec.Name.bare (Parser.FunInfo.funName fi)) ty ir-d)) recd)
 
 ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
 ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq

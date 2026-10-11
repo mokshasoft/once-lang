@@ -37,7 +37,7 @@
 -- each cluster is read back from its interface.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 import Once.CCC.FrameSemantics as FrameSemantics′
 

@@ -12,7 +12,7 @@
 -- and its terminator pops it back (`SlotBudget.ir-seg-fold`).
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.ProgramImageFacts (o : CanonicalName) where
 

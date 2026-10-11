@@ -17,7 +17,7 @@
 -- index (`Adequacy.ImageUnique`), so distinct indices are what the file needs.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.CLabelsUnique (o : CanonicalName) where
 

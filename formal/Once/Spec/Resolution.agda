@@ -36,7 +36,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 open import Relation.Nullary using (¬_)
 
-open import Once.CanonicalName using (canonical; gen; GenWord)
+open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Spec.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp;
   RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot;
   RBinOp; RUnaryOp; RAna)

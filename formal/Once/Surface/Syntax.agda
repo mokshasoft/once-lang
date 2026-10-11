@@ -25,7 +25,7 @@ open import Data.Integer using (ℤ)
 open import Once.Float.Decimal using (Decimal)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 -- | Typing context (de Bruijn indexed with quantities)
 --

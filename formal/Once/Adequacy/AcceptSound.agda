@@ -39,7 +39,7 @@ import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.TypeCheck.Classify as Classify
 open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module
   using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped)

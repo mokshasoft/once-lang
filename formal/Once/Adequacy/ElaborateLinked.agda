@@ -27,7 +27,8 @@ open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
-open import Once.CanonicalName using (CanonicalName; bare; _≟ᶜ_; showCanonical)
+open import Once.Spec.Name using (CanonicalName; bare; showCanonical)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR using (IR)
 import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)

@@ -46,8 +46,10 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- the interpretation's (plan 0.105: `ffiV`/`callsV`; `generic-semM` is gone).
 open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.SigOp.Info using (SigOpSem; mk-info'; emitsV; haltsV; ffiV; callsV; SigOpInfo)
-open import Once.CanonicalName using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; GenWord; genWord?)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Name using (CanonicalName; own; bare; showCanonical; gen; NotGenerator; GenWord)
+open import Once.CanonicalName using (genWord?)
+open import Once.Spec.Syntax using (RawExpr)
+open import Once.Spec.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
   LambdaInInferMode; LambdaRequiresFunctionType; StringLiteralUnsupported;

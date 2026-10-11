@@ -37,8 +37,8 @@ open import Once.Spec.Type.Poly as T using (PolyType; PolyFunctor; Ground; Groun
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure)
 open import Once.Type.Determined using (cod-determined)
 open import Data.String using (String)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
-open import Once.CanonicalName using (gen)
+open import Once.Spec.Syntax as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
+open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
 import Once.Surface.Context as Surface

@@ -36,10 +36,8 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 
-open import Once.CanonicalName using (GenWord)
-open import Once.TypeCheck.Raw
-  using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
-         RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
+open import Once.Spec.Name using (GenWord)
+open import Once.Spec.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature;
   DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve

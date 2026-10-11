@@ -31,7 +31,7 @@ open import Data.String using (String; _++_)
 open import Once.Spec.Type using (Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Functor.Translate using (base-Unit; base-Int)
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 import Once.Word as OnceWord
 open import Once.Target.Arch using (module TargetNum)
 open TargetNum using (int-bits)

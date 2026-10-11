@@ -33,13 +33,12 @@ open import Data.Product using (∃-syntax; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Spec.Type using (Type; Unit; Void; Int)
-open import Once.CanonicalName using (gen)
+open import Once.Spec.Name using (gen)
 import Once.Spec.Type.Grade as T
 import Once.Spec.Type as T
 import Once.Spec.Type.Poly as T
 import Once.Type as T
-open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RLam; RQualified)
+open import Once.Spec.Syntax as Raw using (RawExpr; RLam; RQualified)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Spec.Type.Sub using (sub-int; sub-unit)
 open import Once.Type.Sub using (_<:?_)

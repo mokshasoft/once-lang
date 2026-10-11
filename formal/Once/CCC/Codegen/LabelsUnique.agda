@@ -29,7 +29,7 @@
 -- once.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.LabelsUnique (o : CanonicalName) where
 

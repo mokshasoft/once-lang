@@ -24,7 +24,7 @@ open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
@@ -40,7 +40,7 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Surface.Syntax using (Usage; [])
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
 open import Once.Spec.Module
   using (EffUU; ModTele; []; ffi; mono; poly; ModuleTyped; MainsEffUU; MainIn; HasValidMain)
 import Once.TypeCheck.Elaborate as TE

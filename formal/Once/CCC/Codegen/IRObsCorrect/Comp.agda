@@ -8,7 +8,7 @@
 -- as an input residence (`result→input`), and concatenates the chains.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL

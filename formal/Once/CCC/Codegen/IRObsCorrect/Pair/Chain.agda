@@ -18,7 +18,7 @@
 -- and D206 (say it about the right frontier) were for. This module proves it.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL

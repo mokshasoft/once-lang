@@ -32,7 +32,7 @@ module Once.Arith.Backend.CallAnswer where
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; maybe′)
-open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.String using (String)
 
 open import Once.Spec.Type using (Type; Int; Float)

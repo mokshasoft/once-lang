@@ -45,7 +45,8 @@ open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Nullary.Decidable using (⌊_⌋; toWitness)
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.CanonicalName using (_≟ᶜ_)
 -- Rendering only: the SAME mangling the function symbol uses, so a label and
 -- its definition are visibly one identity in the object file.
 open import Once.Target.Symbol using (once-symbol-path)

@@ -11,7 +11,7 @@
 -- block and the block channel), with linkedness threaded to the `Call` leaf.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; Linked)
 open import Once.Spec.Contract using (ISig)

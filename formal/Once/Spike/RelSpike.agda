@@ -149,7 +149,7 @@
 --   the call, not carried.  `frame-pres` (D210) disappears entirely, by (C).
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 -- `o` is needed for `ℓ o l`: `curry` names its body block `ℓ o this-label`
 -- (IRToTrace.agda:888), so a module proving anything about that block is

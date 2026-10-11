@@ -22,7 +22,7 @@
 
 module Once.IR where
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)

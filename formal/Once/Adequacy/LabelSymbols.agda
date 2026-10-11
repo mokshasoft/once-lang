@@ -21,7 +21,6 @@ open import Data.Char using (Char; isDigit)
 open import Data.Char.Properties using (_≟_)
 open import Data.List using (List; []; _∷_; _++_; reverse)
 import Data.List
-import Once.CanonicalName
 open import Data.List.Properties using (++-assoc; reverse-++; unfold-reverse; reverse-involutive)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using () renaming (++⁺ to All-++⁺)
@@ -35,7 +34,7 @@ open import Data.String.Unsafe using (toList-++)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (Label; once; callee; sigop; LabelId; e-thunk; e-fn; labelSym; showLabelId; showPath; module LabelId)
 open LabelId using (idx; owner; path)
 open import Once.Target.Symbol using (showNat; once-symbol-path; once-prefix; join-us; mangle-component)
@@ -144,7 +143,7 @@ private
   thunk-head n = cong head-of (toList-++ ".L_thunk_" (showLabelId n))
 
   fn-head : ∀ (f : CanonicalName) → head-of (toList (once-symbol-path f)) ≡ 'o'
-  fn-head f = cong head-of (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.CanonicalName.CanonicalName.parts f))))
+  fn-head f = cong head-of (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts f))))
 
   -- a counter symbol is no function symbol
   cnt≢fn : ∀ {s : String} (f : CanonicalName) → head-of (toList s) ≡ '.' → s ≢ once-symbol-path f

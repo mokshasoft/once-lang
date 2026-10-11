@@ -46,9 +46,9 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS; _≟ᶜ_)
-open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; isComparisonOp)
+open import Once.Spec.Name using (CanonicalName; canonical; showCanonical; gen)
+open import Once.CanonicalName using (generatorNS; _≟ᶜ_)
+open import Once.Spec.Syntax as Raw using (RawExpr; isComparisonOp)
 open import Once.TypeCheck.Classify
   using (NamedCtx; Imports; PolyCtx; lookupImport; emptyCtx)
 

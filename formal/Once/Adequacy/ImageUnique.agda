@@ -40,7 +40,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.CanonicalName using (CanonicalName; canonical)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.CCC.Label using (Label; once; callee; e-thunk; e-fn; labelSym)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.ImageSymbols using (instr-defs; adefs)
@@ -526,7 +526,7 @@ private
   thunk-hd n = cong hd (toList-++ ".L_thunk_" (showLabelId n))
 
   osp-hd : ∀ (cn : CanonicalName) → shd (once-symbol-path cn) ≡ 'o'
-  osp-hd cn = cong hd (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.CanonicalName.CanonicalName.parts cn))))
+  osp-hd cn = cong hd (toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts cn))))
 
   hd≢ : ∀ {s t : String} {a b : Char} → shd s ≡ a → shd t ≡ b → a ≢ b → s ≢ t
   hd≢ hs ht a≢b refl = a≢b (trans (sym hs) ht)
@@ -558,11 +558,11 @@ private
 
 -- the heap is no canonical name's symbol
 heap≢osp : ∀ (cn : CanonicalName) → heap-symbol ≢ once-symbol-path cn
-heap≢osp cn eq = body (Once.CanonicalName.CanonicalName.parts cn) (trans (cong toList eq) (toList-osp cn))
+heap≢osp cn eq = body (Once.Spec.Name.CanonicalName.parts cn) (trans (cong toList eq) (toList-osp cn))
   where
     toList-osp : ∀ (cn : CanonicalName) → toList (once-symbol-path cn)
-               ≡ 'o' ∷ 'n' ∷ 'c' ∷ 'e' ∷ '_' ∷ toList (join-us (Data.List.map mangle-component (Once.CanonicalName.CanonicalName.parts cn)))
-    toList-osp cn = toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.CanonicalName.CanonicalName.parts cn)))
+               ≡ 'o' ∷ 'n' ∷ 'c' ∷ 'e' ∷ '_' ∷ toList (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts cn)))
+    toList-osp cn = toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts cn)))
     body : ∀ (ps : List String) → toList heap-symbol ≡ 'o' ∷ 'n' ∷ 'c' ∷ 'e' ∷ '_' ∷ toList (join-us (Data.List.map mangle-component ps)) → ⊥
     body [] ()
     body (p ∷ ps) e = false≢true (trans (cong (λ z → isDigit (hd z)) (peel e)) (digitRHS ps))

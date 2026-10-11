@@ -17,7 +17,7 @@ open import Once.IR as C
 import Once.IRTy as IRTy
 open import Once.Arith.SigOp.Builders using (generic-info)
 open import Once.Functor.Translate using (IsBaseType)
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 
 open import Data.String using (String)
 

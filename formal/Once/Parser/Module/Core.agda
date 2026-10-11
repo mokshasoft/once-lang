@@ -23,7 +23,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Poly using (PolyType)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseTypeWF)
 open import Once.Parser.TypeRelation using (ParsesType-shrinks)

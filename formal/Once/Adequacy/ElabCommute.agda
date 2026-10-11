@@ -27,7 +27,7 @@ module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} 
   (sg : Abs.SigGround S) {imps sigs : Imports} {polys : PolyCtx} (V : El.View S imps sigs polys)
   (nat : VN.Natural S Δ τ r V) (ir : RSm.TopRF Δ τ r imps sigs) where
 
-import Once.CanonicalName
+import Once.Spec.Name
 import Data.String
 
 open import Data.Nat using (suc)
@@ -45,7 +45,7 @@ open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)
 import Once.Surface.Context as C
-open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (mkCtx)
 open import Once.TypeCheck.Judgment
 import Once.Spec.Core.Syntax S as G
@@ -97,11 +97,11 @@ private
       (H.trans (≅ref h) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e₀) (rmA (λ X → X) (sym (ρ̂-ref d τ₀))))))
 
   -- A generator's reference: its contract is ground (D274).
-  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (dc : Declared (Once.CanonicalName.showCanonical cn) T)
+  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Spec.Name.showCanonical cn) T)
          → proj₁ (sigE {Γ = ρ̂S Γ} cn k dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k dc))
   sig-tm cn k dc = refl
 
-  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.CanonicalName.CanonicalName) k (dc : Declared (Once.CanonicalName.showCanonical cn) T)
+  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Spec.Name.showCanonical cn) T)
          → proj₂ (sigE {Γ = ρ̂S Γ} cn k dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k dc))
   sig-dr cn k dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
 
@@ -151,7 +151,7 @@ mutual
   tm-i t-unit             = refl
   tm-i t-unit-var         = refl
   tm-i {D = D} (t-var-local {eV = C.svar i} eq) = ⇝ᵢ-tm (lookup-ρ̂ D i) _
-  tm-i {D = D} (t-var-qualified {name = nm} {alias = al} li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} (Once.CanonicalName.bare (al Data.String.++ "." Data.String.++ nm)) c (declares li))
+  tm-i {D = D} (t-var-qualified {name = nm} {alias = al} li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} (Once.Spec.Name.bare (al Data.String.++ "." Data.String.++ nm)) c (declares li))
   tm-i {D = D} (t-var-resolved {cn = cn} ng li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} cn c (declares li))
   tm-i {D = D} (t-var-own {x = x} ns li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
   tm-i {D = D} (t-var-import {x = x} gw ln li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
@@ -290,7 +290,7 @@ mutual
   dr-i t-unit-var         = H.refl
   dr-i {D = D} (t-var-local {eV = C.svar i} eq) =
     H.trans (⇝ᵢ-dr (lookup-ρ̂ D i) _) (H.sym (rmA (λ X → X) (lookup-ρ̂ D i)))
-  dr-i {D = D} (t-var-qualified {name = nm} {alias = al} li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} (Once.CanonicalName.bare (al Data.String.++ "." Data.String.++ nm)) c (declares li))
+  dr-i {D = D} (t-var-qualified {name = nm} {alias = al} li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} (Once.Spec.Name.bare (al Data.String.++ "." Data.String.++ nm)) c (declares li))
   dr-i {D = D} (t-var-resolved {cn = cn} ng li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} cn c (declares li))
   dr-i {D = D} (t-var-own {x = x} ns li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
   dr-i {D = D} (t-var-import {x = x} gw ln li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))

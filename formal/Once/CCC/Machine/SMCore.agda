@@ -47,7 +47,7 @@ open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
 open import Once.CCC.Label public using (LabelId; mkLabelId; EntryId; e-thunk; e-fn)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 -- Import SigOpInfo so `instr-sigop` carries its full self-describing
 -- info (name + semI + semM), not just the name. This unlocks per-name

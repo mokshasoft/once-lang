@@ -44,7 +44,7 @@ import Once.Spec.Type.Grade
 import Once.Spec.Type
 import Once.Type
 import Once.Surface.Syntax
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
@@ -68,8 +68,8 @@ open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
 open import Once.Type.Rigid using (RigidFree)
-open import Once.TypeCheck.Raw as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
-open import Once.CanonicalName using (gen; GenWord)
+open import Once.Spec.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
+open import Once.Spec.Name using (gen; GenWord)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
 open Conv using (typeToGType; gtypeToType)

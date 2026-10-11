@@ -35,7 +35,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR

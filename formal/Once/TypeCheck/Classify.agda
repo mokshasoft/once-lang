@@ -43,9 +43,11 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
+open import Once.Spec.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
-open import Once.CanonicalName using (CanonicalName; canonical; gen; generatorNS; NotGenerator; gen-inj)
+open import Once.Spec.Name using (CanonicalName; canonical; gen; NotGenerator)
+open import Once.CanonicalName using (generatorNS; gen-inj)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Once.TypeCheck.Context using (Ctx; ∅)
 open Once.TypeCheck.Context.Binding using (name)

@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- the module's own `FS`/`word-eq` can be threaded into them by Agda's
 -- telescoping (`RC.RunAt o FS word-eq …`) — a parameter's type is elaborated
 -- before the body, where the applied `open import … FS word-eq` has not run.
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 open import Data.List using (List; []; _∷_)
 open import Data.Unit using (tt)

@@ -27,7 +27,7 @@
 -- makes the second not imply the first.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 open import Once.Denotation.TraceMonad using (Interp)
 open import Once.CCC.FrameSemantics using (FrameSemantics)

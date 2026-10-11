@@ -36,7 +36,7 @@ open import Data.Nat using (ℕ; _≡ᵇ_)
 open import Data.Nat.Show using (showInBase)
 showNat : ℕ → String
 showNat = showInBase 10
-open import Once.CanonicalName using (CanonicalName; canonical; module CanonicalName)
+open import Once.Spec.Name using (CanonicalName; canonical; module CanonicalName)
 open CanonicalName using (parts)
 
 -- | Once's universal symbol prefix.

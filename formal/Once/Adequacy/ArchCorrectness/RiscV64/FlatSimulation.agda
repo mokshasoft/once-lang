@@ -32,7 +32,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open FrameSemantics using (frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
 open import Once.Float.Dyadic using (binary64)

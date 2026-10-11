@@ -30,7 +30,7 @@ import Once.Spec.Type.Poly as T
 import Once.Spec.Type.Grade as T
 open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
 open import Once.Metatheory.SubLaws using (<:-refl)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx)
 import Once.TypeCheck.Classify
 open import Once.TypeCheck.Judgment

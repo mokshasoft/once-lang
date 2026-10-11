@@ -27,7 +27,7 @@
 -- `with` under an abstract head.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.LabelResolve (o : CanonicalName) where
 

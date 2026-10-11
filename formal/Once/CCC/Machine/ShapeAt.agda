@@ -42,7 +42,7 @@ open import Once.CCC.Machine.SMCore
   hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Machine.Allocation
 open import Once.IR using (AllocMode; Stack; Heap)
 open MemOps {FS} using (readLoc)

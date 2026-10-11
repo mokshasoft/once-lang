@@ -38,9 +38,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Data.String.Properties as StrProp using ()
 open import Once.Spec.Type.Grade as T using (Quantity; _≤q_; Zero; One; Many)
 open import Once.Spec.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
-open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord; genWord?; genWord?-no)
+open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
+open import Once.Spec.Name using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
+open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff)
 open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQualified-aux; inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)

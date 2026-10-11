@@ -45,7 +45,7 @@ open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Rigid using (RigidFree)
-open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Surface.Context

@@ -40,8 +40,7 @@ open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.TypeCheck.Raw using (RawExpr;
-  OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-id-check; t-fst-check; t-snd-check;
@@ -60,7 +59,7 @@ open import Once.TypeCheck.Judgment
          t-var-poly-instantiate-infer; d-poly)
 open import Once.Float.Decimal using (decimalOf; negate)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; svar→expr; lam; app; effApp; pair; neg; let'; case'; int; float; unit; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong; sym)

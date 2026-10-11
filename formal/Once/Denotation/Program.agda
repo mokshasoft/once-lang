@@ -27,7 +27,8 @@ open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_; showCanonical)
+open import Once.Spec.Name using (CanonicalName; showCanonical)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR using (IR)
 open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; IRTy; Unit)

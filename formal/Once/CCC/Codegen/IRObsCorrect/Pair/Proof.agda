@@ -37,7 +37,7 @@
 -- `Pair` itself is not inside `Simple`.)
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 import Once.CCC.Machine.SMPrimitives as SMPrimitives
 

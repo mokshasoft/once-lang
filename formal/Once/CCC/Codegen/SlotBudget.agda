@@ -34,7 +34,7 @@
 -- module rather than on every lemma — which is exactly what keeps the
 -- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
 -- so each `ir-to-trace' n l ir` reads as it always did.
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (LabelId; ℓ)
 
 module Once.CCC.Codegen.SlotBudget (o : CanonicalName) where

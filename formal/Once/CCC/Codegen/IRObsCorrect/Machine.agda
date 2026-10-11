@@ -12,7 +12,7 @@
 -- Nothing here mentions `IRObsCorrectF`; it is all about `exec-abstract`.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL

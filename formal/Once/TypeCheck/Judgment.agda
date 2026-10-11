@@ -51,9 +51,8 @@ open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
-open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
+open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
+open import Once.Spec.Name using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPolyPrefix; extendNamedCtx; classifyAppHead)
 

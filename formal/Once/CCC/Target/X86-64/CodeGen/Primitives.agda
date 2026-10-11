@@ -21,7 +21,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.CCC.Target.X86-64.Syntax
   using (rax; reg; imm; mov; call-sym; Program)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.Float.Dyadic using (binary64)
 open import Once.Float.Decimal using (round)

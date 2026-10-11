@@ -26,6 +26,7 @@ open import Relation.Binary.PropositionalEquality using
 
 import Once.Grammar as G
 open G using (GExpr)
+open import Once.Spec.Syntax
 open import Once.TypeCheck.Raw
 open import Once.Parser.Token
 open import Once.Parser.ExprRelation

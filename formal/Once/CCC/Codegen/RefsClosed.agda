@@ -22,7 +22,7 @@
 -- skeletons and the compile-time functor walks as sub-lemmas.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.RefsClosed (o : CanonicalName) where
 

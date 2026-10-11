@@ -46,8 +46,9 @@ open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IR as IR
 open import Once.IRTy using (⌊_⌋)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.Spec.Name using (CanonicalName; showCanonical; gen)
+open import Once.Spec.Syntax using (RawExpr)
+open import Once.Spec.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable)
 import Once.TypeCheck.Context

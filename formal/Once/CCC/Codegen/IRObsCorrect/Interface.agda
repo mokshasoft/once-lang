@@ -21,7 +21,7 @@
 -- mode does not apply here: this telescope is `{FS}` and `program-bound`.)
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedAt)

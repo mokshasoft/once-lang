@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
 -- labels. `o` is constant for a whole definition, so it belongs on the module
 -- rather than on every lemma.
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.Adequacy.ArchCorrectness.X86-32.RunContext (o : CanonicalName)
   (FS : FrameSemantics)

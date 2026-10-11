@@ -37,9 +37,9 @@ open import Once.Spec.Type as T using (Type; Unit; _*_)
 import Once.Type as T
 import Once.Spec.Type.Poly as T
 import Once.Spec.Type.Grade as T
-open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RResolved)
-open import Once.CanonicalName using (CanonicalName; gen; own; bare-NotGenerator; NotGenerator)
+open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RResolved)
+open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
+open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.TypeCheck.Elaborate
   using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo)
 import Once.TypeCheck.Classify as Classify

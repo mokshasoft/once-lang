@@ -48,11 +48,11 @@ open import Once.Type.Rigid using (KindedInstance; RigidFree)
 open import Once.Spec.Type.Sub using (pure⊑; _<:_; sub-arr)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 open import Once.Float.Decimal using (decimalOf; negate)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Surface.Context using (Ctx; ∅; Usage; zeroUsage; _+ᵘ_; _*ᵘ_)
-open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.TypeCheck.Judgment
 open import Once.Spec.Core.PolyTy using (sigOf; _!!_; Respects; GSub; _⟪_⟫; module Schema)
@@ -150,7 +150,7 @@ refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] 
 
 -- A generator's reference is the SigOp; its rendered path IS the key it was
 -- looked up under in Σ (D274).
-sigE : (c : Once.CanonicalName.CanonicalName) → IsConcrete A → Declared (Once.CanonicalName.showCanonical c) A → Elab Γ zeroUsage A
+sigE : (c : Once.Spec.Name.CanonicalName) → IsConcrete A → Declared (Once.Spec.Name.showCanonical c) A → Elab Γ zeroUsage A
 sigE {A = A} c k (declared h g m) = sigop c A , ⊢sigop c k h g m
 
 -- A definition's reference is the entry, at its instance.

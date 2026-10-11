@@ -33,7 +33,8 @@
 module Once.SigOp.Info where
 
 open import Data.Unit using (tt)
-open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.Product using (_,_)

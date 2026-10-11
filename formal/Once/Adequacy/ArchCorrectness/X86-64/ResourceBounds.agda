@@ -24,7 +24,7 @@
 -- is pinned to a definition.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 open import Once.Denotation.TraceMonad using (Interp)
 open import Once.CCC.FrameSemantics using (FrameSemantics)

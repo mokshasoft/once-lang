@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Spec.Type using (Type)
 open import Once.Type.Rigid using (RigidFree; KindedInstance)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser

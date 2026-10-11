@@ -52,7 +52,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (conB; baseA)
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Arith.SigOp.Builders
-open import Once.CanonicalName using (bare)
+open import Once.Spec.Name using (bare)
 
 open Once.Surface.Syntax.Expr
 

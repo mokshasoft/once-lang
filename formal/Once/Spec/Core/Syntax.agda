@@ -43,7 +43,7 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Integer using (ℤ)
 open import Once.Float.Decimal using (Decimal)
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type; Unit; Int; Float; _*_; _+_)
 
 ------------------------------------------------------------------------

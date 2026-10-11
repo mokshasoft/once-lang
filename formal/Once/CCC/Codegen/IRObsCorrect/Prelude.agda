@@ -15,7 +15,7 @@
 -- line each and name no contents.
 ------------------------------------------------------------------------
 
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)

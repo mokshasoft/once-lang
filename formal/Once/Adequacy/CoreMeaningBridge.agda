@@ -34,7 +34,7 @@ open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Poly using (Ground; extractGround)
 open import Once.Type.Rigid using (KindedInstance; ground-kinded)
 open import Once.Functor.Translate using (IsConcrete)
-open import Once.CanonicalName using (bare; showCanonical)
+open import Once.Spec.Name using (bare; showCanonical)
 open import Data.List using (_∷_)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (_++_)
@@ -312,7 +312,7 @@ module Comb {δ : GM.DefSem} where
 ------------------------------------------------------------------------
 
 open import Once.Denotation.Meaning using (EnvRun)
-open import Once.TypeCheck.Raw using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 
 -- The monad laws are equalities of trees (plan 0.105).
 open import Once.Denotation.TraceMonad using (returnT; _>>=T_)

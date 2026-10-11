@@ -27,7 +27,7 @@ open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Spec.Type.Poly using (PolyType; extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.TypeCheck.Raw using (RawExpr; RVar)
+open import Once.Spec.Syntax using (RawExpr; RVar)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
 open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Parser.Token

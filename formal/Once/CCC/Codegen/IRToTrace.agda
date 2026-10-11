@@ -70,7 +70,7 @@
 -- import this module APPLIED, so every `ir-to-trace' n l ir` call site reads
 -- exactly as it did before. Supplied at `Compile.compileFunWithTarget` from
 -- `cfName cf`, the same identity the function symbol is mangled from.
-open import Once.CanonicalName using (CanonicalName)
+open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.IRToTrace (o : CanonicalName) where
 

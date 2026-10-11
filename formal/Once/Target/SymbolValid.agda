@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (yes; no)
 open import Data.Char.Properties using (_≟_)
 
-open import Once.CanonicalName using (CanonicalName; canonical)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open CanonicalName using (parts)
 open import Once.Target.AsmSymbol using (AsmSym; AsmSymChars; sym-start; sym-continue; sym-punct)
 open import Once.Target.Symbol

@@ -171,7 +171,6 @@ reexport-impl Once.Spec.Meaning Once.Denotation.GradedOps
 reexport-impl Once.Spec.Meaning Once.Denotation.Trace
 reexport-impl Once.Spec.Meaning Once.Denotation.TraceMonad
 reexport-impl Once.Spec.Program Once.Denotation.Behavior
-reexport-impl Once.Spec.Syntax Once.TypeCheck.Raw
 reexport-impl Once.Spec.Typing Once.TypeCheck.Judgment
 reexport-impl Once.Surface.Syntax Once.Surface.Context
 reexport-wholesale Once.Semantics.Machine Once.Semantics.Value
@@ -185,7 +184,6 @@ spec-public Once.Spec.Meaning
 spec-public Once.Spec.Metatheory
 spec-public Once.Spec.Parsing
 spec-public Once.Spec.Program
-spec-public Once.Spec.Syntax
 spec-public Once.Spec.Typing
 spec-renaming Once.Spec.Contract
 spec-renaming Once.Spec.ContractLaws

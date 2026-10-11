@@ -25,6 +25,14 @@ import os, re, sys
 FORMAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 NAMECH = r'[^\s().;{}@"]'
 
+def qual_key(n):
+    """The token after `M.` in a qualified use: an operator's first name part."""
+    if '_' in n and not n.startswith('module '):
+        parts = [p for p in n.split('_') if p]
+        if parts:
+            return parts[0]
+    return n
+
 def load_map(path):
     where = {}
     for line in open(path):
@@ -159,19 +167,33 @@ def process(path, src, where, mods, dry):
         changed = True
         i = j
     out = '\n'.join(new)
-    # unaliased qualified uses: SRC.name -> NewModule.name (outside import lines)
+    qwhere = {}
+    for n, m in where.items():
+        qwhere.setdefault(qual_key(n), m)
+        qwhere[n] = m
+    nc = lambda t: re.sub(r'--[^\n]*', '', t)
+    # unaliased qualified uses: SRC.x -> NewModule.x
     def fix(m):
         n = m.group(1)
-        return where[n] + '.' + n if n in where else m.group(0)
-    body = re.sub(r'(?<![\w.])' + re.escape(src) + r'\.(' + NAMECH + r'+)', fix, out)
+        return qwhere[n] + '.' + n if n in qwhere else m.group(0)
+    body = re.sub(r'(?<![\w.])' + re.escape(src) + r'\.(' + NAMECH + r'+?)(?=[\s()])', fix, out)
+    # every module used qualified, unaliased, is imported
+    for mod in mods:
+        used = re.search(r'(?<![\w.])' + re.escape(mod) + r'\.(?![A-Z][\w]*\.)' + NAMECH, nc(body))
+        if used and not re.search(r'^\s*(open\s+)?import\s+' + re.escape(mod) + r'(\s|$)', body, re.M):
+            first = re.search(r'^(open\s+)?import\s', body, re.M)
+            body = body[:first.start()] + 'import ' + mod + '\n' + body[first.start():]
+    # every module an alias of SRC is used for is imported under that alias
+    for a in aliases:
+        need = set()
+        for m in re.finditer(r'(?<![\w.])' + re.escape(a) + r'\.(' + NAMECH + r'+?)(?=[\s()])', nc(body)):
+            need.add(qwhere.get(m.group(1), src))
+        for mod in sorted(need):
+            if not re.search(r'^\s*(open\s+)?import\s+' + re.escape(mod) + r'\s+as\s+' + re.escape(a) + r'(\s|$)', body, re.M):
+                first = re.search(r'^(\s*)(open\s+)?import\s', body, re.M)
+                body = body[:first.start()] + first.group(1) + 'import ' + mod + ' as ' + a + '\n' + body[first.start():]
     if body != out:
         changed = True
-        # make sure each new module used unaliased is imported
-        for mod in mods:
-            if re.search(r'(?<![\w.])' + re.escape(mod) + r'\.' + NAMECH, body) and \
-                    not re.search(r'^\s*(open\s+)?import\s+' + re.escape(mod) + r'(\s|$)', body, re.M):
-                body = re.sub(r'^(\s*)import ' + re.escape(src) + r'\s*$',
-                              lambda mm: f'{mm.group(1)}import {mod}\n{mm.group(0)}', body, count=1, flags=re.M)
     if changed and body != text:
         if dry:
             print('would rewrite', path)
