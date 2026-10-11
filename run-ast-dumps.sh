@@ -15,7 +15,7 @@
 #   ./run-ast-dumps.sh master       # one ref
 #   HEAP=3G ./run-ast-dumps.sh      # tighter heap cap on a smaller machine
 #
-# Used by MERGE.md §4b (the reachability gate) and plan 0.92/D277 (apex-live scope).
+# Used by MERGE.md §6 (reachability) and plan 0.92/D277 (apex-live scope).
 #
 # REQUIRES the Agda fork that adds --write-ast/--ast-file (and the dead-import /
 # re-export tools): https://github.com/mokshasoft/agda , branch `dead-code-2.8.0`.

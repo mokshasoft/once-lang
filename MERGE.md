@@ -1,366 +1,167 @@
-# MERGE — rules for merging a work branch into `master`
+# MERGE — merging a work branch into `master`
 
-Before any branch merges into `master`, walk this list top to bottom, in this
-order. The point is that `master` only ever absorbs changes that are analyzed,
-approved, green, and accounted for in the decision log — and that no heavy
-build artifact (MAlonzo, binaries) is regenerated before the changes it would
-bake in have been analyzed and approved.
+The steps below run in order. `master` takes only changes that have been analysed, approved,
+are green, and are recorded in the decision log. Heavy artifacts (MAlonzo, binaries) are
+regenerated only after the changes they would bake in have been approved.
 
-## 1. Analyze the branch changes (FIRST — before rebase or extraction)
+This file holds rules and steps. History, counts and worked examples go in the decision log
+(`docs/compiler/decision-log.md`) or in the module headers they concern, not here.
 
-Read the full branch diff (`git diff master..HEAD`) file by file and classify
-every change:
+## 1. Analyse the branch (first, before rebase or extraction)
 
-- **Principled** — makes something a theorem, narrows a residual to a named
-  honest fact, fixes a model defect at the semantics (`flat-exec-instr` /
-  the flat machine), deletes a site that has no producer, records a decision.
-- **Shim** — special-cases a proof to get green, weakens a spec to fit an
-  implementation, adds a postulate to route around a fight, conditions a
-  claim on something chosen for provability rather than truth.
+Read `git diff master..HEAD` file by file and classify every change:
 
-Shims do not merge. If a shim is unavoidable, it needs an explicit decision
-(step 2) saying so and why — silent shims are how vacuity happened.
+- **Principled**: it turns something into a theorem, narrows an assumption to a named honest
+  fact, fixes a model defect in the semantics, deletes a site with no producer, or records a
+  decision.
+- **Shim**: it special-cases a proof to get green, weakens a spec to fit the implementation,
+  adds a postulate to route around a proof fight, or conditions a claim on something chosen
+  because it is provable rather than because it is true.
 
-Special scrutiny, in order:
+Shims do not merge. An unavoidable shim needs an explicit decision entry (§2) saying so and why.
 
-- **`Once.Spec` MUST essentially not change.** It is the one home of the
-  language definition; a branch whose diff touches it needs a written
-  justification per hunk, and "the proof needed it" is never one — the
-  implementation bridges to the spec, not the spec to the implementation
-  (top-down specs). Legitimate reasons are a language-level decision recorded
-  in the decision log, or a pure addition that defines a new observable.
+The analysis must cover each of the following.
 
-  **The spec is not a path — it is a RE-EXPORT CLOSURE, and a path filter
-  cannot see it.** `Once/Spec.agda` re-exports five modules, and two of them
-  re-export implementation-namespaced files VERBATIM: `Once.Spec.Typing` is
-  `Once.TypeCheck.Judgment`, and `Once.Spec.Meaning` re-exports from
-  `Once.Denotation`. So a branch can rewrite the entire declarative typing
-  judgment while `formal/Once/Spec.agda` and `formal/Once/Spec/*` show a
-  one-line comment diff. Plan 0.76 did exactly that (66 rules over four
-  judgment forms → 51 over two) and the path filter below printed nothing.
-  Resolve the closure and diff THAT, not the directory:
+**The Spec.**
+- `Once.Spec` essentially does not change. The implementation bridges to the Spec, never the
+  reverse. Every hunk that touches it needs a written justification. "The proof needed it" is
+  never a justification. Legitimate reasons are a language-level decision in the decision log,
+  or a pure addition that defines a new observable.
+- The Spec is its re-export closure, not a directory. Diff the generated list, never a
+  hand-written one:
+  `git diff master..HEAD --stat -- $(python3 formal/scripts/spec-closure.py)`
+- Every module in that closure is proof-free. A `-sound`/`-complete` proof is evidence that the
+  implementation meets the claim; it is not part of the claim. A proof added to a closure module
+  stops the merge.
+- If the closure count falls, suspect a lost `public` before believing the Spec shrank.
+- The closure is not the whole trust surface. Wherever a closure module imports
+  implementation code (see plan 0.114), the definitions it uses are part of what the Spec means
+  and are reviewed as Spec. `make metatheory-gate` lists the named exceptions.
 
-      git diff master..HEAD --stat -- $(python3 formal/scripts/spec-closure.py)
+**Top-level modules.** State which of these the diff touches, what changed and why:
+`Once.Spec`, `Once.Certified`, `Once.Compiler`, `Once.Compile`, the trusted base, and the core
+types (`Once.IR`, `Once.Type`, `Once.IRTy`). Read their hunks line by line. If none is touched,
+say so explicitly and verify it with
+`git diff master..HEAD --stat -- ':(glob)formal/Once/*.agda'`.
 
-  `formal/scripts/spec-closure.py` resolves the transitive `open import …
-  public` closure of `Once.Spec` and prints it as paths, so the list is
-  GENERATED rather than maintained — a hand-written one goes stale and is the
-  same hole again. It is 34 modules today (regenerate, do not trust this copy;
-  the list below is the 27 of plan 0.84 plus later additions, not maintained):
+**Trust base.** Postulates, `TERMINATING` and other check-disabling pragmas may only change with
+an explanation for each entry:
+- A new assumption needs a name and a decision entry, and it must be true of the reachable
+  states of emitted programs. An assumption about our own code is a proof gap. Prove it; never
+  make it a hypothesis (plan 0.11's rule).
+- Emptiness probe: for each new residual, try `probe : P → ⊥; probe ()` in a scratch module. If
+  it compiles, the residual is false and everything downstream is unsound. This is mandatory when
+  a witness datatype loses a constructor.
+- A new assumption whose type is not obviously inhabited owes a model, as a field of
+  `NonVacuous` (`Once.Certified.Models`). A model kept in an island module rots unseen.
+- Never add a check-disabling pragma to the correspondence cone (`make pragma-gate`, §5).
 
-      Once/Spec.agda + Once/Spec/{Type,Syntax,Typing,Meaning,Correct}.agda
-      Once/Spec/{Program,Resolution,Lexing,Parsing,Module}.agda
-      Once/Spec/Grammar/{Import,TypeAlias,Signature,FunDef,OpDecl,Decl}.agda
-      Once/Type.agda            Once/TypeCheck/Raw.agda
-      Once/TypeCheck/Judgment.agda                       (= Once.Spec.Typing)
-      Once/Denotation/{Admissible,Trace,ValueDomain,Behavior,Meaning,MainMeaning}.agda
-      Once/Adequacy.agda                                 (= Once.Spec.Correct)
-      Once/Spec/Metatheory.agda + Once/Spec/Core/TermModel.agda   (D304: the
-                                 metatheory's STATEMENTS; proofs in Once/Metatheory)
+**Islands.** Every new module and lemma is load-bearing on the apex: deleting it must break
+`make certified`. For each one, decide which of these it is:
+- *wired*: it is on the apex path;
+- *superseded*: something on the path replaced it, so delete it;
+- *unwired prize*: it proves what the apex postulates, so wire it in;
+- *metatheorem*: a property of the language rather than a premise of the compiler proof. Its
+  statement goes in `Once.Spec.Metatheory`, its proof under `Once/Metatheory` (Spec-side imports
+  only), and it is carried by `CertifiedBuild.language`. Wire it there or delete it.
 
-  **Every module in this list is PROOF-FREE, and that is the invariant to
-  check — not the count.** Plan 0.84 / D140 established it: a `-sound` or
-  `-complete` proof is evidence the implementation meets the claim, never part
-  of the claim, so it must not be in the closure. Before 0.84 the list was 23
-  modules carrying 32 such proofs, because five modules defined a relation AND
-  proved its bridge in the same file. If a merge adds a proof to a closure
-  module, that is a stop-the-merge finding.
+Two cautions:
+- "Unreachable" means it contributes nothing to the apex proof term. It does not mean
+  deletable: re-export shells and modules needed only to compile are unreachable too. Verify a
+  deletion by building, never by an import scan.
+- A `public` re-export makes the build break when its target is deleted, even if nothing uses
+  the name. So for every re-exported name, check that something other than the re-export line
+  consumes it.
 
-  The count ROSE (16 -> 23 -> 27) across three corrections, each of which found
-  the previous number too small. Treat a FALLING count with suspicion: it
-  usually means a re-export lost its `public` and the surface went dark, not
-  that the spec shrank.
+**Extracted cone.** List the changed files that extraction covers: parser, resolver,
+typechecker, IR lowering, emitters, `Once.Compile`, and the machine semantics they use. For each,
+state what the compiled output now does differently. This decides whether §4 runs. Check a
+"proof-only" claim by reading the diff, not the commit messages.
 
-  Note `spec-closure.py` follows a re-export only when it carries `public`, so
-  it can still under-report: a relation named by a closure module but imported
-  without `public` will not be listed. 0.84 fixed the known instance (the six
-  sub-relations of `ParsesDecl`); the limitation itself remains.
+**Plans.** For every plan the branch touched:
+- Delete a finished plan, after moving anything durable into the decision log or into module
+  headers. Say in the commit message where it went.
+- Update an unfinished plan so that its *next step* and the context needed to start it cold are
+  current.
 
-- **The re-export closure is not the whole trust surface.** Two leaks the
-  closure does NOT show, found 2026-09-01 and recorded here so a reader does
-  not have to rediscover them:
+## 2. Decision log
 
-    * **Rule premises reach outside it.** `Once.TypeCheck.Judgment` calls
-      `composeMid`, `classifyAppHead` and the four lookups from
-      `Once.TypeCheck.Classify` — a module that is NOT in the closure and whose
-      names `Once.Spec` does not export. So which programs are well-typed can
-      be changed by editing a file the audit surface cannot see. Plan 0.80 /
-      D134 is removing these premises; until it finishes, **diff
-      `formal/Once/TypeCheck/Classify.agda` as part of the spec review.**
-    * **The meaning is indexed by the compiler.** `Denotation.MainMeaning`'s
-      `meaningᵈ` takes `C.Module` (`Once.Compile`), `ModuleTyped` and
-      `HasValidMain-decl`, and dispatches on `C.extractFunctions`. Not a
-      logical circularity, but a trust one. Open; see plan 0.80's P3.
-      PARTLY CLOSED by plan 0.84: the last two came from the compiler's own
-      PROOF modules (`AcceptSound`, `ModuleComplete`) and now come from
-      `Once.Spec.Module`. What remains is the real defect — `ModuleTyped m` is
-      DEFINED as `ModuleTyped-ef m (extractFunctions (extractAliases m) m)`,
-      so the spec's notion of well-typed is whatever the front end returns.
-      `Once/Spec/Module.agda`'s header states this; **plan 0.59 owns it.**
-- **Top-level module impact.** The analysis must STATE which top-level
-  modules the diff touches, each with what changed and why — these are the
-  trust anchors, so their diffs get read hunk by hunk, not skimmed:
-  `Once.Spec` (strictest, above), `Once.Certified` (what the certification
-  claims), `Once.Compiler` / `Once.Compile` (the compiler statement and
-  pipeline — also the extraction root), `Once.Postulates` /
-  `Once.ProofObligation` (the trusted base), and the core object-language
-  types (`Once.IR`, `Once.Type`, `Once.IRTy`). A change to any of these that
-  the analysis cannot justify in one paragraph is a stop-the-merge finding.
-  "No top-level module touched" is itself a statement the analysis must make
-  explicitly (and verify by path filter:
-  `git diff master..HEAD --stat -- ':(glob)formal/Once/*.agda'` — the
-  `:(glob)` matters, a bare `*` crosses directories).
-- **Postulate delta.** Count residuals/postulates on master vs the branch
-  (`grep -rn postulate` over the correspondence cone). The delta must be
-  explainable residual by residual: every NEW postulate needs a name, a
-  site/run conditioning (the vacuity discipline), and the hypothesis that
-  makes it true of reachable states of emitted programs. Re-run the probe
-  recipe (`vacuity-probe*.agda`) if any new residual is in the
-  state/program-fact class.
-- **Emptiness probe on every new residual.** The dual of the vacuity check:
-  vacuity asks whether the HYPOTHESIS is reachable, this asks whether the
-  CONCLUSION is inhabited. `probe : P → ⊥; probe ()` in a scratch module — if
-  it compiles, the residual is FALSE, not merely unproven, and everything
-  downstream is unsound. Mandatory when the conclusion (or a FIELD of a
-  conclusion record) is at a type the emitter never constructs, and whenever a
-  witness datatype loses a constructor — D180 deleted `valid-ν-wf` and checked
-  only what imported it, leaving `obs-correct-Ana` postulating an inhabitant of
-  an empty type, under the apex proof. Recipe and worked example:
-  `docs/compiler/residual-ledger.md`.
-  The probe is for FINDING an empty type. The positive direction is permanent:
-  a new assumption (postulate or apex hypothesis) whose type is not obviously
-  inhabited owes a model as a field of `NonVacuous` (`Once.Certified.Models`,
-  D302), so the apex goes red if the type ever empties. A model in an island
-  module is not enough: it rots unseen when the type moves.
-- **`{-# TERMINATING #-}` / `--allow-unsolved` pragmas.** None may enter the
-  correspondence cone (Machine / Codegen / Adequacy).
-- **`make -C formal lint-imports` is clean.** Agda only WARNS when a `using
-  (…)` names something a module does not export, so a rename or deletion
-  leaves stale import lists behind silently and forever (D139). The lint is a
-  full-tree scope-only pass; it is fast (no type-checking) and it is the only
-  check that sees a directive naming a symbol that no longer exists.
-- **A `public` re-export can DEFEAT the no-islands check.** The island test
-  below is "delete it and the build must break". A `… using (f) public`
-  re-export guarantees the build breaks — the aggregator's `using` list stops
-  resolving — so dead code held up by one PASSES the test while having zero
-  real consumers. That is how `Once.Parser.PolyType.parsePolyType` survived: a
-  second, unverified implementation of the signature grammar, wired to the
-  build by exactly one re-export in `Once/Parser.agda` and used by nothing
-  (D196). It was also where a keyword could enter the frontend without a proof
-  obligation. So for every `public` re-export, check that some module OTHER
-  than the re-export line consumes the name — the aggregator's own body counts
-  (`isUpperWord` is re-exported and used in `hasUpperTVar`, and is fine).
-- **No islands — every change must be load-bearing on the apex proof path.**
-  For every new module/lemma the branch adds, deleting it must break the
-  build of `certified` (or the three-arch cluster) — an unwired supporting
-  module is dead code that hides gaps instead of surfacing them as type
-  errors (the `conc-flat-sim-just` lesson: a postulated apex node lets
-  everything under it float disconnected). Spot-check by grepping who
-  imports each new module; anything reachable from no apex is either
-  deleted before merge or explicitly justified as a decision-logged
-  exception.
-- **Extracted-cone changes.** List which changed files the extraction covers
-  (parser, resolver, typechecker, `ir-to-trace`, the per-arch emitters,
-  `Once.Compile`, machine-semantics modules in the closure) — this determines
-  whether step 4's extraction gate is required, and each such change needs
-  its behavioral justification stated (what the compiled output now does
-  differently, and why that is right).
+Every design decision the branch embodies has a `D###` entry in
+`docs/compiler/decision-log.md` before the merge. A decision is anything a future session could
+ask "why is it this way?" about. Date an entry by when the decision was made.
 
-## 1b. Plans-folder hygiene (part of the analysis)
+**Steps 1–2 are presented for approval. Nothing below runs on an unapproved branch.**
 
-The same read of the branch determines the state of every plan it touched
-(`plans/*.md`):
+## 3. Rebase on a fresh master
 
-- **Finished plans are DELETED** — a completed plan left in the folder reads
-  as open work. Before deleting, extract anything of durable value (design
-  findings, residual genealogy, techniques) into the decision log or the
-  module headers it belongs in, and commit that extraction; the plan file's
-  deletion notes in its commit message where the content went (the D073/P5
-  precedent: the plan's own final phase instructed its deletion).
-- **Unfinished plans are UPDATED** — the file must clearly state the NEXT
-  item to pick up and the context needed to pick it up cold (what is done,
-  what is in flight and where it lives, which gates passed). A stale plan
-  whose "next step" was done three sessions ago is worse than no plan.
+```
+git checkout master && git pull origin master
+git checkout <branch> && git rebase master
+```
 
-## 2. Decision-log coverage
+Resolve conflicts on the branch. If the rebase pulled in master-side changes, re-run
+`formal/scripts/agda-safe.sh certified` before going on.
 
-Every design decision the branch embodies must exist as a `D0xx` entry in
-`docs/compiler/decision-log.md` BEFORE the merge — check the branch's commits
-against the log. A decision is anything a future session could ask "why is it
-this way?" about: a representation choice, a model change, a residual class
-accepted as an honest axiom, a spec-level call. If a commit made such a
-choice without an entry, write the entry now (date it when the choice was
-made, not the merge date).
+## 4. Extraction (if §1 found extracted-cone changes)
 
-**The analysis of steps 1–2 is presented for APPROVAL before anything below
-runs. Nothing after this line happens on an unapproved branch.**
+Run this after the rebase, as one extraction after all Agda edits:
 
-## 3. Rebase on a fresh master (after approval)
+```
+rm -rf formal/_build/malonzo/MAlonzo && make -C formal malonzo   # syncs compiler/src/
+```
 
-- `git checkout master && git pull origin master`
-- `git checkout <branch> && git rebase master`
-- Resolve conflicts on the branch, never on master. If the rebase pulled in
-  master-side changes, re-run the quick verification
-  (`formal/scripts/agda-safe.sh certified` + the three-arch cluster
-  `MODULE=Once/Adequacy/ArchCorrectness.agda`) before proceeding — the
-  combination is code neither side saw.
+Register new modules and drop deleted ones in `compiler/once.cabal`. Then run `cabal build all`
+and `cabal test` (memory-capped, like agda), and the exit tests on all three arches:
+`tests/run-exit-tests.sh`, `tests/run-exit-tests-x86_32.sh`, `tests/run-exit-tests-riscv64.sh`.
+A green apex says nothing about the extracted pipeline.
 
-## 4. Extraction gate (after the rebase, so the artifacts match the final tree)
+## 5. Mechanical gates
 
-If step 1 found extracted-cone changes:
+```
+cd formal && make merge-gate
+```
 
-- Regenerate MAlonzo — ONE extraction, after all Agda edits:
-  `rm -rf formal/_build/malonzo/MAlonzo && make -C formal malonzo` (syncs to
-  `compiler/src/`); register any NEW extracted modules in
-  `compiler/once.cabal`.
-- `cabal build` + `cabal test` (under the memory-capped scope, like agda).
-- Exit tests on all three arches: `tests/run-exit-tests.sh`,
-  `tests/run-exit-tests-x86_32.sh`, `tests/run-exit-tests-riscv64.sh`.
-  A green `certified` says nothing about the extracted pipeline: a removed
-  constructor's leftover catch-all clause, or an unwired module, only shows
-  up here.
+It runs the following, cheapest first:
 
-Proof-only branches skip this step — but check the "proof-only" claim by
-reading the diff (step 1), not the commit messages: a "proof" commit that
-edits a function definition in an extracted module IS a codegen change.
+| Gate | Script | Fails when |
+|---|---|---|
+| `public-gate` | `scripts/public-gate.sh` | a module gains `public` re-exports beyond `public-gate.baseline` |
+| `pragma-gate` | `scripts/pragma-gate.sh` | the apex/compiler closure gains a check-disabling pragma beyond `pragma-gate.baseline` |
+| `metatheory-gate` | `scripts/metatheory-gate.sh` | a proof under `Once/Metatheory` imports outside the Spec side |
+| `backstop` | `scripts/backstop.sh` | any module outside `backstop.islands` fails to check |
+| `certified` | `scripts/agda-safe.sh` | the apex fails to check |
 
-## 4b. Reachability gate (the trust base must not grow silently)
+Rules that go with the gates:
+- Baselines and the islands list are ratchets: they only shrink. An entry is lowered or removed
+  in the same commit that makes that possible. Raising one needs a decision entry with the
+  reason.
+- Warnings are errors (`-W error`). Fix the cause; never silence a warning. Mark a catch-all
+  `CATCHALL` only when it is an intended fallback. Read an unreachable clause before deleting
+  it, because it may be a constructor captured as a pattern variable. A per-module option needs
+  a comment giving its reason.
+- Re-export only to share a parameterised module's instance, and in the Spec door. Remove
+  re-exports and prune dead imports with `scripts/reexport-remove.py`, which checks name
+  resolution before and after. Never edit them by eye.
 
-Dump the AST and trust base reachable from the apex for BOTH refs and compare:
+## 6. Reachability (the trust base must not grow silently)
 
-    ./run-ast-dumps.sh                 # master and the branch
-    HEAP=6G COMPACT=-c20 ./run-ast-dumps.sh <ref>   # if a module OOMs
+```
+./run-ast-dumps.sh                              # master and the branch
+HEAP=6G COMPACT=-c20 ./run-ast-dumps.sh <ref>   # if a module runs out of memory
+```
 
-It needs the Agda fork with `--write-ast` (https://github.com/mokshasoft/agda, branch
-`dead-code-2.8.0`); the script's header says how to build it and where it looks for it.
+This needs the Agda fork with `--write-ast` (see the script header). It takes tens of minutes
+per ref, so start it during §1. Compare the two dumps:
+- `counts.trustBase` and the per-marker split. A postulate appearing needs a decision entry. A
+  postulate splitting into another postulate plus a proof shows up as +1/−1 and is fine.
+- Modules leaving `reachable`. Removing the last consumer of a proof must be intentional,
+  because nothing else in the build notices it.
+- The counts are of declarations, not source sites: one pragma covers a whole mutual block and
+  its generated helpers. Use the counts to detect change. Quote source-level numbers in
+  decision entries.
 
-It is slow (tens of minutes per ref) and resumes from cached interfaces, so
-start it during step 1 and read it here. Three checks, in order of severity:
+## 7. Merge
 
-- **The trust base must not grow without a decision.** Compare `counts.trustBase`
-  and the per-marker split. A new `postulate`, `TERMINATING` or
-  `NO_POSITIVITY_CHECK` on the proof path is a residual, and step 2 owes it an
-  entry. A postulate SPLITTING is fine and shows up as +1/-1 (`comp-step` became
-  `comp-traces-agree` plus a proved `value-realized`); a postulate APPEARING is
-  not.
-
-- **A module must not LEAVE `reachable` unremarked.** This is the check that
-  matters most, because nothing else in the build performs it. When a proof
-  stops being used the tree stays green — that is how seven `Once/Optimizer/*`
-  modules rotted unnoticed from 2026-07-14, and how the parked `*WF` cluster
-  accrued D159 rot from a change made on its own branch. Removing the last
-  consumer of a proof is a real event; it should be intentional.
-
-- **Deletions must be checked against `reachable`, never against imports.**
-  Unreachable means "contributes no declaration to the apex's proof term". It
-  does NOT mean deletable: re-export shells contribute nothing, and a module
-  can be needed to COMPILE without being on the proof path. Classify an orphan
-  three ways before cutting — superseded (something on the path replaced it),
-  unwired prize (it proves what the apex postulates: plan 0.64's content test),
-  or never wired.
-  A METATHEOREM (a property of the language itself, not a premise of the
-  compiler proof) is none of the three: it proves nothing the apex postulates,
-  so it always looks unwired. Its STATEMENT belongs in the Spec
-  (`Once.Spec.Metatheory`, D304/D305), its proof under `Once/Metatheory`
-  (Spec-side imports only: `make metatheory-gate`), assembled in `Once.Metatheory`,
-  and `CertifiedBuild.language` carries it
-  — wire it there or delete it, never leave it as an island (D303: `tsubst` was
-  deleted this way).
-
-READ THE COUNTS CORRECTLY. `counts` are DECLARATIONS, not source sites, and the
-gap is large: 202 `terminating-pragma` entries in one dump were 22 actual
-pragmas — one pragma covers a mutual block, and Agda's generated `-invert*`
-helpers each inherit the marker. Quote source-level numbers in a decision entry;
-declaration counts are for detecting CHANGE, not for stating size.
-
-## 4c. Structured-recursion gate (until the compiler builds with `--safe`)
-
-Once has structured recursion only (OCP-0003), and the structure is enforced
-BY CONSTRUCTION: the module is a telescope (D241), and the core has no `fix`
-and a total meaning. That argument holds only while Agda's own checks are on.
-So, until the whole compiler builds with `--safe` (D242):
-
-    cd formal && make pragma-gate        # = scripts/pragma-gate.sh
-
-It walks the import closure of `Once/Certified.agda` and `Once/Compiler.agda`
-and fails on any pragma that switches off termination, positivity, coverage or
-universe checking beyond `scripts/pragma-gate.baseline`.
-
-- **A failure blocks the merge.** Remove the pragma: make the recursion
-  structural or well-founded (see `feedback_reify_recursion_for_foetus_perf`).
-  If that is not possible on this branch, step 2 owes a decision entry, and only
-  then may the baseline grow.
-- **The baseline only shrinks.** When the gate reports a module below its
-  count, lower or delete its line in the same branch.
-- The residuals at the gate's introduction (4 modules, 18 pragmas: the
-  generic parser and the arith machine recogniser/rewriter) are listed in the
-  baseline file. They are implementation-side totality gaps, not Spec
-  holes, but they block `--safe`.
-
-## 4d. Warnings are errors (plan 0.109)
-
-`formal/Once.agda-lib` carries `-W error`: every Agda warning fails the build, the
-extraction included (`make malonzo` passes `--no-main`, since `Once.Compiler` is a
-library). A warning has repeatedly been the only signal of a real defect — a
-constructor captured as a pattern variable (`UnreachableClauses`), a `rewrite`
-that fires nothing (`RewritesNothing`), a moved name in a `using` list
-(`ModuleDoesntExport`) — so none may be silenced to get green:
-
-- **Fix the cause.** A catch-all that cannot be a definitional equation is marked
-  `{-# CATCHALL #-}` only when it IS an intended fallback; an unreachable clause is
-  read before it is deleted (it may be a captured constructor).
-- **Per-module options need a reason** in a comment beside them (e.g.
-  `--inversion-max-depth` for a long concrete trace).
-- Red islands outside the apex/compiler closure are not exempt: they stay red
-  until fixed, and are listed with a reason in `formal/scripts/backstop.islands`
-  (§4f).
-
-## 4e. Re-exports and imports (plan 0.92, D277)
-
-A `public` re-export scopes its names against every local import in every
-importer's cone; the cost lands on modules the author never looked at. So:
-
-- **`public-gate` must pass** (`formal/scripts/public-gate.sh`): the baseline of
-  `public` lines per module only goes DOWN. A new re-export needs D277's
-  justification (below) with a measurement, and its baseline line raised in the
-  same commit.
-- **Re-export only to avoid re-instantiating a parameterised module, and the Spec
-  door** (`Once.Spec` and its `public` closure, `scripts/spec-closure.py`), which
-  is the language definition's designed surface. Never to hide structure.
-- **Repairs are verified, not eyeballed.** A removed re-export is repaired with
-  `formal/scripts/reexport-remove.py` (plan 0.92 §9): the fork's
-  `--name-resolution-report` before and after, and every name in every importer
-  must resolve to the same definition, of the same kind. Dead imports are pruned
-  the same way (`reexport-remove.py prune`): a name listed in a directive that
-  never occurs in its module.
-- **The scope is apex-live code** (the `--write-ast` dump, `run-ast-dumps.sh`);
-  islands are left as they are, to be cleaned when they are hooked up.
-
-## 4f. The island backstop and `make merge-gate`
-
-Only the apex closure is checked by `make certified`; a module nothing on the apex
-imports can rot unseen (ErrorProofs did). The backstop checks the REST:
-
-    cd formal && make backstop           # = scripts/backstop.sh
-
-It generates `EverythingFiltered.agda` (untracked) importing every module except
-`scripts/backstop.islands`, and type-checks it. A new module is in the backstop
-from the day it lands. The islands list is a ratchet like `public-gate`'s
-baseline: an entry needs a one-line reason, the list only shrinks, and a repaired
-island loses its line in the same commit. `lint-imports` skips the same islands
-(their stale imports are why they are islands).
-
-All the mechanical gates run in one go, cheapest first:
-
-    cd formal && make merge-gate   # public-gate, pragma-gate, metatheory-gate, lint-imports, backstop, certified
-
-`make merge-gate` must pass before §5. It does not replace §1 (analysis), §4
-(extraction) or §4b (reachability).
-
-## 5. Merge
-
-- Fast-forward or `--no-ff` per repo convention; do not squash away the
-  per-step history — the commit messages are part of the residual genealogy
-  that HANDOFF/decision-log entries reference by hash.
-- After the merge: HANDOFF.md is UNTRACKED working notes and never merges;
-  make sure it did not sneak into the branch.
+- Fast-forward, or `--no-ff` per convention. Never squash: commit hashes are referenced from
+  the decision log.
+- `HANDOFF.md` is untracked working notes. It never enters a branch.

@@ -80,15 +80,16 @@ lint-imports:
 	@./scripts/lint-imports.sh
 
 .PHONY: backstop
-# The island backstop: every module except scripts/backstop.islands (MERGE.md §4d).
+# The island backstop: every module except scripts/backstop.islands (MERGE.md §5).
 backstop:
 	@scripts/backstop.sh
 
-# Every mechanical merge gate in one go (MERGE.md §4): the ratchets and the
+# Every mechanical merge gate in one go (MERGE.md §5): the ratchets and the
 # metatheory boundary first (seconds),
-# then the import lint, the backstop and the certified apex.
+# then the backstop and the certified apex. (lint-imports is not part of it:
+# under -W error, the backstop and the apex already fail on a stale import.)
 .PHONY: merge-gate
-merge-gate: public-gate pragma-gate metatheory-gate lint-imports backstop certified
+merge-gate: public-gate pragma-gate metatheory-gate backstop certified
 	@echo "merge-gate: OK"
 
 .PHONY: lint-pragmas
