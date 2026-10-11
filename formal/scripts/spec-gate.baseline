@@ -2,7 +2,8 @@
 # beyond itself. Lines may only be DELETED. `import M`: M is in the full
 # import closure of Once.Spec but outside Once.Spec.*. `reexport-impl A B`:
 # A re-exports an implementation module. `reexport-wholesale A B`: A
-# re-exports B with no `using` list.
+# re-exports B with no `using` list. `spec-public|spec-renaming|spec-hiding M`:
+# the Spec module M uses that keyword (the goal is none of the three).
 import Once.Adequacy
 import Once.Allocator.AbstractInstance
 import Once.Allocator.Interface
@@ -186,3 +187,23 @@ reexport-wholesale Once.Spec Once.Spec.Type
 reexport-wholesale Once.Spec Once.Spec.Typing
 reexport-wholesale Once.Spec.Typing Once.TypeCheck.Judgment
 reexport-wholesale Once.Surface.Syntax Once.Surface.Context
+spec-public Once.Spec
+spec-public Once.Spec.Contract
+spec-public Once.Spec.Core.Meaning
+spec-public Once.Spec.Correct
+spec-public Once.Spec.Grammar.Decl
+spec-public Once.Spec.Meaning
+spec-public Once.Spec.Metatheory
+spec-public Once.Spec.Parsing
+spec-public Once.Spec.Program
+spec-public Once.Spec.Syntax
+spec-public Once.Spec.Type
+spec-public Once.Spec.Typing
+spec-renaming Once.Spec.Contract
+spec-renaming Once.Spec.ContractLaws
+spec-renaming Once.Spec.Core.Meaning
+spec-renaming Once.Spec.Core.PolyTyping
+spec-renaming Once.Spec.Core.Translate
+spec-renaming Once.Spec.Core.Typing
+spec-renaming Once.Spec.Elaboration
+spec-renaming Once.Spec.Grammar.OpDecl

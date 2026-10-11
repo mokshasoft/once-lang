@@ -5,8 +5,9 @@
 # spec-closure.py lists the Spec's `public` re-export closure: what the Spec
 # EXPORTS. This script follows every import: what the Spec DEPENDS ON. The
 # goal (plan 0.114) is that this is `Once.Spec.*` plus the standard library,
-# with no re-export of an implementation module and no `public` without a
-# `using` list.
+# and that no Spec module uses `public`, `renaming` or `hiding`: every name is
+# imported from the module that defines it, under the name it was given there
+# (a qualified `import M as X` is allowed; it renames the module, not a name).
 #
 #   python3 formal/scripts/spec-import-closure.py          report: size, the
 #       import chain to each compiler target, the edges out of the public closure
@@ -65,9 +66,21 @@ def closure():
                 queue.append(d)
     return parent
 
+def spec_modules():
+    for root, _, fs in os.walk('Once/Spec'):
+        for f in fs:
+            if f.endswith('.agda'):
+                yield os.path.join(root, f)[:-5].replace('/', '.')
+    yield 'Once.Spec'
+
 def findings(parent):
     """What the goal forbids, as baseline lines."""
     out = set()
+    for m in spec_modules():
+        s = source(m) or ''
+        for kw in ('public', 'renaming', 'hiding'):
+            if re.search(rf'\b{kw}\b', s):
+                out.add(f'spec-{kw} {m}')
     for m in parent:
         if not is_spec(m):
             out.add(f'import {m}')
@@ -125,7 +138,8 @@ elif '--write-baseline' in sys.argv:
                 '# beyond itself. Lines may only be DELETED. `import M`: M is in the full\n'
                 '# import closure of Once.Spec but outside Once.Spec.*. `reexport-impl A B`:\n'
                 '# A re-exports an implementation module. `reexport-wholesale A B`: A\n'
-                '# re-exports B with no `using` list.\n')
+                '# re-exports B with no `using` list. `spec-public|spec-renaming|spec-hiding M`:\n'
+                '# the Spec module M uses that keyword (the goal is none of the three).\n')
         for line in sorted(findings(parent)):
             f.write(line + '\n')
 else:

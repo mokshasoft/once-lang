@@ -22,7 +22,7 @@ This index is a map and was last re-derived from the code on 2026-10-11.
 
 | Plan | State | What remains |
 |---|---|---|
-| 0.114 the Spec stands alone | A (gate) done | the Spec imports only the Spec, names its exports, is proof-free and tidy: phases B–H |
+| 0.114 the Spec stands alone | A (gate) done; B next | the Spec is `Once/Spec`, imports only itself, no re-exports/renaming/hiding, `--safe`, definitions only, reads as categorical semantics |
 | 0.59 oracle principality | open | C1/C3 coverage, P1–P4 (mgu, completeness, principality, diagnostics) |
 | 0.50 named defs are morphisms | ABI landed | retire `classifyAppHead` from the judgment (moved here by D293) |
 | 0.96 `IO` is not a language construct | not started | decide (§3), remove the parser sites |
