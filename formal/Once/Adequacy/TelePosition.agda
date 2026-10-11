@@ -49,7 +49,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Spec.Type
 import Once.Type
-import Once.Surface.Context as Ctx
+import Once.Spec.Context as Ctx
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; TopCtx)
 open import Once.Denotation.Realize using (realize)
 open import Once.Compile using (irFunOf; tableOf-go)

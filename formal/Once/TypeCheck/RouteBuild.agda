@@ -31,7 +31,7 @@ open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; classifyApp
 open import Once.TypeCheck.Judgment
 open import Once.Metatheory.ModeAgreement
 open import Once.TypeCheck.Route
-import Once.Surface.Context as Surface
+import Once.Spec.Context as Surface
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥

@@ -15,6 +15,8 @@
 
 module Once.Adequacy.MainBuilds where
 
+import Once.Spec.Context as Srf
+
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
 open import Data.Empty using (⊥-elim)

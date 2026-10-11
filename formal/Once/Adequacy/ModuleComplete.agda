@@ -37,7 +37,7 @@ open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU
 open import Once.Spec.Type using (Type; Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Surface.Syntax using (Usage; [])
+open import Once.Spec.Context using (Usage; [])
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
 open import Once.Spec.Syntax using (RawExpr)

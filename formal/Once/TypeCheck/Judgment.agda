@@ -61,8 +61,7 @@ open import Data.String using (_++_)
 -- Plan 0.58 (OCP-0006): IR-FREE `Once.Surface.Context` (not `Surface.Syntax`);
 -- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
 open import Once.Type.Rigid using (KindedInstance; RigidFree)
-open import Once.Surface.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
-  renaming ()
+open import Once.Spec.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 
 ------------------------------------------------------------------------

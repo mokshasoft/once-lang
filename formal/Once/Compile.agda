@@ -22,6 +22,8 @@
 
 module Once.Compile where
 
+import Once.Spec.Context as Srf
+
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
 import Data.List as DL

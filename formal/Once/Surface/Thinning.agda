@@ -26,9 +26,10 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Surface.Context using (_⊑ᵘ_; ⊑[]; _⊑∷_; z≤z)
-open import Once.Surface.Syntax as Surface
-  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Spec.Context using (_⊑ᵘ_; ⊑[]; _⊑∷_; z≤z)
+open import Once.Spec.Context as Surface renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Surface.Context as Surface
+open import Once.Surface.Syntax as Surface renaming (Expr to SExpr)
 
 ------------------------------------------------------------------------
 -- Thinnings (Order-Preserving Embeddings)

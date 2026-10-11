@@ -41,8 +41,8 @@ open import Once.Spec.Syntax as Raw using (RawExpr; RResolved; RApp; BinOp; isAr
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
-import Once.Surface.Context as Surface
-open Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+import Once.Spec.Context as Surface
+open import Once.Spec.Context using (zeroUsage; _+ᵘ_; _*ᵘ_)
 
 ------------------------------------------------------------------------
 -- Small facts

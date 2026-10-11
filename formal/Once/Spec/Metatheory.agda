@@ -43,7 +43,7 @@ open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_)
-import Once.Surface.Context as Surface
+import Once.Spec.Context as Surface
 
 -- The surface typing judgment's laws (D305).
 record TypeSystem : Set where

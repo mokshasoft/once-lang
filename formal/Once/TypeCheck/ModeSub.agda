@@ -35,7 +35,7 @@ open import Once.TypeCheck.Classify using (NamedCtx)
 import Once.TypeCheck.Classify
 open import Once.TypeCheck.Judgment
 open import Once.Metatheory.ModeAgreement
-import Once.Surface.Context as Surface
+import Once.Spec.Context as Surface
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥

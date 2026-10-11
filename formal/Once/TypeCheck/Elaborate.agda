@@ -62,8 +62,8 @@ open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; An
   UnboundVariable; UnboundQualified; NonConcreteSigOpType)
 import Once.TypeCheck.Context
 open import Once.TypeCheck.Context as Context using () renaming ()
-open import Once.Surface.Syntax as Surface using ()
-  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅)
+open import Once.Spec.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅)
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Elaborate as Elab using ()
 

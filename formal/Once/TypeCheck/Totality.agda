@@ -44,8 +44,8 @@ open import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Error using (TypeError)
 
-open import Once.Surface.Syntax as Surface using ()
-  renaming (Expr to SExpr; Ctx to SCtx)
+open import Once.Spec.Context as Surface using () renaming (Ctx to SCtx)
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
 ------------------------------------------------------------------------
 -- Success / failure witnesses

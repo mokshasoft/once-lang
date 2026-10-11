@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 import Once.Type as T
 open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One)
 open import Once.Metatheory.SubLaws using (⊑π-refl)
-open import Once.Surface.Context using (Usage; zeroUsage; singleUse)
+open import Once.Spec.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)
 open import Once.Spec.Core.PolyTyping S

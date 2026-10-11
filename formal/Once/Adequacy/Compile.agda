@@ -68,7 +68,6 @@ open import Once.Denotation.TraceMonad using (Interp; interp; module Interp)
 open Interp using (sig)
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Surface.Syntax as Srf2 using ()
 -- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.

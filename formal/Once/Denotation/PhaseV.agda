@@ -17,9 +17,7 @@ open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
 -- Imported from `Surface.Context` (the DEFINING module) rather than through
 -- `Surface.Syntax`'s re-export: `_↾_` is recursive, and a recursive function
 -- reached through a re-export does not always reduce at the use site.
-open import Once.Surface.Context
-  using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_;
-         z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
+open import Once.Spec.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 
 --

@@ -43,8 +43,8 @@ open import Once.Type.Rigid using (RigidFree; KindedInstance; extractGround-rf)
 open import Once.Functor.Translate using (IsBaseType; WellFormedF)
 open import Once.Spec.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
 open import Once.Spec.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
-import Once.Surface.Context as Surface
-open Surface using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
+import Once.Spec.Context as Surface
+open import Once.Spec.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
 open import Once.TypeCheck.Context using (mkBinding)
 open Once.TypeCheck.Context.Binding using (quantity)
 open Once.TypeCheck.Context.Binding using (name; type)

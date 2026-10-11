@@ -13,7 +13,7 @@
 module Once.TypeCheck.ElaborateProofs where
 
 open import Once.TypeCheck.Elaborate
-open import Once.Surface.Syntax using (zeroUsage)
+open import Once.Spec.Context using (zeroUsage)
 open import Data.Unit using (tt; ⊤)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
@@ -53,8 +53,8 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable)
 import Once.TypeCheck.Context
 open import Once.TypeCheck.Context as Context using () renaming ()
-open import Once.Surface.Syntax as Surface using (_+ᵘ_)
-  renaming (Expr to SExpr)
+open import Once.Spec.Context as Surface using (_+ᵘ_)
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Surface.Elaborate as Elab using ()
 open import Once.TypeCheck.Classify
 import Once.Functor.Translate

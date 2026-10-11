@@ -45,7 +45,7 @@ import Once.Parser as Parser
 open Parser.FunInfo using (funName; funBody)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
-open import Once.Surface.Context as Ctx using (Usage)
+open import Once.Spec.Context as Ctx using (Usage)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp)
 open import Once.Spec.Contract using (ISig)

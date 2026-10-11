@@ -45,7 +45,8 @@ open import Once.Semantics.Machine using
   (coerce-ν-in; tF-coh; ⟦_⟧F)
 open import Once.Semantics.Functor using (⟦_⟧SF; SFunctor)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; anaFᵈ; coerce-functor-D; subst-νᵈ-cong; anaᵈ-erase-full)
-open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
+open import Once.Spec.Context using (Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
+open import Once.Surface.Syntax using (Expr)
 open import Once.Denotation.Phase using (restrictᴰ)
 open import Once.Surface.Elaborate using (elaborate; cataM; anaM; restrictEnv)
 import Once.Compile as C

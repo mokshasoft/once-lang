@@ -27,6 +27,7 @@
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
 module Once.TypeCheck.Completeness.Rules where
+import Once.Spec.Context as Srf
 open import Data.Nat using (ℕ)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
@@ -54,8 +55,8 @@ open import Once.TypeCheck.DeciderComplete
   using (wellFormedF?-complete-at)
 open import Once.Type.Rigid using (RigidFree; rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
-  renaming (Expr to SExpr)
+open import Once.Spec.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
 open import Data.Bool using (true)
@@ -64,7 +65,6 @@ open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Surface.Syntax as Srf using ()
 open import Once.Type.DecEq using (_≟T_)
 open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)

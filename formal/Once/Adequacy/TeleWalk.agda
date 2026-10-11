@@ -65,7 +65,7 @@ open Parser.FunInfo using (funName)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
-import Once.Surface.Context as Ctx
+import Once.Spec.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD

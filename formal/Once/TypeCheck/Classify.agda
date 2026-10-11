@@ -56,8 +56,7 @@ open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to exte
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
 -- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
-open import Once.Surface.Context as Surface using ()
-  renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Spec.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 
 -- | String equality for the head dispatch. The same decision as stdlib's `_≟_`,
 -- but its `yes` proof is erased: it reduces to `refl` as soon as the two

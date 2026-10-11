@@ -52,7 +52,8 @@ open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
-open import Once.Surface.Syntax using (Expr; Usage)
+open import Once.Spec.Context using (Usage)
+open import Once.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
 open import Once.TypeCheck.Classify using (NamedCtx)

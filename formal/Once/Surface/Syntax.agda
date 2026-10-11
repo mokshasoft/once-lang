@@ -36,7 +36,8 @@ open import Once.Spec.Name using (CanonicalName)
 -- Plan 0.58 (OCP-0006): the IR-FREE context/usage core moved to
 -- `Once.Surface.Context` and re-exported here (consumers unchanged), so the
 -- typing judgment / direct denotation can use it without `Once.IR`.
-open import Once.Surface.Context public
+open import Once.Spec.Context
+open import Once.Surface.Context
 
 -- | Surface expressions (well-typed AND well-used by construction)
 --

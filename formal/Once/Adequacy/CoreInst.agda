@@ -31,6 +31,7 @@ import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Spec.Type.Grade using (mk-kind; Many; pure)
 open import Once.Spec.Type using (Type; μ-type; ν-type; ⟦_⟧T)
+import Once.Spec.Context as C
 import Once.Surface.Context as C
 open import Once.Spec.Core.PolyTy using (_⟪_⟫; _!!_; ⟨⟩-⟪⟫; ⌈⌉-⟪⟫; ⟦⟧F-⟪⟫; module Schema)
 open Schema using (type)

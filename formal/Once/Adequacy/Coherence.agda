@@ -39,7 +39,7 @@ open import Once.TypeCheck.Judgment
 import Once.TypeCheck.ModeSub as MS
 open import Once.TypeCheck.Route
 open import Once.TypeCheck.RouteBuild using (route-cc)
-import Once.Surface.Context as Surface
+import Once.Spec.Context as Surface
 open import Once.Surface.Syntax using (coerce)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD

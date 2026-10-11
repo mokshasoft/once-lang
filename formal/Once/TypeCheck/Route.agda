@@ -32,7 +32,7 @@ open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]
 open import Once.Spec.Syntax as Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx)
 open import Once.TypeCheck.Judgment
-import Once.Surface.Context as Surface
+import Once.Spec.Context as Surface
 
 private
   variable

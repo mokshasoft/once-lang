@@ -18,7 +18,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 open import Once.Spec.Type.Poly using (PolyType)
 open import Once.Type.Rigid using (KindedInstance; rigidOf)
-import Once.Surface.Context as C
+import Once.Spec.Context as C
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
 open import Once.TypeCheck.Classify using (PolyCtx; ctxWithImportsAndPolys; TopCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)

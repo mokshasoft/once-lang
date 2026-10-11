@@ -32,7 +32,7 @@ import Once.Spec.Type as T
 open import Once.Spec.Type.Grade using (mk-kind; Many)
 open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 import Once.Functor.Translate as Tr
-open import Once.Surface.Context as C using (Ctx; Usage)
+open import Once.Spec.Context as C using (Ctx; Usage)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)
 import Once.Spec.Core.Syntax S as G

@@ -51,7 +51,7 @@ open import Once.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
 open import Once.Float.Decimal using (decimalOf; negate)
 open import Once.Functor.Translate using (IsConcrete)
-open import Once.Surface.Context using (Ctx; ∅; Usage; zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Spec.Context using (Ctx; ∅; Usage; zeroUsage; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.TypeCheck.Judgment
@@ -201,7 +201,7 @@ elabᵢ V (t-int n)         = lit (lit-int n) , ⊢lit-int
 elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
-elabᵢ V (t-var-local {eV = Once.Surface.Context.svar i} _) = var i , ⊢var i
+elabᵢ V (t-var-local {eV = Once.Spec.Context.svar i} _) = var i , ⊢var i
 elabᵢ V (t-var-qualified {name = name} {alias = alias} lk k) = sigE (bare (alias ++ "." ++ name)) k (declares V lk)
 elabᵢ V (t-var-resolved {cn = cn} _ lk k) = sigE cn k (declares V lk)
 elabᵢ V (t-var-own _ lk k)                 = importE (imported V lk)

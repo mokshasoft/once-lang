@@ -62,7 +62,9 @@ open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 import Once.Parser.Module.Core as P
 import Once.Surface.Context as Ctx
-open import Once.Surface.Syntax hiding (_,_; _,_^_)
+open import Once.Spec.Context hiding (_,_; _,_^_)
+open import Once.Surface.Context
+open import Once.Surface.Syntax
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV; success; failure)

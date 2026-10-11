@@ -177,6 +177,11 @@ def process(path, src, where, mods, dry):
         n = m.group(1)
         return qwhere[n] + '.' + n if n in qwhere else m.group(0)
     body = re.sub(r'(?<![\w.])' + re.escape(src) + r'\.(' + NAMECH + r'+?)(?=[\s()])', fix, out)
+    # nested module paths: SRC.R.x where `module R` moved
+    for n, m in where.items():
+        if n.startswith('module '):
+            r = n.split()[1]
+            body = re.sub(r'(?<![\w.])' + re.escape(src + '.' + r + '.'), m + '.' + r + '.', body)
     # every module used qualified, unaliased, is imported
     for mod in mods:
         used = re.search(r'(?<![\w.])' + re.escape(mod) + r'\.(?![A-Z][\w]*\.)' + NAMECH, nc(body))

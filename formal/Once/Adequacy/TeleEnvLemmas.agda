@@ -47,6 +47,7 @@ open import Once.Spec.Type.Poly using (PolyType)
 open import Once.IRTy using (IRTy)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)
+import Once.Spec.Context as Srf
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T)

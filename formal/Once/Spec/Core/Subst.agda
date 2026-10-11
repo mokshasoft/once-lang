@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
 open import Once.Spec.Type using (Type)
-open import Once.Surface.Context using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
+open import Once.Spec.Context using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm)
 open import Once.Surface.GradeMatrix using (Grades; _⋆_; ⋆-zero; ⋆-+; ⋆-*; ⋆-single; ⋆-mono; extΦ; ⋆-ext; ⋆-id)
 open import Once.Spec.Core.Syntax S

@@ -25,6 +25,7 @@
 -- Reference: plans/0.3-frontend-verification-gaps.md, gap G2.
 ------------------------------------------------------------------------
 module Once.TypeCheck.Completeness where
+import Once.Surface.Syntax as Srf
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
 open import Data.Maybe using (just; nothing)
@@ -53,8 +54,8 @@ open import Once.Functor.Translate using (WellFormedF)
 open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
 import Once.TypeCheck.Classify
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
-  renaming (Expr to SExpr)
+open import Once.Spec.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
 open import Relation.Nullary using (¬_)
@@ -62,7 +63,6 @@ open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Surface.Syntax as Srf using ()
 open import Once.Spec.Type using (Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)

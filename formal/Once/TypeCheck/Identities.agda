@@ -429,10 +429,10 @@ open import Once.Spec.Type.Grade using (_+q_; _*q_; _⊔q_)
 ------------------------------------------------------------------------
 
 open import Data.Nat using (zero; suc)
-open import Once.Surface.Syntax using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
-open Once.Surface.Syntax.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
+open import Once.Spec.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open Once.Spec.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 
--- Note: Once.Surface.Syntax.Usage is an indexed vector of Quantity.
+-- Note: Once.Spec.Context.Usage is an indexed vector of Quantity.
 -- Pattern matching exposes its per-position structure; the identities
 -- lift the quantity identities pointwise.
 

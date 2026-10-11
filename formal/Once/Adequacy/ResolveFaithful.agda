@@ -53,7 +53,8 @@ import Once.Spec.Type.Grade as T
 import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Functor.Translate using (IsConcrete; con-fun; con-base)
-open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
+open import Once.Spec.Context as Srf using (Usage; ⟦_⟧ᶜ)
+open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders

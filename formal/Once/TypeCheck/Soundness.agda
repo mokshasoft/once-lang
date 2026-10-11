@@ -26,6 +26,8 @@
 
 module Once.TypeCheck.Soundness where
 
+import Once.Spec.Context as Surface
+
 open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (nothing)
@@ -47,8 +49,7 @@ import Once.TypeCheck.Elaborate
 import Once.TypeCheck.ElaborateProofs
 open import Once.TypeCheck.Judgment
 
-open import Once.Surface.Syntax as Surface using ()
-  renaming (Expr to SExpr)
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
 ------------------------------------------------------------------------
 -- Soundness of `inferElab` (partial coverage)

@@ -35,6 +35,7 @@ open import Once.Spec.Type using (Unit; Type)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
+import Once.Spec.Context as Srf
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.TypeCheck.Classify as Classify
@@ -47,7 +48,7 @@ open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
-open import Once.Surface.Context using (zeroUsage)
+open import Once.Spec.Context using (zeroUsage)
 import Once.Surface.Context
 open import Data.Maybe using (Maybe; nothing)
 -- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which

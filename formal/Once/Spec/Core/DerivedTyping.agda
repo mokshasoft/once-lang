@@ -21,7 +21,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sub
 open import Once.Spec.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (⊑-pe; pure⊑)
-open import Once.Surface.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Surface.Thinning using (thin-usage-refl)
 open import Once.Functor.Translate using (WellFormedF)
@@ -34,7 +34,7 @@ open import Once.Spec.Core.Derived S
 -- `pure⊑` (every grade is above `pure`) is `Once.Type.Sub`'s.
 
 -- A variable at any grade.
-⊢var′ : ∀ {n} {Γ : Ctx n} (i : Fin n) (π : Purity) → Γ ⊢[ singleUse i One ] var i ∷ Once.Surface.Context.lookup Γ i ! π
+⊢var′ : ∀ {n} {Γ : Ctx n} (i : Fin n) (π : Purity) → Γ ⊢[ singleUse i One ] var i ∷ Once.Spec.Context.lookup Γ i ! π
 ⊢var′ i π = ⊢sub-eff (pure⊑ π) (⊢var i)
 
 ------------------------------------------------------------------------

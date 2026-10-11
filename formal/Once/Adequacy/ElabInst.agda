@@ -30,7 +30,7 @@ open import Once.Target.Arch using (TargetNum)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Poly using (PolyType)
 open import Once.Type.Rigid using (KindedInstance; rigidOf)
-import Once.Surface.Context as C
+import Once.Spec.Context as C
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects; _⟪_⟫)
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
 open import Once.TypeCheck.Classify using (Imports; PolyCtx; NamedCtx; ctxWithImportsAndPolys; topCtx)

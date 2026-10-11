@@ -33,6 +33,8 @@
 
 module Once.TypeCheck.Verified where
 
+import Once.Spec.Context as Surface
+
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_; _×_; ∃-syntax)
 open import Data.String using (String)
@@ -43,7 +45,7 @@ open import Once.Functor.Translate using (IsConcrete)
 import Once.Spec.Type.Grade
 import Once.Spec.Type
 import Once.Type
-import Once.Surface.Syntax
+import Once.Spec.Context
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
@@ -76,8 +78,7 @@ open Conv using (typeToGType; gtypeToType)
 open Tot  using (IsInferSuccess; IsInferFailure;
                  IsCheckSuccess; IsCheckFailure)
 
-open import Once.Surface.Syntax as Surface using ()
-  renaming (Expr to SExpr)
+open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
 ------------------------------------------------------------------------
 -- Record: the compiler front-end + its proof obligations
@@ -360,9 +361,9 @@ record VerifiedTypeChecker : Set₁ where
         {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
       → tcInfer ctx scrut ≡ success (A Once.Spec.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
-          ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
+          ≡ success C₁ (qℓ Once.Spec.Context.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
-          ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
+          ≡ success C₂ (qr Once.Spec.Context.Usage.∷ Ψᵣ) eRE dR fR
       → ¬ (C₁ ≡ C₂)
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseBranchMismatch
@@ -383,7 +384,7 @@ record VerifiedTypeChecker : Set₁ where
         (A : Type) (q : _) (B : Type)
         (q' : _) {Ψ' eE' d' f' err}
       → tcCheck (extendNamedCtx ctx x A) body B
-          ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
+          ≡ success (q' Once.Spec.Context.Usage.∷ Ψ') eE' d' f'
       → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
       → tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B) ≡ failure err
       → err ≡ UsageViolation x q q'
@@ -637,11 +638,11 @@ record VerifiedTypeChecker : Set₁ where
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ A}
         {e₂E : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
-                     (q Once.Surface.Syntax.Usage.∷ Ψ₂) B}
+                     (q Once.Spec.Context.Usage.∷ Ψ₂) B}
         {d₁ d₂ f₁ f₂ : _}
       → tcInfer ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
       → tcInfer (extendNamedCtx ctx x A) e₂
-          ≡ success B (q Once.Surface.Syntax.Usage.∷ Ψ₂) e₂E d₂ f₂
+          ≡ success B (q Once.Spec.Context.Usage.∷ Ψ₂) e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RLet x e₁ e₂)
             ≡ success B (Ψ₂ Surface.+ᵘ (q Surface.*ᵘ Ψ₁)) eE d f
@@ -743,17 +744,17 @@ record VerifiedTypeChecker : Set₁ where
         (C : Type) {qℓ qr : _}
         {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eLE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xL A))
-                     (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) C}
+                     (qℓ Once.Spec.Context.Usage.∷ Ψₗ) C}
         {dL fL : _}
         {Ψᵣ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eRE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xR B))
-                     (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) C}
+                     (qr Once.Spec.Context.Usage.∷ Ψᵣ) C}
         {dR fR : _}
       → tcInfer ctx scrut ≡ success (A Once.Spec.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
-          ≡ success C (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
+          ≡ success C (qℓ Once.Spec.Context.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
-          ≡ success C (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
+          ≡ success C (qr Once.Spec.Context.Usage.∷ Ψᵣ) eRE dR fR
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (Raw.RDestruct scrut xL eL xR eR)
             ≡ success C (Ψs Surface.+ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
@@ -781,11 +782,11 @@ record VerifiedTypeChecker : Set₁ where
         (A : Type) (q q' : _) (B : Type)
         {Ψ' : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE' : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
-                     (q' Once.Surface.Syntax.Usage.∷ Ψ') B}
+                     (q' Once.Spec.Context.Usage.∷ Ψ') B}
         {d' f' : _} {π : Once.Spec.Type.Grade.Purity}
       → (q' Once.Spec.Type.Grade.≤q q) ≡ Data.Bool.true
       → tcCheck (extendNamedCtx ctx x A) body B
-          ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
+          ≡ success (q' Once.Spec.Context.Usage.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q π ] B) ≡ success Ψ' eE d f
 
@@ -835,17 +836,17 @@ record VerifiedTypeChecker : Set₁ where
     id-⊔q-idem : ∀ (q : _) → q Once.Spec.Type.Grade.⊔q q ≡ q
 
     -- Usage-vector algebra
-    id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Surface.Syntax.Usage n)
+    id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Spec.Context.Usage n)
                 → Ψ₁ Surface.+ᵘ Ψ₂ ≡ Ψ₂ Surface.+ᵘ Ψ₁
-    id-+ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Once.Surface.Syntax.Usage n)
+    id-+ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Once.Spec.Context.Usage n)
                  → Ψ₁ Surface.+ᵘ (Ψ₂ Surface.+ᵘ Ψ₃)
                    ≡ (Ψ₁ Surface.+ᵘ Ψ₂) Surface.+ᵘ Ψ₃
-    id-⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Surface.Syntax.Usage n)
+    id-⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Spec.Context.Usage n)
                 → Ψ₁ Surface.⊔ᵘ Ψ₂ ≡ Ψ₂ Surface.⊔ᵘ Ψ₁
-    id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
-    id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n)
+    id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Spec.Context.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
+    id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Spec.Context.Usage n)
                        → Once.Spec.Type.Grade.One Surface.*ᵘ Ψ ≡ Ψ
-    id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n)
+    id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Spec.Context.Usage n)
                         → Surface.zeroUsage Surface.+ᵘ Ψ ≡ Ψ
 
     ----------------------------------------------------------------

@@ -95,11 +95,11 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
 -- The derived combinators' meanings (one lemma per combinator)
 ------------------------------------------------------------------------
 
-open import Once.Surface.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
+open import Once.Spec.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
 open import Once.Spec.Type.Grade using (Quantity; Zero; One)
 open import Once.Spec.Type using (_*_; Functor; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.Surface.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
+open import Once.Spec.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Denotation.PhaseV using (bindᵛ)
 open import Data.Fin using (zero; suc)
@@ -425,7 +425,7 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-float i f l p) dγ = refl
   bridge-i V ag t-unit dγ = refl
   bridge-i V ag t-unit-var dγ = refl
-  bridge-i V ag (t-var-local {eV = Once.Surface.Context.svar i} _) dγ = refl
+  bridge-i V ag (t-var-local {eV = Once.Spec.Context.svar i} _) dγ = refl
   bridge-i V ag (t-var-qualified {name = name} {alias = alias} lk k) dγ = sym (Agree.agree-qualified ag {name = name} {alias = alias} lk k)
   bridge-i V ag (t-var-resolved {cn = cn} _ lk k) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
   bridge-i V ag (t-var-own _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
@@ -445,10 +445,10 @@ module _ {δ : GM.DefSem} where
     bindC (bridge-i V ag ds _)
       (λ { (inj₁ a) → trans (bridge-i V ag dl _)
                             (cong (GM.⟦ proj₂ (elabᵢ V dl) ⟧ fmt δ)
-                                  (sym (EA.restrict-bind {Γ = Γc} {A = A} qL qL (⊑ᵘ-keep qL (Once.Surface.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) (Once.Surface.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) x a)))
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = A} qL qL (⊑ᵘ-keep qL (Once.Spec.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) (Once.Spec.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) x a)))
          ; (inj₂ b) → trans (bridge-i V ag dr _)
                             (cong (GM.⟦ proj₂ (elabᵢ V dr) ⟧ fmt δ)
-                                  (sym (EA.restrict-bind {Γ = Γc} {A = B} qR qR (⊑ᵘ-keep qR (Once.Surface.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) (Once.Surface.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) x b))) })
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = B} qR qR (⊑ᵘ-keep qR (Once.Spec.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) (Once.Spec.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) x b))) })
     where Γc = NamedCtx.debruijn ctx
           x  = restrictᵛ {Γ = Γc} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ
   bridge-i V ag (t-binop-arith {op = OpAdd} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bridge-i V ag d₂ _)

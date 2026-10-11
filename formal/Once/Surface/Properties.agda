@@ -14,6 +14,8 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
+open import Once.Spec.Context
+open import Once.Surface.Context
 open import Once.Surface.Syntax
 
 open import Data.Nat using (ℕ)

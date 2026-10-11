@@ -24,6 +24,8 @@
 
 module Once.TypeCheck.ErrorProofs where
 
+import Once.Spec.Context as Surface
+
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥-elim)
@@ -50,8 +52,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error
   using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; InlNeedsSumType; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UnboundVariable; UnboundQualified)
-import Once.Surface.Syntax
-open import Once.Surface.Syntax as Surface using () renaming ()
+import Once.Spec.Context
 
 ------------------------------------------------------------------------
 -- Unconditional-failure paths (now trivial after refactor)
@@ -205,9 +206,9 @@ case-branch-mismatch-is-CaseBranchMismatch :
     {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
   → inferElab ctx scrut ≡ success (A T.+ B) Ψs scrutE ds fs
   → inferElab (Classify.extendNamedCtx ctx xL A) eL
-      ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
+      ≡ success C₁ (qℓ Once.Spec.Context.Usage.∷ Ψₗ) eLE dL fL
   → inferElab (Classify.extendNamedCtx ctx xR B) eR
-      ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
+      ≡ success C₂ (qr Once.Spec.Context.Usage.∷ Ψᵣ) eRE dR fR
   → ¬ (C₁ ≡ C₂)
   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
   → err ≡ CaseBranchMismatch
@@ -215,9 +216,9 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
   with inferElabV ctx scrut | eqS
 ... | success (_ T.+ _) _ _ _ _ , _ | refl
     with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
-...   | success _ (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
+...   | success _ (_ Once.Spec.Context.Usage.∷ _) _ _ _ , _ | refl
       with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
-...     | success _ (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
+...     | success _ (_ Once.Spec.Context.Usage.∷ _) _ _ _ , _ | refl
         with C₁ ≟T C₂
 ...       | yes ceq = ⊥-elim (¬eq ceq)
 ...       | no _ with eqOuter
@@ -323,14 +324,14 @@ lam-usage-violation-is-UsageViolation :
     (q' : _) {Ψ' eE' d' f' err}
   → Once.TypeCheck.Elaborate.checkElab
       (Classify.extendNamedCtx ctx x A) body B
-      ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
+      ≡ success (q' Once.Spec.Context.Usage.∷ Ψ') eE' d' f'
   → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
   → Once.TypeCheck.Elaborate.checkElab ctx (Raw.RLam x body)
       (A T.⇒[ T.mk-kind q T.pure ] B) ≡ failure err
   → err ≡ Once.TypeCheck.Error.UsageViolation x q q'
 lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
   with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqInner
-... | success (_ Once.Surface.Syntax.Usage.∷ _) _ _ _ , _ | refl
+... | success (_ Once.Spec.Context.Usage.∷ _) _ _ _ , _ | refl
     with Once.TypeCheck.Elaborate.decideLeq q' q | eqLeq
 ...   | nothing | refl with eqOuter
 ...     | refl = refl
