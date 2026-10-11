@@ -40,11 +40,10 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _∋_∷_; _▹_; here; there; ⌊_⌋ )
 module DirectedHoTT.Lib.Lkp (𝒮 : Defs) where
 
 open import DirectedHoTT.Spec.Syntax using ( Cx; Var; vz; vs; RTy; renTy )
-open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( Ctx; _▹_; ⌊_⌋; _∋_∷_; here; there )
 
 -- the type at a variable, COMPUTED
 lkp : (Γ : Ctx) (x : Var ⌊ Γ ⌋) → RTy ⌊ Γ ⌋

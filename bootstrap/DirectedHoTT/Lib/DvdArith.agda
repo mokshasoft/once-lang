@@ -29,6 +29,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.DvdArith (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
@@ -39,16 +40,12 @@ open import DirectedHoTT.Spec.Syntax
         ; pair; fst; snd; absurd
         ; subTy; subTm; renTy; renTm; Ren; extS; extR )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
-        ; ty-Id; ty-El; ty-Nat; ty-U; ty-Π
-        ; ⊢⌜Unit⌝; ⊢⌜base⌝; ⊢unit; ⊢absurd; ⊢lam; ⊢app; El-⌜Unit⌝; El-⌜base⌝; ξ-El
-        ; ⊢⌜Σ⌝; ⊢pair; ⊢fst; ⊢snd; El-⌜Σ⌝; El-⌜Nat⌝; ξ-Σˡ; ξ-Σʳ
-        ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
-        ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
-        ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Id⌝ʳ; ξ-⌜Id⌝ˡ
-        ; _⟶*_; step; done; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢idrefl; ⊢jsub
+        ; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-Id; ty-El; ty-Nat; ty-U; ty-Π; ⊢⌜Unit⌝; ⊢⌜base⌝
+        ; ⊢unit; ⊢absurd; ⊢lam; ⊢app; El-⌜Unit⌝; El-⌜base⌝; ξ-El; ⊢⌜Σ⌝; ⊢pair
+        ; ⊢fst; ⊢snd; El-⌜Σ⌝; El-⌜Nat⌝; ξ-Σˡ; ξ-Σʳ; _≅ᵀ_; csymᵀ; ctrnᵀ
+        ; El-⌜Id⌝; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
+        ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Id⌝ʳ; ξ-⌜Id⌝ˡ; _⟶*_; step; done )
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
 open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_; ⟶ᵀ*-El )
 open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-ren )

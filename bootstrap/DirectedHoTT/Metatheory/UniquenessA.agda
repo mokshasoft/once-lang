@@ -30,10 +30,11 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig )
 open import DirectedHoTT.Spec.Signature using ( kernel )
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Metatheory.UniquenessA (S : Sig) where
 open Sig S
 -- conversion is the kernel's, at the signature's kernel view (PLAN-REF)
-open import DirectedHoTT.Spec.Reduction (kernel S) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Reduction (kernel S)
 open import DirectedHoTT.Metatheory.SubjectReductionBase (kernel S) using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity (kernel S) using ( Π-inj; Σ-inj )
 open import DirectedHoTT.Metatheory.RedCong (kernel S) using ( ≅ᵀ-Πʳ )

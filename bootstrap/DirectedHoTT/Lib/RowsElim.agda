@@ -19,6 +19,7 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Lib.RowsElim (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
@@ -31,7 +32,7 @@ open import Agda.Builtin.Unit using ( ⊤ )
 -- the empty handler list (re-exported for the generated dispatchers)
 open import Agda.Builtin.Unit public using ( tt )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; Nth; nth-z; nth-s )
 open import DirectedHoTT.Lib.Decode 𝒮 wf using ( RowsDec )

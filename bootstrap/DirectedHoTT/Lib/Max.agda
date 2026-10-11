@@ -25,6 +25,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.Max (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
@@ -33,10 +34,9 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; app; lam; ⌜Π⌝; ⌜Nat⌝; nzero; nsuc
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS; extR )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢lam; ⊢app
-        ; ty-Nat; ty-Π; ⊢⌜Π⌝; ⊢⌜Nat⌝; El-⌜Π⌝; El-⌜Nat⌝; ξ-Πˡ
-        ; _≅ᵀ_; csymᵀ; ⊢nzero; ⊢nsuc; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; _⟶*_; step; done; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢lam; ⊢app; ty-Nat; ty-Π; ⊢⌜Π⌝; ⊢⌜Nat⌝
+        ; El-⌜Π⌝; El-⌜Nat⌝; ξ-Πˡ; _≅ᵀ_; csymᵀ; ⊢nzero; ⊢nsuc; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ
+        ; _⟶*_; step; done )
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
 open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; _⟶ᵀ*_; ⟶ᵀ*-trans; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
 open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )

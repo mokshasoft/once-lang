@@ -24,6 +24,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.IrrProbe where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -34,9 +35,8 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nsuc; lam; app; fst; snd; ⌜Nat⌝
         ; subTm; subTy; renTm; extR )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢app; ⊢fst; ⊢snd
-        ; _⟶*_; done; step; β; ξ-appˡ; ⊢idrefl; ⊢⌜Nat⌝; wk-single )
+  using ( _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢fst; ⊢snd; _⟶*_; done; step; β; ξ-appˡ
+        ; ⊢idrefl; ⊢⌜Nat⌝ )
 open Lib0.Metatheory-TySub using ( ⊢-cast; ren-lemma; Ren⊢ )
 open Lib0.Lib-Wk using ( w )
 open Lib0.Lib-Amrec

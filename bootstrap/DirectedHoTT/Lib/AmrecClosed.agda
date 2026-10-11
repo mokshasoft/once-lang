@@ -32,6 +32,7 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base using ( _▹_; single; ◇ )
 module DirectedHoTT.Lib.AmrecClosed (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
@@ -39,7 +40,7 @@ module DirectedHoTT.Lib.AmrecClosed (𝒮 : Defs) (wf : WfK 𝒮) where
 open import DirectedHoTT.Spec.Syntax
   using ( ε; _∙; RTy; RTm; U; Nat; natrec; app; subTm; extS )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
-  using ( ◇; _▹_; single; _⊢_∷_; _⊢ty_; _⟶*_ )
+  using ( _⊢_∷_; _⊢ty_; _⟶*_ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢[] )
 open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( reflTm )
 open import DirectedHoTT.Lib.NatVal 𝒮 using ( NatVal; nv-zero; nv-suc )

@@ -36,17 +36,16 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; ⌊_⌋; ◇ )
 module DirectedHoTT.Lib.Pair (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Σ'
         ; RTm; var; nzero; nsuc; pair; fst; snd; ⌜Nat⌝ )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢conv; ⊢fst; ⊢snd
-        ; ty-Nat; ty-Σ
-        ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
-        ; ξ-nsuc; ξ-Homˡ; βfst; βsnd; ξ-natrecⁿ; ξ-natrecᶻ )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢fst; ⊢snd; ty-Nat; ty-Σ; _≅ᵀ_; csymᵀ
+        ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss; ξ-nsuc; ξ-Homˡ; βfst; βsnd; ξ-natrecⁿ
+        ; ξ-natrecᶻ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import DirectedHoTT.Lib.Strong 𝒮 n using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm )

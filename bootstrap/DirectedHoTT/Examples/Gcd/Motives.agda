@@ -22,13 +22,14 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; ⌊_⌋ )
 module DirectedHoTT.Examples.Gcd.Motives where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; El; Nat; nzero; nsuc )
 open Lib0.Spec-Typing
-  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; csymᵀ )
+  using ( _⊢_∷_; ⊢conv; csymᵀ )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ )
 open Lib0.Lib-Monus using ( monusTm )
 open Lib0.Lib-ArithComm using ( IdN )

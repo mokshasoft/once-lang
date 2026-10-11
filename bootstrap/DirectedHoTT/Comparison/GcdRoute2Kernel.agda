@@ -44,6 +44,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Comparison.GcdRoute2Kernel where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax
@@ -53,11 +54,9 @@ open import DirectedHoTT.Spec.Syntax
         ; fst; snd; ⌜Nat⌝
         ; renTy; renTm; subTy; subTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; ⊢fst; ⊢snd; ⊢⌜Nat⌝
-        ; _⟶*_; done; step; β; ξ-appˡ; natrec-suc
-        ; ty-Nat; ty-Hom; ty-El; ty-Π )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢fst; ⊢snd
+        ; ⊢⌜Nat⌝; _⟶*_; done; step; β; ξ-appˡ; natrec-suc; ty-Nat; ty-Hom
+        ; ty-El; ty-Π )
 open Lib0.Metatheory-TySub using ( ⊢wk )
 open Lib0.Lib-Ord using ( ⊢strong-base'; ⊢strong-step )
 open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )

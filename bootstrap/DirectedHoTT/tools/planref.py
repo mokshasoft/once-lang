@@ -31,6 +31,8 @@ import os
 import re
 import sys
 
+import base_unshare
+
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 # the arguments each kind of parameter list takes, inside a W module
@@ -232,7 +234,8 @@ def convert_all(outs):
                 changed = True
     for n in w:
         _cls[n] = 'C' if n in cset else 'W'
-    return {p: upgrade_text(convert_text(t)) for p, t in outs.items()}
+    # the signature-free Spec.Base vocabulary from Spec.Base, never an instance
+    return {p: base_unshare.convert_text(upgrade_text(convert_text(t))) for p, t in outs.items()}
 
 
 if __name__ == '__main__':

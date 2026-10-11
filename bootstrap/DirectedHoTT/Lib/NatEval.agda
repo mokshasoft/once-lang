@@ -37,13 +37,14 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base using ( ◇ )
 module DirectedHoTT.Lib.NatEval (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
 
 open import normalizer.Syntax.Types using ( ⊥-elim )
 open import DirectedHoTT.Spec.Syntax using ( RTm; ε; Nat )
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) using ( ◇; _⊢_∷_; c-◇ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) using ( _⊢_∷_; c-◇ )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( mkWN )
 open import DirectedHoTT.Metatheory.Fundamental 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) (Entries.refsᵂ 𝒮 wf) using ( wnorm )
 open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( sr* )

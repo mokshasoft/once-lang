@@ -31,13 +31,13 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; here; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.IdSuc (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; var; vz; vs; nsuc; jsub; El; Id; ⌜Nat⌝; ⌜Id⌝; Nat )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; ⊢var; here; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢jsub
-        ; csymᵀ; ctrnᵀ; wk-single; ⊢nsuc )
+  using ( _⊢_∷_; ⊢conv; ⊢var; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢jsub; csymᵀ; ctrnᵀ; ⊢nsuc )
 open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )

@@ -14,16 +14,16 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Comparison.GcdRoute3Combinator where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; El; Nat; Π; RTm; var; nzero; nsuc
         ; natrec; app; pair; fst; snd; ⌜Nat⌝; subTm; lam )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢pair; ty-Nat
-        ; ⊢⌜Nat⌝; _⟶*_; done; step; β; ξ-appˡ; ξ-nsuc; ξ-natrecᶻ
-        ; natrec-zero; natrec-suc; βfst; βsnd
-        ; ⊢var; here; there; ⊢conv; ⊢natrec; ⊢lam; ⊢app; csymᵀ )
+  using ( _⊢_∷_; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢pair; ty-Nat; ⊢⌜Nat⌝; _⟶*_; done; step
+        ; β; ξ-appˡ; ξ-nsuc; ξ-natrecᶻ; natrec-zero; natrec-suc; βfst; βsnd
+        ; ⊢var; ⊢conv; ⊢natrec; ⊢lam; ⊢app; csymᵀ )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idˡ )
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-appʳ; ⟶*-pairʳ; ⟶*-pairˡ )
 open Lib0.Lib-Strong using ( reflTm )

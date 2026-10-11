@@ -26,6 +26,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Id where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -39,12 +40,9 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance
   using ( occ-ren-tm; avoids-wk )
 open Lib0.Spec-Typing
-  using ( single; _⟶_; _⟶*_; done; step
-        ; jsub-refl
-        ; _⟶ᵀ_; El-⌜Id⌝; El-⌜Hom⌝
-        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋; here
-        ; _⊢_∷_; ⊢var; ⊢⌜base⌝; ⊢⌜Id⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢idrefl; ⊢jsub; ⊢conv )
+  using ( _⟶_; _⟶*_; done; step; jsub-refl; _⟶ᵀ_; El-⌜Id⌝; El-⌜Hom⌝; _≅ᵀ_
+        ; crflᵀ; csymᵀ; ctrnᵀ; credᵀ; _⊢_∷_; ⊢var; ⊢⌜base⌝; ⊢⌜Id⌝; ⊢⌜Hom⌝
+        ; ⊢hrefl; ⊢idrefl; ⊢jsub; ⊢conv )
 open Lib0.Metatheory-TySub
   using ( ⊢wk; wk-cancel-tm; ⊢-cast; ⊢[] )
 

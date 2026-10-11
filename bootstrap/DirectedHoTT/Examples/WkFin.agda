@@ -37,12 +37,13 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.WkFin where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( cong )
 open import DirectedHoTT.Spec.Syntax
-open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Spec-Typing
 open Lib0.Metatheory-TySub using ( ⊢-cast; wk-cancel-tm )
 open Lib0.Lib-NatCode using ( fromI )
 

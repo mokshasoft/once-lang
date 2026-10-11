@@ -11,6 +11,7 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.Sub (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
@@ -18,7 +19,7 @@ module DirectedHoTT.Examples.Knot.Sub (𝒮 : Defs) (wf : WfK 𝒮) where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import normalizer.Syntax.Types using ( _≡_; refl )
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Lt; lt-z; lt-s; _,ₚ_ )
 open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Lib.SynSub 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)

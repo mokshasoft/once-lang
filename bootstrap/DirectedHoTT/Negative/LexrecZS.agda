@@ -14,6 +14,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Negative.LexrecZS where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import DirectedHoTT.Spec.Syntax
@@ -23,9 +24,8 @@ open import DirectedHoTT.Spec.Syntax
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
         ; subTy-renTy; renTy-subTy; subTm-renTm; renTm-subTm; subTm-cong )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app
-        ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app; ty-Nat
+        ; ty-Hom; ty-El; ty-Π )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢-ext )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )

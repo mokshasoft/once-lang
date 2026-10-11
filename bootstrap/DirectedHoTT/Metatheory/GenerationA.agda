@@ -29,10 +29,11 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; _<ˢ_ )
 open import DirectedHoTT.Spec.Signature using ( kernel )
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Metatheory.GenerationA (S : Sig) where
 open Sig S
 -- conversion is the kernel's, at the signature's kernel view (PLAN-REF)
-open import DirectedHoTT.Spec.Reduction (kernel S) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Reduction (kernel S)
 open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA S
 

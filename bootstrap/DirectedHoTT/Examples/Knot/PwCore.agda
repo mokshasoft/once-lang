@@ -36,13 +36,14 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Metatheory.Entries as Entries
 import DirectedHoTT.Examples.PwCore as P
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.PwCore (𝒮 : Defs) (wf : WfK 𝒮) (core : P.Kc ⊑ᴰ 𝒮) where
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; ⊤; tt; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast )
 import DirectedHoTT.Spec.Reduction P.Kc as Rc
 import DirectedHoTT.Metatheory.SigExt P.Kc 𝒮 (_⊑ᴰ_.inc core) (_⊑ᴰ_.body≡ core) as X

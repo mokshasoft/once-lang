@@ -43,6 +43,7 @@
 {-# OPTIONS --safe #-}
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.Base
 module DirectedHoTT.Spec.Typing (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )

@@ -18,6 +18,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.Mul (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
@@ -25,9 +26,9 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; var; vz; nzero; nsuc; natrec; Nat; Sub; subTm
         ; Ren; renTm; extS )
 import DirectedHoTT.Spec.Typing 𝒮 n as ᴵTyping
-open ᴵTyping using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢var; here; ⊢nzero; ⊢natrec; ty-Nat ; _⟶*_; done; step; natrec-zero; natrec-suc; wk-single )
+open ᴵTyping using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢natrec; ty-Nat; _⟶*_; done; step; natrec-zero
+        ; natrec-suc )
 open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk )
-open ᴵTyping using ( single )
 open import DirectedHoTT.Lib.Wk 𝒮 n using ( w; sub-w; sub-w²; ren-sub )
 open import DirectedHoTT.Lib.Nat 𝒮 n using ( plusTm; ⊢plus )
 

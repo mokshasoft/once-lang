@@ -18,6 +18,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; ⌊_⌋ )
 module DirectedHoTT.Examples.Gcd.DvdL where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -28,9 +29,8 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom
         ; var; nzero; nsuc; fst; snd; app; subTm; subTy )
 open Lib0.Spec-Typing
-  using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢conv
-        ; csymᵀ; _⟶*_; step; done; βfst; βsnd )
+  using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢lam; ⊢conv; csymᵀ; _⟶*_; step; done
+        ; βfst; βsnd )
 open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast )
 open Lib0.Lib-Wk using ( w )
 open Lib0.Lib-Pair using ( asN; PairT )

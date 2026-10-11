@@ -35,6 +35,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Overview where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -49,13 +50,10 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance
   using ( occ-ren-tm; avoids-wk; NoNatC; nonatc-ren; nnc-base )
 open Lib0.Spec-Typing
-  using ( single; _⟶_; _⟶*_; done; step
-        ; β; tr-taut; tr-J-base; hrefl-pw; ap-J
-        ; _⟶ᵀ_; El-⌜base⌝; El-⌜Hom⌝; Hom-U
-        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋; here
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
-        ; _⊢ty_; ty-base; ty-El; wk-single )
+  using ( _⟶_; _⟶*_; done; step; β; tr-taut; tr-J-base; hrefl-pw; ap-J; _⟶ᵀ_
+        ; El-⌜base⌝; El-⌜Hom⌝; Hom-U; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ; _⊢_∷_
+        ; ⊢var; ⊢lam; ⊢app; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv; _⊢ty_
+        ; ty-base; ty-El )
 open Lib0.Metatheory-TySub using ( ⊢wk )
 open Lib0.Metatheory-Canonicity using ( consistency )
 

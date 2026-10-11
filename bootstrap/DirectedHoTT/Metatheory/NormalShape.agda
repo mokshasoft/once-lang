@@ -18,11 +18,12 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Metatheory.NormalShape (𝒮 : Defs) where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; Σ; _,_; ⊥-elim )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import DirectedHoTT.Metatheory.Injectivity 𝒮
   using ( church-rosserᵀ; Π-reduct; mkΠRed; Σ-reduct; mkΣRed )

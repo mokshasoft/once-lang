@@ -29,6 +29,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Gcd.Cert where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -40,10 +41,8 @@ open import DirectedHoTT.Spec.Syntax
         ; Sub; subTm; subTy; extS; renTm; _∘ₛ_
         ; subTy-subTy; subTy-cong; subTm-subTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢natrec; ⊢nzero; ⊢nsuc; ⊢conv; csymᵀ
-        ; _⟶*_
-        ; ⊢fst; ⊢snd; ⊢pair; ty-Nat; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢natrec; ⊢nzero; ⊢nsuc; ⊢conv; csymᵀ; _⟶*_; ⊢fst
+        ; ⊢snd; ⊢pair; ty-Nat )
 open Lib0.Metatheory-TySub
   using ( ⊢wk; ⊢-cast; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; ⊢[] )
 open Lib0.Lib-Nat using ( plusTm )

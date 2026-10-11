@@ -42,6 +42,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.AmrecIMu where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -51,10 +52,8 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; lam; app; nzero; nsuc; ⌜Nat⌝
         ; Π; subTy; renTy )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢⌜Nat⌝
-        ; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-IMu
-        ; _⟶*_; done; step; β; ξ-appˡ )
+  using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢lam; ⊢⌜Nat⌝; _⊢ty_; ty-Nat; ty-Hom
+        ; ty-El; ty-Π; ty-IMu; _⟶*_; done; step; β; ξ-appˡ )
 open Lib0.Metatheory-TySub using ( ⊢wk; ren-ty )
 open import DirectedHoTT.Lib.Wk ∅ᴷ 0    using ( ⊢wkᶠ )
 open import DirectedHoTT.Lib.Rec ∅ᴷ 0   using ( aIHT )

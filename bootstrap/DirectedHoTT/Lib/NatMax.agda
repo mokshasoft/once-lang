@@ -14,9 +14,10 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; ⌊_⌋ )
 module DirectedHoTT.Lib.NatMax (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; Nat )
-open import DirectedHoTT.Spec.Typing 𝒮 n using ( Ctx; ⌊_⌋; _⊢_∷_ )
+open import DirectedHoTT.Spec.Typing 𝒮 n using ( _⊢_∷_ )
 open import DirectedHoTT.Lib.Nat 𝒮 n   using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Monus 𝒮 n using ( monusTm; ⊢monus )
 

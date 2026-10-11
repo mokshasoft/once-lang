@@ -40,14 +40,14 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; ⌊_⌋ )
 module DirectedHoTT.Examples.AmrecInd where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; El; U; Nat; unit; ⌜Unit⌝ )
 open Lib0.Spec-Typing
-  using ( Ctx; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_
-        ; ⊢unit; ⊢conv; ⊢⌜Unit⌝; csymᵀ; credᵀ; El-⌜Unit⌝ )
+  using ( _⊢_∷_; _⊢ty_; ⊢unit; ⊢conv; ⊢⌜Unit⌝; csymᵀ; credᵀ; El-⌜Unit⌝ )
 open Lib0.Lib-Amrec
   using ( aStepT; Prv; prv; StepExt )
 open Lib0.Lib-AmrecInd

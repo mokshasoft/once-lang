@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋ )
 module DirectedHoTT.Examples.Gcd.DvdLs where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -25,7 +26,8 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom
         ; var; nzero; nsuc; fst; snd; app; subTm; subTy )
-open Lib0.Spec-Typing using ( Ctx; _▹_; ⌊_⌋; single; nrs ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢conv ; csymᵀ; _⟶*_; step; done; βfst; βsnd; natrec-suc )
+open Lib0.Spec-Typing using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢nzero; ⊢nsuc; ⊢lam; ⊢conv; csymᵀ; _⟶*_; step
+        ; done; βfst; βsnd; natrec-suc )
 open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast )
 open Lib0.Lib-Wk using ( w )
 open Lib0.Lib-Pair using ( asN; PairT ; msrPair)

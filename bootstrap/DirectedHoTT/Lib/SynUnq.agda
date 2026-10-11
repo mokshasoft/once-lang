@@ -26,6 +26,7 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Lib.SynUnq (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
@@ -33,7 +34,7 @@ module DirectedHoTT.Lib.SynUnq (𝒮 : Defs) (wf : WfK 𝒮) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim; _⊎_; inj₁; inj₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶ᵀ*-El; red→≅ᵀ; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.SubjectReduction 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( gen-nsuc )

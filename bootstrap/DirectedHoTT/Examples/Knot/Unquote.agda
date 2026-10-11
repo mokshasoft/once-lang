@@ -5,6 +5,7 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.Unquote (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
@@ -25,7 +26,7 @@ module DirectedHoTT.Examples.Knot.Unquote (𝒮 : Defs) (wf : WfK 𝒮) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Lt; lt-z; lt-s; conₗ; tag; _,ₚ_ )

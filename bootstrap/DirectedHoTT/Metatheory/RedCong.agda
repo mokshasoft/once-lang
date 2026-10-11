@@ -35,6 +35,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Base using ( single; single2; swp )
 module DirectedHoTT.Metatheory.RedCong (𝒮 : Defs) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
@@ -54,25 +55,24 @@ open import DirectedHoTT.Spec.Variance
         ; stkC?-ren; stkA?-ren; pwBody-ren; pw?-sub; stkC?-sub; stkA?-sub
         ; pwBody-sub; pw⊥stk; pw⊥stkA; stkC?→stkA? )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
-        ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
-        ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
-        ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base
-        ; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw; ξ-⌜Hom⌝ᶜ
-        ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J
-        ; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-⌜Fin⌝; ξ-idreflᶜ
-        ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; natrec-zero; natrec-suc
-        ; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ; tr-J-Unit; tr-J-IMu
-        ; El-⌜Nat⌝; El-⌜Unit⌝; _⟶*_; done; step; _≅_; cred; crfl; csym; ctrn
-        ; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; El-⌜IMu⌝; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ
-        ; ξ-Σʳ; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; _≅ᵀ_; crflᵀ; csymᵀ
-        ; ctrnᵀ; credᵀ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ
-        ; fcase-z; fcase-s; psplit-β; tr-J-Fin; single2; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ
-        ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ
-        ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ
-        ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; ξ-IMuᴵ; ξ-IMuᴰ
-        ; ξ-IMuⁱ; ξ-Desc; ξ-Fin; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ
-        ; δref )
+  using ( _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ
+        ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs
+        ; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst
+        ; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; tr-J-base; tr-J-Σ; tr-J-Id
+        ; tr-taut; hrefl-pw; hrefl-Nat-z; hrefl-Nat-s; tr-J-Hom; tr-pw
+        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ
+        ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ
+        ; ξ-⌜Id⌝ʳ; ξ-⌜Fin⌝; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
+        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; tr-J-Unit; tr-J-IMu; El-⌜Nat⌝; El-⌜Unit⌝; _⟶*_; done; step; _≅_
+        ; cred; crfl; csym; ctrn; ξ-con; ξ-ielimⁱ; ξ-ielimᵗ; El-⌜IMu⌝; _⟶ᵀ_
+        ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; ξ-Idᵀ; ξ-Idˡ
+        ; ξ-Idʳ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ; ι; dpay-ι; dpay-σ; dpay-ρ
+        ; dih-ι; dih-σ; dih-ρ; fcase-z; fcase-s; psplit-β; tr-J-Fin; ξ-⌜IMu⌝ᴵ
+        ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-ielimᴰ; ξ-ielimᵉ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ
+        ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc
+        ; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; ξ-IMuᴵ
+        ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-Fin; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ; ξ-DIhᵖ; δref )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub )
 

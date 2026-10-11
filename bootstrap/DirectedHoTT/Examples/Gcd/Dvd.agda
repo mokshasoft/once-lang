@@ -19,6 +19,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Examples.Gcd.Dvd where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -29,10 +30,9 @@ open import DirectedHoTT.Spec.Syntax
         ; var; fst; snd; ⌜Nat⌝; nzero; nsuc; Π; app; Hom; natrec; subTy
         ; subTm; renTm; renTy; Ren; extR; extS )
 open Lib0.Spec-Typing
-  using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
-        ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
-        ; ⊢conv; _≅ᵀ_; csymᵀ; natrec-zero; _⟶*_; step; done; β; ξ-appˡ; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app; ty-Hom
+        ; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝; ⊢conv; _≅ᵀ_; csymᵀ; natrec-zero; _⟶*_
+        ; step; done; β; ξ-appˡ )
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
 open Lib0.Lib-Wk using ( w; sub-w; ren-w; sub-w-single )

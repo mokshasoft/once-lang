@@ -13,6 +13,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
 import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
+open import DirectedHoTT.Spec.Base using ( Ctx; DescF; _,,_; _∋_∷_; _▹_; fsucS; here; iinst; nrs; pairS; single; single2; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Metatheory.Fundamental (𝒮 : Defs) (n : ℕ) (ok : Ty.EntriesOK 𝒮 n) (refs : Sem.RefsOK 𝒮 n) where
 open import DirectedHoTT.Algorithm.DecEq
   using ( Dec )
@@ -39,25 +40,23 @@ open import DirectedHoTT.Spec.Syntax
         ; ref )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( single; nrs; pairS; fsucS; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
-        ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz
-        ; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ
-        ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; hrefl-pw
-        ; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut; tr-pw; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
-        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; ξ-Σˡ; ξ-Σʳ; _≅_; _≅ᵀ_; crflᵀ; csymᵀ
-        ; ctrnᵀ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there; _⊢_∷_; ⊢var; ⊢lam; ⊢app
-        ; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝
-        ; El-⌜Σ⌝; El-⌜Id⌝; El-⌜Nat⌝; El-⌜Unit⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; Hom-U
-        ; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap; ⊢conv; ⊢⌜Nat⌝
-        ; ⊢⌜Unit⌝; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ
-        ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat; ⊢con; ty-IMu; ⊢⌜IMu⌝; ⊢ielim
-        ; El-⌜IMu⌝; _,,_; iinst; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr; ⊢ctx_
-        ; c-◇; c-▹; ⊢id; ⊢appex; ⊢dih; ⊢psplit; ty-DIh; ⊢fcase0; csym; single2
+  using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
+        ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
+        ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
+        ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ
+        ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; hrefl-pw; tr-J-base; tr-J-Σ
+        ; tr-J-Hom; tr-taut; tr-pw; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ
+        ; ξ-apᵖ; ξ-Σˡ; ξ-Σʳ; _≅_; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; _⊢_∷_; ⊢var; ⊢lam
+        ; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_
+        ; El-⌜base⌝; El-⌜Σ⌝; El-⌜Id⌝; El-⌜Nat⌝; El-⌜Unit⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
+        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-Nat-z; Hom-Nat-sz
+        ; Hom-Nat-ss; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap
+        ; ⊢conv; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; _⊢ty_; ty-base; ty-U
+        ; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat; ⊢con; ty-IMu
+        ; ⊢⌜IMu⌝; ⊢ielim; El-⌜IMu⌝; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr
+        ; ⊢ctx_; c-◇; c-▹; ⊢id; ⊢appex; ⊢dih; ⊢psplit; ty-DIh; ⊢fcase0; csym
         ; ⊢fsuc; motCtx; ⊢fcase; El-⌜Fin⌝; ⊢⌜Fin⌝; ⊢dpay; ⊢dρ; ⊢dι; ⊢dσ; crfl
-        ; ty-Desc; ty-Fin; ⊢fzero; wk-single; DescF
-        ; ⊢ref )
+        ; ty-Desc; ty-Fin; ⊢fzero; ⊢ref )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; subTm-occ; pw?; stkC?; stkA?; pwBody; pwDom
         ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm

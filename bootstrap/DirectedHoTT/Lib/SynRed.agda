@@ -19,12 +19,13 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 import DirectedHoTT.Spec.Typing as Ty
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Lib.SynRed (𝒮 : Defs) (𝓃 : ℕ) (ok : Ty.EntriesOK 𝒮 𝓃) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 𝓃 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 𝓃
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( ⟶*-trans; ⟶*-fst; ⟶*-snd; ⟶*-pairˡ; ⟶*-pairʳ; subTm-monoˢ )
 open import DirectedHoTT.Lib.Sugar 𝒮 𝓃 ok using ( Cons; []; _∷_; Nth; nth-z; nth-s )
 

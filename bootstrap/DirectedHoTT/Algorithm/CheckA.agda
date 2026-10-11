@@ -69,6 +69,7 @@ import DirectedHoTT.Metatheory.Entries as Entries
 --   `Metatheory/Signature.wf→K`), and NbE's value table of the signature
 --   comes as an ARGUMENT (`Algorithm/NbETable.mkTbl`), so one table is
 --   shared by the whole check
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Algorithm.CheckA (S : Sig) (wfK : WfK (kernel S))
   (tbl : Tbl) (tok : TO.TblOK (kernel S) tbl) where
 open Sig S
@@ -79,7 +80,7 @@ private
   ok : _
   ok = Entries.sigOK 𝒮 size wfK
 
-open import DirectedHoTT.Spec.Typing 𝒮 size hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 size
 open import DirectedHoTT.Metatheory.TySub 𝒮 size
   using ( ⊢-cast; ⊢single; sub-ty; Sub⊢; ⊢[]; ⊢wk; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.Validity 𝒮 size ok

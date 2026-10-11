@@ -34,6 +34,7 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Lib.Decode (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at a well-formed signature, all its names
@@ -44,7 +45,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Syntax using ( Fin )
 open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num )
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; red→≅ᵀ; ⟶*-trans
         ; ⟶*-appˡ; ⟶*-appʳ; ⟶*-dpayᴵ; ⟶*-dpayᴰ; ⟶*-dpayᶜ )

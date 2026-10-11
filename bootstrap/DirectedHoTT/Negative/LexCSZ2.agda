@@ -10,6 +10,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Negative.LexCSZ2 where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
@@ -18,10 +19,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; absurd; ordtr; lam; app
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc
-        ; ⊢lam; ⊢app; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; wk-single )
+  using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app; _⊢ty_; ty-Nat; ty-Hom; ty-El )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Ord

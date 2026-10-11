@@ -57,6 +57,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.AmrecInst where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -67,12 +68,9 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; lam; app; nzero; nsuc; ⌜Nat⌝
         ; Π; Sub; subTy; subTm; renTy; renTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
-        ; ⊢lam; ⊢app; ⊢⌜Nat⌝
-        ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom
-        ; _⟶_; β; _⟶ᵀ_; El-⌜Nat⌝; ξ-El
-        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ )
+  using ( _⊢_∷_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app; ⊢⌜Nat⌝; _⊢ty_; ty-El
+        ; ty-Nat; ty-U; ty-Π; ty-Hom; _⟶_; β; _⟶ᵀ_; El-⌜Nat⌝; ξ-El; _≅ᵀ_
+        ; credᵀ; csymᵀ; ctrnᵀ )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 open Lib0.Metatheory-TySub using ( sub-lemma; Sub⊢ )
 open import DirectedHoTT.Examples.Dogfood

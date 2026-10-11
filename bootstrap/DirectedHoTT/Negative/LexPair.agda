@@ -34,6 +34,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Negative.LexPair where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
@@ -42,12 +43,9 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
         ; Π; renTy; renTm; subTy; subTm )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ
-        ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
-        ; ξ-nsuc; ξ-Homˡ; βfst; βsnd )
+  using ( _⊢_∷_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢pair; ⊢fst
+        ; ⊢snd; ⊢⌜Nat⌝; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ; _≅ᵀ_; csymᵀ
+        ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss; ξ-nsuc; ξ-Homˡ; βfst; βsnd )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )

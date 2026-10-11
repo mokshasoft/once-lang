@@ -18,6 +18,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Lib.Monus (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
@@ -26,15 +27,11 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; unit; nzero; nsuc; natrec; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; renTy; subTy; Π; lam; app )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc
-        ; _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
-        ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
-        ; ⊢lam; ⊢app; nrs; wk-single )
+  using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc; _⟶ᵀ_
+        ; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-Nat-z; Hom-Nat-sz
+        ; Hom-Nat-ss; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ; _⊢_∷_; ⊢var; ⊢unit; ⊢conv
+        ; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝; _⊢ty_; ty-El; ty-Nat
+        ; ty-Π; ty-Hom; ⊢lam; ⊢app )
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
 open ᴵRedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
