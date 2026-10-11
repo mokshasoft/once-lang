@@ -561,13 +561,7 @@ extendNamedCtx-size :
   → Classify.NamedCtx.size (extendNamedCtx ctx x T) ≡ suc (Classify.NamedCtx.size ctx)
 extendNamedCtx-size _ _ _ = refl
 
--- `extendNamedCtx` preserves the fresh counter and imports.
-extendNamedCtx-fresh :
-  ∀ (ctx : NamedCtx) (x : String) (T : Type)
-  → Classify.NamedCtx.freshCounter (extendNamedCtx ctx x T)
-    ≡ Classify.NamedCtx.freshCounter ctx
-extendNamedCtx-fresh _ _ _ = refl
-
+-- `extendNamedCtx` preserves the imports.
 extendNamedCtx-imports :
   ∀ (ctx : NamedCtx) (x : String) (T : Type)
   → Classify.NamedCtx.imports (extendNamedCtx ctx x T) ≡ Classify.NamedCtx.imports ctx

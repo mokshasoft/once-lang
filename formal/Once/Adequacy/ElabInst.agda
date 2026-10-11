@@ -58,8 +58,8 @@ open import Once.Adequacy.ViewNatural S using (NatImp; Natural; module Natural)
 import Once.Adequacy.ElabCommute as EC
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   elab-ρ̂ᶜ : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (nat : Natural Δ τ r V) (sg : SigGround)
-              (ir : RS.TopRF Δ τ r imps sigs) {n Γ D fr e A Ψ}
-              (d : Once.TypeCheck.Classify.mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+              (ir : RS.TopRF Δ τ r imps sigs) {n Γ D e A Ψ}
+              (d : Once.TypeCheck.Classify.mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
           → elabᶜ V (RS.subst-c′ Δ τ r ir d) ≡ (CI.ρ̂ₜ S Δ τ r (proj₁ (elabᶜ V d)) , CI.WithSG.ρ̂ᶜ S Δ τ r sg (proj₂ (elabᶜ V d)))
   elab-ρ̂ᶜ V nat sg ir d = EC.elab-ρ̂ᶜ S Δ τ r sg V nat ir d
 

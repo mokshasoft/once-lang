@@ -454,7 +454,7 @@ inferElabV-RVar-poly-aux-success :
   → isGround schema ≡ inj₁ g
   → inferElabV-RVar-poly-aux ctx x eL eI
       ≡ (success (extractGround schema g) Surface.zeroUsage
-                 (Surface.poly x (extractGround schema g)) 0 (NamedCtx.freshCounter ctx)
+                 (Surface.poly x (extractGround schema g)) 0 0
          , t-var-poly-instantiate-infer {g = g} eL eI
              (proj₂ (lookupPoly⇒lookupPolyPrefix (NamedCtx.polys ctx) x eqLp)) g refl)
 inferElabV-RVar-poly-aux-success ctx x eL eI {schema} {body} {g = g} eqLp eqG =
@@ -1100,7 +1100,7 @@ poly-inst-yes : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) {
   {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
   → KindedInstance schema T
   → Data.Product.proj₁ (checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (kindedInstance? schema T))
-    ≡ success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx)
+    ≡ success Surface.zeroUsage (Surface.poly x T) 0 0
 poly-inst-yes ctx x T err {schema} eL eI eP ¬g ki with kindedInstance? schema T
 ... | yes _ = refl
 ... | no ¬k = ⊥-elim (¬k ki)
@@ -1502,14 +1502,14 @@ _ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RFloat 1 5 1 
       ≡ success Float (zeroUsage +ᵘ zeroUsage)
           (Surface.fadd (Surface.i2f (Surface.int (+ 1)))
                         (Surface.float (decimalOf 1 5 1)))
-          (0 ⊔ 0) (NamedCtx.freshCounter emptyCtx)
+          (0 ⊔ 0) 0
 _ = refl
 
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1)))
       ≡ success Float (zeroUsage +ᵘ zeroUsage)
           (Surface.fadd (Surface.float (decimalOf 1 5 1))
                         (Surface.i2f (Surface.int (+ 1))))
-          (0 ⊔ 0) (NamedCtx.freshCounter emptyCtx)
+          (0 ⊔ 0) 0
 _ = refl
 
 -- The OTHER direction is still refused, and that asymmetry is D125's second
@@ -1528,7 +1528,7 @@ _ = refl
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpDiv (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
       ≡ success Float (zeroUsage +ᵘ zeroUsage)
           (Surface.fdiv (Surface.float (decimalOf 1 5 1)) (Surface.float (decimalOf 2 0 1)))
-          (0 ⊔ 0) (NamedCtx.freshCounter emptyCtx)
+          (0 ⊔ 0) 0
 _ = refl
 
 -- `%` still reports: IEEE's `fmod` is a different function from integer

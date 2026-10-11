@@ -69,13 +69,13 @@ open View V
 ------------------------------------------------------------------------
 
 private
-  ⇝ᵢ-tm : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
+  ⇝ᵢ-tm : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
   ⇝ᵢ-tm refl d = refl
-  ⇝ᵢ-dr : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
+  ⇝ᵢ-dr : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
   ⇝ᵢ-dr refl d = H.refl
-  ⇝ᶜ-tm : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
+  ⇝ᶜ-tm : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
   ⇝ᶜ-tm refl d = refl
-  ⇝ᶜ-dr : ∀ {n Γ D fr e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
+  ⇝ᶜ-dr : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
   ⇝ᶜ-dr refl d = H.refl
 
   ≅ref : ∀ {n} {Γ : C.Ctx n} {d} {τ₁ τ₂ : GSub (arity (S !! d))} {r₁ r₂} → τ₁ ≡ τ₂
@@ -144,7 +144,7 @@ private
 ------------------------------------------------------------------------
 
 mutual
-  tm-i : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
+  tm-i : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₁ (elabᵢ V (subst-i′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵢ V d))
   tm-i (t-int k)          = refl
   tm-i (t-float i f l p)  = refl
@@ -233,7 +233,7 @@ mutual
                                       (trans (cong G.wk (tm-c dx)) (sym (ρ̂ₜ-ren suc _)))
   tm-i (t-app-spine h da df) = cong₂ G.app (tm-d df) (tm-i da)
 
-  tm-c : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+  tm-c : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₁ (elabᶜ V (subst-c′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᶜ V d))
   tm-c t-id-check             = refl
   tm-c t-fst-check            = refl
@@ -265,7 +265,7 @@ mutual
   tm-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     cong (G.ref (entry lp)) (nat-inst lp ng ki)
 
-  tm-d : ∀ {n Γ D fr e A π B Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  tm-d : ∀ {n Γ D e A π B Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
        → proj₁ (elabᵈ V (subst-d′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵈ V d))
   tm-d (d-infer w p g)     = cong (G.coerce _ _) (tm-i w)
   tm-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
@@ -282,7 +282,7 @@ mutual
   tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
     cong (λ u → G.let′ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
 
-  dr-i : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
+  dr-i : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))
   dr-i (t-int k)          = H.refl
   dr-i (t-float i f l p)  = H.refl
@@ -407,7 +407,7 @@ mutual
     H.trans (≅2 _ _ DT.⊢effAppᶜ refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.sym (c-effApp (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx))))
   dr-i (t-app-spine h da df) = ≅2 _ _ GT.⊢app refl (tm-d df) (dr-d df) refl (tm-i da) (dr-i da)
 
-  dr-c : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+  dr-c : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₂ (elabᶜ V (subst-c′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᶜ V d))
   dr-c t-id-check             = H.refl
   dr-c t-fst-check            = H.refl
@@ -461,7 +461,7 @@ mutual
   dr-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     refE-dr (entry lp) (inst lp ng (ρ̂-ki {sc} ki)) (inst lp ng ki) (nat-inst lp ng ki)
 
-  dr-d : ∀ {n Γ D fr e A π B Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  dr-d : ∀ {n Γ D e A π B Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
        → proj₂ (elabᵈ V (subst-d′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵈ V d))
   dr-d (d-infer w p g)     = ≅coerce (tm-i w) (dr-i w)
   dr-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
@@ -498,6 +498,6 @@ private
   Σ≅ : ∀ {X : Set} {P : X → Set} {a₁ a₂ : X} {b₁ : P a₁} {b₂ : P a₂} → a₁ ≡ a₂ → b₁ ≅ b₂ → (a₁ , b₁) ≡ (a₂ , b₂)
   Σ≅ refl H.refl = refl
 
-elab-ρ̂ᶜ : ∀ {n Γ D fr e A Ψ} (d : mkCtx n Γ D fr imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+elab-ρ̂ᶜ : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
         → elabᶜ V (subst-c′ ir d) ≡ (ρ̂ₜ (proj₁ (elabᶜ V d)) , ρ̂ᶜ (proj₂ (elabᶜ V d)))
 elab-ρ̂ᶜ d = Σ≅ (tm-c d) (dr-c d)

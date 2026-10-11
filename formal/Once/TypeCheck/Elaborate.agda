@@ -757,7 +757,7 @@ given-poly-k ctx x A B π π′ err eL eI eP ¬g as inc g (yes ki) =
   success B Surface.zeroUsage
     (Surface.coerce (sub-arr {q = Once.Spec.Type.Grade.Many} (<:-refl A) (<:-refl B) g)
                     (Surface.poly x (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π′ ] B)))
-    0 (NamedCtx.freshCounter ctx)
+    0 0
   , d-poly eL eI eP ¬g as inc ki g
 
 given-poly-π : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : Once.Spec.Type.Grade.Purity) (err : TypeError)
@@ -843,7 +843,7 @@ checkElabV-RVar-poly-inst-aux :
   → VerifiedCheckResult ctx (Raw.RVar x) T
 checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (no _) = failure err , tt
 checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (yes ki) =
-  success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx)
+  success Surface.zeroUsage (Surface.poly x T) 0 0
   , t-var-poly-instantiate eL eI eP ¬g ki
 
 checkElabV-RVar-poly-ground-aux :
@@ -896,7 +896,7 @@ inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp (inj₂ tt) _ =
 -- the lookups ARE its premises (the body is typed at the declaration).
 inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp (inj₁ g) _ =
   success (extractGround schema g) Surface.zeroUsage
-          (Surface.poly x (extractGround schema g)) 0 (NamedCtx.freshCounter ctx)
+          (Surface.poly x (extractGround schema g)) 0 0
   , t-var-poly-instantiate-infer {g = g} eL eI
       (Data.Product.proj₂ (lookupPoly⇒lookupPolyPrefix (NamedCtx.polys ctx) x eqLp)) g refl
 
@@ -932,19 +932,19 @@ elabGivenLeaf : (ctx : NamedCtx) (cn : CanonicalName) (A : Type) (π : Once.Spec
               → VerifiedGivenResult ctx (Raw.RResolved cn) A π
 -- The generators, read off the same head view the application dispatch uses.
 elabGivenLeaf ctx .(gen "id") A π ahv-id _ =
-  success A _ (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , d-id
+  success A _ (Surface.lift-morphism IR.id) 0 0 , d-id
 elabGivenLeaf ctx .(gen "fst") (A Once.Spec.Type.* B) π ahv-fst _ =
-  success A _ (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , d-fst
+  success A _ (Surface.lift-morphism IR.fst) 0 0 , d-fst
 {-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "fst") _ π ahv-fst _ = failure (BuiltinTypeMismatch "fst") , tt
 elabGivenLeaf ctx .(gen "snd") (A Once.Spec.Type.* B) π ahv-snd _ =
-  success B _ (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , d-snd
+  success B _ (Surface.lift-morphism IR.snd) 0 0 , d-snd
 {-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "snd") _ π ahv-snd _ = failure (BuiltinTypeMismatch "snd") , tt
 elabGivenLeaf ctx .(gen "terminal") A π ahv-terminal _ =
-  success Unit _ (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , d-terminal
+  success Unit _ (Surface.lift-morphism IR.terminal) 0 0 , d-terminal
 elabGivenLeaf ctx .(gen "initial") Void π ahv-initial _ =
-  success Void _ (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , d-initial
+  success Void _ (Surface.lift-morphism IR.initial) 0 0 , d-initial
 {-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "initial") _ π ahv-initial _ = failure (BuiltinTypeMismatch "initial") , tt
 {-# CATCHALL #-}
@@ -1085,7 +1085,7 @@ checkElabV-neg-int-aux : (ctx : NamedCtx) (n : ℤ) (T : Type)
 -- `inferElabV ctx (RUnaryOp OpNeg (RInt n))` would be the same term but
 -- would stop reducing wherever the view has been abstracted.
 checkElabV-neg-int-aux ctx n T with Int <:? T
-... | yes p = success Surface.zeroUsage (Surface.coerce p (Surface.int (- n))) 1 (NamedCtx.freshCounter ctx)
+... | yes p = success Surface.zeroUsage (Surface.coerce p (Surface.int (- n))) 1 0
             , t-sub (t-neg (t-int n)) p
 ... | no _  = failure (TypeMismatch T Int) , tt
 
@@ -1094,7 +1094,7 @@ checkElabV-neg-float-aux : (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
 checkElabV-neg-float-aux ctx i f l p T with Once.Spec.Type.Float <:? T
 ... | yes s = success Surface.zeroUsage
                       (Surface.coerce s (Surface.float (Decimal.negate (decimalOf i f l)))) 1
-                      (NamedCtx.freshCounter ctx)
+                      0
             , t-sub (t-neg-float i f l p) s
 ... | no _  = failure (TypeMismatch T Once.Spec.Type.Float) , tt
 
@@ -1260,7 +1260,7 @@ inferElabV-RQualified-arrow-aux :
 inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just bA) _ (just cB) _ =
   success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B) _
     (Surface.lift-morphism {π = π} (IR.SigOp (ext-arrow-info ctx alias name π bA cB)))
-    0 (NamedCtx.freshCounter ctx)
+    0 0
   , t-var-qualified eq (con-fun bA cB)
 inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq nothing _ _ _ =
   failure (NonConcreteSigOpType (alias ++ "." ++ name)
@@ -1276,7 +1276,7 @@ inferElabV-RQualified-value-aux :
   → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
   → VerifiedInferResult ctx (Raw.RQualified name alias)
 inferElabV-RQualified-value-aux ctx name alias ty eq (just conc) _ =
-  success ty _ (Surface.sigOp (bare (alias ++ "." ++ name)) conc) 0 (NamedCtx.freshCounter ctx)
+  success ty _ (Surface.sigOp (bare (alias ++ "." ++ name)) conc) 0 0
   , t-var-qualified eq conc
 inferElabV-RQualified-value-aux ctx name alias ty eq nothing _ =
   failure (NonConcreteSigOpType (alias ++ "." ++ name) ty) , tt
@@ -1359,7 +1359,7 @@ inferElabV-RResolved-arrow-aux :
 inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
   success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B) _
     (resolvedArrowTerm ctx cn π bA cB)
-    0 (NamedCtx.freshCounter ctx)
+    0 0
   , t-var-resolved ng eq (con-fun bA cB)
 inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq nothing _ _ _ =
   failure (NonConcreteSigOpType (showCanonical cn)
@@ -1377,7 +1377,7 @@ inferElabV-RResolved-value-aux :
   → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
   → VerifiedInferResult ctx (Raw.RResolved cn)
 inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
-  success ty _ (resolvedValueTerm cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved ng eq conc
+  success ty _ (resolvedValueTerm cn conc) 0 0 , t-var-resolved ng eq conc
 inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ =
   failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
 
@@ -1414,7 +1414,7 @@ inferElabV-RResolved-def ctx cn _ = failure (UnboundVariable (showCanonical cn))
 inferElabV-RResolved-own-aux ctx x ns (just ty) eq = inferElabV-RResolved-own-value-aux ctx x ns ty eq (isConcrete? ty) refl
 inferElabV-RResolved-own-aux ctx x ns nothing _ = failure (UnboundVariable x) , tt
 inferElabV-RResolved-own-value-aux ctx x ns ty eq (just conc) _ =
-  success ty _ (Surface.closure x) 0 (NamedCtx.freshCounter ctx) , t-var-own ns eq conc
+  success ty _ (Surface.closure x) 0 0 , t-var-own ns eq conc
 inferElabV-RResolved-own-value-aux ctx x ns ty eq nothing _ =
   failure (NonConcreteSigOpType x ty) , tt
 
@@ -1432,7 +1432,7 @@ inferElabV-RVar-import-value-aux :
   → VerifiedInferResult ctx (Raw.RVar x)
 inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
   -- D246: a module entry's reference is a CALL of the entry, not a SigOp.
-  success ty _ (Surface.closure x) 0 (NamedCtx.freshCounter ctx)
+  success ty _ (Surface.closure x) 0 0
   , t-var-import ¬gw eq-loc eq-imp conc
 inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ nothing _ =
   failure (NonConcreteSigOpType x ty) , tt
@@ -1447,7 +1447,7 @@ inferElabV-RVar-lookup-aux :
   → lookupImport (NamedCtx.imports ctx) x ≡ impLhs
   → VerifiedInferResult ctx (Raw.RVar x)
 inferElabV-RVar-lookup-aux ctx x (just (A , Ψ , eV)) eq-loc _ _ =
-  success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local eq-loc
+  success A Ψ (Surface.svar→expr eV) 0 0 , t-var-local eq-loc
 inferElabV-RVar-lookup-aux ctx x nothing eq-loc (just ty) eq-imp =
   inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl
 -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
@@ -1469,7 +1469,7 @@ checkElabV-RVar-bbc-id-failure-aux :
 -- T = canonical & both lookups nothing & inner type-checks pass.
 checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Y) err with X ≟T Y
 ... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , t-id-check
+      success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 0 , t-id-check
 ... | no _ = failure (BuiltinTypeMismatch "id") , tt
 checkElabV-RVar-bbc-id-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-id-failure-aux ctx Void err = failure err , tt
@@ -1488,7 +1488,7 @@ checkElabV-RVar-bbc-fst-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "fst")) T
 checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A') err with A ≟T A'
 ... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , t-fst-check
+      success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 0 , t-fst-check
 ... | no _ = failure (BuiltinTypeMismatch "fst") , tt
 checkElabV-RVar-bbc-fst-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-fst-failure-aux ctx Void err = failure err , tt
@@ -1517,7 +1517,7 @@ checkElabV-RVar-bbc-snd-failure-aux :
 -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
 checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B') err with B ≟T B'
 ... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , t-snd-check
+      success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 0 , t-snd-check
 ... | no _ = failure (BuiltinTypeMismatch "snd") , tt
 checkElabV-RVar-bbc-snd-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-snd-failure-aux ctx Void err = failure err , tt
@@ -1545,7 +1545,7 @@ checkElabV-RVar-bbc-terminal-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "terminal")) T
 -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
 checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Unit) err =
-  success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , t-terminal-morph-check
+  success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 0 , t-terminal-morph-check
 checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx Void err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx Int err = failure err , tt
@@ -1581,7 +1581,7 @@ checkElabV-RVar-bbc-initial-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "initial")) T
 -- bbc-initial: canonical T = Void ⇒[Many,pure] A
 checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A) err =
-  success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , t-initial-morph-check
+  success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 0 , t-initial-morph-check
 checkElabV-RVar-bbc-initial-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-initial-failure-aux ctx Void err = failure err , tt
 checkElabV-RVar-bbc-initial-failure-aux ctx Int err = failure err , tt
@@ -1609,7 +1609,7 @@ checkElabV-RVar-bbc-inl-failure-aux :
 -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
 checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A' Once.Spec.Type.+ B)) err with A ≟T A'
 ... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism (IR.inl)) 0 (NamedCtx.freshCounter ctx) , t-inl-morph-check
+      success Surface.zeroUsage (Surface.lift-morphism (IR.inl)) 0 0 , t-inl-morph-check
 ... | no _ = failure (BuiltinTypeMismatch "inl") , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx Void err = failure err , tt
@@ -1647,7 +1647,7 @@ checkElabV-RVar-bbc-inr-failure-aux :
 -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
 checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A Once.Spec.Type.+ B')) err with B ≟T B'
 ... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism (IR.inr)) 0 (NamedCtx.freshCounter ctx) , t-inr-morph-check
+      success Surface.zeroUsage (Surface.lift-morphism (IR.inr)) 0 0 , t-inr-morph-check
 ... | no _ = failure (BuiltinTypeMismatch "inr") , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx Void err = failure err , tt
@@ -1750,7 +1750,7 @@ inferElabV-RResolved-dispatch :
 -- check, so they fall to the ordinary resolved path (which reports the right
 -- error for a bare use).
 inferElabV-RResolved-dispatch ctx _ gv-unit =
-  success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
+  success Unit _ Surface.unit 0 0 , t-unit-var
 -- D136: a generator's canonical name is COMPILER-OWNED, so looking it up in
 -- the user's import table is meaningless — these fail directly rather than
 -- routing through `inferElabV-RResolved-aux`. The seven point-free
@@ -1813,7 +1813,7 @@ checkElabV-RFloat-aux :
 -- `Float` or report a genuine type mismatch. The only failure left is a type
 -- mismatch — representability is no longer a way to fail.
 checkElabV-RFloat-aux ctx i f l p T with Once.Spec.Type.Float <:? T
-... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (decimalOf i f l))) 0 (NamedCtx.freshCounter ctx)
+... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (decimalOf i f l))) 0 0
             , t-sub (t-float i f l p) s
 ... | no _  = failure (TypeMismatch T Once.Spec.Type.Float) , tt
 
@@ -1834,7 +1834,7 @@ inferElabV-RFloat-aux :
 -- TOTAL. `FloatNotRepresentable` is unreachable from here now; the literal
 -- always elaborates and the target rounds it.
 inferElabV-RFloat-aux ctx i f l p =
-  success Float _ (Surface.float (decimalOf i f l)) 0 (NamedCtx.freshCounter ctx)
+  success Float _ (Surface.float (decimalOf i f l)) 0 0
   , t-float i f l p
 
 mutual
@@ -2325,14 +2325,14 @@ mutual
   ----------------------------------------------------------------------
 
   inferElabV ctx (Raw.RInt n) =
-    success Int _ (Surface.int n) 0 (NamedCtx.freshCounter ctx) , t-int n
+    success Int _ (Surface.int n) 0 0 , t-int n
 
   inferElabV ctx (Raw.RFloat i f l p) = inferElabV-RFloat-aux ctx i f l p
 
   inferElabV ctx (Raw.RStringLit s) = failure StringLiteralUnsupported , tt
 
   inferElabV ctx Raw.RUnit =
-    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit
+    success Unit _ Surface.unit 0 0 , t-unit
 
   inferElabV ctx (Raw.RLam _ _) =
     failure LambdaInInferMode , tt
@@ -2527,7 +2527,7 @@ mutual
   inferElabV-neg-dispatch ctx e = inferElabV-neg-aux ctx e (negOperandView e)
 
   inferElabV-neg-aux ctx .(Raw.RInt n) (nov-int n) =
-    success Int _ (Surface.int (- n)) 1 (NamedCtx.freshCounter ctx) , t-neg (t-int n)
+    success Int _ (Surface.int (- n)) 1 0 , t-neg (t-int n)
   -- PLAN 0.73 F3: `-3.14` is the literal whose payload is `negate (decimalOf
   -- i f l)`. Not a runtime negation of `3.14` — there is no float `neg` to
   -- emit (`MArithIR` is Int-only, F4), which is why the fold is the only
@@ -2541,7 +2541,7 @@ mutual
   -- constructor deeper than the bare literal, no name allocated.
   inferElabV-neg-aux ctx .(Raw.RFloat i f l p) (nov-float i f l p) =
     success Float _ (Surface.float (Decimal.negate (decimalOf i f l))) 1
-            (NamedCtx.freshCounter ctx)
+            0
     , t-neg-float i f l p
   inferElabV-neg-aux ctx e (nov-other .e) = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
 
