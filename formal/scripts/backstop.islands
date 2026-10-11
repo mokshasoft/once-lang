@@ -20,10 +20,4 @@ Once.Optimizer.Normal               # optimizer island
 Once.Optimizer.PairCaseNormal       # optimizer island
 Once.Semantics.Value.Laws           # Functor no longer exports `unfoldS`
 Once.Semantics.Machine.Laws         # imports Semantics.Value.Laws
-Once.Spike.RelSpike                 # ValueDomain names moved (D179)
 # Refutation probes: each refuted a postulate that is gone; kept as records
-Once.Probe.ApexInconsistent         # CPU.Interface names moved
-Once.Probe.BlockRunsRefute          # refuted hypothesis removed
-Once.Probe.ClosureAmbiguous         # refuted hypothesis removed
-Once.Probe.CodeResolvesRefute       # refuted hypothesis removed
-Once.Probe.EntryBlocksRefute        # refuted hypothesis removed
