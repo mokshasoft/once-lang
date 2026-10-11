@@ -66,6 +66,11 @@ import Once.TypeCheck.Completeness as Cmp
 import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
+import Once.Metatheory.Grade as Grade
+import Once.Surface.GradeMatrix as GM
+import Algebra.Structures
+import Algebra.Module.Structures
+import Relation.Binary.Structures
 open import Once.Spec.Typing using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
@@ -849,6 +854,20 @@ record VerifiedTypeChecker : Set₁ where
     id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Spec.Context.Usage n)
                         → Surface.zeroUsage Surface.+ᵘ Ψ ≡ Ψ
 
+    -- The grade algebra as the structures it is (plan 0.112 B2–B4): the
+    -- identities above are instances of these laws.
+    grade-semiring   : Algebra.Structures.IsCommutativeSemiring {A = Once.Spec.Type.Grade.Quantity} _≡_
+                         Once.Spec.Type.Grade._+q_ Once.Spec.Type.Grade._*q_
+                         Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.One
+    grade-join       : Algebra.Structures.IsCommutativeBand {A = Once.Spec.Type.Grade.Quantity} _≡_
+                         Once.Spec.Type.Grade._⊔q_
+    grade-order      : Relation.Binary.Structures.IsDecTotalOrder {A = Once.Spec.Type.Grade.Quantity} _≡_
+                         Once.Spec.Context._≤q'_
+    effect-monoid    : Algebra.Structures.IsCommutativeMonoid {A = Once.Spec.Type.Grade.Purity} _≡_
+                         Once.Spec.Type.Grade._⊔p_ Once.Spec.Type.Grade.pure
+    usage-semimodule : ∀ {n} → Algebra.Module.Structures.IsLeftSemimodule GM.quantity-semiring _≡_
+                         (Once.Spec.Context._+ᵘ_ {n}) Once.Spec.Context.zeroUsage Once.Spec.Context._*ᵘ_
+
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
@@ -963,6 +982,11 @@ verifiedTypeChecker = record
   ; id-⊔ᵘ-idem                    = Id.⊔ᵘ-idem
   ; id-*ᵘ-identity-One            = Id.*ᵘ-identity-One
   ; id-+ᵘ-identity-left           = Id.+ᵘ-identity-left
+  ; grade-semiring                = Grade.quantity-isCommutativeSemiring
+  ; grade-join                    = Grade.quantity-⊔-isCommutativeBand
+  ; grade-order                   = Grade.quantity-≤-isDecTotalOrder
+  ; effect-monoid                 = Grade.purity-isCommutativeMonoid
+  ; usage-semimodule              = GM.usage-isLeftSemimodule
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }

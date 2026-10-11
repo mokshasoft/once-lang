@@ -209,3 +209,37 @@ extΦ Φ (suc i) = Zero ∷ Φ i
 ⋆-id (q ∷ Ψ) = trans (cong (λ R → (q *ᵘ singleUse zero One) +ᵘ R) (trans (⋆-weak Ψ (λ i → singleUse i One)) (cong (Zero ∷_) (⋆-id Ψ))))
                      (cong₂ _∷_ (trans (cong (_+q Zero) (*q-oneʳ q)) (+q-identityʳ q))
                                 (trans (cong (_+ᵘ Ψ) (*ᵘ-zeroʳ q)) (+ᵘ-identityˡ Ψ)))
+
+------------------------------------------------------------------------
+-- The usage vectors over n variables are a left semimodule over the
+-- usage semiring (plan 0.112 B3): `+ᵘ` with `zeroUsage` a commutative
+-- monoid, `*ᵘ` the scalar action.
+------------------------------------------------------------------------
+
+open import Algebra.Bundles using (Semiring)
+open import Algebra.Structures {A = Quantity} _≡_ using (IsCommutativeSemiring)
+open import Algebra.Module.Structures using (IsLeftSemimodule)
+open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (isEquivalence)
+
+quantity-semiring : Semiring _ _
+quantity-semiring = record
+  { isSemiring = IsCommutativeSemiring.isSemiring G.quantity-isCommutativeSemiring }
+
+usage-isLeftSemimodule : ∀ {n} → IsLeftSemimodule quantity-semiring _≡_ (_+ᵘ_ {n}) zeroUsage _*ᵘ_
+usage-isLeftSemimodule = record
+  { +ᴹ-isCommutativeMonoid = record
+    { isMonoid = record
+      { isSemigroup = record
+        { isMagma = record { isEquivalence = isEquivalence ; ∙-cong = cong₂ _+ᵘ_ }
+        ; assoc = +ᵘ-assoc }
+      ; identity = +ᵘ-identityˡ , +ᵘ-identityʳ }
+    ; comm = +ᵘ-comm }
+  ; isPreleftSemimodule = record
+    { *ₗ-cong = cong₂ _*ᵘ_
+    ; *ₗ-zeroˡ = *ᵘ-zeroˡ
+    ; *ₗ-distribʳ = λ Ψ a b → *ᵘ-distribʳ a b Ψ
+    ; *ₗ-identityˡ = *ᵘ-identityˡ
+    ; *ₗ-assoc = *ᵘ-assoc
+    ; *ₗ-zeroʳ = λ q → *ᵘ-zeroʳ q
+    ; *ₗ-distribˡ = *ᵘ-distribˡ } }
