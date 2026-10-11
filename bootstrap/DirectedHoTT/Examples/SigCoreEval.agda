@@ -13,14 +13,15 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
-open import DirectedHoTT.Spec.Signature using ( Sig )
+open import DirectedHoTT.Spec.Signature using ( Sig; kernel )
 import DirectedHoTT.Spec.Syntax as R
-open import DirectedHoTT.Algorithm.Eval using ( eval; nfd; out )
-open import DirectedHoTT.Algorithm.ConvLazy using ( normLazy )
-open import DirectedHoTT.Algorithm.NbE using ( nbe )
 open import normalizer.Syntax.Types using ( _,_ )
-open import DirectedHoTT.Lib.Sugar using ( tag )
 open import DirectedHoTT.Examples.SigMeth using ( S )
+-- the evaluators at the signature's kernel, one instance each
+open import DirectedHoTT.Algorithm.NbETable using ( mkTbl )
+open import DirectedHoTT.Algorithm.Eval (kernel S) using ( eval; nfd; out )
+open import DirectedHoTT.Algorithm.ConvLazy (kernel S) using ( normLazy )
+open import DirectedHoTT.Algorithm.NbE (mkTbl (kernel S)) using ( nbe )
 
 -- ★ the NORMAL-ORDER reduct (`Algorithm/ConvLazy.normLazy`): weak-head
 --   first, so an unapplied generic definition is never normalised; a
@@ -42,7 +43,7 @@ normal? t with eval 100000 t
 
 -- an entry, as a kernel reference
 ⟪_⟫ : {Γ : R.Cx} → ℕ → R.RTm Γ
-⟪ d ⟫ = R.ref d (Sig.body S d)
+⟪ d ⟫ = R.ref d
 
 _⋆_ : {Γ : R.Cx} → R.RTm Γ → List (R.RTm Γ) → R.RTm Γ
 f ⋆ []       = f

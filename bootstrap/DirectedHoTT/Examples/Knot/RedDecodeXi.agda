@@ -61,10 +61,11 @@ open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf core using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf
 open import DirectedHoTT.Examples.Knot.RedCompDecode 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.Ref 𝒮 wf using ( Tδ; TδT; TδT-sub )
-open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-appʳ; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ )
+open ᴵRedCong using ( _⟶ᵀ*_; ⟶*-trans; ⟶*-natrecᶻ; ⟶*-appʳ; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ )
 open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; homLt; sizeQ-at; bodiesQ-at )
 open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( sizeQ; bodiesQ )
 open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( El-homNat )
+open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num )
 
 
 -- the induction hypothesis a ξ helper receives: the caller's decoder at the field
@@ -1554,7 +1555,7 @@ dδ : {Γ : Cx} (a0 : ℕ) (u : RTm Γ) {q : RTm ε} →
 dδ {Γ} a0 u dq nq =
   pay-σ dq done nq
   ▷ λ { (h , (_ , (_ , ((dH , dR) , (_ , nR))))) →
-  pay-σ dR (step (β _ h) (subst (λ z → z ⟶* _) (sym (EQ h)) done)) nR
+  pay-σ dR (step (β _ h) (subst (λ z → z ⟶* ⌜ TδT q𝒮 (dep Γ) n' c' ⌝ᵗ) (sym (EQ h)) done)) nR
   ▷ λ { (_ , (_ , (_ , ((dF , _) , (nF , _))))) →
   close (δref {Γ} a0 (homLt a0 (Defs.size 𝒮) (⊢conv dH (red→≅ᵀ (HR h)))))
         (ctrn (idrefl-decᶜ dF nF) (⟶*→≅ (⟶*-trans (⟶*-natrecᶻ BR) (εwk-agree Γ (Defs.body 𝒮 a0))))) } }

@@ -123,14 +123,16 @@ module _ {Ξ : Ctx} {j : RTm ⌊ Ξ ⌋} (dj : Ξ ⊢ j ∷ El ⌜Nat⌝) where
 ------------------------------------------------------------------------
 
 private
-  CONS-sub : (σ : Sub Δ Θ) → subTm σ (CONS {Δ}) ≡ CONS
-  CONS-sub σ = refl
+  opaque
+    unfolding SD
+    CONS-sub : (σ : Sub Δ Θ) → subTm σ (CONS {Δ}) ≡ CONS
+    CONS-sub σ = refl
 
-  LIFT-sub : (σ : Sub Δ Θ) → subTm σ (LIFT {Δ}) ≡ LIFT
-  LIFT-sub σ = refl
+    LIFT-sub : (σ : Sub Δ Θ) → subTm σ (LIFT {Δ}) ≡ LIFT
+    LIFT-sub σ = refl
 
-  IDS-sub : (σ : Sub Δ Θ) → subTm σ (IDS {Δ}) ≡ IDS
-  IDS-sub σ = refl
+    IDS-sub : (σ : Sub Δ Θ) → subTm σ (IDS {Δ}) ≡ IDS
+    IDS-sub σ = refl
 
 trav-sub : (σ : Sub Δ Θ) (s : ℕ) (d t e f : RTm Δ) → subTm σ (trav s d t e f) ≡ trav s (subTm σ d) (subTm σ t) (subTm σ e) (subTm σ f)
 trav-sub σ s d t e f = c3 (SD-sub σ KSig) (tag-sub σ s) (TRAVMs-sub σ)

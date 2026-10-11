@@ -15,31 +15,32 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Comparison.GcdRoute3Combinator where
+import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; El; Nat; Π; RTm; var; nzero; nsuc
         ; natrec; app; pair; fst; snd; ⌜Nat⌝; subTm; lam )
-open import DirectedHoTT.Spec.Typing
+open Lib0.Spec-Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢pair; ty-Nat
         ; ⊢⌜Nat⌝; _⟶*_; done; step; β; ξ-appˡ; ξ-nsuc; ξ-natrecᶻ
         ; natrec-zero; natrec-suc; βfst; βsnd
         ; ⊢var; here; there; ⊢conv; ⊢natrec; ⊢lam; ⊢app; csymᵀ )
-open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idˡ )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-appʳ; ⟶*-pairʳ; ⟶*-pairˡ )
-open import DirectedHoTT.Lib.Strong using ( reflTm )
-open import DirectedHoTT.Lib.Nat
+open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idˡ )
+open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-appʳ; ⟶*-pairʳ; ⟶*-pairˡ )
+open Lib0.Lib-Strong using ( reflTm )
+open Lib0.Lib-Nat
   using ( plusTm )
 open import DirectedHoTT.Examples.Nat
   using ( n1; n2; n3 )
-open import DirectedHoTT.Lib.Monus
+open Lib0.Lib-Monus
   using ( monusTm; monus-zero; monus-suc; pred-zero; pred-suc )
 open import DirectedHoTT.Examples.Div
   using ( monus-computes )
-open import DirectedHoTT.Lib.Amrec using ( module AmTΠ )
-open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asN )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
-open import DirectedHoTT.Lib.Arith using ( plusMonoTm )
-open import DirectedHoTT.Lib.ArithComm using ( plusMonoLTm )
-open import DirectedHoTT.Lib.ArithMonus using ( monusLtTm; pred* )
+open Lib0.Lib-Amrec using ( module AmTΠ )
+open Lib0.Lib-Pair using ( PairT; ⊢PairT; asN )
+open Lib0.Lib-ArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
+open Lib0.Lib-Arith using ( plusMonoTm )
+open Lib0.Lib-ArithComm using ( plusMonoLTm )
+open Lib0.Lib-ArithMonus using ( monusLtTm; pred* )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( msr; ⊢msr; gcdStp; ⊢gcdStp; gcd-computes-b0; X20; msr-2-0
         ; gcd-b0-var; gcd-le-term; le-mh-1; recCert; recRed; _⟫_

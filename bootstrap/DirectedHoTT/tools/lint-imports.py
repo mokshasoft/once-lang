@@ -228,6 +228,11 @@ def bound_names(src):
         b.update(TOK.findall(m.group(1)))
     for m in re.finditer(r"^\s*\.\.\.\s*\|([^=\n]*)", src, re.M):
         b.update(TOK.findall(m.group(1)))
+    # a LOCAL open of a module alias (`where open ᴵX using ( … )`): PLAN-REF
+    #   imports parameterised modules once, `import M 𝒮 … as ᴵX`, and opens
+    #   names from the alias where they are used
+    for m in re.finditer(r"\bopen\s+(?!import\b)\S+[^\n(]*\busing\s*\(([^)]*)\)", src):
+        b.update(names_in_list(m.group(1)))
     return b
 
 def load(files):
@@ -321,9 +326,9 @@ def control():
     target = "DirectedHoTT.Examples.Knot.RedIx"
     src = open(mods[target]["path"], encoding="utf-8").read()
     # class 1: a name the imported module does not export
-    bad1 = src.replace("TySub using ( ⊢-cast )", "TySub using ( ⊢-cast; noSuchLemmaXYZ )", 1)
+    bad1 = src.replace("TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast )", "TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; noSuchLemmaXYZ )", 1)
     # class 2: drop an import that the body needs
-    bad2 = bad1.replace("open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-nsuc )\n", "", 1)
+    bad2 = bad1.replace("open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-nsuc )\n", "", 1)
     assert bad1 != src and bad2 != bad1, "control anchors moved — update control()"
     tmpd = tempfile.mkdtemp()
     try:

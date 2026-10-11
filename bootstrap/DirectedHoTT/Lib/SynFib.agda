@@ -290,27 +290,29 @@ module Fib {sg : Sig n} (ok : SigOK n sg)
         dR : H₃ ⊢ R (row s k) (W4 q) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var vz) ∷ Desc J
         dR = rok dq₄ dj dp dc
 
-    perT : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} {s c c' k : ℕ} {shsAll : Shapes c} {shs : Shapes c'} → Γ ⊢ q ∷ El P →
-           NthG sg s shsAll → ShsOK n shs →
-           ({j : ℕ} {sh : Shape} → NthSh shs j sh → NthSh shsAll (j +' k) sh) →
-           ({j : ℕ} {sh : Shape} → NthSh shs j sh → RowOK s sh (row s (j +' k))) →
-           PerKAt (Γ ▹ El ⌜Nat⌝) (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M FM) (ιₛ s)
-                  (selF (subC (σₛ s) ⌜ tels shsAll ⌝ₛ)) k (mFs s shs k q)
-    perT dq ng []ᵒˢ look oks = []ₐ
-    perT {s = s} dq ng (shok ∷ᵒˢ shoks) look oks =
-      entₛ ⊢⌜Nat⌝ (sigOK ok) ⊢FM (nth-stels ng) (nth-tels (look nthʰ-z)) (⊢mF dq ng (look nthʰ-z) (oks nthʰ-z))
-      ∷ₐ perT dq ng shoks (λ n' → look (nthʰ-s n')) (λ n' → oks (nthʰ-s n'))
+    opaque
+      unfolding SD
+      perT : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} {s c c' k : ℕ} {shsAll : Shapes c} {shs : Shapes c'} → Γ ⊢ q ∷ El P →
+             NthG sg s shsAll → ShsOK n shs →
+             ({j : ℕ} {sh : Shape} → NthSh shs j sh → NthSh shsAll (j +' k) sh) →
+             ({j : ℕ} {sh : Shape} → NthSh shs j sh → RowOK s sh (row s (j +' k))) →
+             PerKAt (Γ ▹ El ⌜Nat⌝) (renTm vs (SI n)) (renTm vs (SD sg)) (wk1M FM) (ιₛ s)
+                    (selF (subC (σₛ s) ⌜ tels shsAll ⌝ₛ)) k (mFs s shs k q)
+      perT dq ng []ᵒˢ look oks = []ₐ
+      perT {s = s} dq ng (shok ∷ᵒˢ shoks) look oks =
+        entₛ ⊢⌜Nat⌝ (sigOK ok) ⊢FM (nth-stels ng) (nth-tels (look nthʰ-z)) (⊢mF dq ng (look nthʰ-z) (oks nthʰ-z))
+        ∷ₐ perT dq ng shoks (λ n' → look (nthʰ-s n')) (λ n' → oks (nthʰ-s n'))
 
-    perS : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} {m s₀ : ℕ} {sg' : Sig m} → Γ ⊢ q ∷ El P →
-           SigOK n sg' → ({j c : ℕ} {shs : Shapes c} → NthG sg' j shs → NthG sg (j +' s₀) shs) →
-           ({j c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG sg' j shs → NthSh shs k sh → RowOK (j +' s₀) sh (row (j +' s₀) k)) →
-           PerS Γ (SortT (SI n) (SD sg) FM ⌜Nat⌝) s₀ (sortMsF sg' s₀ q)
-    perS dq []ᵒᵍ look oks = []ₚ
-    perS {Γ = Γ} dq (shoks ∷ᵒᵍ okss) look oks =
-      ⊢sortMeth ⊢⌜Nat⌝ (allSD ⊢SI (sigOK ok)) ⊢FM (nth-⌜⌝ₛₛ (nth-stels (look nthᵍ-z)))
-                (perT dq (look nthᵍ-z) shoks (λ {j} n' → subst (λ m → NthSh _ m _) (sym (+'-zero j)) n')
-                      (λ {j} n' → subst (λ m → RowOK _ _ (row _ m)) (sym (+'-zero j)) (oks nthᵍ-z n')))
-      ∷ₚ perS dq okss (λ n' → look (nthᵍ-s n')) (λ n' → oks (nthᵍ-s n'))
+      perS : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} {m s₀ : ℕ} {sg' : Sig m} → Γ ⊢ q ∷ El P →
+             SigOK n sg' → ({j c : ℕ} {shs : Shapes c} → NthG sg' j shs → NthG sg (j +' s₀) shs) →
+             ({j c k : ℕ} {shs : Shapes c} {sh : Shape} → NthG sg' j shs → NthSh shs k sh → RowOK (j +' s₀) sh (row (j +' s₀) k)) →
+             PerS Γ (SortT (SI n) (SD sg) FM ⌜Nat⌝) s₀ (sortMsF sg' s₀ q)
+      perS dq []ᵒᵍ look oks = []ₚ
+      perS {Γ = Γ} dq (shoks ∷ᵒᵍ okss) look oks =
+        ⊢sortMeth ⊢⌜Nat⌝ (allSD ⊢SI (sigOK ok)) ⊢FM (nth-⌜⌝ₛₛ (nth-stels (look nthᵍ-z)))
+                  (perT dq (look nthᵍ-z) shoks (λ {j} n' → subst (λ m → NthSh _ m _) (sym (+'-zero j)) n')
+                        (λ {j} n' → subst (λ m → RowOK _ _ (row _ m)) (sym (+'-zero j)) (oks nthᵍ-z n')))
+        ∷ₚ perS dq okss (λ n' → look (nthᵍ-s n')) (λ n' → oks (nthᵍ-s n'))
 
   -- ★ THE FIBRE METHOD, typed from every row's typing
   ⊢FIBM : {Γ : Ctx} {q : RTm ⌊ Γ ⌋} → Γ ⊢ q ∷ El P →

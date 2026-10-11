@@ -7,7 +7,7 @@
 --
 -- ★ A SIGNATURE, written by hand in the surface syntax: each definition
 --   is an entry, each use of an earlier one is `ref d`.  Its
---   well-formedness `wf` is the CERTIFYING CHECKER'S output
+--   well-formedness `wfS` is the CERTIFYING CHECKER'S output
 --   (`Algorithm/SigBuild`): no derivation is written or generated.
 --
 --   The two big descriptions are still COMPUTED by the Lib from the
@@ -34,7 +34,7 @@ import DirectedHoTT.Spec.Syntax as R
 import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) as T
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )
 open import DirectedHoTT.Algorithm.Surface
-open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( SI )
+open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( SI; SD )
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf using ( KD )
 open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( tι; tρ; tσ; _∷ᵗ_; []ᵗ; ⌜_⌝ₛ )
 open import DirectedHoTT.Lib.NatFib 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( DN )
@@ -110,6 +110,9 @@ open SigBuild 6 tys tms 1000 public
 -- ★ the core is well-formed: the checker's output, nothing written
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Algorithm.Result using ( why )
--- ★ the core is well-formed: the checker's output, nothing written
-wf : WfSig S
-wf = fromJust wfSig _
+-- (named `wfS`, not `wf`: the module parameter `wf` is the AMBIENT signature's)
+--   (the checker walks `KD = SD KSig`, so it sees the description's constructors)
+opaque
+  unfolding SD
+  wfS : WfSig S
+  wfS = fromJust wfSig _

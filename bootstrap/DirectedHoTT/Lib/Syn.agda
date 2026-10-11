@@ -50,6 +50,7 @@ open import DirectedHoTT.Lib.Tel 𝒮 𝓃 ok
 open import DirectedHoTT.Lib.Sorted 𝒮 𝓃 ok
 open import DirectedHoTT.Lib.TelAt 𝒮 𝓃 ok
 open import DirectedHoTT.Lib.NatCode 𝒮 𝓃 using ( ⊢isuc; toI; fromI )
+open import DirectedHoTT.Lib.NatNum 𝒮 𝓃 using ( num )
 import DirectedHoTT.Metatheory.Premises 𝒮 𝓃 as ᴵPremises
 import DirectedHoTT.Metatheory.Fundamental.Syntactic 𝒮 as ᴵSyntactic
 
@@ -273,8 +274,16 @@ ok-σSI : {Γ : Ctx} {S : RTm ⌊ Γ ⌋} {T : Tel (⌊ Γ ⌋ ∙)} →
 ok-σSI {n = n} {Γ = Γ} {S = S} {T = T} dS ok =
   ok-σ dS (subst (λ X → TelOK (Γ ▹ El S) X T) (sym (SI-ren vs n)) ok)
 
-SD : Sig n → RTm Δ
-SD sg = Dₛₜ (stels sg)
+-- the signature's description — OPAQUE: a description is a NAME, and its
+--   constructors are reached by an explicit `unfolding SD` (or `SD-def`).
+--   Transparent, every typing at a family index normalised all of it
+--   (PLAN-REF regression: Red 100 s → 540 s; `instance-copies-…`)
+opaque
+  SD : Sig n → RTm Δ
+  SD sg = Dₛₜ (stels sg)
+
+  SD-def : {sg : Sig n} → SD {Δ = Δ} sg ≡ Dₛₜ (stels sg)
+  SD-def = refl
 
 -- the syntax of sort `s` at depth `d` — OPAQUE: it carries the whole
 --   description, and two syntactic forms of one context (a telescope's
@@ -339,8 +348,10 @@ sigOK []ᵒᵍ         = []ˢᵒ
 sigOK {n = n} {Γ = Γ} (_∷ᵒᵍ_ {shs = shs} ok oks) =
   subst (λ X → AllOK (Γ ▹ El (SI n)) X (tels shs)) (sym (SI-ren vs n)) (telsOK ok) ∷ˢᵒ sigOK oks
 
-⊢SD : {Γ : Ctx} {sg : Sig n} → SigOK n sg → Γ ⊢ SD sg ∷ DescF (SI n)
-⊢SD ok = ⊢Dₛₜ ⊢⌜Nat⌝ (sigOK ok)
+opaque
+  unfolding SD
+  ⊢SD : {Γ : Ctx} {sg : Sig n} → SigOK n sg → Γ ⊢ SD sg ∷ DescF (SI n)
+  ⊢SD ok = ⊢Dₛₜ ⊢⌜Nat⌝ (sigOK ok)
 
 -- a sort of the signature is a type
 ty-SK : {Γ : Ctx} {sg : Sig n} {d : RTm ⌊ Γ ⌋} → SigOK n sg → Lt s n → Γ ⊢ d ∷ El ⌜Nat⌝ → Γ ⊢ty SK sg s d
@@ -358,6 +369,14 @@ nth-tels (nthʰ-s n) = nthᵗ-s (nth-tels n)
 nth-stels : {sg : Sig n} {shs : Shapes c} → NthG sg s shs → NthST (stels {Δ = Δ} sg) s (tels shs)
 nth-stels nthᵍ-z     = nthˢᵗ-z
 nth-stels (nthᵍ-s n) = nthˢᵗ-s (nth-stels n)
+
+-- `SD`'s β-rule — the one fact about the (opaque) description its users need:
+--   at a sort in range, the family is that sort's constructor telescopes
+opaque
+  unfolding SD
+  SD-β : {sg : Sig n} {shs : Shapes c} (j : RTm Δ) → NthG sg s shs →
+         app (SD sg) (pair (tag s) j) ⟶* dσ (⌜Fin⌝ (num c)) (selF (subC (single (pair (tag s) j)) ⌜ tels shs ⌝ₛ))
+  SD-β j ng = fibₛ-β j (nth-⌜⌝ₛₛ (nth-stels ng))
 
 nthG-lt : {sg : Sig n} {shs : Shapes c} → NthG sg s shs → Lt s n
 nthG-lt nthᵍ-z     = lt-z
@@ -420,7 +439,7 @@ private
 
 -- ★★ CONSTRUCTOR `k` OF SORT `s`, at depth `d`
 opaque
-  unfolding SK
+  unfolding SK SD
   ⊢conSyn : {Γ : Ctx} {sg : Sig n} {shs : Shapes c} {sh : Shape} {d p : RTm ⌊ Γ ⌋} →
             SigOK n sg → NthG sg s shs → NthSh shs k sh → Γ ⊢ d ∷ El ⌜Nat⌝ →
             Args Γ n sg d sh p → Γ ⊢ conₗ k p ∷ SK sg s d
@@ -454,10 +473,12 @@ private
     cong₂ _∷_ (trans (Dσ-sub (extS σ) ⌜ tels shs ⌝ₛ) (cong Dσ (tels-sub σ shs)))
               (sds-sub σ sg)
 
-SD-sub : (σ : Sub Δ Θ) (sg : Sig n) → subTm σ (SD {Δ = Δ} sg) ≡ SD sg
-SD-sub σ sg =
-  cong lam (trans (sel-sub (extS σ) (SDs ⌜ stels sg ⌝ₛₛ) (fst (var vz)))
-                  (cong (λ X → sel X (fst (var vz))) (sds-sub σ sg)))
+opaque
+  unfolding SD
+  SD-sub : (σ : Sub Δ Θ) (sg : Sig n) → subTm σ (SD {Δ = Δ} sg) ≡ SD sg
+  SD-sub σ sg =
+    cong lam (trans (sel-sub (extS σ) (SDs ⌜ stels sg ⌝ₛₛ) (fst (var vz)))
+                    (cong (λ X → sel X (fst (var vz))) (sds-sub σ sg)))
 
 SD-ren : (ρ : Ren Δ Θ) {sg : Sig n} → renTm ρ (SD {Δ = Δ} sg) ≡ SD sg
 SD-ren ρ {sg} = trans (sym (subTm-var ρ (SD sg))) (SD-sub ⟨ ρ ⟩ᵣ sg)

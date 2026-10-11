@@ -65,11 +65,13 @@ opaque
 --   kits' closedness laws in `Lib/SynTravM` — an optimisation, not a gap.
 ------------------------------------------------------------------------
 
-TRAVMs-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (TRAVM {Δ}) ≡ TRAVM
-TRAVMs-sub σ = refl
+opaque
+  unfolding SD
+  TRAVMs-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (TRAVM {Δ}) ≡ TRAVM
+  TRAVMs-sub σ = refl
 
-SINGLE-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (SINGLE {Δ}) ≡ SINGLE
-SINGLE-sub σ = refl
+  SINGLE-sub : {Δ Θ : Cx} (σ : Sub Δ Θ) → subTm σ (SINGLE {Δ}) ≡ SINGLE
+  SINGLE-sub σ = refl
 
 opaque
  unfolding sub0

@@ -19,12 +19,14 @@ module DirectedHoTT.Examples.Elab where
 open import normalizer.Syntax.Types using ( ⊤; ⊥ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax using ( vz; vs )
-open import DirectedHoTT.Spec.Typing using ( c-◇; ty-Nat; ty-Π; ty-Σ; ty-Unit; ty-Fin; ⊢nsuc; ⊢nzero )
 open import DirectedHoTT.Spec.Annotated using ( ATy; Π; Σ'; Nat; Unit; Fin )
 import DirectedHoTT.Spec.Annotated as AN
 open import DirectedHoTT.Algorithm.Surface
-open import DirectedHoTT.Metatheory.Signature using ( wf→ok )
+open import DirectedHoTT.Spec.Signature using ( Sig; kernel )
+open import DirectedHoTT.Metatheory.Signature using ( wf→K )
 open import DirectedHoTT.Examples.Signature using ( Σ₃; wf )
+open import DirectedHoTT.Spec.Typing (kernel Σ₃) (Sig.size Σ₃) using ( c-◇; ty-Nat; ty-Π; ty-Σ; ty-Unit; ty-Fin; ⊢nsuc; ⊢nzero )
+open import DirectedHoTT.Algorithm.NbETable using ( mkTbl; mkTbl-ok )
 import DirectedHoTT.Spec.TypingA as TA
 import DirectedHoTT.Algorithm.Elab as E
 open import DirectedHoTT.Algorithm.Result using ( R; ok; err )
@@ -44,7 +46,7 @@ private
   hints _ = A.nzero
 
 open E Σ₃ hints 100
-open Checked (wf→ok Σ₃ wf)
+open Checked (wf→K Σ₃ wf) (mkTbl (kernel Σ₃)) (mkTbl-ok (kernel Σ₃))
 
 private
   isJust : {X : Set} → R X → Set

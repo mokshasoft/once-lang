@@ -46,6 +46,7 @@ open import DirectedHoTT.Examples.Knot.JudgeDecodeBase 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.JudgeDecodeTy 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.JudgeDecodeTm 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.JudgeDecodeHand 𝒮 wf core
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( t𝒮 )
 
 decTyW : {N : ℕ} → Acc N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {k : RTm ε} → sz k ≤ N →
          ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢ty A

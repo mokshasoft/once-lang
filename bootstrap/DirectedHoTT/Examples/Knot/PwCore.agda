@@ -93,7 +93,7 @@ private
                             (cong εwkTy (sym (type≡ lt))) (⊢ref (inc lt))
 
 opaque
-  unfolding PwF.FIBMₒ CP KR.wk JI.⌜Tm⌝ LS.SK
+  unfolding PwF.FIBMₒ CP KR.wk JI.⌜Tm⌝ LS.SK LS.SD
 
   -- ★ the core's index and description ARE the Knot's (closed terms, at the core)
   cJ₀ : Jc {ε} Rc.≅ Pwₘ.J {ε}

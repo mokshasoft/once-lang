@@ -37,8 +37,11 @@ private
 szM : RTm Γ
 szM {Γ} = methAt (sortFolds sizeAlg (stels {Δ = Γ} KSig))
 
-⊢szM : {Γ : Ctx} → Γ ⊢ szM ∷ MethTy (SI 2) KD Nat
-⊢szM = ⊢foldₛ sizeAlg ⊢⌜Nat⌝ (sigOK KOK)
+-- (the generic fold lemmas are stated at `Dₛₜ (stels KSig)`: unfold the description)
+opaque
+  unfolding SD
+  ⊢szM : {Γ : Ctx} → Γ ⊢ szM ∷ MethTy (SI 2) KD Nat
+  ⊢szM = ⊢foldₛ sizeAlg ⊢⌜Nat⌝ (sigOK KOK)
 
 -- ★ `sz s d t`: the size of `t : K s d`
 sz : ℕ → RTm Γ → RTm Γ → RTm Γ
@@ -48,7 +51,9 @@ sz s d t = ielim KD ((tag s) ,ₚ d) szM t
 ⊢sz lt dd dt = ⊢ielim ⊢SI ⊢KD ty-Nat ⊢szM (⊢ix lt dd) (⊢SK→IMu {sg = KSig} dt)
 
 -- ★ …and it computes, one node at a time: `1 + Σ (sizes of the recursive fields)`
-sz-con : {s c k : ℕ} {Ts : Tels (Γ ∙) c} {T : Tel (Γ ∙)} {d p : RTm Γ} →
-         NthST (stels KSig) s Ts → NthT Ts k T →
-         sz s d (conₗ k p) ⟶* nsuc (foldK sizeAlg T (dihN (single ((tag s) ,ₚ d)) T KD szM p))
-sz-con ns nt = fold-ιₛ sizeAlg ns nt
+opaque
+  unfolding SD
+  sz-con : {s c k : ℕ} {Ts : Tels (Γ ∙) c} {T : Tel (Γ ∙)} {d p : RTm Γ} →
+           NthST (stels KSig) s Ts → NthT Ts k T →
+           sz s d (conₗ k p) ⟶* nsuc (foldK sizeAlg T (dihN (single ((tag s) ,ₚ d)) T KD szM p))
+  sz-con ns nt = fold-ιₛ sizeAlg ns nt

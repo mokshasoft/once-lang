@@ -203,4 +203,4 @@ decPw {Γ} ⌜Nat⌝ {b} dx nrm = ⊥-elim (rows-none (PwF.fibF {s = 1} {k = 34}
 decPw {Γ} (⌜IMu⌝ a0 a1 a2) {b} dx nrm = ⊥-elim (rows-none (PwF.fibF {s = 1} {k = 35} {q = unit} {j = dep Γ} {c = quoteTm b} (atᵍ 1) (atʰ 35)) dx nrm)
 decPw {Γ} (⌜Fin⌝ a0) {b} dx nrm = ⊥-elim (rows-none (PwF.fibF {s = 1} {k = 36} {q = unit} {j = dep Γ} {c = quoteTm b} (atᵍ 1) (atʰ 36)) dx nrm)
 decPw {Γ} ⌜Unit⌝ {b} dx nrm = ⊥-elim (rows-none (PwF.fibF {s = 1} {k = 37} {q = unit} {j = dep Γ} {c = quoteTm b} (atᵍ 1) (atʰ 37)) dx nrm)
-decPw {Γ} (ref a0 a1) {b} dx nrm = ⊥-elim (rows-none (PwF.fibF {s = 1} {k = 38} {q = unit} {j = dep Γ} {c = quoteTm b} (atᵍ 1) (atʰ 38)) dx nrm)
+decPw {Γ} (ref a0) {b} dx nrm = ⊥-elim (rows-none (PwF.fibF {s = 1} {k = 38} {q = unit} {j = dep Γ} {c = quoteTm b} (atᵍ 1) (atʰ 38)) dx nrm)

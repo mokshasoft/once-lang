@@ -230,8 +230,9 @@ module _ (𝒯 : Defs) where
   open Defs 𝒯 using ( size; type; body )
 
   private
-    ⊢ty : {Γ : Ctx} (A : RTy ε) → Γ ⊢ quoteTy A ∷ El ⌜Ty⌝₀
-    ⊢ty A = ⊢conv (⊢quoteTy A) (csymᵀ (credᵀ El-⌜Ty⌝₀))
+    -- (`⊢quoteTy` at the El-coded type; not `⊢ty`, the kernel judgement)
+    ⊢qty : {Γ : Ctx} (A : RTy ε) → Γ ⊢ quoteTy A ∷ El ⌜Ty⌝₀
+    ⊢qty A = ⊢conv (⊢quoteTy A) (csymᵀ (credᵀ El-⌜Ty⌝₀))
     ⊢tm : {Γ : Ctx} (t : RTm ε) → Γ ⊢ quoteTm t ∷ El ⌜Tm⌝₀
     ⊢tm t = ⊢conv (⊢quoteTm t) (csymᵀ (credᵀ El-⌜Tm⌝₀))
 
@@ -243,8 +244,8 @@ module _ (𝒯 : Defs) where
     where
       dL : Ξ ⊢ ⌜types⌝ 𝒯 ∷ El ⌜Tys⌝
       dL = ⊢conv (⊢lam (ty-El ⊢⌜Nat⌝)
-                       (⊢sel ⌜Ty⌝₀ ⌜Ty⌝₀-sub ⊢⌜Ty⌝₀ (quoteTy {ε} Unit) (λ σ → quoteTy-sub σ (Unit {ε})) (⊢ty Unit)
-                             (tyE 𝒯) (λ i σ → quoteTy-sub σ (type i)) (λ i → ⊢ty (type i)) size (fromI (⊢var here))))
+                       (⊢sel ⌜Ty⌝₀ ⌜Ty⌝₀-sub ⊢⌜Ty⌝₀ (quoteTy {ε} Unit) (λ σ → quoteTy-sub σ (Unit {ε})) (⊢qty Unit)
+                             (tyE 𝒯) (λ i σ → quoteTy-sub σ (type i)) (λ i → ⊢qty (type i)) size (fromI (⊢var here))))
                  (csymᵀ (credᵀ (El-⌜Π⌝ ⌜Nat⌝ ⌜Ty⌝₀)))
       dB : Ξ ⊢ ⌜bodies⌝ 𝒯 ∷ El ⌜Bds⌝
       dB = ⊢conv (⊢lam (ty-El ⊢⌜Nat⌝)

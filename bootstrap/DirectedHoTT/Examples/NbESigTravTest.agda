@@ -19,10 +19,13 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.List using ( List; []; _∷_ )
 open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
-import DirectedHoTT.Spec.Typing as Ty
-open import DirectedHoTT.Lib.NatNum using ( num )
-open import DirectedHoTT.Lib.Sugar using ( tag )
-open import DirectedHoTT.Examples.Knot.Terms using ( quoteTm )
+import DirectedHoTT.Spec.Base as Ty
+open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
+open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀ )
+-- the Lib's and the Knot's terms carry no references: the empty signature
+open import DirectedHoTT.Lib.NatNum ∅ᴷ 0 using ( num )
+open import DirectedHoTT.Lib.Sugar ∅ᴷ 0 ok₀ using ( tag )
+open import DirectedHoTT.Examples.Knot.Terms ∅ᴷ wf₀ using ( quoteTm )
 open import DirectedHoTT.Examples.SigCore
 open import DirectedHoTT.Examples.SigMeth using ( #trav; #rVF; #rWK; #rV0; #rNλ; #rNK; #sVF; #sWK; #sV0; #sN )
 open import DirectedHoTT.Examples.SigCoreEval
@@ -50,9 +53,9 @@ private
   wkKn s d t = ⟪ #trav ⟫ ⋆ (num 2 ∷ tag 1 ∷ ⟪ #KΣ ⟫ ∷ ⟪ #rVF ⟫ ∷ ⟪ #rWK ⟫ ∷ ⟪ #rV0 ⟫ ∷ ⟪ #rNK ⟫
                             ∷ tag s ∷ num d ∷ t ∷ num (suc d) ∷ R.lam (R.fsuc (R.var vz)) ∷ [])
 
-  -- the kernel term `λ. (x₀ x₁) (ref 0 0)` at depth 1
+  -- the kernel term `λ. (x₀ x₁) (ref 0)` at depth 1
   tK : R.RTm (ε R.∙)
-  tK = R.lam (R.app (R.app (R.var vz) (R.var (vs vz))) (R.ref 0 R.nzero))
+  tK = R.lam (R.app (R.app (R.var vz) (R.var (vs vz))) (R.ref 0))
 
 -- a free variable moves, the bound one stays (the environment is lifted)
 ren-λ : nfᴺ (wkλ 1 (lamK (appK (varK R.fzero) (varK (R.fsuc R.fzero)))))

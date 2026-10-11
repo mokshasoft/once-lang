@@ -62,15 +62,15 @@ open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf
 open import DirectedHoTT.Lib.RowsElim 𝒮 wf
 open import DirectedHoTT.Examples.Knot.RedCompDecode 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.Ref 𝒮 wf using ( Tδ; TδT; TδT-sub )
-open ᴵRedCong using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-appʳ; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ )
+open ᴵRedCong using ( _⟶ᵀ*_; ⟶*-trans; ⟶*-natrecᶻ; ⟶*-appʳ; ⟶*-nsuc; ⟶ᵀ*-trans; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ )
 open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; homLt; sizeQ-at; bodiesQ-at )
 open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( sizeQ; bodiesQ )
 open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( El-homNat )
+open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num )
 
 
-open ᴵRedDecodeXi
+open import DirectedHoTT.Examples.Knot.RedDecodeXi 𝒮 wf core
 
-import DirectedHoTT.Examples.Knot.RedDecodeXi 𝒮 wf core as ᴵRedDecodeXi
 decRed : {Γ : Cx} (t : RTm Γ) {u : RTm Γ} {k : RTm ε} →
   ◇ ⊢ k ∷ IMu Redₘ.J (⟶F.DF q𝒮) (ix⟶ (dep Γ) (quoteTm t) (quoteTm u)) → IsNormal k → t ⟶ u
 
