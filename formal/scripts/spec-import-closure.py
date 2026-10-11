@@ -14,6 +14,7 @@
 #   python3 formal/scripts/spec-import-closure.py --gate   the ratchet
 #       (`make spec-gate`): fail on anything not in spec-gate.baseline, and on
 #       a baseline line that no longer applies (the baseline only shrinks)
+#   python3 formal/scripts/spec-import-closure.py --prune  delete those lines
 import collections, os, re, subprocess, sys
 
 FORMAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -129,8 +130,19 @@ def gate(parent):
         sys.exit(1)
     print('spec-gate: OK')
 
+def prune(parent):
+    """Delete the baseline lines that no longer apply. Never adds one."""
+    now = findings(parent)
+    lines = open(BASELINE).read().split('\n')
+    keep = [l for l in lines
+            if not l.split('#')[0].strip() or ' '.join(l.split('#')[0].split()) in now]
+    open(BASELINE, 'w').write('\n'.join(keep))
+    print(f'spec-gate: pruned {len(lines) - len(keep)} lines')
+
 parent = closure()
-if '--gate' in sys.argv:
+if '--prune' in sys.argv:
+    prune(parent)
+elif '--gate' in sys.argv:
     gate(parent)
 elif '--write-baseline' in sys.argv:
     with open(BASELINE, 'w') as f:

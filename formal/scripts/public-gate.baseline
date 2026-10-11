@@ -54,7 +54,6 @@ Once/Optimizer/Normal.agda 2
 Once/Parser/Generic/PolyInst.agda 1
 Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1
-Once/Spec.agda 9
 Once/Spec/Contract.agda 2
 Once/Spec/Core/Meaning.agda 1
 Once/Spec/Meaning.agda 9

@@ -11,7 +11,9 @@ for m,p in mods.items():
         mm=re.match(r'\s*open\s+import\s+([A-Za-z0-9_.]+)(.*)$', line)
         if mm and re.search(r'\bpublic\b', mm.group(2)) and mm.group(1) in mods:
             pub[m].add(mm.group(1))
-seen=set(); fr=['Once.Spec']
+# Roots: every module under Once/Spec (plan 0.114: the Spec is that directory;
+# re-exports out of it, while any remain, pull their targets in).
+seen=set(); fr=[m for m in mods if m=='Once.Spec' or m.startswith('Once.Spec.')]
 while fr:
     m=fr.pop()
     if m in seen: continue

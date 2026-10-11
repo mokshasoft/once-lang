@@ -180,14 +180,8 @@ reexport-impl Once.Spec.Typing Once.TypeCheck.Judgment
 reexport-impl Once.Surface.Syntax Once.Surface.Context
 reexport-wholesale Once.Semantics.Machine Once.Semantics.Value
 reexport-wholesale Once.Semantics.Machine Once.Semantics.ValueIR
-reexport-wholesale Once.Spec Once.Spec.Correct
-reexport-wholesale Once.Spec Once.Spec.Meaning
-reexport-wholesale Once.Spec Once.Spec.Syntax
-reexport-wholesale Once.Spec Once.Spec.Type
-reexport-wholesale Once.Spec Once.Spec.Typing
 reexport-wholesale Once.Spec.Typing Once.TypeCheck.Judgment
 reexport-wholesale Once.Surface.Syntax Once.Surface.Context
-spec-public Once.Spec
 spec-public Once.Spec.Contract
 spec-public Once.Spec.Core.Meaning
 spec-public Once.Spec.Correct

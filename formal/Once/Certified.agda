@@ -76,9 +76,9 @@ module Once.Certified
   (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap entry-owner ι)
   (x86-32-lit-fits : ∀ ι → RB32.LitFits entry-owner ι) where
 
--- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
--- door — `Once.Spec` is on the certified path, not an island.
-open import Once.Spec using (CorrectCompiler; Metatheory)
+-- The correctness criterion and the metatheory are the Spec's (`Once/Spec`).
+open import Once.Spec.Correct using (CorrectCompiler)
+open import Once.Spec.Metatheory using (Metatheory)
 open import Once.Compiler x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-heap-room riscv64-stack-room riscv64-call-room
