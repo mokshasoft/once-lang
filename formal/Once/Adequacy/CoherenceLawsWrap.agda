@@ -34,7 +34,7 @@ open import Once.Spec.Context using (Ctx; _∷_; _,_^_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
 import Once.Spec.Type.Grade
 import Once.Type
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR

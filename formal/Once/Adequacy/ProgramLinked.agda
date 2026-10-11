@@ -47,7 +47,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Spec.Type using (Type; Unit)
 open import Once.Spec.Type.Poly using (PolyType)
-open import Once.Type.Rigid using (KindedInstance; RigidFree; rigidOf)
+open import Once.Spec.Type.Instance using (KindedInstance; rigidOf)
+open import Once.Type.Rigid using (RigidFree)
 open import Once.Spec.Name using (CanonicalName; bare; showCanonical)
 open import Once.Spec.Contract using (ISig)
 open import Data.List.Membership.Propositional using (_∈_)

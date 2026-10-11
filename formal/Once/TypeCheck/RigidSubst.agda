@@ -39,8 +39,9 @@ open import Once.Type
 open ArrowKind using (quantity)
 open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Metatheory.SubLaws using (<:-refl)
-open import Once.Type.Rigid using (RigidFree; KindedInstance; extractGround-rf)
-open import Once.Functor.Translate using (IsBaseType; WellFormedF)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (RigidFree; extractGround-rf)
+open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Spec.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
 open import Once.Spec.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
 import Once.Spec.Context as Surface

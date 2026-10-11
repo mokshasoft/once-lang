@@ -21,10 +21,7 @@ open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; rigid; k-base; k-any; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; K; Id; _⊕_; _⊗_)
-open import Once.Functor.Translate
-  using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
-         IsConcrete; con-base; con-fun;
-         WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 -- | Decide whether a type is a base type (no functions / μ / ν).
 isBaseType? : (A : Type) → Maybe (IsBaseType A)

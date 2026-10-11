@@ -31,7 +31,8 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Word using (Carrier)
 open import Once.Spec.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.Functor.Translate using (WellFormedF; translateF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Semantics.Functor using (μS; ⟨_⟩; ⟦_⟧SF)

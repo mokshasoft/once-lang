@@ -41,7 +41,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type using (Type)
-open import Once.Functor.Translate using (IsConcrete)
+open import Once.Spec.Type.WellFormed using (IsConcrete)
 import Once.Spec.Type.Grade
 import Once.Spec.Type
 import Once.Type

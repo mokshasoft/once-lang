@@ -41,7 +41,8 @@ open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Type using (Type)
-open import Once.Type.Rigid using (RigidFree; KindedInstance)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (RigidFree)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
@@ -56,7 +57,7 @@ import Once.Spec.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Classify using (Imports)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
-open import Once.Type.Rigid using (rigidOf)
+open import Once.Spec.Type.Instance using (rigidOf)
 open import Once.Denotation.Realize using (realize)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)

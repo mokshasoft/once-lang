@@ -40,9 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Spec.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; eff)
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
-open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
-  IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
-  IsConcrete; con-base; con-fun)
+open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
 open import Once.Semantics.Machine using (sem-In; sem-cata)
 open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
@@ -65,7 +63,8 @@ open CallEnv using (ffiE)
 open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
 open import Once.IR.Ref using (refIR)
-open import Once.Type.Rigid using (KindedInstance; ground-kinded)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (ground-kinded)
 open import Once.Spec.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Spec.Type.Sub

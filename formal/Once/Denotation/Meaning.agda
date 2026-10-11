@@ -53,12 +53,13 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; returnM; bindM; _>>=
 open import Once.Denotation.GradedOps
   using (cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
-open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
+open import Once.Spec.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 import Data.List as L
 open import Once.Spec.Context using (Ctx; _,_^_; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
-open import Once.Type.Rigid using (KindedInstance; ground-kinded)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (ground-kinded)
 open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Spec.Type.Sub using (sub-arr)

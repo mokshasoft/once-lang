@@ -16,7 +16,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Functor.Translate using (IsBaseType)
+open import Once.Spec.Type.WellFormed using (IsBaseType)
 
 open import Data.String using (String)
 

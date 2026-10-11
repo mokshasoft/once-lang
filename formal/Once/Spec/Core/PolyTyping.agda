@@ -38,7 +38,7 @@ import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_)
 open import Once.Spec.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
-open import Once.Functor.Translate using (IsConcrete)
+open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Type.Rigid using (RigidFree)
 open import Once.Spec.Name using (CanonicalName; showCanonical)

@@ -29,7 +29,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.Spec.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type; ⟦_⟧T; _+_; _*_)
-open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType)
+open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 -- Import semantic operations

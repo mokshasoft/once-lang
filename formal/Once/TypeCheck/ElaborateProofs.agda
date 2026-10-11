@@ -37,7 +37,8 @@ open import Data.List using (length)
 open import Relation.Nullary using (yes; no)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj₂)
-open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (kindedInstance?)
 open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.Spec.Type.Grade
@@ -57,8 +58,8 @@ open import Once.Spec.Context as Surface using (_+ᵘ_)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Surface.Elaborate as Elab using ()
 open import Once.TypeCheck.Classify
-import Once.Functor.Translate
-open import Once.Functor.Translate using (IsConcrete)
+import Once.Spec.Type.WellFormed
+open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (wellFormedF?)
 open import Once.TypeCheck.Judgment
 
@@ -564,14 +565,14 @@ checkElab-fallback-RVar-inr {ctx} A B
 -- pattern-matching reduction chain to close completeness.
 checkInGo-J :
   ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Spec.Type.Functor)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+    (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → Data.Product.proj₁ (checkInGo ctx arg F (wellFormedF? F) refl)
       ≡ Data.Product.proj₁ (checkInGo ctx arg F mw eq)
 checkInGo-J ctx arg F .(wellFormedF? F) refl = refl
 
 checkInGo-just-success :
   ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Spec.Type.Functor)
-    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
+    (wfF : Once.Spec.Type.WellFormed.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.⟦ F ⟧T (Once.Spec.Type.μ-type F))}
     {d fr : ℕ}
@@ -585,7 +586,7 @@ checkInGo-just-success ctx arg F wfF eqW eqArg
 
 checkElab-fallback-RApp-In :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (F : Once.Spec.Type.Functor)
-    {wfF : Once.Functor.Translate.WellFormedF F}
+    {wfF : Once.Spec.Type.WellFormed.WellFormedF F}
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.⟦ F ⟧T (Once.Spec.Type.μ-type F))}
     {d fr : ℕ}
@@ -1228,7 +1229,7 @@ inferOutGo-J :
     (Ψ : Surface.Usage (NamedCtx.size ctx))
     (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.ν-type F π))
     (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ Once.Spec.Type.ν-type F π ⨾ Ψ)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+    (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → inferOutGo ctx arg F π Ψ argE d fr w (wellFormedF? F) refl
     ≡ inferOutGo ctx arg F π Ψ argE d fr w mw eq
 inferOutGo-J ctx arg F π Ψ argE d fr w .(wellFormedF? F) refl = refl
@@ -1239,7 +1240,7 @@ inferOutGo-J ctx arg F π Ψ argE d fr w .(wellFormedF? F) refl = refl
 -- to the `(just wfF, eqW)` form that `checkCataGo-just-success` concludes at.
 cata-go-canonical :
   ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Once.Spec.Type.Functor} {A : Type}
-    {π : Once.Spec.Type.Grade.Purity} {mw : Maybe (Once.Functor.Translate.WellFormedF F)}
+    {π : Once.Spec.Type.Grade.Purity} {mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)}
     (p : wellFormedF? F ≡ mw)
   → checkCataGo ctx alg F A π mw p ≡ checkCataGo ctx alg F A π (wellFormedF? F) refl
 cata-go-canonical refl = refl
@@ -1256,13 +1257,13 @@ cata-go-canonical refl = refl
 checkCataGo-J :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
     (π : Once.Spec.Type.Grade.Purity)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+    (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkCataGo ctx alg F A π (wellFormedF? F) refl ≡ checkCataGo ctx alg F A π mw eq
 checkCataGo-J ctx alg F A π .(wellFormedF? F) refl = refl
 
 checkCataGoV-pure-J :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+    (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
               (Once.Spec.Type.μ-type F Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.pure ] A)
       ≡ checkCataGo ctx alg F A Once.Spec.Type.Grade.pure mw eq
@@ -1275,7 +1276,7 @@ checkCataGoV-pure-J ctx alg F A .(wellFormedF? F) refl = refl
 -- the rule's premise now, so there is nothing left to recover.
 checkCataGo-just-success :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type) (π : Once.Spec.Type.Grade.Purity)
-    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
+    (wfF : Once.Spec.Type.WellFormed.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {algE : SExpr (NamedCtx.debruijn ctx)
                   Ψ (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)}
@@ -1301,14 +1302,14 @@ checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
 checkAnaGo-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
     (π₀ π : Once.Spec.Type.Grade.Purity)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+    (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π₀ π mw eq
 checkAnaGo-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGoV-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
     (π₀ π : Once.Spec.Type.Grade.Purity)
-    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+    (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
               (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π₀ ] Once.Spec.Type.ν-type F π)
       ≡ checkAnaGo ctx coalg F A π₀ π mw eq
@@ -1316,7 +1317,7 @@ checkAnaGoV-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGo-just-success :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type) (π₀ π : Once.Spec.Type.Grade.Purity)
-    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
+    (wfF : Once.Spec.Type.WellFormed.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {coalgE : SExpr (NamedCtx.debruijn ctx)
                   Ψ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A)}
@@ -1343,7 +1344,7 @@ checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV
 -- constructor; the failure branch is refuted by `eqStrong`.
 checkCata-eff-strong-hlp :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
-    {wfF : Once.Functor.Translate.WellFormedF F} {eqW : wellFormedF? F ≡ just wfF}
+    {wfF : Once.Spec.Type.WellFormed.WellFormedF F} {eqW : wellFormedF? F ≡ just wfF}
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {algE : SExpr (NamedCtx.debruijn ctx)
                   Ψ (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] A)}

@@ -24,7 +24,7 @@ open import Once.Spec.Type.Sub using (⊑-pe; pure⊑)
 open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Surface.Thinning using (thin-usage-refl)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Core.Rename S using (wk-⊢)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S

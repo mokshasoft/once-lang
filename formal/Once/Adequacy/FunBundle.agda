@@ -47,8 +47,9 @@ open import Once.Spec.Type using (Unit; Type; _⇒[_]_)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
-open import Once.Functor.Translate using (IsConcrete)
+open import Once.Spec.Type.Instance using (rigidOf)
+open import Once.Type.Rigid using (RigidFree; rigidFree?)
+open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf

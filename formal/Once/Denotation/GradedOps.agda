@@ -27,10 +27,8 @@ open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Spec.Type.Sub
 open import Once.Type.Sub
-open import Once.Functor.Translate
-  using ( WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod
-        ; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum
-        ; IsConcrete; con-base; con-fun; translateF )
+open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun)
+open import Once.Functor.Translate using (translateF)
 import Once.Semantics.Machine as Val
 open import Once.Semantics.Machine using (⟦_⟧F; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
 open import Once.Word using (Carrier)

@@ -36,7 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Compile as C
 import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunType)
-open import Once.Type.Rigid using (KindedInstance; ground-kinded)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (ground-kinded)
 open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings)

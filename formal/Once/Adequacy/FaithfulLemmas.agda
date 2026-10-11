@@ -33,7 +33,7 @@ open import Once.Spec.Type.Grade using (Purity; mk-kind; Many)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 import Once.Semantics.Machine as Val
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; Ana)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)

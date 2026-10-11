@@ -35,7 +35,7 @@ open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ; ⟦_⟧ᴰᴵ)
 -- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
-open import Once.Functor.Translate using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)
+open import Once.Spec.Type.WellFormed using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)
 open import Once.Arith.Machine.IR using (MArithIR; shape-as-type; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.SigOp.Block using (block-semM; readLeafM; block-info; shape-as-type-base)

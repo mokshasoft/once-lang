@@ -46,7 +46,7 @@ open TargetNum using (int-bits; float-format)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.IR.Ref using (refIR)
-open import Once.Functor.Translate using (WellFormedF; con-base; con-fun; base-Unit)
+open import Once.Spec.Type.WellFormed using (WellFormedF; con-base; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; ⟦_⟧F)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)

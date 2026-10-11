@@ -44,7 +44,8 @@ open import Once.Denotation.TraceMonad using ()
 open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-cong; fmapT-∘)
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
 open import Once.Word using (Carrier)
-open import Once.Functor.Translate using (translateF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type.WellFormed using (wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Functor.Translate using (translateF)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Data.Empty using (⊥)
@@ -52,7 +53,7 @@ open import Once.Denotation.ValueDomain using (seqF; coerce-functor⁻¹-D; coh�
 open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR

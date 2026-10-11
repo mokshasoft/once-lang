@@ -46,7 +46,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Spec.Type.Grade using (mk-kind; pure; eff; Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
-open import Once.Functor.Translate using (con-base; con-fun; base-Unit)
+open import Once.Spec.Type.WellFormed using (con-base; con-fun; base-Unit)
 open import Once.Spec.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; _∷_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Spec.Context using () renaming (_,_ to _,ᶜ_)

@@ -20,7 +20,7 @@ open import Once.Spec.Type using (Type; _⇒[_]_; Void; isVoid?; isUnit?) renami
 import Once.Type as Ty
 open import Once.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent)

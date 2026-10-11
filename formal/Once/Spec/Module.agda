@@ -40,8 +40,9 @@ open import Once.Spec.Contract using (ISig)
 
 open import Once.Spec.Type.Grade using (mk-kind; Many; eff)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
-open import Once.Type.Rigid using (rigidOf; RigidFree)
-open import Once.Functor.Translate using (IsConcrete)
+open import Once.Spec.Type.Instance using (rigidOf)
+open import Once.Type.Rigid using (RigidFree)
+open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 import Once.Compile as C
 import Once.Parser as Parser

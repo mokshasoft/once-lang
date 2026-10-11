@@ -34,7 +34,7 @@ import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
 import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
-open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Spec.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Spec.Context hiding (_,_; _,_^_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax

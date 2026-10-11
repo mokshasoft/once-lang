@@ -39,7 +39,7 @@ open import Function using (id)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; rigid)
 import Once.Type
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}

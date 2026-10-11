@@ -45,12 +45,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
 open import Once.Spec.Type using (Type; isUnit?) renaming (Unit to UnitT)
 import Once.Type as Ty
-open import Once.Functor.Translate using (IsBaseType)
+open import Once.Spec.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName; showCanonical; gen)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Functor.Translate using (base-Unit)
+open import Once.Spec.Type.WellFormed using (base-Unit)
 open import Once.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)

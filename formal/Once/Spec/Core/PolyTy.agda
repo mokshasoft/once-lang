@@ -29,8 +29,7 @@ import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Type.Grade using (Purity; ArrowKind)
-open import Once.Functor.Translate using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int;
-  base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 ------------------------------------------------------------------------
 -- Kinds

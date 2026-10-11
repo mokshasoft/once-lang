@@ -38,8 +38,8 @@ import Once.Spec.Type as T
 import Once.Spec.Type.Poly as T
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.Type.Rigid using (RigidFree; RigidFreeF; KindedInstance; ground-kinded; rigidOf;
-  rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
+open import Once.Spec.Type.Instance using (KindedInstance; rigidOf)
+open import Once.Type.Rigid using (RigidFree; RigidFreeF; ground-kinded; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 import Once.Compile as C
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funBody)

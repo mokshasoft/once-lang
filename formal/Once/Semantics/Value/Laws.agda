@@ -19,7 +19,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
 open import Once.Spec.Type using (Functor)
-open import Once.Functor.Translate using (translateF; WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Functor.Translate using (translateF)
 open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS;
          cataS; cataS-In-id)

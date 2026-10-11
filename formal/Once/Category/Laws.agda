@@ -17,7 +17,7 @@ open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IR
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 -- plan 0.98: RED, and the red is the work-list. This module is stated over
 -- the PURE `Once.CCC.Eval.eval`, which is REFUTED once `Halts : B ≡ Void`
 -- makes `⟦ Void ⟧ = ⊥` — no total `IR A B → ⟦A⟧ → ⟦B⟧` exists. `eval` is
@@ -317,7 +317,7 @@ open import Once.Semantics.Machine
 -- 0.47: the axiom-using identity laws live in Once.Semantics.Machine.Laws.
 open import Once.Semantics.Machine.Laws using (sem-cata-In-id; sem-ana-Out-id)
 -- GuardedT/sem-unguard/sem-hylo-guarded removed: productivity follows from IR totality
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 
 open import Once.Postulates using (extensionality)
 

@@ -46,7 +46,7 @@ open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)

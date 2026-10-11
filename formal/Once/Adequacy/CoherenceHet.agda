@@ -40,7 +40,8 @@ import Data.String
 open import Once.TypeCheck.Judgment
 open import Once.Metatheory.ModeAgreement using (extractGround-irr; dpoly-det)
 open import Once.TypeCheck.ModeSub using (arrow-at)
-open import Once.Functor.Translate using (IsConcrete; IsConcrete-irrelevant; WellFormedF; WellFormedF-irrelevant)
+open import Once.Spec.Type.WellFormed using (IsConcrete; WellFormedF)
+open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)
 import Once.Spec.Context as Surface
 open import Once.Spec.Context using (Ctx; Usage; _∷_; _,_^_)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; lam; coerce; poly)

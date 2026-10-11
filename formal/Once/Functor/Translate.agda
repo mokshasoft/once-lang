@@ -26,6 +26,7 @@ open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Semantics.Functor
+open import Once.Spec.Type.WellFormed
 
 ------------------------------------------------------------------------
 -- Base Type Interpretation
@@ -125,53 +126,6 @@ translate-coherence IntRep FloatRep (F ⊕ G) X
 translate-coherence IntRep FloatRep (F ⊗ G) X
   rewrite translate-coherence IntRep FloatRep F X
         | translate-coherence IntRep FloatRep G X = refl
-
-------------------------------------------------------------------------
--- Well-Formed Functors
---
--- A functor is well-formed if K positions only contain base types.
--- For well-formed functors, ⟦_⟧-base equals ⟦_⟧.
---
--- Note: Coherence proofs are in Once.Semantics.Coherence to avoid
--- circular imports (Core imports Translate, so Translate can't import Core).
-------------------------------------------------------------------------
-
--- | Base type predicate
---
--- A type is a base type if it doesn't contain functions, μ-types, or ν-types.
---
-data IsBaseType : Type → Set where
-  base-Unit   : IsBaseType Unit
-  base-Void   : IsBaseType Void
-  base-Int    : IsBaseType Int
-  base-Float  : IsBaseType Float
-  base-Prod   : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A * B)
-  base-Sum    : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A + B)
-  -- D243: a base-kinded parameter is a base type; nothing else is known of it.
-  base-rigid  : ∀ {i} → IsBaseType (rigid k-base i)
-
--- | Concrete / FFI-representable type (Plan 0.58, OCP-0006): a SigOp is an
--- FFI/register-ABI boundary. A CONCRETE type is a base type, or a FIRST-ORDER
--- function pointer — one whose ARGUMENT is base and whose RESULT is again
--- concrete (`Int→Int`, `Int→Int→Int`, `Int→(Int×Int)`, …). This admits
--- first-class references to first-order functions (a linked function pointer)
--- while EXCLUDING higher-order arguments (callbacks) and `μ`/`ν` — the cases a
--- register ABI cannot pass and the observational bridge cannot relate funext-free.
-data IsConcrete : Type → Set where
-  con-base : ∀ {A} → IsBaseType A → IsConcrete A
-  -- plan 0.105: FIRST-ORDER. An FFI contract takes and returns base values —
-  -- a library returns a register value, never a Once closure (the ABI).
-  con-fun  : ∀ {A B k} → IsBaseType A → IsBaseType B → IsConcrete (A ⇒[ k ] B)
-
--- | Well-formed functor predicate
---
--- K positions only contain base types.
---
-data WellFormedF : Functor → Set where
-  wf-K   : ∀ {A} → IsBaseType A → WellFormedF (K A)
-  wf-Id  : WellFormedF Id
-  wf-Sum : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊕ G)
-  wf-Prod : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊗ G)
 
 ------------------------------------------------------------------------
 -- Proof Irrelevance for IsBaseType and WellFormedF

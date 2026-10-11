@@ -88,9 +88,9 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 -- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
-open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base; IsBaseType; WellFormedF)
-open import Once.Functor.Translate
-  using ( base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF)
+open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
+open import Once.Spec.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; ⟨_⟩; outS; sfmap; cataS; cataS-cong; fuseNatS; fuseNatW; cataS-computation)
 open Once.Semantics.Functor.νS using (unfoldS)

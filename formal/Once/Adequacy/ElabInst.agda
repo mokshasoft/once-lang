@@ -14,6 +14,7 @@
 -- the abstracted elaboration.
 ------------------------------------------------------------------------
 
+import Once.Type.Rigid
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 
@@ -29,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Target.Arch using (TargetNum)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Poly using (PolyType)
-open import Once.Type.Rigid using (KindedInstance; rigidOf)
+open import Once.Spec.Type.Instance using (KindedInstance; rigidOf)
 import Once.Spec.Context as C
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects; _⟪_⟫)
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)

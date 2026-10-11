@@ -17,7 +17,7 @@ open import Once.Type
 open import Once.Spec.Type.Sub using (_<:_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Functor.Translate using (WellFormedF; IsConcrete)
+open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
 
 open import Data.Fin using (Fin)
 open import Data.Bool using (true)

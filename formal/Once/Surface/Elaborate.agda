@@ -46,7 +46,7 @@ open import Data.Integer using (ℤ)
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
 open import Once.Arith.SigOp.Builders
 open import Once.Spec.Name using (bare)
-open import Once.Functor.Translate using (con-base; con-fun; base-Unit; WellFormedF)
+open import Once.Spec.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
 
 -- Literals: constant morphisms that ignore input environment.
 --

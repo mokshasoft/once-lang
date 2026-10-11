@@ -45,7 +45,7 @@ import Once.Spec.Core.Rename S as RN
 import Once.Surface.Thinning as TH
 import Once.Spec.Core.DerivedTyping S as DT
 import Once.Spec.Type.Sub
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 open PT using (_⟪_⟫ᶜ; _⟪_⟫ₜ)
 open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; primDom-abs; primCod-abs; absCtx-lookup)
 import Once.TypeCheck.RigidSubst Δ τ r as RS

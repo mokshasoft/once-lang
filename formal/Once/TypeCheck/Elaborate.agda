@@ -68,8 +68,8 @@ open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Elaborate as Elab using ()
 
 open import Once.TypeCheck.Classify
-import Once.Functor.Translate
-open import Once.Functor.Translate using (IsConcrete; con-fun; IsBaseType)
+import Once.Spec.Type.WellFormed
+open import Once.Spec.Type.WellFormed using (IsConcrete; con-fun; IsBaseType)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)
 open import Once.Float.Decimal using (decimalOf)
 import Once.Float.Decimal as Decimal
@@ -79,7 +79,8 @@ open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
-open import Once.Type.Rigid using (KindedInstance; kindedInstance?; RigidFree; rigidFree?)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (kindedInstance?; RigidFree; rigidFree?)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.Judgment
@@ -301,7 +302,7 @@ given-infer ctx e A π (success T Ψ eE d fr , w) = failure ComposeMiddleUndeter
 -- The `d-cata` step: the algebra's synthesized arrow must be `⟦ F ⟧T A ⇒ A` at
 -- the given grade; then its codomain `A` is the fold's output.
 given-cata-dec : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (π : Once.Spec.Type.Grade.Purity)
-                   (wfF : Once.Functor.Translate.WellFormedF F) (X A : Type) (k : Once.Spec.Type.Grade.ArrowKind)
+                   (wfF : Once.Spec.Type.WellFormed.WellFormedF F) (X A : Type) (k : Once.Spec.Type.Grade.ArrowKind)
                    (Ψ : Surface.Usage (NamedCtx.size ctx))
                → SExpr (NamedCtx.debruijn ctx) Ψ (X Once.Spec.Type.⇒[ k ] A)
                → (depth : ℕ) → (fr : ℕ)
@@ -314,7 +315,7 @@ given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (yes refl) =
 given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (no _) = failure (BuiltinTypeMismatch "cata") , tt
 
 given-cata : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (π : Once.Spec.Type.Grade.Purity)
-               (wfF : Once.Functor.Translate.WellFormedF F)
+               (wfF : Once.Spec.Type.WellFormed.WellFormedF F)
            → VerifiedInferResult ctx alg
            → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Spec.Type.μ-type F) π
 given-cata ctx alg F π wfF (failure err , _) = failure err , tt
@@ -956,7 +957,7 @@ elabGivenLeaf ctx cn A π _ r = given-infer ctx (Raw.RResolved cn) A π r
 -- D194: `Out v` — the ν eliminator, INFER-mode (a check rule would have to
 -- invert `⟦ F ⟧T (ν-type F) ≡ T` to recover `F`).
 -- The IR `Out` at a stream of grade `π`, retyped to the layer's surface type.
-outIR : (F : Once.Spec.Type.Functor) (π : Once.Spec.Type.Grade.Purity) → Once.Functor.Translate.WellFormedF F
+outIR : (F : Once.Spec.Type.Functor) (π : Once.Spec.Type.Grade.Purity) → Once.Spec.Type.WellFormed.WellFormedF F
       → IR ⌊ Once.Spec.Type.ν-type F π ⌋ ⌊ ⟦ F ⟧T (Once.Spec.Type.ν-type F π) ⌋
 outIR F π wfF =
   subst (λ o → IR ⌊ Once.Spec.Type.ν-type F π ⌋ o)
@@ -968,7 +969,7 @@ inferOutGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Spec.Type.Functor) (π :
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.ν-type F π))
              (d fr : ℕ)
              (w : ctx ⊢ᵢ arg ∶ Once.Spec.Type.ν-type F π ⨾ Ψ)
-           → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
+           → (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) → wellFormedF? F ≡ mw
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
 inferOutGo ctx arg F π Ψ argE d fr w nothing _ = failure (BuiltinTypeMismatch "Out") , tt
 inferOutGo ctx arg F Once.Spec.Type.Grade.pure Ψ argE d fr w (just wfF) eqW =
@@ -1900,7 +1901,7 @@ mutual
   checkInOn : (ctx : NamedCtx) (arg : RawExpr) (T : Type) → InTarget T
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T
   checkInGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Spec.Type.Functor)
-            → (mw : Maybe (Once.Functor.Translate.WellFormedF F))
+            → (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F))
             → wellFormedF? F ≡ mw
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Spec.Type.μ-type F)
   checkCata : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
@@ -1911,7 +1912,7 @@ mutual
   -- elaborated as an ordinary function in the EMPTY context (see clause).
   checkCataGo : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
                 (π : Once.Spec.Type.Grade.Purity)
-              → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
+              → (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) → wellFormedF? F ≡ mw
               → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
                                         (Once.Spec.Type.μ-type F Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)
 
@@ -1924,7 +1925,7 @@ mutual
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
   checkAnaGo : (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Spec.Type.Functor) (A : Type)
                (π₀ π : Once.Spec.Type.Grade.Purity)
-             → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
+             → (mw : Maybe (Once.Spec.Type.WellFormed.WellFormedF F)) → wellFormedF? F ≡ mw
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
                                        (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π₀ ] Once.Spec.Type.ν-type F π)
 

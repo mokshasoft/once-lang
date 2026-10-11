@@ -48,7 +48,7 @@ import Once.TypeCheck.Error as Error
 open import Once.TypeCheck.Judgment
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
-open import Once.Functor.Translate using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
@@ -130,7 +130,8 @@ module DPoly where
   open import Once.Type.Instance using (instantiate-complete; instantiate-sound)
   open import Once.Type.Determined using (codVarsInDom?; cod-determined; arrowSchema?)
   open import Once.Type.Sub using (_⊑π?_)
-  open import Once.Type.Rigid using (KindedInstance; kindedInstance?)
+  open import Once.Spec.Type.Instance using (KindedInstance)
+  open import Once.Type.Rigid using (kindedInstance?)
   open import Once.TypeCheck.Classify using (lookupPolyPrefix)
   open import Relation.Nullary using (yes; no)
   open import Data.String using (String)

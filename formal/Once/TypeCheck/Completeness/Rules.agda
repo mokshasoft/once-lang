@@ -48,7 +48,7 @@ open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQual
 import Once.TypeCheck.Classify as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
-open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
+open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete

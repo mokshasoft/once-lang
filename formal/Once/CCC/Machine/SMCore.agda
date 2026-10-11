@@ -42,7 +42,7 @@ open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 open import Once.Denotation.TraceMonad using (callOp; answer; callKey; calls)
 open import Once.Spec.Contract using (_∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float)
+open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.

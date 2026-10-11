@@ -43,7 +43,7 @@ import Once.Type
 open import Once.Spec.Type.Grade using (Quantity)
 open import Once.Spec.Type using (Type; Unit; Int; Void; Float; _*_; _+_; Functor; μ-type; ν-type; ⟦_⟧T)
 
-open import Once.Functor.Translate using (WellFormedF; IsConcrete)
+open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
 -- D134 Phase A removed the decider premises, and with them the last uses of
 -- `Once.Functor.Decide`, `Once.IR` and `Once.TypeCheck.Morph` from the RULES.
 -- The imports outlived them; deleting them shrinks what a reader of the spec
@@ -60,7 +60,8 @@ open import Data.String using (_++_)
 
 -- Plan 0.58 (OCP-0006): IR-FREE `Once.Surface.Context` (not `Surface.Syntax`);
 -- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
-open import Once.Type.Rigid using (KindedInstance; RigidFree)
+open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Type.Rigid using (RigidFree)
 open import Once.Spec.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 

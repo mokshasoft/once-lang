@@ -183,7 +183,7 @@ def process(path, src, where, mods, dry):
             r = n.split()[1]
             body = re.sub(r'(?<![\w.])' + re.escape(src + '.' + r + '.'), m + '.' + r + '.', body)
     # every module used qualified, unaliased, is imported
-    for mod in mods:
+    for mod in mods + [src]:
         used = re.search(r'(?<![\w.])' + re.escape(mod) + r'\.(?![A-Z][\w]*\.)' + NAMECH, nc(body))
         if used and not re.search(r'^\s*(open\s+)?import\s+' + re.escape(mod) + r'(\s|$)', body, re.M):
             first = re.search(r'^(open\s+)?import\s', body, re.M)

@@ -115,8 +115,9 @@ open import Once.TypeCheck.Classify using (NamedCtx; TopCtx; topCtx; emptyTopCtx
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
-open import Once.Type.Rigid using (rigidOf; RigidFree; rigidFree?)
-open import Once.Functor.Translate using (IsConcrete)
+open import Once.Spec.Type.Instance using (rigidOf)
+open import Once.Type.Rigid using (RigidFree; rigidFree?)
+open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
 open import Once.Type.DecEq using (_≟T_)
