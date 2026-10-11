@@ -24,7 +24,12 @@ module Once.Memory.StackSlots
   where
 
 open import Data.Nat using (ℕ; zero)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; sym; subst)
+open import Data.Nat.Properties using (≤-irrelevant)
+open import Data.Product using (_,_)
+open import Relation.Binary.Definitions using (DecidableEquality)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; sym; subst; refl; cong₂)
+open import Relation.Nullary using (yes; no)
+import Data.Nat.Properties as ℕP
 
 -- Import Regions for InStack and StackAddr
 open import Once.Memory.Regions layout public
@@ -46,6 +51,20 @@ open StackAddr public
 -- | StackPointer is an alias for StackAddr
 StackPointer : Set
 StackPointer = StackAddr
+
+-- | The region proof carries no information: two stack addresses are equal
+-- when their addresses are.
+InStack-irrelevant : ∀ {a} (p q : InStack a) → p ≡ q
+InStack-irrelevant (p₁ , p₂) (q₁ , q₂) = cong₂ _,_ (≤-irrelevant p₁ q₁) (≤-irrelevant p₂ q₂)
+
+stack-addr-inj : ∀ {f₁ f₂ : StackAddr} → addr f₁ ≡ addr f₂ → f₁ ≡ f₂
+stack-addr-inj {f₁} {f₂} refl with InStack-irrelevant (in-stack f₁) (in-stack f₂)
+... | refl = refl
+
+_≟SP_ : DecidableEquality StackPointer
+f₁ ≟SP f₂ with addr f₁ ℕP.≟ addr f₂
+... | no  a≢a = no λ { refl → a≢a refl }
+... | yes a≡a = yes (stack-addr-inj a≡a)
 
 ------------------------------------------------------------------------
 -- Stack Growth Interface (from parameter)

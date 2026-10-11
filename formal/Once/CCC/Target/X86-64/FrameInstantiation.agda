@@ -29,6 +29,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
@@ -38,7 +39,7 @@ open import Once.Float.Dyadic using (binary64)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import X86-64 Layout for StackPointer and slot operations
-open import Once.CCC.Target.X86-64.Layout using (StackPointer; slot-addr; offset-distinct; slot-addr-≥-base; InStack; in-stack)
+open import Once.CCC.Target.X86-64.Layout using (StackPointer; slot-addr; offset-distinct; slot-addr-≥-base; InStack; in-stack; _≟SP_; stack-addr-inj)
 open import Once.CCC.Target.X86-64.StackGrowth using (word-size)
 open import Once.CCC.Target.X86-64.Layout using (stack-addr; stack-sub-preserves') renaming (addr to sp-addr)
 
@@ -58,19 +59,8 @@ X86Frame = StackPointer
 -- The InStack proofs are equal by ≤-irrelevant.
 ------------------------------------------------------------------------
 
--- Helper: InStack proofs are equal when addresses are equal
-InStack-irrelevant : ∀ {a} (p q : InStack a) → p ≡ q
-InStack-irrelevant (p₁ , p₂) (q₁ , q₂) = cong₂ _,_ (≤-irrelevant p₁ q₁) (≤-irrelevant p₂ q₂)
-
-_x86-≟F_ : (f₁ f₂ : X86Frame) → Dec (f₁ ≡ f₂)
-f₁ x86-≟F f₂ with sp-addr f₁ ≟ sp-addr f₂
-... | no  a≢a = no λ { refl → a≢a refl }
-... | yes a≡a = yes (sp-eq a≡a)
-  where
-    -- When addresses are equal, the InStack proofs are also equal
-    sp-eq : sp-addr f₁ ≡ sp-addr f₂ → f₁ ≡ f₂
-    sp-eq refl with InStack-irrelevant (in-stack f₁) (in-stack f₂)
-    ... | refl = refl
+_x86-≟F_ : DecidableEquality X86Frame
+_x86-≟F_ = _≟SP_
 
 ------------------------------------------------------------------------
 -- Frame Base Address
@@ -137,11 +127,7 @@ x86-≺-irrefl {f} f≺f = <-irrefl refl f≺f
 x86-≺-compare : ∀ f₁ f₂ → (f₁ x86-≺ f₂) ⊎ (f₁ ≡ f₂) ⊎ (f₂ x86-≺ f₁)
 x86-≺-compare f₁ f₂ with <-cmp (sp-addr f₁) (sp-addr f₂)
 ... | tri< a<b _ _ = inj₁ a<b
-... | tri≈ _ a≡b _ = inj₂ (inj₁ (sp-eq a≡b))
-  where
-    sp-eq : sp-addr f₁ ≡ sp-addr f₂ → f₁ ≡ f₂
-    sp-eq refl with InStack-irrelevant (in-stack f₁) (in-stack f₂)
-    ... | refl = refl
+... | tri≈ _ a≡b _ = inj₂ (inj₁ (stack-addr-inj a≡b))
 ... | tri> _ _ b<a = inj₂ (inj₂ b<a)
 
 ------------------------------------------------------------------------
