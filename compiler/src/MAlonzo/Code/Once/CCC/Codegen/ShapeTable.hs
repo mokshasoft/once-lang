@@ -522,7 +522,7 @@ du_sigop'45'claim_324 ::
 du_sigop'45'claim_324 v0 v1
   = coe
       du_claim'45'at_318
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_352 (coe v1))
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_284 (coe v1))
       (coe MAlonzo.Code.Once.Type.d_fits'45'in'45'reg'63'_208 (coe v0))
 -- Once.CCC.Codegen.ShapeTable.step-expect
 d_step'45'expect_330 ::

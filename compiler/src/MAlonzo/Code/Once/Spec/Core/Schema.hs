@@ -305,10 +305,10 @@ d_kb_390 = erased
 -- Once.Spec.Core.Schema.schemaOf
 d_schemaOf_394 ::
   MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_846
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_808
 d_schemaOf_394 v0
   = coe
-      MAlonzo.Code.Once.Spec.Core.PolyTy.C_schema_860
+      MAlonzo.Code.Once.Spec.Core.PolyTy.C_schema_822
       (coe MAlonzo.Code.Once.Type.Rigid.d_arityOf_82 (coe v0))
       (coe d_kindsOf_352 (coe v0))
       (coe

@@ -1419,7 +1419,7 @@ du_toM_726 ::
   AgdaAny -> AgdaAny
 du_toM_726 v0 v1
   = coe
-      MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
+      MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_336
       (coe
          MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_158
          (coe v0))
@@ -2427,7 +2427,7 @@ du_bin'45'case_1380 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                        (coe
-                                          MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_386
+                                          MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_366
                                           (coe MAlonzo.Code.Once.Type.C_Int_134)
                                           (coe
                                              MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202)
@@ -2436,7 +2436,7 @@ du_bin'45'case_1380 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                              (coe MAlonzo.Code.Once.Type.C_Int_134)
                                              (coe
                                                 MAlonzo.Code.Once.Arith.Prim.du_primSem_416 v4 v0
-                                                (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
+                                                (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_336
                                                    (coe
                                                       MAlonzo.Code.Once.Type.C__'42'__124
                                                       (coe MAlonzo.Code.Once.Type.C_Int_134)
@@ -2763,7 +2763,7 @@ du_neg_1704 v0 v1 v2 v3 v4 v5 v6 v7
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
-                             MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_386
+                             MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_366
                              (coe MAlonzo.Code.Once.Type.C_Int_134)
                              (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202)
                              (coe
@@ -2772,7 +2772,7 @@ du_neg_1704 v0 v1 v2 v3 v4 v5 v6 v7
                                 (coe
                                    MAlonzo.Code.Once.Arith.Prim.du_primSem_416
                                    (coe MAlonzo.Code.Once.Arith.Prim.C_p'45'neg_398) v0
-                                   (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
+                                   (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_336
                                       (coe MAlonzo.Code.Once.Type.C_Int_134)
                                       (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202)
                                       (coe v10)))))
@@ -3454,7 +3454,7 @@ du_fbin'45'case_2072 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                        (coe
-                                          MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_386
+                                          MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_366
                                           (coe MAlonzo.Code.Once.Type.C_Float_136)
                                           (coe
                                              MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_204)
@@ -3463,7 +3463,7 @@ du_fbin'45'case_2072 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                              (coe MAlonzo.Code.Once.Type.C_Float_136)
                                              (coe
                                                 MAlonzo.Code.Once.Arith.Prim.du_primSem_416 v4 v0
-                                                (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
+                                                (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_336
                                                    (coe
                                                       MAlonzo.Code.Once.Type.C__'42'__124
                                                       (coe MAlonzo.Code.Once.Type.C_Float_136)
@@ -3791,7 +3791,7 @@ du_conv_2376 v0 v1 v2 v3 v4 v5 v6 v7
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
-                             MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_386
+                             MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_366
                              (coe MAlonzo.Code.Once.Type.C_Float_136)
                              (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_204)
                              (coe
@@ -3800,7 +3800,7 @@ du_conv_2376 v0 v1 v2 v3 v4 v5 v6 v7
                                 (coe
                                    MAlonzo.Code.Once.Arith.Prim.du_primSem_416
                                    (coe MAlonzo.Code.Once.Arith.Prim.C_p'45'i2f_408) v0
-                                   (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
+                                   (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_336
                                       (coe MAlonzo.Code.Once.Type.C_Int_134)
                                       (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202)
                                       (coe v10)))))

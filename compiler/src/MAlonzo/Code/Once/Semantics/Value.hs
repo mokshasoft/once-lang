@@ -87,7 +87,7 @@ du_erase'7501'_92 v0 v1
                          -> coe
                               (\ v7 ->
                                  coe
-                                   MAlonzo.Code.Once.Res.du_mapRes_46
+                                   MAlonzo.Code.Once.Res.du_mapRes_30
                                    (coe du_erase'7501'_92 (coe v4)) (coe v1 v7))
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -787,7 +787,7 @@ du_sem'45'CoOut_1130 ::
   MAlonzo.Code.Once.Res.T_Res_6
 du_sem'45'CoOut_1130 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Res.du_mapRes_46
+      MAlonzo.Code.Once.Res.du_mapRes_30
       (coe du_coerce'45'ν'45'out_1126 v0 v1 erased)
       (coe MAlonzo.Code.Once.Semantics.Functor.d_unfoldS_204 (coe v2))
 -- Once.Semantics.Value.sem-CoIn

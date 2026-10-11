@@ -279,7 +279,7 @@ d_isBuiltinName_192 ::
 d_isBuiltinName_192 v0
   = coe
       MAlonzo.Code.Relation.Nullary.Decidable.Core.du_isYes_132
-      (coe MAlonzo.Code.Once.CanonicalName.d_genWord'63'_54 (coe v0))
+      (coe MAlonzo.Code.Once.CanonicalName.d_genWord'63'_52 (coe v0))
 -- Once.Parser.Module.Resolve.isBuiltinName-sound
 d_isBuiltinName'45'sound_198 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->

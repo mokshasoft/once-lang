@@ -1304,7 +1304,7 @@ du_pure'45'out'45'val'45'below_1442 v0 v1 v2 v3 v4
         -> coe
              du_res'45'sv'45'below_1418
              (coe
-                MAlonzo.Code.Once.SigOp.Info.d_semM_342 v1 v2
+                MAlonzo.Code.Once.SigOp.Info.d_semM_274 v1 v2
                 (MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'ffi_162 (coe v0)) v3
                 (MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'numerics_166
                    (coe v0))
@@ -1323,7 +1323,7 @@ d_sigop'45'output'45'below_1468 ::
 d_sigop'45'output'45'below_1468 v0 v1 v2 v3 v4 v5
   = coe
       d_go_1498 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_352 (coe v4))
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_284 (coe v4))
 -- Once.CCC.Machine.FlatStoreWF._.aux
 d_aux_1488 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

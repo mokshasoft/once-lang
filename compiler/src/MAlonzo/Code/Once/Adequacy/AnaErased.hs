@@ -60,7 +60,7 @@ d_anaLayer'45'rel_32 ::
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   MAlonzo.Code.Once.Res.T_Res_6 ->
-  MAlonzo.Code.Once.Res.T_Res'45'rel_126
+  MAlonzo.Code.Once.Res.T_Res'45'rel_44
 d_anaLayer'45'rel_32 v0 v1 v2 ~v3 v4 v5
   = du_anaLayer'45'rel_32 v0 v1 v2 v4 v5
 du_anaLayer'45'rel_32 ::
@@ -69,14 +69,14 @@ du_anaLayer'45'rel_32 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   MAlonzo.Code.Once.Res.T_Res_6 ->
-  MAlonzo.Code.Once.Res.T_Res'45'rel_126
+  MAlonzo.Code.Once.Res.T_Res'45'rel_44
 du_anaLayer'45'rel_32 v0 v1 v2 v3 v4
   = case coe v4 of
       MAlonzo.Code.Once.Res.C_stopped_10
-        -> coe MAlonzo.Code.Once.Res.C_rel'45'stopped_134
+        -> coe MAlonzo.Code.Once.Res.C_rel'45'stopped_52
       MAlonzo.Code.Once.Res.C_returns_12 v5
         -> coe
-             MAlonzo.Code.Once.Res.C_rel'45'returns_140
+             MAlonzo.Code.Once.Res.C_rel'45'returns_58
              (coe
                 du_sem'45'ana'45'anaS'45'rel_46 (coe v0) (coe v1) (coe v2) (coe v3)
                 (coe MAlonzo.Code.Once.Functor.Translate.du_translateF_56 (coe v2))

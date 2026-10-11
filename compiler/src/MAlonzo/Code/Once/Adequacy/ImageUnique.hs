@@ -574,7 +574,7 @@ d_fns'45'cl_354 v0 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dst'45''43''43'_84
+                MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dst'45''43''43'_78
                 (coe
                    MAlonzo.Code.Data.List.Base.du__'43''43'__32
                    (coe
@@ -595,7 +595,7 @@ d_fns'45'cl_354 v0 v1
                 (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                    (coe d_rest_376 (coe v0) (coe v2) (coe v3)))
                 (coe
-                   MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dj'45'win_124
+                   MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dj'45'win_118
                    (coe
                       MAlonzo.Code.Data.List.Base.du__'43''43'__32
                       (coe
@@ -613,7 +613,7 @@ d_fns'45'cl_354 v0 v1
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fbody_22 (coe v2))
                          (coe (0 :: Integer)) (coe v0)))
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_clabs_214
+                      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_clabs_208
                       (coe
                          MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
                          (coe
@@ -643,7 +643,7 @@ d_fns'45'cl_354 v0 v1
                       (coe MAlonzo.Code.Once.Denotation.Program.d_fbody_22 (coe v2))
                       (coe (0 :: Integer)) (coe v0)))
                 (coe
-                   MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_152
+                   MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_146
                    (coe
                       MAlonzo.Code.Data.List.Base.du__'43''43'__32
                       (coe
@@ -668,8 +668,8 @@ d_fns'45'cl_354 v0 v1
                       (coe v3))
                    (coe du_wU_374 (coe v0) (coe v2)))
                 (coe
-                   MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_152
-                   (MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_clabs_214
+                   MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_146
+                   (MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_clabs_208
                       (coe
                          MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
                          (coe
@@ -815,7 +815,7 @@ d_image'45'cl_426 ::
   MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
 d_image'45'cl_426 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dst'45''43''43'_84
+      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dst'45''43''43'_78
       (coe
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
          (coe d_TL_452 (coe v0) (coe v1))
@@ -826,7 +826,7 @@ d_image'45'cl_426 v0 v1
       (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe d_FS_472 (coe v0) (coe v1)))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dj'45'win_124
+         MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dj'45'win_118
          (coe
             MAlonzo.Code.Data.List.Base.du__'43''43'__32
             (coe d_TL_452 (coe v0) (coe v1))
@@ -834,7 +834,7 @@ d_image'45'cl_426 v0 v1
                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                (coe d_nM_438 (coe v0) (coe v1)) (coe d_BL_454 (coe v0) (coe v1))))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_clabs_214
+            MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_clabs_208
             (coe
                MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
                (coe addInt (coe (1 :: Integer)) (coe d_nM_438 (coe v0) (coe v1)))
@@ -963,7 +963,7 @@ d_dM_456 ::
   MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
 d_dM_456 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dst'45''43''43'_84
+      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_dst'45''43''43'_78
       (MAlonzo.Code.Once.CCC.Codegen.CLabelsUnique.d_TL_600
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
@@ -973,7 +973,7 @@ d_dM_456 v0 v1
       (coe
          MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.C__'8759'__28
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_fresh'45'above_188
+            MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_fresh'45'above_182
             (MAlonzo.Code.Once.CCC.Codegen.CLabelsUnique.d_BL_602
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
@@ -1022,7 +1022,7 @@ d_wM_470 v0 v1
          (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v1))
          (coe (0 :: Integer)) (coe (0 :: Integer)))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_152
+         MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_146
          (MAlonzo.Code.Once.CCC.Codegen.CLabelsUnique.d_TL_600
             (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
@@ -1042,7 +1042,7 @@ d_wM_470 v0 v1
                MAlonzo.Code.Data.Nat.Properties.d_n'60'1'43'n_3220
                (coe d_nM_438 (coe v0) (coe v1))))
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_152
+            MAlonzo.Code.Once.CCC.Codegen.LabelDefs.du_win'45'weaken_146
             (MAlonzo.Code.Once.CCC.Codegen.CLabelsUnique.d_BL_602
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
@@ -1182,10 +1182,10 @@ d_table'45'names_572 v0
                   -> coe d_no'45'names_568
                 MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
                   -> let v4
-                           = MAlonzo.Code.Once.Compile.d_compileEntries_466
+                           = MAlonzo.Code.Once.Compile.d_compileEntries_460
                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
-                               (coe MAlonzo.Code.Once.Compile.d_emptyCScope_394) (coe v3) in
+                               (coe MAlonzo.Code.Once.Compile.d_emptyCScope_388) (coe v3) in
                      coe
                        (case coe v4 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5
@@ -1778,7 +1778,7 @@ du_dedup'45'step_1030 v0 v1 v2 v3
                 (coe
                    du_head'45'fresh_1082
                    (coe
-                      MAlonzo.Code.Once.Compile.d_dedup'45'go_918
+                      MAlonzo.Code.Once.Compile.d_dedup'45'go_912
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1) (coe v0))
                       (coe v2))
@@ -1802,7 +1802,7 @@ du_dedup'45'step_1030 v0 v1 v2 v3
                    MAlonzo.Code.Data.List.Relation.Unary.All.du_map_164
                    (\ v4 v5 -> coe du_tl_1070 v5)
                    (coe
-                      MAlonzo.Code.Once.Compile.d_dedup'45'go_918
+                      MAlonzo.Code.Once.Compile.d_dedup'45'go_912
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1) (coe v0))
                       (coe v2))
@@ -1945,7 +1945,7 @@ d_tag_1164 ::
 d_tag_1164 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe MAlonzo.Code.Once.Compile.d_block'45'symbol_934 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_block'45'symbol_928 (coe v0))
       (coe v0)
 -- Once.Adequacy.ImageUnique.tagged
 d_tagged_1172 ::
@@ -2013,7 +2013,7 @@ d_blocks'45'sym_1200 v0
   = coe
       du_fsts_1184
       (coe
-         MAlonzo.Code.Once.Compile.d_dedup'45'blocks_932
+         MAlonzo.Code.Once.Compile.d_dedup'45'blocks_926
          (coe
             MAlonzo.Code.Data.List.Base.du_map_22 (coe d_tag_1164) (coe v0)))
       (coe
@@ -2148,7 +2148,7 @@ du_EF_1290 v0
          MAlonzo.Code.Data.List.Base.du_map_22
          (coe
             (\ v1 -> MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v1)))
-         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'table_894 (coe v0)))
+         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'table_888 (coe v0)))
 -- Once.Adequacy.ImageUnique.Entries.EF≡
 d_EF'8801'_1292 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
@@ -2455,7 +2455,7 @@ d_prog'45'unique_1474 v0 v1
             (coe
                d_blocks'45'unique_1194
                (coe
-                  MAlonzo.Code.Once.Compile.d_program'45'blocks_904
+                  MAlonzo.Code.Once.Compile.d_program'45'blocks_898
                   (coe d_p_1488 (coe v0) (coe v1))))))
 -- Once.Adequacy.ImageUnique._.T
 d_T_1484 ::
@@ -2467,7 +2467,7 @@ du_T_1484 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6]
 du_T_1484 v0
-  = coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)
+  = coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0)
 -- Once.Adequacy.ImageUnique._.tn
 d_tn_1486 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -2493,7 +2493,7 @@ d_q_1490 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380
 d_q_1490 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_rewrite'45'program_900
+      MAlonzo.Code.Once.Compile.d_rewrite'45'program_894
       (coe d_p_1488 (coe v0) (coe v1))
 -- Once.Adequacy.ImageUnique._.img
 d_img_1492 ::
@@ -2502,7 +2502,7 @@ d_img_1492 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_img_1492 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_image'45'of_972
+      MAlonzo.Code.Once.Compile.d_image'45'of_966
       (coe d_p_1488 (coe v0) (coe v1))
 -- Once.Adequacy.ImageUnique._.fs
 d_fs_1494 ::
@@ -2511,7 +2511,7 @@ d_fs_1494 ::
   [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
 d_fs_1494 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_fdefs_250
+      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_fdefs_244
       (coe d_img_1492 (coe v0) (coe v1))
 -- Once.Adequacy.ImageUnique._.fs≡
 d_fs'8801'_1496 ::
@@ -2649,9 +2649,9 @@ d_B_1520 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_B_1520 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_block'45'syms_938
+      MAlonzo.Code.Once.Compile.d_block'45'syms_932
       (coe
-         MAlonzo.Code.Once.Compile.d_program'45'blocks_904
+         MAlonzo.Code.Once.Compile.d_program'45'blocks_898
          (coe d_p_1488 (coe v0) (coe v1)))
 -- Once.Adequacy.ImageUnique._.cD
 d_cD_1522 ::
@@ -2669,7 +2669,7 @@ d_cB_1524 v0 v1
   = coe
       d_blocks'45'sym_1200
       (coe
-         MAlonzo.Code.Once.Compile.d_program'45'blocks_904
+         MAlonzo.Code.Once.Compile.d_program'45'blocks_898
          (coe d_p_1488 (coe v0) (coe v1)))
 -- Once.Adequacy.ImageUnique._.uD
 d_uD_1526 ::
@@ -2681,7 +2681,7 @@ d_uD_1526 v0 v1
       d_adefs'45'unique_256 (coe d_img_1492 (coe v0) (coe v1))
       (coe
          d_image'45'cl_426
-         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_964)
+         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_958)
          (coe d_q_1490 (coe v0) (coe v1)))
       (coe du_EF'45'dist_1294 (coe du_tn_1486 (coe v0)))
 -- Once.Adequacy.ImageUnique.lib-unique
@@ -2702,14 +2702,14 @@ d_lib'45'unique_1530 v0
          (coe
             d_blocks'45'unique_1194
             (coe
-               MAlonzo.Code.Once.Compile.d_lib'45'blocks_1024
+               MAlonzo.Code.Once.Compile.d_lib'45'blocks_1018
                (coe d_T_1538 (coe v0)))))
 -- Once.Adequacy.ImageUnique._.T
 d_T_1538 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6]
 d_T_1538 v0
-  = coe MAlonzo.Code.Once.Compile.d_moduleTable_874 (coe v0)
+  = coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0)
 -- Once.Adequacy.ImageUnique._.tn
 d_tn_1540 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -2721,7 +2721,7 @@ d_img_1542 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_img_1542 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_lib'45'image_1016
+      MAlonzo.Code.Once.Compile.d_lib'45'image_1010
       (coe d_T_1538 (coe v0))
 -- Once.Adequacy.ImageUnique._.fs
 d_fs_1544 ::
@@ -2729,7 +2729,7 @@ d_fs_1544 ::
   [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
 d_fs_1544 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_fdefs_250
+      MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_fdefs_244
       (coe d_img_1542 (coe v0))
 -- Once.Adequacy.ImageUnique._.fs≡
 d_fs'8801'_1546 ::
@@ -2855,9 +2855,9 @@ d_B_1570 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_B_1570 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_block'45'syms_938
+      MAlonzo.Code.Once.Compile.d_block'45'syms_932
       (coe
-         MAlonzo.Code.Once.Compile.d_lib'45'blocks_1024
+         MAlonzo.Code.Once.Compile.d_lib'45'blocks_1018
          (coe d_T_1538 (coe v0)))
 -- Once.Adequacy.ImageUnique._.cD
 d_cD_1572 ::
@@ -2872,7 +2872,7 @@ d_cB_1574 v0
   = coe
       d_blocks'45'sym_1200
       (coe
-         MAlonzo.Code.Once.Compile.d_lib'45'blocks_1024
+         MAlonzo.Code.Once.Compile.d_lib'45'blocks_1018
          (coe d_T_1538 (coe v0)))
 -- Once.Adequacy.ImageUnique._.uD
 d_uD_1576 ::
@@ -2886,6 +2886,6 @@ d_uD_1576 v0
          (coe
             d_fns'45'cl_354 (coe (0 :: Integer))
             (coe
-               MAlonzo.Code.Once.Compile.d_rewrite'45'table_894
+               MAlonzo.Code.Once.Compile.d_rewrite'45'table_888
                (coe d_T_1538 (coe v0)))))
       (coe du_EF'45'dist_1294 (coe d_tn_1540 (coe v0)))

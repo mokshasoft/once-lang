@@ -49,7 +49,7 @@ d_fn'45'image_8 v0 v1
                (coe v0)
                (coe MAlonzo.Code.Once.Denotation.Program.d_fbody_22 (coe v1)))))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_936
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_918
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v1))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v1))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v1))
@@ -61,7 +61,7 @@ d_fn'45'next_14 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6 -> Integer
 d_fn'45'next_14 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_928
       (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v1))
       (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v1))
       (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v1))
@@ -92,7 +92,7 @@ d_top'45'done_30 v0 v1
       MAlonzo.Code.Once.CCC.Label.C_mkLabelId_20 (coe v0)
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_928
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe (0 :: Integer))
          (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v1)))
@@ -117,7 +117,7 @@ d_image'45'body_36 v0 v1
          (coe
             addInt (coe (1 :: Integer))
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
+               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_928
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe (0 :: Integer))
                (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v1))))

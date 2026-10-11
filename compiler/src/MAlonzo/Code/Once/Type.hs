@@ -1033,18 +1033,18 @@ d_purityEqBool_482 v0 v1
 -- Once.Type.tkindEqBool
 d_tkindEqBool_484 :: T_TKind_110 -> T_TKind_110 -> Bool
 d_tkindEqBool_484 v0 v1
-  = let v2 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
-    coe
-      (case coe v0 of
-         C_k'45'base_140
-           -> case coe v1 of
-                C_k'45'base_140 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v2
-         C_k'45'any_142
-           -> case coe v1 of
-                C_k'45'any_142 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v2
-         _ -> MAlonzo.RTE.mazUnreachableError)
+  = case coe v0 of
+      C_k'45'base_140
+        -> case coe v1 of
+             C_k'45'base_140 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             C_k'45'any_142 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_k'45'any_142
+        -> case coe v1 of
+             C_k'45'base_140 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+             C_k'45'any_142 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.typeEqBool
 d_typeEqBool_486 :: T_Type_108 -> T_Type_108 -> Bool
 d_typeEqBool_486 v0 v1

@@ -379,7 +379,7 @@ du_valid'8594'shape_448 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_642
+                          MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_588
                           (coe
                              MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_ι'7584'_26
                              (coe v0))

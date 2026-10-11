@@ -487,13 +487,11 @@ library
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32
       MAlonzo.Code.Once.Adequacy.CanonResolve
-      MAlonzo.Code.Once.Adequacy.CataBridge
       MAlonzo.Code.Once.Adequacy.OutErased
       MAlonzo.Code.Once.Adequacy.CataRel
       MAlonzo.Code.Once.Adequacy.SeqRel
       MAlonzo.Code.Once.Adequacy.FunBundle
       MAlonzo.Code.Once.Adequacy.MeaningBridge
-      MAlonzo.Code.Once.Adequacy.MeaningRelation
       MAlonzo.Code.Once.Adequacy.ResolveFaithful
       MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation
       MAlonzo.Code.Once.CCC.Target.RiscV64.Layout

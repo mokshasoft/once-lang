@@ -615,7 +615,3 @@ du_'8849''7512''45''8852''691'_444 v0 v1
                     (coe du_'8849''7512''45''8852''691'_444 (coe v4) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Surface.Context.↾-∅
-d_'8638''45''8709'_454 ::
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8638''45''8709'_454 = erased

@@ -135,11 +135,3 @@ d_'60''58''45'trans'45''8728'_152 ::
   MAlonzo.Code.Once.Type.Sub.T__'60''58'__24 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'60''58''45'trans'45''8728'_152 = erased
--- Once.Denotation.Sub.void-middle
-d_void'45'middle_254 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_void'45'middle_254 = erased

@@ -436,7 +436,7 @@ d_x86'45'32'45'shift'45'frame_302 v0 v1
             MAlonzo.Code.Once.Memory.StackSlots.d_in'45'stack_22 (coe v0)))
 -- Once.CCC.Target.X86-32.FrameInstantiation.x86-32-frame-semantics
 d_x86'45'32'45'frame'45'semantics_308 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6
 d_x86'45'32'45'frame'45'semantics_308 v0
   = coe

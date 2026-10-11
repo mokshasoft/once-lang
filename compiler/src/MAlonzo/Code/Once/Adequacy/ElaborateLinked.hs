@@ -58,7 +58,7 @@ du_linkedAt'45'cons_18 v0 v1 v2 v3 v4
   = coe
       du_go_42 (coe v4)
       (coe
-         MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__116
+         MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__114
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v0))
          (coe v1))
       (coe
@@ -120,7 +120,7 @@ du_linkedAt'45'here_48 v0
   = coe
       du_go_64
       (coe
-         MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__116
+         MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__114
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v0))
          (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v0)))
       (coe

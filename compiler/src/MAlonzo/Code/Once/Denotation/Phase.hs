@@ -17,7 +17,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Fin.Base
@@ -144,65 +143,8 @@ d_bind'7472'0_136 ::
 d_bind'7472'0_136 ~v0 ~v1 ~v2 v3 = du_bind'7472'0_136 v3
 du_bind'7472'0_136 :: AgdaAny -> AgdaAny
 du_bind'7472'0_136 v0 = coe v0
--- Once.Denotation.Phase.eraseᴰ
-d_erase'7472'_146 ::
-  Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 -> AgdaAny -> AgdaAny
-d_erase'7472'_146 ~v0 v1 v2 v3 = du_erase'7472'_146 v1 v2 v3
-du_erase'7472'_146 ::
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 -> AgdaAny -> AgdaAny
-du_erase'7472'_146 v0 v1 v2
-  = case coe v0 of
-      MAlonzo.Code.Once.Surface.Context.C_'8709'_8
-        -> coe seq (coe v1) (coe v2)
-      MAlonzo.Code.Once.Surface.Context.C__'44'_'94'__12 v4 v5 v6
-        -> case coe v1 of
-             MAlonzo.Code.Once.Surface.Context.C__'8759'__66 v8 v9
-               -> case coe v8 of
-                    MAlonzo.Code.Once.Type.C_Zero_6
-                      -> coe
-                           du_erase'7472'_146 (coe v4) (coe v9)
-                           (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2))
-                    MAlonzo.Code.Once.Type.C_One_8
-                      -> coe
-                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe
-                              du_erase'7472'_146 (coe v4) (coe v9)
-                              (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2)))
-                           (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2))
-                    MAlonzo.Code.Once.Type.C_Many_10
-                      -> coe
-                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe
-                              du_erase'7472'_146 (coe v4) (coe v9)
-                              (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2)))
-                           (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2))
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Denotation.Phase.eraseᴰ-restrict
-d_erase'7472''45'restrict_192 ::
-  Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_erase'7472''45'restrict_192 = erased
--- Once.Denotation.Phase.eraseᴰ-bind
-d_erase'7472''45'bind_276 ::
-  Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Quantity_4 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  AgdaAny ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_erase'7472''45'bind_276 = erased
 -- Once.Denotation.Phase.env0
-d_env0_304 ::
+d_env0_142 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 -> AgdaAny
-d_env0_304 v0 v1 = coe seq (coe v0) (coe v1)
+d_env0_142 v0 v1 = coe seq (coe v0) (coe v1)

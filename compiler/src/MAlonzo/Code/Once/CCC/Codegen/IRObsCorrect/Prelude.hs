@@ -2156,11 +2156,11 @@ d_ι'7584'_394 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250
 d_ι'7584'_394 ~v0 ~v1 = du_ι'7584'_394
 du_ι'7584'_394 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250
 du_ι'7584'_394
   = coe MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_ι'7584'_26
 -- Once.CCC.Codegen.IRObsCorrect.Prelude._.ClosureWellFormedDef.BodyCorrect.body-cap-eq

@@ -41,7 +41,7 @@ d_Tm_26 a0 a1 a2 a3 = ()
 d_primCod_100 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Prim_20 ->
   MAlonzo.Code.Once.Type.T_Type_108
 d_primCod_100 ~v0 ~v1 ~v2 = du_primCod_100
@@ -54,7 +54,7 @@ du_primCod_100
 d_primDom_102 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Prim_20 ->
   MAlonzo.Code.Once.Type.T_Type_108
 d_primDom_102 ~v0 ~v1 ~v2 = du_primDom_102
@@ -138,7 +138,7 @@ data T__'8866''91'_'93'_'8759'_'33'__244
 d_'8849''7512''45'keep_628 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   MAlonzo.Code.Once.Type.T_Quantity_4 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -170,7 +170,7 @@ du_'8849''7512''45'keep_628 v0 v1
 d_'8866'case'8852'_664 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->

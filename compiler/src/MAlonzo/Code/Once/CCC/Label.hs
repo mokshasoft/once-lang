@@ -706,17 +706,9 @@ du_subst'45'T_298 = coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
 d_'8801''7495''7473''45'refl_308 ::
   T_EntryId_22 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8801''7495''7473''45'refl_308 = erased
--- Once.CCC.Label.≢⇒≡ᵇᴱfalse
-d_'8802''8658''8801''7495''7473'false_330 ::
-  T_EntryId_22 ->
-  T_EntryId_22 ->
-  (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8802''8658''8801''7495''7473'false_330 = erased
 -- Once.CCC.Label._≡ᵇᴸ_
-d__'8801''7495''7480'__360 :: T_Label_28 -> T_Label_28 -> Bool
-d__'8801''7495''7480'__360 v0 v1
+d__'8801''7495''7480'__326 :: T_Label_28 -> T_Label_28 -> Bool
+d__'8801''7495''7480'__326 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
@@ -740,9 +732,9 @@ d__'8801''7495''7480'__360 v0 v1
                 _ -> coe v2
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.CCC.Label.showPath
-d_showPath_378 ::
+d_showPath_344 ::
   [Integer] -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showPath_378 v0
+d_showPath_344 v0
   = case coe v0 of
       [] -> coe ("" :: Data.Text.Text)
       (:) v1 v2
@@ -752,51 +744,51 @@ d_showPath_378 v0
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
                 (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v1)
-                (d_showPath_378 (coe v2)))
+                (d_showPath_344 (coe v2)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.showLabelId
-d_showLabelId_384 ::
+d_showLabelId_350 ::
   T_LabelId_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showLabelId_384 v0
+d_showLabelId_350 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       (MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
          (coe d_owner_14 (coe v0)))
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-         (d_showPath_378 (coe d_path_16 (coe v0)))
+         (d_showPath_344 (coe d_path_16 (coe v0)))
          (coe
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("_" :: Data.Text.Text)
             (coe
                MAlonzo.Code.Once.Target.Symbol.d_showNat_6 (d_idx_18 (coe v0)))))
 -- Once.CCC.Label.thunkSym
-d_thunkSym_388 ::
+d_thunkSym_354 ::
   T_LabelId_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_thunkSym_388 v0
+d_thunkSym_354 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-      (".L_thunk_" :: Data.Text.Text) (d_showLabelId_384 (coe v0))
+      (".L_thunk_" :: Data.Text.Text) (d_showLabelId_350 (coe v0))
 -- Once.CCC.Label.entrySym
-d_entrySym_392 ::
+d_entrySym_358 ::
   T_EntryId_22 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_entrySym_392 v0
+d_entrySym_358 v0
   = case coe v0 of
-      C_e'45'thunk_24 v1 -> coe d_thunkSym_388 (coe v1)
+      C_e'45'thunk_24 v1 -> coe d_thunkSym_354 (coe v1)
       C_e'45'fn_26 v1
         -> coe
              MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
              (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.labelSym
-d_labelSym_398 ::
+d_labelSym_364 ::
   T_Label_28 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_labelSym_398 v0
+d_labelSym_364 v0
   = case coe v0 of
       C_once_30 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (".Lonce_" :: Data.Text.Text) (d_showLabelId_384 (coe v1))
+             (".Lonce_" :: Data.Text.Text) (d_showLabelId_350 (coe v1))
       C_sigop_32 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -807,13 +799,13 @@ d_labelSym_398 v0
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    ("_" :: Data.Text.Text)
                    (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v2)))
-      C_callee_34 v1 -> coe d_entrySym_392 (coe v1)
+      C_callee_34 v1 -> coe d_entrySym_358 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.ℓ
-d_ℓ_408 ::
+d_ℓ_374 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Integer -> T_LabelId_6
-d_ℓ_408 v0 v1
+d_ℓ_374 v0 v1
   = coe
       C_mkLabelId_20 (coe v0)
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v1)

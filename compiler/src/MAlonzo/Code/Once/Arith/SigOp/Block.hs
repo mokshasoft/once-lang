@@ -1567,7 +1567,7 @@ d_block'45'info_554 v0 v1 v2
   = coe
       seq (coe v1)
       (coe
-         MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_446
+         MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_374
          (coe
             MAlonzo.Code.Once.CanonicalName.d_bare_12
             (coe du_block'45'name_366 (coe v0) (coe v2)))

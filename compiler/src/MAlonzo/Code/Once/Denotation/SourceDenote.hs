@@ -94,7 +94,7 @@ du_cata'45'ev'45'alg'738'_36 v0 v1 v2 v3
                     coe
                       v5
                       (coe
-                         MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_460
+                         MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_440
                          (coe v0) (coe v1) (coe v4))))))
 -- Once.Denotation.SourceDenote.liftD
 d_liftD_58 ::
@@ -161,14 +161,14 @@ d_sigOp'738'_104 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_238
       (coe
-         MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_386
+         MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_366
          (coe v1) (coe MAlonzo.Code.Once.SigOp.Info.d_conB_184 (coe v4)))
       (coe
          MAlonzo.Code.Once.Denotation.DenotTrace.d_sigOpT_106 v2
          (MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
             (coe d_calls_80 (coe v3)))
          v0 v1 v4
-         (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_356
+         (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_336
             (coe v0) (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_182 (coe v4))
             (coe v5)))
 -- Once.Denotation.SourceDenote.⟦_⟧ˢ
@@ -2160,13 +2160,13 @@ du_'10214'_'10215''738'_122 v0 v1 v2 v3 v4 v5 v6
                                       coe
                                         MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_194
                                         (coe
-                                           MAlonzo.Code.Once.Denotation.ValueDomain.du_anaF'7496'_264
+                                           MAlonzo.Code.Once.Denotation.ValueDomain.du_anaF'7496'_244
                                            v19
                                            (\ v23 ->
                                               coe
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_238
                                                 (coe
-                                                   MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_418
+                                                   MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_398
                                                    (coe v19) (coe v14))
                                                 (coe v21 v23))
                                            v22))))

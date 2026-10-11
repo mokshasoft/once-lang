@@ -2945,7 +2945,7 @@ d_call'45'sigop'45'ans'45'at_2892 v0 v1 v2 v3 v4 v5 v6 v7
         -> coe
              C_SV'45'Lit_76 (coe v2) (coe v5)
              (coe
-                MAlonzo.Code.Once.Denotation.TraceMonad.d_answer_292
+                MAlonzo.Code.Once.Denotation.TraceMonad.d_answer_274
                 (MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'interp_128 (coe v0))
                 (d_ev'45'log_434 (coe v4))
                 (coe
@@ -2993,12 +2993,12 @@ d_call'45'sigop'45'dec_2944 ::
 d_call'45'sigop'45'dec_2944 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Spec.Contract.d__'8712'K'63'__176
-      (MAlonzo.Code.Once.Denotation.TraceMonad.d_callKey_264
+      (MAlonzo.Code.Once.Denotation.TraceMonad.d_callKey_246
          (coe
             MAlonzo.Code.Once.Denotation.TraceMonad.C_callOp_142
             (coe MAlonzo.Code.Once.SigOp.Info.d_name_178 (coe v3)) (coe v1)
             (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_182 (coe v3)) (coe v2)))
-      (MAlonzo.Code.Once.Denotation.TraceMonad.d_calls_280
+      (MAlonzo.Code.Once.Denotation.TraceMonad.d_calls_262
          (coe
             MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'interp_128 (coe v0)))
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-val
@@ -3061,7 +3061,7 @@ d_pure'45'sigop'45'out'45'val_2990 v0 v1 v2 v3 v4 v5
         -> coe
              du_res'45'sv_2994 (coe v2) (coe v4)
              (coe
-                MAlonzo.Code.Once.SigOp.Info.d_semM_342 v1 v2
+                MAlonzo.Code.Once.SigOp.Info.d_semM_274 v1 v2
                 (MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'ffi_162 (coe v0)) v3
                 (MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'numerics_166
                    (coe v0))
@@ -3186,7 +3186,7 @@ du_sigop'45'events_3082 ::
 du_sigop'45'events_3082 v0 v1 v2
   = coe
       du_sigop'45'events'45'of_3064 (coe v0)
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_352 (coe v1)) (coe v1)
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_284 (coe v1)) (coe v1)
       (coe v2)
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-output
 d_exec'45'sigop'45'output_3092 ::
@@ -3198,7 +3198,7 @@ d_exec'45'sigop'45'output_3092 ::
 d_exec'45'sigop'45'output_3092 v0 v1 v2 v3 v4
   = coe
       d_exec'45'sigop'45'output'45'of_3050 (coe v0) (coe v1) (coe v2)
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_352 (coe v3)) (coe v3)
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_284 (coe v3)) (coe v3)
       (coe v4)
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-halts-of
 d_exec'45'sigop'45'halts'45'of_3102 ::
@@ -3237,7 +3237,7 @@ du_exec'45'sigop'45'halts_3108 ::
 du_exec'45'sigop'45'halts_3108 v0
   = coe
       du_exec'45'sigop'45'halts'45'of_3102
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_352 (coe v0))
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_284 (coe v0))
 -- Once.CCC.Machine.SMCore.AbstractExec.loop-fuel
 d_loop'45'fuel_3114 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 -> Integer

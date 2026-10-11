@@ -48,7 +48,7 @@ d_key_6 v0
       MAlonzo.Code.Once.CCC.Label.C_sigop_32 v1 v2
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-             (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_398 (coe v0))
+             (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v0))
       MAlonzo.Code.Once.CCC.Label.C_callee_34 v1
         -> case coe v1 of
              MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 v2

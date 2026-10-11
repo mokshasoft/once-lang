@@ -162,34 +162,25 @@ d_arrowTarget_178 v0
 -- Once.TypeCheck.TargetView.SumTarget
 d_SumTarget_186 a0 = ()
 data T_SumTarget_186 = C_sum'45'at_192 | C_sum'45'other_196
--- Once.TypeCheck.TargetView.sumTarget
-d_sumTarget_200 ::
-  MAlonzo.Code.Once.Type.T_Type_108 -> T_SumTarget_186
-d_sumTarget_200 v0
-  = let v1 = coe C_sum'45'other_196 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Once.Type.C__'43'__126 v2 v3 -> coe C_sum'45'at_192
-         _ -> coe v1)
 -- Once.TypeCheck.TargetView.NuView
-d_NuView_206 a0 = ()
-data T_NuView_206 = C_nu'45'at_212 | C_nu'45'other_216
+d_NuView_198 a0 = ()
+data T_NuView_198 = C_nu'45'at_204 | C_nu'45'other_208
 -- Once.TypeCheck.TargetView.nuView
-d_nuView_220 :: MAlonzo.Code.Once.Type.T_Type_108 -> T_NuView_206
-d_nuView_220 v0
-  = let v1 = coe C_nu'45'other_216 in
+d_nuView_212 :: MAlonzo.Code.Once.Type.T_Type_108 -> T_NuView_198
+d_nuView_212 v0
+  = let v1 = coe C_nu'45'other_208 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Type.C_ν'45'type_132 v2 v3 -> coe C_nu'45'at_212
+         MAlonzo.Code.Once.Type.C_ν'45'type_132 v2 v3 -> coe C_nu'45'at_204
          _ -> coe v1)
 -- Once.TypeCheck.TargetView.ApplyView
-d_ApplyView_226 a0 = ()
-data T_ApplyView_226 = C_apply'45'at_236 | C_apply'45'other_240
+d_ApplyView_218 a0 = ()
+data T_ApplyView_218 = C_apply'45'at_228 | C_apply'45'other_232
 -- Once.TypeCheck.TargetView.applyView
-d_applyView_244 ::
-  MAlonzo.Code.Once.Type.T_Type_108 -> T_ApplyView_226
-d_applyView_244 v0
-  = let v1 = coe C_apply'45'other_240 in
+d_applyView_236 ::
+  MAlonzo.Code.Once.Type.T_Type_108 -> T_ApplyView_218
+d_applyView_236 v0
+  = let v1 = coe C_apply'45'other_232 in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.Type.C__'42'__124 v2 v3
@@ -198,20 +189,20 @@ d_applyView_244 v0
                   -> case coe v5 of
                        MAlonzo.Code.Once.Type.C_mk'45'kind_50 v7 v8
                          -> case coe v7 of
-                              MAlonzo.Code.Once.Type.C_Many_10 -> coe C_apply'45'at_236
+                              MAlonzo.Code.Once.Type.C_Many_10 -> coe C_apply'45'at_228
                               _ -> coe v1
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v1
          _ -> coe v1)
 -- Once.TypeCheck.TargetView.ProdView
-d_ProdView_254 a0 = ()
-data T_ProdView_254 = C_prod'45'at_260 | C_prod'45'other_264
+d_ProdView_246 a0 = ()
+data T_ProdView_246 = C_prod'45'at_252 | C_prod'45'other_256
 -- Once.TypeCheck.TargetView.prodView
-d_prodView_268 ::
-  MAlonzo.Code.Once.Type.T_Type_108 -> T_ProdView_254
-d_prodView_268 v0
-  = let v1 = coe C_prod'45'other_264 in
+d_prodView_260 ::
+  MAlonzo.Code.Once.Type.T_Type_108 -> T_ProdView_246
+d_prodView_260 v0
+  = let v1 = coe C_prod'45'other_256 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Type.C__'42'__124 v2 v3 -> coe C_prod'45'at_260
+         MAlonzo.Code.Once.Type.C__'42'__124 v2 v3 -> coe C_prod'45'at_252
          _ -> coe v1)

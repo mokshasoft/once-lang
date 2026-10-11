@@ -172,17 +172,8 @@ du_mapAna'7496'_78 v0 v1 v2 v3
                     (coe du_mapAna'7496'_78 (coe v0) (coe v5) (coe v2) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Denotation.ValueDomain.anaᵈ-subst-nat
-d_ana'7496''45'subst'45'nat_172 ::
-  MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  () ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ana'7496''45'subst'45'nat_172 = erased
 -- Once.Denotation.ValueDomain.anaᵈ-erase
-d_ana'7496''45'erase_194 ::
+d_ana'7496''45'erase_174 ::
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -192,9 +183,9 @@ d_ana'7496''45'erase_194 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ana'7496''45'erase_194 = erased
+d_ana'7496''45'erase_174 = erased
 -- Once.Denotation.ValueDomain.anaᵈ-erase-full
-d_ana'7496''45'erase'45'full_234 ::
+d_ana'7496''45'erase'45'full_214 ::
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -206,26 +197,26 @@ d_ana'7496''45'erase'45'full_234 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ana'7496''45'erase'45'full_234 = erased
+d_ana'7496''45'erase'45'full_214 = erased
 -- Once.Denotation.ValueDomain.subst-νᵈ-cong
-d_subst'45'ν'7496''45'cong_256 ::
+d_subst'45'ν'7496''45'cong_236 ::
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_ν'7496'_8 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45'ν'7496''45'cong_256 = erased
+d_subst'45'ν'7496''45'cong_236 = erased
 -- Once.Denotation.ValueDomain.anaFᵈ
-d_anaF'7496'_264 ::
+d_anaF'7496'_244 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> T_ν'7496'_8
-d_anaF'7496'_264 v0 ~v1 v2 = du_anaF'7496'_264 v0 v2
-du_anaF'7496'_264 ::
+d_anaF'7496'_244 v0 ~v1 v2 = du_anaF'7496'_244 v0 v2
+du_anaF'7496'_244 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   AgdaAny -> T_ν'7496'_8
-du_anaF'7496'_264 v0 v1
+du_anaF'7496'_244 v0 v1
   = coe
       du_ana'7496'_64
       (coe MAlonzo.Code.Once.Functor.Translate.du_translateF_56 (coe v0))
@@ -238,24 +229,24 @@ du_anaF'7496'_264 v0 v1
                  erased)
               (coe v1 v2)))
 -- Once.Denotation.ValueDomain.⟦_⟧ᴰ
-d_'10214'_'10215''7472'_274 ::
+d_'10214'_'10215''7472'_254 ::
   MAlonzo.Code.Once.Type.T_Type_108 -> ()
-d_'10214'_'10215''7472'_274 = erased
+d_'10214'_'10215''7472'_254 = erased
 -- Once.Denotation.ValueDomain.⟦_⟧ᴰᴵ
-d_'10214'_'10215''7472''7477'_306 ::
+d_'10214'_'10215''7472''7477'_286 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 -> ()
-d_'10214'_'10215''7472''7477'_306 = erased
+d_'10214'_'10215''7472''7477'_286 = erased
 -- Once.Denotation.ValueDomain.cohᴰ
-d_coh'7472'_312 ::
+d_coh'7472'_292 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coh'7472'_312 = erased
+d_coh'7472'_292 = erased
 -- Once.Denotation.ValueDomain.forgetᵇ
-d_forget'7495'_356 ::
+d_forget'7495'_336 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196 ->
   AgdaAny -> AgdaAny
-d_forget'7495'_356 v0 v1 v2
+d_forget'7495'_336 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198 -> coe v2
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202 -> coe v2
@@ -267,8 +258,8 @@ d_forget'7495'_356 v0 v1 v2
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe d_forget'7495'_356 (coe v7) (coe v5) (coe v9))
-                           (coe d_forget'7495'_356 (coe v8) (coe v6) (coe v10))
+                           (coe d_forget'7495'_336 (coe v7) (coe v5) (coe v9))
+                           (coe d_forget'7495'_336 (coe v8) (coe v6) (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Sum_216 v5 v6
@@ -278,20 +269,20 @@ d_forget'7495'_356 v0 v1 v2
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v9
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                           (coe d_forget'7495'_356 (coe v7) (coe v5) (coe v9))
+                           (coe d_forget'7495'_336 (coe v7) (coe v5) (coe v9))
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v9
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                           (coe d_forget'7495'_356 (coe v8) (coe v6) (coe v9))
+                           (coe d_forget'7495'_336 (coe v8) (coe v6) (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.ValueDomain.injectᵇ
-d_inject'7495'_386 ::
+d_inject'7495'_366 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196 ->
   AgdaAny -> AgdaAny
-d_inject'7495'_386 v0 v1 v2
+d_inject'7495'_366 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198 -> coe v2
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202 -> coe v2
@@ -303,8 +294,8 @@ d_inject'7495'_386 v0 v1 v2
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe d_inject'7495'_386 (coe v7) (coe v5) (coe v9))
-                           (coe d_inject'7495'_386 (coe v8) (coe v6) (coe v10))
+                           (coe d_inject'7495'_366 (coe v7) (coe v5) (coe v9))
+                           (coe d_inject'7495'_366 (coe v8) (coe v6) (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Sum_216 v5 v6
@@ -314,31 +305,31 @@ d_inject'7495'_386 v0 v1 v2
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v9
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                           (coe d_inject'7495'_386 (coe v7) (coe v5) (coe v9))
+                           (coe d_inject'7495'_366 (coe v7) (coe v5) (coe v9))
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v9
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                           (coe d_inject'7495'_386 (coe v8) (coe v6) (coe v9))
+                           (coe d_inject'7495'_366 (coe v8) (coe v6) (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.ValueDomain.coerce-functor-D
-d_coerce'45'functor'45'D_418 ::
+d_coerce'45'functor'45'D_398 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
-d_coerce'45'functor'45'D_418 v0 v1 ~v2 v3
-  = du_coerce'45'functor'45'D_418 v0 v1 v3
-du_coerce'45'functor'45'D_418 ::
+d_coerce'45'functor'45'D_398 v0 v1 ~v2 v3
+  = du_coerce'45'functor'45'D_398 v0 v1 v3
+du_coerce'45'functor'45'D_398 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   AgdaAny -> AgdaAny
-du_coerce'45'functor'45'D_418 v0 v1 v2
+du_coerce'45'functor'45'D_398 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_240 v4
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_K_112 v5
-               -> coe d_forget'7495'_356 (coe v5) (coe v4) (coe v2)
+               -> coe d_forget'7495'_336 (coe v5) (coe v4) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_242 -> coe v2
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_248 v5 v6
@@ -348,11 +339,11 @@ du_coerce'45'functor'45'D_418 v0 v1 v2
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v9
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                           (coe du_coerce'45'functor'45'D_418 (coe v7) (coe v5) (coe v9))
+                           (coe du_coerce'45'functor'45'D_398 (coe v7) (coe v5) (coe v9))
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v9
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                           (coe du_coerce'45'functor'45'D_418 (coe v8) (coe v6) (coe v9))
+                           (coe du_coerce'45'functor'45'D_398 (coe v8) (coe v6) (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_254 v5 v6
@@ -362,28 +353,28 @@ du_coerce'45'functor'45'D_418 v0 v1 v2
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe du_coerce'45'functor'45'D_418 (coe v7) (coe v5) (coe v9))
-                           (coe du_coerce'45'functor'45'D_418 (coe v8) (coe v6) (coe v10))
+                           (coe du_coerce'45'functor'45'D_398 (coe v7) (coe v5) (coe v9))
+                           (coe du_coerce'45'functor'45'D_398 (coe v8) (coe v6) (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.ValueDomain.coerce-functor⁻¹-D
-d_coerce'45'functor'8315''185''45'D_460 ::
+d_coerce'45'functor'8315''185''45'D_440 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
-d_coerce'45'functor'8315''185''45'D_460 v0 v1 ~v2 v3
-  = du_coerce'45'functor'8315''185''45'D_460 v0 v1 v3
-du_coerce'45'functor'8315''185''45'D_460 ::
+d_coerce'45'functor'8315''185''45'D_440 v0 v1 ~v2 v3
+  = du_coerce'45'functor'8315''185''45'D_440 v0 v1 v3
+du_coerce'45'functor'8315''185''45'D_440 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
   AgdaAny -> AgdaAny
-du_coerce'45'functor'8315''185''45'D_460 v0 v1 v2
+du_coerce'45'functor'8315''185''45'D_440 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_240 v4
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C_K_112 v5
-               -> coe d_inject'7495'_386 (coe v5) (coe v4) (coe v2)
+               -> coe d_inject'7495'_366 (coe v5) (coe v4) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_242 -> coe v2
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_248 v5 v6
@@ -394,13 +385,13 @@ du_coerce'45'functor'8315''185''45'D_460 v0 v1 v2
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
                            (coe
-                              du_coerce'45'functor'8315''185''45'D_460 (coe v7) (coe v5)
+                              du_coerce'45'functor'8315''185''45'D_440 (coe v7) (coe v5)
                               (coe v9))
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v9
                       -> coe
                            MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
                            (coe
-                              du_coerce'45'functor'8315''185''45'D_460 (coe v8) (coe v6)
+                              du_coerce'45'functor'8315''185''45'D_440 (coe v8) (coe v6)
                               (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -412,10 +403,10 @@ du_coerce'45'functor'8315''185''45'D_460 v0 v1 v2
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
-                              du_coerce'45'functor'8315''185''45'D_460 (coe v7) (coe v5)
+                              du_coerce'45'functor'8315''185''45'D_440 (coe v7) (coe v5)
                               (coe v9))
                            (coe
-                              du_coerce'45'functor'8315''185''45'D_460 (coe v8) (coe v6)
+                              du_coerce'45'functor'8315''185''45'D_440 (coe v8) (coe v6)
                               (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

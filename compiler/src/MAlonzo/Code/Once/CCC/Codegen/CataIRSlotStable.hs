@@ -158,7 +158,7 @@ d_ir'45'to'45'trace'45'lab_54 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_ir'45'to'45'trace'45'lab_54 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_936
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'lab_918
       (coe v0)
 -- Once.CCC.Codegen.CataIRSlotStable._.ir-to-unit
 d_ir'45'to'45'unit_56 ::
@@ -1768,7 +1768,7 @@ d_ir'45'stable_550 v0 v1 v2 v3 v4 v5 v6
                            du_cata'45'dispatch'45'slot'45'stable_468 (coe v0) (coe v1)
                            (coe
                               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                              (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_608 (coe v14)))
+                              (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584 (coe v14)))
                            (coe v5)
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2779,7 +2779,7 @@ d_ir'45'blocks'45'stable_776 v0 v1 v2 v3 v4 v5 v6
                                                 (coe (1 :: Integer))
                                                 (coe addInt (coe (1 :: Integer)) (coe v6))
                                                 (coe v11))))
-                                       (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_408 (coe v0) (coe v6))
+                                       (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_374 (coe v0) (coe v6))
                                        (coe (0 :: Integer)) (coe v14) (coe v8)))))
                            (d_ir'45'blocks'45'stable_776
                               (coe v0) (coe v1) (coe v2)

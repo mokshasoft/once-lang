@@ -162,18 +162,18 @@ d_interp'45'subst_102 = erased
 -- Once.Adequacy.CoreBridge.runIRAt
 d_runIRAt_106 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
 d_runIRAt_106 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_542 (coe v1)
+      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_508 (coe v1)
       (coe
          MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_120 (coe v0)
          (coe
             MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
             (coe
-               MAlonzo.Code.Once.Denotation.TraceMonad.d_pureHalf_350 (coe v1))
+               MAlonzo.Code.Once.Denotation.TraceMonad.d_pureHalf_324 (coe v1))
             (coe v2))
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
@@ -181,7 +181,7 @@ d_runIRAt_106 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
             (coe MAlonzo.Code.Once.Type.C_Unit_120))
-         (coe MAlonzo.Code.Once.Compile.d_mainCall_814)
+         (coe MAlonzo.Code.Once.Compile.d_mainCall_808)
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       (coe v3)
 -- Once.Adequacy.CoreBridge.core-ef
@@ -269,16 +269,16 @@ d_ι_246 ::
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Once.Spec.Contract.T_Impl_292 ->
-  Integer -> MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268
+  Integer -> MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250
 d_ι_246 v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10 ~v11
   = du_ι_246 v0 v10
 du_ι_246 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.Spec.Contract.T_Impl_292 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_268
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250
 du_ι_246 v0 v1
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_interp_278
+      MAlonzo.Code.Once.Denotation.TraceMonad.C_interp_260
       (coe MAlonzo.Code.Once.Spec.Module.d_moduleSig_132 (coe v0))
       (coe v1)
 -- Once.Adequacy.CoreBridge._.ir≡

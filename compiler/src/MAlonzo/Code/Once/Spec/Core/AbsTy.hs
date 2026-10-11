@@ -208,22 +208,22 @@ d_base'45'ar'45'kind_276 ::
   Integer ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_708
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_670
 d_base'45'ar'45'kind_276 ~v0 ~v1 ~v2 ~v3 v4
   = du_base'45'ar'45'kind_276 v4
 du_base'45'ar'45'kind_276 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_708
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_670
 du_base'45'ar'45'kind_276 v0
   = case coe v0 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v1 v2
         -> if coe v1
              then coe
                     seq (coe v2)
-                    (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'var_716)
+                    (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'var_678)
              else coe
                     seq (coe v2)
-                    (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'rigid_728)
+                    (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'rigid_690)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.AbsTy.base-ar-bound
 d_base'45'ar'45'bound_300 ::
@@ -232,7 +232,7 @@ d_base'45'ar'45'bound_300 ::
    MAlonzo.Code.Once.Type.T_TKind_110) ->
   Integer ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_708
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_670
 d_base'45'ar'45'bound_300 ~v0 v1 v2 v3
   = du_base'45'ar'45'bound_300 v1 v2 v3
 du_base'45'ar'45'bound_300 ::
@@ -240,7 +240,7 @@ du_base'45'ar'45'bound_300 ::
    MAlonzo.Code.Once.Type.T_TKind_110) ->
   Integer ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_708
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_670
 du_base'45'ar'45'bound_300 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4
@@ -255,7 +255,7 @@ du_base'45'ar'45'bound_300 v0 v1 v2
                           (coe MAlonzo.Code.Once.Type.C_k'45'base_140)))
              else coe
                     seq (coe v4)
-                    (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'rigid_728)
+                    (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'rigid_690)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.AbsTy.abs-base
 d_abs'45'base_318 ::
@@ -264,22 +264,22 @@ d_abs'45'base_318 ::
    MAlonzo.Code.Once.Type.T_TKind_110) ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196 ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_708
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Base_670
 d_abs'45'base_318 v0 v1 v2 v3
   = case coe v3 of
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198
-        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Unit_718
+        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Unit_680
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Void_200
-        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Void_720
+        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Void_682
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202
-        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Int_722
+        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Int_684
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_204
-        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Float_724
+        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Float_686
       MAlonzo.Code.Once.Functor.Translate.C_base'45'Prod_210 v6 v7
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'42'__124 v8 v9
                -> coe
-                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Prod_734
+                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Prod_696
                     (d_abs'45'base_318 (coe v0) (coe v1) (coe v8) (coe v6))
                     (d_abs'45'base_318 (coe v0) (coe v1) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -287,7 +287,7 @@ d_abs'45'base_318 v0 v1 v2 v3
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'43'__126 v8 v9
                -> coe
-                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Sum_740
+                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_b'45'Sum_702
                     (d_abs'45'base_318 (coe v0) (coe v1) (coe v8) (coe v6))
                     (d_abs'45'base_318 (coe v0) (coe v1) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -308,23 +308,23 @@ d_abs'45'wf_352 ::
    MAlonzo.Code.Once.Type.T_TKind_110) ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_WFFun_746
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_WFFun_708
 d_abs'45'wf_352 v0 v1 v2 v3
   = case coe v3 of
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_240 v5
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C_K_112 v6
                -> coe
-                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'K_754
+                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'K_716
                     (d_abs'45'base_318 (coe v0) (coe v1) (coe v6) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_242
-        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'Id_756
+        -> coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'Id_718
       MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_248 v6 v7
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8853'__116 v8 v9
                -> coe
-                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'Sum_762
+                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'Sum_724
                     (d_abs'45'wf_352 (coe v0) (coe v1) (coe v8) (coe v6))
                     (d_abs'45'wf_352 (coe v0) (coe v1) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -332,7 +332,7 @@ d_abs'45'wf_352 v0 v1 v2 v3
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8855'__118 v8 v9
                -> coe
-                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'Prod_768
+                    MAlonzo.Code.Once.Spec.Core.PolyTy.C_wf'45'Prod_730
                     (d_abs'45'wf_352 (coe v0) (coe v1) (coe v8) (coe v6))
                     (d_abs'45'wf_352 (coe v0) (coe v1) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError

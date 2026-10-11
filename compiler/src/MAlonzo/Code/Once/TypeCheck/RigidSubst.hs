@@ -58,7 +58,7 @@ du_ρ'770'_14 ::
   MAlonzo.Code.Once.Type.T_Type_108
 du_ρ'770'_14 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382 (coe v0)
+      MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344 (coe v0)
       (coe
          MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
          (coe v3))
@@ -86,7 +86,7 @@ du_ρ'770'F_18 ::
   MAlonzo.Code.Once.Type.T_Functor_106
 du_ρ'770'F_18 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'F_386 (coe v0)
+      MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'F_348 (coe v0)
       (coe
          MAlonzo.Code.Once.Spec.Core.AbsTy.d_absF_88 (coe v0) (coe v1)
          (coe v3))
@@ -132,7 +132,7 @@ du_ρ'770''45'base_36 ::
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196
 du_ρ'770''45'base_36 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Spec.Core.PolyTy.du_base'45''10218''10219'_788
+      MAlonzo.Code.Once.Spec.Core.PolyTy.du_base'45''10218''10219'_750
       (coe
          MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
          (coe v3))
@@ -167,7 +167,7 @@ du_ρ'770''45'wf_42 ::
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236
 du_ρ'770''45'wf_42 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Spec.Core.PolyTy.du_wf'45''10218''10219'_826
+      MAlonzo.Code.Once.Spec.Core.PolyTy.du_wf'45''10218''10219'_788
       (coe
          MAlonzo.Code.Once.Spec.Core.AbsTy.d_absF_88 (coe v0) (coe v1)
          (coe v3))
@@ -499,23 +499,8 @@ d_lk'45'nothing_378 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_lk'45'nothing_378 = erased
--- Once.TypeCheck.RigidSubst.lkL-nothing
-d_lkL'45'nothing_480 ::
-  Integer ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_lkL'45'nothing_480 = erased
 -- Once.TypeCheck.RigidSubst.ImportsRF
-d_ImportsRF_498 ::
+d_ImportsRF_476 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -525,9 +510,9 @@ d_ImportsRF_498 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> ()
-d_ImportsRF_498 = erased
+d_ImportsRF_476 = erased
 -- Once.TypeCheck.RigidSubst.TopRF
-d_TopRF_506 ::
+d_TopRF_484 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -538,9 +523,9 @@ d_TopRF_506 ::
    MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> ()
-d_TopRF_506 = erased
+d_TopRF_484 = erased
 -- Once.TypeCheck.RigidSubst._⇝ᵢ_
-d__'8669''7522'__522 ::
+d__'8669''7522'__500 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -557,14 +542,14 @@ d__'8669''7522'__522 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
-d__'8669''7522'__522 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
-  = du__'8669''7522'__522 v10
-du__'8669''7522'__522 ::
+d__'8669''7522'__500 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
+  = du__'8669''7522'__500 v10
+du__'8669''7522'__500 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
-du__'8669''7522'__522 v0 = coe v0
+du__'8669''7522'__500 v0 = coe v0
 -- Once.TypeCheck.RigidSubst._⇝ᶜ_
-d__'8669''7580'__536 ::
+d__'8669''7580'__514 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -581,14 +566,14 @@ d__'8669''7580'__536 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
-d__'8669''7580'__536 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
-  = du__'8669''7580'__536 v10
-du__'8669''7580'__536 ::
+d__'8669''7580'__514 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
+  = du__'8669''7580'__514 v10
+du__'8669''7580'__514 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
-du__'8669''7580'__536 v0 = coe v0
+du__'8669''7580'__514 v0 = coe v0
 -- Once.TypeCheck.RigidSubst.subst-i
-d_subst'45'i_548 ::
+d_subst'45'i_526 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -604,16 +589,16 @@ d_subst'45'i_548 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
-d_subst'45'i_548 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+d_subst'45'i_526 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v4 of
       MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_408 v10 v11 v12 v13 v14 v15 v16
         -> coe
-             d_subst'45'i'8242'_594 (coe v0) (coe v1) (coe v2) (coe v3)
+             d_subst'45'i'8242'_572 (coe v0) (coe v1) (coe v2) (coe v3)
              (coe v10) (coe v11) (coe v12) (coe v13) (coe v14) (coe v15)
              (coe v16) (coe v5) (coe v6) (coe v7) (coe v8) (coe v9)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.RigidSubst.subst-c
-d_subst'45'c_558 ::
+d_subst'45'c_536 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -629,16 +614,16 @@ d_subst'45'c_558 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
-d_subst'45'c_558 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+d_subst'45'c_536 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v4 of
       MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_408 v10 v11 v12 v13 v14 v15 v16
         -> coe
-             d_subst'45'c'8242'_616 (coe v0) (coe v1) (coe v2) (coe v3)
+             d_subst'45'c'8242'_594 (coe v0) (coe v1) (coe v2) (coe v3)
              (coe v10) (coe v11) (coe v12) (coe v13) (coe v14) (coe v15)
              (coe v16) (coe v5) (coe v6) (coe v7) (coe v8) (coe v9)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.RigidSubst.subst-d
-d_subst'45'd_572 ::
+d_subst'45'd_550 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -656,17 +641,17 @@ d_subst'45'd_572 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24
-d_subst'45'd_572 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+d_subst'45'd_550 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
   = case coe v4 of
       MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_408 v12 v13 v14 v15 v16 v17 v18
         -> coe
-             d_subst'45'd'8242'_642 (coe v0) (coe v1) (coe v2) (coe v3)
+             d_subst'45'd'8242'_620 (coe v0) (coe v1) (coe v2) (coe v3)
              (coe v12) (coe v13) (coe v14) (coe v15) (coe v16) (coe v17)
              (coe v18) (coe v5) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10)
              (coe v11)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.RigidSubst.subst-i′
-d_subst'45'i'8242'_594 ::
+d_subst'45'i'8242'_572 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -688,7 +673,7 @@ d_subst'45'i'8242'_594 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7522'_'8758'_'10814'__10
-d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+d_subst'45'i'8242'_572 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                        v13 v14 v15
   = case coe v15 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'int_30
@@ -728,7 +713,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 v22 v23
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'annot_122 v20
-                    (d_subst'45'c'8242'_616
+                    (d_subst'45'c'8242'_594
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v22) (coe v12) (coe v13)
                        (coe v14) (coe v21))
@@ -740,11 +725,11 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                     MAlonzo.Code.Once.Type.C__'42'__124 v27 v28
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'pair_138 v21 v22
-                           (d_subst'45'i'8242'_594
+                           (d_subst'45'i'8242'_572
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v25) (coe v27) (coe v21)
                               (coe v14) (coe v23))
-                           (d_subst'45'i'8242'_594
+                           (d_subst'45'i'8242'_572
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v26) (coe v28) (coe v22)
                               (coe v14) (coe v24))
@@ -755,7 +740,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_64 v21
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'neg_146
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v21)
                        (coe MAlonzo.Code.Once.Type.C_Int_134) (coe v13) (coe v14)
@@ -769,11 +754,11 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'let_178
                     (coe du_ρ'770'_14 (coe v0) (coe v1) (coe v2) (coe v20)) v22 v23 v24
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v28) (coe v20) (coe v23)
                        (coe v14) (coe v25))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe
@@ -794,25 +779,25 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_50 v33 v34 v35 v36 v37
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'case_208
-                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                           (coe v22))
                        (coe v2))
-                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                           (coe v23))
                        (coe v2))
                     v25 v26 v27 v28 v29
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v33)
                        (coe MAlonzo.Code.Once.Type.C__'43'__126 (coe v22) (coe v23))
                        (coe v27) (coe v14) (coe v30))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe
@@ -827,7 +812,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v35) (coe v12)
                        (coe MAlonzo.Code.Once.Surface.Context.C__'8759'__66 v25 v28)
                        (coe v14) (coe v31))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe
@@ -849,12 +834,12 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith_222 v20
                     v21
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                        (coe MAlonzo.Code.Once.Type.C_Int_134) (coe v20) (coe v14)
                        (coe v23))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v27)
                        (coe MAlonzo.Code.Once.Type.C_Int_134) (coe v21) (coe v14)
@@ -866,12 +851,12 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float_236
                     v20 v21
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                        (coe MAlonzo.Code.Once.Type.C_Float_136) (coe v20) (coe v14)
                        (coe v23))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v27)
                        (coe MAlonzo.Code.Once.Type.C_Float_136) (coe v21) (coe v14)
@@ -883,12 +868,12 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float'45'il_250
                     v20 v21
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                        (coe MAlonzo.Code.Once.Type.C_Int_134) (coe v20) (coe v14)
                        (coe v23))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v27)
                        (coe MAlonzo.Code.Once.Type.C_Float_136) (coe v21) (coe v14)
@@ -900,12 +885,12 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float'45'ir_264
                     v20 v21
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                        (coe MAlonzo.Code.Once.Type.C_Float_136) (coe v20) (coe v14)
                        (coe v23))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v27)
                        (coe MAlonzo.Code.Once.Type.C_Int_134) (coe v21) (coe v14)
@@ -917,12 +902,12 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'cmp_278 v20
                     v21
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                        (coe MAlonzo.Code.Once.Type.C_Int_134) (coe v20) (coe v14)
                        (coe v23))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v27)
                        (coe MAlonzo.Code.Once.Type.C_Int_134) (coe v21) (coe v14)
@@ -933,7 +918,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v21 v22
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'app_288 v19
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v22) (coe v12) (coe v19)
                        (coe v14) (coe v20))
@@ -943,14 +928,14 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v22 v23
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'fst'45'app_300
-                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                           (coe v19))
                        (coe v2))
                     v20
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v23)
                        (coe MAlonzo.Code.Once.Type.C__'42'__124 (coe v12) (coe v19))
@@ -961,14 +946,14 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v22 v23
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'snd'45'app_312
-                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                           (coe v18))
                        (coe v2))
                     v20
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v23)
                        (coe MAlonzo.Code.Once.Type.C__'42'__124 (coe v18) (coe v12))
@@ -980,7 +965,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'app_322
                     (coe du_ρ'770'_14 (coe v0) (coe v1) (coe v2) (coe v18)) v19
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v22) (coe v18) (coe v19)
                        (coe v14) (coe v20))
@@ -990,14 +975,14 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v22 v23
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'apply'45'app'45'infer_334
-                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                           (coe v18))
                        (coe v2))
                     v20
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v23)
                        (coe
@@ -1019,14 +1004,14 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                     MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v24 v25 v26
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'apply'45'eff'45'app'45'infer_346
-                           (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                           (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                               (coe v0)
                               (coe
                                  MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                                  (coe v18))
                               (coe v2))
                            v20
-                           (d_subst'45'i'8242'_594
+                           (d_subst'45'i'8242'_572
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v23)
                               (coe
@@ -1050,7 +1035,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                     (coe du_ρ'770'F_18 (coe v0) (coe v1) (coe v2) (coe v18)) v20
                     (coe
                        du_ρ'770''45'wf_42 (coe v0) (coe v1) (coe v3) (coe v18) (coe v21))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v25)
                        (coe
@@ -1066,7 +1051,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                     (coe du_ρ'770'F_18 (coe v0) (coe v1) (coe v2) (coe v18)) v20
                     (coe
                        du_ρ'770''45'wf_42 (coe v0) (coe v1) (coe v3) (coe v18) (coe v21))
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v25)
                        (coe
@@ -1079,14 +1064,14 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v27 v28
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'app_388
-                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                           (coe v19))
                        (coe v2))
                     v21 v22 v23
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v27)
                        (coe
@@ -1096,7 +1081,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                              (coe MAlonzo.Code.Once.Type.C_pure_34))
                           (coe v12))
                        (coe v22) (coe v14) (coe v25))
-                    (d_subst'45'c'8242'_616
+                    (d_subst'45'c'8242'_594
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v28) (coe v19) (coe v23)
                        (coe v14) (coe v26))
@@ -1108,14 +1093,14 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                     MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v28 v29 v30
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'effApp_404
-                           (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                           (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                               (coe v0)
                               (coe
                                  MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                                  (coe v19))
                               (coe v2))
                            v21 v22
-                           (d_subst'45'i'8242'_594
+                           (d_subst'45'i'8242'_572
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                               (coe
@@ -1126,7 +1111,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                     (coe MAlonzo.Code.Once.Type.C_eff_36))
                                  (coe v30))
                               (coe v21) (coe v14) (coe v24))
-                           (d_subst'45'c'8242'_616
+                           (d_subst'45'c'8242'_594
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v27) (coe v19) (coe v22)
                               (coe v14) (coe v25))
@@ -1138,11 +1123,11 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'app'45'spine_420
                     (coe du_ρ'770'_14 (coe v0) (coe v1) (coe v2) (coe v19)) v21 v22
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v27) (coe v19) (coe v22)
                        (coe v14) (coe v24))
-                    (d_subst'45'd'8242'_642
+                    (d_subst'45'd'8242'_620
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v26) (coe v19)
                        (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v12) (coe v21)
@@ -1150,7 +1135,7 @@ d_subst'45'i'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.RigidSubst.subst-c′
-d_subst'45'c'8242'_616 ::
+d_subst'45'c'8242'_594 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -1172,7 +1157,7 @@ d_subst'45'c'8242'_616 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
-d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+d_subst'45'c'8242'_594 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                        v13 v14 v15
   = case coe v15 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'check_428
@@ -1206,12 +1191,12 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                          MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'compose'45'check'45'g_504
                                          (coe du_ρ'770'_14 (coe v0) (coe v1) (coe v2) (coe v20)) v23
                                          v24
-                                         (d_subst'45'd'8242'_642
+                                         (d_subst'45'd'8242'_620
                                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v28)
                                             (coe v31) (coe v35) (coe v20) (coe v24) (coe v14)
                                             (coe v25))
-                                         (d_subst'45'c'8242'_616
+                                         (d_subst'45'c'8242'_594
                                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v30)
                                             (coe
@@ -1237,20 +1222,20 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                   MAlonzo.Code.Once.Type.C_mk'45'kind_50 v37 v38
                                     -> coe
                                          MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'compose'45'check'45'f_528
-                                         (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                                         (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                                             (coe v0)
                                             (coe
                                                MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0)
                                                (coe v1) (coe v20))
                                             (coe v2))
-                                         (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                                         (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                                             (coe v0)
                                             (coe
                                                MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0)
                                                (coe v1) (coe v22))
                                             (coe v2))
                                          v24 v25 v26
-                                         (d_subst'45'i'8242'_594
+                                         (d_subst'45'i'8242'_572
                                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v33)
                                             (coe
@@ -1278,7 +1263,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                                   (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v38))
                                                (coe v36))
                                             (coe v28))
-                                         (d_subst'45'c'8242'_616
+                                         (d_subst'45'c'8242'_594
                                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v31)
                                             (coe
@@ -1307,7 +1292,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                            -> coe
                                                 MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'case'45'copair'45'check_548
                                                 v23 v24
-                                                (d_subst'45'c'8242'_616
+                                                (d_subst'45'c'8242'_594
                                                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                    (coe v5) (coe v6) (coe v7) (coe v8) (coe v9)
                                                    (coe v10) (coe v30)
@@ -1320,7 +1305,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                                          (coe v37))
                                                       (coe v33))
                                                    (coe v23) (coe v14) (coe v25))
-                                                (d_subst'45'c'8242'_616
+                                                (d_subst'45'c'8242'_594
                                                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                    (coe v5) (coe v6) (coe v7) (coe v8) (coe v9)
                                                    (coe v10) (coe v28)
@@ -1352,7 +1337,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                            -> coe
                                                 MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'pair'45'morph'45'check_568
                                                 v23 v24
-                                                (d_subst'45'c'8242'_616
+                                                (d_subst'45'c'8242'_594
                                                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                    (coe v5) (coe v6) (coe v7) (coe v8) (coe v9)
                                                    (coe v10) (coe v30)
@@ -1365,7 +1350,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                                          (coe v35))
                                                       (coe v36))
                                                    (coe v23) (coe v14) (coe v25))
-                                                (d_subst'45'c'8242'_616
+                                                (d_subst'45'c'8242'_594
                                                    (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                                                    (coe v5) (coe v6) (coe v7) (coe v8) (coe v9)
                                                    (coe v10) (coe v28)
@@ -1394,7 +1379,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                   MAlonzo.Code.Once.Type.C_mk'45'kind_50 v33 v34
                                     -> coe
                                          MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'curry'45'check_586
-                                         (d_subst'45'c'8242'_616
+                                         (d_subst'45'c'8242'_594
                                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                                             (coe
@@ -1426,7 +1411,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                          (coe
                                             du_ρ'770''45'wf_42 (coe v0) (coe v1) (coe v3) (coe v29)
                                             (coe v22))
-                                         (d_subst'45'c'8242'_616
+                                         (d_subst'45'c'8242'_594
                                             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                             (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v25)
                                             (coe
@@ -1455,7 +1440,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                   (coe
                                      du_ρ'770''45'wf_42 (coe v0) (coe v1) (coe v3) (coe v30)
                                      (coe v23))
-                                  (d_subst'45'c'8242'_616
+                                  (d_subst'45'c'8242'_594
                                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                                      (coe v7) (coe v8) (coe v9) (coe v10) (coe v26)
                                      (coe
@@ -1474,7 +1459,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
         -> coe
              MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'sub_628
              (coe du_ρ'770'_14 (coe v0) (coe v1) (coe v2) (coe v18))
-             (d_subst'45'i'8242'_594
+             (d_subst'45'i'8242'_572
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                 (coe v7) (coe v8) (coe v9) (coe v10) (coe v11) (coe v18) (coe v13)
                 (coe v14) (coe v21))
@@ -1488,7 +1473,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                     MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v29 v30 v31
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'lam_648 v22
-                           (d_subst'45'c'8242'_616
+                           (d_subst'45'c'8242'_594
                               (coe v0) (coe v1) (coe v2) (coe v3)
                               (coe addInt (coe (1 :: Integer)) (coe v4))
                               (coe
@@ -1513,11 +1498,11 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'pair'45'lit'45'check_664
                            v21 v22
-                           (d_subst'45'c'8242'_616
+                           (d_subst'45'c'8242'_594
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v25) (coe v27) (coe v21)
                               (coe v14) (coe v23))
-                           (d_subst'45'c'8242'_616
+                           (d_subst'45'c'8242'_594
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v26) (coe v28) (coe v22)
                               (coe v14) (coe v24))
@@ -1533,7 +1518,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                            v19
                            (coe
                               du_ρ'770''45'wf_42 (coe v0) (coe v1) (coe v3) (coe v24) (coe v20))
-                           (d_subst'45'c'8242'_616
+                           (d_subst'45'c'8242'_594
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v23)
                               (coe
@@ -1546,14 +1531,14 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v22 v23
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'apply'45'check_686
-                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+                    (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                        (coe v0)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                           (coe v18))
                        (coe v2))
                     v20
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v23)
                        (coe
@@ -1576,7 +1561,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inl'45'app'45'check_698
                            v20
-                           (d_subst'45'c'8242'_616
+                           (d_subst'45'c'8242'_594
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v23) (coe v24) (coe v20)
                               (coe v14) (coe v21))
@@ -1590,7 +1575,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inr'45'app'45'check_710
                            v20
-                           (d_subst'45'c'8242'_616
+                           (d_subst'45'c'8242'_594
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v23) (coe v25) (coe v20)
                               (coe v14) (coe v21))
@@ -1602,7 +1587,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'initial'45'app'45'check_720
                     v19
-                    (d_subst'45'c'8242'_616
+                    (d_subst'45'c'8242'_594
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                        (coe v7) (coe v8) (coe v9) (coe v10) (coe v22)
                        (coe MAlonzo.Code.Once.Type.C_Void_122) (coe v19) (coe v14)
@@ -1616,7 +1601,7 @@ d_subst'45'c'8242'_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                 du_ρ'770''45'ki_178 (coe v0) (coe v1) (coe v2) (coe v3) (coe v26))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.RigidSubst.subst-d′
-d_subst'45'd'8242'_642 ::
+d_subst'45'd'8242'_620 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Type.T_TKind_110) ->
@@ -1640,20 +1625,20 @@ d_subst'45'd'8242'_642 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24
-d_subst'45'd'8242'_642 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+d_subst'45'd'8242'_620 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                        v13 v14 v15 v16 v17
   = case coe v17 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'infer_752 v21 v24 v26 v27 v28
         -> coe
              MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'infer_752
-             (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_382
+             (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                 (coe v0)
                 (coe
                    MAlonzo.Code.Once.Spec.Core.AbsTy.d_absTy_82 (coe v0) (coe v1)
                    (coe v21))
                 (coe v2))
              v24
-             (d_subst'45'i'8242'_594
+             (d_subst'45'i'8242'_572
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                 (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
                 (coe
@@ -1679,7 +1664,7 @@ d_subst'45'd'8242'_642 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v28 v29
                -> coe
                     MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'lam_794 v23
-                    (d_subst'45'i'8242'_594
+                    (d_subst'45'i'8242'_572
                        (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4))
                        (coe
@@ -1703,11 +1688,11 @@ d_subst'45'd'8242'_642 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                       -> coe
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'compose_814
                            (coe du_ρ'770'_14 (coe v0) (coe v1) (coe v2) (coe v22)) v25 v26
-                           (d_subst'45'd'8242'_642
+                           (d_subst'45'd'8242'_620
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v30) (coe v12) (coe v13)
                               (coe v22) (coe v26) (coe v16) (coe v27))
-                           (d_subst'45'd'8242'_642
+                           (d_subst'45'd'8242'_620
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v32) (coe v22) (coe v13)
                               (coe v14) (coe v25) (coe v16) (coe v28))
@@ -1732,11 +1717,11 @@ d_subst'45'd'8242'_642 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                            MAlonzo.Code.Once.Type.C__'43'__126 v33 v34
                              -> coe
                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'case_876 v25 v26
-                                  (d_subst'45'd'8242'_642
+                                  (d_subst'45'd'8242'_620
                                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                                      (coe v7) (coe v8) (coe v9) (coe v10) (coe v32) (coe v33)
                                      (coe v13) (coe v14) (coe v25) (coe v16) (coe v27))
-                                  (d_subst'45'd'8242'_642
+                                  (d_subst'45'd'8242'_620
                                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                                      (coe v7) (coe v8) (coe v9) (coe v10) (coe v30) (coe v34)
                                      (coe v13) (coe v14) (coe v26) (coe v16) (coe v28))
@@ -1752,11 +1737,11 @@ d_subst'45'd'8242'_642 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                            MAlonzo.Code.Once.Type.C__'42'__124 v33 v34
                              -> coe
                                   MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'pair_896 v25 v26
-                                  (d_subst'45'd'8242'_642
+                                  (d_subst'45'd'8242'_620
                                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                                      (coe v7) (coe v8) (coe v9) (coe v10) (coe v32) (coe v12)
                                      (coe v13) (coe v33) (coe v25) (coe v16) (coe v27))
-                                  (d_subst'45'd'8242'_642
+                                  (d_subst'45'd'8242'_620
                                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                                      (coe v7) (coe v8) (coe v9) (coe v10) (coe v30) (coe v12)
                                      (coe v13) (coe v34) (coe v26) (coe v16) (coe v28))
@@ -1772,7 +1757,7 @@ d_subst'45'd'8242'_642 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                            MAlonzo.Code.Once.TypeCheck.Judgment.C_d'45'cata_910 v23
                            (coe
                               du_ρ'770''45'wf_42 (coe v0) (coe v1) (coe v3) (coe v28) (coe v24))
-                           (d_subst'45'i'8242'_594
+                           (d_subst'45'i'8242'_572
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                               (coe v7) (coe v8) (coe v9) (coe v10) (coe v27)
                               (coe

@@ -41,7 +41,7 @@ data T_Prim_20
 d_primDom_56 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
 d_primDom_56 ~v0 ~v1 ~v2 v3 = du_primDom_56 v3
 du_primDom_56 :: T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
@@ -129,7 +129,7 @@ du_primDom_56 v0
 d_primCod_58 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
 d_primCod_58 ~v0 ~v1 ~v2 v3 = du_primCod_58 v3
 du_primCod_58 :: T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
@@ -197,14 +197,14 @@ data T_Tm_62
                MAlonzo.Code.Once.Type.T_Type_108)
 -- Once.Spec.Core.Syntax.Ren
 d_Ren_110 ::
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer -> Integer -> ()
 d_Ren_110 = erased
 -- Once.Spec.Core.Syntax.extR
 d_extR_120 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
@@ -228,7 +228,7 @@ du_extR_120 v0 v1
 d_ren_132 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
@@ -292,7 +292,7 @@ du_ren_132 v0 v1
 d_wk_242 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer -> T_Tm_62 -> T_Tm_62
 d_wk_242 ~v0 ~v1 ~v2 ~v3 = du_wk_242
 du_wk_242 :: T_Tm_62 -> T_Tm_62
@@ -302,14 +302,14 @@ du_wk_242
 d_Sub_244 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer -> Integer -> ()
 d_Sub_244 = erased
 -- Once.Spec.Core.Syntax.extS
 d_extS_254 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Tm_62) ->
@@ -328,7 +328,7 @@ du_extS_254 v0 v1
 d_sub_266 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Tm_62) ->
@@ -390,7 +390,7 @@ du_sub_266 v0 v1
 d_single_376 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   T_Tm_62 -> MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Tm_62
 d_single_376 ~v0 ~v1 ~v2 ~v3 v4 v5 = du_single_376 v4 v5
@@ -405,7 +405,7 @@ du_single_376 v0 v1
 d__'91'_'93'_386 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_864 ->
+  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer -> T_Tm_62 -> T_Tm_62 -> T_Tm_62
 d__'91'_'93'_386 ~v0 ~v1 ~v2 ~v3 v4 v5 = du__'91'_'93'_386 v4 v5
 du__'91'_'93'_386 :: T_Tm_62 -> T_Tm_62 -> T_Tm_62

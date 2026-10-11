@@ -31,10 +31,10 @@ d_'10214'_'10215'SF'45'rel_16 = erased
 -- Once.Semantics.Functor.Laws._∼S_
 d__'8764'S__82 a0 a1 a2 = ()
 data T__'8764'S__82
-  = C_constructor_94 MAlonzo.Code.Once.Res.T_Res'45'rel_126
+  = C_constructor_94 MAlonzo.Code.Once.Res.T_Res'45'rel_44
 -- Once.Semantics.Functor.Laws._∼S_.unfoldS-∼
 d_unfoldS'45''8764'_92 ::
-  T__'8764'S__82 -> MAlonzo.Code.Once.Res.T_Res'45'rel_126
+  T__'8764'S__82 -> MAlonzo.Code.Once.Res.T_Res'45'rel_44
 d_unfoldS'45''8764'_92 v0
   = case coe v0 of
       C_constructor_94 v1 -> coe v1
@@ -143,14 +143,14 @@ d_anaLayerS'45'bisim_244 ::
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   MAlonzo.Code.Once.Res.T_Res_6 ->
-  MAlonzo.Code.Once.Res.T_Res'45'rel_126
+  MAlonzo.Code.Once.Res.T_Res'45'rel_44
 d_anaLayerS'45'bisim_244 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.Res.C_stopped_10
-        -> coe MAlonzo.Code.Once.Res.C_rel'45'stopped_134
+        -> coe MAlonzo.Code.Once.Res.C_rel'45'stopped_52
       MAlonzo.Code.Once.Res.C_returns_12 v3
         -> coe
-             MAlonzo.Code.Once.Res.C_rel'45'returns_140
+             MAlonzo.Code.Once.Res.C_rel'45'returns_58
              (d_sfmapAna'45'bisim_252 (coe v0) (coe v1) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Semantics.Functor.Laws.sfmapAna-bisim

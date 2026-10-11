@@ -272,26 +272,3 @@ d_arrowSchema'63'_566 v0
       MAlonzo.Code.Once.Type.C_PTVar_284 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Type.Determined.arrow-instance
-d_arrow'45'instance_588 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_ArrowSchema_668 ->
-  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_arrow'45'instance_588 ~v0 ~v1 ~v2 ~v3 v4 v5 ~v6 ~v7
-  = du_arrow'45'instance_588 v4 v5
-du_arrow'45'instance_588 ::
-  MAlonzo.Code.Once.Type.T_ArrowSchema_668 ->
-  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_arrow'45'instance_588 v0 v1
-  = coe
-      seq (coe v0)
-      (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased)

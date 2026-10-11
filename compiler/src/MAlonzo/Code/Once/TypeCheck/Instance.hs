@@ -52,7 +52,7 @@ du_inst'45'at_24 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
 du_inst'45'at_24 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.TypeCheck.RigidSubst.d_subst'45'c_558
+      MAlonzo.Code.Once.TypeCheck.RigidSubst.d_subst'45'c_536
       (coe MAlonzo.Code.Once.Type.Rigid.d_arityOf_82 (coe v3))
       (coe MAlonzo.Code.Once.Spec.Core.Schema.d_kindsOf_352 (coe v3))
       (coe

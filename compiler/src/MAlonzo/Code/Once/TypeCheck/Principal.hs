@@ -1405,7 +1405,7 @@ d_canonKey_976 v0
   = case coe v0 of
       MAlonzo.Code.Once.CanonicalName.C_canonical_10 v1
         -> let v2
-                 = MAlonzo.Code.Once.CanonicalName.d_showCanonical_140 (coe v0) in
+                 = MAlonzo.Code.Once.CanonicalName.d_showCanonical_138 (coe v0) in
            coe
              (case coe v1 of
                 (:) v3 v4
@@ -1434,7 +1434,7 @@ d_canonKey_976 v0
                                                else coe
                                                       seq (coe v9)
                                                       (coe
-                                                         MAlonzo.Code.Once.CanonicalName.d_showCanonical_140
+                                                         MAlonzo.Code.Once.CanonicalName.d_showCanonical_138
                                                          (coe v0))
                                         _ -> MAlonzo.RTE.mazUnreachableError)
                               _ -> coe v2
@@ -2010,7 +2010,7 @@ d_pInferApp_1380 v0 v1 v2 v3 v4 v5 v6
                        (coe
                           du_isYes_10
                           (coe
-                             MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__116 (coe v10)
+                             MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__114 (coe v10)
                              (coe
                                 MAlonzo.Code.Once.CanonicalName.C_canonical_10
                                 (coe

@@ -453,7 +453,7 @@ d_label'45'mono_160 v0 v1 v2 v3 v4 v5
                               du_cata'45'label'45'mono_60
                               (coe
                                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                                 (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_608 (coe v13)))
+                                 (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_584 (coe v13)))
                               (coe
                                  du_label'45'of_42
                                  (coe
@@ -515,7 +515,7 @@ d_label'45'mono_160 v0 v1 v2 v3 v4 v5
                                              (coe v12))
                                           (coe (1 :: Integer))
                                           (coe addInt (coe (1 :: Integer)) (coe v5)) (coe v10))))
-                                 (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_408 (coe v0) (coe v5))
+                                 (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_374 (coe v0) (coe v5))
                                  (coe (0 :: Integer)) (coe v13) (coe v7)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
