@@ -23,6 +23,8 @@
 
 module Once.Optimize where
 
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
@@ -122,7 +124,7 @@ headTag-inj h-SigOp      h-SigOp      _ = refl
 headTag-inj h-const      h-const      _ = refl
 headTag-inj h-Call       h-Call       _ = refl
 
-_≟IRHead_ : (h₁ h₂ : IRHead) → Dec (h₁ ≡ h₂)
+_≟IRHead_ : DecidableEquality IRHead
 h₁ ≟IRHead h₂ with headTag h₁ Data.Nat.Properties.≟ headTag h₂
 ... | yes eq = yes (headTag-inj h₁ h₂ eq)
 ... | no  ne = no (λ heq → ne (cong headTag heq))

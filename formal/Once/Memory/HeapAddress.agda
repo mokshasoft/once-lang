@@ -17,6 +17,8 @@
 
 module Once.Memory.HeapAddress where
 
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Data.Nat using (ℕ; suc; _+_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
@@ -40,7 +42,7 @@ record HeapRef : Set where
 
 open HeapRef
 
-_≟H_ : (h₁ h₂ : HeapRef) → Dec (h₁ ≡ h₂)
+_≟H_ : DecidableEquality HeapRef
 mkHeapRef n₁ ≟H mkHeapRef n₂ with n₁ ≟ n₂
 ... | yes refl = yes refl
 ... | no neq = no λ { refl → neq refl }
@@ -73,7 +75,7 @@ open HeapLocation
 ≟HL-aux (no r≢r)   (yes _)    = no λ { refl → r≢r refl }
 ≟HL-aux (no r≢r)   (no _)     = no λ { refl → r≢r refl }
 
-_≟HL_ : (hl₁ hl₂ : HeapLocation) → Dec (hl₁ ≡ hl₂)
+_≟HL_ : DecidableEquality HeapLocation
 heap-loc r₁ o₁ ≟HL heap-loc r₂ o₂ = ≟HL-aux (r₁ ≟H r₂) (o₁ ≟ o₂)
 
 -- Project a HeapLocation to its HeapRef.

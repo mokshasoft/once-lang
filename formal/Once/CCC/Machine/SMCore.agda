@@ -22,6 +22,8 @@
 
 module Once.CCC.Machine.SMCore where
 
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_)
 open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -316,7 +318,7 @@ HeapMem FS = HeapLocation → Maybe (StoredValue FS)
 ------------------------------------------------------------------------
 
 -- Decidable equality for AbstractReg
-_≟R_ : (r₁ r₂ : AbstractReg) → Dec (r₁ ≡ r₂)
+_≟R_ : DecidableEquality AbstractReg
 Input1 ≟R Input1 = yes refl
 Input1 ≟R Output = no (λ ())
 Output ≟R Input1 = no (λ ())

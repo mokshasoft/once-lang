@@ -14,6 +14,8 @@
 
 module Once.Type.DecEq where
 
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Type
@@ -89,7 +91,7 @@ import Data.Nat as ℕ
 
 
 -- D243: rigid parameters are equal iff their kinds and positions are.
-_≟tk_ : (k₁ k₂ : TKind) → Dec (k₁ ≡ k₂)
+_≟tk_ : DecidableEquality TKind
 k-base ≟tk k-base = yes refl
 k-base ≟tk k-any  = no λ ()
 k-any  ≟tk k-base = no λ ()
@@ -104,7 +106,7 @@ k-any  ≟tk k-any  = yes refl
 -- | Decidable functor and type equality (mutually recursive)
 mutual
   -- | Decidable functor equality
-  _≟F_ : (F G : Functor) → Dec (F ≡ G)
+  _≟F_ : DecidableEquality Functor
   K A ≟F K B = ≟F-K-aux (A ≟T B)
   Id ≟F Id = yes refl
   (F₁ ⊕ G₁) ≟F (F₂ ⊕ G₂) = ≟F-⊕-aux (F₁ ≟F F₂) (G₁ ≟F G₂)
@@ -124,7 +126,7 @@ mutual
   (_ ⊗ _) ≟F (_ ⊕ _) = no λ ()
 
   -- | Decidable type equality
-  _≟T_ : (A B : Type) → Dec (A ≡ B)
+  _≟T_ : DecidableEquality Type
   Unit ≟T Unit = yes refl
   Void ≟T Void = yes refl
   Int ≟T Int = yes refl

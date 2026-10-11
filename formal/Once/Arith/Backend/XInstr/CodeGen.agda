@@ -14,6 +14,8 @@
 
 module Once.Arith.Backend.XInstr.CodeGen where
 
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -33,7 +35,7 @@ open import Once.Arith.Backend.XInstr.Syntax
 -- `b` when dst==b).
 ------------------------------------------------------------------------
 
-_≟x_ : (a b : XReg) → Dec (a ≡ b)
+_≟x_ : DecidableEquality XReg
 XR0 ≟x XR0 = yes refl
 XR1 ≟x XR1 = yes refl
 XR0 ≟x XR1 = no λ ()

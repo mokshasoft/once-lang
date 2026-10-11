@@ -12,6 +12,10 @@
 
 module Once.Type where
 
+import Once.Metatheory.Grade as Grade
+
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Data.Nat using (ℕ)
 import Data.Nat
 import Data.Nat.Show
@@ -33,16 +37,8 @@ open import Once.Spec.Type.Poly
 
 
 -- | Decidable equality for quantities
-_≟q_ : (q₁ q₂ : Quantity) → Dec (q₁ ≡ q₂)
-Zero  ≟q Zero  = yes refl
-Zero  ≟q One   = no (λ ())
-Zero  ≟q Many  = no (λ ())
-One   ≟q Zero  = no (λ ())
-One   ≟q One   = yes refl
-One   ≟q Many  = no (λ ())
-Many  ≟q Zero  = no (λ ())
-Many  ≟q One   = no (λ ())
-Many  ≟q Many  = yes refl
+_≟q_ : DecidableEquality Quantity
+_≟q_ = Grade._≟q_
 
 
 -- | Show function for Quantity (for error messages)
@@ -64,7 +60,7 @@ showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
 
 
 -- | Decidable equality on Purity (plan 0.5.1)
-_≟p_ : (p₁ p₂ : Purity) → Dec (p₁ ≡ p₂)
+_≟p_ : DecidableEquality Purity
 pure ≟p pure = yes refl
 pure ≟p eff  = no (λ ())
 eff  ≟p pure = no (λ ())
@@ -82,7 +78,7 @@ eff  ≟p eff  = yes refl
 ≟k-aux _          (no ¬p)    = no λ { refl → ¬p refl }
 ≟k-aux (yes refl) (yes refl) = yes refl
 
-_≟k_ : (k₁ k₂ : ArrowKind) → Dec (k₁ ≡ k₂)
+_≟k_ : DecidableEquality ArrowKind
 mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p p₂)
 
 

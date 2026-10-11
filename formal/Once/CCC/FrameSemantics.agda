@@ -33,6 +33,8 @@
 
 module Once.CCC.FrameSemantics where
 
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Data.Nat using (ℕ; zero; _<_; _+_; _∸_; _*_; s≤s; z≤n)
 open import Data.Nat.Properties using (*-mono-≤)
 open import Data.Empty using (⊥)
@@ -75,7 +77,7 @@ record FrameSemantics : Set₁ where
     Frame : Set
 
     -- | Decidable equality for frames
-    _≟F_ : (f₁ f₂ : Frame) → Dec (f₁ ≡ f₂)
+    _≟F_ : DecidableEquality Frame
 
     -- | Frame base address (stack pointer at frame creation)
     frame-base : Frame → Addr

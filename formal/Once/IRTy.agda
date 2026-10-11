@@ -22,6 +22,8 @@
 
 module Once.IRTy where
 
+open import Relation.Binary.Definitions using (DecidableEquality)
+
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.Nat using (ℕ)
@@ -197,7 +199,7 @@ irtyTag Int        = 7
 irtyTag Float      = 8
 
 mutual
-  _≟IRTy_ : (A B : IRTy) → Dec (A ≡ B)
+  _≟IRTy_ : DecidableEquality IRTy
   A ≟IRTy B = ≟IRTy-aux A B (irtyTag A ℕP.≟ irtyTag B)
 
   ≟IRTy-aux : (A B : IRTy) → Dec (irtyTag A ≡ irtyTag B) → Dec (A ≡ B)
@@ -231,7 +233,7 @@ mutual
   ≟IRTy-diag Int    Int    _ = yes refl
   ≟IRTy-diag Float  Float  _ = yes refl
 
-  _≟IRFun_ : (F G : IRFunctor) → Dec (F ≡ G)
+  _≟IRFun_ : DecidableEquality IRFunctor
   K A ≟IRFun K B with A ≟IRTy B
   ... | yes refl = yes refl
   ... | no ne    = no (λ { refl → ne refl })
