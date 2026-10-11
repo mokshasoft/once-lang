@@ -67,6 +67,8 @@ import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
 import Once.Metatheory.Grade as Grade
+import Once.Metatheory.Order as Ord
+import Once.Spec.Type.Sub
 import Once.Surface.GradeMatrix as GM
 import Algebra.Structures
 import Algebra.Module.Structures
@@ -867,6 +869,12 @@ record VerifiedTypeChecker : Set₁ where
                          Once.Spec.Type.Grade._⊔p_ Once.Spec.Type.Grade.pure
     usage-semimodule : ∀ {n} → Algebra.Module.Structures.IsLeftSemimodule GM.quantity-semiring _≡_
                          (Once.Spec.Context._+ᵘ_ {n}) Once.Spec.Context.zeroUsage Once.Spec.Context._*ᵘ_
+    -- The orders are partial orders (plan 0.112 B6).
+    subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Type} _≡_ Once.Spec.Type.Sub._<:_
+    effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Type.Grade.Purity} _≡_
+                         Once.Spec.Type.Sub._⊑π_
+    usage-order      : ∀ {n} → Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Context.Usage n} _≡_
+                         Once.Spec.Context._⊑ᵘ_
 
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
@@ -987,6 +995,9 @@ verifiedTypeChecker = record
   ; grade-order                   = Grade.quantity-≤-isDecTotalOrder
   ; effect-monoid                 = Grade.purity-isCommutativeMonoid
   ; usage-semimodule              = GM.usage-isLeftSemimodule
+  ; subtype-order                 = Ord.subtype-isPartialOrder
+  ; effect-order                  = Ord.purity-⊑-isPartialOrder
+  ; usage-order                   = Ord.usage-⊑-isPartialOrder
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
