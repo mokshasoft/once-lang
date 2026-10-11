@@ -20,7 +20,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Type.Poly using (Ground)
 open import Once.Spec.Type.Instance using (KindedInstance)
 open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects)
-open import Once.TypeCheck.Classify using (Imports; PolyCtx; lookupPolyPrefix)
+open import Once.Spec.Typing.Scope using (Imports; PolyCtx; lookupPolyPrefix)
 import Once.TypeCheck.RigidSubst as RS
 open import Once.Spec.Elaboration S using (View; ImportAt; def)
 
@@ -36,5 +36,5 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
                → proj₁ (View.inst V lp ng (RS.ρ̂-ki Δ τ r {sc} ki)) ≡ (λ i → RS.ρ̂ Δ τ r (proj₁ (View.inst V lp ng ki) i))
       nat-ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ Data.Maybe.just (sc , body , prefix)) (g : Ground sc)
                  → (λ i → RS.ρ̂ Δ τ r (proj₁ (View.ground V lp g) i)) ≡ proj₁ (View.ground V lp g)
-      nat-imp : ∀ {x T} (lk : Once.TypeCheck.Classify.lookupImport imps x ≡ Data.Maybe.just T) → NatImp (View.imported V lk)
+      nat-imp : ∀ {x T} (lk : Once.Spec.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T) → NatImp (View.imported V lk)
 

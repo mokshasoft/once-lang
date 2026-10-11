@@ -11,7 +11,7 @@
 -- preparation) to break the import cycle that prevented
 -- `Elaborate.agda` from importing `Judgment.agda`. After the split:
 --
---   * `Once.TypeCheck.Judgment`  imports `Classify` (no longer
+--   * `Once.Spec.Typing`  imports `Classify` (no longer
 --     `Elaborate`).
 --   * `Once.TypeCheck.Elaborate` imports `Classify` and re-exports
 --     it `public` for backward compatibility, then imports
@@ -22,6 +22,8 @@
 ------------------------------------------------------------------------
 
 module Once.TypeCheck.Classify where
+
+open import Once.Spec.Typing.Scope
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
@@ -47,47 +49,25 @@ open import Once.Spec.Syntax using (RawExpr)
 open import Once.Spec.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
 open import Once.Spec.Name using (CanonicalName; canonical; gen; NotGenerator)
-open import Once.CanonicalName using (generatorNS; gen-inj)
+open import Once.Spec.Name using (generatorNS)
+open import Once.CanonicalName using (gen-inj)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Once.TypeCheck.Context using (Ctx; ∅)
-open Once.TypeCheck.Context.Binding using (name)
-open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
+open import Once.Spec.Typing.Scope using (Ctx)
+open import Once.TypeCheck.Context using (∅)
+open Once.Spec.Typing.Scope.Binding using (name)
 -- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
 -- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
 open import Once.Spec.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 
--- | String equality for the head dispatch. The same decision as stdlib's `_≟_`,
--- but its `yes` proof is erased: it reduces to `refl` as soon as the two
--- strings are equal, instead of normalising a ℕ-equality proof per character
--- (`≡ᵇ⇒≡`, one step per code point). Every proof that reduces a classified
--- head (the elaborator's dispatch on `gen "pair"` …) paid that normalisation.
-infix 4 _≟ₛ_
-_≟ₛ_ : DecidableEquality String
-x ≟ₛ y = map′ primEraseEquality (λ p → p) (x ≟ y)
-
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
 -- Named Context with de Bruijn Correspondence
 ------------------------------------------------------------------------
 
--- | Imported primitives from other modules (e.g., "S.exit0" → Eff Unit Unit)
--- These are populated from qualified imports like "import M as S"
-Imports : Set
-Imports = List (String × Type)
-
--- | Empty imports
 emptyImports : Imports
 emptyImports = []
-
--- | Polymorphic-definition context (plan 0.6.2). Carries each
--- user-declared poly def's schema and body so they can be
--- specialised at call sites via schema instantiation. Structurally
--- `List (name, schema, body)`; kept separate from `imports` (which
--- is ground-typed) because lookup resolves differently.
-PolyCtx : Set
-PolyCtx = List (String × PolyType × RawExpr)
 
 emptyPolyCtx : PolyCtx
 emptyPolyCtx = []
@@ -123,22 +103,6 @@ removePoly-decreases x [] ()
 removePoly-decreases x ((n , s , b) ∷ rest) eq with StrProp._≟_ n x
 ... | yes _ = s≤s ≤-refl
 ... | no  _ = s≤s (removePoly-decreases x rest eq)
-
--- | Plan 0.58 (telescope redesign): look up a poly def AND return its
--- PREFIX (the tail after the matched entry). The `PolyCtx` is now read as
--- an ORDERED telescope — head = most-recently-declared def, tail = the
--- definitions it is allowed to reference (its prefix). A def's body is
--- typed in that prefix, so a reference can only reach EARLIER defs:
--- acyclicity is manifest in the structure (no `removePoly`), and because
--- the returned prefix is a structural sub-list, the elaborator's inline
--- reference resolution terminates structurally (POC-A) with no `Acc`.
--- (The topological sort at the module boundary — Plan 0.58 T3 — arranges
--- the defs so this order is a valid dependency order; a cycle is rejected.)
-lookupPolyPrefix : PolyCtx → String → Maybe (PolyType × RawExpr × PolyCtx)
-lookupPolyPrefix [] _ = nothing
-lookupPolyPrefix ((n , s , b) ∷ rest) x with StrProp._≟_ n x
-... | yes _ = just (s , b , rest)
-... | no  _ = lookupPolyPrefix rest x
 
 -- | The returned prefix is STRICTLY shorter than the input telescope —
 -- the well-founded measure for the elaborator's inline reference
@@ -184,19 +148,6 @@ lookupPoly⇒lookupPolyPrefix ((n , s' , b') ∷ rest) x lp with StrProp._≟_ n
     aux refl = rest , refl
 ... | no  _ = lookupPoly⇒lookupPolyPrefix rest x lp
 
--- | A named context paired with its de Bruijn representation
--- and imported primitives from other modules
-record NamedCtx : Set where
-  constructor mkCtx
-  field
-    size        : ℕ
-    named       : Ctx
-    debruijn    : SCtx size
-    imports     : Imports  -- The module's monomorphic DEFINITIONS in scope (name → type)
-    polys       : PolyCtx  -- User polymorphic definitions (plan 0.6.2)
-    sig         : Imports  -- D274: the program's SIGNATURE Σ in scope — its FFI
-                           -- declarations (generators), keyed by rendered path
-
 -- | Empty context
 emptyCtx : NamedCtx
 emptyCtx = mkCtx 0 ∅ S∅ emptyImports emptyPolyCtx emptyImports
@@ -217,41 +168,9 @@ emptyTopCtx = topCtx emptyImports emptyImports
 ctxWithImportsAndPolys : TopCtx → PolyCtx → NamedCtx
 ctxWithImportsAndPolys tc polys = mkCtx 0 ∅ S∅ (TopCtx.tdefs tc) polys (TopCtx.tsig tc)
 
--- | Extend context with a new binding (preserves imports, polys)
-extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ imps polys sg) x A =
-  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) imps polys sg
-
 ------------------------------------------------------------------------
 -- Variable Lookup with Weakening and Instantiation
 ------------------------------------------------------------------------
-
--- | Look up a type in the imports list by name
-lookupImport : Imports → String → Maybe Type
-lookupImport [] _ = nothing
-lookupImport ((n , ty) ∷ rest) x with StrProp._≟_ n x
-... | yes _ = just ty
-... | no  _ = lookupImport rest x
--- | Local lookup walker. Top-level (not a where-helper inside
--- lookupLocal) so external `with lookupLocal ctx x` aligns
--- syntactically with the elaborator's internal `with lookupLocal ctx x
--- in eq` — Agda would otherwise reduce lookupLocal's body via the
--- where-helper, generating a different scrutinee shape that breaks
--- with-abstraction unification.
-lookupLocal-go : ∀ {m} (x : String) (Γ : Ctx) (Δ' : SCtx m)
-               → Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar Δ' Ψ A))
-lookupLocal-go x [] S∅ = nothing
-lookupLocal-go x [] (_ S, _ ^ _) = nothing
-lookupLocal-go x (_ ∷ _) S∅ = nothing
-lookupLocal-go {m = suc m'} x (b ∷ Γ') (Δ' S, B ^ _) with Data.String._≟_ x (name b)
-... | yes _ = just (_ , _ , Surface.svar zero)
-... | no _  with lookupLocal-go x Γ' Δ'
-...   | nothing = nothing
-...   | just (A , Ψ , Surface.svar i) = just (_ , _ , Surface.svar (suc i))
-
-lookupLocal : (ctx : NamedCtx) → String
-            → Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A))
-lookupLocal ctx x = lookupLocal-go x (NamedCtx.named ctx) (NamedCtx.debruijn ctx)
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T2: lookup view datatypes
@@ -295,173 +214,6 @@ findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
     ... | no  _ with go Γ' Δ'
     ...   | nothing = nothing
     ...   | just (i , q') = just (suc i , q')
--- | Polymorphic-builtin identifier for the function position of an
--- `RApp`. The elaborator handles each polymorphic builtin specially
--- (separate type-checking rules, separate error paths). Hoisting the
--- dispatch into a classifier + `Maybe PolyBuiltinApp` makes the
--- elaborator's pattern coverage explicit and avoids the neutral-term
--- obstacle with literal-string patterns (analogous to the RVar "unit"
--- refactor).
-data PolyBuiltinApp : Set where
-  pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
-  pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
-  pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
-  pba-compose-applied : PolyBuiltinApp                  -- `RApp (RVar "compose") _` head, check mode
-  pba-case-applied : PolyBuiltinApp                     -- `RApp (RVar "case") _` head, check mode (copair)
-  pba-curry : PolyBuiltinApp                            -- 1-arg `curry f`, check mode
-  pba-apply : PolyBuiltinApp                            -- 1-arg `apply p`, infer / check mode
-  pba-In : PolyBuiltinApp                               -- 1-arg `In arg`, check mode (μ intro)
-  pba-cata : PolyBuiltinApp                             -- 1-arg `cata alg`, check mode (fold)
-  pba-ana  : PolyBuiltinApp                             -- 1-arg `ana coalg`, check mode (unfold)
-  pba-Out  : PolyBuiltinApp                             -- 1-arg `Out v`, INFER mode (force)
-
--- | `classifyAppHead` (head → `Maybe PolyBuiltinApp`) is DEFINED BELOW, after
--- `classifyAppHeadView`, as `viewToPba ∘ classifyAppHeadView` — a single source
--- of truth for the string dispatch (OCP-0008 de-withing). The old parallel
--- nested-≟ ladder is retired; the two compat bridges collapse to near-trivial.
-
--- | View-type classification of an application head. Each constructor
--- fixes the head's concrete RawExpr shape via an index, so pattern-
--- matching on an `AppHeadView f` value makes `f`'s shape available
--- in the goal structurally — no `with`-abstraction interplay. This
--- is the "eliminate opaque `with`-helpers by refactoring the
--- definition" idiom (see `docs/formal/historical/lessons-learned.md`):
--- when a proof is fighting `rewrite` against an internal `with`-
--- dispatch, the fix is to refactor the function to return a datatype
--- carrying the proof, not to layer more proof tactics.
--- D136: the view is indexed by the CANONICAL head. A generator reaches the
--- elaborator as `RResolved (gen g)` — the resolver decided, once, whether the
--- token was the generator or the user's own definition — so this dispatch no
--- longer has to guess from a bare string, and a user's `fst` simply never
--- produces a generator view.
-data AppHeadView : RawExpr → Set where
-  ahv-id       : AppHeadView (Raw.RResolved (gen "id"))
-  ahv-fst      : AppHeadView (Raw.RResolved (gen "fst"))
-  ahv-snd      : AppHeadView (Raw.RResolved (gen "snd"))
-  ahv-terminal : AppHeadView (Raw.RResolved (gen "terminal"))
-  ahv-inl      : AppHeadView (Raw.RResolved (gen "inl"))
-  ahv-inr      : AppHeadView (Raw.RResolved (gen "inr"))
-  ahv-initial  : AppHeadView (Raw.RResolved (gen "initial"))
-  ahv-curry    : AppHeadView (Raw.RResolved (gen "curry"))
-  ahv-apply    : AppHeadView (Raw.RResolved (gen "apply"))
-  ahv-In       : AppHeadView (Raw.RResolved (gen "In"))
-  ahv-cata     : AppHeadView (Raw.RResolved (gen "cata"))
-  -- D192: `ana`, the cata's dual. Same shape of head — a generator name
-  -- applied to one argument — so it needs no syntax of its own.
-  ahv-ana      : AppHeadView (Raw.RResolved (gen "ana"))
-  -- D194: `Out`, the ν's eliminator. INFER-mode, unlike `In`/`cata`/`ana`.
-  ahv-Out      : AppHeadView (Raw.RResolved (gen "Out"))
-  ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "pair")) f')
-  ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "compose")) f')
-  ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "case")) f')
-  ahv-other    : ∀ {f} → AppHeadView f
-
--- Dispatch: a generator name is `canonical ("Generators" ∷ g ∷ [])`, so peel
--- the two components and check the namespace once, then the generator. Every
--- other shape — a bare `RVar`, a user path (ONE component), a deeper path — is
--- `ahv-other` by construction.
-classifyAppHeadView : (f : RawExpr) → AppHeadView f
-classifyAppHeadView (Raw.RResolved (canonical (ns ∷ g ∷ []))) with ns ≟ₛ generatorNS
-... | no _ = ahv-other
-... | yes refl with g ≟ₛ "id"
-...   | yes refl = ahv-id
-...   | no  _ with g ≟ₛ "fst"
-...     | yes refl = ahv-fst
-...     | no  _ with g ≟ₛ "snd"
-...       | yes refl = ahv-snd
-...       | no  _ with g ≟ₛ "terminal"
-...         | yes refl = ahv-terminal
-...         | no  _ with g ≟ₛ "inl"
-...           | yes refl = ahv-inl
-...           | no  _ with g ≟ₛ "inr"
-...             | yes refl = ahv-inr
-...             | no  _ with g ≟ₛ "initial"
-...               | yes refl = ahv-initial
-...               | no  _ with g ≟ₛ "curry"
-...                 | yes refl = ahv-curry
-...                 | no  _ with g ≟ₛ "apply"
-...                   | yes refl = ahv-apply
-...                   | no  _ with g ≟ₛ "In"
-...                     | yes refl = ahv-In
-...                     | no  _ with g ≟ₛ "cata"
-...                       | yes refl = ahv-cata
-...                       | no  _ with g ≟ₛ "ana"
-...                         | yes refl = ahv-ana
-...                         | no  _ with g ≟ₛ "Out"
-...                           | yes refl = ahv-Out
-...                           | no  _ = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (ns ∷ g ∷ []))) _) with ns ≟ₛ generatorNS
-... | no _ = ahv-other
-... | yes refl with g ≟ₛ "pair"
-...   | yes refl = ahv-pair-applied
-...   | no  _ with g ≟ₛ "compose"
-...     | yes refl = ahv-compose-applied
-...     | no  _ with g ≟ₛ "case"
-...       | yes refl = ahv-case-applied
-...       | no  _ = ahv-other
-classifyAppHeadView (Raw.RResolved (canonical []))            = ahv-other
-classifyAppHeadView (Raw.RResolved (canonical (_ ∷ [])))      = ahv-other
-classifyAppHeadView (Raw.RResolved (canonical (_ ∷ _ ∷ _ ∷ _))) = ahv-other
-classifyAppHeadView (Raw.RVar _)                        = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical [])) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (_ ∷ []))) _) = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (_ ∷ _ ∷ _ ∷ _))) _) = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RVar _) _)           = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RLam _ _) _)         = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RLet _ _ _) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RPair _ _) _)        = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = ahv-other
-classifyAppHeadView (Raw.RApp Raw.RUnit _)              = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RInt _) _)           = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RFloat _ _ _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RStringLit _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RAnnot _ _) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RBinOp _ _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RUnaryOp _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RAna _ _) _)         = ahv-other
-classifyAppHeadView (Raw.RAna _ _)            = ahv-other
-classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
-classifyAppHeadView (Raw.RLam _ _)            = ahv-other
-classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
-classifyAppHeadView (Raw.RPair _ _)           = ahv-other
-classifyAppHeadView (Raw.RDestruct _ _ _ _ _) = ahv-other
-classifyAppHeadView Raw.RUnit                 = ahv-other
-classifyAppHeadView (Raw.RInt _)              = ahv-other
-classifyAppHeadView (Raw.RFloat _ _ _ _)        = ahv-other
-classifyAppHeadView (Raw.RStringLit _)        = ahv-other
-classifyAppHeadView (Raw.RAnnot _ _)          = ahv-other
-classifyAppHeadView (Raw.RBinOp _ _ _)        = ahv-other
-classifyAppHeadView (Raw.RUnaryOp _ _)        = ahv-other
-
--- | Map an app-head VIEW to its `Maybe PolyBuiltinApp`. This is the single
--- source of truth linking the view to the `Maybe`-return classifier.
-viewToPba : ∀ {f} → AppHeadView f → Maybe PolyBuiltinApp
-viewToPba ahv-id              = just pba-id
-viewToPba ahv-fst             = just pba-fst
-viewToPba ahv-snd             = just pba-snd
-viewToPba ahv-terminal        = just pba-terminal
-viewToPba ahv-inl             = just pba-inl
-viewToPba ahv-inr             = just pba-inr
-viewToPba ahv-initial         = just pba-initial
-viewToPba ahv-curry           = just pba-curry
-viewToPba ahv-apply           = just pba-apply
-viewToPba ahv-In              = just pba-In
-viewToPba ahv-cata            = just pba-cata
-viewToPba ahv-ana             = just pba-ana
-viewToPba ahv-Out             = just pba-Out
-viewToPba ahv-pair-applied    = just pba-pair-applied
-viewToPba ahv-compose-applied = just pba-compose-applied
-viewToPba ahv-case-applied    = just pba-case-applied
-viewToPba ahv-other           = nothing
-
--- | `classifyAppHead` derived from the view (OCP-0008 single-dispatch). Reduces
--- to exactly the same values as the retired parallel ladder (e.g.
--- `classifyAppHead (RVar "id") = viewToPba ahv-id = just pba-id`).
-classifyAppHead : RawExpr → Maybe PolyBuiltinApp
-classifyAppHead f = viewToPba (classifyAppHeadView f)
-
 -- | Compat: `classifyAppHead f ≡ nothing` ⇔ `classifyAppHeadView f ≡
 -- ahv-other`. Needed because existing downstream proofs (Judgment's
 -- t-app premise, Soundness's sound-RApp-generic, etc.) use

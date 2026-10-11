@@ -13,7 +13,7 @@
 module Once.CanonicalName where
 
 open import Once.Spec.Name
-  using (CanonicalName; canonical; bare; gen; own; genWords; GenWord; genNames; NotGenerator)
+  using (CanonicalName; canonical; bare; gen; own; generatorNS; genWords; GenWord; genNames; NotGenerator)
 
 open import Data.List using (List; []; _∷_)
 open import Data.List.Properties using (≡-dec)
@@ -39,9 +39,6 @@ open import Relation.Binary.PropositionalEquality using (_≢_)
 -- (`Once.Parser.Module.Resolve`, which emits it) and the elaborator
 -- (`Once.TypeCheck.*`, which dispatches on it) — and this module is already
 -- below both.
-generatorNS : String
-generatorNS = "Generators"
-
 -- A user path can never BE a generator name: `bare x = canonical [x]` has one
 -- component and `gen g` has two, so the two families are disjoint by length —
 -- which is the property that replaces every "this name is not a builtin" side

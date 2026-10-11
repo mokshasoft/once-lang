@@ -56,7 +56,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Spec.Type using (Type)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.Type.Rigid using (RigidFree)
+open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -67,7 +67,7 @@ import Once.IR
 open import Once.IRTy using (⌊_⌋)
 import Once.Spec.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)

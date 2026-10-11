@@ -32,6 +32,10 @@ record CanonicalName : Set where
 bare : String → CanonicalName
 bare s = canonical (s ∷ [])
 
+-- The namespace of the generators.
+generatorNS : String
+generatorNS = "Generators"
+
 -- The generator `g`. A pattern, so that it can index a rule and be matched on.
 pattern gen g = canonical ("Generators" ∷ g ∷ [])
 

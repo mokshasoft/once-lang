@@ -60,7 +60,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
-open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
+open import Once.Spec.Typing.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
 open import Once.IR.Ref using (refIR)
 open import Once.Spec.Type.Instance using (KindedInstance)
@@ -72,7 +72,7 @@ open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
+open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
   t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd;

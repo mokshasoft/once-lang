@@ -41,8 +41,8 @@ open import Once.Spec.Type.Grade using (Purity; mk-kind; Many)
 open import Once.Spec.Type using (Type; _⇒[_]_)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Syntax using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_)
+open import Once.Spec.Typing.Scope using (NamedCtx)
+open import Once.Spec.Typing using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_)
 import Once.Spec.Context as Surface
 
 -- The surface typing judgment's laws (D305).

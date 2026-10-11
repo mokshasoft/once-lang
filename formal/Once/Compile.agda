@@ -111,12 +111,14 @@ open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.TypeCheck.Classify using (NamedCtx; TopCtx; topCtx; emptyTopCtx; PolyCtx; ctxWithImportsAndPolys; emptyPolyCtx)
+open import Once.Spec.Typing.Scope using (NamedCtx; PolyCtx)
+open import Once.TypeCheck.Classify using (TopCtx; topCtx; emptyTopCtx; ctxWithImportsAndPolys; emptyPolyCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
 open import Once.Spec.Type.Instance using (rigidOf)
-open import Once.Type.Rigid using (RigidFree; rigidFree?)
+open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Type.Rigid using (rigidFree?)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)

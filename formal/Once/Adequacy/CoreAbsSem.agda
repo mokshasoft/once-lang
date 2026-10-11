@@ -385,7 +385,7 @@ tr-sem refl refl refl D fmt δ γ = refl
 
 -- A MONOMORPHIC ENTRY (`Translate.monoBody`: the abstraction, retyped at the
 -- embedded ground type) read back at arity 0 means its elaboration.
-open import Once.Type.Rigid using (RigidFree)
+open import Once.Spec.Type.WellFormed using (RigidFree)
 
 mono-entry-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
                    {t A} (g : RigidFree A) (D : C.∅ ⊢[ [] ] t ∷ A ! T.pure) (fmt : TargetNum) (δ : GM.DefSem)

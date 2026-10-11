@@ -47,10 +47,11 @@ open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Spec.Name using (CanonicalName; canonical; showCanonical; gen)
-open import Once.CanonicalName using (generatorNS; _≟ᶜ_)
+open import Once.Spec.Name using (generatorNS)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.Spec.Syntax as Raw using (RawExpr; isComparisonOp)
-open import Once.TypeCheck.Classify
-  using (NamedCtx; Imports; PolyCtx; lookupImport; emptyCtx)
+open import Once.Spec.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport)
+open import Once.TypeCheck.Classify using (emptyCtx)
 
 ------------------------------------------------------------------------
 -- Small helpers

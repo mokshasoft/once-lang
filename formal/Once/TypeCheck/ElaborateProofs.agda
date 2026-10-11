@@ -53,15 +53,15 @@ open import Once.Spec.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable)
 import Once.TypeCheck.Context
-open import Once.TypeCheck.Context as Context using () renaming ()
 open import Once.Spec.Context as Surface using (_+ᵘ_)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Surface.Elaborate as Elab using ()
+open import Once.Spec.Typing.Scope
 open import Once.TypeCheck.Classify
 import Once.Spec.Type.WellFormed
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (wellFormedF?)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.

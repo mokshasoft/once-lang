@@ -24,7 +24,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.WellFormed using (IsBaseType)
+open import Once.Spec.Type.WellFormed using (IsBaseType; RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 open import Once.Spec.Type.Instance
 
 ------------------------------------------------------------------------
@@ -174,32 +174,6 @@ kindedInstance? s T with instantiate s T in eqi
 ...     | yes h = yes (θ , e , h)
 ...     | no ¬h = no λ (θ′ , e′ , h′) →
             ¬h (λ {x} m → subst IsBaseType (sym (agree-from θ θ′ s (trans e (sym e′)) (ftvK⊆ftv s m))) (h′ m))
-
-------------------------------------------------------------------------
--- Ground types: no rigid parameter anywhere
-------------------------------------------------------------------------
-
--- D243: an FFI signature and a monomorphic definition's type are GROUND —
--- rigid parameters exist only inside a polymorphic definition's typed-once
--- check. (An FFI symbol has one type; a `ref d ()` to a monomorphic definition
--- has one type: neither may change under instantiation.)
-mutual
-  data RigidFree : Type → Set where
-    rf-Unit   : RigidFree Unit
-    rf-Void   : RigidFree Void
-    rf-Int    : RigidFree Int
-    rf-Float  : RigidFree Float
-    rf-*      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A * B)
-    rf-+      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A + B)
-    rf-⇒      : ∀ {A B k} → RigidFree A → RigidFree B → RigidFree (A ⇒[ k ] B)
-    rf-μ      : ∀ {F} → RigidFreeF F → RigidFree (μ-type F)
-    rf-ν      : ∀ {F π} → RigidFreeF F → RigidFree (ν-type F π)
-
-  data RigidFreeF : Functor → Set where
-    rf-K  : ∀ {A} → RigidFree A → RigidFreeF (K A)
-    rf-Id : RigidFreeF Id
-    rf-⊕  : ∀ {F G} → RigidFreeF F → RigidFreeF G → RigidFreeF (F ⊕ G)
-    rf-⊗  : ∀ {F G} → RigidFreeF F → RigidFreeF G → RigidFreeF (F ⊗ G)
 
 private
   both : ∀ {X Y Z : Set} → (X → Y → Z) → Maybe X → Maybe Y → Maybe Z

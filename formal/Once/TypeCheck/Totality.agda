@@ -41,7 +41,7 @@ open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
-open import Once.TypeCheck.Classify using (NamedCtx)
+open import Once.Spec.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Error using (TypeError)
 
 open import Once.Spec.Context as Surface using () renaming (Ctx to SCtx)

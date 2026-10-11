@@ -46,8 +46,9 @@ open import Once.Spec.Type.Sub using (sub-int; sub-unit)
 open import Once.Type.Sub using (_<:?_)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; lookupPoly)
-import Once.TypeCheck.Classify as Classify
+open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal)
+open import Once.TypeCheck.Classify using (lookupPoly)
+import Once.Spec.Typing.Scope as Classify
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error

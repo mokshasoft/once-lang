@@ -50,8 +50,8 @@ open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
-import Once.TypeCheck.Classify as Classify
+open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
+import Once.Spec.Typing.Scope as Classify
 
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
@@ -66,10 +66,10 @@ import Once.TypeCheck.Completeness as Cmp
 import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
-open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
+open import Once.Spec.Typing using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
-open import Once.Type.Rigid using (RigidFree)
+open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Spec.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Once.Spec.Name using (gen; GenWord)
 import Once.Grammar.Convert       as Conv

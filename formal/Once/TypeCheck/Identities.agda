@@ -36,8 +36,8 @@ open import Once.Spec.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; Op
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
-open import Once.TypeCheck.Classify using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
-import Once.TypeCheck.Classify as Classify
+open import Once.Spec.Typing.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
+import Once.Spec.Typing.Scope as Classify
 
 ------------------------------------------------------------------------
 -- classifyAppHead determinism

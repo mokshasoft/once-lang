@@ -46,6 +46,7 @@ import Once.Spec.Name
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
+import Once.Spec.Typing.Scope as Classify
 import Once.TypeCheck.Classify as Classify
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.Target.Arch using (Arch)

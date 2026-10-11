@@ -39,8 +39,8 @@ open import Once.Type.Determined using (cod-determined)
 open import Data.String using (String)
 open import Once.Spec.Syntax as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (gen)
-open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing.Scope using (NamedCtx)
+open import Once.Spec.Typing
 import Once.Spec.Context as Surface
 open import Once.Spec.Context using (zeroUsage; _+ᵘ_; _*ᵘ_)
 

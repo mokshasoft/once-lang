@@ -27,8 +27,8 @@ open import Once.Spec.Type as T using (Type; _+_; _⇒[_]_)
 import Once.Spec.Type.Grade as T
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Syntax as Raw using (BinOp; isArithmeticOp; isComparisonOp)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; classifyAppHead)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing.Scope using (NamedCtx; extendNamedCtx; classifyAppHead)
+open import Once.Spec.Typing
 open import Once.Metatheory.ModeAgreement
 open import Once.TypeCheck.Route
 import Once.Spec.Context as Surface

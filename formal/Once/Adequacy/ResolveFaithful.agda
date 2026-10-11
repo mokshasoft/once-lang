@@ -20,7 +20,8 @@
 -- (`resolveExpr-sigOp-closure-faithful`; plan 0.103 1c deleted the inconsistent poly-splice one).
 ------------------------------------------------------------------------
 
-open import Once.TypeCheck.Classify using (TopCtx; PolyCtx; Imports)
+open import Once.Spec.Typing.Scope using (PolyCtx; Imports)
+open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Target.Arch using (TargetNum)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
@@ -64,7 +65,8 @@ import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV)
 import Once.TypeCheck.Elaborate as Elaborate
-open import Once.TypeCheck.Classify using (lookupPolyPrefix; ctxWithImportsAndPolys)
+open import Once.Spec.Typing.Scope using (lookupPolyPrefix)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 

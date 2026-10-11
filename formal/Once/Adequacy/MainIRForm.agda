@@ -14,7 +14,8 @@
 
 module Once.Adequacy.MainIRForm where
 
-open import Once.TypeCheck.Classify using (TopCtx; PolyCtx)
+open import Once.Spec.Typing.Scope using (PolyCtx)
+open import Once.TypeCheck.Classify using (TopCtx)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
 import Data.String as String

@@ -29,7 +29,7 @@ open import Once.Spec.Type using (Type)
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult)
-open import Once.TypeCheck.Classify using (NamedCtx)
+open import Once.Spec.Typing.Scope using (NamedCtx)
 
 ------------------------------------------------------------------------
 -- Reflexivity: the typechecker is a function

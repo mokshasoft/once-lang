@@ -23,29 +23,16 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Spec.Type.Grade using (Quantity; Many)
 open import Once.Spec.Type using (Type)
+open import Once.Spec.Typing.Scope using (Binding; mkBinding; Ctx)
+open Binding
 
 ------------------------------------------------------------------------
 -- Bindings
 ------------------------------------------------------------------------
 
--- | A binding associates a name with a type and quantity
-record Binding : Set where
-  constructor mkBinding
-  field
-    name     : String
-    type     : Type
-    quantity : Quantity
-
-open Binding
-
 ------------------------------------------------------------------------
 -- Named Typing Context
 ------------------------------------------------------------------------
-
--- | Typing context: list of bindings
--- Most recent binding is at the head (shadowing semantics)
-Ctx : Set
-Ctx = List Binding
 
 -- | Empty context
 ∅ : Ctx

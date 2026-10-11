@@ -44,9 +44,9 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; s
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
 open import Once.Denotation.TraceMonad using (T; interp; module Interp)
 open Interp using (sig; impl)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
+open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
 open import Data.String using (String)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; returnᵖ)
 open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)

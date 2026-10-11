@@ -20,7 +20,7 @@ import Once.Spec.Core.Abstract as Abs
 import Once.Spec.Elaboration as El
 import Once.TypeCheck.RigidSubst as RSm
 import Once.Adequacy.ViewNatural as VN
-open import Once.TypeCheck.Classify using (Imports; PolyCtx)
+open import Once.Spec.Typing.Scope using (Imports; PolyCtx)
 
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ)
@@ -46,8 +46,8 @@ open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)
 import Once.Spec.Context as C
 open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.TypeCheck.Classify using (mkCtx)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing.Scope using (mkCtx)
+open import Once.Spec.Typing
 import Once.Spec.Core.Syntax S as G
 import Once.Spec.Core.Typing S as GT
 open GT using (_⊢[_]_∷_!_)

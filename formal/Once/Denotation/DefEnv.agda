@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Poly using (PolyType)
-open import Once.TypeCheck.Classify using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
+open import Once.Spec.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Spec.Syntax using (RawExpr)
 
 DefEnvOf : (PolyType → Set) → PolyCtx → Set

@@ -45,7 +45,7 @@ open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff)
 open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQualified-aux; inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
-import Once.TypeCheck.Classify as Classify
+import Once.Spec.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
@@ -53,7 +53,8 @@ open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete; con-base; 
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (wellFormedF?-complete-at)
-open import Once.Type.Rigid using (RigidFree; rigidFree?; rigidFree?-complete)
+open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
 open import Once.Spec.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
@@ -66,7 +67,8 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other; classifyAppHead-nothing⇒view-other)
+open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
+open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J)
 

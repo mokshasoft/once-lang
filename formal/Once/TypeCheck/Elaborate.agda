@@ -61,12 +61,12 @@ open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; An
   BinOpLeftError; BinOpRightError;
   UnboundVariable; UnboundQualified; NonConcreteSigOpType)
 import Once.TypeCheck.Context
-open import Once.TypeCheck.Context as Context using () renaming ()
 open import Once.Spec.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Elaborate as Elab using ()
 
+open import Once.Spec.Typing.Scope
 open import Once.TypeCheck.Classify
 import Once.Spec.Type.WellFormed
 open import Once.Spec.Type.WellFormed using (IsConcrete; con-fun; IsBaseType)
@@ -80,10 +80,11 @@ open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
 open import Once.Spec.Type.Instance using (KindedInstance)
-open import Once.Type.Rigid using (kindedInstance?; RigidFree; rigidFree?)
+open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Type.Rigid using (kindedInstance?; rigidFree?)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 open import Once.TypeCheck.TargetView
 
 ------------------------------------------------------------------------

@@ -15,7 +15,8 @@
 
 module Once.Adequacy.ModuleComplete where
 
-open import Once.TypeCheck.Classify using (TopCtx; PolyCtx; ctxWithImportsAndPolys)
+open import Once.Spec.Typing.Scope using (PolyCtx)
+open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
@@ -53,7 +54,7 @@ cong₃ f refl refl refl = refl
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate
   using ()
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS

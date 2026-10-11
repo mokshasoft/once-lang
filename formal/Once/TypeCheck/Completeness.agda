@@ -43,9 +43,9 @@ open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
 open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.TypeCheck.Elaborate
   using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo)
-import Once.TypeCheck.Classify as Classify
+import Once.Spec.Typing.Scope as Classify
 import Once.TypeCheck.Error as Error
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
 open import Once.Spec.Type.WellFormed using (WellFormedF)
@@ -53,6 +53,7 @@ open import Once.Spec.Type.WellFormed using (WellFormedF)
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
+import Once.Spec.Typing.Scope
 import Once.TypeCheck.Classify
 open import Once.Spec.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
@@ -68,7 +69,8 @@ open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; sub-int; sub-floa
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.DecEq using (_≟T_)
-open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport; classifyAppHead-nothing⇒view-other)
+open import Once.Spec.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport)
+open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.Metatheory.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success)
@@ -132,7 +134,7 @@ module DPoly where
   open import Once.Type.Sub using (_⊑π?_)
   open import Once.Spec.Type.Instance using (KindedInstance)
   open import Once.Type.Rigid using (kindedInstance?)
-  open import Once.TypeCheck.Classify using (lookupPolyPrefix)
+  open import Once.Spec.Typing.Scope using (lookupPolyPrefix)
   open import Relation.Nullary using (yes; no)
   open import Data.String using (String)
   open import Data.Sum using (inj₂)
@@ -231,7 +233,7 @@ module DPoly where
 -- A non-ground telescope entry does not infer.
 poly-head-fails : ∀ (ctx : NamedCtx) (x : String) {schema body prefix}
   → lookupLocal ctx x ≡ nothing → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
-  → Once.TypeCheck.Classify.lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → Once.Spec.Typing.Scope.lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ T.Ground schema
   → inferElabV ctx (RVar x) ≡ (failure (Error.UnboundVariable x) , Data.Unit.tt)
 poly-head-fails ctx x {schema} eL eI eP ¬g =

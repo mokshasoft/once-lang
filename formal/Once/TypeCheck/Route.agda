@@ -30,8 +30,8 @@ open import Once.Spec.Type.Grade as T using (Purity; Quantity)
 import Once.Spec.Type.Poly as T
 open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Spec.Syntax as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing.Scope using (NamedCtx; extendNamedCtx)
+open import Once.Spec.Typing
 import Once.Spec.Context as Surface
 
 private

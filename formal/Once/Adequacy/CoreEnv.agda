@@ -38,7 +38,7 @@ import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunType)
 open import Once.Spec.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.TypeCheck.Classify using (lookupImport; lookupPolyPrefix)
+open import Once.Spec.Typing.Scope using (lookupImport; lookupPolyPrefix)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings)
 import Once.Spec.Core.Meaning S as GM

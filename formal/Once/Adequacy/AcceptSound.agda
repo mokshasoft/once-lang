@@ -7,7 +7,7 @@
 -- The compiler's front-end accepts ONLY genuinely well-typed programs:
 -- if `compileResolvedModule` succeeds, every function has a DECLARATIVE
 -- typing derivation `ctx ⊢ᶜ body ∶ ty ⨾ Ψ` (the judgment in
--- `Once.TypeCheck.Judgment`, INDEPENDENT of the elaborator function). This
+-- `Once.Spec.Typing`, INDEPENDENT of the elaborator function). This
 -- is what makes `⟦_⟧⊥`'s domain genuine rather than true-by-construction:
 -- the meaning is defined only for programs the independent judgment admits.
 --
@@ -38,14 +38,15 @@ import Once.Parser as Parser
 import Once.Spec.Context as Srf
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
-import Once.TypeCheck.Classify as Classify
-open import Once.TypeCheck.Classify using (NamedCtx)
+import Once.Spec.Typing.Scope as Classify
+open import Once.Spec.Typing.Scope using (NamedCtx)
 open import Once.Spec.Syntax using (RawExpr)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Module
   using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped)
 open import Once.Spec.Type.Instance using (rigidOf)
-open import Once.Type.Rigid using (RigidFree; rigidFree?)
+open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Type.Rigid using (rigidFree?)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)

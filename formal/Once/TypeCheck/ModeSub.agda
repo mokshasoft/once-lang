@@ -21,6 +21,7 @@
 
 module Once.TypeCheck.ModeSub where
 
+import Once.TypeCheck.Classify
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁)
@@ -31,9 +32,9 @@ import Once.Spec.Type.Grade as T
 open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Spec.Syntax using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx)
-import Once.TypeCheck.Classify
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing.Scope using (NamedCtx)
+import Once.Spec.Typing.Scope
+open import Once.Spec.Typing
 open import Once.Metatheory.ModeAgreement
 import Once.Spec.Context as Surface
 
@@ -73,7 +74,7 @@ private
          → S <: (A₁ ⇒[ T.mk-kind T.Many π ] B′) → B <: B′
   di-cod (_ , _ , refl , _) p = sub-cod p
 
-  poly-sub : ∀ {s s′ sd sc : T.PolyType} {b b′ : RawExpr} {pr pr′ : Once.TypeCheck.Classify.PolyCtx} {A B B′ : Type} {π π′ : T.Purity}
+  poly-sub : ∀ {s s′ sd sc : T.PolyType} {b b′ : RawExpr} {pr pr′ : Once.Spec.Typing.Scope.PolyCtx} {A B B′ : Type} {π π′ : T.Purity}
              (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′)) (as : T.ArrowSchema s sd sc π′) (inc : T.CodVarsInDom sd sc)
              (θ : _) (e : T.substPoly θ s ≡ (A ⇒[ T.mk-kind T.Many π′ ] B))
              (θ′ : _) (e′ : T.substPoly θ′ s′ ≡ (A ⇒[ T.mk-kind T.Many π ] B′))

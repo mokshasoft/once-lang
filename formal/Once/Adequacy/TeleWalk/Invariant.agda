@@ -42,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Instance using (KindedInstance)
-open import Once.Type.Rigid using (RigidFree)
+open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
@@ -55,8 +55,8 @@ import Once.IR
 open import Once.IRTy using (⌊_⌋)
 import Once.Spec.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Classify using (Imports)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.Spec.Typing.Scope using (Imports)
+open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
 open import Once.Spec.Type.Instance using (rigidOf)
 open import Once.Denotation.Realize using (realize)
 import Once.Denotation.SourceDenote as SD
@@ -174,7 +174,7 @@ inv-sig {csc = csc} {x = x} {ty = ty} {g = g} inv = record
 
 private
   -- The splice of a telescope body is its derivation's realization, resolved.
-  splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.TypeCheck.Classify.PolyCtx) (y : String)
+  splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.Spec.Typing.Scope.PolyCtx) (y : String)
                   {Xs : TopCtx} {b : _} {A : Type} {se : _} {d f : ℕ}
                   (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
                   (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)

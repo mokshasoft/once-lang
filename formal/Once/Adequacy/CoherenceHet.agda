@@ -35,9 +35,9 @@ open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure
 open import Once.Metatheory.SubLaws using (<:-refl; ⊑π-refl)
 open import Once.Spec.Syntax as Raw using (RawExpr)
 open import Once.Spec.Name using (NotGenerator; showCanonical)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
+open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 open import Once.Metatheory.ModeAgreement using (extractGround-irr; dpoly-det)
 open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.Spec.Type.WellFormed using (IsConcrete; WellFormedF)

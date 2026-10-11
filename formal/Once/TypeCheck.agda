@@ -33,7 +33,6 @@ open import Once.TypeCheck.Elaborate as Elaborate
   using (InferElabResult)
   using (inferElab)
 open import Once.TypeCheck.Classify using (emptyCtx)
-  using ()
 
 -- Thinning operations (weaken, exchange)
 

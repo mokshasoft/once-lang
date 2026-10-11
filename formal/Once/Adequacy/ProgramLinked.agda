@@ -48,7 +48,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Spec.Type using (Type; Unit)
 open import Once.Spec.Type.Poly using (PolyType)
 open import Once.Spec.Type.Instance using (KindedInstance; rigidOf)
-open import Once.Type.Rigid using (RigidFree)
+open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (CanonicalName; bare; showCanonical)
 open import Once.Spec.Contract using (ISig)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -67,13 +67,14 @@ open import Once.Spec.Context hiding (_,_; _,_^_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 open import Once.Spec.Syntax using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix; ctxWithImportsAndPolys)
+open import Once.Spec.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV; success; failure)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF)
 open import Once.TypeCheck.Instance using (inst-at)
 open import Once.TypeCheck.Completeness using (check-complete)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.IRTy using (⌊⟧T-commute)
@@ -146,8 +147,8 @@ RR : (ctx : NamedCtx) → ∀ {Ψ : Usage (NamedCtx.size ctx)} {A} → Expr (Nam
 RR ctx = Refs (FFIRef (NamedCtx.sig ctx)) (ImpRef (NamedCtx.imports ctx)) (PolyRef (NamedCtx.polys ctx))
 
 realize-refs   : ∀ {ctx e A} {Ψ : Usage (NamedCtx.size ctx)} (D : ctx ⊢ᶜ e ∶ A ⨾ Ψ) → RR ctx (realize D)
-realize-refs-i : ∀ {ctx e A} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.TypeCheck.Judgment._⊢ᵢ_∶_⨾_ ctx e A Ψ) → RR ctx (realize-infer D)
-realize-refs-d : ∀ {ctx e A B π} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.TypeCheck.Judgment._⊢ᵈ_∶_⇒[_]↦_⨾_ ctx e A π B Ψ)
+realize-refs-i : ∀ {ctx e A} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Spec.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ) → RR ctx (realize-infer D)
+realize-refs-d : ∀ {ctx e A B π} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Spec.Typing._⊢ᵈ_∶_⇒[_]↦_⨾_ ctx e A π B Ψ)
                → RR ctx (realize-d D)
 
 realize-refs t-id-check             = tt

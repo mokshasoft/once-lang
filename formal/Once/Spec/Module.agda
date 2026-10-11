@@ -41,14 +41,15 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Type.Grade using (mk-kind; Many; eff)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Spec.Type.Instance using (rigidOf)
-open import Once.Type.Rigid using (RigidFree)
+open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
-open import Once.TypeCheck.Classify using (NamedCtx; ctxWithImportsAndPolys; topCtx)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.Spec.Typing.Scope using (NamedCtx)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
+open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
 
 open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunType; pfunBody)

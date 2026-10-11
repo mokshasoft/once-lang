@@ -15,7 +15,7 @@
 -- spec rules".
 --
 -- This module covers soundness for the rules currently stated in
--- `Once.TypeCheck.Judgment`: literals, the `unit` builtin, local
+-- `Once.Spec.Typing`: literals, the `unit` builtin, local
 -- variable lookup, annotations, pair introduction, and unary
 -- negation. The remaining RawExpr forms (application, let, case,
 -- lambdas, binary operators, qualified/import lookups) are deferred
@@ -43,11 +43,11 @@ import Data.String.Properties
 import Once.Type.DecEq
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; success; failure)
-open import Once.TypeCheck.Classify using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
-import Once.TypeCheck.Classify as Classify
+open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
+import Once.Spec.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.ElaborateProofs
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
@@ -56,7 +56,7 @@ open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 ------------------------------------------------------------------------
 
 -- | If `inferElab` succeeds, the declarative judgment holds.
--- Covers the rules stated in `Once.TypeCheck.Judgment` so far.
+-- Covers the rules stated in `Once.Spec.Typing` so far.
 --
 -- The proof is one case per RawExpr constructor. For cases not yet in
 -- the judgment, we do not claim soundness — the theorem's statement

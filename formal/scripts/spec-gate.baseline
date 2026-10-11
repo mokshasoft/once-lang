@@ -149,7 +149,6 @@ import Once.TypeCheck.DeciderComplete
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.ElaborateProofs
 import Once.TypeCheck.Error
-import Once.TypeCheck.Judgment
 import Once.TypeCheck.Principal
 import Once.TypeCheck.Raw
 import Once.TypeCheck.TargetView
@@ -171,10 +170,8 @@ reexport-impl Once.Spec.Meaning Once.Denotation.GradedOps
 reexport-impl Once.Spec.Meaning Once.Denotation.Trace
 reexport-impl Once.Spec.Meaning Once.Denotation.TraceMonad
 reexport-impl Once.Spec.Program Once.Denotation.Behavior
-reexport-impl Once.Spec.Typing Once.TypeCheck.Judgment
 reexport-wholesale Once.Semantics.Machine Once.Semantics.Value
 reexport-wholesale Once.Semantics.Machine Once.Semantics.ValueIR
-reexport-wholesale Once.Spec.Typing Once.TypeCheck.Judgment
 spec-public Once.Spec.Contract
 spec-public Once.Spec.Core.Meaning
 spec-public Once.Spec.Grammar.Decl
@@ -182,7 +179,6 @@ spec-public Once.Spec.Meaning
 spec-public Once.Spec.Metatheory
 spec-public Once.Spec.Parsing
 spec-public Once.Spec.Program
-spec-public Once.Spec.Typing
 spec-renaming Once.Spec.Contract
 spec-renaming Once.Spec.ContractLaws
 spec-renaming Once.Spec.Core.Meaning

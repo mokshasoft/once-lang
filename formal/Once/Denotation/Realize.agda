@@ -41,8 +41,8 @@ open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Spec.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing.Scope using (NamedCtx)
+open import Once.Spec.Typing
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-id-check; t-fst-check; t-snd-check;
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;

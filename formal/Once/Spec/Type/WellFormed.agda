@@ -3,13 +3,14 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Spec.Type.WellFormed — base types, concrete types, well-formed functors.
+-- Once.Spec.Type.WellFormed — base types, concrete types, well-formed functors,
+-- and types without parameters.
 ------------------------------------------------------------------------
 
 module Once.Spec.Type.WellFormed where
 
 open import Once.Spec.Type
-  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; rigid; k-base; Functor; K; Id; _⊕_; _⊗_)
+  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; k-base; Functor; K; Id; _⊕_; _⊗_)
 
 data IsBaseType : Type → Set where
   base-Unit   : IsBaseType Unit
@@ -34,3 +35,24 @@ data WellFormedF : Functor → Set where
   wf-Id  : WellFormedF Id
   wf-Sum : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊕ G)
   wf-Prod : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊗ G)
+
+-- | A type with no type parameter in it. The signature's operations and the
+-- monomorphic definitions have such types; parameters exist only while a
+-- polymorphic definition's body is typed.
+mutual
+  data RigidFree : Type → Set where
+    rf-Unit   : RigidFree Unit
+    rf-Void   : RigidFree Void
+    rf-Int    : RigidFree Int
+    rf-Float  : RigidFree Float
+    rf-*      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A * B)
+    rf-+      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A + B)
+    rf-⇒      : ∀ {A B k} → RigidFree A → RigidFree B → RigidFree (A ⇒[ k ] B)
+    rf-μ      : ∀ {F} → RigidFreeF F → RigidFree (μ-type F)
+    rf-ν      : ∀ {F π} → RigidFreeF F → RigidFree (ν-type F π)
+
+  data RigidFreeF : Functor → Set where
+    rf-K  : ∀ {A} → RigidFree A → RigidFreeF (K A)
+    rf-Id : RigidFreeF Id
+    rf-⊕  : ∀ {F G} → RigidFreeF F → RigidFreeF G → RigidFreeF (F ⊕ G)
+    rf-⊗  : ∀ {F G} → RigidFreeF F → RigidFreeF G → RigidFreeF (F ⊗ G)

@@ -56,7 +56,7 @@ open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_�
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 import Data.List as L
 open import Once.Spec.Context using (Ctx; _,_^_; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
-open import Once.TypeCheck.Classify using (NamedCtx; PolyCtx; Imports; lookupImport)
+open import Once.Spec.Typing.Scope using (NamedCtx; PolyCtx; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
 open import Once.Spec.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
@@ -71,7 +71,7 @@ open import Once.Arith.SigOp.Builders
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
          fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_;
          t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
          t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;

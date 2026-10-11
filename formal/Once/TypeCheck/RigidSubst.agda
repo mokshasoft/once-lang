@@ -40,18 +40,20 @@ open ArrowKind using (quantity)
 open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Spec.Type.Instance using (KindedInstance)
-open import Once.Type.Rigid using (RigidFree; extractGround-rf)
+open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Spec.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
 open import Once.Spec.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
 import Once.Spec.Context as Surface
 open import Once.Spec.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
-open import Once.TypeCheck.Context using (mkBinding)
-open Once.TypeCheck.Context.Binding using (quantity)
-open Once.TypeCheck.Context.Binding using (name; type)
-import Once.TypeCheck.Context as NC
+open import Once.Spec.Typing.Scope using (mkBinding)
+open Once.Spec.Typing.Scope.Binding using (quantity)
+open Once.Spec.Typing.Scope.Binding using (name; type)
+import Once.Spec.Typing.Scope as NC
+open import Once.Spec.Typing.Scope
 open import Once.TypeCheck.Classify
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing
 
 ------------------------------------------------------------------------
 -- The substitution on types.

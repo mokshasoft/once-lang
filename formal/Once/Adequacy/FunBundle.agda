@@ -22,7 +22,8 @@
 module Once.Adequacy.FunBundle where
 
 
-open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys; PolyCtx)
+open import Once.Spec.Typing.Scope using (PolyCtx)
+open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
@@ -48,7 +49,8 @@ import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Spec.Type.Instance using (rigidOf)
-open import Once.Type.Rigid using (RigidFree; rigidFree?)
+open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Type.Rigid using (rigidFree?)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
@@ -57,7 +59,7 @@ open import Once.Spec.Context using (Usage)
 open import Once.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
-open import Once.TypeCheck.Classify using (NamedCtx)
+open import Once.Spec.Typing.Scope using (NamedCtx)
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)

@@ -12,7 +12,7 @@
 
 module Once.TypeCheck.Instance where
 
-import Once.Type.Rigid
+import Once.Spec.Type.WellFormed
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
@@ -21,13 +21,14 @@ open import Once.Spec.Type.Poly using (PolyType)
 open import Once.Spec.Type.Instance using (KindedInstance; rigidOf)
 import Once.Spec.Context as C
 open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
-open import Once.TypeCheck.Classify using (PolyCtx; ctxWithImportsAndPolys; TopCtx)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.Spec.Typing.Scope using (PolyCtx)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; TopCtx)
+open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
 import Once.TypeCheck.RigidSubst as RS
 
 inst-at : ∀ {tc : TopCtx} {polys : PolyCtx} {body : _} (sc : PolyType)
-        → (∀ {x T} → Once.TypeCheck.Classify.lookupImport (TopCtx.tdefs tc) x ≡ Data.Maybe.just T → Once.Type.Rigid.RigidFree T)
-        × (∀ {x T} → Once.TypeCheck.Classify.lookupImport (TopCtx.tsig tc) x ≡ Data.Maybe.just T → Once.Type.Rigid.RigidFree T)
+        → (∀ {x T} → Once.Spec.Typing.Scope.lookupImport (TopCtx.tdefs tc) x ≡ Data.Maybe.just T → Once.Spec.Type.WellFormed.RigidFree T)
+        × (∀ {x T} → Once.Spec.Typing.Scope.lookupImport (TopCtx.tsig tc) x ≡ Data.Maybe.just T → Once.Spec.Type.WellFormed.RigidFree T)
         → ctxWithImportsAndPolys tc polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[] → ∀ {U} → KindedInstance sc U
         → ctxWithImportsAndPolys tc polys ⊢ᶜ body ∶ U ⨾ C.Usage.[]
 inst-at sc irf D ki =

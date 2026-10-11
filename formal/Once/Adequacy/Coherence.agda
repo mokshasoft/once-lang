@@ -34,8 +34,8 @@ import Once.Spec.Type.Grade as T
 open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_; ⊑-pure)
 open import Once.Metatheory.SubLaws using (<:-refl; ⊑π-refl)
 open import Once.Spec.Syntax using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx)
-open import Once.TypeCheck.Judgment
+open import Once.Spec.Typing.Scope using (NamedCtx)
+open import Once.Spec.Typing
 import Once.TypeCheck.ModeSub as MS
 open import Once.TypeCheck.Route
 open import Once.TypeCheck.RouteBuild using (route-cc)
