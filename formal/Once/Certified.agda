@@ -18,6 +18,8 @@
 --   • `typechecker` — the `VerifiedTypeChecker` bundle (determinism ∧ totality
 --     ∧ error-preservation ∧ frontend identities, stated over the REAL
 --     `inferElab`/`checkElab`, so it cannot drift from the live elaborator).
+--   • `nonvacuous` — a model of each assumption whose type is not obviously
+--     inhabited (`Once.Certified.Models`, D302): the claim is not vacuous.
 --   • `language` — the core's metatheory (plan 0.102 B, D276): its term model
 --     is a graded category and ⟦_⟧ a functor out of it — typed substitution,
 --     and `let x = u in t` ≡ `t[u/x]` for pure `u` (referential transparency).
@@ -91,6 +93,7 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
 import Once.Spec.Core.TermModel as TM
 open import Once.Adequacy.TermModel using (termModel)
+open import Once.Certified.Models using (NonVacuous; models)
 
 record CertifiedBuild : Set₁ where
   field
@@ -99,6 +102,8 @@ record CertifiedBuild : Set₁ where
     -- the term model is a graded category, ⟦_⟧ a functor out of it: substitution
     -- is typed, and a pure term may replace its `let` (referential transparency)
     language    : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → TM.TermModel S
+    -- the assumptions are satisfiable: the claim is not about an empty set (D302)
+    nonvacuous  : NonVacuous
 
 -- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE
 -- STATEMENT.
@@ -127,4 +132,5 @@ once-certified b64 b32 brv = record
   { correctness = once-compiler b64 b32 brv
   ; typechecker = verifiedTypeChecker
   ; language    = termModel
+  ; nonvacuous  = models
   }

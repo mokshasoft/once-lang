@@ -18122,3 +18122,20 @@ This is intended: the Spec does not pretend to unbounded integers, so overflow i
 
 ### Consequences
 - A portable program is one whose meaning agrees at every `TargetNum` it is compiled for; nothing checks that today.
+
+## D302 — THE APEX CARRIES MODELS OF ITS ASSUMPTIONS; HONEST ASSUMPTIONS BECOME HYPOTHESES (2026-10-11)
+
+**Relates**: D087 (the `--safe` endgame), D218, D257 (Interp inhabited), D272, plan 0.100 P0 (`RuntimeContract` was empty), plan 0.11 (rewritten), plan 0.113 (merge)
+
+### Context
+The merge's island pass (§4b) found `Probe/RuntimeContractModel` and `Probe/InterpEmpty` unreachable and nearly deleted them as dead code. They were not refutations of gone postulates, like the other probes: they were MODELS — inhabitants of `RuntimeContract` (which each `<arch>-runtime` postulate is at) and of `Interp` (which the apex quantifies over). Both types had been empty once, and nothing on the build noticed: a false OBLIGATION is a proof that will not go through, but a false ASSUMPTION makes the proofs that use it easier. An island model rots or is forgotten exactly when the type it inhabits moves.
+
+### Decision
+1. `CertifiedBuild` gains `nonvacuous : NonVacuous` (`Once.Certified.Models`): `an-interp` (the interpretation that declares nothing) and `runtime-model`. A change that empties either type turns `once-certified` red, and the models are on the reachability dump.
+2. Refutation probes stay scratch (MERGE.md §1): once their postulate is gone, the decision entry is the record and the module is deleted. The nine `Once/Probe/*` modules and `Once/Spike/*` went in this merge.
+3. Direction (plan 0.11): every honest assumption — about the CPU, assembler, loader, OS, FFI or a finite resource — becomes a HYPOTHESIS of `once-certified`, never a `postulate`, and each propositional one owes a model. Facts about our own code are proof gaps and are proved; making them hypotheses is a shim. The end state replaces the per-type models with one concrete program for which every hypothesis holds (CakeML's bootstrap is the analogue).
+
+### Consequences
+- A model shows a type INHABITED, not a postulate TRUE.
+- Not covered yet: `BlockRunsHyp-<arch>`, the 22 `ResourceBounds`, the propositional CPU postulates (`as-faithful-*`, `step-budget-*-adequate`). Plan 0.11 phases B–F.
+- MERGE.md §1's emptiness probe: a new assumption whose type is not obviously inhabited owes a `NonVacuous` field, not a scratch probe.

@@ -46,8 +46,8 @@ record RuntimeContract : Set where
     -- POSTULATE disjointness while placing the stack AND the code at address
     -- 0, and it bounded EVERY program length by `code-upper` — so every
     -- `RuntimeContract` was empty and the per-arch postulates were postulates
-    -- of `⊥` (`Probe.RuntimeContractModel` records the refutation and builds a model). An order is satisfiable (the
-    -- probe also builds one), and nothing of the old content was used.
+    -- of `⊥`. An order is satisfiable — `Once.Certified.Models.an-instance`
+    -- builds one, on the apex (D302) — and nothing of the old content was used.
     --------------------------------------------------------------------
 
     stack-upper : ℕ    -- Stack region: [0, stack-upper]

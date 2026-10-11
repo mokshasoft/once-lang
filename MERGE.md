@@ -124,6 +124,11 @@ Special scrutiny, in order:
   only what imported it, leaving `obs-correct-Ana` postulating an inhabitant of
   an empty type, under the apex proof. Recipe and worked example:
   `docs/compiler/residual-ledger.md`.
+  The probe is for FINDING an empty type. The positive direction is permanent:
+  a new assumption (postulate or apex hypothesis) whose type is not obviously
+  inhabited owes a model as a field of `NonVacuous` (`Once.Certified.Models`,
+  D302), so the apex goes red if the type ever empties. A model in an island
+  module is not enough: it rots unseen when the type moves.
 - **`{-# TERMINATING #-}` / `--allow-unsolved` pragmas.** None may enter the
   correspondence cone (Machine / Codegen / Adequacy).
 - **`make -C formal lint-imports` is clean.** Agda only WARNS when a `using
