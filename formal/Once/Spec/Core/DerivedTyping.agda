@@ -18,8 +18,7 @@ open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; subst; cong; cong₂)
 
-open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; mk-kind; Many; One; Zero; Purity; pure; eff;
-  μ-type; ν-type; Functor; ⟦_⟧T)
+open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; mk-kind; Many; One; Zero; Purity; pure; eff; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Type.Sub using (⊑-pe; pure⊑)
 open import Once.Surface.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
@@ -196,6 +195,3 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
          → Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] effAppᶜ f x ∷ Unit ⇒[ mk-kind Many eff ] B ! pure
 ⊢effAppᶜ df dx = ⊢lam refl (⊢app (⊢sub-eff ⊑-pe (wk-⊢′ Unit df)) (⊢sub-eff ⊑-pe (wk-⊢′ Unit dx)))
 
-⊢seqᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B : Type} {π : Purity} {a b}
-      → Γ ⊢[ Ψ₁ ] a ∷ A ! π → Γ ⊢[ Ψ₂ ] b ∷ B ! π → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] seqᶜ a b ∷ B ! π
-⊢seqᶜ da db = ⊢snd (⊢pair da db)

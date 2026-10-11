@@ -323,10 +323,6 @@ parseSourceToModule = parseStrict
 -- De-withed: every decision is an explicit argument (the proofs reduce it).
 ------------------------------------------------------------------------
 
-seqCheck : String ⊎ ⊤ → String ⊎ ⊤ → String ⊎ ⊤
-seqCheck (inj₁ e) _ = inj₁ e
-seqCheck (inj₂ _) r = r
-
 checkOK : ∀ {ctx e T} → TE.VerifiedCheckResult ctx e T → String ⊎ ⊤
 checkOK (TE.failure err , _)       = inj₁ (renderError err)
 checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
@@ -466,7 +462,6 @@ compileModule m doOpt source with parse source
            (inj₁ err) → inj₁ err
            (inj₂ es)  → compileEntries m doOpt emptyCScope es
 
-
 -- Plan 0.50 — the symbols THIS codegen actually emits as `.globl` labels, defined
 -- on the SAME `CompiledFun` list `compileFromModule` renders (`compileResolvedModule`):
 -- one per compiled function (D274: every one is a definition).
@@ -484,7 +479,6 @@ moduleSyms m doOpt mod = moduleSyms-aux (compileResolvedModule m doOpt mod)
 ------------------------------------------------------------------------
 -- Target selection and compilation
 ------------------------------------------------------------------------
-
 
 -- | Supported architectures — the single shared enum (re-exported so
 -- existing `C.Arch` references downstream are unchanged).
@@ -522,7 +516,6 @@ isEffUU? : (T : Type) → Maybe (T ≡ EffUU)
 isEffUU? T with T ≟T EffUU
 ... | yes e = just e
 ... | no _  = nothing
-
 
 -- D253: `main` is an entry like any other; the program's own `main` is the CALL
 -- of it.
@@ -633,7 +626,6 @@ externs-of p = DL.filter (is-extern? p) (calls-of (rewrite-program p))
 entry-owner : CanonicalName
 entry-owner = bare "0entry"
 
-
 ------------------------------------------------------------------------
 -- The per-arch file: `code` IS the lowered program image, and `_start` is its
 -- first instruction — the image's `c-start` (the heap register, the outermost
@@ -650,7 +642,6 @@ printFile : (arch : Arch) → FileOf arch → String
 printFile x86-64  = X64F.print
 printFile x86-32  = X32F.print
 printFile riscv64 = RVF.print
-
 
 image-of : IRProgram → AbstractTrace
 image-of p = program-image entry-owner (rewrite-program p)
@@ -793,7 +784,6 @@ compile m stage doOpt arch source with parseStrict source
            Build → case compileEntries m doOpt emptyCScope es of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → built-of arch (emitFromCompiled arch (inj₂ compiled))
-
 
 -- | Same as `compile` but starting from a pre-resolved `Module`.
 -- Haskell uses this after driving transitive-import I/O and calling

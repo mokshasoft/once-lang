@@ -269,10 +269,6 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
 -- THE GROUND INSTANTIATION THEOREM
 ------------------------------------------------------------------------
 
--- `Γ , A` instantiated is the instantiated context extended.
-,-⟪⟫ : ∀ {m n} (Γ : PCtx m n) (A : Ty m) (σ : GSub m) → (Γ , A) ⟪ σ ⟫ᶜ ≡ (Γ ⟪ σ ⟫ᶜ) C., (A ⟪ σ ⟫)
-,-⟪⟫ Γ A σ = refl
-
 instantiate : ∀ {m} {Δ : KCtx m} {n} {Γ : PCtx m n} {Ψ : Usage n} {t : PTm m n} {A : Ty m} {π : Purity}
   (σ : GSub m) → Respects Δ σ
   → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π

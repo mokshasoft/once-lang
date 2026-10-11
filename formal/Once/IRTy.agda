@@ -286,22 +286,6 @@ data FitsInRegI : IRTy → Set where
 -- an effectful arrow over the same A, B are the SAME IR object. `IR.arr`
 -- becomes an identity morphism once `IR` is re-indexed over `IRTy`.
 
--- D143: `erase-⇒` holds at a NON-erased quantity; grade irrelevance narrows to
--- PURITY irrelevance, which is all M2 ever justified.
-erase-⇒-One : ∀ {A B : Type} (π : Purity)
-            → ⌊ A Type.⇒[ T.mk-kind One π ] B ⌋ ≡ ⌊ A ⌋ ⇛ ⌊ B ⌋
-erase-⇒-One _ = refl
-
-erase-⇒-Many : ∀ {A B : Type} (π : Purity)
-             → ⌊ A Type.⇒[ T.mk-kind Many π ] B ⌋ ≡ ⌊ A ⌋ ⇛ ⌊ B ⌋
-erase-⇒-Many _ = refl
-
--- THE ENCODED INVARIANT: an erased arrow has no argument slot, so no IR can
--- carry one (OCP-0005 rung 1 — violation is ill-typed, not optimised away).
-erase-⇒-Zero : ∀ {A B : Type} (π : Purity)
-             → ⌊ A Type.⇒[ T.mk-kind Zero π ] B ⌋ ≡ Unit ⇛ ⌊ B ⌋
-erase-⇒-Zero _ = refl
-
 erase-⇒-purity-irrelevant
   : ∀ {A B : Type} (q : Quantity) (π₁ π₂ : Purity)
   → ⌊ A Type.⇒[ T.mk-kind q π₁ ] B ⌋ ≡ ⌊ A Type.⇒[ T.mk-kind q π₂ ] B ⌋

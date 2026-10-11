@@ -108,13 +108,6 @@ mutual
   (F ⊕ G) ⟨ σ ⟩F = F ⟨ σ ⟩F ⊕ G ⟨ σ ⟩F
   (F ⊗ G) ⟨ σ ⟩F = F ⟨ σ ⟩F ⊗ G ⟨ σ ⟩F
 
--- Substitution commutes with functor application.
-⟦⟧F-⟨⟩ : ∀ {m k} (F : Fun m) (X : Ty m) (σ : Sub m k) → (⟦ F ⟧F X) ⟨ σ ⟩ ≡ ⟦ F ⟨ σ ⟩F ⟧F (X ⟨ σ ⟩)
-⟦⟧F-⟨⟩ (K A)   X σ = refl
-⟦⟧F-⟨⟩ Id      X σ = refl
-⟦⟧F-⟨⟩ (F ⊕ G) X σ = cong₂ _+_ (⟦⟧F-⟨⟩ F X σ) (⟦⟧F-⟨⟩ G X σ)
-⟦⟧F-⟨⟩ (F ⊗ G) X σ = cong₂ _*_ (⟦⟧F-⟨⟩ F X σ) (⟦⟧F-⟨⟩ G X σ)
-
 -- Substitutions compose.
 mutual
   ⟨⟩-∘ : ∀ {m k l} (A : Ty m) (σ : Sub m k) (τ : Sub k l) → (A ⟨ σ ⟩) ⟨ τ ⟩ ≡ A ⟨ (λ i → σ i ⟨ τ ⟩) ⟩

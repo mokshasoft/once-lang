@@ -561,7 +561,6 @@ mutual
   extractGround PFloat           _        = Float
   -- PTVar case is unreachable (its Ground = ⊥)
 
-
 ------------------------------------------------------------------------
 -- Decidable Ground check
 --
@@ -654,8 +653,8 @@ purityEqBool eff  eff  = true
 tkindEqBool : TKind → TKind → Bool
 tkindEqBool k-base k-base = true
 tkindEqBool k-any  k-any  = true
-{-# CATCHALL #-}
-tkindEqBool _      _      = false
+tkindEqBool k-base k-any  = false
+tkindEqBool k-any  k-base = false
 
 mutual
   typeEqBool : Type → Type → Bool
@@ -829,5 +828,4 @@ CodVarsInDom sd sc = ∀ {x} → x ∈ₗ ftv sc → x ∈ₗ ftv sd
 IsInstance : PolyType → Type → Set
 IsInstance s T = Σ (String → Type) (λ θ → substPoly θ s ≡ T)
   where open import Data.Product using (Σ)
-
 

@@ -111,26 +111,9 @@ m >>T k = m >>=T λ _ → k
 fmapT : ∀ {X Y} → (X → Y) → T X → T Y
 fmapT g m = m >>=T λ x → ret (g x)
 
--- One call of an answering operation, answered.
-callT : (o : CallOp) → M.⟦ cdom o ⟧ → T M.⟦ ccod o ⟧
-callT o a = call o a ret
-
--- A call of a halting operation: the program ends.
-haltT : ∀ {X} (o : HaltOp) → M.⟦ hdom o ⟧ → T X
-haltT o a = halt o a
-
 ------------------------------------------------------------------------
 -- The monad laws: EQUALITIES of computations.
 ------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
 
 ------------------------------------------------------------------------
 -- Running against an interpretation
@@ -138,7 +121,6 @@ haltT o a = halt o a
 
 callKey : CallOp → Key
 callKey o = key (showCanonical (cname o)) (cdom o) (ccod o)
-
 
 ------------------------------------------------------------------------
 -- INTERPRETATIONS (D061's three times; plan 0.105, D257 amendment 2)
@@ -167,10 +149,6 @@ answer ι h o p = answerI (impl ι) h (callKey o) p
 
 pure : (ι : Interp) (k : Key) → k ∈ pures ι → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
 pure ι = pureI (impl ι)
-
--- The interpretation that declares nothing: interpretations exist.
-no-world : Interp
-no-world = interp [] (record { answerI = λ _ _ () ; pureI = λ _ () })
 
 -- The RESERVED operation an unlinked call halts on: a call the world does not
 -- provide, or an internal call the table does not define (D244).
@@ -243,28 +221,13 @@ then ι h r f = thenRes ι h (proj₁ r) (proj₂ r) f
 eventsT : ∀ {X} → Interp → T X → List SigOpEvent
 eventsT ι m = proj₁ (run ι [] m)
 
-resultT : ∀ {X} → Interp → T X → Res X
-resultT ι m = proj₂ (run ι [] m)
-
 projTrace : ∀ {X} → Interp → T X → ℕ → List SigOpEvent
 projTrace ι m n = take n (eventsT ι m)
-
-atT : ∀ {X} → Interp → T X → ℕ → List SigOpEvent × Res X
-atT ι m n = projTrace ι m n , resultT ι m
-
-Stopped : Set
-Stopped = Bool
-
-stoppedT : ∀ {X} → Interp → T X → Stopped
-stoppedT ι m = is-stopped (resultT ι m)
 
 ------------------------------------------------------------------------
 -- A run's observable is a prefix family — for EVERY computation, because it
 -- is a cap of one finite list.
 ------------------------------------------------------------------------
-
-
-
 
 Bounded : (ℕ → List SigOpEvent) → Set
 Bounded tr = ∀ k → length (tr k) ≤ k
@@ -282,8 +245,6 @@ record PrefixFamily (tr : ℕ → List SigOpEvent) : Set where
     sat : Saturating tr
     coh : Coherent tr
 
-
-
 ------------------------------------------------------------------------
 -- Results
 ------------------------------------------------------------------------
@@ -296,7 +257,6 @@ resVal : ∀ {X} (r : Res X) → Returns? r → X
 resVal (returns x) _ = x
 resVal stopped     ()
 
-
 -- A computation's result run MID-PROGRAM: against the interpretation, after
 -- the calls `h` already made. An answering call's answer depends on `h`, so a
 -- sub-computation's value is only defined at a history (the machine's log).
@@ -306,10 +266,6 @@ resultAt ι h m = proj₂ (run ι h m)
 -- The value it returns there, given that it does.
 valueT : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T X) {p : Returns? (resultAt ι h m)} → X
 valueT ι h m {p} = resVal (resultAt ι h m) p
-
--- A relation on results, lifted (`stopped` relates only to `stopped`).
-RelRes : ∀ {X Y : Set} (R : X → Y → Set) → Res X → Res Y → Set
-RelRes = Res-rel
 
 ------------------------------------------------------------------------
 -- Related computations: the SAME tree, related leaves.
@@ -327,16 +283,7 @@ data RelT′ {X Y : Set} (R : X → Y → Set) : T X → T Y → Set where
            → (∀ b → RelT′ R (k b) (k′ b)) → RelT′ R (call o a k) (call o a k′)
   rel-halt : ∀ {o a} → RelT′ R (halt o a) (halt o a)
 
-
-
-
-
-
-
-
 ------------------------------------------------------------------------
 -- List arithmetic the observable proofs use
 ------------------------------------------------------------------------
-
-
 

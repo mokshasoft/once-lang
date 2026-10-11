@@ -78,7 +78,7 @@ open import Once.Denotation.Behavior public
 -- (`ValueDomain.⟦_⟧ᴰ`, every arrow `A → T B`) and the surface derivation meaning
 -- over it are implementation (the IR side's), no longer exported as the Spec's.
 open import Once.Denotation.TraceMonad public
-  using ( T ; returnT ; _>>=T_ ; callT ; haltT ; Interp ; Run ; run ; atT ; projTrace )
+  using ( T ; returnT ; _>>=T_ ; Interp ; Run ; run ; projTrace )
 open import Once.Denotation.GradedDomain public
   using ( M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT )
 open import Once.Denotation.GradedOps public

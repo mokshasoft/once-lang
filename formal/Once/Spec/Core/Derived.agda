@@ -84,11 +84,6 @@ anaᶜ  c   = lam (unfold (wk c) v0)
 effAppᶜ : ∀ {n} → Tm n → Tm n → Tm n
 effAppᶜ f x = lam (app (wk f) (wk x))
 
--- `seq a b`: run `a`, discard its value, then `b` (the surface's ex falso
--- rules evaluate an operand whose value can never be used).
-seqᶜ : ∀ {n} → Tm n → Tm n → Tm n
-seqᶜ a b = snd (pair a b)
-
 -- The SUSPENDED forms of the surface's effectful applied builtins: the
 -- argument is evaluated now, the effect when the suspension runs
 -- (`t-apply-eff-app-infer`, `t-Out-eff-app-infer`).
@@ -102,8 +97,3 @@ outEffᶜ   = lam (lam (out v1))
 -- right. What the μ/ν β-rows and Lambek's `out` for μ are stated with.
 ------------------------------------------------------------------------
 
-mapᶜ : ∀ {n} → Functor → Tm (ℕ.suc n) → Tm n → Tm n
-mapᶜ (K _)   h v = v
-mapᶜ Id      h v = h [ v ]
-mapᶜ (F ⊕ G) h v = case v (inl (mapᶜ F (ren (extR suc) h) v0)) (inr (mapᶜ G (ren (extR suc) h) v0))
-mapᶜ (F ⊗ G) h v = let′ v (pair (mapᶜ F (ren (extR suc) h) (fst v0)) (mapᶜ G (ren (extR suc) h) (snd v0)))

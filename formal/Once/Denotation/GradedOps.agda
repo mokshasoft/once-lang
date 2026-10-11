@@ -75,15 +75,6 @@ prjB (base-Prod a b) (x , y) = prjB a x , prjB b y
 prjB (base-Sum a b) (inj₁ x) = inj₁ (prjB a x)
 prjB (base-Sum a b) (inj₂ y) = inj₂ (prjB b y)
 
-injBᵍ : ∀ {A} → IsBaseType A → Val.⟦ A ⟧ᵍ → ⟦ A ⟧ᵛ
-injBᵍ base-Unit   x = x
-injBᵍ base-Void   x = x
-injBᵍ base-Int    x = x
-injBᵍ base-Float  x = x
-injBᵍ (base-Prod a b) (x , y) = injBᵍ a x , injBᵍ b y
-injBᵍ (base-Sum a b) (inj₁ x) = inj₁ (injBᵍ a x)
-injBᵍ (base-Sum a b) (inj₂ y) = inj₂ (injBᵍ b y)
-
 ------------------------------------------------------------------------
 -- Functor layers (first-order payloads only, per `WellFormedF`).
 ------------------------------------------------------------------------
