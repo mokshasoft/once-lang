@@ -35,6 +35,7 @@
 --   MEASURED against it for the WF-axis comparison.  Nothing imports it.
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Comparison.GcdIndStepConcrete where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Examples.Gcd.DvdL public
@@ -44,9 +45,8 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom; Π
         ; var; nzero; nsuc; fst; snd; app; natrec; ⌜Nat⌝; Sub; subTm; subTy; extS )
 open Lib0.Spec-Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nsuc; ⊢fst; ⊢snd; ⊢app; ⊢natrec
-        ; ⊢conv; _≅ᵀ_; csymᵀ; ty-Π; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢nsuc; ⊢fst; ⊢snd; ⊢app; ⊢natrec; ⊢conv; _≅ᵀ_
+        ; csymᵀ; ty-Π )
 open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢ )
 open Lib0.Lib-Wk using ( w; sub-w; sub-w²; cong₃; cong₄; sub-w-single )
 open Lib0.Lib-Pair using ( PairT )

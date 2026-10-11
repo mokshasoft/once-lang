@@ -16,6 +16,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _∋_∷_; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Metatheory.Fundamental.Semantic (𝒮 : Defs) where
 open import DirectedHoTT.Metatheory.TySub.Red 𝒮
   using ( wk-cancel-tm )
@@ -35,22 +36,21 @@ open import DirectedHoTT.Spec.Syntax
         ; ⌜IMu⌝; εwkTm; DIh; Fin; con; ⌜Fin⌝; dι; dσ; dρ; dpay; dih; fzero
         ; fsuc; fcase; fcase0; psplit )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( single; nrs; _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ
-        ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz
-        ; ordtr-ssz; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ
-        ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; hrefl-pw
-        ; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut; tr-pw; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
-        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; ξ-Σˡ; ξ-Σʳ; _≅_; _≅ᵀ_; crflᵀ; csymᵀ
-        ; ctrnᵀ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there; _⊢_∷_; ⊢var; ⊢lam; ⊢app
-        ; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝
-        ; El-⌜Σ⌝; El-⌜Id⌝; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
-        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-Nat-z; Hom-Nat-sz
-        ; Hom-Nat-ss; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap
-        ; ⊢conv; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; _⊢ty_; ty-base; ty-U
-        ; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat; ⊢unit; ⊢nzero
-        ; ⊢nsuc; ⊢natrec; ⊢ctx_; c-◇; c-▹; ⊢id; ⊢appex; wk-single; El-⌜Fin⌝
-        ; ξ-IMuᴰ; ξ-IMuᴵ; ξ-IMuⁱ; ξ-Fin )
+  using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ
+        ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz
+        ; ordtr-szs; ordtr-sss; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ
+        ; ξ-ordtrq; ξ-fst; ξ-snd; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ
+        ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; hrefl-pw; tr-J-base; tr-J-Σ
+        ; tr-J-Hom; tr-taut; tr-pw; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ
+        ; ξ-apᵖ; ξ-Σˡ; ξ-Σʳ; _≅_; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; _⊢_∷_; ⊢var; ⊢lam
+        ; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_
+        ; El-⌜base⌝; El-⌜Σ⌝; El-⌜Id⌝; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝; ξ-Idᵀ
+        ; ξ-Idˡ; ξ-Idʳ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-Nat-z
+        ; Hom-Nat-sz; Hom-Nat-ss; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr
+        ; ⊢trU; ⊢ap; ⊢conv; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; _⊢ty_
+        ; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
+        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ctx_; c-◇; c-▹; ⊢id; ⊢appex
+        ; El-⌜Fin⌝; ξ-IMuᴰ; ξ-IMuᴵ; ξ-IMuⁱ; ξ-Fin )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; subTm-occ; pw?; stkC?; stkA?; pwBody; pwDom
         ; pwShift; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm

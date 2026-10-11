@@ -27,6 +27,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; wk-single; ⌊_⌋ )
 module DirectedHoTT.Examples.Gcd.LeEq where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -36,9 +37,8 @@ open import DirectedHoTT.Spec.Syntax
         ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero
         ; renTm; extR; subTm-renTm; subTm-cong; subTm-id )
 open Lib0.Spec-Typing
-  using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; single
-        ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec; _≅ᵀ_; El-⌜Nat⌝
-        ; ⊢nzero; done; ty-Hom )
+  using ( _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; ⊢lam; ⊢app; ⊢var; ⊢natrec
+        ; _≅ᵀ_; El-⌜Nat⌝; ⊢nzero; done; ty-Hom )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open Lib0.Lib-Strong
   using ( ⊢le-refl; reflTm; natAsEl; elAsNat )

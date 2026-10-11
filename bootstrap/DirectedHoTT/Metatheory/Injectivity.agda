@@ -26,6 +26,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Base using ( iinst; single )
 module DirectedHoTT.Metatheory.Injectivity (𝒮 : Defs) where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ ; cong₂; ⊥ )
@@ -44,14 +45,14 @@ open import DirectedHoTT.Spec.Reduction 𝒮
         ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; Hom-Nat-z; Hom-Nat-sz
         ; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜IMu⌝; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; _⟶*_; done; step; _≅ᵀ_; credᵀ; crflᵀ
-        ; csymᵀ; ctrnᵀ; _≅_; cred; crfl; csym; ctrn; hom→≅; iinst; El-⌜Fin⌝
-        ; DIh-ι; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ
-        ; ξ-DIhᶜ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ
-        ; fcase-z; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-con
-        ; ξ-ielimᴰ; ξ-ielimⁱ; ξ-ielimᵉ; ξ-ielimᵗ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ
-        ; ξ-dρᶜ; ξ-dpayᴵ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ
-        ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ
-        ; ξ-psplitᵍ; tr-J-IMu; tr-J-Fin; ξ-Fin; ξ-nsuc; single )
+        ; csymᵀ; ctrnᵀ; _≅_; cred; crfl; csym; ctrn; hom→≅; El-⌜Fin⌝; DIh-ι
+        ; DIh-σ; DIh-ρ; ξ-IMuᴵ; ξ-IMuᴰ; ξ-IMuⁱ; ξ-Desc; ξ-DIhᴰ; ξ-DIhᴹ; ξ-DIhᶜ
+        ; ξ-DIhᵖ; ι; dpay-ι; dpay-σ; dpay-ρ; dih-ι; dih-σ; dih-ρ; fcase-z
+        ; fcase-s; psplit-β; ξ-⌜IMu⌝ᴵ; ξ-⌜IMu⌝ᴰ; ξ-⌜IMu⌝ⁱ; ξ-con; ξ-ielimᴰ
+        ; ξ-ielimⁱ; ξ-ielimᵉ; ξ-ielimᵗ; ξ-dσˢ; ξ-dσᶠ; ξ-dρʲ; ξ-dρᶜ; ξ-dpayᴵ
+        ; ξ-dpayᴰ; ξ-dpayᶜ; ξ-dihᴰ; ξ-dihᵉ; ξ-dihᶜ; ξ-dihᵖ; ξ-fsuc; ξ-fcaseᵗ
+        ; ξ-fcaseᵃ; ξ-fcaseᵇ; ξ-fcase0; ξ-psplitᵇ; ξ-psplitᵍ; tr-J-IMu
+        ; tr-J-Fin; ξ-Fin; ξ-nsuc )
 open import DirectedHoTT.Metatheory.Confluence 𝒮
   using ( church-rosser; _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl; ptr; ptr-J-base; ptr-J-Σ

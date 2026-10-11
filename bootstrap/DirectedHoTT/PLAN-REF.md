@@ -447,3 +447,60 @@ Next: Lib, then Examples, then the Knot.
 - ⚠ **To check:** `Gcd.LeMid` 61 → 14 872 s and `Gcd.LeEq` 4 → 1037 s in
   that sweep. LeMid followed a 143 kill and may have rebuilt the closure
   (`sweep-first-module-eats-the-closure`); re-time each alone.
+
+### 2026-10-11 — Spec.Base no longer shared through the instances
+
+- **The Gcd regression is real, and it is a copy.** Re-timed alone after
+  deleting only their interfaces: LeEq **1057 s / 1.0 GB** (cold 4 s),
+  LeMid **113 s / 4.96 GB** (cold 61 s; the sweep's 143 was the 5.5 GB cap).
+  Profiled (`agda-profile.sh`): `Eq4.⊢transport`, `Eq4!.step`/`eq4`,
+  `⊢MIDnr`, `⊢S3s` = 850 s of 1050, all `extS`/`renTm`/`subTm` unfoldings
+  (55 M in `⊢transport` alone). Conversion heads include
+  `Lib0.Inst.Spec-Typing.single`, `Lib.ArithComm._.⌊_⌋`,
+  `Spec.Typing._.Base.⌊_⌋`: COPIES of signature-free `Spec.Base`
+  definitions.
+- **Mechanism.** `Spec.Reduction` did `open import Spec.Base public`; a
+  module application copies the whole exported scope, re-exports included,
+  so every `Spec.Typing 𝒮 n` instance minted its own `single`, `⌊_⌋`, `nrs`,
+  … Two heads for one function, and `subTm (single x) F ≡ subTm (single′ x) F`
+  is decided by evaluating the substitution. Same family as the SD fix
+  (2026-10-09), one level down: open problem 4 of HANDOFF-2026-10-08 (split
+  the signature-free data out of the parameterised modules), now measured.
+- **Fix.** `Spec.Reduction` opens `Spec.Base` without `public`;
+  `tools/base_unshare.py` (also the last pass of `planref.convert_all`, so
+  the generators emit it) strips the Base names from every Typing/Reduction
+  `using`/`hiding` list and opens them once, from `Spec.Base`, before the
+  module header (247 files, idempotent; regeneration reproduces the tree
+  byte for byte; lint 0 errors / 395 warnings as before).
+- ✅ **Sweep `bootstrap/sweep-unshare.log`: ALL GREEN, 288 modules**
+  (4538 s total). Against `sweep-cold.log` (pre-PLAN-REF) and the 10-08
+  one-module-per-process numbers:
+
+  | module | cold | 10-08 / 10-11 alone | un-shared sweep |
+  |---|---|---|---|
+  | Gcd.LeEq | 4 s | 1057 s / 1.0 GB | **10 s** |
+  | Gcd.LeMid | 61 s | 113 s / 4.96 GB | **65 s** |
+  | Knot.Red | 148 s | 175 s (after SD) | 986 s, see below |
+  | Knot.RedT | 40 s | 175 s | 61 s |
+  | Knot.RedXiConGen | 58 s | 870 s | 134 s |
+  | Knot.RedCompConGen | 52 s | 448 s | 123 s |
+  | Knot.RedTConGen | 28 s | 394 s | 62 s |
+  | Knot.JudgeRowsGen | 52 s | 205 s | 87 s |
+  | Knot.RedAgree | 10 s | 158 s | 19 s |
+
+  The Gcd regression is gone (LeEq 2.5× of cold, inside its first-module
+  noise; LeMid at cold). The Knot families keep a ~1.5–2.3× overhead over
+  cold, the module-argument cost accepted on 2026-10-09/10.
+- ⚠ **Knot.Red is at the memory ceiling.** In the sweep it was killed with
+  143 at `-A64m` and passed on the ladder's `-A64m -c` (986 s, with another
+  session's agda running alongside). Re-timed alone (deps built, no other
+  agda): `-A64m` → 143 at 6m51s (scope peak 4.9 GB + 2 GB swap);
+  `-A64m -c` → **285 s, 3.8 GB + 1.7 GB swap**. The 175 s after the SD fix
+  was at `-A64m`, so Red got slower and bigger since 10-10, or that run
+  was close to the cap already. Not explained yet. ⬜ Profile Red
+  (`agda-profile.sh`, HEAP below 5.5G) for further `M._.name` copies;
+  until then the sweep's ladder covers it.
+- **Rule:** a parameterised module never `public`-re-exports a
+  non-parameterised one. A regression after a parameterisation: look in the
+  profile's conversion/unfolding heads for `M._.name` / `Inst.…name`
+  copies of signature-free definitions.

@@ -2,6 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋ )
 module DirectedHoTT.Negative.LexZS where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -9,10 +10,8 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; absurd; ordtr; lam; app
         ; Π; renTy; subTy; extS; extR )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr
-        ; ⊢lam; ⊢app
-        ; ty-Nat; ty-Hom; ty-El )
+  using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app; ty-Nat; ty-Hom
+        ; ty-El )
 open import DirectedHoTT.Lib.Ord
   using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Negative.Lex

@@ -40,6 +40,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Base using ( single )
 module DirectedHoTT.Lib.Eval (𝒮 : Defs) where
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -47,7 +48,7 @@ open import normalizer.Syntax.Types using ( Σ; _,_; _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; RTm; var; vz; lam; app; pair; fst; snd; subTm; unit )
 open import DirectedHoTT.Spec.Reduction 𝒮
-  using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd; single )
+  using ( _⟶_; _⟶*_; done; step; β; βfst; βsnd )
 open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd )

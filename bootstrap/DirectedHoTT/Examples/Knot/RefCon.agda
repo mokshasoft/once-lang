@@ -22,13 +22,14 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Examples.PwCore as Core₀
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.RefCon (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-⌜Id⌝ʳ; ⟶*-natrecᶻ; ⟶*-dpayᶜ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( []; _∷_; conₗ; lt-z; lt-s; atᶜ; v₀; v₁; v₂; v₃; _,ₚ_; []ᵈ; _∷ᵈ_ )

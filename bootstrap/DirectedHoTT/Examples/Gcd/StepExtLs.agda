@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _∋_∷_; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Gcd.StepExtLs where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -29,12 +30,9 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS; Id-cong₃
         ; subTy-renTy; renTy-subTy; subTy-cong )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _∋_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢app; ⊢nsuc; ⊢natrec
-        ; ⊢fst; ⊢snd; ⊢nzero; ⊢idrefl; natrec-zero; natrec-suc
-        ; ⊢conv; _≅ᵀ_; csymᵀ
-        ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; ⊢⌜Nat⌝
-        ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢lam; ⊢app; ⊢nsuc; ⊢natrec; ⊢fst; ⊢snd; ⊢nzero
+        ; ⊢idrefl; natrec-zero; natrec-suc; ⊢conv; _≅ᵀ_; csymᵀ; ty-Nat; ty-Hom
+        ; ty-El; ty-Π; ty-Id; ⊢⌜Nat⌝; _⟶_; _⟶*_; done; step; β; ξ-appˡ )
 open Lib0.Metatheory-TySub
   using ( ⊢wk; ⊢-cast; ∋-cast; Ren⊢; Ren⊢-ext; ren-ty; ren-lemma; ⊢[] )
 open Lib0.Lib-Amrec

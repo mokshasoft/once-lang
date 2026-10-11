@@ -17,6 +17,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; here; single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Nat where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -30,11 +31,8 @@ open import DirectedHoTT.Spec.Syntax
 --   importer of this module keeps working unchanged.
 open Lib0.Lib-Nat using ( plusTm; ⊢plus )
 open Lib0.Spec-Typing
-  using ( single; _⟶_; _⟶*_; done; step
-        ; natrec-zero; natrec-suc; ξ-nsuc
-        ; Ctx; ◇; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; _⊢ty_; ty-Nat; ty-Unit )
+  using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc; _⊢_∷_; ⊢var
+        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; _⊢ty_; ty-Nat; ty-Unit )
 
 n1 n2 n3 : {Γ : Cx} → RTm Γ
 n1 = nsuc nzero

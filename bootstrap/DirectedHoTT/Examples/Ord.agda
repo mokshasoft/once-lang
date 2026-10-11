@@ -22,6 +22,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Ord where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -31,13 +32,9 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; unit; nzero; nsuc; absurd; ordtr )
 open Lib0.Spec-Typing
-  using ( _⟶ᵀ_
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; ⌊_⌋
-        ; _⟶_; _⟶*_; done; step
-        ; ordtr-z; ordtr-sss
-        ; _⊢_∷_; ⊢unit; ⊢conv; ⊢nsuc; ⊢nzero; ⊢absurd; ⊢ordtr )
+  using ( _⟶ᵀ_; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
+        ; _⟶_; _⟶*_; done; step; ordtr-z; ordtr-sss; _⊢_∷_; ⊢unit; ⊢conv
+        ; ⊢nsuc; ⊢nzero; ⊢absurd; ⊢ordtr )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 open Lib0.Metatheory-Canonicity using ( consistency )
 

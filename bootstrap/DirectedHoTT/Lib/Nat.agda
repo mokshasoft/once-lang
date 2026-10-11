@@ -25,11 +25,12 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; here; ⌊_⌋ )
 module DirectedHoTT.Lib.Nat (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; var; vz; nsuc; natrec; Nat )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢nsuc; ⊢natrec; ty-Nat )
+  using ( _⊢_∷_; ⊢var; ⊢nsuc; ⊢natrec; ty-Nat )
 
 -- Term: `natrec z s n`; `s` has TWO binders (the number, then the IH).
 plusTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ

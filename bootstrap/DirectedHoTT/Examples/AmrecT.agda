@@ -54,6 +54,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.AmrecT where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -78,11 +79,9 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; idₛ
         ; renTy-subTy; renTm-subTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; _⟶*_; done; step; β; natrec-zero; natrec-suc
-        ; ⊢lam; ⊢app; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
+  using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; _⟶*_; done; step; β
+        ; natrec-zero; natrec-suc; ⊢lam; ⊢app; _⊢ty_; ty-Nat; ty-Hom; ty-El
+        ; ty-Π )
 open Lib0.Metatheory-TySub
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext )
 open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )

@@ -20,6 +20,7 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Algorithm.DecideConversionTyped (𝒮 : Defs) (wf : WfK 𝒮) where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Bool using ( Bool; true; false )
@@ -32,8 +33,7 @@ private
   refs = Entries.refsOK 𝒮 n (λ p → p) wf
 
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _≅_; ⊢ctx_; c-◇; c-▹
-        ; ⊢var; ⊢lam; ⊢app; here; there; ty-base; ⊢appex )
+  using ( _⊢_∷_; _≅_; ⊢ctx_; c-◇; c-▹; ⊢var; ⊢lam; ⊢app; ty-base; ⊢appex )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Tm_ )
 open import DirectedHoTT.Metatheory.Fundamental 𝒮 n ok refs using ( dec-conv-typed )
 

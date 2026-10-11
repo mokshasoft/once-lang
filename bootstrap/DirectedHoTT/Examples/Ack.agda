@@ -34,6 +34,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Ack where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -43,10 +44,8 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; lam; fst; snd; ⌜Σ⌝; ⌜Nat⌝
         ; Π )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⟶ᵀ_; El-⌜Σ⌝; El-⌜Nat⌝
-        ; _⊢_∷_; ⊢var; here; ⊢lam; ⊢fst; ⊢snd; ⊢conv; ⊢⌜Nat⌝; ⊢⌜Σ⌝
-        ; _⊢ty_; ty-El )
+  using ( _⟶ᵀ_; El-⌜Σ⌝; El-⌜Nat⌝; _⊢_∷_; ⊢var; ⊢lam; ⊢fst; ⊢snd; ⊢conv; ⊢⌜Nat⌝
+        ; ⊢⌜Σ⌝; _⊢ty_; ty-El )
 open Lib0.Metatheory-RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 

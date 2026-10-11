@@ -24,6 +24,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Div where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -34,15 +35,11 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; unit; nzero; nsuc; natrec; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; renTy; subTy; Π; lam; app )
 open Lib0.Spec-Typing
-  using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc
-        ; _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
-        ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
-        ; ⊢lam; ⊢app; nrs; wk-single )
+  using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc; _⟶ᵀ_
+        ; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-Nat-z; Hom-Nat-sz
+        ; Hom-Nat-ss; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ; _⊢_∷_; ⊢var; ⊢unit; ⊢conv
+        ; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝; _⊢ty_; ty-El; ty-Nat
+        ; ty-Π; ty-Hom; ⊢lam; ⊢app )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
 open Lib0.Metatheory-TySub using ( ⊢wk )

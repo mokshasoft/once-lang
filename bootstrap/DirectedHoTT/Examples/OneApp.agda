@@ -22,6 +22,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.OneApp where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -29,7 +30,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; El; Id; RTm; app; ⌜Nat⌝
         ; Ren; renTm; renTy; subTm; subTy; extR; nrs )
-open Lib0.Spec-Typing using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_; wk-single )
+open Lib0.Spec-Typing using ( _⊢_∷_ )
 open Lib0.Metatheory-TySub using ( Ren⊢ )
 open Lib0.Lib-Rec using ( aIHTat )
 open Lib0.Lib-Amrec using ( prvTm; prvOk; StepPW )
@@ -37,7 +38,7 @@ open Lib0.Lib-Pair using ( PairT )
 open import DirectedHoTT.Examples.Gcd.Step using ( gcdStp; msr )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
 open Lib0.Lib-Amrec using ( module AmTΠ; Prv; wR )
-open Lib0.Spec-Typing using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var; here; there )
+open Lib0.Spec-Typing using ( _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var )
 open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc; var; vs; vz; Π; Nat )
 open Lib0.Lib-Wk using ( w )
 open Lib0.Lib-Pair using ( ⊢PairT )

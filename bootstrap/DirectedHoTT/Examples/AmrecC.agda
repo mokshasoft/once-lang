@@ -36,6 +36,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.AmrecC where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -48,10 +49,8 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
+  using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; _⊢ty_; ty-Nat
+        ; ty-Hom; ty-El; ty-Π )
 open Lib0.Metatheory-TySub using ( ⊢wk; ⊢-cast )
 open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )
 open Lib0.Lib-Ord using ( ⊢strong-base'; ⊢strong-step )

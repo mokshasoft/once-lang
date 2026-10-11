@@ -27,13 +27,14 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
 import DirectedHoTT.Algorithm.NbE.TblOK as TO
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_; ⌊_⌋ )
 module DirectedHoTT.Algorithm.NbESound (𝒮 : Defs) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _×_; _,_; ⊤; tt )
 open import Agda.Builtin.Nat using ( zero; suc; _<_; _==_ ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_; ⌊_⌋ )
+open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Spec.Variance using ( pw?; stkA?; stkC?; pwBody; pwShift; 𝔹; true; false )
 open import DirectedHoTT.Metatheory.TySub.Red 𝒮 using ( wk-cancel-tm )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( wk-sub; ⟶-sub )

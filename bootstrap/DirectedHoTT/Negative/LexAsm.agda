@@ -18,6 +18,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Negative.LexAsm where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import DirectedHoTT.Spec.Syntax
@@ -27,9 +28,7 @@ open import DirectedHoTT.Spec.Syntax
         ; Π; renTy; subTy; renTm; subTm; extS
         ; subTm-renTm; subTm-subTm; subTm-id )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢natrec; ⊢lam; ⊢app; ⊢nzero
-        ; ty-Nat; wk-single )
+  using ( _⊢_∷_; ⊢var; ⊢natrec; ⊢lam; ⊢app; ⊢nzero; ty-Nat )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Negative.Lex
   using ( Γ₅; LStepT; lexAuxMot; M0lex; M1lex; ⊢lexAuxMot; ⊢M0lex; ⊢M1lex

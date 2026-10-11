@@ -31,6 +31,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.DivC where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -43,13 +44,9 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; lam; app
         ; Π; renTy; renTm; subTy; subTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⟶*_; done; step; natrec-zero; ξ-appˡ
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; ty-Π
-        ; _≅ᵀ_; csymᵀ; ctrnᵀ
-        ; _⟶_; β; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
+  using ( _⟶*_; done; step; natrec-zero; ξ-appˡ; _⊢_∷_; ⊢var; ⊢conv; ⊢nzero
+        ; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; _≅ᵀ_
+        ; csymᵀ; ctrnᵀ; _⟶_; β; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open Lib0.Lib-Monus

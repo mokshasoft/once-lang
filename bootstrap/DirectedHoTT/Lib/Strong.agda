@@ -23,6 +23,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Lib.Strong (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
@@ -31,14 +32,10 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; Π; lam; app; renTy; subTy )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
-        ; ⊢lam; ⊢app; there; nrs; single
-        ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
+  using ( _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
+        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ; _⊢_∷_; ⊢var; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc
+        ; ⊢natrec; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝; ⊢lam; ⊢app; _⊢ty_; ty-El
+        ; ty-Nat; ty-U; ty-Π; ty-Hom )
 open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 ------------------------------------------------------------------------

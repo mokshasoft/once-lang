@@ -31,7 +31,7 @@ module DirectedHoTT.Examples.Knot.Core (𝒮 : Defs) (wf : WfK 𝒮) where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( ε; vz; vs )
 import DirectedHoTT.Spec.Syntax as R
-import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) as T
+import DirectedHoTT.Spec.Base as B
 open import DirectedHoTT.Metatheory.Signature using ( WfSig )
 open import DirectedHoTT.Algorithm.Surface
 open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( SI; SD )
@@ -77,7 +77,7 @@ interleaved mutual
   tms : ℕ → STm ε
 
   -- the kernel's syntax, as one levitated description (sorts × depth)
-  tys #KD = ↑ᵀ (T.DescF (SI 2))
+  tys #KD = ↑ᵀ (B.DescF (SI 2))
   tms #KD = ↑ KD
 
   -- the code of the kernel's types at a depth
@@ -85,7 +85,7 @@ interleaved mutual
   tms #Ty = lam □ᵀ (⌜IMu⌝ SI₂ (ref #KD) (pair □ᵀ □ᵀ (fzero □) v₀))
 
   -- contexts, indexed by their depth: empty, or a context and a type
-  tys #CtxD = ↑ᵀ (T.DescF R.⌜Nat⌝)
+  tys #CtxD = ↑ᵀ (B.DescF R.⌜Nat⌝)
   tms #CtxD = subTmˢ (λ { vz → ref #Ty }) (↑ CtxDᵛ)
 
   -- the code of contexts at a depth

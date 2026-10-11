@@ -28,6 +28,7 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Lib.MonusLe (𝒮 : Defs) (n : ℕ) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
@@ -36,10 +37,9 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; ⌜Id⌝; ⌜Nat⌝
         ; subTy; subTm; renTy; renTm; Ren; extS; extR )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; ty-Nat; ty-Π
-        ; csymᵀ; ξ-Idʳ; natrec-zero; natrec-suc; _⟶*_; step; done; wk-single )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app
+        ; ty-Nat; ty-Π; csymᵀ; ξ-Idʳ; natrec-zero; natrec-suc; _⟶*_; step
+        ; done )
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
 open ᴵRedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 n using ( ⊢wk; ⊢-cast )

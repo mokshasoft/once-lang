@@ -29,6 +29,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Metatheory.Fundamental.Indexed (𝒮 : Defs) where
 
 import DirectedHoTT.Metatheory.LogicalRelation 𝒮 as ᴵLogicalRelation
@@ -37,7 +38,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊤ )
 
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Reduction 𝒮
 import DirectedHoTT.Metatheory.RedCong 𝒮 as ᴵRedCong
 open ᴵRedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import DirectedHoTT.Metatheory.TySub.Red 𝒮

@@ -17,6 +17,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; single; there; ⌊_⌋ )
 module DirectedHoTT.Negative.LexZZ where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -24,10 +25,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; absurd; ordtr; lam; app
         ; Π; renTy; subTy; extS; extR )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc
-        ; ⊢lam; ⊢app
-        ; ty-Nat; ty-Hom; ty-El )
+  using ( _⊢_∷_; ⊢var; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app; ty-Nat; ty-Hom; ty-El )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base' )
 open import DirectedHoTT.Negative.Lex
   using ( Γ₅; REC1T; REC2T; LStepT; M0lex; lexZZ )

@@ -34,7 +34,11 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
-open import DirectedHoTT.Spec.Base public
+-- ★ NOT `public`: a module application copies the whole exported scope, so
+--   every instance of this module (and of Spec.Typing) would mint its own
+--   `single`, `⌊_⌋`, … — two heads for one function, compared by evaluating
+--   (Gcd/LeEq 4 s → 1057 s).  Import them from Spec.Base (tools/base_unshare.py).
+open import DirectedHoTT.Spec.Base
 
 private
   variable

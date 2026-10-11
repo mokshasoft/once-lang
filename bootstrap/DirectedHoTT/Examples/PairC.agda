@@ -34,6 +34,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.PairC where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -47,12 +48,10 @@ open import DirectedHoTT.Spec.Syntax
         ; ⌜Nat⌝; ⌜Σ⌝
         ; Π; renTy; renTm; subTy; subTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝; ⊢⌜Σ⌝; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ
-        ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; El-⌜Σ⌝; Hom-Nat-ss
-        ; _⟶_; β; βfst; ξ-nsuc; ξ-Homˡ; ξ-El )
+  using ( _⊢_∷_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢pair; ⊢fst
+        ; ⊢snd; ⊢⌜Nat⌝; ⊢⌜Σ⌝; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ; _≅ᵀ_
+        ; csymᵀ; ctrnᵀ; El-⌜Nat⌝; El-⌜Σ⌝; Hom-Nat-ss; _⟶_; β; βfst; ξ-nsuc
+        ; ξ-Homˡ; ξ-El )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶ᵀ*-trans )
 open Lib0.Metatheory-TySub using ( ⊢wk )
 open Lib0.Lib-Strong using ( ⊢le-refl; reflTm )

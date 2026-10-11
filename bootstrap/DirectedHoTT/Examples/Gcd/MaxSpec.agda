@@ -28,6 +28,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; single; wk-single; ⌊_⌋ )
 module DirectedHoTT.Examples.Gcd.MaxSpec where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -35,7 +36,7 @@ open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTm; El; var; fst; snd; app; ⌜Nat⌝; subTm; Nat )
-open Lib0.Spec-Typing using ( Ctx; ⌊_⌋; single; _⊢_∷_; ⊢⌜Nat⌝; wk-single )
+open Lib0.Spec-Typing using ( _⊢_∷_; ⊢⌜Nat⌝ )
 open Lib0.Lib-Pair using ( PairT; ⊢PairT )
 open Lib0.Lib-Max
   using ( MaxCode; ⊢MaxCode; MaxCode-sub; MaxT; El-max; ⊢MaxElim )

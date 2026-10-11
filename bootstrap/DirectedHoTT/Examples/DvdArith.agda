@@ -23,6 +23,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.DvdArith where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -32,10 +33,8 @@ open import DirectedHoTT.Spec.Syntax
         ; RTy; Nat; base
         ; RTm; var; nzero; nsuc; app )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
-        ; _⟶*_; done; step; natrec-zero; natrec-suc
-        ; csymᵀ )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; _⟶*_; done; step
+        ; natrec-zero; natrec-suc; csymᵀ )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idʳ )
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-nsuc )
 open Lib0.Lib-Nat using ( plusTm; ⊢plus )

@@ -31,6 +31,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.PairLib where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -42,13 +43,10 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
         ; Π; renTy; renTm; subTy; subTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ
-        ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
-        ; _⟶_; _⟶*_; done; step; βfst; βsnd; β; natrec-zero; natrec-suc
-        ; ξ-nsuc; ξ-Homˡ; ξ-Homʳ; ξ-appˡ )
+  using ( _⊢_∷_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢pair; ⊢fst
+        ; ⊢snd; ⊢⌜Nat⌝; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ; _≅ᵀ_; csymᵀ
+        ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss; _⟶_; _⟶*_; done; step; βfst; βsnd; β
+        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-Homˡ; ξ-Homʳ; ξ-appˡ )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open Lib0.Metatheory-TySub using ( ⊢wk )

@@ -19,6 +19,7 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Examples.PwCore as Core₀
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.Conv (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
@@ -26,7 +27,7 @@ module DirectedHoTT.Examples.Knot.Conv (𝒮 : Defs) (wf : WfK 𝒮) (core : Cor
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; tag; conₗ; tag-sub; []ᵈ; _∷ᵈ_; AllD; v₀; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( PayV; ⊢conP )
 open import DirectedHoTT.Lib.Tel 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)

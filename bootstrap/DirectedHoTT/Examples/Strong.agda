@@ -20,6 +20,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Strong where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -30,14 +31,10 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; Π; lam; app; renTy; subTy )
 open Lib0.Spec-Typing
-  using ( _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
-        ; ⊢lam; ⊢app; there; nrs; single
-        ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
+  using ( _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
+        ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ; _⊢_∷_; ⊢var; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc
+        ; ⊢natrec; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝; ⊢lam; ⊢app; _⊢ty_; ty-El
+        ; ty-Nat; ty-U; ty-Π; ty-Hom )
 open Lib0.Metatheory-RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 ------------------------------------------------------------------------

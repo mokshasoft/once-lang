@@ -12,13 +12,14 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.LookupAgree (𝒮 : Defs) (wf : WfK 𝒮) where
 
 
 
 open import normalizer.Syntax.Types using ( Σ; _,_ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; stepᵀ; ⟶ᵀ*-Idʳ )
 open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( ⊢isuc )
 open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf

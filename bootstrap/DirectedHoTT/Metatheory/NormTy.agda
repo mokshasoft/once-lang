@@ -36,6 +36,7 @@ import DirectedHoTT.Spec.Typing as Ty
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Metatheory.NormTy (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at the whole signature, its entries typed and its
@@ -54,7 +55,7 @@ open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
 open import DirectedHoTT.Spec.Variance using () renaming ( true to trueᵇ )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 n
 open import DirectedHoTT.Metatheory.RedCong 𝒮
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ
         ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ

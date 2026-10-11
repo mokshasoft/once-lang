@@ -28,6 +28,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; wk-single; ⌊_⌋ )
 module DirectedHoTT.Examples.Gcd.LeMid where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -36,13 +37,13 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app
         ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var; Sub
         ; Π; El; ⌜Nat⌝ )
-open Lib0.Spec-Typing using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single; wk-single )
+open Lib0.Spec-Typing using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero )
 open Lib0.Metatheory-RedCong using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open Lib0.Lib-Monus using ( monusTm )
 open Lib0.Lib-Nat using ( plusTm )
 open Lib0.Lib-Amrec using ( aIHTat-sub )
 open import DirectedHoTT.Examples.Gcd.Step using ( gcdIH; msr; gcdG-sub )
-open Lib0.Spec-Typing using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
+open Lib0.Spec-Typing using ( _⊢_∷_; _⊢ty_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; ty-Nat )
 open Lib0.Metatheory-TySub
   using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast; ⊢wk; subTy-comm )
 open Lib0.Lib-Pair using ( PairT )
@@ -57,7 +58,6 @@ open import DirectedHoTT.Examples.Gcd.Step
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
         ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1; wkS2; G2; ⊢G2; ⊢G2z; ⊢gcdInn2
         ; G3; ⊢G3; ⊢G3z; ⊢G3s; gcdG; PAIRˢ; ⊢PAIRˢ; CERTˢ; ⊢CERTˢ )
-open Lib0.Spec-Typing using ( single; nrs )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 gXx x y = pair (nsuc x) (nsuc y)

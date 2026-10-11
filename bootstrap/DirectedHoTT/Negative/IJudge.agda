@@ -76,14 +76,14 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; ⌊_⌋ )
 module DirectedHoTT.Negative.IJudge where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; RTy; IDesc; ICon; iι; iρ; iκ
         ; IMu; El; U; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; εwkTy; εwkTm )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; _⊢_∷_; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ
-        ; ICodeWf; icw-clo; icw-ford; icw-imu; IDescWf )
+  using ( _⊢_∷_; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf
+        ; icw-clo; icw-ford; icw-imu; IDescWf )
 
 ------------------------------------------------------------------------
 -- 1. ★★★ THE SHAPE — **CODES ONLY, NO DERIVATIONS**.

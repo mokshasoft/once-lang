@@ -26,12 +26,13 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
 import DirectedHoTT.Algorithm.NbE.TblOK as TO
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Algorithm.ConvNbE (𝒮 : Defs) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Maybe using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax
-open import DirectedHoTT.Spec.Reduction 𝒮 hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Metatheory.Injectivity 𝒮 using ( church-rosserᵀ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Ty_ )
 import DirectedHoTT.Algorithm.Eval 𝒮 as ᴵEval

@@ -13,6 +13,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; single; wk-single; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Gcd.Rec where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -23,8 +24,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTm; var; nzero; nsuc; app; pair; fst; snd; ⌜Nat⌝
         ; subTm )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; ⊢app; ⊢nsuc; ⊢nzero; ⊢conv; csymᵀ
-        ; _⟶*_; done; wk-single )
+  using ( _⊢_∷_; ⊢app; ⊢nsuc; ⊢nzero; ⊢conv; csymᵀ; _⟶*_; done )
 open Lib0.Metatheory-TySub using ( ⊢-cast; ⊢[] )
 open Lib0.Lib-Wk using ( w )
 open Lib0.Lib-Amrec

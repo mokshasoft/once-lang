@@ -31,6 +31,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.ScopedTy where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -38,7 +39,7 @@ open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀; refs₀; tbl₀; to
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin; base )
-open Lib0.Spec-Typing hiding ( _×_; _,,_ )
+open Lib0.Spec-Typing
 open Lib0.Metatheory-RedCong using ( ⟶*-trans; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-con; red→≅ᵀ; ⟶ᵀ*-IMu )
 open Lib0.Metatheory-TySub using ( ⊢wk; exts-wk-tm )
 open Lib0.Lib-Sugar using ( conₗ; methₗ; Dₗ )

@@ -31,10 +31,11 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; kernel; kernel-type )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
+open import DirectedHoTT.Spec.Base hiding ( _×_ )
 module DirectedHoTT.Metatheory.Erasure (S : Sig) where
 open Sig S
 -- the kernel's view of the signature, at all its names (PLAN-REF)
-open import DirectedHoTT.Spec.Typing (kernel S) size hiding ( _×_ )
+open import DirectedHoTT.Spec.Typing (kernel S) size
 open import DirectedHoTT.Metatheory.TySub (kernel S) size using ( sub-lemma; ⊢-cast )
 open import DirectedHoTT.Spec.AnnotatedDesc
 open import DirectedHoTT.Spec.TypingA S

@@ -23,6 +23,7 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Examples.PwCore as Core₀
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.JudgeDecodeBase (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
@@ -30,7 +31,7 @@ module DirectedHoTT.Examples.Knot.JudgeDecodeBase (𝒮 : Defs) (wf : WfK 𝒮) 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
-open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮) hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶ᵀ*-IMu; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-trans )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )

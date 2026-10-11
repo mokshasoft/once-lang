@@ -44,6 +44,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
+open import DirectedHoTT.Spec.Base using ( Ctx; _▹_; here; nrs; single; there; ⌊_⌋; ◇ )
 module DirectedHoTT.Examples.Gcd.Step where
 import DirectedHoTT.Examples.Lib0 as Lib0
 open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
@@ -55,14 +56,10 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm; subTy; renTm; renTy; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
         ; Sub; Ren; Var; idₛ; renTm-renTm; _∘ᵣ_ )
 open Lib0.Spec-Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝
-        ; ty-Nat; ty-Hom; ty-El; ty-Π
-        ; _≅ᵀ_; csymᵀ
-        ; ξ-nsuc; ξ-Homˡ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd
-        ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc )
+  using ( _⊢_∷_; _⊢ty_; ⊢var; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢lam; ⊢app; ⊢pair
+        ; ⊢fst; ⊢snd; ⊢⌜Nat⌝; ty-Nat; ty-Hom; ty-El; ty-Π; _≅ᵀ_; csymᵀ; ξ-nsuc
+        ; ξ-Homˡ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd; _⟶_; _⟶*_; done; step; β
+        ; ξ-appˡ; natrec-zero; natrec-suc )
 open Lib0.Metatheory-RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open Lib0.Metatheory-TySub using ( ⊢wk )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub; wk-sub-tm )

@@ -32,12 +32,12 @@
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Base using ( Ctx; ⌊_⌋ )
 module DirectedHoTT.Lib.ICast (𝒮 : Defs) (n : ℕ) where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; RTy; IMu; El; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝ )
 open import DirectedHoTT.Spec.Typing 𝒮 n
-  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; _⟶_; _⟶*_
-        ; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMuⁱ )
+  using ( _⊢_∷_; ⊢conv; _⟶_; _⟶*_; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMuⁱ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.ArithComm 𝒮 n using ( IdN; elIdN )
 open import normalizer.Syntax.Types using ( _≡_; refl )

@@ -44,6 +44,7 @@ import DirectedHoTT.Spec.Typing as Ty
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 import DirectedHoTT.Metatheory.Fundamental.Semantic as Sem
+open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Metatheory.Canonicity (𝒮 : Defs) (wf : WfK 𝒮) where
 
 -- ★ PLAN-REF: at the whole signature, its entries typed and its
@@ -74,7 +75,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; flat→stk; pw?-ren; occTm; subTm-occ
         ; NoNatC; NoNatHd; nonatc→hd; nonatc-sub; stkC?→stkA?; stkC?→hd )
-open import DirectedHoTT.Spec.Typing 𝒮 n hiding ( _×_; _,,_ )
+open import DirectedHoTT.Spec.Typing 𝒮 n
 open import DirectedHoTT.Metatheory.Confluence 𝒮 using ( ⟶-ren; confluent; ⟶*-trans; church-rosser )
 open import DirectedHoTT.Metatheory.SubjectReductionBase 𝒮 using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity 𝒮

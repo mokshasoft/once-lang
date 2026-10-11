@@ -5529,3 +5529,83 @@ is a projection from it.
 
 D071 (compiler branch), D080; `bootstrap/DirectedHoTT/ROADMAP.md` Q5;
 PLAN-BIDI §3g; PERF §8.
+
+## D082: References Are PROJECTIONS From the Signature, in the Kernel (OCP-0009, DirectedHoTT PLAN-REF / ROADMAP R3 E4, Q5)
+
+**Date**: 2026-10-07 (decided); recorded 2026-10-11
+**Status**: Accepted (autonomous session under the user's keep-going mandate; principled per D071 on branch `plan-0.91-program-facts` and D081)
+
+### Context
+
+The kernel's `ref d b` carried its erased body (PLAN-BIDI §2-ter, B1′).
+Every algorithm on raw syntax therefore paid for the transitive closure of
+the bodies a term mentions, not for the term. Measured 2026-10-06:
+
+- `CheckA.decTo`'s syntactic check walked the Knot signature, ~40% of
+  `Examples/PwCore` (worked around by `Algorithm/EraName`);
+- NbE re-evaluated a body at every unfolding, ~38% of PwCore after the
+  other evaluator fixes (PLAN-EVAL E4's trigger);
+- Agda compared two spellings of one erased body by descending into it,
+  so `Knot/PwCore` needed `ref d (Sig.body S d)` written exactly as the
+  typing carried it (>300 s / out of memory otherwise).
+
+D081 had already made the signature a telescope and `WfSig` context
+formation.
+
+### Decision
+
+**The kernel's `ref d` carries no body. Its meaning is a projection from
+the signature (the definition context); δ unfolds that projection.**
+
+- **Spec.** `ref : ℕ → RTm Γ`; `Defs` is a telescope of ⟨closed type ∣
+  closed body⟩. `Spec/Typing` is split by what each relation depends on:
+  `Spec/Base` (signature-free), `Spec/Reduction 𝒮` (`δref : d <ˢ size 𝒮 →
+  ref d ⟶ εwkTm (body 𝒮 d)`; the side condition makes reduction monotone
+  under extension), `Spec/Typing 𝒮 n` (`⊢ref : d <ˢ n → Γ ⊢ ref d ∷ εwkTy
+  (type 𝒮 d)`, no premise). `Spec/SigWf.WfK`: each entry typed at its own
+  prefix, with the same reduction relation.
+- **Metatheory.** One logical relation per `𝒮`; `fund` reads an oracle for
+  the names below the bound, and `Metatheory/Entries` builds it by
+  induction along the telescope. `SigMono`/`SigExt` move derivations to a
+  larger bound / along an extension; SN, canonicity and consistency are
+  theorems about a given `WfK 𝒮`, not transported.
+- **Algorithm.** NbE forces `vref d` through a shared VALUE TABLE
+  (`Tbl`, built once per segment by `SigBuild`, sound by `TblOK`);
+  `EraName` deleted.
+- **Lib and the Knot** are parameterised by the ambient signature. The
+  Knot's judgement families take the quoted signature `⌜𝒮⌝` as a family
+  PARAMETER (uniform across premises), so `λ q. IMu J (D q) i` is one code
+  over all signatures; the core is a hypothesis `PwCore.Kc ⊑ᴰ 𝒮`.
+
+Rejected: projections only in the checker/evaluator with the kernel
+keeping `ref d b` (a twin plus a bridge at every raw algorithm — a hidden
+invariant at every use site); an invariant `b ≡ δ d` threaded through NbE
+soundness (the same, inside the proofs).
+
+### Rationale
+
+- Extension by definitions in a CwF: the signature is a context (D081), a
+  reference is a projection, δ is the definitional isomorphism. It is the
+  compiler's D071 (`⟦ref x⟧Γ = Γ(x)`), so R6 has one shape to converge on.
+- A reference is O(1) syntax everywhere; a body is touched only when δ
+  fires, and NbE evaluates each entry once.
+- Use-site clarity: `⊢ref` and the Knot's `kref` lose their premise and
+  quoted body; `EraName`, `fill` and "write the body exactly so" go.
+
+### Consequences (measured)
+
+- Agda module discipline, forced by the parameterisation: one instance per
+  (module, arguments) per file; a parameterised module re-exports
+  `public` only its own `.Red` part and NEVER a non-parameterised module —
+  an instance copies the re-exported definitions, and two heads for one
+  function make Agda decide equalities by evaluation (`SD` made opaque,
+  2026-10-09: Red 540 → 175 s; `Spec.Base` un-shared, 2026-10-11:
+  Gcd.LeEq 1057 → 10 s, Gcd.LeMid 113 s / 4.96 GB → 65 s).
+- Full sweep ALL GREEN, 288 modules (2026-10-11).
+- A residual ~1.65× conversion overhead on the parameterised Knot
+  families, from the module arguments themselves; accepted.
+
+### See Also
+
+D071 (compiler branch), D080, D081; `bootstrap/DirectedHoTT/PLAN-REF.md`
+(§0 decision, §6 progress); HANDOFF-2026-10-08, HANDOFF-2026-10-11.
