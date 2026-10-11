@@ -38,8 +38,8 @@ import qualified MAlonzo.Code.Once.Spec.Contract
 import qualified MAlonzo.Code.Once.Spec.Core.Telescope
 import qualified MAlonzo.Code.Once.Spec.Core.Translate
 import qualified MAlonzo.Code.Once.Spec.Module
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.CoreBridge.typedSig-ef
 d_typedSig'45'ef_14 ::
@@ -177,10 +177,10 @@ d_runIRAt_106 v0 v1 v2 v3
             (coe v2))
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
-            (coe MAlonzo.Code.Once.Type.C_Unit_120))
+            (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20))
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
-            (coe MAlonzo.Code.Once.Type.C_Unit_120))
+            (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20))
          (coe MAlonzo.Code.Once.Compile.d_mainCall_808)
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       (coe v3)

@@ -56,13 +56,13 @@ import qualified MAlonzo.Code.Once.CCC.Codegen.LabelRange
 import qualified MAlonzo.Code.Once.CCC.Codegen.ProgramImage
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.SymbolInjective
 import qualified MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties
@@ -697,11 +697,11 @@ d_o_368 ::
   Integer ->
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
 d_o_368 ~v0 v1 ~v2 = du_o_368 v1
 du_o_368 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
 du_o_368 v0
   = coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v0)
 -- Once.Adequacy.ImageUnique._.F
@@ -810,7 +810,7 @@ d_fdefs'45''43''43'_406 ::
 d_fdefs'45''43''43'_406 = erased
 -- Once.Adequacy.ImageUnique.image-cl
 d_image'45'cl_426 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
 d_image'45'cl_426 v0 v1
@@ -845,7 +845,7 @@ d_image'45'cl_426 v0 v1
             (coe d_FS_472 (coe v0) (coe v1))))
 -- Once.Adequacy.ImageUnique._.X
 d_X_436 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_X_436 v0 v1
@@ -857,7 +857,7 @@ d_X_436 v0 v1
       (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v1))
 -- Once.Adequacy.ImageUnique._.nM
 d_nM_438 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 -> Integer
 d_nM_438 v0 v1
   = coe
@@ -865,7 +865,7 @@ d_nM_438 v0 v1
       (coe d_X_436 (coe v0) (coe v1))
 -- Once.Adequacy.ImageUnique._.F
 d_F_440 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_F_440 v0 v1
@@ -877,7 +877,7 @@ d_F_440 v0 v1
       (coe (0 :: Integer)) (coe (0 :: Integer))
 -- Once.Adequacy.ImageUnique._.dT
 d_dT_442 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
 d_dT_442 v0 v1
@@ -888,7 +888,7 @@ d_dT_442 v0 v1
          (coe d_F_440 (coe v0) (coe v1)))
 -- Once.Adequacy.ImageUnique._.dB
 d_dB_444 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
 d_dB_444 v0 v1
@@ -901,7 +901,7 @@ d_dB_444 v0 v1
             (coe d_F_440 (coe v0) (coe v1))))
 -- Once.Adequacy.ImageUnique._.jTB
 d_jTB_446 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_jTB_446 v0 v1
@@ -914,7 +914,7 @@ d_jTB_446 v0 v1
             (coe d_F_440 (coe v0) (coe v1))))
 -- Once.Adequacy.ImageUnique._.wT
 d_wT_448 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_wT_448 v0 v1
@@ -925,7 +925,7 @@ d_wT_448 v0 v1
          (coe d_F_440 (coe v0) (coe v1)))
 -- Once.Adequacy.ImageUnique._.wB
 d_wB_450 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_wB_450 v0 v1
@@ -936,7 +936,7 @@ d_wB_450 v0 v1
          (coe d_F_440 (coe v0) (coe v1)))
 -- Once.Adequacy.ImageUnique._.TL
 d_TL_452 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 -> [Integer]
 d_TL_452 v0 v1
   = coe
@@ -947,7 +947,7 @@ d_TL_452 v0 v1
       (coe (0 :: Integer)) (coe (0 :: Integer))
 -- Once.Adequacy.ImageUnique._.BL
 d_BL_454 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 -> [Integer]
 d_BL_454 v0 v1
   = coe
@@ -958,7 +958,7 @@ d_BL_454 v0 v1
       (coe (0 :: Integer)) (coe (0 :: Integer))
 -- Once.Adequacy.ImageUnique._.dM
 d_dM_456 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.T_AllPairs_20
 d_dM_456 v0 v1
@@ -1009,7 +1009,7 @@ d_dM_456 v0 v1
             (coe d_jTB_446 (coe v0) (coe v1))))
 -- Once.Adequacy.ImageUnique._.wM
 d_wM_470 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_wM_470 v0 v1
@@ -1055,7 +1055,7 @@ d_wM_470 v0 v1
             (d_wB_450 (coe v0) (coe v1))))
 -- Once.Adequacy.ImageUnique._.FS
 d_FS_472 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_FS_472 v0 v1
@@ -1065,19 +1065,19 @@ d_FS_472 v0 v1
       (coe MAlonzo.Code.Once.Denotation.Program.d_table_386 (coe v1))
 -- Once.Adequacy.ImageUnique._.eq
 d_eq_474 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_eq_474 = erased
 -- Once.Adequacy.ImageUnique.image-fdefs
 d_image'45'fdefs_482 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_image'45'fdefs_482 = erased
 -- Once.Adequacy.ImageUnique._.X
 d_X_492 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_X_492 v0 v1
@@ -1089,18 +1089,18 @@ d_X_492 v0 v1
       (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v1))
 -- Once.Adequacy.ImageUnique._._∙_
 d__'8729'__500 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d__'8729'__500 = erased
 -- Once.Adequacy.ImageUnique._.fdefs-++′
 d_fdefs'45''43''43''8242'_506 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
@@ -1332,7 +1332,7 @@ d_thunk'45'hd_674 ::
 d_thunk'45'hd_674 = erased
 -- Once.Adequacy.ImageUnique.osp-hd
 d_osp'45'hd_680 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_osp'45'hd_680 = erased
 -- Once.Adequacy.ImageUnique.hd≢
@@ -1413,20 +1413,20 @@ d_go_754 ::
 d_go_754 = erased
 -- Once.Adequacy.ImageUnique.heap≢osp
 d_heap'8802'osp_766 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_heap'8802'osp_766 = erased
 -- Once.Adequacy.ImageUnique._.toList-osp
 d_toList'45'osp_778 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_toList'45'osp_778 = erased
 -- Once.Adequacy.ImageUnique._.body
 d_body_784 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1434,7 +1434,7 @@ d_body_784 ::
 d_body_784 = erased
 -- Once.Adequacy.ImageUnique._._.∷-inj
 d_'8759''45'inj_804 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -1448,7 +1448,7 @@ d_'8759''45'inj_804 ::
 d_'8759''45'inj_804 = erased
 -- Once.Adequacy.ImageUnique._._.peel
 d_peel_806 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -1458,7 +1458,7 @@ d_peel_806 ::
 d_peel_806 = erased
 -- Once.Adequacy.ImageUnique._._.false≢true
 d_false'8802'true_810 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -1468,7 +1468,7 @@ d_false'8802'true_810 ::
 d_false'8802'true_810 = erased
 -- Once.Adequacy.ImageUnique._._.L
 d_L_812 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -1483,7 +1483,7 @@ du_L_812 v0
          (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0))
 -- Once.Adequacy.ImageUnique._._.mangle-shape
 d_mangle'45'shape_814 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -1492,7 +1492,7 @@ d_mangle'45'shape_814 ::
 d_mangle'45'shape_814 = erased
 -- Once.Adequacy.ImageUnique._._.digitRHS
 d_digitRHS_818 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -1502,7 +1502,7 @@ d_digitRHS_818 ::
 d_digitRHS_818 = erased
 -- Once.Adequacy.ImageUnique._._._.R
 d_R_830 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -2055,7 +2055,7 @@ du_rights'45''8712'_1208 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ImageUnique.DefClass
 d_DefClass_1222 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()
 d_DefClass_1222 = erased
 -- Once.Adequacy.ImageUnique.adefs-class
@@ -2218,7 +2218,7 @@ du_EF'45'own_1300 v0 v1
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.ImageUnique.Apart._.EF
 d_EF_1332 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2230,7 +2230,7 @@ du_EF_1332 ::
 du_EF_1332 v0 = coe du_EF_1290 (coe v0)
 -- Once.Adequacy.ImageUnique.Apart._.EF-dist
 d_EF'45'dist_1334 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2242,7 +2242,7 @@ du_EF'45'dist_1334 ::
 du_EF'45'dist_1334 v0 = coe du_EF'45'dist_1294 (coe v0)
 -- Once.Adequacy.ImageUnique.Apart._.EF-own
 d_EF'45'own_1336 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2258,7 +2258,7 @@ du_EF'45'own_1336 ::
 du_EF'45'own_1336 v0 v1 v2 = coe du_EF'45'own_1300 (coe v0) v2
 -- Once.Adequacy.ImageUnique.Apart._.EF≡
 d_EF'8801'_1338 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2266,7 +2266,7 @@ d_EF'8801'_1338 ::
 d_EF'8801'_1338 = erased
 -- Once.Adequacy.ImageUnique.Apart.toEF
 d_toEF_1342 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2280,7 +2280,7 @@ du_toEF_1342 ::
 du_toEF_1342 v0 = coe v0
 -- Once.Adequacy.ImageUnique.Apart.def≢blk
 d_def'8802'blk_1350 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2293,7 +2293,7 @@ d_def'8802'blk_1350 ::
 d_def'8802'blk_1350 = erased
 -- Once.Adequacy.ImageUnique.Apart.heap≢def
 d_heap'8802'def_1374 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2304,7 +2304,7 @@ d_heap'8802'def_1374 ::
 d_heap'8802'def_1374 = erased
 -- Once.Adequacy.ImageUnique.Apart.heap≢blk
 d_heap'8802'blk_1390 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2315,7 +2315,7 @@ d_heap'8802'blk_1390 ::
 d_heap'8802'blk_1390 = erased
 -- Once.Adequacy.ImageUnique.Apart.start≢def
 d_start'8802'def_1396 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2326,7 +2326,7 @@ d_start'8802'def_1396 ::
 d_start'8802'def_1396 = erased
 -- Once.Adequacy.ImageUnique.Apart.start≢blk
 d_start'8802'blk_1412 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2337,7 +2337,7 @@ d_start'8802'blk_1412 ::
 d_start'8802'blk_1412 = erased
 -- Once.Adequacy.ImageUnique.Apart.defs++blocks
 d_defs'43''43'blocks_1420 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2372,7 +2372,7 @@ du_defs'43''43'blocks_1420 v0 v1 v2 v3 v4 v5
          (coe v0) (coe v2))
 -- Once.Adequacy.ImageUnique.Apart.heap-fresh
 d_heap'45'fresh_1444 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2401,7 +2401,7 @@ du_heap'45'fresh_1444 v0 v1 v2 v3
          (coe v1) (coe v3))
 -- Once.Adequacy.ImageUnique.Apart.start-fresh
 d_start'45'fresh_1460 ::
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   T_TableNames_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2508,7 +2508,7 @@ d_img_1492 v0 v1
 d_fs_1494 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6]
 d_fs_1494 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_fdefs_244
@@ -2726,7 +2726,7 @@ d_img_1542 v0
 -- Once.Adequacy.ImageUnique._.fs
 d_fs_1544 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6]
 d_fs_1544 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.LabelDefs.d_fdefs_244

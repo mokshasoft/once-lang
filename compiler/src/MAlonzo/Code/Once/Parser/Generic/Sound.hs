@@ -26,7 +26,7 @@ import qualified MAlonzo.Code.Induction.WellFounded
 import qualified MAlonzo.Code.Once.Parser.Generic.Parser
 import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Parser.Generic.Sound.Make._.ParsesArrowTailG

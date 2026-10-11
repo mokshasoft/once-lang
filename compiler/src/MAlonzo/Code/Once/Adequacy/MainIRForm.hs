@@ -23,35 +23,36 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.IR
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Syntax
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
-import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
 -- Once.Adequacy.MainIRForm.EffUU
-d_EffUU_6 :: MAlonzo.Code.Once.Type.T_Type_108
+d_EffUU_6 :: MAlonzo.Code.Once.Spec.Type.T_Type_8
 d_EffUU_6
   = coe
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128
-      (coe MAlonzo.Code.Once.Type.C_Unit_120)
+      MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28
+      (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
       (coe
-         MAlonzo.Code.Once.Type.C_mk'45'kind_50
-         (coe MAlonzo.Code.Once.Type.C_Many_10)
-         (coe MAlonzo.Code.Once.Type.C_eff_36))
-      (coe MAlonzo.Code.Once.Type.C_Unit_120)
+         MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48
+         (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14)
+         (coe MAlonzo.Code.Once.Spec.Type.Grade.C_eff_32))
+      (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
 -- Once.Adequacy.MainIRForm.validateMain-EffUU
 d_validateMain'45'EffUU_10 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_validateMain'45'EffUU_10 = erased
 -- Once.Adequacy.MainIRForm.compileFun-main-EffUU
 d_compileFun'45'main'45'EffUU_68 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_332 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412) ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_332) ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

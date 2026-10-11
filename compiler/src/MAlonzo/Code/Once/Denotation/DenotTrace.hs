@@ -21,7 +21,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Arith.Prim
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
 import qualified MAlonzo.Code.Once.Float.Decimal
@@ -31,25 +30,26 @@ import qualified MAlonzo.Code.Once.IRTy.WF
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Word
 
 -- Once.Denotation.DenotTrace.CallEnv
 d_CallEnv_6 = ()
 data T_CallEnv_6
-  = C_callEnv_24 (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  = C_callEnv_24 (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
                   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178)
-                 (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-                  MAlonzo.Code.Once.Type.T_Type_108 ->
-                  MAlonzo.Code.Once.Type.T_Type_108 ->
+                 (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+                  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+                  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
                   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6)
 -- Once.Denotation.DenotTrace.CallEnv.callsE
 d_callsE_20 ::
   T_CallEnv_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
@@ -60,9 +60,9 @@ d_callsE_20 v0
 -- Once.Denotation.DenotTrace.CallEnv.ffiE
 d_ffiE_22 ::
   T_CallEnv_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 d_ffiE_22 v0
   = case coe v0 of
@@ -71,12 +71,12 @@ d_ffiE_22 v0
 -- Once.Denotation.DenotTrace.sigOpSemT
 d_sigOpSemT_32 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_142 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
@@ -108,7 +108,7 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
                 MAlonzo.Code.Once.Denotation.TraceMonad.C_callOp_142
                 (coe MAlonzo.Code.Once.SigOp.Info.d_name_178 (coe v4)) (coe v2)
                 (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_182 (coe v4))
-                (coe MAlonzo.Code.Once.Type.C_Unit_120))
+                (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20))
              (coe v6)
              (coe
                 (\ v8 ->
@@ -133,12 +133,12 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
 -- Once.Denotation.DenotTrace.sigOpT
 d_sigOpT_106 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 d_sigOpT_106 v0 v1 v2 v3 v4
@@ -436,8 +436,8 @@ d_cata'45'ev'45'alg'7472'_130 v0 v1 v2 v3 v4 v5 v6 v7 v8
 d_liftFn_392 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   T_CallEnv_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 d_liftFn_392 v0 v1 v2 v3 v4 v5

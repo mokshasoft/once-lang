@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Once.Parser.Generic.Parser
 import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
 
 -- Once.Parser.Generic.Complete.Make._.ParsesArrowTailG
 d_ParsesArrowTailG_76 a0 a1 a2 a3 a4 = ()

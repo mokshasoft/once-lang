@@ -25,8 +25,8 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Primitives
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 
 -- Once.CCC.Target.X86-64.AbstractToX86.slot-to-disp
@@ -678,7 +678,7 @@ d_compile'45'abstract_14 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.AbstractToX86.compile-trace-cnt
 d_compile'45'trace'45'cnt_72 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -901,7 +901,7 @@ d_compile'45'trace_140 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.AbstractToX86.compile-trace-cnt-agrees
 d_compile'45'trace'45'cnt'45'agrees_152 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

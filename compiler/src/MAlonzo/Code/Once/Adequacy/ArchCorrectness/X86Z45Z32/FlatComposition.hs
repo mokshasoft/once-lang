@@ -29,6 +29,7 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
 import qualified MAlonzo.Code.Once.Type
 
@@ -136,8 +137,8 @@ d_reg'45'op'45'no'45'label_220 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.FlatComposition.const-no-label
 d_const'45'no'45'label_228 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_const'45'no'45'label_228 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.FlatComposition.headView

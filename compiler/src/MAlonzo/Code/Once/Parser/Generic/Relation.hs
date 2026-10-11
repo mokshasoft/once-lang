@@ -25,7 +25,7 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
 
 -- Once.Parser.Generic.Relation.isStar
 d_isStar_8 :: [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> Bool
@@ -54,8 +54,8 @@ d_isPlus_10 v0
 -- Once.Parser.Generic.Relation.ArrowDir
 d_ArrowDir_12 = ()
 data T_ArrowDir_12
-  = C_adG_14 MAlonzo.Code.Once.Type.T_Quantity_4 | C_adA_16 |
-    C_adR_18 | C_adD_20
+  = C_adG_14 MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 |
+    C_adA_16 | C_adR_18 | C_adD_20
 -- Once.Parser.Generic.Relation.arrowDir
 d_arrowDir_22 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ArrowDir_12
@@ -73,7 +73,7 @@ d_arrowDir_22 v0
                           (:) v5 v6
                             -> case coe v5 of
                                  MAlonzo.Code.Once.Parser.Token.C_TArrow_28
-                                   -> coe C_adG_14 (coe MAlonzo.Code.Once.Type.C_One_8)
+                                   -> coe C_adG_14 (coe MAlonzo.Code.Once.Spec.Type.Grade.C_One_12)
                                  _ -> coe v4
                           _ -> coe v4)
                 MAlonzo.Code.Once.Parser.Token.C_TCaret0_32
@@ -83,7 +83,7 @@ d_arrowDir_22 v0
                           (:) v5 v6
                             -> case coe v5 of
                                  MAlonzo.Code.Once.Parser.Token.C_TArrow_28
-                                   -> coe C_adG_14 (coe MAlonzo.Code.Once.Type.C_Zero_6)
+                                   -> coe C_adG_14 (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Zero_10)
                                  _ -> coe v4
                           _ -> coe v4)
                 MAlonzo.Code.Once.Parser.Token.C_TCaretW_34
@@ -93,7 +93,7 @@ d_arrowDir_22 v0
                           (:) v5 v6
                             -> case coe v5 of
                                  MAlonzo.Code.Once.Parser.Token.C_TArrow_28
-                                   -> coe C_adG_14 (coe MAlonzo.Code.Once.Type.C_Many_10)
+                                   -> coe C_adG_14 (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14)
                                  _ -> coe v4
                           _ -> coe v4)
                 _ -> coe v1
@@ -154,7 +154,7 @@ data T_TyAlg_46
   = C_constructor_244 AgdaAny AgdaAny AgdaAny AgdaAny
                       (AgdaAny -> AgdaAny -> AgdaAny) (AgdaAny -> AgdaAny -> AgdaAny)
                       (AgdaAny -> AgdaAny -> AgdaAny)
-                      (MAlonzo.Code.Once.Type.T_Quantity_4 ->
+                      (MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 ->
                        AgdaAny -> AgdaAny -> AgdaAny)
                       (AgdaAny -> AgdaAny) (AgdaAny -> AgdaAny) (AgdaAny -> AgdaAny)
                       (AgdaAny -> AgdaAny) AgdaAny (AgdaAny -> AgdaAny -> AgdaAny)
@@ -223,7 +223,7 @@ d_aEff_162 v0
 -- Once.Parser.Generic.Relation.TyAlg.aArrow
 d_aArrow_164 ::
   T_TyAlg_46 ->
-  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 ->
   AgdaAny -> AgdaAny -> AgdaAny
 d_aArrow_164 v0
   = case coe v0 of
@@ -442,7 +442,7 @@ du_arrowDir'45'A'45''60'_264 v0
 -- Once.Parser.Generic.Relation.arrowDir-G-<
 d_arrowDir'45'G'45''60'_274 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_arrowDir'45'G'45''60'_274 v0 ~v1 ~v2
@@ -484,7 +484,7 @@ d_RF_298 = erased
 -- Once.Parser.Generic.Relation.Gen._.aArrow
 d_aArrow_300 ::
   T_TyAlg_46 ->
-  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 ->
   AgdaAny -> AgdaAny -> AgdaAny
 d_aArrow_300 v0 = coe d_aArrow_164 (coe v0)
 -- Once.Parser.Generic.Relation.Gen._.aEff
@@ -650,8 +650,8 @@ data T_ParsesTypeG_364
 d_ParsesArrowTailG_366 a0 a1 a2 a3 a4 = ()
 data T_ParsesArrowTailG_366
   = C_pat'45'done_536 |
-    C_pat'45'arrow'45'g_548 AgdaAny MAlonzo.Code.Once.Type.T_Quantity_4
-                            T_ParsesTypeG_364 |
+    C_pat'45'arrow'45'g_548 AgdaAny
+                            MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 T_ParsesTypeG_364 |
     C_pat'45'arrow_558 AgdaAny T_ParsesTypeG_364
 -- Once.Parser.Generic.Relation.Gen.ParsesFuncAtomG
 d_ParsesFuncAtomG_368 a0 a1 a2 a3 = ()

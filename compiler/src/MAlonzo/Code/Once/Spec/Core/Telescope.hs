@@ -23,14 +23,15 @@ import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
-import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Contract
 import qualified MAlonzo.Code.Once.Spec.Core.Meaning
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTyping
-import qualified MAlonzo.Code.Once.Surface.Context
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Spec.Core.Telescope.Tele
 d_Tele_12 a0 a1 a2 = ()
@@ -63,10 +64,10 @@ d_teleDefs_50 ::
   T_Tele_12 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   AgdaAny
 d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v5 of
@@ -89,7 +90,7 @@ d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                           MAlonzo.Code.Once.Spec.Core.PolyTy.C__'9655'__834 v18 v19)
                                        (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))
                                  (coe MAlonzo.Code.Once.Spec.Core.PolyTyping.C_'8709'_354) (coe v7))
-                              (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62)
+                              (coe MAlonzo.Code.Once.Spec.Context.C_'91''93'_48)
                               (coe
                                  MAlonzo.Code.Once.Spec.Core.PolyTyping.du__'10218'_'10219''8348'_490
                                  (coe
@@ -110,7 +111,7 @@ d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))
                                  (coe MAlonzo.Code.Once.Spec.Core.PolyTy.d_type_820 (coe v19))
                                  (coe v7))
-                              (coe MAlonzo.Code.Once.Type.C_pure_34)
+                              (coe MAlonzo.Code.Once.Spec.Type.Grade.C_pure_30)
                               (coe
                                  MAlonzo.Code.Once.Spec.Core.PolyTyping.du_instantiate_1130
                                  (coe
@@ -122,7 +123,8 @@ d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))
                                  (coe v14)
                                  (coe MAlonzo.Code.Once.Spec.Core.PolyTy.d_type_820 (coe v19))
-                                 (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v7) (coe v8) (coe v15))
+                                 (coe MAlonzo.Code.Once.Spec.Type.Grade.C_pure_30) (coe v7) (coe v8)
+                                 (coe v15))
                               v3
                               (d_teleSem_36
                                  (coe v0) (coe v16) (coe v18) (coe v3) (coe v4) (coe v12))
@@ -141,23 +143,23 @@ d_IOUnit_92
       MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38
       (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_Unit_26)
       (coe
-         MAlonzo.Code.Once.Type.C_mk'45'kind_50
-         (coe MAlonzo.Code.Once.Type.C_Many_10)
-         (coe MAlonzo.Code.Once.Type.C_eff_36))
+         MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48
+         (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14)
+         (coe MAlonzo.Code.Once.Spec.Type.Grade.C_eff_32))
       (coe MAlonzo.Code.Once.Spec.Core.PolyTy.C_Unit_26)
 -- Once.Spec.Core.Telescope.noVars
 d_noVars_94 ::
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Spec.Type.T_Type_8
 d_noVars_94 ~v0 = du_noVars_94
-du_noVars_94 :: MAlonzo.Code.Once.Type.T_Type_108
+du_noVars_94 :: MAlonzo.Code.Once.Spec.Type.T_Type_8
 du_noVars_94 = MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.Telescope.noKinds
 d_noKinds_96 ::
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_TKind_110
+  MAlonzo.Code.Once.Spec.Type.T_TKind_10
 d_noKinds_96 ~v0 = du_noKinds_96
-du_noKinds_96 :: MAlonzo.Code.Once.Type.T_TKind_110
+du_noKinds_96 :: MAlonzo.Code.Once.Spec.Type.T_TKind_10
 du_noKinds_96 = MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.Telescope.Program
 d_Program_100 a0 = ()
@@ -202,30 +204,30 @@ d_EntrySem_126 = erased
 d_noResp_132 ::
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8
 d_noResp_132 ~v0 = du_noResp_132
 du_noResp_132 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8
 du_noResp_132 = MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.Telescope.runEntry
 d_runEntry_136 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_808 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   ((MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-    MAlonzo.Code.Once.Type.T_Type_108) ->
+    MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
    (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
     MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-    MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+    MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
    AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 d_runEntry_136 ~v0 ~v1 v2 = du_runEntry_136 v2
 du_runEntry_136 ::
   ((MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-    MAlonzo.Code.Once.Type.T_Type_108) ->
+    MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
    (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
     MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-    MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+    MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
    AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 du_runEntry_136 v0

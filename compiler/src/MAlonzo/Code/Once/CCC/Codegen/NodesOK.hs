@@ -27,18 +27,18 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All.Properties
 import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.SigOp.Compare
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Symbol
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.CCC.Codegen.NodesOK.sigop-syms
 d_sigop'45'syms_12 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
@@ -70,8 +70,8 @@ du_sigop'45'syms_12 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.NodesOK.SigLeaves
 d_SigLeaves_28 ::
-  (MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 -> ()) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -315,8 +315,8 @@ du_leaf'45'syms'45'leaves_128 v0 v1 v2 v3
 -- Once.CCC.Codegen.NodesOK.leaf-syms-all
 d_leaf'45'syms'45'all_206 ::
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()) ->
-  (MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -326,8 +326,8 @@ d_leaf'45'syms'45'all_206 ::
 d_leaf'45'syms'45'all_206 ~v0 v1 v2 v3 v4
   = du_leaf'45'syms'45'all_206 v1 v2 v3 v4
 du_leaf'45'syms'45'all_206 ::
-  (MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -442,7 +442,7 @@ d_nodes'45'from_322 ::
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
    MAlonzo.Code.Once.IRTy.T_IRTy_6 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -451,7 +451,7 @@ d_nodes'45'from_322 ::
 d_nodes'45'from_322 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 v8
   = du_nodes'45'from_322 v3 v4 v5 v6 v7 v8
 du_nodes'45'from_322 ::
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
    MAlonzo.Code.Once.IRTy.T_IRTy_6 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->

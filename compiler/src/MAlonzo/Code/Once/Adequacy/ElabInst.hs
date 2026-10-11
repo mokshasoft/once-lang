@@ -23,8 +23,8 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Once.Adequacy.ViewNatural
-import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Parser
+import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Contract
 import qualified MAlonzo.Code.Once.Spec.Core.AbsTy
 import qualified MAlonzo.Code.Once.Spec.Core.Abstract
@@ -36,14 +36,16 @@ import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Core.Translate
 import qualified MAlonzo.Code.Once.Spec.Core.Typing
 import qualified MAlonzo.Code.Once.Spec.Elaboration
-import qualified MAlonzo.Code.Once.Surface.Context
+import qualified MAlonzo.Code.Once.Spec.Syntax
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Spec.Type.Poly
+import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
+import qualified MAlonzo.Code.Once.Spec.Typing
+import qualified MAlonzo.Code.Once.Spec.Typing.Scope
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
-import qualified MAlonzo.Code.Once.TypeCheck.Context
 import qualified MAlonzo.Code.Once.TypeCheck.Instance
-import qualified MAlonzo.Code.Once.TypeCheck.Judgment
-import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
 -- Once.Adequacy.ElabInst.PT.instantiate
 d_instantiate_48 ::
@@ -52,36 +54,36 @@ d_instantiate_48 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T_PCtx_350 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T_PTm_390 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__730 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244
 d_instantiate_48 ~v0 ~v1 ~v2 = du_instantiate_48
 du_instantiate_48 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T_PCtx_350 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T_PTm_390 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__730 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244
 du_instantiate_48 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
@@ -100,30 +102,30 @@ d_abs'45''8866'_280 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244 ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__730
 d_abs'45''8866'_280 ~v0 ~v1 ~v2 = du_abs'45''8866'_280
 du_abs'45''8866'_280 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244 ->
   MAlonzo.Code.Once.Spec.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__730
 du_abs'45''8866'_280 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
@@ -138,11 +140,11 @@ d_'10214'_'10215'_298 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
@@ -151,11 +153,11 @@ d_'10214'_'10215'_298 v0 ~v1 ~v2 = du_'10214'_'10215'_298 v0
 du_'10214'_'10215'_298 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
@@ -169,10 +171,10 @@ d_defs_302 ::
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   AgdaAny
 d_defs_302 v0
   = coe MAlonzo.Code.Once.Spec.Core.Meaning.d_defs_362 (coe v0)
@@ -189,19 +191,19 @@ d_Views_312 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 -> ()
+  MAlonzo.Code.Once.Spec.Typing.Scope.T_NamedCtx_104 -> ()
 d_Views_312 = erased
 -- Once.Adequacy.ElabInst._.elabᶜ
 d_elab'7580'_314 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Typing.Scope.T_NamedCtx_104 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_elab'7580'_314 v0 v1 v2
   = coe
@@ -211,7 +213,7 @@ d_elab'7580'_314 v0 v1 v2
 d_declares_318 ::
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Elaboration.T_Declared_454
 d_declares_318 v0
@@ -220,8 +222,8 @@ d_declares_318 v0
 d_entry_320 ::
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10
@@ -231,8 +233,8 @@ d_entry_320 v0
 d_ground_322 ::
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -242,7 +244,7 @@ d_ground_322 v0
 d_imported_324 ::
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_478
 d_imported_324 v0
@@ -251,10 +253,10 @@ d_imported_324 v0
 d_inst_326 ::
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (AgdaAny -> MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -268,14 +270,14 @@ d_NatImp_330 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.Spec.Elaboration.T_ImportAt_478 -> ()
 d_NatImp_330 = erased
 -- Once.Adequacy.ElabInst._.Natural
@@ -284,8 +286,8 @@ d_Natural_332 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
 d_nat'45'ground_338 ::
   MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -294,7 +296,7 @@ d_nat'45'ground_338 = erased
 d_nat'45'imp_340 ::
   MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_nat'45'imp_340 = erased
@@ -302,28 +304,28 @@ d_nat'45'imp_340 = erased
 d_nat'45'inst_342 ::
   MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (AgdaAny -> MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_nat'45'inst_342 = erased
 -- Once.Adequacy.ElabInst._.elab-ρ̂ᶜ
-d_elab'45'ρ'770''7580'_386 ::
+d_elab'45'ρ'770''7580'_384 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -333,17 +335,16 @@ d_elab'45'ρ'770''7580'_386 ::
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   Integer ->
-  [MAlonzo.Code.Once.TypeCheck.Context.T_Binding_6] ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  Integer ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
+  [MAlonzo.Code.Once.Spec.Typing.Scope.T_Binding_8] ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_elab'45'ρ'770''7580'_386 = erased
+d_elab'45'ρ'770''7580'_384 = erased
 -- Once.Adequacy.ElabInst.elab-inst-sem
-d_elab'45'inst'45'sem_430 ::
+d_elab'45'inst'45'sem_428 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
@@ -353,69 +354,69 @@ d_elab'45'inst'45'sem_430 ::
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_elab'45'inst'45'sem_430 = erased
+d_elab'45'inst'45'sem_428 = erased
 -- Once.Adequacy.ElabInst.elab-subst-sem
-d_elab'45'subst'45'sem_482 ::
+d_elab'45'subst'45'sem_480 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_378 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Typing.Scope.T_NamedCtx_104 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Spec.Elaboration.T_View_500 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_elab'45'subst'45'sem_482 = erased
+d_elab'45'subst'45'sem_480 = erased
 -- Once.Adequacy.ElabInst.inst-at
-d_inst'45'at_494 ::
+d_inst'45'at_492 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412 ->
+  MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_332 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
-d_inst'45'at_494 ~v0 = du_inst'45'at_494
-du_inst'45'at_494 ::
-  MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_412 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16
+d_inst'45'at_492 ~v0 = du_inst'45'at_492
+du_inst'45'at_492 ::
+  MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_332 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
-du_inst'45'at_494 v0 v1 v2 v3 v4 v5 v6 v7
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16
+du_inst'45'at_492 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.TypeCheck.Instance.du_inst'45'at_24 v0 v1 v2 v3
       v4 v5 v7
 -- Once.Adequacy.ElabInst.poly-instance-sem
-d_poly'45'instance'45'sem_538 ::
+d_poly'45'instance'45'sem_536 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
@@ -427,19 +428,19 @@ d_poly'45'instance'45'sem_538 ::
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  (MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
    MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_poly'45'instance'45'sem_538 = erased
+d_poly'45'instance'45'sem_536 = erased
 -- Once.Adequacy.ElabInst._.τ
-d_τ_562 ::
+d_τ_560 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
@@ -451,33 +452,33 @@ d_τ_562 ::
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  (MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
    MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_108
-d_τ_562 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11 ~v12 ~v13
+  MAlonzo.Code.Once.Spec.Type.T_Type_8
+d_τ_560 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11 ~v12 ~v13
         ~v14 ~v15 v16
-  = du_τ_562 v11 v16
-du_τ_562 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  = du_τ_560 v11 v16
+du_τ_560 ::
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_108
-du_τ_562 v0 v1
+  MAlonzo.Code.Once.Spec.Type.T_Type_8
+du_τ_560 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
       (coe
          MAlonzo.Code.Once.Spec.Core.Schema.du_kinded'45'instance_778
          (coe v0) (coe v1))
 -- Once.Adequacy.ElabInst._.rk
-d_rk_564 ::
+d_rk_562 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
@@ -489,28 +490,28 @@ d_rk_564 ::
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  (MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
    MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196
-d_rk_564 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11 ~v12 ~v13
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8
+d_rk_562 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11 ~v12 ~v13
          ~v14 ~v15 v16
-  = du_rk_564 v11 v16
-du_rk_564 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  = du_rk_562 v11 v16
+du_rk_562 ::
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196
-du_rk_564 v0 v1
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8
+du_rk_562 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
       (coe
@@ -519,7 +520,7 @@ du_rk_564 v0 v1
             MAlonzo.Code.Once.Spec.Core.Schema.du_kinded'45'instance_778
             (coe v0) (coe v1)))
 -- Once.Adequacy.ElabInst._.e
-d_e_566 ::
+d_e_564 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
@@ -531,108 +532,108 @@ d_e_566 ::
    MAlonzo.Code.Once.Spec.Core.AbsTy.T_ConstFree_374) ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Spec.Core.Meaning.T_DefSem_348 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
-  (MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
    MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_e_566 = erased
+d_e_564 = erased
 -- Once.Adequacy.ElabInst._.Inst
-d_Inst_582 ::
+d_Inst_580 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_808 -> ()
-d_Inst_582 = erased
+d_Inst_580 = erased
 -- Once.Adequacy.ElabInst._.subst-pt
-d_subst'45'pt_608 ::
+d_subst'45'pt_606 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_808 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_808 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45'pt_608 = erased
+d_subst'45'pt_606 = erased
 -- Once.Adequacy.ElabInst._.subst-fix
-d_subst'45'fix_630 ::
+d_subst'45'fix_628 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_808 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Schema_808 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45'fix_630 = erased
+d_subst'45'fix_628 = erased
 -- Once.Adequacy.ElabInst._.nat-imp′
-d_nat'45'imp'8242'_646 ::
+d_nat'45'imp'8242'_644 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Spec.Core.Translate.T_ImpSig_84 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_nat'45'imp'8242'_646 = erased
+d_nat'45'imp'8242'_644 = erased
 -- Once.Adequacy.ElabInst._.viewOf-natural
-d_viewOf'45'natural_732 ::
+d_viewOf'45'natural_730 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_116] ->
@@ -640,4 +641,4 @@ d_viewOf'45'natural_732 ::
   MAlonzo.Code.Once.Spec.Core.Translate.T_ImpSig_84 ->
   MAlonzo.Code.Once.Spec.Core.Translate.T_TeleSig_110 ->
   MAlonzo.Code.Once.Adequacy.ViewNatural.T_Natural_74
-d_viewOf'45'natural_732 = erased
+d_viewOf'45'natural_730 = erased

@@ -30,29 +30,31 @@ import qualified MAlonzo.Code.Once.Denotation.ValueDomainLaws
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.GradedAnaBridge._._∼ᵖᵈ_
 d__'8764''7510''7496'__10 a0 a1 a2 a3 = ()
 -- Once.Adequacy.GradedAnaBridge._.RelGM
 d_RelGM_14 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 -> ()
 d_RelGM_14 = erased
 -- Once.Adequacy.GradedAnaBridge._.RelGT
 d_RelGT_16 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 -> ()
 d_RelGT_16 = erased
 -- Once.Adequacy.GradedAnaBridge._.RelGV
 d_RelGV_20 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny -> ()
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
 d_RelGV_20 = erased
 -- Once.Adequacy.GradedAnaBridge._._∼ᵖᵈ_.force-∼ᵖᵈ
 d_force'45''8764''7510''7496'_26 ::
@@ -219,23 +221,23 @@ du_mapAna'7510''45''8764'_88 v0 v1 v2 v3 v4 v5 v6 v7 v8
 -- Once.Adequacy.GradedAnaBridge.in-relᵍ
 d_in'45'rel'7501'_174 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
 d_in'45'rel'7501'_174 ~v0 ~v1 v2 v3 v4 v5 v6
   = du_in'45'rel'7501'_174 v2 v3 v4 v5 v6
 du_in'45'rel'7501'_174 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
 du_in'45'rel'7501'_174 v0 v1 v2 v3 v4
   = case coe v1 of
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_240 v6 -> erased
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_242 -> coe v4
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_248 v7 v8
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'K_52 v6 -> erased
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Id_54 -> coe v4
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Sum_60 v7 v8
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8853'__116 v9 v10
+             MAlonzo.Code.Once.Spec.Type.C__'8853'__16 v9 v10
                -> case coe v2 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v11
                       -> case coe v3 of
@@ -253,9 +255,9 @@ du_in'45'rel'7501'_174 v0 v1 v2 v3 v4
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_254 v7 v8
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Prod_66 v7 v8
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8855'__118 v9 v10
+             MAlonzo.Code.Once.Spec.Type.C__'8855'__18 v9 v10
                -> case coe v2 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                       -> case coe v3 of
@@ -278,9 +280,9 @@ du_in'45'rel'7501'_174 v0 v1 v2 v3 v4
 -- Once.Adequacy.GradedAnaBridge.in-relᵍ-T
 d_in'45'rel'7501''45'T_230 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
@@ -290,8 +292,8 @@ d_in'45'rel'7501''45'T_230 ::
 d_in'45'rel'7501''45'T_230 ~v0 ~v1 v2 v3 ~v4 ~v5 v6 v7 v8
   = du_in'45'rel'7501''45'T_230 v2 v3 v6 v7 v8
 du_in'45'rel'7501''45'T_230 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -309,16 +311,16 @@ du_in'45'rel'7501''45'T_230 v0 v1 v2 v3 v4
 -- Once.Adequacy.GradedAnaBridge.anaSD
 d_anaSD_262 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.ValueDomain.T_ν'7496'_8
 d_anaSD_262 ~v0 ~v1 v2 v3 ~v4 v5 = du_anaSD_262 v2 v3 v5
 du_anaSD_262 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.ValueDomain.T_ν'7496'_8
 du_anaSD_262 v0 v1 v2
@@ -337,11 +339,11 @@ du_anaSD_262 v0 v1 v2
 -- Once.Adequacy.GradedAnaBridge.ana-bridgeᵍ
 d_ana'45'bridge'7501'_296 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -352,10 +354,10 @@ d_ana'45'bridge'7501'_296 v0 v1 v2 ~v3 v4 v5 v6 v7 v8 v9 v10 v11
   = du_ana'45'bridge'7501'_296 v0 v1 v2 v4 v5 v6 v7 v8 v9 v10 v11
 du_ana'45'bridge'7501'_296 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -364,11 +366,11 @@ du_ana'45'bridge'7501'_296 ::
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 du_ana'45'bridge'7501'_296 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v1 of
-      MAlonzo.Code.Once.Type.C_pure_34
+      MAlonzo.Code.Once.Spec.Type.Grade.C_pure_30
         -> coe
              du_retR_356 (coe v0) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7)
              (coe v8) (coe v9) (coe v10) (coe v2)
-      MAlonzo.Code.Once.Type.C_eff_36
+      MAlonzo.Code.Once.Spec.Type.Grade.C_eff_32
         -> coe
              du_retR_422 (coe v3) (coe v4) (coe v5) (coe v6) (coe v7) (coe v8)
              (coe v9) (coe v10) (coe v2)
@@ -376,10 +378,10 @@ du_ana'45'bridge'7501'_296 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
 -- Once.Adequacy.GradedAnaBridge._.H
 d_H_322 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -388,17 +390,17 @@ d_H_322 ::
   AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6
 d_H_322 ~v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 = du_H_322 v3
 du_H_322 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6
 du_H_322 v0
   = coe MAlonzo.Code.Once.Functor.Translate.du_translateF_56 (coe v0)
 -- Once.Adequacy.GradedAnaBridge._.cr
 d_cr_330 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -411,8 +413,8 @@ d_cr_330 ::
 d_cr_330 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 ~v8 ~v9 ~v10 v11 v12 v13
   = du_cr_330 v3 v4 v5 v6 v7 v11 v12 v13
 du_cr_330 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -431,10 +433,10 @@ du_cr_330 v0 v1 v2 v3 v4 v5 v6 v7
 -- Once.Adequacy.GradedAnaBridge._._.kr
 d_kr_342 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -461,31 +463,31 @@ du_kr_342 v0 v1 v2 v3 v4 v5
 -- Once.Adequacy.GradedAnaBridge._.retR
 d_retR_356 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
   AgdaAny ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 d_retR_356 v0 ~v1 ~v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
   = du_retR_356 v0 v3 v4 v5 v6 v7 v8 v9 v10 v11
 du_retR_356 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
   AgdaAny ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 du_retR_356 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
@@ -522,10 +524,10 @@ du_retR_356 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
 -- Once.Adequacy.GradedAnaBridge._.H
 d_H_388 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -534,17 +536,17 @@ d_H_388 ::
   AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6
 d_H_388 ~v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 = du_H_388 v3
 du_H_388 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6
 du_H_388 v0
   = coe MAlonzo.Code.Once.Functor.Translate.du_translateF_56 (coe v0)
 -- Once.Adequacy.GradedAnaBridge._.cr
 d_cr_398 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -557,8 +559,8 @@ d_cr_398 ::
 d_cr_398 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 ~v8 ~v9 ~v10 v11 v12 v13
   = du_cr_398 v3 v4 v5 v6 v7 v11 v12 v13
 du_cr_398 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -580,10 +582,10 @@ du_cr_398 v0 v1 v2 v3 v4 v5 v6 v7
 -- Once.Adequacy.GradedAnaBridge._._.kr
 d_kr_410 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -610,30 +612,30 @@ du_kr_410 v0 v1 v2 v3 v4 v5
 -- Once.Adequacy.GradedAnaBridge._.retR
 d_retR_422 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
   AgdaAny ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 d_retR_422 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
   = du_retR_422 v3 v4 v5 v6 v7 v8 v9 v10 v11
 du_retR_422 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
   AgdaAny ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 du_retR_422 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe

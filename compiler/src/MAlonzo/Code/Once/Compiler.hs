@@ -20,7 +20,6 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Adequacy
 import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness
 import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
@@ -38,6 +37,7 @@ import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.Spec.Correct
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
 import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
@@ -924,16 +924,16 @@ d_once'45'compiler_102 ::
    [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
    MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2574) ->
-  MAlonzo.Code.Once.Adequacy.T_CorrectCompiler_4
+  MAlonzo.Code.Once.Spec.Correct.T_CorrectCompiler_6
 d_once'45'compiler_102 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
                        ~v11 ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 ~v23
                        ~v24
   = du_once'45'compiler_102
 du_once'45'compiler_102 ::
-  MAlonzo.Code.Once.Adequacy.T_CorrectCompiler_4
+  MAlonzo.Code.Once.Spec.Correct.T_CorrectCompiler_6
 du_once'45'compiler_102
   = coe
-      MAlonzo.Code.Once.Adequacy.C_constructor_106
+      MAlonzo.Code.Once.Spec.Correct.C_constructor_108
       (coe MAlonzo.Code.Once.Adequacy.Compile.du_sigOfT_854)
       (coe
          MAlonzo.Code.Once.Adequacy.Compile.du_'10214'_'10215''7496''7477'_904)

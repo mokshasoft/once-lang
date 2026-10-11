@@ -21,26 +21,27 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Once.Adequacy.GradedRelation
 import qualified MAlonzo.Code.Once.Adequacy.TableCall
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Res
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.TeleEntry.φ
 d_φ_10 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 d_φ_10 ~v0 v1 = du_φ_10 v1
 du_φ_10 ::
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 du_φ_10 v0
   = coe
@@ -49,15 +50,15 @@ du_φ_10 v0
 d_RelGM_14 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 -> ()
 d_RelGM_14 = erased
 -- Once.Adequacy.TeleEntry._.RelGT
 d_RelGT_16 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 -> ()
 d_RelGT_16 = erased
@@ -65,18 +66,18 @@ d_RelGT_16 = erased
 d_RelGV_20 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny -> ()
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
 d_RelGV_20 = erased
 -- Once.Adequacy.TeleEntry._.abiT
 d_abiT_24 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 d_abiT_24 ~v0 ~v1 = du_abiT_24
 du_abiT_24 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 du_abiT_24 = coe MAlonzo.Code.Once.Adequacy.TableCall.du_abiT_158
@@ -84,7 +85,7 @@ du_abiT_24 = coe MAlonzo.Code.Once.Adequacy.TableCall.du_abiT_158
 d_returns'45'of_34 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
@@ -132,26 +133,26 @@ d_abi'45'zero_94 = erased
 d_abi'45'rel_104 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 d_abi'45'rel_104 ~v0 ~v1 v2 ~v3 v4 v5 = du_abi'45'rel_104 v2 v4 v5
 du_abi'45'rel_104 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 du_abi'45'rel_104 v0 v1 v2
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_Unit_120 -> coe v2
-      MAlonzo.Code.Once.Type.C_Void_122 -> coe v2
-      MAlonzo.Code.Once.Type.C__'42'__124 v3 v4 -> coe v2
-      MAlonzo.Code.Once.Type.C__'43'__126 v3 v4 -> coe v2
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v3 v4 v5
+      MAlonzo.Code.Once.Spec.Type.C_Unit_20 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C_Void_22 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C__'42'__24 v3 v4 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C__'43'__26 v3 v4 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v3 v4 v5
         -> case coe v4 of
-             MAlonzo.Code.Once.Type.C_mk'45'kind_50 v6 v7
+             MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v6 v7
                -> coe
                     seq (coe v6)
                     (let v8 = coe du_returns'45'of_34 (coe v1) (coe v2) in
@@ -166,9 +167,9 @@ du_abi'45'rel_104 v0 v1 v2
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C_μ'45'type_130 v3 -> coe v2
-      MAlonzo.Code.Once.Type.C_ν'45'type_132 v3 v4 -> coe v2
-      MAlonzo.Code.Once.Type.C_Int_134 -> coe v2
-      MAlonzo.Code.Once.Type.C_Float_136 -> coe v2
-      MAlonzo.Code.Once.Type.C_rigid_138 v3 v4 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C_μ'45'type_30 v3 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C_ν'45'type_32 v3 v4 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C_Int_34 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C_Float_36 -> coe v2
+      MAlonzo.Code.Once.Spec.Type.C_rigid_38 v3 v4 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError

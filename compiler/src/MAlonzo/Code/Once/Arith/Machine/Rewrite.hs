@@ -33,7 +33,7 @@ import qualified MAlonzo.Code.Once.Arith.Type
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Arith.Machine.Rewrite.shape-of
 d_shape'45'of_12 ::
@@ -251,8 +251,8 @@ d_sigop'45'blocks_198 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.Rewrite.bare-at
 d_bare'45'at_208 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14

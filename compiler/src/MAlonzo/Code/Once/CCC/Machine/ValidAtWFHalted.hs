@@ -27,12 +27,12 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
 import qualified MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Semantics.Functor
+import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Machine.ValidAtWFHalted._.ClosureWellFormedDef.CellAt
 d_CellAt_22 a0 a1 a2 a3 a4 a5 a6 a7 = ()
@@ -44,7 +44,7 @@ d_CellAt_628 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 d_ValidAtWF_684 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
 -- Once.CCC.Machine.ValidAtWFHalted._._.readLoc
 d_readLoc_1222 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
@@ -59,7 +59,7 @@ du_readLoc_1222
   = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_666
 -- Once.CCC.Machine.ValidAtWFHalted._.rl
 d_rl_1234 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_412 ->
@@ -69,7 +69,7 @@ d_rl_1234 ::
 d_rl_1234 = erased
 -- Once.CCC.Machine.ValidAtWFHalted._.validAtWF-set-halted
 d_validAtWF'45'set'45'halted_1256 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -85,7 +85,7 @@ d_validAtWF'45'set'45'halted_1256 v0 v1 v2 ~v3 v4 v5 v6 ~v7 v8 v9
                                   v10
   = du_validAtWF'45'set'45'halted_1256 v0 v1 v2 v4 v5 v6 v8 v9 v10
 du_validAtWF'45'set'45'halted_1256 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
@@ -205,7 +205,7 @@ du_validAtWF'45'set'45'halted_1256 v0 v1 v2 v3 v4 v5 v6 v7 v8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ValidAtWFHalted._.cellAt-set-halted
 d_cellAt'45'set'45'halted_1270 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
@@ -219,7 +219,7 @@ d_cellAt'45'set'45'halted_1270 ::
 d_cellAt'45'set'45'halted_1270 v0 v1 v2 v3 v4 v5 v6 v7 ~v8 v9
   = du_cellAt'45'set'45'halted_1270 v0 v1 v2 v3 v4 v5 v6 v7 v9
 du_cellAt'45'set'45'halted_1270 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->

@@ -56,7 +56,6 @@ import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.Program
@@ -66,6 +65,7 @@ import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Memory.StackSlots
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
 import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
@@ -239,11 +239,11 @@ d_o_94 ::
    MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.ResourceBounds.T_AddrNoWrap_236) ->
   (MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
    MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.ResourceBounds.T_LitFits_304) ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
 d_o_94 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12 ~v13
        ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21
   = du_o_94
-du_o_94 :: MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+du_o_94 :: MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
 du_o_94 = coe MAlonzo.Code.Once.Compile.d_entry'45'owner_958
 -- Once.Adequacy.ArchCorrectness.X64.BlockRunsHyp-x86-64
 d_BlockRunsHyp'45'x86'45'64_102 ::

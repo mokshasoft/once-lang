@@ -34,6 +34,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
@@ -879,14 +880,14 @@ d_lit'45'value_448 ::
   (AgdaAny -> AgdaAny -> Integer) ->
   (AgdaAny -> Integer -> Maybe Integer) ->
   (AgdaAny -> Bool) ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 -> AgdaAny -> AgdaAny
 d_lit'45'value_448 v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
   = du_lit'45'value_448 v0
 du_lit'45'value_448 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 -> AgdaAny -> AgdaAny
 du_lit'45'value_448 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Machine.SMCore.du_lit'45'value_3204 (coe v0)

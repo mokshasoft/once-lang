@@ -22,9 +22,9 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Codegen.ProgramImage.fn-image
 d_fn'45'image_8 ::
@@ -84,7 +84,7 @@ d_fns'45'image_20 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ProgramImage.top-done
 d_top'45'done_30 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 d_top'45'done_30 v0 v1
@@ -98,7 +98,7 @@ d_top'45'done_30 v0 v1
          (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v1)))
 -- Once.CCC.Codegen.ProgramImage.image-body
 d_image'45'body_36 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_image'45'body_36 v0 v1
@@ -124,7 +124,7 @@ d_image'45'body_36 v0 v1
          (coe MAlonzo.Code.Once.Denotation.Program.d_table_386 (coe v1)))
 -- Once.CCC.Codegen.ProgramImage.program-image
 d_program'45'image_42 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_program'45'image_42 v0 v1

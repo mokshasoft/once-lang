@@ -26,10 +26,10 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
 import qualified MAlonzo.Code.Once.Type
@@ -788,7 +788,7 @@ d_compile'45'abstract_174 v0
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2302 v1 v2 v3
         -> case coe v2 of
-             MAlonzo.Code.Once.Type.C_fits'45'int_202
+             MAlonzo.Code.Once.Type.C_fits'45'int_70
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
@@ -801,7 +801,7 @@ d_compile'45'abstract_174 v0
                           (coe
                              MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (32 :: Integer)) (coe v3))))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-             MAlonzo.Code.Once.Type.C_fits'45'float_204
+             MAlonzo.Code.Once.Type.C_fits'45'float_72
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
@@ -1165,7 +1165,7 @@ d_compile'45'abstract_174 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.AbstractToX86-32.compile-trace-cnt
 d_compile'45'trace'45'cnt_232 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -1387,7 +1387,7 @@ d_compile'45'trace_300 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.AbstractToX86-32.compile-trace-cnt-agrees
 d_compile'45'trace'45'cnt'45'agrees_312 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

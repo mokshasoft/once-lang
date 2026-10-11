@@ -19,13 +19,14 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Metatheory.SubLaws
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTyping
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
-import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Type.Sub
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Spec.Type.Sub
 
 -- Once.Spec.Core.TySubst._._<:ₚ_
 d__'60''58''8346'__20 a0 a1 a2 a3 a4 a5 = ()
@@ -39,9 +40,9 @@ d_KSub_510 ::
   Integer ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16) ->
   ()
@@ -83,7 +84,7 @@ du_'60''58''8346''45'refl_524 v0
              (coe du_'60''58''8346''45'refl_524 (coe v2))
       MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 v1 v2 v3
         -> case coe v2 of
-             MAlonzo.Code.Once.Type.C_mk'45'kind_50 v4 v5
+             MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v4 v5
                -> coe
                     MAlonzo.Code.Once.Spec.Core.PolyTyping.C_sub'45'arr_640
                     (coe du_'60''58''8346''45'refl_524 (coe v1))

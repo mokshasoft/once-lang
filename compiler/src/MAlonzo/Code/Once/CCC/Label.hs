@@ -28,7 +28,7 @@ import qualified MAlonzo.Code.Data.List.Properties
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
@@ -36,11 +36,11 @@ import qualified MAlonzo.Code.Relation.Nullary.Reflects
 -- Once.CCC.Label.LabelId
 d_LabelId_6 = ()
 data T_LabelId_6
-  = C_mkLabelId_20 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+  = C_mkLabelId_20 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
                    [Integer] Integer
 -- Once.CCC.Label.LabelId.owner
 d_owner_14 ::
-  T_LabelId_6 -> MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+  T_LabelId_6 -> MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
 d_owner_14 v0
   = case coe v0 of
       C_mkLabelId_20 v1 v2 v3 -> coe v1
@@ -61,7 +61,7 @@ d_idx_18 v0
 d_EntryId_22 = ()
 data T_EntryId_22
   = C_e'45'thunk_24 T_LabelId_6 |
-    C_e'45'fn_26 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+    C_e'45'fn_26 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
 -- Once.CCC.Label.Label
 d_Label_28 = ()
 data T_Label_28
@@ -82,8 +82,8 @@ d__'8799''7477'__40 v0 v1
                         = coe
                             MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
                             (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54)
-                            (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v2))
-                            (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v5)) in
+                            (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v2))
+                            (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v5)) in
                   coe
                     (case coe v8 of
                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v9 v10
@@ -315,10 +315,10 @@ d__'8799''7473'__234 v0 v1
                                         MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
                                         (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54)
                                         (coe
-                                           MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                           MAlonzo.Code.Once.Spec.Name.d_parts_10
                                            (coe d_owner_14 (coe v2)))
                                         (coe
-                                           MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                           MAlonzo.Code.Once.Spec.Name.d_parts_10
                                            (coe d_owner_14 (coe v3))) in
                               coe
                                 (case coe v8 of
@@ -614,8 +614,8 @@ d__'8799''7473'__234 v0 v1
                         = coe
                             MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
                             (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54)
-                            (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v2))
-                            (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v3)) in
+                            (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v2))
+                            (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v3)) in
                   coe
                     (case coe v4 of
                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
@@ -803,7 +803,7 @@ d_labelSym_364 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.ℓ
 d_ℓ_374 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer -> T_LabelId_6
 d_ℓ_374 v0 v1
   = coe

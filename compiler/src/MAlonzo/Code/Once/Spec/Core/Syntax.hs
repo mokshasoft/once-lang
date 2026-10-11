@@ -19,10 +19,10 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Spec.Core.Syntax.Lit
 d_Lit_14 a0 a1 a2 = ()
@@ -42,140 +42,140 @@ d_primDom_56 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
-  T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
+  T_Prim_20 -> MAlonzo.Code.Once.Spec.Type.T_Type_8
 d_primDom_56 ~v0 ~v1 ~v2 v3 = du_primDom_56 v3
-du_primDom_56 :: T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
+du_primDom_56 :: T_Prim_20 -> MAlonzo.Code.Once.Spec.Type.T_Type_8
 du_primDom_56 v0
   = case coe v0 of
       C_p'45'add_22
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'sub_24
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'mul_26
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'div_28
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'mod_30
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-      C_p'45'neg_32 -> coe MAlonzo.Code.Once.Type.C_Int_134
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+      C_p'45'neg_32 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
       C_p'45'lt_34
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'le_36
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'gt_38
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'ge_40
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'eq_42
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'ne_44
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
       C_p'45'fadd_46
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
       C_p'45'fsub_48
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
       C_p'45'fmul_50
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
       C_p'45'fdiv_52
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__124
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
-      C_p'45'i2f_54 -> coe MAlonzo.Code.Once.Type.C_Int_134
+             MAlonzo.Code.Once.Spec.Type.C__'42'__24
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
+      C_p'45'i2f_54 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.Syntax.primCod
 d_primCod_58 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
-  T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
+  T_Prim_20 -> MAlonzo.Code.Once.Spec.Type.T_Type_8
 d_primCod_58 ~v0 ~v1 ~v2 v3 = du_primCod_58 v3
-du_primCod_58 :: T_Prim_20 -> MAlonzo.Code.Once.Type.T_Type_108
+du_primCod_58 :: T_Prim_20 -> MAlonzo.Code.Once.Spec.Type.T_Type_8
 du_primCod_58 v0
   = case coe v0 of
-      C_p'45'add_22 -> coe MAlonzo.Code.Once.Type.C_Int_134
-      C_p'45'sub_24 -> coe MAlonzo.Code.Once.Type.C_Int_134
-      C_p'45'mul_26 -> coe MAlonzo.Code.Once.Type.C_Int_134
-      C_p'45'div_28 -> coe MAlonzo.Code.Once.Type.C_Int_134
-      C_p'45'mod_30 -> coe MAlonzo.Code.Once.Type.C_Int_134
-      C_p'45'neg_32 -> coe MAlonzo.Code.Once.Type.C_Int_134
+      C_p'45'add_22 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
+      C_p'45'sub_24 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
+      C_p'45'mul_26 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
+      C_p'45'div_28 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
+      C_p'45'mod_30 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
+      C_p'45'neg_32 -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
       C_p'45'lt_34
         -> coe
-             MAlonzo.Code.Once.Type.C__'43'__126
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
+             MAlonzo.Code.Once.Spec.Type.C__'43'__26
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
       C_p'45'le_36
         -> coe
-             MAlonzo.Code.Once.Type.C__'43'__126
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
+             MAlonzo.Code.Once.Spec.Type.C__'43'__26
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
       C_p'45'gt_38
         -> coe
-             MAlonzo.Code.Once.Type.C__'43'__126
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
+             MAlonzo.Code.Once.Spec.Type.C__'43'__26
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
       C_p'45'ge_40
         -> coe
-             MAlonzo.Code.Once.Type.C__'43'__126
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
+             MAlonzo.Code.Once.Spec.Type.C__'43'__26
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
       C_p'45'eq_42
         -> coe
-             MAlonzo.Code.Once.Type.C__'43'__126
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
+             MAlonzo.Code.Once.Spec.Type.C__'43'__26
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
       C_p'45'ne_44
         -> coe
-             MAlonzo.Code.Once.Type.C__'43'__126
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
-             (coe MAlonzo.Code.Once.Type.C_Unit_120)
-      C_p'45'fadd_46 -> coe MAlonzo.Code.Once.Type.C_Float_136
-      C_p'45'fsub_48 -> coe MAlonzo.Code.Once.Type.C_Float_136
-      C_p'45'fmul_50 -> coe MAlonzo.Code.Once.Type.C_Float_136
-      C_p'45'fdiv_52 -> coe MAlonzo.Code.Once.Type.C_Float_136
-      C_p'45'i2f_54 -> coe MAlonzo.Code.Once.Type.C_Float_136
+             MAlonzo.Code.Once.Spec.Type.C__'43'__26
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Unit_20)
+      C_p'45'fadd_46 -> coe MAlonzo.Code.Once.Spec.Type.C_Float_36
+      C_p'45'fsub_48 -> coe MAlonzo.Code.Once.Spec.Type.C_Float_36
+      C_p'45'fmul_50 -> coe MAlonzo.Code.Once.Spec.Type.C_Float_36
+      C_p'45'fdiv_52 -> coe MAlonzo.Code.Once.Spec.Type.C_Float_36
+      C_p'45'i2f_54 -> coe MAlonzo.Code.Once.Spec.Type.C_Float_36
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Core.Syntax.Tm
 d_Tm_62 a0 a1 a2 a3 = ()
@@ -187,14 +187,14 @@ data T_Tm_62
     C_case_86 T_Tm_62 T_Tm_62 T_Tm_62 | C_absurd_88 T_Tm_62 |
     C_roll_90 T_Tm_62 | C_fold_92 T_Tm_62 T_Tm_62 |
     C_unfold_94 T_Tm_62 T_Tm_62 | C_out_96 T_Tm_62 |
-    C_coerce_98 MAlonzo.Code.Once.Type.T_Type_108
-                MAlonzo.Code.Once.Type.T_Type_108 T_Tm_62 |
+    C_coerce_98 MAlonzo.Code.Once.Spec.Type.T_Type_8
+                MAlonzo.Code.Once.Spec.Type.T_Type_8 T_Tm_62 |
     C_lit_100 T_Lit_14 | C_prim_102 T_Prim_20 T_Tm_62 |
-    C_sigop_104 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
-                MAlonzo.Code.Once.Type.T_Type_108 |
+    C_sigop_104 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
+                MAlonzo.Code.Once.Spec.Type.T_Type_8 |
     C_ref_108 MAlonzo.Code.Data.Fin.Base.T_Fin_10
               (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-               MAlonzo.Code.Once.Type.T_Type_108)
+               MAlonzo.Code.Once.Spec.Type.T_Type_8)
 -- Once.Spec.Core.Syntax.Ren
 d_Ren_110 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->

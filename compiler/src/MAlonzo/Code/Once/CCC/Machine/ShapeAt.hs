@@ -28,13 +28,14 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
 import qualified MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Semantics.Functor
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.CCC.Machine.ShapeAt._.readLoc
@@ -84,13 +85,13 @@ du_prim'45'sv'45'at_68 v0 v1
       MAlonzo.Code.Once.IRTy.C_fits'45'int_520
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Type.C_Int_134)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'int_202) (coe v1)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'int_70) (coe v1)
       MAlonzo.Code.Once.IRTy.C_fits'45'float_522
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Type.C_Float_136)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'float_204) (coe v1)
+             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'float_72) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ShapeAt.InlineRepAt
 d_InlineRepAt_76 a0 a1 = ()
@@ -168,7 +169,7 @@ d_CellAt_328 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 -- Once.CCC.Machine.ShapeAt.Project._.SumTag
 d_SumTag_330 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   Integer ->
@@ -180,7 +181,7 @@ d_ValidAtWF_332 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
 -- Once.CCC.Machine.ShapeAt.Project.tag-of
 d_tag'45'of_406 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   Integer ->
@@ -191,7 +192,7 @@ d_tag'45'of_406 = erased
 -- Once.CCC.Machine.ShapeAt.Project.cell→shape
 d_cell'8594'shape_434 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -204,7 +205,7 @@ d_cell'8594'shape_434 v0 v1 v2 v3 v4 v5 ~v6 v7 v8
   = du_cell'8594'shape_434 v0 v1 v2 v3 v4 v5 v7 v8
 du_cell'8594'shape_434 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -236,7 +237,7 @@ du_cell'8594'shape_434 v0 v1 v2 v3 v4 v5 v6 v7
 -- Once.CCC.Machine.ShapeAt.Project.valid→shape
 d_valid'8594'shape_448 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
@@ -250,7 +251,7 @@ d_valid'8594'shape_448 v0 v1 v2 ~v3 v4 v5 v6 v7 v8 v9
   = du_valid'8594'shape_448 v0 v1 v2 v4 v5 v6 v7 v8 v9
 du_valid'8594'shape_448 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->

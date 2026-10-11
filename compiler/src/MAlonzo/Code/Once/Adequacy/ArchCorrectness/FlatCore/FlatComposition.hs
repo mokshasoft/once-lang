@@ -30,7 +30,7 @@ import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
@@ -1900,12 +1900,12 @@ du_find'45'label'45'pres_788 v0 v1 v2
                                                           (coe
                                                              MAlonzo.Code.Data.String.Properties.d__'8799'__54)
                                                           (coe
-                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                             MAlonzo.Code.Once.Spec.Name.d_parts_10
                                                              (coe
                                                                 MAlonzo.Code.Once.CCC.Label.d_owner_14
                                                                 (coe v9)))
                                                           (coe
-                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                             MAlonzo.Code.Once.Spec.Name.d_parts_10
                                                              (coe
                                                                 MAlonzo.Code.Once.CCC.Label.d_owner_14
                                                                 (coe v1))) in

@@ -25,7 +25,7 @@ import qualified MAlonzo.Code.Data.Char.Properties
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Target.Symbol.showNat
@@ -287,7 +287,7 @@ d_join'45'us_48 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.Symbol.once-symbol-path
 d_once'45'symbol'45'path_58 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_once'45'symbol'45'path_58 v0
   = coe
@@ -296,7 +296,7 @@ d_once'45'symbol'45'path_58 v0
          (coe
             MAlonzo.Code.Data.List.Base.du_map_22
             (coe d_mangle'45'component_44)
-            (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v0))))
+            (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v0))))
 -- Once.Target.Symbol.once-symbol-own
 d_once'45'symbol'45'own_62 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -305,7 +305,7 @@ d_once'45'symbol'45'own_62 v0
   = coe
       d_once'45'symbol'45'path_58
       (coe
-         MAlonzo.Code.Once.CanonicalName.C_canonical_10
+         MAlonzo.Code.Once.Spec.Name.C_canonical_12
          (coe
             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v0)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))

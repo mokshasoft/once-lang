@@ -30,7 +30,7 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All.Properties
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Once.CCC.Label
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.AsmSymbol
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.SymbolInjective
@@ -517,7 +517,7 @@ du_cont'45''43''43'_222 v0 v1 v2
       (coe v1) (coe v2)
 -- Once.Target.SymbolValid.once-symbol-path-asm
 d_once'45'symbol'45'path'45'asm_234 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 -> AgdaAny
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 -> AgdaAny
 d_once'45'symbol'45'path'45'asm_234 v0
   = coe
       du_asm'45''43''43'_180
@@ -546,13 +546,13 @@ d_once'45'symbol'45'path'45'asm_234 v0
             (coe
                MAlonzo.Code.Data.List.Base.du_map_22
                (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12)
-               (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v0))))
+               (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v0))))
          (coe
             d_mangs'45'cont_148
             (coe
                MAlonzo.Code.Data.List.Base.du_map_22
                (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12)
-               (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v0)))))
+               (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v0)))))
 -- Once.Target.SymbolValid.once-symbol-own-asm
 d_once'45'symbol'45'own'45'asm_240 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny
@@ -560,7 +560,7 @@ d_once'45'symbol'45'own'45'asm_240 v0
   = coe
       d_once'45'symbol'45'path'45'asm_234
       (coe
-         MAlonzo.Code.Once.CanonicalName.C_canonical_10
+         MAlonzo.Code.Once.Spec.Name.C_canonical_12
          (coe
             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v0)
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))

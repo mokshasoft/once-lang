@@ -23,16 +23,16 @@ import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.CCC.Codegen.IRToTrace
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.CCC.Codegen.LabelRange._.CataStrategy
 d_CataStrategy_12 a0 = ()
 -- Once.CCC.Codegen.LabelRange._.cata-dispatch
 d_cata'45'dispatch_14 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer ->
   Integer ->
@@ -45,7 +45,7 @@ d_cata'45'dispatch_14 v0
       (coe v0)
 -- Once.CCC.Codegen.LabelRange._.ir-to-trace'
 d_ir'45'to'45'trace''_18 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   Integer ->
@@ -58,7 +58,7 @@ d_ir'45'to'45'trace''_18 v0
       (coe v0)
 -- Once.CCC.Codegen.LabelRange._.resuspend-layer
 d_resuspend'45'layer_22 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -72,7 +72,7 @@ d_resuspend'45'layer_22 v0
       (coe v0)
 -- Once.CCC.Codegen.LabelRange.label-of
 d_label'45'of_42 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
 d_label'45'of_42 ~v0 v1 = du_label'45'of_42 v1
 du_label'45'of_42 ::
@@ -87,7 +87,7 @@ du_label'45'of_42 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelRange.cata-label-of
 d_cata'45'label'45'of_46 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
 d_cata'45'label'45'of_46 ~v0 v1 = du_cata'45'label'45'of_46 v1
 du_cata'45'label'45'of_46 ::
@@ -101,7 +101,7 @@ du_cata'45'label'45'of_46 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelRange.cata-label-mono
 d_cata'45'label'45'mono_60 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer ->
   Integer ->
@@ -221,7 +221,7 @@ du_cata'45'label'45'mono_60 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelRange.resuspend-label-mono
 d_resuspend'45'label'45'mono_108 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -306,7 +306,7 @@ d_resuspend'45'label'45'mono_108 v0 v1 v2 v3 v4 v5 v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelRange.label-mono
 d_label'45'mono_160 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->

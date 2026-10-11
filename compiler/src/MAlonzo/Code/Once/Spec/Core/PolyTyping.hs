@@ -21,17 +21,17 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Decimal
-import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Metatheory.SubLaws
+import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Core.PolyTy
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Core.Typing
-import qualified MAlonzo.Code.Once.Surface.Context
-import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Type.Rigid
-import qualified MAlonzo.Code.Once.Type.Sub
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Spec.Type.Sub
+import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
 
 -- Once.Spec.Core.PolyTyping.G.Lit
 d_Lit_18 a0 a1 a2 = ()
@@ -45,11 +45,11 @@ d_primCod_100 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Prim_20 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Spec.Type.T_Type_8
 d_primCod_100 ~v0 ~v1 ~v2 = du_primCod_100
 du_primCod_100 ::
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Prim_20 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Spec.Type.T_Type_8
 du_primCod_100
   = coe MAlonzo.Code.Once.Spec.Core.Syntax.du_primCod_58
 -- Once.Spec.Core.PolyTyping.G.primDom
@@ -58,11 +58,11 @@ d_primDom_102 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Prim_20 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Spec.Type.T_Type_8
 d_primDom_102 ~v0 ~v1 ~v2 = du_primDom_102
 du_primDom_102 ::
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Prim_20 ->
-  MAlonzo.Code.Once.Type.T_Type_108
+  MAlonzo.Code.Once.Spec.Type.T_Type_8
 du_primDom_102
   = coe MAlonzo.Code.Once.Spec.Core.Syntax.du_primDom_56
 -- Once.Spec.Core.PolyTyping.GT._⊢[_]_∷_!_
@@ -73,7 +73,7 @@ data T_PCtx_350
   = C_'8709'_354 |
     C__'44'_'94'__358 T_PCtx_350
                       MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16
-                      MAlonzo.Code.Once.Type.T_Quantity_4
+                      MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8
 -- Once.Spec.Core.PolyTyping._,_
 d__'44'__364 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
@@ -87,7 +87,8 @@ du__'44'__364 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 -> T_PCtx_350
 du__'44'__364 v0 v1
   = coe
-      C__'44'_'94'__358 v0 v1 (coe MAlonzo.Code.Once.Type.C_Many_10)
+      C__'44'_'94'__358 v0 v1
+      (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14)
 -- Once.Spec.Core.PolyTyping.lookupP
 d_lookupP_374 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -127,8 +128,8 @@ data T_PTm_390
                  MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 T_PTm_390 |
     C_lit_430 MAlonzo.Code.Once.Spec.Core.Syntax.T_Lit_14 |
     C_prim_432 MAlonzo.Code.Once.Spec.Core.Syntax.T_Prim_20 T_PTm_390 |
-    C_sigop_434 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
-                MAlonzo.Code.Once.Type.T_Type_108 |
+    C_sigop_434 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
+                MAlonzo.Code.Once.Spec.Type.T_Type_8 |
     C_ref_438 MAlonzo.Code.Data.Fin.Base.T_Fin_10
               (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
                MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16)
@@ -141,22 +142,22 @@ d__'10218'_'10219''7580'_444 ::
   Integer ->
   T_PCtx_350 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_6
 d__'10218'_'10219''7580'_444 ~v0 ~v1 ~v2 v3 ~v4 v5 v6
   = du__'10218'_'10219''7580'_444 v3 v5 v6
 du__'10218'_'10219''7580'_444 ::
   Integer ->
   T_PCtx_350 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_6
 du__'10218'_'10219''7580'_444 v0 v1 v2
   = case coe v1 of
-      C_'8709'_354 -> coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8
+      C_'8709'_354 -> coe MAlonzo.Code.Once.Spec.Context.C_'8709'_8
       C__'44'_'94'__358 v4 v5 v6
         -> coe
-             MAlonzo.Code.Once.Surface.Context.C__'44'_'94'__12
+             MAlonzo.Code.Once.Spec.Context.C__'44'_'94'__12
              (coe du__'10218'_'10219''7580'_444 (coe v0) (coe v4) (coe v2))
              (MAlonzo.Code.Once.Spec.Core.PolyTy.d__'10218'_'10219'_344
                 (coe v0) (coe v5) (coe v2))
@@ -171,7 +172,7 @@ d_lookup'45''10218''10219'_466 ::
   Integer ->
   T_PCtx_350 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_lookup'45''10218''10219'_466 = erased
@@ -184,7 +185,7 @@ d__'10218'_'10219''8348'_490 ::
   Integer ->
   T_PTm_390 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62
 d__'10218'_'10219''8348'_490 ~v0 ~v1 ~v2 v3 ~v4 v5 v6
   = du__'10218'_'10219''8348'_490 v3 v5 v6
@@ -192,7 +193,7 @@ du__'10218'_'10219''8348'_490 ::
   Integer ->
   T_PTm_390 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Tm_62
 du__'10218'_'10219''8348'_490 v0 v1 v2
   = case coe v1 of
@@ -295,11 +296,11 @@ data T__'60''58''8346'__602
   = C_sub'45'var_608 | C_sub'45'void_612 | C_sub'45'unit_614 |
     C_sub'45'int_616 | C_sub'45'float_618 | C_sub'45'rigid_624 |
     C_sub'45'arr_640 T__'60''58''8346'__602 T__'60''58''8346'__602
-                     MAlonzo.Code.Once.Type.Sub.T__'8849'π__6 |
+                     MAlonzo.Code.Once.Spec.Type.Sub.T__'8849'π__8 |
     C_sub'45'prod_650 T__'60''58''8346'__602 T__'60''58''8346'__602 |
     C_sub'45'sum_660 T__'60''58''8346'__602 T__'60''58''8346'__602 |
     C_sub'45'μ_664 |
-    C_sub'45'ν_672 MAlonzo.Code.Once.Type.Sub.T__'8849'π__6
+    C_sub'45'ν_672 MAlonzo.Code.Once.Spec.Type.Sub.T__'8849'π__8
 -- Once.Spec.Core.PolyTyping.<:ₚ-⟪⟫
 d_'60''58''8346''45''10218''10219'_682 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -309,28 +310,29 @@ d_'60''58''8346''45''10218''10219'_682 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   T__'60''58''8346'__602 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
+  MAlonzo.Code.Once.Spec.Type.Sub.T__'60''58'__20
 d_'60''58''8346''45''10218''10219'_682 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7
   = du_'60''58''8346''45''10218''10219'_682 v4 v5 v6 v7
 du_'60''58''8346''45''10218''10219'_682 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   T__'60''58''8346'__602 ->
-  MAlonzo.Code.Once.Type.Sub.T__'60''58'__24
+  MAlonzo.Code.Once.Spec.Type.Sub.T__'60''58'__20
 du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
   = let v4
           = case coe v3 of
               C_sub'45'void_612
-                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
               C_sub'45'unit_614
-                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-              C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+              C_sub'45'int_616
+                -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
               C_sub'45'float_618
-                -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
               _ -> MAlonzo.RTE.mazUnreachableError in
     coe
       (case coe v0 of
@@ -344,27 +346,29 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
                               (coe v2 v5)
                        _ -> coe v4
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+                C_sub'45'int_616
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Once.Spec.Core.PolyTy.C__'42'__34 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+                C_sub'45'int_616
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
                 C_sub'45'prod_650 v11 v12
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C__'42'__34 v13 v14
                          -> coe
-                              MAlonzo.Code.Once.Type.Sub.C_sub'45'prod_60
+                              MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'prod_56
                               (coe
                                  du_'60''58''8346''45''10218''10219'_682 (coe v5) (coe v13) (coe v2)
                                  (coe v11))
@@ -376,17 +380,18 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
          MAlonzo.Code.Once.Spec.Core.PolyTy.C__'43'__36 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+                C_sub'45'int_616
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
                 C_sub'45'sum_660 v11 v12
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C__'43'__36 v13 v14
                          -> coe
-                              MAlonzo.Code.Once.Type.Sub.C_sub'45'sum_70
+                              MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'sum_66
                               (coe
                                  du_'60''58''8346''45''10218''10219'_682 (coe v5) (coe v13) (coe v2)
                                  (coe v11))
@@ -398,17 +403,18 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
          MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 v5 v6 v7
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+                C_sub'45'int_616
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
                 C_sub'45'arr_640 v15 v16 v17
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 v18 v19 v20
                          -> coe
-                              MAlonzo.Code.Once.Type.Sub.C_sub'45'arr_50
+                              MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'arr_46
                               (coe
                                  du_'60''58''8346''45''10218''10219'_682 (coe v18) (coe v5) (coe v2)
                                  (coe v15))
@@ -421,46 +427,49 @@ du_'60''58''8346''45''10218''10219'_682 v0 v1 v2 v3
          MAlonzo.Code.Once.Spec.Core.PolyTy.C_μ'45'type_40 v5
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+                C_sub'45'int_616
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
                 C_sub'45'μ_664
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_μ'45'type_40 v7
-                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'μ_74
+                         -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'μ_70
                        _ -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Once.Spec.Core.PolyTy.C_ν'45'type_42 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+                C_sub'45'int_616
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
                 C_sub'45'ν_672 v10
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_ν'45'type_42 v11 v12
-                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'ν_82 v10
+                         -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'ν_78 v10
                        _ -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Once.Spec.Core.PolyTy.C_rigid_44 v5 v6
            -> case coe v3 of
                 C_sub'45'void_612
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'void_28
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'void_24
                 C_sub'45'unit_614
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'unit_30
-                C_sub'45'int_616 -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'int_32
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'unit_26
+                C_sub'45'int_616
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'int_28
                 C_sub'45'float_618
-                  -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'float_34
+                  -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'float_30
                 C_sub'45'rigid_624
                   -> case coe v1 of
                        MAlonzo.Code.Once.Spec.Core.PolyTy.C_rigid_44 v9 v10
-                         -> coe MAlonzo.Code.Once.Type.Sub.C_sub'45'rigid_88
+                         -> coe MAlonzo.Code.Once.Spec.Type.Sub.C_sub'45'rigid_84
                        _ -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> coe v4)
@@ -470,23 +479,23 @@ d__'8873'_'8866''91'_'93'_'8759'_'33'__730 a0 a1 a2 a3 a4 a5 a6 a7
   = ()
 data T__'8873'_'8866''91'_'93'_'8759'_'33'__730
   = C_'8866'var_742 |
-    C_'8866'lam_762 MAlonzo.Code.Once.Type.T_Quantity_4
+    C_'8866'lam_762 MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8
                     T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
-    C_'8866'app_784 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                    MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                    MAlonzo.Code.Once.Type.T_Quantity_4
+    C_'8866'app_784 MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                    MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                    MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8
                     MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16
                     T__'8873'_'8866''91'_'93'_'8759'_'33'__730
                     T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
-    C_'8866'let_806 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                    MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                    MAlonzo.Code.Once.Type.T_Quantity_4
+    C_'8866'let_806 MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                    MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                    MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8
                     MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16
                     T__'8873'_'8866''91'_'93'_'8759'_'33'__730
                     T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
     C_'8866'unit_812 |
-    C_'8866'pair_832 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                     MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_'8866'pair_832 MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                     MAlonzo.Code.Once.Spec.Context.T_Usage_46
                      T__'8873'_'8866''91'_'93'_'8759'_'33'__730
                      T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
     C_'8866'fst_848 MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16
@@ -495,10 +504,10 @@ data T__'8873'_'8866''91'_'93'_'8759'_'33'__730
                     T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
     C_'8866'inl_880 T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
     C_'8866'inr_896 T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
-    C_'8866'case_924 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                     MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                     MAlonzo.Code.Once.Type.T_Quantity_4
-                     MAlonzo.Code.Once.Type.T_Quantity_4
+    C_'8866'case_924 MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                     MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                     MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8
+                     MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8
                      MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16
                      MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16
                      T__'8873'_'8866''91'_'93'_'8759'_'33'__730
@@ -507,14 +516,14 @@ data T__'8873'_'8866''91'_'93'_'8759'_'33'__730
     C_'8866'absurd_938 T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
     C_'8866'roll_952 MAlonzo.Code.Once.Spec.Core.PolyTy.T_WFFun_708
                      T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
-    C_'8866'fold_972 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                     MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_'8866'fold_972 MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                     MAlonzo.Code.Once.Spec.Context.T_Usage_46
                      MAlonzo.Code.Once.Spec.Core.PolyTy.T_Fun_20
                      MAlonzo.Code.Once.Spec.Core.PolyTy.T_WFFun_708
                      T__'8873'_'8866''91'_'93'_'8759'_'33'__730
                      T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
-    C_'8866'unfold_994 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                       MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_'8866'unfold_994 MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                       MAlonzo.Code.Once.Spec.Context.T_Usage_46
                        MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16
                        MAlonzo.Code.Once.Spec.Core.PolyTy.T_WFFun_708
                        T__'8873'_'8866''91'_'93'_'8759'_'33'__730
@@ -526,14 +535,14 @@ data T__'8873'_'8866''91'_'93'_'8759'_'33'__730
                         T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
     C_'8866'lit'45'int_1032 | C_'8866'lit'45'float_1040 |
     C_'8866'prim_1054 T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
-    C_'8866'sigop_1066 MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_222
-                       AgdaAny MAlonzo.Code.Once.Type.Rigid.T_RigidFree_748
+    C_'8866'sigop_1066 MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsConcrete_34
+                       AgdaAny MAlonzo.Code.Once.Spec.Type.WellFormed.T_RigidFree_68
                        MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 |
-    C_'8866'sub'45'eff_1082 MAlonzo.Code.Once.Type.T_Purity_32
-                            MAlonzo.Code.Once.Type.Sub.T__'8849'π__6
+    C_'8866'sub'45'eff_1082 MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28
+                            MAlonzo.Code.Once.Spec.Type.Sub.T__'8849'π__8
                             T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
-    C_'8866'sub'45'use_1098 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                            MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276
+    C_'8866'sub'45'use_1098 MAlonzo.Code.Once.Spec.Context.T_Usage_46
+                            MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__178
                             T__'8873'_'8866''91'_'93'_'8759'_'33'__730 |
     C_'8866'ref_1110 (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
                       MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -545,18 +554,18 @@ d_instantiate_1130 ::
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Sig_826 ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_TKind_110) ->
+   MAlonzo.Code.Once.Spec.Type.T_TKind_10) ->
   Integer ->
   T_PCtx_350 ->
-  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_46 ->
   T_PTm_390 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   T__'8873'_'8866''91'_'93'_'8759'_'33'__730 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244
 d_instantiate_1130 ~v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10 v11 v12
@@ -566,12 +575,12 @@ du_instantiate_1130 ::
   Integer ->
   T_PTm_390 ->
   MAlonzo.Code.Once.Spec.Core.PolyTy.T_Ty_16 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Once.Type.T_Type_108) ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196) ->
+   MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8) ->
   T__'8873'_'8866''91'_'93'_'8759'_'33'__730 ->
   MAlonzo.Code.Once.Spec.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__244
 du_instantiate_1130 v0 v1 v2 v3 v4 v5 v6
@@ -584,7 +593,7 @@ du_instantiate_1130 v0 v1 v2 v3 v4 v5 v6
                -> case coe v2 of
                     MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 v19 v20 v21
                       -> case coe v20 of
-                           MAlonzo.Code.Once.Type.C_mk'45'kind_50 v22 v23
+                           MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v22 v23
                              -> coe
                                   MAlonzo.Code.Once.Spec.Core.Typing.C_'8866'lam_272 v11
                                   (coe
@@ -604,7 +613,9 @@ du_instantiate_1130 v0 v1 v2 v3 v4 v5 v6
                        du_instantiate_1130 (coe v0) (coe v19)
                        (coe
                           MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 (coe v13)
-                          (coe MAlonzo.Code.Once.Type.C_mk'45'kind_50 (coe v11) (coe v3))
+                          (coe
+                             MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 (coe v11)
+                             (coe v3))
                           (coe v2))
                        (coe v3) (coe v4) (coe v5) (coe v17))
                     (coe
@@ -759,8 +770,8 @@ du_instantiate_1130 v0 v1 v2 v3 v4 v5 v6
                              MAlonzo.Code.Once.Spec.Core.PolyTy.du_'10214'_'10215'F_58 (coe v12)
                              (coe v2))
                           (coe
-                             MAlonzo.Code.Once.Type.C_mk'45'kind_50
-                             (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v3))
+                             MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48
+                             (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14) (coe v3))
                           (coe v2))
                        (coe v3) (coe v4) (coe v5) (coe v17))
                     (coe
@@ -785,8 +796,8 @@ du_instantiate_1130 v0 v1 v2 v3 v4 v5 v6
                               (coe
                                  MAlonzo.Code.Once.Spec.Core.PolyTy.C__'8658''91'_'93'__38 (coe v14)
                                  (coe
-                                    MAlonzo.Code.Once.Type.C_mk'45'kind_50
-                                    (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v23))
+                                    MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48
+                                    (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14) (coe v23))
                                  (coe
                                     MAlonzo.Code.Once.Spec.Core.PolyTy.du_'10214'_'10215'F_58
                                     (coe v22) (coe v14)))

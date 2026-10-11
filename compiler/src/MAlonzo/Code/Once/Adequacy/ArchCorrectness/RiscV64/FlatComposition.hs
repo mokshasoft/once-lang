@@ -30,6 +30,7 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
 import qualified MAlonzo.Code.Once.Type
 
@@ -139,8 +140,8 @@ d_reg'45'op'45'no'45'label_226 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition.const-no-label
 d_const'45'no'45'label_234 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_const'45'no'45'label_234 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition.headView

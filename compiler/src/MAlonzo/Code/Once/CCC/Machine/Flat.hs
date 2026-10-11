@@ -29,8 +29,8 @@ import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
+import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Machine.Flat.FlatMachine._.exec-trace
 d_exec'45'trace_64 ::
@@ -375,7 +375,7 @@ d_find'45'thunk_234 v0 v1 v2
 d_find'45'fn_240 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 -> Maybe Integer
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 -> Maybe Integer
 d_find'45'fn_240 v0 v1 v2
   = coe
       d_find'45'entry_228 (coe v0) (coe v1)
@@ -2769,7 +2769,7 @@ d_flink'45'do'45'ret_3440 = erased
 d_FlinkView_3448 a0 a1 = ()
 data T_FlinkView_3448
   = C_fv'45'call_3452 |
-    C_fv'45'call'45'fn_3456 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 |
+    C_fv'45'call'45'fn_3456 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 |
     C_fv'45'thunk_3462 MAlonzo.Code.Once.CCC.Label.T_EntryId_22
                        Integer |
     C_fv'45'start_3466 Integer | C_fv'45'pres_3472

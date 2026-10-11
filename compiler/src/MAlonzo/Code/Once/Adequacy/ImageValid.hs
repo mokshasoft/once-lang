@@ -39,8 +39,8 @@ import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.SymbolValid
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.ImageValid.ctrl-defs-asm
 d_ctrl'45'defs'45'asm_8 ::
@@ -419,8 +419,8 @@ d_lib'45'defs'45'valid_196 v0
                (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0)))))
 -- Once.Adequacy.ImageValid.sigop-syms-asm
 d_sigop'45'syms'45'asm_208 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
@@ -473,8 +473,8 @@ d_calls'45'asm_218 v0
 -- Once.Adequacy.ImageValid._.h
 d_h_232 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_h_232 ~v0 ~v1 ~v2 v3 = du_h_232 v3

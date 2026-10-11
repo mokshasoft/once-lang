@@ -23,9 +23,10 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 import qualified MAlonzo.Code.Once.Type
@@ -497,7 +498,7 @@ d_'8861''45'invol'45'norm_170 ::
 d_'8861''45'invol'45'norm_170 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-sigOp
 d_compile'45'sigOp_172 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30]
 d_compile'45'sigOp_172 v0
   = coe
@@ -510,30 +511,30 @@ d_compile'45'sigOp_172 v0
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-sigOp-size
 d_compile'45'sigOp'45'size_176 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 -> Integer
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 -> Integer
 d_compile'45'sigOp'45'size_176 ~v0
   = du_compile'45'sigOp'45'size_176
 du_compile'45'sigOp'45'size_176 :: Integer
 du_compile'45'sigOp'45'size_176 = coe (1 :: Integer)
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-sigOp-length
 d_compile'45'sigOp'45'length_180 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_compile'45'sigOp'45'length_180 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const
 d_compile'45'const_186 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 ->
   AgdaAny ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30]
 d_compile'45'const_186 ~v0 v1 v2 = du_compile'45'const_186 v1 v2
 du_compile'45'const_186 ::
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 ->
   AgdaAny ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30]
 du_compile'45'const_186 v0 v1
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_fits'45'int_202
+      MAlonzo.Code.Once.Type.C_fits'45'int_70
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -546,7 +547,7 @@ du_compile'45'const_186 v0 v1
                    (coe
                       MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (64 :: Integer)) (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Type.C_fits'45'float_204
+      MAlonzo.Code.Once.Type.C_fits'45'float_72
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -563,17 +564,17 @@ du_compile'45'const_186 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-size
 d_compile'45'const'45'size_194 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 -> Integer
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 -> Integer
 d_compile'45'const'45'size_194 ~v0 v1
   = du_compile'45'const'45'size_194 v1
 du_compile'45'const'45'size_194 ::
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 -> Integer
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 -> Integer
 du_compile'45'const'45'size_194 v0
   = coe seq (coe v0) (coe (1 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-length
 d_compile'45'const'45'length_202 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_200 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_compile'45'const'45'length_202 = erased

@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Poly
 
 -- Once.Spec.Grammar.Signature.ParsesSignature
 d_ParsesSignature_8 a0 a1 a2 = ()

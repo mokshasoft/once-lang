@@ -26,19 +26,20 @@ import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Denotation.Program.IRFun
 d_IRFun_6 = ()
 data T_IRFun_6
-  = C_irFun_24 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+  = C_irFun_24 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
                MAlonzo.Code.Once.IRTy.T_IRTy_6 MAlonzo.Code.Once.IRTy.T_IRTy_6
                MAlonzo.Code.Once.IR.T_IR_16
 -- Once.Denotation.Program.IRFun.fname
 d_fname_16 ::
-  T_IRFun_6 -> MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+  T_IRFun_6 -> MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
 d_fname_16 v0
   = case coe v0 of
       C_irFun_24 v1 v2 v3 v4 -> coe v1
@@ -64,9 +65,9 @@ d_fbody_22 v0
 -- Once.Denotation.Program.tableEnv
 d_tableEnv_26 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   [T_IRFun_6] -> MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6
 d_tableEnv_26 v0 v1 v2
@@ -76,12 +77,12 @@ d_tableEnv_26 v0 v1 v2
 -- Once.Denotation.Program.tableCalls
 d_tableCalls_32 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   [T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
@@ -93,7 +94,7 @@ d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
              d_tableEnv'45'at_42 (coe v0) (coe v1) (coe v7) (coe v8) (coe v3)
              (coe v4) (coe v5)
              (coe
-                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__114
+                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__76
                 (coe d_fname_16 (coe v7)) (coe v3))
              (coe
                 MAlonzo.Code.Once.IRTy.d__'8799'IRTy__200 (coe d_fdom_18 (coe v7))
@@ -106,13 +107,13 @@ d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
 -- Once.Denotation.Program.tableEnv-at
 d_tableEnv'45'at_42 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   T_IRFun_6 ->
   [T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
@@ -165,7 +166,7 @@ d_tableEnv'45'at_42 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
 -- Once.Denotation.Program.LinkedAt
 d_LinkedAt_148 ::
   [T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 -> ()
 d_LinkedAt_148 = erased
@@ -173,7 +174,7 @@ d_LinkedAt_148 = erased
 d_LinkedAt'45'at_158 ::
   T_IRFun_6 ->
   [T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
@@ -183,16 +184,16 @@ d_LinkedAt'45'at_158 = erased
 -- Once.Denotation.Program.Declared-at
 d_Declared'45'at_220 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_142 -> ()
 d_Declared'45'at_220 = erased
 -- Once.Denotation.Program.Declared
 d_Declared_258 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 -> ()
 d_Declared_258 = erased
 -- Once.Denotation.Program.Linked
@@ -222,9 +223,9 @@ d_main_388 v0
 -- Once.Denotation.Program.runIR
 d_runIR_392 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
-   MAlonzo.Code.Once.Type.T_Type_108 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   T_IRProgram_380 -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178
 d_runIR_392 v0 v1 v2

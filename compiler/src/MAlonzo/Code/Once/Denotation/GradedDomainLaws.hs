@@ -18,7 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
 
 -- Once.Denotation.GradedDomainLaws.>>=ᵖ-β
 d_'62''62''61''7510''45'β_14 ::
@@ -44,7 +44,7 @@ d_'62''62''61''7510''45'id'691'_48 ::
 d_'62''62''61''7510''45'id'691'_48 = erased
 -- Once.Denotation.GradedDomainLaws.bindM-idˡ
 d_bindM'45'id'737'_62 ::
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
+  MAlonzo.Code.Once.Spec.Type.Grade.T_Purity_28 ->
   () ->
   () ->
   AgdaAny ->

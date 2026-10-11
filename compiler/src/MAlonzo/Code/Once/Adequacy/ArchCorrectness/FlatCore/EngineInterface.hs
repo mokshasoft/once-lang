@@ -25,7 +25,7 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter
 d_Emitter_14 a0 a1 = ()
@@ -448,8 +448,8 @@ d_sigop'45'call_448 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.sigop-lowering
 d_sigop'45'lowering_456 ::
   T_TraceLoop_366 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sigop'45'lowering_456 = erased

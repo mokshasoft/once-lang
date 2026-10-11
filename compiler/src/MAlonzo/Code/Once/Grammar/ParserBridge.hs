@@ -26,7 +26,8 @@ import qualified MAlonzo.Code.Induction.WellFounded
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Grade
 
 -- Once.Grammar.ParserBridge.parseTypeAtomWF-irr
 d_parseTypeAtomWF'45'irr_12 ::
@@ -58,7 +59,7 @@ d_parseTypeProdWF'45'irr_54 ::
 d_parseTypeProdWF'45'irr_54 = erased
 -- Once.Grammar.ParserBridge.parseTypeProdTailWF-irr
 d_parseTypeProdTailWF'45'irr_70 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -66,7 +67,7 @@ d_parseTypeProdTailWF'45'irr_70 ::
 d_parseTypeProdTailWF'45'irr_70 = erased
 -- Once.Grammar.ParserBridge.parseTypeSumTailWF-irr
 d_parseTypeSumTailWF'45'irr_88 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -74,7 +75,7 @@ d_parseTypeSumTailWF'45'irr_88 ::
 d_parseTypeSumTailWF'45'irr_88 = erased
 -- Once.Grammar.ParserBridge.parseArrowTailWF-irr
 d_parseArrowTailWF'45'irr_106 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -106,21 +107,21 @@ d_parseTypeProd'45'as'45'strippedWF_150 ::
 d_parseTypeProd'45'as'45'strippedWF_150 = erased
 -- Once.Grammar.ParserBridge.parseTypeProdTail-as-strippedWF
 d_parseTypeProdTail'45'as'45'strippedWF_162 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_parseTypeProdTail'45'as'45'strippedWF_162 = erased
 -- Once.Grammar.ParserBridge.parseTypeSumTail-as-strippedWF
 d_parseTypeSumTail'45'as'45'strippedWF_176 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_parseTypeSumTail'45'as'45'strippedWF_176 = erased
 -- Once.Grammar.ParserBridge.parseArrowTail-as-strippedWF
 d_parseArrowTail'45'as'45'strippedWF_190 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -164,7 +165,7 @@ d_fSumParenEff_268 = erased
 -- Once.Grammar.ParserBridge.complete-atomWFraw
 d_complete'45'atomWFraw_290 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -173,7 +174,7 @@ d_complete'45'atomWFraw_290 v0 v1 v2 v3 ~v4
   = du_complete'45'atomWFraw_290 v0 v1 v2 v3
 du_complete'45'atomWFraw_290 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -200,7 +201,7 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
         -> case coe v0 of
              (:) v11 v12
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v13 v14 v15
+                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v13 v14 v15
                       -> let v16
                                = coe
                                    du_complete'45'atomWFraw_290 (coe v12) (coe v13) (coe v5)
@@ -229,7 +230,7 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v10 v11 v12
+                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v10 v11 v12
                       -> let v13
                                = coe
                                    du_complete'45'atomWFraw_290 (coe v9) (coe v12) (coe v2)
@@ -322,7 +323,7 @@ du_complete'45'atomWFraw_290 v0 v1 v2 v3
 -- Once.Grammar.ParserBridge.complete-prodWFraw
 d_complete'45'prodWFraw_304 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesProd_98 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -358,9 +359,9 @@ du_complete'45'prodWFraw_304 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.complete-prodTailWFraw
 d_complete'45'prodTailWFraw_320 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesProdTail_100 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -420,7 +421,7 @@ du_complete'45'prodTailWFraw_320 v0 v1
 -- Once.Grammar.ParserBridge.complete-sumWFraw
 d_complete'45'sumWFraw_334 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesSum_102 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -454,9 +455,9 @@ du_complete'45'sumWFraw_334 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.complete-sumTailWFraw
 d_complete'45'sumTailWFraw_350 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesSumTail_104 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -512,9 +513,9 @@ du_complete'45'sumTailWFraw_350 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.complete-arrowTailWFraw
 d_complete'45'arrowTailWFraw_366 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesArrowTail_108 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -523,7 +524,7 @@ d_complete'45'arrowTailWFraw_366 ~v0 v1 v2 v3 v4 ~v5
   = du_complete'45'arrowTailWFraw_366 v1 v2 v3 v4
 du_complete'45'arrowTailWFraw_366 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesArrowTail_108 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -554,9 +555,9 @@ du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
                -> case coe v11 of
                     (:) v12 v13
                       -> case coe v1 of
-                           MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v14 v15 v16
+                           MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v14 v15 v16
                              -> case coe v15 of
-                                  MAlonzo.Code.Once.Type.C_mk'45'kind_50 v17 v18
+                                  MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v17 v18
                                     -> coe
                                          seq (coe v17)
                                          (let v19
@@ -581,7 +582,7 @@ du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
         -> case coe v0 of
              (:) v9 v10
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v11 v12 v13
+                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v11 v12 v13
                       -> let v14
                                = coe
                                    du_complete'45'typeWFraw_380 (coe v10) (coe v13) (coe v2)
@@ -602,7 +603,7 @@ du_complete'45'arrowTailWFraw_366 v0 v1 v2 v3
 -- Once.Grammar.ParserBridge.complete-typeWFraw
 d_complete'45'typeWFraw_380 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -611,7 +612,7 @@ d_complete'45'typeWFraw_380 v0 v1 v2 v3 ~v4
   = du_complete'45'typeWFraw_380 v0 v1 v2 v3
 du_complete'45'typeWFraw_380 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -641,7 +642,7 @@ du_complete'45'typeWFraw_380 v0 v1 v2 v3
 -- Once.Grammar.ParserBridge.complete-functorAtomWFraw
 d_complete'45'functorAtomWFraw_394 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorAtom_110 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -650,7 +651,7 @@ d_complete'45'functorAtomWFraw_394 v0 v1 v2 v3 ~v4
   = du_complete'45'functorAtomWFraw_394 v0 v1 v2 v3
 du_complete'45'functorAtomWFraw_394 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorAtom_110 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -664,7 +665,7 @@ du_complete'45'functorAtomWFraw_394 v0 v1 v2 v3
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C_K_112 v10
+                    MAlonzo.Code.Once.Spec.Type.C_K_12 v10
                       -> let v11
                                = coe
                                    du_complete'45'atomWFraw_290 (coe v9) (coe v10) (coe v2)
@@ -702,7 +703,7 @@ du_complete'45'functorAtomWFraw_394 v0 v1 v2 v3
 -- Once.Grammar.ParserBridge.complete-functorProdWFraw
 d_complete'45'functorProdWFraw_408 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorProd_112 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -739,9 +740,9 @@ du_complete'45'functorProdWFraw_408 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.complete-functorProdTailWFraw
 d_complete'45'functorProdTailWFraw_424 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorProdTail_114 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -801,7 +802,7 @@ du_complete'45'functorProdTailWFraw_424 v0 v1
 -- Once.Grammar.ParserBridge.complete-functorSumWFraw
 d_complete'45'functorSumWFraw_438 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorSum_116 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -836,9 +837,9 @@ du_complete'45'functorSumWFraw_438 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserBridge.complete-functorSumTailWFraw
 d_complete'45'functorSumTailWFraw_454 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorSumTail_118 ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
@@ -896,7 +897,7 @@ du_complete'45'functorSumTailWFraw_454 v0 v1
 -- Once.Grammar.ParserBridge.complete-atom
 d_complete'45'atom_1194 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -904,7 +905,7 @@ d_complete'45'atom_1194 = erased
 -- Once.Grammar.ParserBridge.complete-type
 d_complete'45'type_1218 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -913,7 +914,7 @@ d_complete'45'type_1218 = erased
 d_stripType'45'inv_1246 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -937,7 +938,7 @@ du_stripType'45'inv_1246 v0
 d_stripAtom'45'inv_1268 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -960,7 +961,7 @@ du_stripAtom'45'inv_1268 v0
 -- Once.Grammar.ParserBridge.sound-type
 d_sound'45'type_1286 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106
@@ -1446,7 +1447,7 @@ du_sound'45'type_1286 v0
 -- Once.Grammar.ParserBridge.sound-atom
 d_sound'45'atom_1308 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96

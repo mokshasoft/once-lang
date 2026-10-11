@@ -130,14 +130,14 @@ fromMFunInfo fi = FunSig
     -- D007: funType is now `Maybe Type` (Nothing = no explicit sig, inferred).
     -- MAlonzo's Maybe is Haskell's Maybe (Just/Nothing pattern synonyms).
   , funSigType = case MP.d_funType_108 fi of
-      Just ty -> agdaToText (MT.d_showType_210 ty)
+      Just ty -> agdaToText (MT.d_showType_78 ty)
       Nothing -> T.pack "<inferred>"
   }
 
 fromMPolyFunInfo :: MP.T_PolyFunInfo_116 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
   { polyFunSigName = agdaToText (MP.d_pfunName_124 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_440 (MP.d_pfunType_126 pfi))
+  , polyFunSigType = agdaToText (MT.d_showPolyType_168 (MP.d_pfunType_126 pfi))
   }
 
 fromMResult :: MC.T_CompileResult_1078 -> CompileResult

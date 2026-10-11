@@ -30,16 +30,16 @@ import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.Type
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Float.Arith
 import qualified MAlonzo.Code.Once.Float.Decimal
-import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.Word
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
@@ -662,86 +662,86 @@ d_'8861''45'invol'45'norm_168 ::
 d_'8861''45'invol'45'norm_168 = erased
 -- Once.Arith.SigOp.Block.M.coerce-base-to-full
 d_coerce'45'base'45'to'45'full_172 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8 ->
   AgdaAny -> AgdaAny
 d_coerce'45'base'45'to'45'full_172
   = coe
       MAlonzo.Code.Once.Semantics.Value.du_coerce'45'base'45'to'45'full_786
 -- Once.Arith.SigOp.Block.M.coerce-base-type-round-trip
 d_coerce'45'base'45'type'45'round'45'trip_174 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'base'45'type'45'round'45'trip_174 = erased
 -- Once.Arith.SigOp.Block.M.coerce-base-type⁻¹-round-trip
 d_coerce'45'base'45'type'8315''185''45'round'45'trip_176 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'base'45'type'8315''185''45'round'45'trip_176 = erased
 -- Once.Arith.SigOp.Block.M.coerce-full-to-base
 d_coerce'45'full'45'to'45'base_178 ::
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'full'45'to'45'base_178
   = coe
       MAlonzo.Code.Once.Semantics.Value.du_coerce'45'full'45'to'45'base_754
 -- Once.Arith.SigOp.Block.M.coerce-functor
 d_coerce'45'functor_180 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'functor_180 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor_250 v0 v2
 -- Once.Arith.SigOp.Block.M.coerce-functor⁻¹
 d_coerce'45'functor'8315''185'_182 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'functor'8315''185'_182 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor'8315''185'_292
       v0 v2
 -- Once.Arith.SigOp.Block.M.coerce-round-trip
 d_coerce'45'round'45'trip_184 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'round'45'trip_184 = erased
 -- Once.Arith.SigOp.Block.M.coerce-struct
 d_coerce'45'struct_186 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'struct_186
   = coe MAlonzo.Code.Once.Semantics.Value.du_coerce'45'struct_422
 -- Once.Arith.SigOp.Block.M.coerce-struct-round-trip
 d_coerce'45'struct'45'round'45'trip_188 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'struct'45'round'45'trip_188 = erased
 -- Once.Arith.SigOp.Block.M.coerce-struct⁻¹
 d_coerce'45'struct'8315''185'_190 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'struct'8315''185'_190
   = coe
       MAlonzo.Code.Once.Semantics.Value.du_coerce'45'struct'8315''185'_428
 -- Once.Arith.SigOp.Block.M.coerce-struct⁻¹-round-trip
 d_coerce'45'struct'8315''185''45'round'45'trip_192 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'struct'8315''185''45'round'45'trip_192 = erased
 -- Once.Arith.SigOp.Block.M.coerce-μ-in
 d_coerce'45'μ'45'in_194 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 -> () -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'μ'45'in_194 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'in_886 v0 v2
 -- Once.Arith.SigOp.Block.M.coerce-μ-out
 d_coerce'45'μ'45'out_196 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () -> AgdaAny -> AgdaAny
 d_coerce'45'μ'45'out_196 v0 v1 v2 v3
   = coe
@@ -749,42 +749,42 @@ d_coerce'45'μ'45'out_196 v0 v1 v2 v3
       v3
 -- Once.Arith.SigOp.Block.M.coerce-μ-round-trip
 d_coerce'45'μ'45'round'45'trip_198 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'μ'45'round'45'trip_198 = erased
 -- Once.Arith.SigOp.Block.M.coerce-μ⁻¹-round-trip
 d_coerce'45'μ'8315''185''45'round'45'trip_200 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'45'μ'8315''185''45'round'45'trip_200 = erased
 -- Once.Arith.SigOp.Block.M.coerce-ν-in
 d_coerce'45'ν'45'in_202 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 -> () -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'in_202
   = coe MAlonzo.Code.Once.Semantics.Value.du_coerce'45'ν'45'in_1120
 -- Once.Arith.SigOp.Block.M.coerce-ν-out
 d_coerce'45'ν'45'out_204 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'out_204
   = coe MAlonzo.Code.Once.Semantics.Value.du_coerce'45'ν'45'out_1126
 -- Once.Arith.SigOp.Block.M.coerce⁻¹-round-trip
 d_coerce'8315''185''45'round'45'trip_206 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coerce'8315''185''45'round'45'trip_206 = erased
 -- Once.Arith.SigOp.Block.M.eraseᵍ
 d_erase'7501'_208 ::
-  MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_erase'7501'_208
   = coe MAlonzo.Code.Once.Semantics.Value.du_erase'7501'_92
 -- Once.Arith.SigOp.Block.M.fmap-coerce-μ-coherence
 d_fmap'45'coerce'45'μ'45'coherence_210 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
@@ -792,8 +792,8 @@ d_fmap'45'coerce'45'μ'45'coherence_210 ::
 d_fmap'45'coerce'45'μ'45'coherence_210 = erased
 -- Once.Arith.SigOp.Block.M.fmap-coerce-μ-coherence′
 d_fmap'45'coerce'45'μ'45'coherence'8242'_212 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
@@ -801,69 +801,69 @@ d_fmap'45'coerce'45'μ'45'coherence'8242'_212 ::
 d_fmap'45'coerce'45'μ'45'coherence'8242'_212 = erased
 -- Once.Arith.SigOp.Block.M.fmap-struct-coherence
 d_fmap'45'struct'45'coherence_214 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_fmap'45'struct'45'coherence_214 = erased
 -- Once.Arith.SigOp.Block.M.fmap-struct-coherence′
 d_fmap'45'struct'45'coherence'8242'_216 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_fmap'45'struct'45'coherence'8242'_216 = erased
 -- Once.Arith.SigOp.Block.M.sem-CoIn
 d_sem'45'CoIn_218 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_νS_198
 d_sem'45'CoIn_218
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoIn_1140
 -- Once.Arith.SigOp.Block.M.sem-CoOut
 d_sem'45'CoOut_220 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
   MAlonzo.Code.Once.Res.T_Res_6
 d_sem'45'CoOut_220
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoOut_1130
 -- Once.Arith.SigOp.Block.M.sem-CoOut-CoIn
 d_sem'45'CoOut'45'CoIn_222 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'CoOut'45'CoIn_222 = erased
 -- Once.Arith.SigOp.Block.M.sem-In
 d_sem'45'In_224 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_μS_182
 d_sem'45'In_224
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'In_1060
 -- Once.Arith.SigOp.Block.M.sem-In-Out
 d_sem'45'In'45'Out_226 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'In'45'Out_226 = erased
 -- Once.Arith.SigOp.Block.M.sem-Out
 d_sem'45'Out_228 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
 d_sem'45'Out_228
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'Out_1068
 -- Once.Arith.SigOp.Block.M.sem-Out-In
 d_sem'45'Out'45'In_230 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'Out'45'In_230 = erased
 -- Once.Arith.SigOp.Block.M.sem-ana
 d_sem'45'ana_232 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_νS_198
@@ -871,9 +871,9 @@ d_sem'45'ana_232 v0 v1 v2 v3
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'ana_1164 v0 v2 v3
 -- Once.Arith.SigOp.Block.M.sem-case
 d_sem'45'case_234 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> AgdaAny
@@ -881,26 +881,26 @@ d_sem'45'case_234 v0 v1 v2 v3 v4 v5
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'case_486 v3 v4 v5
 -- Once.Arith.SigOp.Block.M.sem-case-inl
 d_sem'45'case'45'inl_236 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'case'45'inl_236 = erased
 -- Once.Arith.SigOp.Block.M.sem-case-inr
 d_sem'45'case'45'inr_238 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'case'45'inr_238 = erased
 -- Once.Arith.SigOp.Block.M.sem-cata
 d_sem'45'cata_240 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
@@ -909,23 +909,23 @@ d_sem'45'cata_240 v0 v1 v2 v3
       MAlonzo.Code.Once.Semantics.Value.du_sem'45'cata_1080 v0 v1 v3
 -- Once.Arith.SigOp.Block.M.sem-cata-compute
 d_sem'45'cata'45'compute_242 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'cata'45'compute_242 = erased
 -- Once.Arith.SigOp.Block.M.sem-fmap
 d_sem'45'fmap_244 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   () -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
 d_sem'45'fmap_244 v0 v1 v2 v3 v4
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_574 v0 v3 v4
 -- Once.Arith.SigOp.Block.M.sem-fmap-Type
 d_sem'45'fmap'45'Type_246 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
 d_sem'45'fmap'45'Type_246 v0 v1 v2 v3 v4
   = coe
@@ -933,30 +933,30 @@ d_sem'45'fmap'45'Type_246 v0 v1 v2 v3 v4
       v4
 -- Once.Arith.SigOp.Block.M.sem-fst
 d_sem'45'fst_248 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> AgdaAny
 d_sem'45'fst_248 v0 v1 v2
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'fst_450 v2
 -- Once.Arith.SigOp.Block.M.sem-fst-pair
 d_sem'45'fst'45'pair_250 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'fst'45'pair_250 = erased
 -- Once.Arith.SigOp.Block.M.sem-functor-coherence
 d_sem'45'functor'45'coherence_252 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'functor'45'coherence_252 = erased
 -- Once.Arith.SigOp.Block.M.sem-fuseNat
 d_sem'45'fuseNat_254 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (() -> AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
@@ -967,10 +967,10 @@ d_sem'45'fuseNat_254 v0 v1 v2 v3 v4 v5 v6
       v3 v5 v6
 -- Once.Arith.SigOp.Block.M.sem-fuseNat-cong
 d_sem'45'fuseNat'45'cong_256 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (() -> AgdaAny -> AgdaAny) ->
   (() -> AgdaAny -> AgdaAny) ->
@@ -987,10 +987,10 @@ d_sem'45'fuseNat'45'events_258 ::
   () ->
   (AgdaAny -> AgdaAny -> AgdaAny) ->
   AgdaAny ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (() -> AgdaAny -> AgdaAny) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
@@ -1002,29 +1002,29 @@ d_sem'45'fuseNat'45'events_258 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
       v1 v2 v3 v4 v5 v6 v8 v9
 -- Once.Arith.SigOp.Block.M.sem-inl
 d_sem'45'inl_260 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_sem'45'inl_260 v0 v1
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'inl_472
 -- Once.Arith.SigOp.Block.M.sem-inr
 d_sem'45'inr_262 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_sem'45'inr_262 v0 v1
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'inr_478
 -- Once.Arith.SigOp.Block.M.sem-pair
 d_sem'45'pair_264 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_sem'45'pair_264 v0 v1 v2 v3
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_462 v2 v3
 -- Once.Arith.SigOp.Block.M.sem-para
 d_sem'45'para_266 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
@@ -1033,21 +1033,21 @@ d_sem'45'para_266 v0 v1 v2 v3 v4
       MAlonzo.Code.Once.Semantics.Value.du_sem'45'para_1096 v0 v1 v3 v4
 -- Once.Arith.SigOp.Block.M.sem-snd
 d_sem'45'snd_268 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> AgdaAny
 d_sem'45'snd_268 v0 v1 v2
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'snd_456 v2
 -- Once.Arith.SigOp.Block.M.sem-snd-pair
 d_sem'45'snd'45'pair_270 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sem'45'snd'45'pair_270 = erased
 -- Once.Arith.SigOp.Block.M.semAnaLayer
 d_semAnaLayer_272 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
@@ -1056,7 +1056,7 @@ d_semAnaLayer_272 v0 v1 v2 v3
       MAlonzo.Code.Once.Semantics.Value.du_semAnaLayer_1170 v0 v2 v3
 -- Once.Arith.SigOp.Block.M.sfmapSemAna
 d_sfmapSemAna_274 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
@@ -1065,28 +1065,30 @@ d_sfmapSemAna_274 v0 v1 v2 v3 v4
       MAlonzo.Code.Once.Semantics.Value.du_sfmapSemAna_1178 v0 v1 v3 v4
 -- Once.Arith.SigOp.Block.M.sfmapSemAna-is-sfmap
 d_sfmapSemAna'45'is'45'sfmap_276 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmapSemAna'45'is'45'sfmap_276 = erased
 -- Once.Arith.SigOp.Block.M.⟦_⟧
-d_'10214'_'10215'_278 :: MAlonzo.Code.Once.Type.T_Type_108 -> ()
+d_'10214'_'10215'_278 :: MAlonzo.Code.Once.Spec.Type.T_Type_8 -> ()
 d_'10214'_'10215'_278 = erased
 -- Once.Arith.SigOp.Block.M.⟦_⟧F
 d_'10214'_'10215'F_280 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 -> () -> ()
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> () -> ()
 d_'10214'_'10215'F_280 = erased
 -- Once.Arith.SigOp.Block.M.⟦_⟧ᵍ
 d_'10214'_'10215''7501'_282 ::
-  MAlonzo.Code.Once.Type.T_Type_108 -> ()
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> ()
 d_'10214'_'10215''7501'_282 = erased
 -- Once.Arith.SigOp.Block.M.⟦μ⟧
-d_'10214'μ'10215'_284 :: MAlonzo.Code.Once.Type.T_Functor_106 -> ()
+d_'10214'μ'10215'_284 ::
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> ()
 d_'10214'μ'10215'_284 = erased
 -- Once.Arith.SigOp.Block.M.⟦ν⟧
-d_'10214'ν'10215'_286 :: MAlonzo.Code.Once.Type.T_Functor_106 -> ()
+d_'10214'ν'10215'_286 ::
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> ()
 d_'10214'ν'10215'_286 = erased
 -- Once.Arith.SigOp.Block.show-side
 d_show'45'side_288 ::
@@ -1531,31 +1533,31 @@ d_block'45'semM_420 v0 v1 v2 v3 v4
 -- Once.Arith.SigOp.Block.shape-as-type-base
 d_shape'45'as'45'type'45'base_540 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8
 d_shape'45'as'45'type'45'base_540 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'unit_10
-        -> coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_198
+        -> coe MAlonzo.Code.Once.Spec.Type.WellFormed.C_base'45'Unit_10
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12
-        -> coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202
+        -> coe MAlonzo.Code.Once.Spec.Type.WellFormed.C_base'45'Int_14
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'float_14
-        -> coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_204
+        -> coe MAlonzo.Code.Once.Spec.Type.WellFormed.C_base'45'Float_16
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16 v1 v2
         -> coe
-             MAlonzo.Code.Once.Functor.Translate.C_base'45'Prod_210
+             MAlonzo.Code.Once.Spec.Type.WellFormed.C_base'45'Prod_22
              (d_shape'45'as'45'type'45'base_540 (coe v1))
              (d_shape'45'as'45'type'45'base_540 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Block.numtype-as-type-base
 d_numtype'45'as'45'type'45'base_548 ::
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
-  MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_196
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8
 d_numtype'45'as'45'type'45'base_548 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Type.C_NInt_8
-        -> coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_202
+        -> coe MAlonzo.Code.Once.Spec.Type.WellFormed.C_base'45'Int_14
       MAlonzo.Code.Once.Arith.Type.C_NFloat_10
-        -> coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_204
+        -> coe MAlonzo.Code.Once.Spec.Type.WellFormed.C_base'45'Float_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Block.block-info
 d_block'45'info_554 ::
@@ -1569,7 +1571,7 @@ d_block'45'info_554 v0 v1 v2
       (coe
          MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_374
          (coe
-            MAlonzo.Code.Once.CanonicalName.d_bare_12
+            MAlonzo.Code.Once.Spec.Name.d_bare_14
             (coe du_block'45'name_366 (coe v0) (coe v2)))
          (coe d_block'45'semM_420 (coe v0) (coe v1) (coe v2))
          (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_130)

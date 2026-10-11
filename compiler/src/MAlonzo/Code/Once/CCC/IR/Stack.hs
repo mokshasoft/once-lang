@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.CCC.IR.Stack.pair-slots
 d_pair'45'slots_8 :: Integer

@@ -28,7 +28,7 @@ import qualified MAlonzo.Code.Once.Spec.Grammar.Import
 import qualified MAlonzo.Code.Once.Spec.Grammar.OpDecl
 import qualified MAlonzo.Code.Once.Spec.Grammar.Signature
 import qualified MAlonzo.Code.Once.Spec.Grammar.TypeAlias
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Poly
 
 -- Once.Spec.Grammar.Decl.ParsesDecl
 d_ParsesDecl_8 a0 a1 a2 = ()

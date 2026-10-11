@@ -24,7 +24,7 @@ import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Spec.Grammar.FunDef
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Poly
 
 -- Once.Spec.Grammar.OpDecl.ParsesOpChars
 d_ParsesOpChars_8 a0 a1 a2 a3 = ()

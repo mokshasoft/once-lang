@@ -30,7 +30,7 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.Label
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.SymbolInjective
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -226,13 +226,13 @@ d_thunk'45'head_194 ::
 d_thunk'45'head_194 = erased
 -- Once.Adequacy.LabelSymbols.fn-head
 d_fn'45'head_200 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_fn'45'head_200 = erased
 -- Once.Adequacy.LabelSymbols.cnt≢fn
 d_cnt'8802'fn_208 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20

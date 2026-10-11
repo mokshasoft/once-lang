@@ -29,8 +29,9 @@ import qualified MAlonzo.Code.Once.Parser.ExprRelation
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
-import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.TypeCheck.Raw
+import qualified MAlonzo.Code.Once.Spec.Syntax
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Poly
 
 -- Once.Parser.Module.Core.Import
 d_Import_8 = ()
@@ -55,15 +56,15 @@ d_alias_16 v0
 d_Decl_20 = ()
 data T_Decl_20
   = C_DTypeSig_22 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                  MAlonzo.Code.Once.Type.T_PolyType_254 |
+                  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 |
     C_DFunDef_24 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                 MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 |
+                 MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 |
     C_DSignature_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
-                    MAlonzo.Code.Once.Type.T_PolyType_254 |
+                    MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 |
     C_DTypeAlias_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-                    MAlonzo.Code.Once.Type.T_Type_108 |
+                    MAlonzo.Code.Once.Spec.Type.T_Type_8 |
     C_DImport_30 T_Import_8
 -- Once.Parser.Module.Core.Module
 d_Module_32 = ()

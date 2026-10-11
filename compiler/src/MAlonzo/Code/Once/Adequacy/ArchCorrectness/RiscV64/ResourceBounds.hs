@@ -27,14 +27,14 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.rv64-frame-semantics
 d_rv64'45'frame'45'semantics_14 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6
 d_rv64'45'frame'45'semantics_14 ~v0 v1
@@ -48,32 +48,32 @@ du_rv64'45'frame'45'semantics_14 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.HeapRoom
 d_HeapRoom_16 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 -> ()
 d_HeapRoom_16 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.StackRoom
 d_StackRoom_28 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 -> ()
 d_StackRoom_28 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.CallRoom
 d_CallRoom_42 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 -> ()
 d_CallRoom_42 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.SlotAddrNoWrap
 d_SlotAddrNoWrap_54 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 -> ()
 d_SlotAddrNoWrap_54 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.RegRange
 d_RegRange_66 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 -> ()
 d_RegRange_66 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.ScratchDecGuarded
 d_ScratchDecGuarded_78 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 -> ()
 d_ScratchDecGuarded_78 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.AddrNoWrap
@@ -203,7 +203,7 @@ d_lit'45'fits_204 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds.float-fits
 d_float'45'fits_218 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->

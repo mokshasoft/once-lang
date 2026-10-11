@@ -30,7 +30,7 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Codegen.LabelDefs.Dst
 d_Dst_8 :: [Integer] -> ()
@@ -365,7 +365,7 @@ d_go_234 = erased
 -- Once.CCC.Codegen.LabelDefs.fdef-of
 d_fdef'45'of_240 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250 ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6]
 d_fdef'45'of_240 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
     coe
@@ -384,7 +384,7 @@ d_fdef'45'of_240 v0
 -- Once.CCC.Codegen.LabelDefs.fdefs
 d_fdefs_244 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4]
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6]
 d_fdefs_244 v0
   = case coe v0 of
       [] -> coe v0
@@ -412,7 +412,7 @@ d_go_282 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4] ->
+  [MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

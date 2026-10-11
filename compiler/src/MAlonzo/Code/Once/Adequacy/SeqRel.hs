@@ -22,16 +22,16 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.TraceMonadLaws
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Adequacy.SeqRel.RelF
 d_RelF_14 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   () -> () -> (AgdaAny -> AgdaAny -> ()) -> AgdaAny -> AgdaAny -> ()
 d_RelF_14 = erased
 -- Once.Adequacy.SeqRel.seqF-rel
 d_seqF'45'rel_88 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   () ->
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
@@ -41,16 +41,16 @@ d_seqF'45'rel_88 ::
 d_seqF'45'rel_88 v0 ~v1 ~v2 ~v3 v4 v5 v6
   = du_seqF'45'rel_88 v0 v4 v5 v6
 du_seqF'45'rel_88 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
 du_seqF'45'rel_88 v0 v1 v2 v3
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_K_112 v4
+      MAlonzo.Code.Once.Spec.Type.C_K_12 v4
         -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_616 v3
-      MAlonzo.Code.Once.Type.C_Id_114 -> coe v3
-      MAlonzo.Code.Once.Type.C__'8853'__116 v4 v5
+      MAlonzo.Code.Once.Spec.Type.C_Id_14 -> coe v3
+      MAlonzo.Code.Once.Spec.Type.C__'8853'__16 v4 v5
         -> case coe v1 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v6
                -> case coe v2 of
@@ -81,7 +81,7 @@ du_seqF'45'rel_88 v0 v1 v2 v3
                            (coe du_seqF'45'rel_88 (coe v5) (coe v6) (coe v7) (coe v3))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C__'8855'__118 v4 v5
+      MAlonzo.Code.Once.Spec.Type.C__'8855'__18 v4 v5
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                -> case coe v2 of

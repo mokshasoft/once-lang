@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Parser.ExprRelation
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.TypeCheck.Raw
+import qualified MAlonzo.Code.Once.Spec.Syntax
 
 -- Once.Spec.Grammar.FunDef.ParsesParams
 d_ParsesParams_8 a0 a1 a2 = ()
@@ -32,7 +32,7 @@ data T_ParsesParams_8
 -- Once.Spec.Grammar.FunDef.ParsesFunBody
 d_ParsesFunBody_40 a0 a1 a2 a3 a4 = ()
 data T_ParsesFunBody_40
-  = C_pfb'45'mk_52 MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
+  = C_pfb'45'mk_52 MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34
                    MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesExpr_498
 -- Once.Spec.Grammar.FunDef.ParsesFunDef
 d_ParsesFunDef_56 a0 a1 a2 a3 = ()

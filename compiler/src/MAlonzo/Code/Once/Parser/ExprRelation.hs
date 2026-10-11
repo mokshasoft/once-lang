@@ -29,8 +29,8 @@ import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
-import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.TypeCheck.Raw
+import qualified MAlonzo.Code.Once.Spec.Syntax
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Parser.ExprRelation.isReserved
@@ -164,14 +164,14 @@ newtype T_ParsesExpr_498 = C_pe'45'mk_548 T_ParsesComp_500
 d_ParsesComp_500 a0 a1 a2 = ()
 data T_ParsesComp_500
   = C_pc'45'mk_560 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesCmp_504
+                   MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesCmp_504
                    T_ParsesCompTail_502
 -- Once.Parser.ExprRelation.ParsesCompTail
 d_ParsesCompTail_502 a0 a1 a2 a3 = ()
 data T_ParsesCompTail_502
   = C_pct'45'done_566 AgdaAny |
     C_pct'45'dot_580 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                     MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesCmp_504
+                     MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesCmp_504
                      T_ParsesCompTail_502
 -- Once.Parser.ExprRelation.ParsesCmp
 d_ParsesCmp_504 a0 a1 a2 = ()
@@ -193,36 +193,36 @@ data T_ParsesCmp_504
 d_ParsesAdd_506 a0 a1 a2 = ()
 data T_ParsesAdd_506
   = C_pa'45'mk_672 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesMul_510
+                   MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesMul_510
                    T_ParsesAddTail_508
 -- Once.Parser.ExprRelation.ParsesAddTail
 d_ParsesAddTail_508 a0 a1 a2 a3 = ()
 data T_ParsesAddTail_508
   = C_pat'45'done_678 AgdaAny |
     C_pat'45'plus_692 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                      MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesMul_510
+                      MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesMul_510
                       T_ParsesAddTail_508 |
     C_pat'45'minus_706 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                       MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesMul_510
+                       MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesMul_510
                        T_ParsesAddTail_508
 -- Once.Parser.ExprRelation.ParsesMul
 d_ParsesMul_510 a0 a1 a2 = ()
 data T_ParsesMul_510
   = C_pm'45'mk_718 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesUnary_514
+                   MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesUnary_514
                    T_ParsesMulTail_512
 -- Once.Parser.ExprRelation.ParsesMulTail
 d_ParsesMulTail_512 a0 a1 a2 a3 = ()
 data T_ParsesMulTail_512
   = C_pmt'45'done_724 AgdaAny |
     C_pmt'45'star_738 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                      MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesUnary_514
+                      MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesUnary_514
                       T_ParsesMulTail_512 |
     C_pmt'45'slash_752 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                       MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesUnary_514
+                       MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesUnary_514
                        T_ParsesMulTail_512 |
     C_pmt'45'percent_766 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                         MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesUnary_514
+                         MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesUnary_514
                          T_ParsesMulTail_512
 -- Once.Parser.ExprRelation.ParsesUnary
 d_ParsesUnary_514 a0 a1 a2 = ()
@@ -233,14 +233,14 @@ data T_ParsesUnary_514
 d_ParsesApp_516 a0 a1 a2 = ()
 data T_ParsesApp_516
   = C_papp'45'mk_794 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                     MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesAtomExpr_520
+                     MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesAtomExpr_520
                      T_ParsesAppTail_518
 -- Once.Parser.ExprRelation.ParsesAppTail
 d_ParsesAppTail_518 a0 a1 a2 a3 = ()
 data T_ParsesAppTail_518
   = C_papp'45'done_800 T_NotAtomStart_16 |
     C_papp'45'arg_814 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                      MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_AppArgOk_142
+                      MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_AppArgOk_142
                       T_ParsesAtomExpr_520 T_ParsesAppTail_518
 -- Once.Parser.ExprRelation.ParsesAtomExpr
 d_ParsesAtomExpr_520 a0 a1 a2 = ()
@@ -249,7 +249,7 @@ data T_ParsesAtomExpr_520
     C_pae'45'str_844 | C_pae'45'var_850 T_NotQualPrefix_268 |
     C_pae'45'qual_858 |
     C_pae'45'paren_870 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                       MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesExpr_498
+                       MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesExpr_498
                        T_ParsesParenCont_538 |
     C_pae'45'lambda_878 T_ParsesLamParams_522 |
     C_pae'45'let_886 T_ParsesLet_524 |
@@ -264,7 +264,7 @@ data T_ParsesLamParams_522
 d_ParsesLet_524 a0 a1 a2 = ()
 data T_ParsesLet_524
   = C_plet'45'single_934 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                         MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesExpr_498
+                         MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesExpr_498
                          T_ParsesLetIn_526
 -- Once.Parser.ExprRelation.ParsesLetIn
 d_ParsesLetIn_526 a0 a1 a2 a3 a4 = ()
@@ -273,7 +273,7 @@ newtype T_ParsesLetIn_526 = C_plin_946 T_ParsesExpr_498
 d_ParsesDestruct_528 a0 a1 a2 = ()
 data T_ParsesDestruct_528
   = C_pd'45'mk_958 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesExpr_498
+                   MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesExpr_498
                    T_ParsesDestructOf_530
 -- Once.Parser.ExprRelation.ParsesDestructOf
 d_ParsesDestructOf_530 a0 a1 a2 a3 = ()
@@ -283,7 +283,7 @@ newtype T_ParsesDestructOf_530
 d_ParsesDestructBranches_532 a0 a1 a2 a3 = ()
 data T_ParsesDestructBranches_532
   = C_pdb_984 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-              MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 T_ParsesExpr_498
+              MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 T_ParsesExpr_498
               T_ParsesRightBranch_534
 -- Once.Parser.ExprRelation.ParsesRightBranch
 d_ParsesRightBranch_534 a0 a1 a2 a3 a4 a5 = ()
@@ -315,7 +315,7 @@ data T_ParsesParenTriple_540 = C_ppt'45'close_1154
 -- Once.Parser.ExprRelation.ParsesExpr-shrinks
 d_ParsesExpr'45'shrinks_1162 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesExpr_498 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesExpr'45'shrinks_1162 v0 ~v1 ~v2 v3
@@ -331,7 +331,7 @@ du_ParsesExpr'45'shrinks_1162 v0 v1
 -- Once.Parser.ExprRelation.ParsesComp-shrinks
 d_ParsesComp'45'shrinks_1170 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesComp_500 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesComp'45'shrinks_1170 v0 ~v1 ~v2 v3
@@ -349,9 +349,9 @@ du_ParsesComp'45'shrinks_1170 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesCompTail-shrinks
 d_ParsesCompTail'45'shrinks_1180 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesCompTail_502 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesCompTail'45'shrinks_1180 ~v0 v1 ~v2 ~v3 v4
@@ -390,7 +390,7 @@ du_ParsesCompTail'45'shrinks_1180 v0 v1
 -- Once.Parser.ExprRelation.ParsesCmp-shrinks
 d_ParsesCmp'45'shrinks_1188 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesCmp_504 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesCmp'45'shrinks_1188 v0 ~v1 ~v2 v3
@@ -532,7 +532,7 @@ du_ParsesCmp'45'shrinks_1188 v0 v1
 -- Once.Parser.ExprRelation.ParsesAdd-shrinks
 d_ParsesAdd'45'shrinks_1196 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesAdd_506 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesAdd'45'shrinks_1196 v0 ~v1 ~v2 v3
@@ -550,9 +550,9 @@ du_ParsesAdd'45'shrinks_1196 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesAddTail-shrinks
 d_ParsesAddTail'45'shrinks_1206 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesAddTail_508 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesAddTail'45'shrinks_1206 ~v0 v1 ~v2 ~v3 v4
@@ -612,7 +612,7 @@ du_ParsesAddTail'45'shrinks_1206 v0 v1
 -- Once.Parser.ExprRelation.ParsesMul-shrinks
 d_ParsesMul'45'shrinks_1214 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesMul_510 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesMul'45'shrinks_1214 v0 ~v1 ~v2 v3
@@ -630,9 +630,9 @@ du_ParsesMul'45'shrinks_1214 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesMulTail-shrinks
 d_ParsesMulTail'45'shrinks_1224 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesMulTail_512 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesMulTail'45'shrinks_1224 ~v0 v1 ~v2 ~v3 v4
@@ -713,14 +713,14 @@ du_ParsesMulTail'45'shrinks_1224 v0 v1
 -- Once.Parser.ExprRelation.ParsesUnary-shrinks
 d_ParsesUnary'45'shrinks_1232 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesUnary_514 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesUnary'45'shrinks_1232 v0 v1 ~v2 v3
   = du_ParsesUnary'45'shrinks_1232 v0 v1 v3
 du_ParsesUnary'45'shrinks_1232 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   T_ParsesUnary_514 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_ParsesUnary'45'shrinks_1232 v0 v1 v2
   = case coe v2 of
@@ -728,7 +728,7 @@ du_ParsesUnary'45'shrinks_1232 v0 v1 v2
         -> case coe v0 of
              (:) v7 v8
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_64 v10
+                    MAlonzo.Code.Once.Spec.Syntax.C_RUnaryOp_64 v10
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v8)
@@ -749,7 +749,7 @@ du_ParsesUnary'45'shrinks_1232 v0 v1 v2
 -- Once.Parser.ExprRelation.ParsesApp-shrinks
 d_ParsesApp'45'shrinks_1240 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesApp_516 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesApp'45'shrinks_1240 v0 ~v1 ~v2 v3
@@ -769,9 +769,9 @@ du_ParsesApp'45'shrinks_1240 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesAppTail-shrinks
 d_ParsesAppTail'45'shrinks_1250 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesAppTail_518 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesAppTail'45'shrinks_1250 ~v0 v1 ~v2 ~v3 v4
@@ -798,7 +798,7 @@ du_ParsesAppTail'45'shrinks_1250 v0 v1
 -- Once.Parser.ExprRelation.ParsesAtomExpr-shrinks
 d_ParsesAtomExpr'45'shrinks_1258 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesAtomExpr_520 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesAtomExpr'45'shrinks_1258 v0 v1 v2 v3
@@ -953,7 +953,7 @@ d_ParsesAtomExpr'45'shrinks_1258 v0 v1 v2 v3
 d_ParsesOpExpr'45'shrinks_1268 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesOpExpr_536 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesOpExpr'45'shrinks_1268 ~v0 v1 ~v2 v3 v4
@@ -1153,7 +1153,7 @@ du_ParsesOpExpr'45'shrinks_1268 v0 v1 v2
 -- Once.Parser.ExprRelation.ParsesLamParams-shrinks
 d_ParsesLamParams'45'shrinks_1276 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesLamParams_522 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesLamParams'45'shrinks_1276 v0 v1 v2 v3
@@ -1178,7 +1178,7 @@ d_ParsesLamParams'45'shrinks_1276 v0 v1 v2 v3
         -> case coe v0 of
              (:) v9 v10
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v11 v12
+                    MAlonzo.Code.Once.Spec.Syntax.C_RLam_44 v11 v12
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v10)
@@ -1199,7 +1199,7 @@ d_ParsesLamParams'45'shrinks_1276 v0 v1 v2 v3
 -- Once.Parser.ExprRelation.ParsesLet-shrinks
 d_ParsesLet'45'shrinks_1284 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesLet_524 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesLet'45'shrinks_1284 v0 v1 v2 v3
@@ -1222,16 +1222,16 @@ d_ParsesLet'45'shrinks_1284 v0 v1 v2 v3
 -- Once.Parser.ExprRelation.ParsesLetIn-shrinks
 d_ParsesLetIn'45'shrinks_1296 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesLetIn_526 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesLetIn'45'shrinks_1296 ~v0 ~v1 v2 v3 v4 v5
   = du_ParsesLetIn'45'shrinks_1296 v2 v3 v4 v5
 du_ParsesLetIn'45'shrinks_1296 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesLetIn_526 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_ParsesLetIn'45'shrinks_1296 v0 v1 v2 v3
@@ -1240,7 +1240,7 @@ du_ParsesLetIn'45'shrinks_1296 v0 v1 v2 v3
         -> case coe v0 of
              (:) v10 v11
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_46 v12 v13 v14
+                    MAlonzo.Code.Once.Spec.Syntax.C_RLet_46 v12 v13 v14
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v11)
@@ -1259,7 +1259,7 @@ du_ParsesLetIn'45'shrinks_1296 v0 v1 v2 v3
 -- Once.Parser.ExprRelation.ParsesDestruct-shrinks
 d_ParsesDestruct'45'shrinks_1304 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesDestruct_528 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesDestruct'45'shrinks_1304 v0 v1 v2 v3
@@ -1275,16 +1275,16 @@ d_ParsesDestruct'45'shrinks_1304 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesDestructOf-shrinks
 d_ParsesDestructOf'45'shrinks_1314 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesDestructOf_530 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesDestructOf'45'shrinks_1314 ~v0 v1 v2 v3 v4
   = du_ParsesDestructOf'45'shrinks_1314 v1 v2 v3 v4
 du_ParsesDestructOf'45'shrinks_1314 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesDestructOf_530 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_ParsesDestructOf'45'shrinks_1314 v0 v1 v2 v3
@@ -1302,9 +1302,9 @@ du_ParsesDestructOf'45'shrinks_1314 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesDestructBranches-shrinks
 d_ParsesDestructBranches'45'shrinks_1324 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesDestructBranches_532 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -1312,7 +1312,7 @@ d_ParsesDestructBranches'45'shrinks_1324 ~v0 v1 v2 v3 v4
   = du_ParsesDestructBranches'45'shrinks_1324 v1 v2 v3 v4
 du_ParsesDestructBranches'45'shrinks_1324 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesDestructBranches_532 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -1338,18 +1338,18 @@ du_ParsesDestructBranches'45'shrinks_1324 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesRightBranch-shrinks
 d_ParsesRightBranch'45'shrinks_1338 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesRightBranch_534 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesRightBranch'45'shrinks_1338 ~v0 ~v1 ~v2 v3 v4 v5 v6
   = du_ParsesRightBranch'45'shrinks_1338 v3 v4 v5 v6
 du_ParsesRightBranch'45'shrinks_1338 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesRightBranch_534 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_ParsesRightBranch'45'shrinks_1338 v0 v1 v2 v3
@@ -1364,7 +1364,7 @@ du_ParsesRightBranch'45'shrinks_1338 v0 v1 v2 v3
                              -> case coe v17 of
                                   (:) v18 v19
                                     -> case coe v1 of
-                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_50 v20 v21 v22 v23 v24
+                                         MAlonzo.Code.Once.Spec.Syntax.C_RDestruct_50 v20 v21 v22 v23 v24
                                            -> coe
                                                 MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                                                 (coe
@@ -1396,16 +1396,16 @@ du_ParsesRightBranch'45'shrinks_1338 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesParenCont-shrinks
 d_ParsesParenCont'45'shrinks_1348 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesParenCont_538 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_ParsesParenCont'45'shrinks_1348 ~v0 v1 v2 v3 v4
   = du_ParsesParenCont'45'shrinks_1348 v1 v2 v3 v4
 du_ParsesParenCont'45'shrinks_1348 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesParenCont_538 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_ParsesParenCont'45'shrinks_1348 v0 v1 v2 v3
@@ -1423,7 +1423,7 @@ du_ParsesParenCont'45'shrinks_1348 v0 v1 v2 v3
         -> case coe v0 of
              (:) v11 v12
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_48 v13 v14
+                    MAlonzo.Code.Once.Spec.Syntax.C_RPair_48 v13 v14
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe MAlonzo.Code.Data.List.Base.du_length_268 v6)
@@ -1446,7 +1446,7 @@ du_ParsesParenCont'45'shrinks_1348 v0 v1 v2 v3
         -> case coe v0 of
              (:) v9 v10
                -> case coe v1 of
-                    MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 v11 v12
+                    MAlonzo.Code.Once.Spec.Syntax.C_RAnnot_60 v11 v12
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122
                            (coe
@@ -1485,8 +1485,8 @@ du_ParsesParenCont'45'shrinks_1348 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.ExprRelation.ParsesParenTriple-shrinks
 d_ParsesParenTriple'45'shrinks_1358 ::
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_ParsesParenTriple_540 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22

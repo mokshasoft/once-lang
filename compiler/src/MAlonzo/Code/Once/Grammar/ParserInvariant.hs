@@ -23,12 +23,12 @@ import qualified MAlonzo.Code.Once.Grammar.Convert
 import qualified MAlonzo.Code.Once.Grammar.ParserBridge
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Grammar.ParserInvariant.ParsesAtom-Expressible
 d_ParsesAtom'45'Expressible_12 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
@@ -46,7 +46,7 @@ d_ParsesAtom'45'Expressible_12 v0 v1 v2 v3
         -> case coe v0 of
              (:) v11 v12
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v13 v14 v15
+                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v13 v14 v15
                       -> coe
                            MAlonzo.Code.Once.Grammar.Convert.C_ex'45'eff_1030
                            (d_ParsesAtom'45'Expressible_12
@@ -59,7 +59,7 @@ d_ParsesAtom'45'Expressible_12 v0 v1 v2 v3
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v10 v11 v12
+                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v10 v11 v12
                       -> coe
                            MAlonzo.Code.Once.Grammar.Convert.C_ex'45'eff_1030
                            (coe MAlonzo.Code.Once.Grammar.Convert.C_ex'45'unit_998)
@@ -108,7 +108,7 @@ d_ParsesAtom'45'Expressible_12 v0 v1 v2 v3
 -- Once.Grammar.ParserInvariant.ParsesProd-Expressible
 d_ParsesProd'45'Expressible_20 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesProd_98 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
@@ -128,9 +128,9 @@ du_ParsesProd'45'Expressible_20 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesProdTail-Expressible
 d_ParsesProdTail'45'Expressible_30 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesProdTail_100 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994 ->
@@ -160,7 +160,7 @@ du_ParsesProdTail'45'Expressible_30 v0 v1 v2
 -- Once.Grammar.ParserInvariant.ParsesSum-Expressible
 d_ParsesSum'45'Expressible_38 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesSum_102 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
@@ -179,9 +179,9 @@ du_ParsesSum'45'Expressible_38 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesSumTail-Expressible
 d_ParsesSumTail'45'Expressible_48 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesSumTail_104 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994 ->
@@ -209,9 +209,9 @@ du_ParsesSumTail'45'Expressible_48 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesArrowTail-Expressible
 d_ParsesArrowTail'45'Expressible_58 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesArrowTail_108 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994 ->
@@ -220,7 +220,7 @@ d_ParsesArrowTail'45'Expressible_58 ~v0 v1 v2 v3 v4 v5
   = du_ParsesArrowTail'45'Expressible_58 v1 v2 v3 v4 v5
 du_ParsesArrowTail'45'Expressible_58 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesArrowTail_108 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994 ->
@@ -235,7 +235,7 @@ du_ParsesArrowTail'45'Expressible_58 v0 v1 v2 v3 v4
                -> case coe v12 of
                     (:) v13 v14
                       -> case coe v1 of
-                           MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v15 v16 v17
+                           MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v15 v16 v17
                              -> coe
                                   MAlonzo.Code.Once.Grammar.Convert.C_ex'45'fun_1024 v4
                                   (d_ParsesType'45'Expressible_66
@@ -247,7 +247,7 @@ du_ParsesArrowTail'45'Expressible_58 v0 v1 v2 v3 v4
         -> case coe v0 of
              (:) v10 v11
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__128 v12 v13 v14
+                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v12 v13 v14
                       -> coe
                            MAlonzo.Code.Once.Grammar.Convert.C_ex'45'fun_1024 v4
                            (d_ParsesType'45'Expressible_66
@@ -258,7 +258,7 @@ du_ParsesArrowTail'45'Expressible_58 v0 v1 v2 v3 v4
 -- Once.Grammar.ParserInvariant.ParsesType-Expressible
 d_ParsesType'45'Expressible_66 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
@@ -272,7 +272,7 @@ d_ParsesType'45'Expressible_66 v0 v1 v2 v3
 -- Once.Grammar.ParserInvariant.ParsesFunctorAtom-ExpressibleF
 d_ParsesFunctorAtom'45'ExpressibleF_74 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorAtom_110 ->
   MAlonzo.Code.Once.Grammar.Convert.T_ExpressibleF_996
@@ -284,7 +284,7 @@ d_ParsesFunctorAtom'45'ExpressibleF_74 v0 v1 v2 v3
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C_K_112 v10
+                    MAlonzo.Code.Once.Spec.Type.C_K_12 v10
                       -> coe
                            MAlonzo.Code.Once.Grammar.Convert.C_exf'45'k_1046
                            (d_ParsesAtom'45'Expressible_12
@@ -300,7 +300,7 @@ d_ParsesFunctorAtom'45'ExpressibleF_74 v0 v1 v2 v3
 -- Once.Grammar.ParserInvariant.ParsesFunctorProd-ExpressibleF
 d_ParsesFunctorProd'45'ExpressibleF_82 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorProd_112 ->
   MAlonzo.Code.Once.Grammar.Convert.T_ExpressibleF_996
@@ -321,9 +321,9 @@ du_ParsesFunctorProd'45'ExpressibleF_82 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesFunctorProdTail-ExpressibleF
 d_ParsesFunctorProdTail'45'ExpressibleF_92 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorProdTail_114 ->
   MAlonzo.Code.Once.Grammar.Convert.T_ExpressibleF_996 ->
@@ -353,7 +353,7 @@ du_ParsesFunctorProdTail'45'ExpressibleF_92 v0 v1 v2
 -- Once.Grammar.ParserInvariant.ParsesFunctorSum-ExpressibleF
 d_ParsesFunctorSum'45'ExpressibleF_100 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorSum_116 ->
   MAlonzo.Code.Once.Grammar.Convert.T_ExpressibleF_996
@@ -372,9 +372,9 @@ du_ParsesFunctorSum'45'ExpressibleF_100 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesFunctorSumTail-ExpressibleF
 d_ParsesFunctorSumTail'45'ExpressibleF_110 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesFunctorSumTail_118 ->
   MAlonzo.Code.Once.Grammar.Convert.T_ExpressibleF_996 ->
@@ -403,7 +403,7 @@ du_ParsesFunctorSumTail'45'ExpressibleF_110 v0 v1 v2
 -- Once.Grammar.ParserInvariant.parseType-Expressible
 d_parseType'45'Expressible_198 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
@@ -411,7 +411,7 @@ d_parseType'45'Expressible_198 v0 v1 v2 ~v3
   = du_parseType'45'Expressible_198 v0 v1 v2
 du_parseType'45'Expressible_198 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
 du_parseType'45'Expressible_198 v0 v1 v2
@@ -423,7 +423,7 @@ du_parseType'45'Expressible_198 v0 v1 v2
 -- Once.Grammar.ParserInvariant.parseTypeAtom-Expressible
 d_parseTypeAtom'45'Expressible_210 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
@@ -431,7 +431,7 @@ d_parseTypeAtom'45'Expressible_210 v0 v1 v2 ~v3
   = du_parseTypeAtom'45'Expressible_210 v0 v1 v2
 du_parseTypeAtom'45'Expressible_210 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Grammar.Convert.T_Expressible_994
 du_parseTypeAtom'45'Expressible_210 v0 v1 v2

@@ -25,7 +25,7 @@ import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Codegen.CataNextSlot.CataNextSlot._.CallPost
 d_CallPost_14 a0 a1 a2 = ()
@@ -248,7 +248,7 @@ d_call'45'at_1042 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
   Maybe Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_call'45'at_1042 = erased

@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Spec.Grammar.TypeAlias.ParsesTypeAlias
 d_ParsesTypeAlias_10 a0 a1 a2 a3 a4 = ()

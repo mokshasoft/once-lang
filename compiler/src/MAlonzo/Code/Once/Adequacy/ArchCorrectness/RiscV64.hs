@@ -61,7 +61,6 @@ import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.File
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.Program
@@ -73,13 +72,14 @@ import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Memory.StackSlots
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
 import qualified MAlonzo.Code.Once.Word
 
 -- Once.Adequacy.ArchCorrectness.RiscV64.rv64-frame-semantics
 d_rv64'45'frame'45'semantics_38 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -149,7 +149,7 @@ du_rv64'45'frame'45'semantics_38 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.IRObsCorrectFlatness.ir-obs-correct
 d_ir'45'obs'45'correct_474 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -240,7 +240,7 @@ d_ir'45'obs'45'correct_474 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                            ~v10
   = du_ir'45'obs'45'correct_474 v0 v1
 du_ir'45'obs'45'correct_474 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -274,11 +274,11 @@ du_ir'45'obs'45'correct_474 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2278
 du_ir'45'obs'45'correct_474 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4760
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4758
       (coe v0) (coe v1)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.ir-obs-correct
 d_ir'45'obs'45'correct_1858 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -368,7 +368,7 @@ d_ir'45'obs'45'correct_1858 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                             ~v10
   = du_ir'45'obs'45'correct_1858 v0 v1 v2
 du_ir'45'obs'45'correct_1858 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -402,7 +402,7 @@ du_ir'45'obs'45'correct_1858 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2278
 du_ir'45'obs'45'correct_1858 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4760
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4758
       (coe v0) (coe v1) (coe du_rv64'45'frame'45'semantics_38 (coe v2))
 -- Once.Adequacy.ArchCorrectness.RiscV64.stack-top-in-stack
 d_stack'45'top'45'in'45'stack_1900
@@ -410,7 +410,7 @@ d_stack'45'top'45'in'45'stack_1900
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ArchCorrectness.RiscV64.stack-top-in-stack"
 -- Once.Adequacy.ArchCorrectness.RiscV64.entry-frame-riscv64
 d_entry'45'frame'45'riscv64_1902 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -478,7 +478,7 @@ d_entry'45'frame'45'riscv64_1902 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          v10)
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.BlockRunsT
 d_BlockRunsT_1906 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -539,7 +539,7 @@ d_BlockRunsT_1906 ::
 d_BlockRunsT_1906 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.IOC
 d_IOC_1908 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -600,7 +600,7 @@ d_IOC_1908 ::
 d_IOC_1908 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.blocks-prefix
 d_blocks'45'prefix_1910 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -677,7 +677,7 @@ du_blocks'45'prefix_1910 v0 v1 v2 v3
       v2 v3
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-alloc
 d_entry'45'alloc_1912 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -744,7 +744,7 @@ d_entry'45'alloc_1912 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          (coe v10))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-bf
 d_entry'45'bf_1914 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -813,7 +813,7 @@ du_entry'45'bf_1914 v0
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'bf_2108
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-blocks
 d_entry'45'blocks_1916 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -875,7 +875,7 @@ d_entry'45'blocks_1916 ::
 d_entry'45'blocks_1916 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
   = du_entry'45'blocks_1916 v0 v1 v2
 du_entry'45'blocks_1916 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -886,7 +886,7 @@ du_entry'45'blocks_1916 v0 v1 v2
       (coe v0) (coe v1) (coe du_rv64'45'frame'45'semantics_38 (coe v2))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-labels
 d_entry'45'labels_1918 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -951,7 +951,7 @@ d_entry'45'labels_1918 ::
 d_entry'45'labels_1918 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-loc
 d_entry'45'loc_1920 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1018,7 +1018,7 @@ du_entry'45'loc_1920
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'loc_2090
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-nh
 d_entry'45'nh_1922 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1079,7 +1079,7 @@ d_entry'45'nh_1922 ::
 d_entry'45'nh_1922 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-ns
 d_entry'45'ns_1924 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1146,7 +1146,7 @@ du_entry'45'ns_1924 v0
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'ns_2104
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-regs
 d_entry'45'regs_1926 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1213,7 +1213,7 @@ du_entry'45'regs_1926
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_2092
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-s
 d_entry'45's_1928 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1280,7 +1280,7 @@ du_entry'45's_1928
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_2094
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-span
 d_entry'45'span_1930 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1345,7 +1345,7 @@ d_entry'45'span_1930 ::
 d_entry'45'span_1930 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-vr
 d_entry'45'vr_1932 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1447,7 +1447,7 @@ d_entry'45'vr_1932 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          (coe v10))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.entry-witness
 d_entry'45'witness_1934 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1544,7 +1544,7 @@ d_entry'45'witness_1934 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          (coe v10))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.flat-main
 d_flat'45'main_1936 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1645,7 +1645,7 @@ d_flat'45'main_1936 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          (coe v10))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.flat-trace-fam
 d_flat'45'trace'45'fam_1938 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1746,7 +1746,7 @@ d_flat'45'trace'45'fam_1938 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          (coe v10))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.fns-slot-stable
 d_fns'45'slot'45'stable_1940 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1820,7 +1820,7 @@ du_fns'45'slot'45'stable_1940 v0
       (coe du_rv64'45'frame'45'semantics_38 (coe v0))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.image
 d_image_1942 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1882,7 +1882,7 @@ d_image_1942 ::
 d_image_1942 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
   = du_image_1942 v0 v1
 du_image_1942 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
@@ -1892,7 +1892,7 @@ du_image_1942 v0 v1
       (coe v0) (coe v1)
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.image-slot-stable
 d_image'45'slot'45'stable_1944 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -1955,7 +1955,7 @@ d_image'45'slot'45'stable_1944 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                                ~v10
   = du_image'45'slot'45'stable_1944 v0 v1 v2
 du_image'45'slot'45'stable_1944 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -1966,7 +1966,7 @@ du_image'45'slot'45'stable_1944 v0 v1 v2
       (coe v0) (coe v1) (coe du_rv64'45'frame'45'semantics_38 (coe v2))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.ir-flat-correct-fam
 d_ir'45'flat'45'correct'45'fam_1946 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2060,7 +2060,7 @@ d_ir'45'flat'45'correct'45'fam_1946 ::
 d_ir'45'flat'45'correct'45'fam_1946 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.ir-flat-correct-main
 d_ir'45'flat'45'correct'45'main_1948 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2154,7 +2154,7 @@ d_ir'45'flat'45'correct'45'main_1948 ::
 d_ir'45'flat'45'correct'45'main_1948 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.main-blocks
 d_main'45'blocks_1950 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2216,7 +2216,7 @@ d_main'45'blocks_1950 ::
 d_main'45'blocks_1950 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
   = du_main'45'blocks_1950 v0 v1 v2
 du_main'45'blocks_1950 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -2227,7 +2227,7 @@ du_main'45'blocks_1950 v0 v1 v2
       (coe v0) (coe v1) (coe du_rv64'45'frame'45'semantics_38 (coe v2))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.main-flat
 d_main'45'flat_1952 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2296,7 +2296,7 @@ d_main'45'flat_1952 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          (coe v10))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.span-prefix
 d_span'45'prefix_1954 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2368,7 +2368,7 @@ d_span'45'prefix_1954 ::
 d_span'45'prefix_1954 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.start-flat
 d_start'45'flat_1956 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2435,7 +2435,7 @@ d_start'45'flat_1956 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
          (coe v10))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.top-pre
 d_top'45'pre_1958 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2497,7 +2497,7 @@ d_top'45'pre_1958 ::
 d_top'45'pre_1958 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
   = du_top'45'pre_1958 v0 v1
 du_top'45'pre_1958 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
@@ -2507,7 +2507,7 @@ du_top'45'pre_1958 v0 v1
       (coe v0) (coe v1)
 -- Once.Adequacy.ArchCorrectness.RiscV64.FFOr.σFS
 d_σFS_1960 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2576,7 +2576,7 @@ du_σFS_1960 v0
       (coe du_rv64'45'frame'45'semantics_38 (coe v0))
 -- Once.Adequacy.ArchCorrectness.RiscV64.asR
 d_asR_1962 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2648,7 +2648,7 @@ d_CompiledCorr_1966 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13
   = ()
 -- Once.Adequacy.ArchCorrectness.RiscV64._.EntryLike
 d_EntryLike_1970 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2777,7 +2777,7 @@ d_run'45'tbl_2002 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.flat-events
 d_flat'45'events_2010 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2852,7 +2852,7 @@ du_flat'45'events_2010 v0
       (coe du_rv64'45'frame'45'semantics_38 (coe v0))
 -- Once.Adequacy.ArchCorrectness.RiscV64._.FlatWF
 d_FlatWF_2014 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2913,7 +2913,7 @@ d_FlatWF_2014 ::
 d_FlatWF_2014 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64._.sv-below
 d_sv'45'below_2016 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -2975,7 +2975,7 @@ d_sv'45'below_2016 ::
 d_sv'45'below_2016 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64._.FlatRegTag
 d_FlatRegTag_2020 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3036,7 +3036,7 @@ d_FlatRegTag_2020 ::
 d_FlatRegTag_2020 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.code-map
 d_code'45'map_2022 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3112,7 +3112,7 @@ du_code'45'map_2022 v0 v1
             (coe MAlonzo.Code.Once.CCC.Label.C_e'45'thunk_24 (coe v1))))
 -- Once.Adequacy.ArchCorrectness.RiscV64._.pick
 d_pick_2032 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3182,7 +3182,7 @@ du_pick_2032 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.RiscV64.entry-view
 d_entry'45'view_2036 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3259,7 +3259,7 @@ du_entry'45'view_2036 v0
       (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.suc-law
 d_suc'45'law_2046 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3322,7 +3322,7 @@ d_suc'45'law_2046 ::
 d_suc'45'law_2046 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.entry-frame-base
 d_entry'45'frame'45'base_2056 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3383,7 +3383,7 @@ d_entry'45'frame'45'base_2056 ::
 d_entry'45'frame'45'base_2056 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.entry-corr
 d_entry'45'corr_2060 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3468,7 +3468,7 @@ du_entry'45'corr_2060
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.cong-pick
 d_cong'45'pick_2072 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3533,7 +3533,7 @@ d_cong'45'pick_2072 ::
 d_cong'45'pick_2072 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.entry-wf
 d_entry'45'wf_2106 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3604,7 +3604,7 @@ du_entry'45'wf_2106
       (\ v0 v1 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.reg-below
 d_reg'45'below_2116 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3672,7 +3672,7 @@ du_reg'45'below_2116 v0
   = coe seq (coe v0) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
 -- Once.Adequacy.ArchCorrectness.RiscV64.entry-regtag
 d_entry'45'regtag_2130 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3747,7 +3747,7 @@ du_entry'45'regtag_2130
          erased)
 -- Once.Adequacy.ArchCorrectness.RiscV64.entry-like
 d_entry'45'like_2136 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3830,7 +3830,7 @@ du_entry'45'like_2136
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased))))))))
 -- Once.Adequacy.ArchCorrectness.RiscV64._.no-ptr
 d_no'45'ptr_2148 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3895,7 +3895,7 @@ d_no'45'ptr_2148 ::
 d_no'45'ptr_2148 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.Nof
 d_Nof_2168 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -3970,7 +3970,7 @@ d_Nof_2168 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                (coe v10))
             (coe v12)
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4760
+               MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4758
                (coe v0) (coe v1) (coe du_rv64'45'frame'45'semantics_38 (coe v2))
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v12)
@@ -3978,7 +3978,7 @@ d_Nof_2168 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
             (coe v11) (coe v14)))
 -- Once.Adequacy.ArchCorrectness.RiscV64.conc-run
 d_conc'45'run_2178 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4042,7 +4042,7 @@ d_conc'45'run_2178 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
                    v12 v13
   = du_conc'45'run_2178 v0 v1 v2 v11 v12 v13
 du_conc'45'run_2178 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -4093,7 +4093,7 @@ du_conc'45'run_2178 v0 v1 v2 v3 v4 v5
          MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_446)
 -- Once.Adequacy.ArchCorrectness.RiscV64.conc-budget
 d_conc'45'budget_2186 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4156,7 +4156,7 @@ d_conc'45'budget_2186 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
                       v11 v12
   = du_conc'45'budget_2186 v0 v1 v11 v12
 du_conc'45'budget_2186 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer -> Integer
@@ -4175,7 +4175,7 @@ d_conc'45'fuel_2204
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ArchCorrectness.RiscV64.conc-fuel"
 -- Once.Adequacy.ArchCorrectness.RiscV64.conc-flat-sim
 d_conc'45'flat'45'sim_2216 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4242,7 +4242,7 @@ d_conc'45'flat'45'sim_2216 ::
 d_conc'45'flat'45'sim_2216 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64._.run₀
 d_run'8320'_2234 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4324,7 +4324,7 @@ du_run'8320'_2234 v0 v1 v2
          (coe du_entry'45'like_2136))
 -- Once.Adequacy.ArchCorrectness.RiscV64._.agree
 d_agree_2236 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4469,7 +4469,7 @@ d_agree_2236 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
       (coe du_run'8320'_2234 (coe v1) (coe v13) (coe v14))
 -- Once.Adequacy.ArchCorrectness.RiscV64.BlockRunsHyp-riscv64
 d_BlockRunsHyp'45'riscv64_2238 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4530,7 +4530,7 @@ d_BlockRunsHyp'45'riscv64_2238 ::
 d_BlockRunsHyp'45'riscv64_2238 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.flat-riscv64
 d_flat'45'riscv64_2242 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4601,12 +4601,12 @@ d_flat'45'riscv64_2242 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
          (coe v3) (coe v4) (coe v5) (coe v6) (coe v7) (coe v8) (coe v9)
          (coe v10))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4760
+         MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_4758
          (coe v0) (coe v1) (coe du_rv64'45'frame'45'semantics_38 (coe v2)))
       (coe v11)
 -- Once.Adequacy.ArchCorrectness.RiscV64.ir-flat-correct-riscv64
 d_ir'45'flat'45'correct'45'riscv64_2254 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4671,7 +4671,7 @@ d_ir'45'flat'45'correct'45'riscv64_2254 ::
 d_ir'45'flat'45'correct'45'riscv64_2254 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64.file-flat-riscv64
 d_file'45'flat'45'riscv64_2276 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4742,7 +4742,7 @@ d_file'45'flat'45'riscv64_2276 ::
 d_file'45'flat'45'riscv64_2276 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64._.p
 d_p_2302 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4823,7 +4823,7 @@ du_p_2302 v0 v1
       (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0)) (coe v1)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.ir′
 d_ir'8242'_2304 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4905,7 +4905,7 @@ du_ir'8242'_2304 v0 v1
          (coe du_p_2302 (coe v0) (coe v1)))
 -- Once.Adequacy.ArchCorrectness.RiscV64._.img
 d_img_2306 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -4976,7 +4976,7 @@ d_img_2306 ::
 d_img_2306 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64._._.img-at
 d_img'45'at_2316 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->
@@ -5044,7 +5044,7 @@ d_img'45'at_2316 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   Integer ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -5052,7 +5052,7 @@ d_img'45'at_2316 ::
 d_img'45'at_2316 = erased
 -- Once.Adequacy.ArchCorrectness.RiscV64._.code-eq
 d_code'45'eq_2318 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_462 ->

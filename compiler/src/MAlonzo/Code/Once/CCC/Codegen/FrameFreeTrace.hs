@@ -32,15 +32,15 @@ import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-body
 d_cata'45'body_12 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -51,7 +51,7 @@ d_cata'45'body_12 v0
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_cata'45'body_90 (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-call
 d_cata'45'call_14 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -66,7 +66,7 @@ du_cata'45'call_14
   = coe MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'call_112
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-call-setup
 d_cata'45'call'45'setup_16 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -79,7 +79,7 @@ d_cata'45'call'45'setup_16 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-dispatch
 d_cata'45'dispatch_18 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer ->
   Integer ->
@@ -92,7 +92,7 @@ d_cata'45'dispatch_18 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-nat-I₁
 d_cata'45'nat'45'I'8321'_20 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
@@ -102,7 +102,7 @@ d_cata'45'nat'45'I'8321'_20 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-nat-I₂
 d_cata'45'nat'45'I'8322'_22 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
@@ -112,7 +112,7 @@ d_cata'45'nat'45'I'8322'_22 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-nat-I₃
 d_cata'45'nat'45'I'8323'_24 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_cata'45'nat'45'I'8323'_24 v0
@@ -121,8 +121,8 @@ d_cata'45'nat'45'I'8323'_24 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-trace-branching
 d_cata'45'trace'45'branching_28 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -134,7 +134,7 @@ d_cata'45'trace'45'branching_28 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-trace-const
 d_cata'45'trace'45'const_30 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -146,7 +146,7 @@ d_cata'45'trace'45'const_30 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-trace-linear
 d_cata'45'trace'45'linear_32 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -158,7 +158,7 @@ d_cata'45'trace'45'linear_32 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cata-trace-nat
 d_cata'45'trace'45'nat_34 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -170,7 +170,7 @@ d_cata'45'trace'45'nat_34 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.ir-to-trace
 d_ir'45'to'45'trace_38 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -181,7 +181,7 @@ d_ir'45'to'45'trace_38 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.ir-to-trace'
 d_ir'45'to'45'trace''_40 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   Integer ->
@@ -194,7 +194,7 @@ d_ir'45'to'45'trace''_40 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.ir-to-trace-at-frontier
 d_ir'45'to'45'trace'45'at'45'frontier_42 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   Integer ->
@@ -206,7 +206,7 @@ d_ir'45'to'45'trace'45'at'45'frontier_42 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.ir-to-trace-lab
 d_ir'45'to'45'trace'45'lab_44 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   Integer ->
@@ -218,7 +218,7 @@ d_ir'45'to'45'trace'45'lab_44 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.ir-to-unit
 d_ir'45'to'45'unit_46 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -229,7 +229,7 @@ d_ir'45'to'45'unit_46 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.pop2
 d_pop2_50 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_pop2_50 ~v0 = du_pop2_50
@@ -240,7 +240,7 @@ du_pop2_50
   = coe MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_pop2_182
 -- Once.CCC.Codegen.FrameFreeTrace._.push2
 d_push2_52 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -255,11 +255,11 @@ du_push2_52
   = coe MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_push2_172
 -- Once.CCC.Codegen.FrameFreeTrace._.rebuild-walk
 d_rebuild'45'walk_54 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
@@ -269,7 +269,7 @@ d_rebuild'45'walk_54 v0 v1 v2 v3 v4 v5 v6
       (coe v0) v1 v4 v5 v6
 -- Once.CCC.Codegen.FrameFreeTrace._.resuspend-layer
 d_resuspend'45'layer_56 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -283,17 +283,17 @@ d_resuspend'45'layer_56 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.sigop-code
 d_sigop'45'code_58 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   Integer ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_sigop'45'code_58 ~v0 = du_sigop'45'code_58
 du_sigop'45'code_58 ::
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   Integer ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
@@ -302,11 +302,11 @@ du_sigop'45'code_58
   = coe MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_sigop'45'code_512
 -- Once.CCC.Codegen.FrameFreeTrace._.visit-walk
 d_visit'45'walk_68 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
@@ -316,7 +316,7 @@ d_visit'45'walk_68 v0
       (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.wrap-sum
 d_wrap'45'sum_70 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
@@ -329,7 +329,7 @@ du_wrap'45'sum_70
   = coe MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_wrap'45'sum_190
 -- Once.CCC.Codegen.FrameFreeTrace.trace-of
 d_trace'45'of_72 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_trace'45'of_72 ~v0 v1 = du_trace'45'of_72 v1
@@ -348,7 +348,7 @@ du_trace'45'of_72 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.cata-trace-of
 d_cata'45'trace'45'of_76 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250]
 d_cata'45'trace'45'of_76 ~v0 v1 = du_cata'45'trace'45'of_76 v1
@@ -364,12 +364,12 @@ du_cata'45'trace'45'of_76 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.FrameFreeTrace
 d_FrameFreeTrace_80 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] -> ()
 d_FrameFreeTrace_80 = erased
 -- Once.CCC.Codegen.FrameFreeTrace.push2-ff
 d_push2'45'ff_88 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
@@ -411,7 +411,7 @@ du_push2'45'ff_88
                                     MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
 -- Once.CCC.Codegen.FrameFreeTrace.pop2-ff
 d_pop2'45'ff_98 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_pop2'45'ff_98 ~v0 ~v1 = du_pop2'45'ff_98
 du_pop2'45'ff_98 ::
@@ -435,7 +435,7 @@ du_pop2'45'ff_98
                   (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
 -- Once.CCC.Codegen.FrameFreeTrace.wrap-sum-ff
 d_wrap'45'sum'45'ff_106 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_wrap'45'sum'45'ff_106 ~v0 ~v1 ~v2 = du_wrap'45'sum'45'ff_106
@@ -473,22 +473,22 @@ du_wrap'45'sum'45'ff_106
                                  MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))))))
 -- Once.CCC.Codegen.FrameFreeTrace.visit-walk-ff
 d_visit'45'walk'45'ff_124 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_visit'45'walk'45'ff_124 v0 v1 v2 v3 v4 v5 v6
   = case coe v4 of
-      MAlonzo.Code.Once.Type.C_K_112 v7
+      MAlonzo.Code.Once.Spec.Type.C_K_12 v7
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
-      MAlonzo.Code.Once.Type.C_Id_114
+      MAlonzo.Code.Once.Spec.Type.C_Id_14
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8) (coe du_push2'45'ff_88)
-      MAlonzo.Code.Once.Type.C__'8853'__116 v7 v8
+      MAlonzo.Code.Once.Spec.Type.C__'8853'__16 v7 v8
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
              (coe
@@ -595,7 +595,7 @@ d_visit'45'walk'45'ff_124 v0 v1 v2 v3 v4 v5 v6
                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                          (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
-      MAlonzo.Code.Once.Type.C__'8855'__118 v7 v8
+      MAlonzo.Code.Once.Spec.Type.C__'8855'__18 v7 v8
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
              (coe
@@ -673,30 +673,30 @@ d_visit'45'walk'45'ff_124 v0 v1 v2 v3 v4 v5 v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.rebuild-walk-ff
 d_rebuild'45'walk'45'ff_186 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_rebuild'45'walk'45'ff_186 v0 v1 ~v2 ~v3 v4 v5 v6
   = du_rebuild'45'walk'45'ff_186 v0 v1 v4 v5 v6
 du_rebuild'45'walk'45'ff_186 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_rebuild'45'walk'45'ff_186 v0 v1 v2 v3 v4
   = case coe v2 of
-      MAlonzo.Code.Once.Type.C_K_112 v5
+      MAlonzo.Code.Once.Spec.Type.C_K_12 v5
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.Type.C_Id_114 -> coe du_pop2'45'ff_98
-      MAlonzo.Code.Once.Type.C__'8853'__116 v5 v6
+      MAlonzo.Code.Once.Spec.Type.C_Id_14 -> coe du_pop2'45'ff_98
+      MAlonzo.Code.Once.Spec.Type.C__'8853'__16 v5 v6
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
              (coe
@@ -815,7 +815,7 @@ du_rebuild'45'walk'45'ff_186 v0 v1 v2 v3 v4
                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                                (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))))
-      MAlonzo.Code.Once.Type.C__'8855'__118 v5 v6
+      MAlonzo.Code.Once.Spec.Type.C__'8855'__18 v5 v6
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
              (coe
@@ -940,7 +940,7 @@ du_rebuild'45'walk'45'ff_186 v0 v1 v2 v3 v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.cata-body-ff
 d_cata'45'body'45'ff_244 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -972,7 +972,7 @@ du_cata'45'body'45'ff_244 v0 v1
                   (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
 -- Once.CCC.Codegen.FrameFreeTrace.cata-setup-ff
 d_cata'45'setup'45'ff_266 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1041,7 +1041,7 @@ du_cata'45'setup'45'ff_266
                                                             MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))))))))))
 -- Once.CCC.Codegen.FrameFreeTrace.cata-call-ff
 d_cata'45'call'45'ff_284 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
@@ -1090,7 +1090,7 @@ du_cata'45'call'45'ff_284
                                           MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))))
 -- Once.CCC.Codegen.FrameFreeTrace.nat-I₁-ff
 d_nat'45'I'8321''45'ff_296 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_nat'45'I'8321''45'ff_296 v0 v1 v2
@@ -1331,7 +1331,7 @@ d_nat'45'I'8321''45'ff_296 v0 v1 v2
                               MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))
 -- Once.CCC.Codegen.FrameFreeTrace.nat-I₂-ff
 d_nat'45'I'8322''45'ff_306 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_nat'45'I'8322''45'ff_306 ~v0 v1 ~v2
@@ -1436,7 +1436,7 @@ du_nat'45'I'8322''45'ff_306 v0
                   (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
 -- Once.CCC.Codegen.FrameFreeTrace.nat-I₃-ff
 d_nat'45'I'8323''45'ff_314 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_nat'45'I'8323''45'ff_314 ~v0 ~v1 = du_nat'45'I'8323''45'ff_314
 du_nat'45'I'8323''45'ff_314 ::
@@ -1454,7 +1454,7 @@ du_nat'45'I'8323''45'ff_314
             (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))
 -- Once.CCC.Codegen.FrameFreeTrace.cata-nat-ff
 d_cata'45'nat'45'ff_326 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1464,7 +1464,7 @@ d_cata'45'nat'45'ff_326 ::
 d_cata'45'nat'45'ff_326 v0 ~v1 v2 v3 v4 v5
   = du_cata'45'nat'45'ff_326 v0 v2 v3 v4 v5
 du_cata'45'nat'45'ff_326 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
@@ -1514,7 +1514,7 @@ du_cata'45'nat'45'ff_326 v0 v1 v2 v3 v4
                      (coe du_cata'45'body'45'ff_244 (coe v3) (coe v4)))))))
 -- Once.CCC.Codegen.FrameFreeTrace._.bodyL
 d_bodyL_342 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1525,7 +1525,7 @@ du_bodyL_342 :: Integer -> Integer
 du_bodyL_342 v0 = coe addInt (coe (6 :: Integer)) (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.endL
 d_endL_344 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1536,7 +1536,7 @@ du_endL_344 :: Integer -> Integer
 du_endL_344 v0 = coe addInt (coe (7 :: Integer)) (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.cl
 d_cl_346 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1547,7 +1547,7 @@ du_cl_346 :: Integer -> Integer
 du_cl_346 v0 = coe addInt (coe (2 :: Integer)) (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.k
 d_k_348 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1558,7 +1558,7 @@ du_k_348 :: Integer -> Integer
 du_k_348 v0 = coe addInt (coe (3 :: Integer)) (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.ev
 d_ev_350 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1569,7 +1569,7 @@ du_ev_350 :: Integer -> Integer
 du_ev_350 v0 = coe addInt (coe (4 :: Integer)) (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace._.pr
 d_pr_352 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1580,7 +1580,7 @@ du_pr_352 :: Integer -> Integer
 du_pr_352 v0 = coe addInt (coe (5 :: Integer)) (coe v0)
 -- Once.CCC.Codegen.FrameFreeTrace.cata-const-ff
 d_cata'45'const'45'ff_362 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1590,7 +1590,7 @@ d_cata'45'const'45'ff_362 ::
 d_cata'45'const'45'ff_362 v0 ~v1 v2 v3 v4 v5
   = du_cata'45'const'45'ff_362 v0 v2 v3 v4 v5
 du_cata'45'const'45'ff_362 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
@@ -1615,7 +1615,7 @@ du_cata'45'const'45'ff_362 v0 v1 v2 v3 v4
          (coe du_cata'45'body'45'ff_244 (coe v3) (coe v4)))
 -- Once.CCC.Codegen.FrameFreeTrace.cata-linear-ff
 d_cata'45'linear'45'ff_382 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -1625,7 +1625,7 @@ d_cata'45'linear'45'ff_382 ::
 d_cata'45'linear'45'ff_382 v0 ~v1 v2 v3 v4 v5
   = du_cata'45'linear'45'ff_382 v0 v2 v3 v4 v5
 du_cata'45'linear'45'ff_382 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
@@ -1988,7 +1988,7 @@ du_cata'45'linear'45'ff_382 v0 v1 v2 v3 v4
                      (coe du_cata'45'body'45'ff_244 (coe v3) (coe v4)))))))
 -- Once.CCC.Codegen.FrameFreeTrace._.lin-I₁
 d_lin'45'I'8321'_398 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2090,7 +2090,7 @@ du_lin'45'I'8321'_398
                                                                                     MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))))))))))))))))))
 -- Once.CCC.Codegen.FrameFreeTrace._.lin-I₂
 d_lin'45'I'8322'_400 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2188,7 +2188,7 @@ du_lin'45'I'8322'_400
                                                                                  MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))))))))))))))))))))))
 -- Once.CCC.Codegen.FrameFreeTrace._.lin-I₃
 d_lin'45'I'8323'_402 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2212,8 +2212,8 @@ du_lin'45'I'8323'_402
             (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))
 -- Once.CCC.Codegen.FrameFreeTrace.cata-branching-ff
 d_cata'45'branching'45'ff_414 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2223,8 +2223,8 @@ d_cata'45'branching'45'ff_414 ::
 d_cata'45'branching'45'ff_414 v0 v1 ~v2 v3 v4 v5 v6
   = du_cata'45'branching'45'ff_414 v0 v1 v3 v4 v5 v6
 du_cata'45'branching'45'ff_414 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
@@ -2545,8 +2545,8 @@ du_cata'45'branching'45'ff_414 v0 v1 v2 v3 v4 v5
                (coe du_cata'45'body'45'ff_244 (coe v4) (coe v5)))))
 -- Once.CCC.Codegen.FrameFreeTrace._.bodyL
 d_bodyL_432 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2554,7 +2554,7 @@ d_bodyL_432 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 -> Integer
 d_bodyL_432 ~v0 v1 ~v2 ~v3 v4 ~v5 ~v6 = du_bodyL_432 v1 v4
 du_bodyL_432 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 -> Integer -> Integer
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> Integer -> Integer
 du_bodyL_432 v0 v1
   = coe
       addInt
@@ -2569,8 +2569,8 @@ du_bodyL_432 v0 v1
       (coe v1)
 -- Once.CCC.Codegen.FrameFreeTrace._.cl
 d_cl_434 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2578,7 +2578,7 @@ d_cl_434 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 -> Integer
 d_cl_434 ~v0 v1 ~v2 v3 ~v4 ~v5 ~v6 = du_cl_434 v1 v3
 du_cl_434 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 -> Integer -> Integer
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> Integer -> Integer
 du_cl_434 v0 v1
   = coe
       addInt
@@ -2591,8 +2591,8 @@ du_cl_434 v0 v1
       (coe v1)
 -- Once.CCC.Codegen.FrameFreeTrace._.I₁
 d_I'8321'_436 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2601,8 +2601,8 @@ d_I'8321'_436 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_I'8321'_436 v0 v1 ~v2 v3 v4 ~v5 ~v6 = du_I'8321'_436 v0 v1 v3 v4
 du_I'8321'_436 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_I'8321'_436 v0 v1 v2 v3
@@ -2988,8 +2988,8 @@ du_I'8321'_436 v0 v1 v2 v3
                                     MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
 -- Once.CCC.Codegen.FrameFreeTrace._.I₂
 d_I'8322'_438 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
   Integer ->
   Integer ->
   Integer ->
@@ -2998,7 +2998,7 @@ d_I'8322'_438 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_I'8322'_438 v0 ~v1 ~v2 v3 v4 ~v5 ~v6 = du_I'8322'_438 v0 v3 v4
 du_I'8322'_438 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_I'8322'_438 v0 v1 v2
@@ -3050,7 +3050,7 @@ du_I'8322'_438 v0 v1 v2
                   (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
 -- Once.CCC.Codegen.FrameFreeTrace.cata-dispatch-ff
 d_cata'45'dispatch'45'ff_450 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer ->
   Integer ->
@@ -3061,7 +3061,7 @@ d_cata'45'dispatch'45'ff_450 ::
 d_cata'45'dispatch'45'ff_450 v0 v1 ~v2 v3 v4 v5 v6
   = du_cata'45'dispatch'45'ff_450 v0 v1 v3 v4 v5 v6
 du_cata'45'dispatch'45'ff_450 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer ->
   Integer ->
@@ -3089,9 +3089,9 @@ du_cata'45'dispatch'45'ff_450 v0 v1 v2 v3 v4 v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.sigop-frame-free
 d_sigop'45'frame'45'free_504 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
-  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
   Integer ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
@@ -3147,7 +3147,7 @@ du_sigop'45'frame'45'free_504 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.frame-free-trace'
 d_frame'45'free'45'trace''_526 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -3762,7 +3762,7 @@ d_frame'45'free'45'trace''_526 v0 v1 v2 v3 v4 v5 v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.ffbds
 d_ffbds_688 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_ffbds_688 ~v0 v1 = du_ffbds_688 v1
@@ -3781,12 +3781,12 @@ du_ffbds_688 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.BlockFrameFree
 d_BlockFrameFree_692 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> ()
 d_BlockFrameFree_692 = erased
 -- Once.CCC.Codegen.FrameFreeTrace.frame-free-blocks
 d_frame'45'free'45'blocks_698 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
@@ -3848,7 +3848,7 @@ du_frame'45'free'45'blocks_698 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.resuspend-ff
 d_resuspend'45'ff_724 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4240,7 +4240,7 @@ d_resuspend'45'ff_724 v0 v1 v2 v3 v4 v5 v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace._.n2
 d_n2_758 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4252,7 +4252,7 @@ d_n2_758 ::
 d_n2_758 v0 v1 v2 v3 v4 v5 ~v6 v7 ~v8
   = du_n2_758 v0 v1 v2 v3 v4 v5 v7
 du_n2_758 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4268,7 +4268,7 @@ du_n2_758 v0 v1 v2 v3 v4 v5 v6
          (coe v3) (coe v4) (coe v5) (coe v6))
 -- Once.CCC.Codegen.FrameFreeTrace._.l2
 d_l2_760 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4280,7 +4280,7 @@ d_l2_760 ::
 d_l2_760 v0 v1 v2 v3 v4 v5 ~v6 v7 ~v8
   = du_l2_760 v0 v1 v2 v3 v4 v5 v7
 du_l2_760 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4298,7 +4298,7 @@ du_l2_760 v0 v1 v2 v3 v4 v5 v6
             (coe v3) (coe v4) (coe v5) (coe v6)))
 -- Once.CCC.Codegen.FrameFreeTrace._.n2
 d_n2_778 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4310,7 +4310,7 @@ d_n2_778 ::
 d_n2_778 v0 v1 v2 v3 v4 v5 ~v6 v7 ~v8
   = du_n2_778 v0 v1 v2 v3 v4 v5 v7
 du_n2_778 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4327,7 +4327,7 @@ du_n2_778 v0 v1 v2 v3 v4 v5 v6
          (coe v5) (coe v6))
 -- Once.CCC.Codegen.FrameFreeTrace._.l2
 d_l2_780 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4339,7 +4339,7 @@ d_l2_780 ::
 d_l2_780 v0 v1 v2 v3 v4 v5 ~v6 v7 ~v8
   = du_l2_780 v0 v1 v2 v3 v4 v5 v7
 du_l2_780 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4358,7 +4358,7 @@ du_l2_780 v0 v1 v2 v3 v4 v5 v6
             (coe v5) (coe v6)))
 -- Once.CCC.Codegen.FrameFreeTrace._.arm
 d_arm_786 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
@@ -4418,7 +4418,7 @@ du_arm_786 v0 v1
                                           MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))))
 -- Once.CCC.Codegen.FrameFreeTrace.frame-free-blocks'
 d_frame'45'free'45'blocks''_804 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -4667,7 +4667,7 @@ d_frame'45'free'45'blocks''_804 v0 v1 v2 v3 v4 v5 v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.FrameFreeTrace.frame-free-at-frontier
 d_frame'45'free'45'at'45'frontier_976 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -4699,7 +4699,7 @@ d_frame'45'free'45'at'45'frontier_976 v0 v1 v2 v3 v4 v5
                (coe v4) (coe v5) (coe (0 :: Integer)))))
 -- Once.CCC.Codegen.FrameFreeTrace.ir-to-trace-frame-free
 d_ir'45'to'45'trace'45'frame'45'free_992 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -4710,7 +4710,7 @@ d_ir'45'to'45'trace'45'frame'45'free_992 v0 v1 v2 v3 v4
       (coe v3) (coe v4) (coe (0 :: Integer))
 -- Once.CCC.Codegen.FrameFreeTrace.ir-to-trace-lab-frame-free
 d_ir'45'to'45'trace'45'lab'45'frame'45'free_1008 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -4742,7 +4742,7 @@ d_ir'45'to'45'trace'45'lab'45'frame'45'free_1008 v0 v1 v2 v3 v4 v5
                (coe v4) (coe (0 :: Integer)) (coe v5))))
 -- Once.CCC.Codegen.FrameFreeTrace.ir-to-trace-top-frame-free
 d_ir'45'to'45'trace'45'top'45'frame'45'free_1026 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -4752,7 +4752,7 @@ d_ir'45'to'45'trace'45'top'45'frame'45'free_1026 ::
 d_ir'45'to'45'trace'45'top'45'frame'45'free_1026 v0 v1 v2 v3 v4 ~v5
   = du_ir'45'to'45'trace'45'top'45'frame'45'free_1026 v0 v1 v2 v3 v4
 du_ir'45'to'45'trace'45'top'45'frame'45'free_1026 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -4788,7 +4788,7 @@ du_ir'45'to'45'trace'45'top'45'frame'45'free_1026 v0 v1 v2 v3 v4
                   (coe v4) (coe (0 :: Integer)) (coe (0 :: Integer))))))
 -- Once.CCC.Codegen.FrameFreeTrace._._.fetch
 d_fetch_1132 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   Integer ->
@@ -4801,7 +4801,7 @@ du_fetch_1132 ::
 du_fetch_1132 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_246
 -- Once.CCC.Codegen.FrameFreeTrace._.fetch-frame-free
 d_fetch'45'frame'45'free_1372 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -4813,7 +4813,7 @@ d_fetch'45'frame'45'free_1372 ::
 d_fetch'45'frame'45'free_1372 v0 ~v1 v2 v3 v4 v5 v6 ~v7
   = du_fetch'45'frame'45'free_1372 v0 v2 v3 v4 v5 v6
 du_fetch'45'frame'45'free_1372 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->

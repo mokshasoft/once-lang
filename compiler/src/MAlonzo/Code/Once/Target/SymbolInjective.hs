@@ -35,7 +35,7 @@ import qualified MAlonzo.Code.Data.Nat.DivMod
 import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Induction.WellFounded
-import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
@@ -989,8 +989,8 @@ d_body'45'rel_946 ::
 d_body'45'rel_946 = erased
 -- Once.Target.SymbolInjective.once-symbol-path-injective
 d_once'45'symbol'45'path'45'injective_954 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -998,16 +998,16 @@ d_once'45'symbol'45'path'45'injective_954 ::
 d_once'45'symbol'45'path'45'injective_954 = erased
 -- Once.Target.SymbolInjective._.M
 d_M_970 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_M_970 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_M_970 v5
 du_M_970 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 du_M_970 v0
   = coe
@@ -1015,11 +1015,11 @@ du_M_970 v0
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
          (coe MAlonzo.Code.Once.Target.Symbol.d_mangle'45'component_44)
-         (coe MAlonzo.Code.Once.CanonicalName.d_parts_8 (coe v0)))
+         (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v0)))
 -- Once.Target.SymbolInjective._.teq
 d_teq_974 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1027,8 +1027,8 @@ d_teq_974 ::
 d_teq_974 = erased
 -- Once.Target.SymbolInjective._.bodyEq
 d_bodyEq_976 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

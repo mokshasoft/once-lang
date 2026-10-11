@@ -29,11 +29,11 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
+import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.FlatState
 d_FlatState_52 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
@@ -74,7 +74,7 @@ d_fret_78 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fret_88 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.readLoc
 d_readLoc_82 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -112,7 +112,7 @@ du_readLoc_82
   = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_666
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.writeLoc
 d_writeLoc_84 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -153,7 +153,7 @@ du_writeLoc_84 v0
   = coe MAlonzo.Code.Once.CCC.Machine.SMCore.d_writeLoc_832 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.writeLocToHeap
 d_writeLocToHeap_86 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -193,7 +193,7 @@ du_writeLocToHeap_86
   = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_writeLocToHeap_824
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.fetch
 d_fetch_90 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -230,7 +230,7 @@ du_fetch_90 ::
 du_fetch_90 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_246
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.sv-below
 d_sv'45'below_96 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -259,7 +259,7 @@ d_sv'45'below_96 ::
 d_sv'45'below_96 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.svm-below
 d_svm'45'below_98 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -296,7 +296,7 @@ d_HeapView_118 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
   = ()
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.RetAddrs
 d_RetAddrs_124 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -328,7 +328,7 @@ d_RetAddrs_124 ::
 d_RetAddrs_124 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.descend-view
 d_descend'45'view_166 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -372,7 +372,7 @@ du_descend'45'view_166 v0 v1 v2 v3
       v0 v1 v3
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.extend-view
 d_extend'45'view_208 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -421,7 +421,7 @@ du_extend'45'view_208 v0 v1 v2 v3 v4 v5
       (coe v0) v1 v2 v3 v5
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.frames-of
 d_frames'45'of_210 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -458,7 +458,7 @@ du_frames'45'of_210
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_frames'45'of_582
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.CFC.slots
 d_slots_388 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -701,7 +701,7 @@ d_run'45'tbl_610 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.count-reg
 d_count'45'reg_614 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -737,7 +737,7 @@ du_count'45'reg_614 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.in1-reg
 d_in1'45'reg_616 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -773,7 +773,7 @@ du_in1'45'reg_616 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.out-reg
 d_out'45'reg_618 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -809,7 +809,7 @@ du_out'45'reg_618 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.scratch-reg
 d_scratch'45'reg_620 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -845,7 +845,7 @@ du_scratch'45'reg_620 v0
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.sp-reg
 d_sp'45'reg_622 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -915,7 +915,7 @@ d_code'45'eq_664 ::
 d_code'45'eq_664 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.fetch-nothing-drop
 d_fetch'45'nothing'45'drop_672 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -946,7 +946,7 @@ d_fetch'45'nothing'45'drop_672 ::
 d_fetch'45'nothing'45'drop_672 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.fetch-just-drop
 d_fetch'45'just'45'drop_696 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -988,7 +988,7 @@ d_above'45'frontier'45'disj_728 ::
 d_above'45'frontier'45'disj_728 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.slot-heap-disj
 d_slot'45'heap'45'disj_752 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -1024,7 +1024,7 @@ d_slot'45'heap'45'disj_752 ::
 d_slot'45'heap'45'disj_752 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.store-guard
 d_store'45'guard_768 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -1054,7 +1054,7 @@ d_store'45'guard_768 ::
 d_store'45'guard_768 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence._.go
 d_go_780 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -1086,7 +1086,7 @@ d_go_780 ::
 d_go_780 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.BlockStepAt
 d_BlockStepAt_826 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -1119,7 +1119,7 @@ d_BlockStepAt_826 ::
 d_BlockStepAt_826 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.BlockStep
 d_BlockStep_842 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
@@ -1658,7 +1658,7 @@ data T_BlockSteps_846
                         [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
-                        MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+                        MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
                         Integer ->
                         T_CompiledCorr_632 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2528,7 +2528,7 @@ d_bs'45'call'45'fn_2046 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2250] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   T_CompiledCorr_632 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

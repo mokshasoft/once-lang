@@ -27,16 +27,16 @@ import qualified MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.CCC.Codegen.IRObsCorrect.Case._.Core.IRObsCorrectF
 d_IRObsCorrectF_736 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -46,17 +46,17 @@ d_IRObsCorrectF_736 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Case._.IR
 d_IR_2028 a0 a1 a2 a3 = ()
 -- Once.CCC.Codegen.IRObsCorrect.Case.CaseC._.IRObsCorrectF
-d_IRObsCorrectF_2656 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+d_IRObsCorrectF_2654 ::
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
-d_IRObsCorrectF_2656 = erased
+d_IRObsCorrectF_2654 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Case.CaseC.obs-correct-case
-d_obs'45'correct'45'case_3758 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+d_obs'45'correct'45'case_3756 ::
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -139,13 +139,13 @@ d_obs'45'correct'45'case_3758 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2324 ->
   Integer ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2278
-d_obs'45'correct'45'case_3758 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+d_obs'45'correct'45'case_3756 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                               v12 v13 v14 v15 ~v16 v17 ~v18 ~v19 v20 v21 v22 v23 v24 ~v25 v26 v27
-  = du_obs'45'correct'45'case_3758
+  = du_obs'45'correct'45'case_3756
       v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v17 v20 v21
       v22 v23 v24 v26 v27
-du_obs'45'correct'45'case_3758 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+du_obs'45'correct'45'case_3756 ::
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -218,14 +218,14 @@ du_obs'45'correct'45'case_3758 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2324 ->
   Integer ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2278
-du_obs'45'correct'45'case_3758 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
+du_obs'45'correct'45'case_3756 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23
   = case coe v17 of
       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v24
         -> case coe v22 of
              MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.C_in'45'loc_2338 v25 v26 v27
                -> coe
-                    MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseArmL.du_witness_3908
+                    MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseArmL.du_witness_3906
                     (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                     (coe v7) (coe v10) (coe v11) (coe v12) (coe v13) (coe v8) (coe v14)
                     (coe v15) (coe v16) (coe v18) (coe v19) (coe v20) (coe v21)
@@ -235,7 +235,7 @@ du_obs'45'correct'45'case_3758 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
         -> case coe v22 of
              MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.C_in'45'loc_2338 v25 v26 v27
                -> coe
-                    MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseArmR.du_witness_3924
+                    MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.CaseArmR.du_witness_3922
                     (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
                     (coe v7) (coe v10) (coe v11) (coe v12) (coe v13) (coe v9) (coe v14)
                     (coe v15) (coe v16) (coe v18) (coe v19) (coe v20) (coe v21)

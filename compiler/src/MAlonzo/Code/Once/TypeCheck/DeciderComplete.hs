@@ -22,19 +22,20 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Once.Functor.Decide
-import qualified MAlonzo.Code.Once.Functor.Translate
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Type.Poly
+import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
 
 -- Once.TypeCheck.DeciderComplete.wellFormedF?-complete
 d_wellFormedF'63''45'complete_10 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_wellFormedF'63''45'complete_10 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_240 v3
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'K_52 v3
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C_K_112 v4
+             MAlonzo.Code.Once.Spec.Type.C_K_12 v4
                -> let v5
                         = MAlonzo.Code.Once.Functor.Decide.d_isBaseType'63''45'complete_90
                             (coe v4) (coe v3) in
@@ -43,14 +44,14 @@ d_wellFormedF'63''45'complete_10 v0 v1
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                          -> coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_240 v6) erased
+                              (coe MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'K_52 v6) erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_242
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Id_54
         -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_248 v4 v5
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Sum_60 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8853'__116 v6 v7
+             MAlonzo.Code.Once.Spec.Type.C__'8853'__16 v6 v7
                -> let v8 = d_wellFormedF'63''45'complete_10 (coe v6) (coe v4) in
                   coe
                     (let v9 = d_wellFormedF'63''45'complete_10 (coe v7) (coe v5) in
@@ -62,15 +63,15 @@ d_wellFormedF'63''45'complete_10 v0 v1
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_248 v10
+                                           MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Sum_60 v10
                                            v12)
                                         erased
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_254 v4 v5
+      MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Prod_66 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8855'__118 v6 v7
+             MAlonzo.Code.Once.Spec.Type.C__'8855'__18 v6 v7
                -> let v8 = d_wellFormedF'63''45'complete_10 (coe v6) (coe v4) in
                   coe
                     (let v9 = d_wellFormedF'63''45'complete_10 (coe v7) (coe v5) in
@@ -82,8 +83,8 @@ d_wellFormedF'63''45'complete_10 v0 v1
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_254 v10
-                                           v12)
+                                           MAlonzo.Code.Once.Spec.Type.WellFormed.C_wf'45'Prod_66
+                                           v10 v12)
                                         erased
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
@@ -91,23 +92,23 @@ d_wellFormedF'63''45'complete_10 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.DeciderComplete.wellFormedF?-complete-at
 d_wellFormedF'63''45'complete'45'at_88 ::
-  MAlonzo.Code.Once.Type.T_Functor_106 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_236 ->
+  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_wellFormedF'63''45'complete'45'at_88 = erased
 -- Once.TypeCheck.DeciderComplete.isGroundF-complete
 d_isGroundF'45'complete_110 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_252 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyFunctor_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_isGroundF'45'complete_110 v0 v1
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_PK_256 v2
+      MAlonzo.Code.Once.Spec.Type.Poly.C_PK_12 v2
         -> coe d_isGround'45'complete_116 (coe v2) (coe v1)
-      MAlonzo.Code.Once.Type.C_PId_258
+      MAlonzo.Code.Once.Spec.Type.Poly.C_PId_14
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8) erased
-      MAlonzo.Code.Once.Type.C__P'8853'__260 v2 v3
+      MAlonzo.Code.Once.Spec.Type.Poly.C__P'8853'__16 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> let v6 = d_isGroundF'45'complete_110 (coe v2) (coe v4) in
@@ -127,7 +128,7 @@ d_isGroundF'45'complete_110 v0 v1
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C__P'8855'__262 v2 v3
+      MAlonzo.Code.Once.Spec.Type.Poly.C__P'8855'__18 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> let v6 = d_isGroundF'45'complete_110 (coe v2) (coe v4) in
@@ -150,19 +151,19 @@ d_isGroundF'45'complete_110 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.DeciderComplete.isGround-complete
 d_isGround'45'complete_116 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_isGround'45'complete_116 v0 v1
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_PUnit_264
+      MAlonzo.Code.Once.Spec.Type.Poly.C_PUnit_20
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8) erased
-      MAlonzo.Code.Once.Type.C_PVoid_266
+      MAlonzo.Code.Once.Spec.Type.Poly.C_PVoid_22
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8) erased
-      MAlonzo.Code.Once.Type.C__P'42'__268 v2 v3
+      MAlonzo.Code.Once.Spec.Type.Poly.C__P'42'__24 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> let v6 = d_isGround'45'complete_116 (coe v2) (coe v4) in
@@ -182,7 +183,7 @@ d_isGround'45'complete_116 v0 v1
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C__P'43'__270 v2 v3
+      MAlonzo.Code.Once.Spec.Type.Poly.C__P'43'__26 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> let v6 = d_isGround'45'complete_116 (coe v2) (coe v4) in
@@ -202,7 +203,7 @@ d_isGround'45'complete_116 v0 v1
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__272 v2 v3 v4
+      MAlonzo.Code.Once.Spec.Type.Poly.C__P'8658''91'_'93'__28 v2 v3 v4
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
                -> let v7 = d_isGround'45'complete_116 (coe v2) (coe v5) in
@@ -222,7 +223,7 @@ d_isGround'45'complete_116 v0 v1
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C_PEff_274 v2 v3
+      MAlonzo.Code.Once.Spec.Type.Poly.C_PEff_30 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> let v6 = d_isGround'45'complete_116 (coe v2) (coe v4) in
@@ -242,45 +243,45 @@ d_isGround'45'complete_116 v0 v1
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C_Pμ'45'type_276 v2
+      MAlonzo.Code.Once.Spec.Type.Poly.C_Pμ'45'type_32 v2
         -> coe d_isGroundF'45'complete_110 (coe v2) (coe v1)
-      MAlonzo.Code.Once.Type.C_Pν'45'type_278 v2 v3
+      MAlonzo.Code.Once.Spec.Type.Poly.C_Pν'45'type_34 v2 v3
         -> coe d_isGroundF'45'complete_110 (coe v2) (coe v1)
-      MAlonzo.Code.Once.Type.C_PInt_280
+      MAlonzo.Code.Once.Spec.Type.Poly.C_PInt_36
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8) erased
-      MAlonzo.Code.Once.Type.C_PFloat_282
+      MAlonzo.Code.Once.Spec.Type.Poly.C_PFloat_38
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8) erased
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.DeciderComplete.isGround-inj₂-¬Ground
 d_isGround'45'inj'8322''45''172'Ground_352 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_isGround'45'inj'8322''45''172'Ground_352 = erased
 -- Once.TypeCheck.DeciderComplete.¬Ground-isGround-inj₂
 d_'172'Ground'45'isGround'45'inj'8322'_394 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   (AgdaAny -> MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'172'Ground'45'isGround'45'inj'8322'_394 = erased
 -- Once.TypeCheck.DeciderComplete.GroundF-irrelevant
 d_GroundF'45'irrelevant_420 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_252 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyFunctor_8 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_GroundF'45'irrelevant_420 = erased
 -- Once.TypeCheck.DeciderComplete.Ground-irrelevant
 d_Ground'45'irrelevant_428 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_Ground'45'irrelevant_428 = erased
 -- Once.TypeCheck.DeciderComplete.isGround-complete-at
 d_isGround'45'complete'45'at_526 ::
-  MAlonzo.Code.Once.Type.T_PolyType_254 ->
+  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_isGround'45'complete'45'at_526 = erased

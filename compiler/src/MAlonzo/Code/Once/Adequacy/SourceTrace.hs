@@ -35,13 +35,14 @@ import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve
+import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Adequacy.SourceTrace.linkedAt-rewrite
 d_linkedAt'45'rewrite_14 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 -> AgdaAny -> AgdaAny
 d_linkedAt'45'rewrite_14 v0 v1 v2 v3 v4
@@ -50,7 +51,7 @@ d_linkedAt'45'rewrite_14 v0 v1 v2 v3 v4
         -> coe
              du_linkedAt'45'rewrite'45'at_32 (coe v6) (coe v1) (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__114
+                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__76
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fname_16 (coe v5))
                 (coe v1))
              (coe
@@ -67,7 +68,7 @@ d_linkedAt'45'rewrite_14 v0 v1 v2 v3 v4
 d_linkedAt'45'rewrite'45'at_32 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
@@ -78,7 +79,7 @@ d_linkedAt'45'rewrite'45'at_32 ~v0 v1 v2 v3 v4 v5 v6 v7 v8
   = du_linkedAt'45'rewrite'45'at_32 v1 v2 v3 v4 v5 v6 v7 v8
 du_linkedAt'45'rewrite'45'at_32 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
