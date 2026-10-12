@@ -2,11 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Spec.ModuleLaws — the lemmas about `Once.Spec.Module`, moved out so that module
+-- Once.Adequacy.ModuleLaws — the lemmas about `Once.Spec.Module`, moved out so that module
 -- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
 ------------------------------------------------------------------------
 
-module Once.Spec.ModuleLaws where
+module Once.Adequacy.ModuleLaws where
 
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_)

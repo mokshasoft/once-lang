@@ -40,7 +40,7 @@ import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig)
-open import Once.Spec.ModuleLaws using (teleSig≡entrySig)
+open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Denotation.TraceMonad using (Interp; interp; pureHalf)
 open import Once.Spec.Program using (Typed)

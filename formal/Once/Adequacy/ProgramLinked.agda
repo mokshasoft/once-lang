@@ -84,7 +84,7 @@ open import Once.Spec.Type using (μ-type; ν-type)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; LinkedProgram)
 open Once.Denotation.Program.IRFun using (fbody)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; ModuleTyped-ef; EffUU; teleSig; moduleSig; moduleSig-ef)
-open import Once.Spec.ModuleLaws using (teleSig≡entrySig)
+open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; tableOf-go; irFunOf; mainCall)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
