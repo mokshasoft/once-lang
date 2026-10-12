@@ -36,15 +36,20 @@ import DirectedHoTT.Algorithm.NbESound as Sound
 efuel : ℕ
 efuel = 100000
 
--- entry n: its body's value at the table before it (an ARGUMENT: shared)
-extendAt : ℕ → Tbl → RTm ε → Tbl
-extendAt n t b = mkT (suc n) (ttele t ▸ᵗ NbE.eval t efuel 0 [] b)
+-- the next entry: its body's value at the table before it (an ARGUMENT: shared)
+extendAt : Tbl → RTm ε → Tbl
+extendAt t b = t ▸T NbE.eval t efuel 0 [] b
 
--- the table of a telescope, walked as `lookupK` walks it
+-- n levels with no entry (the lowest names of a telescope shorter than its length)
+gapsᵗ : ℕ → TVals
+gapsᵗ zero    = []ᵗ
+gapsᵗ (suc n) = skipᵗ (gapsᵗ n)
+
+-- the table of a telescope, entry n at level n as `lookupK` places it
 goT : ℕ → DefTele → Tbl
-goT zero    _       = mkT 0 ∅ᵗ
-goT (suc n) (T ▸ e) = extendAt n (goT n T) (kBody e)
-goT (suc n) ∅       = mkT (suc n) ∅ᵗ
+goT zero    _       = ∅T
+goT (suc n) (T ▸ e) = extendAt (goT n T) (kBody e)
+goT (suc n) ∅       = mkT (gapsᵗ (suc n))
 
 -- ★ the table of a signature — independent of anything but its telescope,
 --   so the table of an extension unfolds to `extendAt` of the old one
@@ -62,10 +67,41 @@ private
   ==-sound (suc m) zero    ()
   ==-sound (suc m) (suc n) e = cong suc (==-sound m n e)
 
-  tlen-goT : (n : ℕ) (T : DefTele) → tlen (goT n T) ≡ n
-  tlen-goT zero    _       = refl
-  tlen-goT (suc n) (T ▸ e) = refl
-  tlen-goT (suc n) ∅       = refl
+  vlen : TVals → ℕ
+  vlen []ᵗ        = zero
+  vlen (v ∷ᵗ us)  = suc (vlen us)
+  vlen (skipᵗ us) = suc (vlen us)
+
+  vlen-snoc : (us : TVals) (v : Val) → vlen (snocᵗ us v) ≡ suc (vlen us)
+  vlen-snoc []ᵗ        v = refl
+  vlen-snoc (w ∷ᵗ ws)  v = cong suc (vlen-snoc ws v)
+  vlen-snoc (skipᵗ ws) v = cong suc (vlen-snoc ws v)
+
+  vlen-gaps : (n : ℕ) → vlen (gapsᵗ n) ≡ n
+  vlen-gaps zero    = refl
+  vlen-gaps (suc n) = cong suc (vlen-gaps n)
+
+  -- the table of (n , T) has exactly n levels
+  vlen-goT : (n : ℕ) (T : DefTele) → vlen (tvals (goT n T)) ≡ n
+  vlen-goT zero    _       = refl
+  vlen-goT (suc n) (T ▸ e) = trans (vlen-snoc (tvals (goT n T)) _) (cong suc (vlen-goT n T))
+  vlen-goT (suc n) ∅       = vlen-gaps (suc n)
+
+  -- ★ one lookup in an extended list: the new entry at its level, else the old list
+  look-snoc : (us : TVals) (v : Val) (k d : ℕ) →
+              lookupL (snocᵗ us v) k d ≡ pickV (k == vlen us) v (lookupL us k d)
+  look-snoc []ᵗ        v zero    d = refl
+  look-snoc []ᵗ        v (suc k) d = refl
+  look-snoc (w ∷ᵗ ws)  v zero    d = refl
+  look-snoc (w ∷ᵗ ws)  v (suc k) d = look-snoc ws v k d
+  look-snoc (skipᵗ ws) v zero    d = refl
+  look-snoc (skipᵗ ws) v (suc k) d = look-snoc ws v k d
+
+  -- a gap reads as the stuck reference
+  look-gaps : (n k d : ℕ) → lookupL (gapsᵗ n) k d ≡ vref d
+  look-gaps zero    k       d = refl
+  look-gaps (suc n) zero    d = refl
+  look-gaps (suc n) (suc k) d = look-gaps n k d
 
 module _ (𝒮 : Defs) where
   open import DirectedHoTT.Spec.Reduction 𝒮 using ( _≅_; crfl; ctrn; cred; δref )
@@ -87,9 +123,9 @@ module _ (𝒮 : Defs) where
     lookK-here : (n : ℕ) (T : DefTele) (e : Def) → lookupK (suc n) (T ▸ e) n ≡ e
     lookK-here n T e = subst (λ b → pickK b e (lookupK n T n) ≡ e) (sym (==-refl n)) refl
 
-    lookT-step : (n : ℕ) (t : Tbl) (v : Val) (d : ℕ) → tlen t ≡ n →
-                 lookupT (mkT (suc n) (ttele t ▸ᵗ v)) d ≡ pickV (d == n) v (lookupT t d)
-    lookT-step n (mkT .n T) v d refl = refl
+    lookT-step : (n : ℕ) (t : Tbl) (v : Val) (d : ℕ) → vlen (tvals t) ≡ n →
+                 lookupT (t ▸T v) d ≡ pickV (d == n) v (lookupT t d)
+    lookT-step .(vlen us) (mkT us) v d refl = look-snoc us v d d
 
     pickV-true : {v w : Val} {b : Bool} → b ≡ true → pickV b v w ≡ v
     pickV-true refl = refl
@@ -104,13 +140,15 @@ module _ (𝒮 : Defs) where
 
   okUpTo : (n : ℕ) (T : DefTele) → KPrefix n T → TblOK (goT n T)
   okUpTo zero    _       _   = (λ d → tt) , (λ L d → crfl)
-  okUpTo (suc n) ∅       _   = (λ d → tt) , (λ L d → crfl)
+  okUpTo (suc n) ∅       _   =
+    (λ d → subst (Sc 0) (sym (look-gaps (suc n) d d)) tt) ,
+    (λ L d → subst (λ w → ref d ≅ ⌊ w ⌋ L) (sym (look-gaps (suc n) d d)) crfl)
   okUpTo (suc n) (T ▸ e) pre = sc , rd
     where
     t   = goT n T
     ih  = okUpTo n T (shrinkK pre)
     v   = NbE.eval t efuel 0 [] (kBody e)
-    len≡ = tlen-goT n T
+    len≡ = vlen-goT n T
 
     Σfst₀ : TblOK t → TblSc t
     Σfst₀ (c , _) = c
