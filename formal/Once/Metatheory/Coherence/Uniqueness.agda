@@ -64,6 +64,9 @@ private
   out-u : ∀ {F F′ π π′} → ν-type F π ≡ ν-type F′ π′ → ⟦ F ⟧T (ν-type F π) ≡ ⟦ F′ ⟧T (ν-type F′ π′)
   out-u refl = refl
 
+  iter-u : ∀ {A A′ B B′ k k′} → (A ⇒[ k ] (B + A)) ≡ (A′ ⇒[ k′ ] (B′ + A′)) → B ≡ B′
+  iter-u refl = refl
+
   -- `let` and `case`: the bound variable's type is the premise's, so the body
   -- is compared in one context once the premises agree.
   let-u : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A A′ B B′ π π′ q q′ b}
@@ -96,6 +99,7 @@ uniq (⊢roll _ _) (⊢roll _ _) = refl
 uniq (⊢fold _ _ da _) (⊢fold _ _ da′ _) = app-u (uniq da da′)
 uniq (⊢unfold _ dc _) (⊢unfold _ dc′ _) = unfold-u (uniq dc dc′) refl refl
 uniq (⊢out _ d) (⊢out _ d′) = out-u (uniq d d′)
+uniq (⊢iter df _) (⊢iter df′ _) = iter-u (uniq df df′)
 uniq (⊢coerce _ _) (⊢coerce _ _) = refl
 uniq ⊢lit-int ⊢lit-int = refl
 uniq ⊢lit-float ⊢lit-float = refl

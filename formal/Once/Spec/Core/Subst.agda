@@ -99,6 +99,9 @@ sub-⊢ {Φ = Φ} (⊢fold {Ψa = Ψa} {Ψt = Ψt} u wf da dt) h =
 sub-⊢ {Φ = Φ} (⊢unfold {Ψc = Ψc} {Ψs = Ψs} wf dc ds) h =
   retype (sym (trans (⋆-+ (Many *ᵘ Ψc) Ψs Φ) (cong (_+ᵘ (Ψs ⋆ Φ)) (⋆-* Many Ψc Φ))))
          (⊢unfold wf (sub-⊢ dc h) (sub-⊢ ds h))
+sub-⊢ {Φ = Φ} (⊢iter {Ψf = Ψf} {Ψs = Ψs} df ds) h =
+  retype (sym (trans (⋆-+ (Many *ᵘ Ψf) Ψs Φ) (cong (_+ᵘ (Ψs ⋆ Φ)) (⋆-* Many Ψf Φ))))
+         (⊢iter (sub-⊢ df h) (sub-⊢ ds h))
 sub-⊢ (⊢out wf d) h = ⊢out wf (sub-⊢ d h)
 sub-⊢ (⊢coerce p d) h = ⊢coerce p (sub-⊢ d h)
 sub-⊢ {Φ = Φ} ⊢lit-int h = retype (sym (⋆-zero Φ)) ⊢lit-int

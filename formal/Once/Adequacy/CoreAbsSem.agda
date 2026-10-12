@@ -123,6 +123,14 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
           → tr eΓ et eP (GT.⊢pair da db) ≡ GT.⊢pair (tr eΓ ea eA da) (tr eΓ eb eB db)
   tr-pair {eΓ = refl} {refl} {refl} refl refl refl refl da db = refl
 
+  tr-iter : ∀ {Ψf Ψs π₁ π₂ A' A B' B} {f' f s' s : G.Tm n}
+              {eΓ : Γ' ≡ Γ} {et : G.iter f' s' ≡ G.iter f s} {eB : B' ≡ B}
+              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A')) ≡ (A T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B T.+ A)))
+              (es : s' ≡ s) (eA : A' ≡ A)
+              (df : Γ' ⊢[ Ψf ] f' ∷ A' T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A') ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
+          → tr eΓ et eB (GT.⊢iter df ds) ≡ GT.⊢iter (tr eΓ ef eF df) (tr eΓ es eA ds)
+  tr-iter {eΓ = refl} {refl} {refl} refl refl refl refl df ds = refl
+
   tr-fst : ∀ {Ψ π A' A B' B} {p' p : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.fst p' ≡ G.fst p} {eA : A' ≡ A}
              (ep : p' ≡ p) (eP : (A' T.* B') ≡ (A T.* B)) (d : Γ' ⊢[ Ψ ] p' ∷ A' T.* B' ! π)
@@ -290,6 +298,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
   rtT-id (G.roll F t)     = cong₂ G.roll (rtF-id F) (rtT-id t)
   rtT-id (G.fold F a t)   = trans (cong (λ H → G.fold H _ _) (rtF-id F)) (cong₂ (G.fold F) (rtT-id a) (rtT-id t))
   rtT-id (G.unfold F c t) = trans (cong (λ H → G.unfold H _ _) (rtF-id F)) (cong₂ (G.unfold F) (rtT-id c) (rtT-id t))
+  rtT-id (G.iter f t)     = cong₂ G.iter (rtT-id f) (rtT-id t)
   rtT-id (G.out t)        = cong G.out (rtT-id t)
   rtT-id (G.coerce A B t) = trans (cong₂ (λ x y → G.coerce x y _) (rt-id A) (rt-id B)) (cong (G.coerce A B) (rtT-id t))
   rtT-id (G.lit l)        = refl
@@ -351,6 +360,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
             (trans (tr-subst (⟦⟧F-⟪⟫ (absF Δ F) (absTy Δ A) σ) _)
                    (trans (tr-isubst {r = r} (absTy-⟦⟧ Δ F A) _) (irr (RT k) (RT-id k))))
             (RT-id x))
+  RT-id (GT.⊢iter f x) = trans (tr-iter _ _ _ _ (RT f) (RT x)) (cong₂ GT.⊢iter (RT-id f) (RT-id x))
   RT-id (GT.⊢out {π = π} {F = F} wf d) =
     trans (tr-isubst {r = r} (sym (absTy-⟦⟧ Δ F (T.ν-type F π))) _)
       (trans (tr-subst (sym (⟦⟧F-⟪⟫ (absF Δ F) (Ty.ν-type (absF Δ F) π) σ)) _)

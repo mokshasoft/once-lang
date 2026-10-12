@@ -132,7 +132,8 @@ entry updates the rule it changes here, in the same commit.
   — any program that runs forever — is GUARDED ITERATION over the completely
   iterative monad (an event before every loop), not general recursion and
   not `ana`; `main` is an ordinary function, specified only as the entry.
-  Being implemented (plan 0.117). (D311)
+  Being implemented (plan 0.117: the core's `iter` and its uniqueness are
+  in; the surface and the compiler are not). (D311)
 - **Grades are two axes, laid out on a line**: effects and finiteness;
   `pure ⊑ eff ⊑ prod` (`prod` may run forever), because the pure-and-forever
   corner is empty (pure infinite data is a `ν` TYPE). The guard is the grade

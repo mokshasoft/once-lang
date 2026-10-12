@@ -307,6 +307,18 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
       bind≈ᵍ π₁ π₂ π₁′ π₂′ (FL dc dc′ (restrict₂ _ _ h)) λ {clo} {clo′} sc →
       fmap≈ π₂ π₂′ (FL ds ds′ (restrict₂ _ _ h)) λ ss → ana-S π wf clo clo′ sc ss
 
+    -- D311: the step, then the seed, then the loop — related steps iterate to
+    -- bisimilar trees (`Iter.iter-S`).
+    iterS : ∀ {n} {Γ : Ctx n} {Ψf Ψs Ψf′ Ψs′ : Usage n} {A A′ B π₁ π₂ π₁′ π₂′ f sd}
+              (eq : (A ⇒[ mk-kind Many eff⁺ ] (B + A)) ≡ (A′ ⇒[ mk-kind Many eff⁺ ] (B + A′)))
+            → (df : Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many eff⁺ ] (B + A) ! π₁) (ds : Γ ⊢[ Ψs ] sd ∷ A ! π₂)
+              (df′ : Γ ⊢[ Ψf′ ] f ∷ A′ ⇒[ mk-kind Many eff⁺ ] (B + A′) ! π₁′) (ds′ : Γ ⊢[ Ψs′ ] sd ∷ A′ ! π₂′)
+            → ∀ {x x′} → Agree Γ _ _ x x′
+            → TreeEq∞ (S B) (toT∞ _ (⟦ ⊢iter df ds ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢iter df′ ds′ ⟧ fmt δ x′))
+    iterS {π₁ = π₁} {π₂} {π₁′} {π₂′} refl df ds df′ ds′ h =
+      bind≈ᵍ π₁ _ π₁′ _ (FL df df′ (restrict₂ _ _ h)) λ {step} {step′} sf →
+      bind≈ᵍ π₂ prod π₂′ prod (FL ds ds′ (restrict₂ _ _ h)) λ {a} {a′} sa → Iter.iter-S step step′ sf a a′ sa
+
     outS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {F F′ π π′ π₁ π₁′ t}
              (eq : ν-type F π ≡ ν-type F′ π′) (wf : WellFormedF F) (wf′ : WellFormedF F′)
              (d : Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁) (d′ : Γ ⊢[ Ψ′ ] t ∷ ν-type F′ π′ ! π₁′)
@@ -362,6 +374,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
     fmap≈ π π′ (FL d d′ h) λ s → (trans (roll-≡ wf s) (cong (λ w → in-valueᵛ w _) (WellFormedF-irrelevant wf wf′)))
   FL (⊢fold u wf da dt) (⊢fold u′ wf′ da′ dt′) h = foldS (uniq da da′) wf wf′ (WellFormedF-irrelevant wf wf′) da dt da′ dt′ h u u′
   FL (⊢unfold wf dc ds) (⊢unfold wf′ dc′ ds′) h = unfoldS (uniq dc dc′) wf wf′ (WellFormedF-irrelevant wf wf′) dc ds dc′ ds′ h
+  FL (⊢iter df ds) (⊢iter df′ ds′) h = iterS (uniq df df′) df ds df′ ds′ h
   FL (⊢coerce p d) (⊢coerce p′ d′) h = coerceS p p′ (<:-unique p p′) d d′ h
   FL ⊢lit-int ⊢lit-int h = retT≈ refl
   FL ⊢lit-float ⊢lit-float h = retT≈ refl

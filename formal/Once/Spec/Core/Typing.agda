@@ -43,7 +43,7 @@ module Once.Spec.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff⁺; prod)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
@@ -146,6 +146,15 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → WellFormedF F
        → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁
        → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F π) ! π₁ ·p π
+
+  -- D311: GUARDED ITERATION. The step performs an event before it answers
+  -- (`eff⁺`), so the loop is productive however long it runs; it may run
+  -- forever (`prod`). As `fold`'s algebra, the step is evaluated once and
+  -- applied per round.
+  ⊢iter : ∀ {n} {Γ : Ctx n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
+        → Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many eff⁺ ] (B + A) ! π₁
+        → Γ ⊢[ Ψs ] s ∷ A ! π₂
+        → Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p prod)
 
   -- D226: subtyping is a COERCION term (it has content: `Void <: B` is `¡`).
   ⊢coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B t}

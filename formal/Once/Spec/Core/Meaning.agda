@@ -35,7 +35,8 @@ import Once.Word as OnceWord
 open import Once.Float.Decimal using (round)
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
-open import Once.Spec.Type.Grade using (Zero; One; Many)
+open import Once.Spec.Type.Grade using (Zero; One; Many; prod)
+open import Once.Spec.Guarded using (iter∞)
 open import Once.Spec.Context using (Ctx; Usage; _↾_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
@@ -166,6 +167,10 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
   bindᵍ π₁ π₂ (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) λ clo →
   fmapM π₂ (ana-semᵛ π wf clo) (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ))
 ⟦ ⊢out {π = π} {π₁ = π₁} wf d ⟧ fmt ρ dγ = bindᵍ π₁ π (⟦ d ⟧ fmt ρ dγ) (out-semᵛ π wf)
+-- D311: the step, then the seed, then the loop (`iter∞`, guarded corecursion).
+⟦ ⊢iter {Γ = Γ} {Ψf = Ψf} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} df ds ⟧ fmt ρ dγ =
+  bindᵍ π₁ _ (⟦ df ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) dγ)) λ step →
+  bindᵍ π₂ prod (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) dγ)) λ a → iter∞ step a
 
 ⟦ ⊢coerce {π = π} p d ⟧ fmt ρ dγ = fmapM π ⟦ p ⟧<:ᵛ (⟦ d ⟧ fmt ρ dγ)
 

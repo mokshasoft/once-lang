@@ -31,7 +31,8 @@ open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; b
 open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid;
   _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; ν⁺-upto; Same; TreeEqN)
-open import Once.Spec.Guarded using (T⁺; forget⁺; fmap⁺; ν⁺; ana⁺; anaRoot⁺; anaTree⁺; mapAna⁺; call⁺; halt⁺)
+open import Once.Spec.Guarded using (T⁺; forget⁺; fmap⁺; ν⁺; ana⁺; anaRoot⁺; anaTree⁺; mapAna⁺; call⁺; halt⁺; iter∞; iterRoot∞; iterTree∞)
+import Data.Sum
 open Once.Spec.Guarded.ν⁺ using (force⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺; forget-anaRoot)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; sfmapCata)
@@ -579,3 +580,45 @@ coerce-S (sub-ν {F = F} ⊑-ge) s n = Emb⁺ᵈ.emb-upto (translateF Carrier Ca
 coerce-S (sub-ν {F = F} ⊑-gp) s n =
   Emb∞ᵈ.emb-upto (translateF Carrier Carrier F) n (Emb⁺ᵈ.emb-upto (translateF Carrier Carrier F) n (s n))
 coerce-S sub-rigid s = s
+
+------------------------------------------------------------------------
+-- D311: GUARDED ITERATION. Related steps, iterated from related seeds, give
+-- bisimilar trees: each round's tree is related node by node, and a looping
+-- answer starts the next round from related seeds — under the event the
+-- step performed first, so the bisimulation is guarded.
+------------------------------------------------------------------------
+
+module Iter {A B : Type} (step step′ : ⟦ A ⟧ᵛ → T⁺ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
+            (sf : ∀ a a′ → S A a a′ → TreeEq∞ (S (B + A)) (embed (forget⁺ (step a))) (embed (forget⁺ (step′ a′))))
+            where
+  iter-S : ∀ a a′ → S A a a′ → TreeEq∞ (S B) (iter∞ step a) (iter∞ step′ a′)
+  root-S : ∀ (m m′ : T⁺ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
+         → NodeEq (S (B + A)) (TreeEq∞ (S (B + A))) (force (embed (forget⁺ m))) (force (embed (forget⁺ m′)))
+         → NodeEq (S B) (TreeEq∞ (S B)) (iterRoot∞ step m) (iterRoot∞ step′ m′)
+  tree-S : ∀ (t t′ : T (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
+         → TreeEq∞ (S (B + A)) (embed t) (embed t′) → TreeEq∞ (S B) (iterTree∞ step t) (iterTree∞ step′ t′)
+  tree-N : ∀ (t t′ : T (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
+         → NodeEq (S (B + A)) (TreeEq∞ (S (B + A))) (force (embed t)) (force (embed t′))
+         → NodeEq (S B) (TreeEq∞ (S B)) (force (iterTree∞ step t)) (force (iterTree∞ step′ t′))
+
+  force≈ (iter-S a a′ s) = root-S (step a) (step′ a′) (force≈ (sf a a′ s))
+
+  root-S (call⁺ o x k) (call⁺ .o .x k′) (call≈∞ hk) = call≈∞ (λ b → tree-S (k b) (k′ b) (hk b))
+  root-S (halt⁺ o x)   (halt⁺ .o .x)    halt≈∞      = halt≈∞
+  root-S (call⁺ _ _ _) (halt⁺ _ _)      ()
+  root-S (halt⁺ _ _)   (call⁺ _ _ _)    ()
+
+  force≈ (tree-S t t′ h) = tree-N t t′ (force≈ h)
+
+  tree-N (ret (inj₁ b)) (ret (inj₁ b′)) (ret≈∞ r) = ret≈∞ r
+  tree-N (ret (inj₂ a)) (ret (inj₂ a′)) (ret≈∞ r) = root-S (step a) (step′ a′) (force≈ (sf a a′ r))
+  tree-N (ret (inj₁ _)) (ret (inj₂ _)) (ret≈∞ ())
+  tree-N (ret (inj₂ _)) (ret (inj₁ _)) (ret≈∞ ())
+  tree-N (call o x k) (call .o .x k′) (call≈∞ hk) = call≈∞ (λ b → tree-S (k b) (k′ b) (hk b))
+  tree-N (halt o x) (halt .o .x) halt≈∞ = halt≈∞
+  tree-N (ret _)      (call _ _ _) ()
+  tree-N (ret _)      (halt _ _)   ()
+  tree-N (call _ _ _) (ret _)      ()
+  tree-N (call _ _ _) (halt _ _)   ()
+  tree-N (halt _ _)   (ret _)      ()
+  tree-N (halt _ _)   (call _ _ _) ()

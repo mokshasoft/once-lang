@@ -92,6 +92,7 @@ absTm Δ (G.absurd A t)   = absurd (absTy Δ A) (absTm Δ t)
 absTm Δ (G.roll F t)     = roll (absF Δ F) (absTm Δ t)
 absTm Δ (G.fold F a t)   = fold (absF Δ F) (absTm Δ a) (absTm Δ t)
 absTm Δ (G.unfold F c t) = unfold (absF Δ F) (absTm Δ c) (absTm Δ t)
+absTm Δ (G.iter f t)     = iter (absTm Δ f) (absTm Δ t)
 absTm Δ (G.out t)        = out (absTm Δ t)
 absTm Δ (G.coerce A B t) = coerce (absTy Δ A) (absTy Δ B) (absTm Δ t)
 absTm Δ (G.lit l)        = lit l
@@ -174,6 +175,7 @@ abs-⊢ Δ sg {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {π = π} {π₁ = π₁} {F =
     (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψc ] absTm Δ c ∷ absTy Δ A ⇒[ mk-kind Many π ] X ! π₁)
            (absTy-⟦⟧ Δ F A) (abs-⊢ Δ sg k))
     (abs-⊢ Δ sg x)
+abs-⊢ Δ sg (GT.⊢iter f x) = ⊢iter (abs-⊢ Δ sg f) (abs-⊢ Δ sg x)
 abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} (GT.⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] out (absTm Δ t) ∷ X ! π₁ T.·p π) (sym (absTy-⟦⟧ Δ F (T.ν-type F π)))
     (⊢out (abs-wf Δ wf) (abs-⊢ Δ sg d))

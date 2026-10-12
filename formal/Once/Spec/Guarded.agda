@@ -79,3 +79,26 @@ mapAna⁺ H SId        c a        = ana⁺ H c a
 mapAna⁺ H (G₁ S⊕ G₂) c (inj₁ x) = inj₁ (mapAna⁺ H G₁ c x)
 mapAna⁺ H (G₁ S⊕ G₂) c (inj₂ y) = inj₂ (mapAna⁺ H G₂ c y)
 mapAna⁺ H (G₁ S⊗ G₂) c (x , y)  = mapAna⁺ H G₁ c x , mapAna⁺ H G₂ c y
+
+------------------------------------------------------------------------
+-- GUARDED ITERATION (D311 §3): a step that performs an event before it
+-- answers, iterated — the loop of a server. `iter∞ f a` runs `f a`; its first
+-- node is an event, so the tree grows by at least one node before the next
+-- round, and the iteration is a productive `T∞` tree however long it runs. A
+-- `inj₁ b` ends the loop with `b`; an `inj₂ a′` runs the next round from `a′`.
+------------------------------------------------------------------------
+
+open import Data.Sum using (_⊎_)
+open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞; module T∞)
+open T∞ using (force)
+
+iter∞     : ∀ {A B : Set} → (A → T⁺ (B ⊎ A)) → A → T∞ B
+iterRoot∞ : ∀ {A B : Set} → (A → T⁺ (B ⊎ A)) → T⁺ (B ⊎ A) → T∞F B (T∞ B)
+iterTree∞ : ∀ {A B : Set} → (A → T⁺ (B ⊎ A)) → T (B ⊎ A) → T∞ B
+force (iter∞ f a) = iterRoot∞ f (f a)
+iterRoot∞ f (call⁺ o x k) = call∞ o x (λ r → iterTree∞ f (k r))
+iterRoot∞ f (halt⁺ o x)   = halt∞ o x
+force (iterTree∞ f (ret (inj₁ b)))  = ret∞ b
+force (iterTree∞ f (ret (inj₂ a)))  = iterRoot∞ f (f a)
+force (iterTree∞ f (call o x k))    = call∞ o x (λ r → iterTree∞ f (k r))
+force (iterTree∞ f (halt o x))      = halt∞ o x

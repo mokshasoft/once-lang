@@ -132,6 +132,7 @@ tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {π = π} {π₁ = 
     (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψc ] c ⟨ σ ⟩ₜ ∷ A ⟨ σ ⟩ ⇒[ mk-kind Many π ] X ! π₁) (⟦⟧F-⟨⟩ F A σ)
            (tsubst σ r k))
     (tsubst σ r x)
+tsubst σ r (⊢iter f x) = ⊢iter (tsubst σ r f) (tsubst σ r x)
 tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
   subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] out (t ⟨ σ ⟩ₜ) ∷ X ! π₁ ·p π) (sym (⟦⟧F-⟨⟩ F (ν-type F π) σ))
     (⊢out (wf-⟨⟩ r wf) (tsubst σ r d))

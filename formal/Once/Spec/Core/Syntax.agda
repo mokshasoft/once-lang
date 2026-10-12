@@ -35,6 +35,7 @@
 --   Void                 absurd
 --   μ F                  roll (In), fold (the non-dependent eliminator)
 --   ν F                  unfold (ana), out (Out)
+--   running forever      iter (guarded iteration of a step that performs an event, D311)
 --   subtyping            coerce (a term converted along `A <: B`, D226)
 --   base types           lit, prim (the arithmetic SigOps, saturated)
 --   FFI                  sigop (a declared constant with a contract, D061/D071)
@@ -133,6 +134,7 @@ data Tm (n : ℕ) : Set where
   roll   : Functor → Tm n → Tm n                   -- roll F t : μ F
   fold   : Functor → Tm n → Tm n → Tm n            -- fold F alg t: t : μ F
   unfold : Functor → Tm n → Tm n → Tm n            -- unfold F coalg seed : ν F _
+  iter   : Tm n → Tm n → Tm n                      -- iter step seed : B, for step : A ⇒ B + A
   out    : Tm n → Tm n
   coerce : Type → Type → Tm n → Tm n     -- coerce A B t, along A <: B
   lit    : Lit → Tm n
@@ -168,6 +170,7 @@ ren ρ (absurd A t)   = absurd A (ren ρ t)
 ren ρ (roll F t)     = roll F (ren ρ t)
 ren ρ (fold F a t)   = fold F (ren ρ a) (ren ρ t)
 ren ρ (unfold F c t) = unfold F (ren ρ c) (ren ρ t)
+ren ρ (iter f t)     = iter (ren ρ f) (ren ρ t)
 ren ρ (out t)        = out (ren ρ t)
 ren ρ (coerce A B t) = coerce A B (ren ρ t)
 ren ρ (lit l)        = lit l
@@ -201,6 +204,7 @@ sub σ (absurd A t)   = absurd A (sub σ t)
 sub σ (roll F t)     = roll F (sub σ t)
 sub σ (fold F a t)   = fold F (sub σ a) (sub σ t)
 sub σ (unfold F c t) = unfold F (sub σ c) (sub σ t)
+sub σ (iter f t)     = iter (sub σ f) (sub σ t)
 sub σ (out t)        = out (sub σ t)
 sub σ (coerce A B t) = coerce A B (sub σ t)
 sub σ (lit l)        = lit l

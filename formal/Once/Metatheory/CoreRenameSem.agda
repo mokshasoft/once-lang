@@ -317,6 +317,14 @@ ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ =
                (λ clo → cong (fmapM π₂ _) (trans (ren-sem θ ds fmt δ _)
                                       (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (sym (sym E)) _ x)))))
   where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))
+ren-sem θ (⊢iter {Ψf = Ψf} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} df ds) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} (trans (ren-sem θ df fmt δ _)
+                      (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) (sym (sym E)) _ x)))
+               (λ step → bindCᵍ {π₂} (trans (ren-sem θ ds fmt δ _)
+                                      (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) (sym (sym E)) _ x)))
+                               (λ _ → refl)))
+  where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψf) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψf))
 ren-sem θ (⊢out {π = π} {π₁ = π₁} wf d) fmt δ x = bindCᵍ {π₁} {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x

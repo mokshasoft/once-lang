@@ -83,6 +83,7 @@ absurd A t   ⟨ σ ⟩ₜ = absurd (A ⟨ σ ⟩) (t ⟨ σ ⟩ₜ)
 roll F t     ⟨ σ ⟩ₜ = roll (F ⟨ σ ⟩F) (t ⟨ σ ⟩ₜ)
 fold F a t   ⟨ σ ⟩ₜ = fold (F ⟨ σ ⟩F) (a ⟨ σ ⟩ₜ) (t ⟨ σ ⟩ₜ)
 unfold F c t ⟨ σ ⟩ₜ = unfold (F ⟨ σ ⟩F) (c ⟨ σ ⟩ₜ) (t ⟨ σ ⟩ₜ)
+iter f t     ⟨ σ ⟩ₜ = iter (f ⟨ σ ⟩ₜ) (t ⟨ σ ⟩ₜ)
 out t        ⟨ σ ⟩ₜ = out (t ⟨ σ ⟩ₜ)
 coerce A B t ⟨ σ ⟩ₜ = coerce (A ⟨ σ ⟩) (B ⟨ σ ⟩) (t ⟨ σ ⟩ₜ)
 lit l        ⟨ σ ⟩ₜ = lit l

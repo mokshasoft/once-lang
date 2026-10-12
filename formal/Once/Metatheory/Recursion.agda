@@ -4,9 +4,10 @@
 ------------------------------------------------------------------------
 -- Once.Metatheory.Recursion — the fold's universal property
 -- (`Spec.Metatheory.Recursion`, plan 0.112 D3) and unfold's computation law
--- (plan 0.116 E).
+-- (plan 0.116 E), and guarded iteration's equation (D311).
 --
--- POSTULATED, NOT PROVED. The statements are the Spec's; they were moved to
+-- Guarded iteration is PROVED (`Metatheory.Iteration`). The fold and unfold
+-- laws are POSTULATED, NOT PROVED. The statements are the Spec's; they were moved to
 -- where they belong (the language's metatheory) before their proofs exist.
 -- Why they hold: a `μ` value is a finite tree, and every one is `in-valueᵛ` of
 -- a layer, so an `h` that commutes with the constructor agrees with the fold by
@@ -24,6 +25,8 @@
 ------------------------------------------------------------------------
 
 module Once.Metatheory.Recursion where
+
+import Once.Metatheory.Iteration as It
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Type using (μ-type; ⟦_⟧T)
@@ -52,4 +55,5 @@ postulate
                   (bindM π (clo a) (mapLayerᵛ u wf (λ a′ → returnM u (ana-semᵛ π wf clo a′))))
 
 recursion : Recursion
-recursion = record { fold-unique = fold-unique ; fold-fusion = fold-fusion ; unfold-out = unfold-out }
+recursion = record { fold-unique = fold-unique ; fold-fusion = fold-fusion ; unfold-out = unfold-out
+                   ; iter-unfold = It.iter-unfold ; iter-unique = It.iter-unique }

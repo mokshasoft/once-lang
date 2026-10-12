@@ -57,10 +57,13 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.TermModel using (TermModel) public
 open import Once.Spec.Core.Coherence using (Coherence)
-open import Once.Spec.Type.Grade using (Purity; pure; prod; mk-kind; Many; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; prod; eff⁺; mk-kind; Many; _·p_)
 open import Once.Spec.Iterative using (TreeEq∞; return∞; _>>=∞_)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
-open import Once.Spec.Totality using (FiniteT; ProductiveM; selfRef; forwardRef; defF; tickDefs; ticker)
+open import Once.Spec.Guarded using (T⁺; iter∞)
+open import Data.Sum using (_⊎_; [_,_]′)
+open import Once.Spec.Iterative using (T∞)
+open import Once.Spec.Totality using (FiniteT; ProductiveM; ProductiveT∞; selfRef; forwardRef; defF; tickDefs; ticker)
 open import Once.Spec.Module using (ModTele; emptyScope)
 open import Once.Spec.Context using (∅)
 open import Once.Spec.Type.WellFormed using (wf-Id)
@@ -170,6 +173,15 @@ record Recursion : Set₁ where
     unfold-out  : ∀ {π} (u : pure ⊑π π) {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
                 → EqM π (out-semᵛ π wf (ana-semᵛ π wf clo a))
                     (bindM π (clo a) (mapLayerᵛ u wf (λ a′ → returnM u (ana-semᵛ π wf clo a′))))
+    -- guarded iteration (D311): `iter f` runs a round of `f`, then stops with
+    -- its answer or runs the next round from the new seed …
+    iter-unfold : ∀ {A B : Set} (f : A → T⁺ (B ⊎ A)) (a : A)
+                → TreeEq∞ _≡_ (iter∞ f a) (toT∞ eff⁺ (f a) >>=∞ [ return∞ , iter∞ f ]′)
+    -- … and it is the ONLY function that does: a round begins with an event
+    -- (`eff⁺`), so the equation fixes the tree one event at a time
+    iter-unique : ∀ {A B : Set} (f : A → T⁺ (B ⊎ A)) (g : A → T∞ B)
+                → (∀ a → TreeEq∞ _≡_ (g a) (toT∞ eff⁺ (f a) >>=∞ [ return∞ , g ]′))
+                → ∀ a → TreeEq∞ _≡_ (g a) (iter∞ f a)
 
 -- Effects form a Freyd category (plan 0.116). Values and pure maps are the
 -- category C, computations `X → T Y` the premonoidal category K = Kleisli(T),
@@ -210,6 +222,9 @@ record Totality : Set₁ where
   field
     finite     : ∀ {X : Set} (m : T X) → FiniteT m
     productive : ∀ π {F} (wf : WellFormedF F) (v : ⟦ ν-type F π ⟧ᵛ) → ProductiveM π (out-semᵛ π wf v)
+    -- a computation that may run forever (`prod`, a server's `iter`) reaches
+    -- each next event, or its end, after finite work
+    productive∞ : ∀ {X : Set} (m : T∞ X) → ProductiveT∞ m
     no-self-reference    : ¬ ModTele emptyScope (selfRef ∷ [])
     no-forward-reference : ¬ ModTele emptyScope (forwardRef ∷ defF ∷ [])
     stream-typed : TickTyping._⊢[_]_∷_!_ ∅ Surface.[] ticker (ν-type Id eff) pure

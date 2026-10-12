@@ -18392,6 +18392,19 @@ as the program's entry (the user, 2026-10-12).
 - Coherence and the compiler relate a guarded meaning through `forget⁺` (`RelGM eff⁺`,
   `_∼⁺ᵈ_` for its streams); the apex and backstop are green.
 
+### Landed in plan 0.117 D (2026-10-12)
+- The core former `iter f s` (`⊢iter`): the step `f : A ⇒[ Many , eff⁺ ] B + A`, the seed
+  `s : A`, the result `B` at `prod` (`π₁ ·p (π₂ ·p prod)`). Like `fold`'s algebra, the step's
+  term is evaluated once and its usage is ω-scaled.
+- Its meaning is guarded corecursion, `iter∞` (`Spec.Guarded`): a round's tree, then the answer
+  or the next round under the event the round began with.
+- The claims (`Spec.Metatheory`): `iter-unfold` — `iter f a` is bisimilar to
+  `toT∞ (f a) >>=∞ [ return∞ , iter f ]`; `iter-unique` — every solution of that equation is
+  bisimilar to it; `Totality.productive∞` — every `prod` computation is productive. All three are
+  PROVED (`Metatheory.Iteration`, `Metatheory.Totality`), with no postulate.
+- Coherence covers it (`Coherence.Layer.Iter.iter-S`: related steps iterate to bisimilar
+  trees). The surface has no `iter` yet (phase F), so the compiler is untouched.
+
 ### Not reused
 `Once/IR/Guarded.agda` (deleted in c59c6c661) marked the recursive positions of a coalgebra's
 LAYER (`GRec`); it was deprecated under OCP-0003 because layer productivity follows from

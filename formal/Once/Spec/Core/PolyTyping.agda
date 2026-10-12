@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff⁺; prod)
 open import Once.Spec.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
@@ -84,6 +84,7 @@ data PTm (m n : ℕ) : Set where
   roll   : Fun m → PTm m n → PTm m n
   fold   : Fun m → PTm m n → PTm m n → PTm m n
   unfold : Fun m → PTm m n → PTm m n → PTm m n
+  iter   : PTm m n → PTm m n → PTm m n
   out    : PTm m n → PTm m n
   coerce : Ty m → Ty m → PTm m n → PTm m n
   lit    : Lit → PTm m n
@@ -120,6 +121,7 @@ absurd A t   ⟪ σ ⟫ₜ = G.absurd (A ⟪ σ ⟫) (t ⟪ σ ⟫ₜ)
 roll F t     ⟪ σ ⟫ₜ = G.roll (F ⟪ σ ⟫F) (t ⟪ σ ⟫ₜ)
 fold F a t   ⟪ σ ⟫ₜ = G.fold (F ⟪ σ ⟫F) (a ⟪ σ ⟫ₜ) (t ⟪ σ ⟫ₜ)
 unfold F c t ⟪ σ ⟫ₜ = G.unfold (F ⟪ σ ⟫F) (c ⟪ σ ⟫ₜ) (t ⟪ σ ⟫ₜ)
+iter f t     ⟪ σ ⟫ₜ = G.iter (f ⟪ σ ⟫ₜ) (t ⟪ σ ⟫ₜ)
 out t        ⟪ σ ⟫ₜ = G.out (t ⟪ σ ⟫ₜ)
 coerce A B t ⟪ σ ⟫ₜ = G.coerce (A ⟪ σ ⟫) (B ⟪ σ ⟫) (t ⟪ σ ⟫ₜ)
 lit l        ⟪ σ ⟫ₜ = G.lit l
@@ -229,6 +231,10 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
           → Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π₁
           → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
           → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F π ! π₁ ·p π₂
+  ⊢iter : ∀ {n} {Γ : PCtx m n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
+        → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many eff⁺ ] (B + A) ! π₁
+        → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
+        → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p prod)
   ⊢out : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π₁ : Purity} {F : Fun m} {t}
        → WFFun Δ F
        → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁
@@ -300,6 +306,7 @@ instantiate {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {π = π} {π₁ = π₁} {F =
     (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψc ] c ⟪ σ ⟫ₜ ∷ A ⟪ σ ⟫ T.⇒[ mk-kind Many π ] X ! π₁) (⟦⟧F-⟪⟫ F A σ)
            (instantiate σ r k))
     (instantiate σ r s)
+instantiate σ r (⊢iter f s) = GT.⊢iter (instantiate σ r f) (instantiate σ r s)
 instantiate {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.out (t ⟪ σ ⟫ₜ) ∷ X ! π₁ ·p π) (sym (⟦⟧F-⟪⟫ F (ν-type F π) σ))
     (GT.⊢out (wf-⟪⟫ r wf) (instantiate σ r d))

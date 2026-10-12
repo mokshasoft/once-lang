@@ -40,6 +40,7 @@ totality : Totality
 totality = record
   { finite     = finite
   ; productive = λ { pure wf v → _ ; eff wf v → finite (out-semᵛ eff wf v) ; prod wf v → productive∞ (out-semᵛ prod wf v) ; eff⁺ wf v → finite (forget⁺ (out-semᵛ eff⁺ wf v)) }
+  ; productive∞ = productive∞
   ; no-self-reference    = no-self-reference
   ; no-forward-reference = no-forward-reference
   ; stream-typed = stream-typed
