@@ -42,12 +42,10 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; bindᵍ; s
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
-open import Once.SigOp.Info using (semP; int-prim)
+import Once.Float.Arith as FA
+open import Once.Spec.Bool using (truth)
+open import Data.Bool using (not)
 open import Once.Spec.Contract using (Impl)
-open import Once.Arith.SigOp.Builders
-  using ( add-info; sub-info; mul-info; div-info; mod-info; neg-info
-        ; lt-info; le-info; gt-info; ge-info; eq-info; ne-info
-        ; fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info )
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 import Data.Fin
@@ -73,27 +71,28 @@ open DefSem public
 Env : ∀ {n} → Ctx n → Usage n → Set
 Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
--- The arithmetic: each primitive IS its Pure SigOp's contract, a total function.
--- (An internal contract ignores the interpretation; `semP` takes it because a
--- pure FFI contract does not.)
+-- The arithmetic is the target's (D054, D055, D113): an `Int` is a word of the
+-- target's width and `+`, `-`, `*` wrap; `/` and `%` are total (RISC-V's
+-- results for `x / 0` and `MIN / -1`); a comparison reads the words as SIGNED;
+-- a `Float` operation is the target format's, correctly rounded.
 primSem : (p : Prim) → TargetNum → ⟦ primDom p ⟧ᵛ → ⟦ primCod p ⟧ᵛ
-primSem p-add fmt v = semP add-info int-prim fmt v
-primSem p-sub fmt v = semP sub-info int-prim fmt v
-primSem p-mul fmt v = semP mul-info int-prim fmt v
-primSem p-div fmt v = semP div-info int-prim fmt v
-primSem p-mod fmt v = semP mod-info int-prim fmt v
-primSem p-neg fmt v = semP neg-info int-prim fmt v
-primSem p-lt fmt v = semP lt-info int-prim fmt v
-primSem p-le fmt v = semP le-info int-prim fmt v
-primSem p-gt fmt v = semP gt-info int-prim fmt v
-primSem p-ge fmt v = semP ge-info int-prim fmt v
-primSem p-eq fmt v = semP eq-info int-prim fmt v
-primSem p-ne fmt v = semP ne-info int-prim fmt v
-primSem p-fadd fmt v = semP fadd-info int-prim fmt v
-primSem p-fsub fmt v = semP fsub-info int-prim fmt v
-primSem p-fmul fmt v = semP fmul-info int-prim fmt v
-primSem p-fdiv fmt v = semP fdiv-info int-prim fmt v
-primSem p-i2f fmt v = semP i2f-info int-prim fmt v
+primSem p-add  fmt (a , b) = OnceWord.Width._⊕_  (int-bits fmt) a b
+primSem p-sub  fmt (a , b) = OnceWord.Width._⊖_  (int-bits fmt) a b
+primSem p-mul  fmt (a , b) = OnceWord.Width._⊗_  (int-bits fmt) a b
+primSem p-div  fmt (a , b) = OnceWord.Width._/ˢ_ (int-bits fmt) a b
+primSem p-mod  fmt (a , b) = OnceWord.Width._%ˢ_ (int-bits fmt) a b
+primSem p-neg  fmt a       = OnceWord.Width.⊝_   (int-bits fmt) a
+primSem p-lt   fmt (a , b) = truth (OnceWord.Width._<ˢ_ (int-bits fmt) a b)
+primSem p-le   fmt (a , b) = truth (not (OnceWord.Width._<ˢ_ (int-bits fmt) b a))
+primSem p-gt   fmt (a , b) = truth (OnceWord.Width._<ˢ_ (int-bits fmt) b a)
+primSem p-ge   fmt (a , b) = truth (not (OnceWord.Width._<ˢ_ (int-bits fmt) a b))
+primSem p-eq   fmt (a , b) = truth (OnceWord.Width._≡ʷ_ (int-bits fmt) a b)
+primSem p-ne   fmt (a , b) = truth (not (OnceWord.Width._≡ʷ_ (int-bits fmt) a b))
+primSem p-fadd fmt (a , b) = FA.fadd (float-format fmt) a b
+primSem p-fsub fmt (a , b) = FA.fsub (float-format fmt) a b
+primSem p-fmul fmt (a , b) = FA.fmul (float-format fmt) a b
+primSem p-fdiv fmt (a , b) = FA.fdiv (float-format fmt) a b
+primSem p-i2f  fmt a       = FA.i2f (float-format fmt) (OnceWord.Width.toℤ (int-bits fmt) a)
 
 ⟦_⟧ : ∀ {n} {Γ : Ctx n} {Ψ t A π} → Γ ⊢[ Ψ ] t ∷ A ! π → TargetNum → DefSem → Env Γ Ψ → M π ⟦ A ⟧ᵛ
 

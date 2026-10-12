@@ -21,6 +21,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.CmpOp using (cmp-word)
+open import Once.Spec.Bool using (truth)
 open import Once.Word using (Carrier)
 import Once.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; module TargetNum)
@@ -106,8 +107,7 @@ mod-semM tn (a , b) = W._%ˢ_ tn a b
 ------------------------------------------------------------------------
 
 bool : Bool → M.⟦ Unit + Unit ⟧ᵍ
-bool false = inj₁ tt
-bool true  = inj₂ tt
+bool = truth
 
 cmp-bool : TargetNum → CmpOp → M.⟦ Int ⟧ → M.⟦ Int ⟧ → Bool
 cmp-bool tn = cmp-word (int-bits tn)
