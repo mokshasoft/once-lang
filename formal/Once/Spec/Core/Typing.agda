@@ -19,9 +19,13 @@
 --     and has no term; it means the monad's unit (D250).
 --
 -- Value introductions conclude at `pure` (D069: effect-free intros are
--- grade-polymorphic — via `⊢sub-eff`). Multi-premise rules share one `π`
--- (D222: `pair` shares one π); `lam`'s body grade rides the ARROW, so a λ is
--- pure however effectful its body (D222: `curry`'s outer arrow).
+-- grade-polymorphic — via `⊢sub-eff`). A rule that RUNS premises in order
+-- takes a grade per premise and concludes at their PRODUCT, left to right
+-- (D311: grades are an ordered monoid; a guarded grade is absorbing under
+-- sequencing but not above `pure`, so sharing one grade would not do); the
+-- arms of a `case` meet at one grade, since exactly one runs. `lam`'s body
+-- grade rides the ARROW, so a λ is pure however effectful its body (D222:
+-- `curry`'s outer arrow).
 --
 -- THE GRADE IS A SEMANTIC CLAIM (D231): a `pure` term emits nothing. The two
 -- places an effect could have hidden are closed: codata carries its grade
@@ -39,7 +43,7 @@ module Once.Spec.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
@@ -72,24 +76,25 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   -- QTT application: the argument's usage scales by the arrow's grade. An
   -- erased argument (`q = Zero`) is never evaluated, so it is pure
   -- (`positionGrade`, plan 0.116).
-  ⊢app : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B f x}
-       → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π
-       → Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π
-       → Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app f x ∷ B ! π
+  -- Order: the function, the argument, the call.
+  ⊢app : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π π₁ π₂ : Purity} {A B f x}
+       → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π₁
+       → Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π₂
+       → Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app f x ∷ B ! π₁ ·p (positionGrade q π₂ ·p π)
 
   -- `let x = e in b`: the RHS scales by the bound variable's usage in `b`.
   -- At `Zero` it is not evaluated (D143), so it must be pure
   -- (`positionGrade`, plan 0.116): an unused effectful RHS is bound at `One`.
-  ⊢let : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B e b}
-       → Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π
-       → (Γ , A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π
-       → Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ q e b ∷ B ! π
+  ⊢let : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π₁ π₂ : Purity} {A B e b}
+       → Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π₁
+       → (Γ , A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π₂
+       → Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ q e b ∷ B ! positionGrade q π₁ ·p π₂
 
   ⊢unit : ∀ {n} {Γ : Ctx n} → Γ ⊢[ zeroUsage ] unit ∷ Unit ! pure
 
-  ⊢pair : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {π : Purity} {A B a b}
-        → Γ ⊢[ Ψ₁ ] a ∷ A ! π → Γ ⊢[ Ψ₂ ] b ∷ B ! π
-        → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pair a b ∷ A * B ! π
+  ⊢pair : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {π₁ π₂ : Purity} {A B a b}
+        → Γ ⊢[ Ψ₁ ] a ∷ A ! π₁ → Γ ⊢[ Ψ₂ ] b ∷ B ! π₂
+        → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pair a b ∷ A * B ! π₁ ·p π₂
   ⊢fst  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B p}
         → Γ ⊢[ Ψ ] p ∷ A * B ! π → Γ ⊢[ Ψ ] fst p ∷ A ! π
   ⊢snd  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B p}
@@ -102,11 +107,11 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   -- Exactly one arm runs, over ONE context usage `Ψ` (D276: the coproduct's
   -- copairing; an arm that uses less is sub-used, `⊢sub-use`, so the
   -- surface's per-position join is derived, not primitive).
-  ⊢case : ∀ {n} {Γ : Ctx n} {Ψs Ψ : Usage n} {qℓ qr : Quantity} {π : Purity} {A B C s l r}
-        → Γ ⊢[ Ψs ] s ∷ A + B ! π
-        → (Γ , A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π
-        → (Γ , B) ⊢[ qr ∷ Ψ ] r ∷ C ! π
-        → Γ ⊢[ Ψs +ᵘ Ψ ] case qℓ qr s l r ∷ C ! π
+  ⊢case : ∀ {n} {Γ : Ctx n} {Ψs Ψ : Usage n} {qℓ qr : Quantity} {π₁ π₂ : Purity} {A B C s l r}
+        → Γ ⊢[ Ψs ] s ∷ A + B ! π₁
+        → (Γ , A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π₂
+        → (Γ , B) ⊢[ qr ∷ Ψ ] r ∷ C ! π₂
+        → Γ ⊢[ Ψs +ᵘ Ψ ] case qℓ qr s l r ∷ C ! π₁ ·p π₂
 
   -- Ex falso: `Void` is initial.
   ⊢absurd : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A e}
@@ -119,25 +124,25 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → WellFormedF F
         → Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧T (μ-type F) ! π
         → Γ ⊢[ Ψ ] roll F t ∷ μ-type F ! π
-  ⊢fold : ∀ {n} {Γ : Ctx n} {Ψa Ψt : Usage n} {π : Purity} {F : Functor} {A alg t}
+  ⊢fold : ∀ {n} {Γ : Ctx n} {Ψa Ψt : Usage n} {π π₁ π₂ : Purity} {F : Functor} {A alg t}
         → WellFormedF F
-        → Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π
-        → Γ ⊢[ Ψt ] t ∷ μ-type F ! π
-        → Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold F alg t ∷ A ! π   -- plan 0.113 B1: ω-use of the algebra
+        → Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π₁
+        → Γ ⊢[ Ψt ] t ∷ μ-type F ! π₂
+        → Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold F alg t ∷ A ! π₁ ·p (π₂ ·p π)   -- plan 0.113 B1: ω-use of the algebra
 
   -- ν F: its coalgebra structure `out` and its (non-dependent) introduction.
   -- `unfold` builds the ν LAZILY, so building it costs only evaluating its
-  -- parts (`π′`); the coalgebra's grade `π` is RECORDED in the type (D233:
-  -- `ν-type F eff` is ν(T ∘ F)) and paid when a layer is forced.
-  ⊢unfold : ∀ {n} {Γ : Ctx n} {Ψc Ψs : Usage n} {π π′ : Purity} {F : Functor} {A c s}
+  -- parts (`π₁`, `π₂`); the coalgebra's grade `π` is RECORDED in the type
+  -- (D233: `ν-type F eff` is ν(T ∘ F)) and paid when a layer is forced.
+  ⊢unfold : ∀ {n} {Γ : Ctx n} {Ψc Ψs : Usage n} {π π₁ π₂ : Purity} {F : Functor} {A c s}
           → WellFormedF F
-          → Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! π′
-          → Γ ⊢[ Ψs ] s ∷ A ! π′
-          → Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F π ! π′   -- B1
-  ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {F : Functor} {t}
+          → Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! π₁
+          → Γ ⊢[ Ψs ] s ∷ A ! π₂
+          → Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F π ! π₁ ·p π₂   -- B1
+  ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π π₁ : Purity} {F : Functor} {t}
        → WellFormedF F
-       → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π
-       → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F π) ! π
+       → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁
+       → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F π) ! π₁ ·p π
 
   -- D226: subtyping is a COERCION term (it has content: `Void <: B` is `¡`).
   ⊢coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B t}
@@ -190,19 +195,28 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
 ⊑ᵘ-keep One  p = o≤o ⊑∷ p
 ⊑ᵘ-keep Many p = m≤m ⊑∷ p
 
-⊢case⊔ : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {π : Purity} {A B C s l r}
-       → Γ ⊢[ Ψs ] s ∷ A + B ! π
-       → (Γ , A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π
-       → (Γ , B) ⊢[ qr ∷ Ψᵣ ] r ∷ C ! π
-       → Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case qℓ qr s l r ∷ C ! π
+⊢case⊔ : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {π₁ π₂ : Purity} {A B C s l r}
+       → Γ ⊢[ Ψs ] s ∷ A + B ! π₁
+       → (Γ , A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π₂
+       → (Γ , B) ⊢[ qr ∷ Ψᵣ ] r ∷ C ! π₂
+       → Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case qℓ qr s l r ∷ C ! π₁ ·p π₂
 ⊢case⊔ {Ψₗ = Ψₗ} {Ψᵣ} {qℓ} {qr} ds dl dr =
   ⊢case ds (⊢sub-use (⊑ᵘ-keep qℓ (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) dl) (⊢sub-use (⊑ᵘ-keep qr (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) dr)
 
 -- A pure computation may sit in any position: `positionGrade q pure` is `pure`
--- at every `q` (plan 0.116). By cases, so it is the same derivation.
-⊢at-position : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A t} (q : Quantity)
-             → Γ ⊢[ Ψ ] t ∷ A ! pure → Γ ⊢[ Ψ ] t ∷ A ! positionGrade q pure
-⊢at-position Zero d = d
-⊢at-position One  d = d
-⊢at-position Many d = d
+-- at every `q` (plan 0.116), so binding a pure term, or passing one as an
+-- argument, adds nothing to the grade. By cases on `q`, so each is the rule's
+-- own derivation.
+⊢let-pure : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {π : Purity} {A B e b} (q : Quantity)
+          → Γ ⊢[ Ψ₁ ] e ∷ A ! pure → (Γ , A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π
+          → Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ q e b ∷ B ! π
+⊢let-pure Zero d₁ d₂ = ⊢let {π₁ = pure} d₁ d₂
+⊢let-pure One  d₁ d₂ = ⊢let d₁ d₂
+⊢let-pure Many d₁ d₂ = ⊢let d₁ d₂
 
+⊢app-pure : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {π : Purity} {A B f x} (q : Quantity)
+          → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! pure → Γ ⊢[ Ψ₂ ] x ∷ A ! pure
+          → Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app f x ∷ B ! π
+⊢app-pure Zero df dx = ⊢app {π₂ = pure} df dx
+⊢app-pure One  df dx = ⊢app df dx
+⊢app-pure Many df dx = ⊢app df dx

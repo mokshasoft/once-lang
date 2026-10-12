@@ -22,13 +22,12 @@ module Once.Metatheory.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 open import Data.Nat using (suc)
 open import Data.Fin using (suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; positionGrade)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.Sub using (pure⊑)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Denotation.GradedDomain using ()
-open import Once.Denotation.GradedDomainLaws using (bindM-idˡ)
+open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-≡)
 open import Once.Spec.Core.Syntax S
@@ -94,7 +93,7 @@ module _ (fmt : TargetNum) (δ : GM.DefSem) where
                 {t : Tm (suc n)} {u : Tm n}
                 (dt : (Γ , A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
                 (x : Env Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ))
-            → GM.⟦ subst-⊢ dt du ⟧ fmt δ x ≡ GM.⟦ ⊢let (⊢sub-eff (pure⊑ (positionGrade q π)) du) dt ⟧ fmt δ x
+            → GM.⟦ subst-⊢ dt du ⟧ fmt δ x ≡ GM.⟦ ⊢let-pure q du dt ⟧ fmt δ x
   let-β-sem {Γ = Γ} {Ψₜ} {Ψᵤ} {Zero} dt du x =
     trans (⟦retype⟧ (single-usage Zero Ψₜ Ψᵤ) (sub-⊢ dt (single-ty du)) fmt δ x)
       (trans (sub-sem dt (single-ty du) _) (cong (GM.⟦ dt ⟧ fmt δ) (single-env0 du x)))
@@ -102,12 +101,12 @@ module _ (fmt : TargetNum) (δ : GM.DefSem) where
     trans (⟦retype⟧ (single-usage One Ψₜ Ψᵤ) (sub-⊢ dt (single-ty du)) fmt δ x)
       (trans (sub-sem dt (single-ty du) _)
         (trans (cong (GM.⟦ dt ⟧ fmt δ) (single-env One du x (⊑ᵘ-trans (⊑ᵘ-*One Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (One *ᵘ Ψᵤ)))))
-               (sym (bindM-idˡ π _ _))))
+               (sym (>>=ᵖ-β _ _))))
   let-β-sem {Γ = Γ} {Ψₜ} {Ψᵤ} {Many} {π} dt du x =
     trans (⟦retype⟧ (single-usage Many Ψₜ Ψᵤ) (sub-⊢ dt (single-ty du)) fmt δ x)
       (trans (sub-sem dt (single-ty du) _)
         (trans (cong (GM.⟦ dt ⟧ fmt δ) (single-env Many du x (⊑ᵘ-trans (⊑ᵘ-*Many Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (Many *ᵘ Ψᵤ)))))
-               (sym (bindM-idˡ π _ _))))
+               (sym (>>=ᵖ-β _ _))))
 
 termModel : TermModel
 termModel = record

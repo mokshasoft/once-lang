@@ -40,7 +40,7 @@ open import Once.Target.Arch using (TargetNum)
 open import Once.Spec.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup; thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)
 open import Once.Spec.Core.Rename S using (ren-⊢; ren-cong; keep-extR)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; subM)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; subM; bindᵍ)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 open import Once.Denotation.GradedOps using (ana-semᵛ; fmapM)
@@ -143,6 +143,10 @@ thin-restr θ u refl u' x = thin-restrict′ θ u u' x
 bindC : ∀ {π} {X Y : Set} {a a' : M π X} {f g : X → M π Y} → a ≡ a' → (∀ v → f v ≡ g v) → bindM π a f ≡ bindM π a' g
 bindC {π} {a = a} refl h = cong (bindM π a) (extensionality h)
 
+-- … and the graded bind (D311).
+bindCᵍ : ∀ {π₁ π₂} {X Y : Set} {a a' : M π₁ X} {f g : X → M π₂ Y} → a ≡ a' → (∀ v → f v ≡ g v) → bindᵍ π₁ π₂ a f ≡ bindᵍ π₁ π₂ a' g
+bindCᵍ {π₁} {π₂} {a = a} refl h = cong (bindᵍ π₁ π₂ a) (extensionality h)
+
 -- Undo a transport.
 back : ∀ {m} {Δ : Ctx m} {U V : Usage m} (e : U ≡ V) (x : Env Δ U) → subst (Env Δ) (sym e) (subst (Env Δ) e x) ≡ x
 back e x = subst-sym-subst e
@@ -219,48 +223,48 @@ ren-sem θ (⊢lam {q = Many} {q' = One} {t = t} le d) fmt δ x =
 ren-sem θ (⊢lam {q = Many} {q' = Many} {t = t} le d) fmt δ x =
   extensionality λ a → trans (⟦⟧-substt (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d) fmt δ _) (ren-sem (keep θ) d fmt δ _)
 
-ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {π = π} df dx) fmt δ x =
+ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {π = π} {π₁ = π₁} df dx) fmt δ x =
   trans (⟦⟧-substΨ (sym E) (⊢app (ren-⊢ θ df) (ren-⊢ θ dx)) fmt δ x)
-        (bindC {π} (trans (ren-sem θ df fmt δ _)
+        (bindCᵍ {π₁} {π} (trans (ren-sem θ df fmt δ _)
                       (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) (sym (sym E)) _ x)))
                (λ vf → refl))
   where E = trans (thin-usage-+ᵘ θ Ψ₁ (Zero *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ Zero Ψ₂))
-ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} df dx) fmt δ x =
+ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} {π₁ = π₁} {π₂ = π₂} df dx) fmt δ x =
   trans (⟦⟧-substΨ (sym E) (⊢app (ren-⊢ θ df) (ren-⊢ θ dx)) fmt δ x)
-        (bindC {π} (trans (ren-sem θ df fmt δ _)
+        (bindCᵍ {π₁} (trans (ren-sem θ df fmt δ _)
                       (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) (sym (sym E)) _ x)))
-               (λ vf → bindC {π} (trans (ren-sem θ dx fmt δ _)
+               (λ vf → bindCᵍ {π₂} {π} (trans (ren-sem θ dx fmt δ _)
                                     (cong (GM.⟦ dx ⟧ fmt δ)
                                       (envEq θ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) (sym (sym E)) _ x)))
                              (λ vx → refl)))
   where E = trans (thin-usage-+ᵘ θ Ψ₁ (One *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ One Ψ₂))
-ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} df dx) fmt δ x =
+ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} {π₁ = π₁} {π₂ = π₂} df dx) fmt δ x =
   trans (⟦⟧-substΨ (sym E) (⊢app (ren-⊢ θ df) (ren-⊢ θ dx)) fmt δ x)
-        (bindC {π} (trans (ren-sem θ df fmt δ _)
+        (bindCᵍ {π₁} (trans (ren-sem θ df fmt δ _)
                       (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) (sym (sym E)) _ x)))
-               (λ vf → bindC {π} (trans (ren-sem θ dx fmt δ _)
+               (λ vf → bindCᵍ {π₂} {π} (trans (ren-sem θ dx fmt δ _)
                                     (cong (GM.⟦ dx ⟧ fmt δ)
                                       (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) (sym (sym E)) _ x)))
                              (λ vx → refl)))
   where E = trans (thin-usage-+ᵘ θ Ψ₁ (Many *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ Many Ψ₂))
 
-ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {π = π} {b = b} de db) fmt δ x =
+ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {b = b} de db) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
         (trans (⟦⟧-substt (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db) fmt δ _)
         (trans (ren-sem (keep θ) db fmt δ _)
                (cong (GM.⟦ db ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) (sym (sym E)) _ x))))
   where E = trans (thin-usage-+ᵘ θ Ψ₂ (Zero *ᵘ Ψ₁)) (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ Zero Ψ₁))
-ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} {b = b} de db) fmt δ x =
+ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π₁ = π₁} {π₂ = π₂} {b = b} de db) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
-        (bindC {π} (trans (ren-sem θ de fmt δ _)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ de fmt δ _)
                       (cong (GM.⟦ de ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) (sym (sym E)) _ x)))
                (λ v → trans (⟦⟧-substt (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db) fmt δ _)
                       (trans (ren-sem (keep θ) db fmt δ _)
                              (cong (λ z → GM.⟦ db ⟧ fmt δ (z , v)) (envEq θ (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) (sym (sym E)) _ x)))))
   where E = trans (thin-usage-+ᵘ θ Ψ₂ (One *ᵘ Ψ₁)) (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ One Ψ₁))
-ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} {b = b} de db) fmt δ x =
+ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π₁ = π₁} {π₂ = π₂} {b = b} de db) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
-        (bindC {π} (trans (ren-sem θ de fmt δ _)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ de fmt δ _)
                       (cong (GM.⟦ de ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) (sym (sym E)) _ x)))
                (λ v → trans (⟦⟧-substt (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db) fmt δ _)
                       (trans (ren-sem (keep θ) db fmt δ _)
@@ -269,20 +273,20 @@ ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} {b = b} 
 
 ren-sem {Δ = Δ} θ ⊢unit fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢unit fmt δ x
 
-ren-sem θ (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} da db) fmt δ x =
+ren-sem θ (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {π₂ = π₂} da db) fmt δ x =
   trans (⟦⟧-substΨ (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) _ fmt δ x)
-        (bindC {π} (trans (ren-sem θ da fmt δ _)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ da fmt δ _)
                       (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) (sym (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))) _ x)))
-               (λ a → bindC {π} (trans (ren-sem θ db fmt δ _)
+               (λ a → bindC {π₂} (trans (ren-sem θ db fmt δ _)
                                    (cong (GM.⟦ db ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) (sym (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))) _ x)))
                             (λ b → refl)))
 ren-sem θ (⊢fst {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢snd {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢inl {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢inr {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
-ren-sem θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π = π} {l = l} {r = r} ds dl dr) fmt δ x =
+ren-sem θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁} {π₂ = π₂} {l = l} {r = r} ds dl dr) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
-        (bindC {π} (trans (ren-sem θ ds fmt δ _)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ ds fmt δ _)
                       (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψs Ψ) (sym (sym E)) _ x)))
                (λ { (inj₁ a) → trans (⟦⟧-substt (ren-cong (keep-extR θ) l) (ren-⊢ (keep θ) dl) fmt δ _)
                                 (trans (ren-sem (keep θ) dl fmt δ _)
@@ -299,23 +303,23 @@ ren-sem θ (⊢absurd {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x)
 ren-sem θ (⊢roll {π = π} wf d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 -- plan 0.113 B1: the algebra's part is ω-scaled (left of the sum), as `app`'s
 -- argument is (right of its sum) — the same transport, mirrored.
-ren-sem θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} wf da dt) fmt δ x =
+ren-sem θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} wf da dt) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
-        (bindC {π} (trans (ren-sem θ da fmt δ _)
+        (bindCᵍ {π₁} (trans (ren-sem θ da fmt δ _)
                       (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) (sym (sym E)) _ x)))
-               (λ valg → bindC {π} (trans (ren-sem θ dt fmt δ _)
+               (λ valg → bindCᵍ {π₂} {π} (trans (ren-sem θ dt fmt δ _)
                                       (cong (GM.⟦ dt ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) (sym (sym E)) _ x)))
                                (λ _ → refl)))
   where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψa) Ψt) (cong (_+ᵘ thin-usage θ Ψt) (thin-usage-*ᵘ θ Many Ψa))
-ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π′ = π′} wf dc ds) fmt δ x =
+ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ = π₂} wf dc ds) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
-        (bindC {π′} (trans (ren-sem θ dc fmt δ _)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ dc fmt δ _)
                        (cong (GM.⟦ dc ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) (sym (sym E)) _ x)))
-               (λ clo → bindC {π′} (trans (ren-sem θ ds fmt δ _)
+               (λ clo → bindC {π₂} (trans (ren-sem θ ds fmt δ _)
                                       (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (sym (sym E)) _ x)))
                                 (λ _ → refl)))
   where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))
-ren-sem θ (⊢out {π = π} wf d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
+ren-sem θ (⊢out {π = π} {π₁ = π₁} wf d) fmt δ x = bindCᵍ {π₁} {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x
 ren-sem {Δ = Δ} θ ⊢lit-float fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-float fmt δ x

@@ -35,13 +35,12 @@ open import Once.Spec.Contract using (ISig)
 module Once.Spec.Core.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Quantity; Purity; pure; positionGrade)
+open import Once.Spec.Type.Grade using (Quantity; Purity; pure)
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.Sub using (pure⊑)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Core.Syntax S using (Tm; _[_])
-open import Once.Spec.Core.Typing S using (_⊢[_]_∷_!_; ⊢let; ⊢sub-eff)
+open import Once.Spec.Core.Typing S using (_⊢[_]_∷_!_; ⊢let-pure)
 open import Once.Spec.Core.Meaning S using (⟦_⟧; DefSem; Env)
 import Once.Spec.Core.PolyTy as PT
 import Once.Spec.Core.PolyTyping S as PP
@@ -59,7 +58,7 @@ record TermModel : Set where
               {t : Tm (ℕ.suc n)} {u : Tm n}
               (dt : (Γ , A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
               (fmt : TargetNum) (δ : DefSem) (x : Env Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ))
-          → ⟦ subst-⊢ dt du ⟧ fmt δ x ≡ ⟦ ⊢let (⊢sub-eff (pure⊑ (positionGrade q π)) du) dt ⟧ fmt δ x
+          → ⟦ subst-⊢ dt du ⟧ fmt δ x ≡ ⟦ ⊢let-pure q du dt ⟧ fmt δ x
 
     -- Typing is stable under substitution of TYPES (D303): a derivation over
     -- open types `Ty m` at kinds `Δ` gives one at every kind-respecting

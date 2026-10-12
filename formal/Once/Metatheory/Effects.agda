@@ -26,6 +26,7 @@ open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; Interp; run; then)
 open import Once.Denotation.TraceMonadLaws using (>>=T-identityʳ; >>=T-assoc; run-bind)
 open import Once.Denotation.GradedDomain using (M; returnM; bindM; subM; toT; _>>=ᵖ_)
+open import Once.Metatheory.Coherence.Relation using (toT-bindᵍ)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
 
 M-identityʳ : ∀ π {X : Set} (m : M π X) → bindM π m (returnM π) ≡ m
@@ -70,6 +71,7 @@ effects = record
   ; subM-bind   = subM-bind
   ; toT-return  = toT-return
   ; toT-bind    = toT-bind
+  ; toT-bindᵍ   = toT-bindᵍ
   ; run-return  = run-return
   ; run-bind    = λ ι h m f → run-bind ι h m f
   }

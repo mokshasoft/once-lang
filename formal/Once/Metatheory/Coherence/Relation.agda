@@ -27,11 +27,11 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; Zero; One; Many; _·p_)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Obs; Same)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT; bindM; returnM; subM)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT; bindM; returnM; subM; bindᵍ)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; fmapT)
 
@@ -83,6 +83,12 @@ TreeEq-∀ h n = TreeEq-map (λ r → r n) h
 toT-bindM : ∀ π {X Y} (m : M π X) (k : X → M π Y) → toT π (bindM π m k) ≡ (toT π m >>=T λ x → toT π (k x))
 toT-bindM pure m k = cong ret (>>=ᵖ-β m k)
 toT-bindM eff  m k = refl
+
+-- The graded bind (D311) erases to `T`'s.
+toT-bindᵍ : ∀ π₁ π₂ {X Y} (m : M π₁ X) (k : X → M π₂ Y)
+          → toT (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≡ (toT π₁ m >>=T λ x → toT π₂ (k x))
+toT-bindᵍ pure π₂ m k = cong (toT π₂) (>>=ᵖ-β m k)
+toT-bindᵍ eff  π₂ m k = refl
 
 toT-returnM : ∀ π {X} (x : X) → toT π (returnM π x) ≡ ret x
 toT-returnM pure x = refl

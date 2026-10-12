@@ -48,7 +48,7 @@ open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.Subst S using (SubTy; tailᴿ; ext-ty; retype)
 open SubTy using (row)
 import Once.Spec.Core.Meaning S as GM
-open import Once.Metatheory.CoreRenameSem S using (wk-sem; bindC)
+open import Once.Metatheory.CoreRenameSem S using (wk-sem; bindC; bindCᵍ)
 open import Once.Denotation.GradedDomain using (bindM; subM)
 open import Once.Denotation.GradedOps using (fmapM; ana-semᵛ)
 open import Once.Spec.Core.Subst S using (sub-⊢)
@@ -292,61 +292,61 @@ module Rows (fmt : TargetNum) (δ : GM.DefSem) where
     sub-sem (⊢lam {q = Many} {q' = One}  {A = A} le d) h x = extensionality λ a → ihb′ A One d h x a
     sub-sem (⊢lam {q = Many} {q' = Many} {A = A} le d) h x = extensionality λ a → ihb′ A Many d h x a
 
-    sub-sem {Φ = Φ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {π = π} df dx) h x =
-      trans (⟦retype⟧ (sym E) _ fmt δ x) (bindC {π} (ih df h _ (sym (sym E)) _ x) (λ _ → refl))
+    sub-sem {Φ = Φ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {π = π} {π₁ = π₁} df dx) h x =
+      trans (⟦retype⟧ (sym E) _ fmt δ x) (bindCᵍ {π₁} {π} (ih df h _ (sym (sym E)) _ x) (λ _ → refl))
       where E = trans (⋆-+ Ψ₁ (Zero *ᵘ Ψ₂) Φ) (cong ((Ψ₁ ⋆ Φ) +ᵘ_) (⋆-* Zero Ψ₂ Φ))
-    sub-sem {Φ = Φ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} df dx) h x =
+    sub-sem {Φ = Φ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} {π₁ = π₁} {π₂ = π₂} df dx) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
-            (bindC {π} (ih df h _ (sym (sym E)) _ x) (λ vf → bindC {π} (ih dx h _ (sym (sym E)) _ x) (λ _ → refl)))
+            (bindCᵍ {π₁} (ih df h _ (sym (sym E)) _ x) (λ vf → bindCᵍ {π₂} {π} (ih dx h _ (sym (sym E)) _ x) (λ _ → refl)))
       where E = trans (⋆-+ Ψ₁ (One *ᵘ Ψ₂) Φ) (cong ((Ψ₁ ⋆ Φ) +ᵘ_) (⋆-* One Ψ₂ Φ))
-    sub-sem {Φ = Φ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} df dx) h x =
+    sub-sem {Φ = Φ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} {π₁ = π₁} {π₂ = π₂} df dx) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
-            (bindC {π} (ih df h _ (sym (sym E)) _ x) (λ vf → bindC {π} (ih dx h _ (sym (sym E)) _ x) (λ _ → refl)))
+            (bindCᵍ {π₁} (ih df h _ (sym (sym E)) _ x) (λ vf → bindCᵍ {π₂} {π} (ih dx h _ (sym (sym E)) _ x) (λ _ → refl)))
       where E = trans (⋆-+ Ψ₁ (Many *ᵘ Ψ₂) Φ) (cong ((Ψ₁ ⋆ Φ) +ᵘ_) (⋆-* Many Ψ₂ Φ))
 
     sub-sem {Φ = Φ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {A = A} de db) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x) (ihb0 A db h _ (sym (sym E)) _ x)
       where E = trans (⋆-+ Ψ₂ (Zero *ᵘ Ψ₁) Φ) (cong ((Ψ₂ ⋆ Φ) +ᵘ_) (⋆-* Zero Ψ₁ Φ))
-    sub-sem {Φ = Φ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} {A = A} de db) h x =
+    sub-sem {Φ = Φ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π₁ = π₁} {π₂ = π₂} {A = A} de db) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
-            (bindC {π} (ih de h _ (sym (sym E)) _ x) (λ v → ihb A One db h _ (sym (sym E)) _ x v))
+            (bindCᵍ {π₁} {π₂} (ih de h _ (sym (sym E)) _ x) (λ v → ihb A One db h _ (sym (sym E)) _ x v))
       where E = trans (⋆-+ Ψ₂ (One *ᵘ Ψ₁) Φ) (cong ((Ψ₂ ⋆ Φ) +ᵘ_) (⋆-* One Ψ₁ Φ))
-    sub-sem {Φ = Φ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} {A = A} de db) h x =
+    sub-sem {Φ = Φ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π₁ = π₁} {π₂ = π₂} {A = A} de db) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
-            (bindC {π} (ih de h _ (sym (sym E)) _ x) (λ v → ihb A Many db h _ (sym (sym E)) _ x v))
+            (bindCᵍ {π₁} {π₂} (ih de h _ (sym (sym E)) _ x) (λ v → ihb A Many db h _ (sym (sym E)) _ x v))
       where E = trans (⋆-+ Ψ₂ (Many *ᵘ Ψ₁) Φ) (cong ((Ψ₂ ⋆ Φ) +ᵘ_) (⋆-* Many Ψ₁ Φ))
 
     sub-sem {Δ = Δ} {Φ = Φ} ⊢unit h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) ⊢unit fmt δ x
 
-    sub-sem {Φ = Φ} (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} da db) h x =
+    sub-sem {Φ = Φ} (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {π₂ = π₂} da db) h x =
       trans (⟦retype⟧ (sym (⋆-+ Ψ₁ Ψ₂ Φ)) _ fmt δ x)
-            (bindC {π} (ih da h _ (sym (sym (⋆-+ Ψ₁ Ψ₂ Φ))) _ x)
-                   (λ a → bindC {π} (ih db h _ (sym (sym (⋆-+ Ψ₁ Ψ₂ Φ))) _ x) (λ _ → refl)))
+            (bindCᵍ {π₁} {π₂} (ih da h _ (sym (sym (⋆-+ Ψ₁ Ψ₂ Φ))) _ x)
+                   (λ a → bindC {π₂} (ih db h _ (sym (sym (⋆-+ Ψ₁ Ψ₂ Φ))) _ x) (λ _ → refl)))
     sub-sem (⊢fst {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢snd {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢inl {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢inr {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
 
-    sub-sem {Φ = Φ} (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π = π} {A = A} {B = B} ds dl dr) h x =
+    sub-sem {Φ = Φ} (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁} {π₂ = π₂} {A = A} {B = B} ds dl dr) h x =
       trans (⟦retype⟧ (sym (⋆-+ Ψs Ψ Φ)) _ fmt δ x)
-            (bindC {π} (ih ds h _ (sym (sym (⋆-+ Ψs Ψ Φ))) _ x)
+            (bindCᵍ {π₁} {π₂} (ih ds h _ (sym (sym (⋆-+ Ψs Ψ Φ))) _ x)
                    (λ { (inj₁ a) → ihb A qℓ dl h _ (sym (sym (⋆-+ Ψs Ψ Φ))) _ x a
                       ; (inj₂ b) → ihb B qr dr h _ (sym (sym (⋆-+ Ψs Ψ Φ))) _ x b }))
 
     sub-sem (⊢absurd {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢roll {π = π} wf d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     -- plan 0.113 B1: the algebra's part is ω-scaled; `⋆` is linear (`⋆-*`).
-    sub-sem {Φ = Φ} (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} wf da dt) h x =
+    sub-sem {Φ = Φ} (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} wf da dt) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
-            (bindC {π} (ih da h _ (sym (sym E)) _ x)
-                   (λ valg → bindC {π} (ih dt h _ (sym (sym E)) _ x) (λ _ → refl)))
+            (bindCᵍ {π₁} (ih da h _ (sym (sym E)) _ x)
+                   (λ valg → bindCᵍ {π₂} {π} (ih dt h _ (sym (sym E)) _ x) (λ _ → refl)))
       where E = trans (⋆-+ (Many *ᵘ Ψa) Ψt Φ) (cong (_+ᵘ (Ψt ⋆ Φ)) (⋆-* Many Ψa Φ))
-    sub-sem {Φ = Φ} (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π′ = π′} wf dc ds) h x =
+    sub-sem {Φ = Φ} (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ = π₂} wf dc ds) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
-            (bindC {π′} (ih dc h _ (sym (sym E)) _ x)
-                   (λ clo → bindC {π′} (ih ds h _ (sym (sym E)) _ x) (λ _ → refl)))
+            (bindCᵍ {π₁} {π₂} (ih dc h _ (sym (sym E)) _ x)
+                   (λ clo → bindC {π₂} (ih ds h _ (sym (sym E)) _ x) (λ _ → refl)))
       where E = trans (⋆-+ (Many *ᵘ Ψc) Ψs Φ) (cong (_+ᵘ (Ψs ⋆ Φ)) (⋆-* Many Ψc Φ))
-    sub-sem (⊢out {π = π} wf d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
+    sub-sem (⊢out {π = π} {π₁ = π₁} wf d) h x = bindCᵍ {π₁} {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢coerce {π = π} p d) h x = cong (fmapM π _) (sub-sem d h x)
     sub-sem {Δ = Δ} {Φ = Φ} ⊢lit-int h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) ⊢lit-int fmt δ x
     sub-sem {Δ = Δ} {Φ = Φ} ⊢lit-float h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) ⊢lit-float fmt δ x

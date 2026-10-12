@@ -18,9 +18,9 @@ open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; subst; cong; cong₂)
 
-open import Once.Spec.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff)
+open import Once.Spec.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff; _·p_)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (⊑-pe; pure⊑)
+open import Once.Spec.Type.Sub using (⊑-pe; pure⊑; _⊑π_)
 open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Surface.Thinning using (thin-usage-refl)
@@ -92,27 +92,32 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 -- reaches it (compose's `g` sits under `f`'s argument: `Many`).
 ------------------------------------------------------------------------
 
-⊢composeᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π : Purity} {f g}
-          → Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π ] C ! pure
-          → Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] B ! pure
+-- D311: `g` runs first, then `f`, so the composite's body is at `π₂ ·p π₁`,
+-- and its arrow at any grade above that.
+⊢composeᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π₁ π₂ π : Purity} {f g}
+          → π₂ ·p π₁ ⊑π π
+          → Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π₁ ] C ! pure
+          → Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π₂ ] B ! pure
           → Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] composeᶜ A π f g ∷ A ⇒[ mk-kind Many π ] C ! pure
-⊢composeᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} df dg =
+⊢composeᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} le df dg =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many)))
         (⊢let df (⊢let (wk-⊢′ _ dg)
-          (⊢lam refl (⊢app (⊢var′ (suc (suc zero)) π) (⊢app (⊢var′ (suc zero) π) (⊢var′ zero π))))))
+          (⊢lam refl (⊢sub-eff le (⊢app (⊢var (suc (suc zero))) (⊢app (⊢var (suc zero)) (⊢var zero)))))))
 
-⊢pairᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π : Purity} {f g}
-       → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure
-       → Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] C ! pure
+-- D311: `f` runs first, then `g`: the body is at `π₁ ·p π₂`.
+⊢pairᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π₁ π₂ π : Purity} {f g}
+       → π₁ ·p π₂ ⊑π π
+       → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π₁ ] B ! pure
+       → Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π₂ ] C ! pure
        → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pairᶜ A π f g ∷ A ⇒[ mk-kind Many π ] (B * C) ! pure
-⊢pairᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg =
+⊢pairᶜ {Γ = Γ} {Ψ₁} {Ψ₂} le df dg =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (trans (arms One Ψ₁ Ψ₂ (trans (cong₂ _+ᵘ_ (z+qz Many) (z+qz Many)) (+ᵘ-identityˡ zeroUsage)))
                (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂)))
         (⊢let df (⊢let (wk-⊢′ _ dg)
-          (⊢lam refl (⊢pair (⊢app (⊢var′ (suc (suc zero)) π) (⊢var′ zero π))
-                            (⊢app (⊢var′ (suc zero) π) (⊢var′ zero π))))))
+          (⊢lam refl (⊢sub-eff le (⊢pair (⊢app (⊢var (suc (suc zero))) (⊢var zero))
+                                         (⊢app (⊢var (suc zero)) (⊢var zero)))))))
 
 ⊢caseᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π : Purity} {f g}
        → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] C ! pure
@@ -124,9 +129,9 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
                                       (+ᵘ-identityˡ zeroUsage)))
                (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂)))
         (⊢let df (⊢let (wk-⊢′ _ dg)
-          (⊢lam refl (⊢case⊔ (⊢var′ zero π)
-                            (⊢app (⊢var′ (suc (suc (suc zero))) π) (⊢var′ zero π))
-                            (⊢app (⊢var′ (suc (suc zero)) π) (⊢var′ zero π))))))
+          (⊢lam refl (⊢case⊔ (⊢var zero)
+                            (⊢app (⊢var (suc (suc (suc zero)))) (⊢var zero))
+                            (⊢app (⊢var (suc (suc zero))) (⊢var zero))))))
 
 ⊢curryᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C : Type} {π₀ π : Purity} {f}
         → Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure
@@ -137,7 +142,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
                            (*ᵘ-identityˡ Ψ))
                (+ᵘ-identityˡ Ψ))
         (⊢let df (⊢lam refl (⊢sub-eff (pure⊑ π₀)
-          (⊢lam refl (⊢app (⊢var′ (suc (suc zero)) π) (⊢pair (⊢var′ (suc zero) π) (⊢var′ zero π)))))))
+          (⊢lam refl (⊢app (⊢var (suc (suc zero))) (⊢pair (⊢var (suc zero)) (⊢var zero)))))))
 
 ⊢cataᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π : Purity} {alg}
        → WellFormedF F
@@ -149,7 +154,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
                (+ᵘ-identityˡ (Many *ᵘ Ψ)))
-        (⊢let da (⊢lam refl (⊢fold wf (⊢var′ (suc zero) π) (⊢var′ zero π))))
+        (⊢let da (⊢lam refl (⊢fold wf (⊢var (suc zero)) (⊢var zero))))
 
 ⊢anaᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π : Purity} {c}
       → WellFormedF F
@@ -157,7 +162,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
       → Γ ⊢[ Many *ᵘ Ψ ] anaᶜ F A π₀ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
 ⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} wf dc =
   ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
-                   (⊢unfold wf (⊢sub-eff (pure⊑ π₀) (wk-⊢′ A dc)) (⊢var′ zero π₀)))
+                   (⊢sub-eff (pure⊑ π₀) (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))))
 
 ------------------------------------------------------------------------
 -- The remaining closed combinators and the suspensions.

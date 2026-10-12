@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One; _·p_)
 open import Once.Spec.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)
@@ -122,18 +122,18 @@ tsubst σ r (⊢absurd e) = ⊢absurd (tsubst σ r e)
 tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢roll {F = F} {t = t} wf d) =
   ⊢roll (wf-⟨⟩ r wf)
     (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟨ σ ⟩ₜ ∷ X ! π) (⟦⟧F-⟨⟩ F (μ-type F) σ) (tsubst σ r d))
-tsubst {Δ′ = Δ′} {Γ = Γ} {π = π} σ r (⊢fold {Ψa = Ψa} {F = F} {A = A} {alg = alg} wf a t) =
+tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F} {A = A} {alg = alg} wf a t) =
   ⊢fold (wf-⟨⟩ r wf)
-    (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψa ] alg ⟨ σ ⟩ₜ ∷ X ⇒[ mk-kind Many π ] A ⟨ σ ⟩ ! π) (⟦⟧F-⟨⟩ F A σ)
+    (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψa ] alg ⟨ σ ⟩ₜ ∷ X ⇒[ mk-kind Many π ] A ⟨ σ ⟩ ! π₁) (⟦⟧F-⟨⟩ F A σ)
            (tsubst σ r a))
     (tsubst σ r t)
-tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {π = π} {π′ = π′} {F = F} {A = A} {c = c} wf k x) =
+tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {π = π} {π₁ = π₁} {F = F} {A = A} {c = c} wf k x) =
   ⊢unfold (wf-⟨⟩ r wf)
-    (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψc ] c ⟨ σ ⟩ₜ ∷ A ⟨ σ ⟩ ⇒[ mk-kind Many π ] X ! π′) (⟦⟧F-⟨⟩ F A σ)
+    (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψc ] c ⟨ σ ⟩ₜ ∷ A ⟨ σ ⟩ ⇒[ mk-kind Many π ] X ! π₁) (⟦⟧F-⟨⟩ F A σ)
            (tsubst σ r k))
     (tsubst σ r x)
-tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {F = F} {t = t} wf d) =
-  subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] out (t ⟨ σ ⟩ₜ) ∷ X ! π) (sym (⟦⟧F-⟨⟩ F (ν-type F π) σ))
+tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
+  subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] out (t ⟨ σ ⟩ₜ) ∷ X ! π₁ ·p π) (sym (⟦⟧F-⟨⟩ F (ν-type F π) σ))
     (⊢out (wf-⟨⟩ r wf) (tsubst σ r d))
 tsubst σ r (⊢coerce p d) = ⊢coerce (<:ₚ-⟨⟩ σ p) (tsubst σ r d)
 tsubst σ r ⊢lit-int = ⊢lit-int

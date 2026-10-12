@@ -46,7 +46,7 @@ open import Once.Spec.Type using (Type; Int; Float; _*_; _⇒[_]_)
 open import Once.Spec.Type.Poly using (Ground; extractGround)
 open import Once.Spec.Type.Instance using (KindedInstance)
 open import Once.Spec.Type.WellFormed using (RigidFree)
-open import Once.Spec.Type.Sub using (pure⊑; _<:_; sub-arr)
+open import Once.Spec.Type.Sub using (pure⊑; _<:_; sub-arr; ·p-diag)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
@@ -181,10 +181,10 @@ elabᶜ V t-terminal-morph-check = terminalᶜ _ _ , ⊢terminalᶜ
 elabᶜ V t-initial-morph-check  = initialᶜ _ _ , ⊢initialᶜ
 elabᶜ V t-inl-morph-check      = inlᶜ _ _ _ , ⊢inlᶜ
 elabᶜ V t-inr-morph-check      = inrᶜ _ _ _ , ⊢inrᶜ
-elabᶜ V (t-compose-check-g dg df)   = lift2 (composeᶜ _ _) ⊢composeᶜ (elabᶜ V df) (elabᵈ V dg)
-elabᶜ V (t-compose-check-f wf p dg) = lift2 (composeᶜ _ _) ⊢composeᶜ (coerceE p (elabᵢ V wf)) (elabᶜ V dg)
+elabᶜ V (t-compose-check-g dg df)   = lift2 (composeᶜ _ _) (⊢composeᶜ (·p-diag _)) (elabᶜ V df) (elabᵈ V dg)
+elabᶜ V (t-compose-check-f wf p dg) = lift2 (composeᶜ _ _) (⊢composeᶜ (·p-diag _)) (coerceE p (elabᵢ V wf)) (elabᶜ V dg)
 elabᶜ V (t-case-copair-check df dg) = lift2 (caseᶜ _ _ _) ⊢caseᶜ (elabᶜ V df) (elabᶜ V dg)
-elabᶜ V (t-pair-morph-check df dg)  = lift2 (pairᶜ _ _) ⊢pairᶜ (elabᶜ V df) (elabᶜ V dg)
+elabᶜ V (t-pair-morph-check df dg)  = lift2 (pairᶜ _ _) (⊢pairᶜ (·p-diag _)) (elabᶜ V df) (elabᶜ V dg)
 elabᶜ V (t-curry-check df)          = lift1 (curryᶜ _ _ _ _) ⊢curryᶜ (elabᶜ V df)
 elabᶜ V (t-cata-check wf dalg)      = lift1 (cataᶜ _ _) (⊢cataᶜ wf) (elabᶜ V dalg)
 elabᶜ V (t-ana-check wf dc)         = lift1 (anaᶜ _ _ _) (⊢anaᶜ wf) (elabᶜ V dc)
@@ -212,7 +212,7 @@ elabᵢ V (t-annot _ d)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
 elabᵢ V (t-neg d)         = lift1 (prim p-neg) (⊢prim p-neg) (elabᵢ V d)
 elabᵢ V (t-neg-float i f l p) = lit (lit-float (negate (decimalOf i f l))) , ⊢lit-float
-elabᵢ V (t-let d₁ d₂)     = let (e , ⊢e) = elabᵢ V d₁ ; (b , ⊢b) = elabᵢ V d₂ in let′ _ e b , ⊢let (⊢at-position _ ⊢e) ⊢b
+elabᵢ V (t-let d₁ d₂)     = let (e , ⊢e) = elabᵢ V d₁ ; (b , ⊢b) = elabᵢ V d₂ in let′ _ e b , ⊢let-pure _ ⊢e ⊢b
 elabᵢ V (t-case ds dl dr) =
   let (s , ⊢s) = elabᵢ V ds ; (l , ⊢l) = elabᵢ V dl ; (r , ⊢r) = elabᵢ V dr
   in case _ _ s l r , ⊢case⊔ ⊢s ⊢l ⊢r
@@ -279,7 +279,7 @@ elabᵢ V (t-apply-app-infer d)     = appC ⊢applyᶜ (elabᵢ V d)
 elabᵢ V (t-apply-eff-app-infer d) = appC ⊢applyEffᶜ (elabᵢ V d)
 elabᵢ V (t-Out-app-infer wf refl d)     = appC (⊢outᶜ wf) (elabᵢ V d)
 elabᵢ V (t-Out-eff-app-infer wf refl d) = appC (⊢outEffᶜ wf) (elabᵢ V d)
-elabᵢ V (t-app _ df dx)    = lift2 app (λ f x → ⊢app f (⊢at-position _ x)) (elabᵢ V df) (elabᶜ V dx)
+elabᵢ V (t-app _ df dx)    = lift2 app (⊢app-pure _) (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-effApp _ df dx) = lift2 effAppᶜ ⊢effAppᶜ (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-app-spine _ dx df) = lift2 app ⊢app (elabᵈ V df) (elabᵢ V dx)
 
@@ -287,12 +287,12 @@ elabᵈ V (d-infer {B = B} w a g) = coerceE (sub-arr a (<:-refl B) g) (elabᵢ V
 elabᵈ V (d-poly {A = A} {B = B} _ _ lp ng _ _ ins g) =
   coerceE (sub-arr (<:-refl A) (<:-refl B) g) (refE (entry V lp) (inst V lp ng ins))
 elabᵈ V (d-lam {π = π} ≤p d) = let (b , ⊢b) = elabᵢ V d in lam _ _ _ b , ⊢lam ≤p (⊢sub-eff (pure⊑ π) ⊢b)
-elabᵈ V (d-compose dg df)    = lift2 (composeᶜ _ _) ⊢composeᶜ (elabᵈ V df) (elabᵈ V dg)
+elabᵈ V (d-compose dg df)    = lift2 (composeᶜ _ _) (⊢composeᶜ (·p-diag _)) (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V d-id       = idᶜ _ _ , ⊢idᶜ
 elabᵈ V d-fst      = fstᶜ _ _ _ , ⊢fstᶜ
 elabᵈ V d-snd      = sndᶜ _ _ _ , ⊢sndᶜ
 elabᵈ V d-terminal = terminalᶜ _ _ , ⊢terminalᶜ
 elabᵈ V d-initial  = initialᶜ _ _ , ⊢initialᶜ
 elabᵈ V (d-case df dg) = lift2 (caseᶜ _ _ _) ⊢caseᶜ (elabᵈ V df) (elabᵈ V dg)
-elabᵈ V (d-pair df dg) = lift2 (pairᶜ _ _) ⊢pairᶜ (elabᵈ V df) (elabᵈ V dg)
+elabᵈ V (d-pair df dg) = lift2 (pairᶜ _ _) (⊢pairᶜ (·p-diag _)) (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V (d-cata wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ wf) (elabᵢ V dalg)

@@ -98,27 +98,27 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
          → tr eΓ et eF (GT.⊢lam le d) ≡ GT.⊢lam le (tr eΓA eb eB d)
   tr-lam {eΓ = refl} {refl} {refl} refl refl refl d = refl
 
-  tr-app : ∀ {Ψ₁ Ψ₂ q π A' A B' B} {f' f x' x : G.Tm n}
+  tr-app : ∀ {Ψ₁ Ψ₂ q π π₁ π₂ A' A B' B} {f' f x' x : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.app f' x' ≡ G.app f x} {eB : B' ≡ B}
              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind q π ] B') ≡ (A T.⇒[ T.mk-kind q π ] B)) (ex : x' ≡ x) (eA : A' ≡ A)
-             (df : Γ' ⊢[ Ψ₁ ] f' ∷ A' T.⇒[ T.mk-kind q π ] B' ! π) (dx : Γ' ⊢[ Ψ₂ ] x' ∷ A' ! T.positionGrade q π)
+             (df : Γ' ⊢[ Ψ₁ ] f' ∷ A' T.⇒[ T.mk-kind q π ] B' ! π₁) (dx : Γ' ⊢[ Ψ₂ ] x' ∷ A' ! T.positionGrade q π₂)
          → tr eΓ et eB (GT.⊢app df dx) ≡ GT.⊢app (tr eΓ ef eF df) (tr eΓ ex eA dx)
   tr-app {eΓ = refl} {refl} {refl} refl refl refl refl df dx = refl
 
-  tr-let : ∀ {Ψ₁ Ψ₂ q π A' A B' B} {e' e : G.Tm n} {b' b : G.Tm (suc n)}
+  tr-let : ∀ {Ψ₁ Ψ₂ q π₁ π₂ A' A B' B} {e' e : G.Tm n} {b' b : G.Tm (suc n)}
              {eΓ : Γ' ≡ Γ} {et : G.let′ q e' b' ≡ G.let′ q e b} {eB : B' ≡ B}
              (ee : e' ≡ e) (eA : A' ≡ A) (eΓA : (Γ' C., A') ≡ (Γ C., A)) (eb : b' ≡ b) (eB′ : B' ≡ B)
-             (de : Γ' ⊢[ Ψ₁ ] e' ∷ A' ! T.positionGrade q π) (db : (Γ' C., A') ⊢[ q ∷ Ψ₂ ] b' ∷ B' ! π)
+             (de : Γ' ⊢[ Ψ₁ ] e' ∷ A' ! T.positionGrade q π₁) (db : (Γ' C., A') ⊢[ q ∷ Ψ₂ ] b' ∷ B' ! π₂)
          → tr eΓ et eB (GT.⊢let de db) ≡ GT.⊢let (tr eΓ ee eA de) (tr eΓA eb eB′ db)
   tr-let {eΓ = refl} {refl} {refl} refl refl refl refl refl de db = refl
 
   tr-unit : ∀ {eΓ : Γ' ≡ Γ} {et : G.unit ≡ G.unit} {eA : T.Unit ≡ T.Unit} → tr eΓ et eA GT.⊢unit ≡ GT.⊢unit
   tr-unit {eΓ = refl} {refl} {refl} = refl
 
-  tr-pair : ∀ {Ψ₁ Ψ₂ π A' A B' B} {a' a b' b : G.Tm n}
+  tr-pair : ∀ {Ψ₁ Ψ₂ π₁ π₂ A' A B' B} {a' a b' b : G.Tm n}
               {eΓ : Γ' ≡ Γ} {et : G.pair a' b' ≡ G.pair a b} {eP : (A' T.* B') ≡ (A T.* B)}
               (ea : a' ≡ a) (eA : A' ≡ A) (eb : b' ≡ b) (eB : B' ≡ B)
-              (da : Γ' ⊢[ Ψ₁ ] a' ∷ A' ! π) (db : Γ' ⊢[ Ψ₂ ] b' ∷ B' ! π)
+              (da : Γ' ⊢[ Ψ₁ ] a' ∷ A' ! π₁) (db : Γ' ⊢[ Ψ₂ ] b' ∷ B' ! π₂)
           → tr eΓ et eP (GT.⊢pair da db) ≡ GT.⊢pair (tr eΓ ea eA da) (tr eΓ eb eB db)
   tr-pair {eΓ = refl} {refl} {refl} refl refl refl refl da db = refl
 
@@ -146,13 +146,13 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
          → tr eΓ et eS (GT.⊢inr d) ≡ GT.⊢inr (tr eΓ eb eB d)
   tr-inr {eΓ = refl} {refl} {refl} refl refl d = refl
 
-  tr-case : ∀ {Ψs Ψ qℓ qr π A' A B' B C' C} {s' s : G.Tm n} {l' l r' r : G.Tm (suc n)}
+  tr-case : ∀ {Ψs Ψ qℓ qr π₁ π₂ A' A B' B C' C} {s' s : G.Tm n} {l' l r' r : G.Tm (suc n)}
               {eΓ : Γ' ≡ Γ} {et : G.case qℓ qr s' l' r' ≡ G.case qℓ qr s l r} {eC : C' ≡ C}
               (es : s' ≡ s) (eS : (A' T.+ B') ≡ (A T.+ B))
               (eΓA : (Γ' C., A') ≡ (Γ C., A)) (el : l' ≡ l) (eC₁ : C' ≡ C)
               (eΓB : (Γ' C., B') ≡ (Γ C., B)) (er : r' ≡ r) (eC₂ : C' ≡ C)
-              (ds : Γ' ⊢[ Ψs ] s' ∷ A' T.+ B' ! π)
-              (dl : (Γ' C., A') ⊢[ qℓ ∷ Ψ ] l' ∷ C' ! π) (dr : (Γ' C., B') ⊢[ qr ∷ Ψ ] r' ∷ C' ! π)
+              (ds : Γ' ⊢[ Ψs ] s' ∷ A' T.+ B' ! π₁)
+              (dl : (Γ' C., A') ⊢[ qℓ ∷ Ψ ] l' ∷ C' ! π₂) (dr : (Γ' C., B') ⊢[ qr ∷ Ψ ] r' ∷ C' ! π₂)
           → tr eΓ et eC (GT.⊢case ds dl dr) ≡ GT.⊢case (tr eΓ es eS ds) (tr eΓA el eC₁ dl) (tr eΓB er eC₂ dr)
   tr-case {eΓ = refl} {refl} {refl} refl refl refl refl refl refl refl refl ds dl dr = refl
 
@@ -170,29 +170,29 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-roll {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl d
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-fold : ∀ {Ψa Ψt π F' F A' A} {a' a t' t : G.Tm n} {wf' wf}
+  tr-fold : ∀ {Ψa Ψt π π₁ π₂ F' F A' A} {a' a t' t : G.Tm n} {wf' wf}
               {eΓ : Γ' ≡ Γ} {et : G.fold F' a' t' ≡ G.fold F a t} {eA : A' ≡ A}
               (eF : F' ≡ F) (ea : a' ≡ a) (eAl : (T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A') ≡ (T.⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A))
               (eA′ : A' ≡ A) (ed : t' ≡ t) (eM : T.μ-type F' ≡ T.μ-type F)
-              (da : Γ' ⊢[ Ψa ] a' ∷ T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A' ! π) (dt : Γ' ⊢[ Ψt ] t' ∷ T.μ-type F' ! π)
+              (da : Γ' ⊢[ Ψa ] a' ∷ T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A' ! π₁) (dt : Γ' ⊢[ Ψt ] t' ∷ T.μ-type F' ! π₂)
           → tr eΓ et eA (GT.⊢fold wf' da dt) ≡ GT.⊢fold wf (tr eΓ ea eAl da) (tr eΓ ed eM dt)
   tr-fold {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl da dt
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-unfold : ∀ {Ψc Ψs π π′ F' F A' A} {c' c s' s : G.Tm n} {wf' wf}
+  tr-unfold : ∀ {Ψc Ψs π π₁ π₂ F' F A' A} {c' c s' s : G.Tm n} {wf' wf}
                 {eΓ : Γ' ≡ Γ} {et : G.unfold F' c' s' ≡ G.unfold F c s} {eN : T.ν-type F' π ≡ T.ν-type F π}
                 (eF : F' ≡ F) (eA : A' ≡ A) (ec : c' ≡ c)
                 (eCo : (A' T.⇒[ T.mk-kind T.Many π ] T.⟦ F' ⟧T A') ≡ (A T.⇒[ T.mk-kind T.Many π ] T.⟦ F ⟧T A))
                 (es : s' ≡ s) (eA′ : A' ≡ A)
-                (dc : Γ' ⊢[ Ψc ] c' ∷ A' T.⇒[ T.mk-kind T.Many π ] T.⟦ F' ⟧T A' ! π′) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π′)
+                (dc : Γ' ⊢[ Ψc ] c' ∷ A' T.⇒[ T.mk-kind T.Many π ] T.⟦ F' ⟧T A' ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
             → tr eΓ et eN (GT.⊢unfold wf' dc ds) ≡ GT.⊢unfold wf (tr eΓ ec eCo dc) (tr eΓ es eA′ ds)
   tr-unfold {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl dc ds
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-out : ∀ {Ψ π F' F} {t' t : G.Tm n} {wf' wf}
+  tr-out : ∀ {Ψ π π₁ F' F} {t' t : G.Tm n} {wf' wf}
              {eΓ : Γ' ≡ Γ} {et : G.out t' ≡ G.out t} {eX : T.⟦ F' ⟧T (T.ν-type F' π) ≡ T.⟦ F ⟧T (T.ν-type F π)}
              (eF : F' ≡ F) (ed : t' ≡ t) (eN : T.ν-type F' π ≡ T.ν-type F π)
-             (d : Γ' ⊢[ Ψ ] t' ∷ T.ν-type F' π ! π)
+             (d : Γ' ⊢[ Ψ ] t' ∷ T.ν-type F' π ! π₁)
          → tr eΓ et eX (GT.⊢out wf' d) ≡ GT.⊢out wf (tr eΓ ed eN d)
   tr-out {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl d
     rewrite WellFormedF-irrelevant wf' wf = refl

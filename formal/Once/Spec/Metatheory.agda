@@ -25,7 +25,8 @@
 --     with it, the domain-given mode is exact.
 --   * `effects` — the meaning's effect structure (plan 0.112 E, C4): each
 --     grade's `M π` is a monad, subeffecting `subM` and the erasure `toT` to
---     the interaction tree are monad morphisms, and the observation `run`
+--     the interaction tree are monad morphisms, the graded bind erases to
+--     `T`'s (D311), and the observation `run`
 --     respects return and bind (`then` threads the history).
 --   * `coherence` — the core meaning is a function of the JUDGMENT, not of the
 --     derivation chosen for it (plan 0.116; `Spec.Core.Coherence`).
@@ -56,7 +57,7 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.TermModel using (TermModel) public
 open import Once.Spec.Core.Coherence using (Coherence)
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; _·p_)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Spec.Totality using (FiniteT; FiniteM; selfRef; forwardRef; defF; tickDefs; ticker)
 open import Once.Spec.Module using (ModTele; emptyScope)
@@ -76,7 +77,7 @@ open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Meaning
   using ( T ; returnT ; _>>=T_ ; Interp ; run ; then ; SigOpEvent
-        ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT
+        ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT ; bindᵍ
         ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ )
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.Spec.Typing.Scope using (NamedCtx)
@@ -134,6 +135,10 @@ record Effects : Set₁ where
     toT-return  : ∀ π {X : Set} (x : X) → toT π (returnM π x) ≡ returnT x
     toT-bind    : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
                 → toT π (bindM π m k) ≡ (toT π m >>=T λ x → toT π (k x))
+    -- and of the GRADED bind (D311): `M` is a graded monad over the grades'
+    -- ordered monoid, and erasing it gives `T`'s bind
+    toT-bindᵍ   : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
+                → toT (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≡ (toT π₁ m >>=T λ x → toT π₂ (k x))
     -- the observation respects return and bind
     run-return  : ∀ (ι : Interp) (h : List SigOpEvent) {X Y : Set} (x : X) (f : X → T Y)
                 → then ι h (run ι h (returnT x)) f ≡ run ι h (f x)

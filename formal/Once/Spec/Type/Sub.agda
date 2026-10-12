@@ -27,7 +27,7 @@
 
 module Once.Spec.Type.Sub where
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind)
+open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; _·p_)
 open import Once.Spec.Type
   using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 
@@ -43,6 +43,13 @@ data _⊑π_ : Purity → Purity → Set where
 pure⊑ : ∀ π → pure ⊑π π
 pure⊑ pure = ⊑-pure
 pure⊑ eff  = ⊑-pe
+
+-- Running a grade twice stays within it (D311: on today's grades the
+-- product is idempotent). What a rule with one grade for two sequenced parts
+-- reads its product as.
+·p-diag : ∀ π → (π ·p π) ⊑π π
+·p-diag pure = ⊑-pure
+·p-diag eff  = ⊑-eff
 
 data _<:_ : Type → Type → Set where
   sub-void   : ∀ {B} → Void <: B

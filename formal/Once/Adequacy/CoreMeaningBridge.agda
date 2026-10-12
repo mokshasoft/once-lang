@@ -40,7 +40,8 @@ open import Data.List using (_∷_)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (_++_)
 open import Once.Postulates using (extensionality)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; bindᵍ)
+open import Once.Spec.Type.Sub using (·p-diag)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
 open import Once.Denotation.TraceMonad using (T; interp; module Interp)
 open Interp using (sig; impl)
@@ -137,6 +138,17 @@ env-subst₂ : ∀ {n} {Γ : Ctx n} {Ψ' Um U U' : Usage n} (u : Ψ' ⊑ᵘ Um) 
            → restrictᵛ {Γ = Γ} u (restrictᵛ {Γ = Γ} v (subst (RS.Env Γ) (sym e) x)) ≡ restrictᵛ {Γ = Γ} w x
 env-subst₂ {Γ = Γ} u v refl w x = EA.restrict-≡ {Γ = Γ} u v w x
 
+-- A shared grade read as the product of two (D311): the diagonal's bind.
+diag-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y) → subM (·p-diag π) (bindᵍ π π m k) ≡ bindM π m k
+diag-bind Once.Spec.Type.Grade.pure m k = refl
+diag-bind Once.Spec.Type.Grade.eff  m k = refl
+
+-- Pure codata built at `pure`, then subeffected, is built at the grade.
+ana-sub : ∀ {F A} π π₀ (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
+        → subM (pure⊑ π₀) (ana-semᵛ π Once.Spec.Type.Grade.pure wf clo a) ≡ ana-semᵛ π π₀ wf clo a
+ana-sub Once.Spec.Type.Grade.pure π₀ wf clo a = refl
+ana-sub Once.Spec.Type.Grade.eff  π₀ wf clo a = refl
+
 module Comb {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)
   bindC {a = a} refl h = cong (a >>=ᵖ_) (extensionality h)
@@ -144,52 +156,56 @@ module Comb {δ : GM.DefSem} where
   compose-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
     (df : Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π ] C ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] B ! pure)
     (x : RS.Env Γ (Ψ₁ +ᵘ Many *ᵘ Ψ₂))
-    → GM.⟦ ⊢composeᶜ df dg ⟧ fmt δ x
+    → GM.⟦ ⊢composeᶜ (·p-diag π) df dg ⟧ fmt δ x
       ≡ (GM.⟦ df ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) x) >>=ᵖ λ vf →
          GM.⟦ dg ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) x) >>=ᵖ λ vg →
          λ a → bindM π (vg a) vf)
   compose-sem {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg x =
     trans (RS.⟦⟧-substΨ (arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many)))
                         (⊢let df (⊢let (wk-⊢′ _ dg)
-                          (⊢lam refl (⊢app (⊢var′ (suc (suc zero)) π) (⊢app (⊢var′ (suc zero) π) (⊢var′ zero π))))))
+                          (⊢lam refl (⊢sub-eff (·p-diag π) (⊢app (⊢var (suc (suc zero))) (⊢app (⊢var (suc zero)) (⊢var zero)))))))
                         fmt δ x)
           (bindC (cong (GM.⟦ df ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) x))
                  (λ vf → bindC (trans (RS.wk-sem _ dg fmt δ _) (cong (GM.⟦ dg ⟧ fmt δ) (env-subst₂ {Γ = Γ} _ _ E (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) x)))
                                (λ vg → extensionality λ a →
-                                  trans (bindM-idˡ π vf _)
-                                        (cong (λ m → bindM π m (λ y → vf y))
-                                              (trans (bindM-idˡ π vg _) (bindM-idˡ π a _))))))
+                                  trans (cong (subM (·p-diag π))
+                                          (trans (>>=ᵖ-β vf _)
+                                                 (cong (λ m → bindᵍ π π m (λ y → vf y))
+                                                       (trans (>>=ᵖ-β vg _) (>>=ᵖ-β a _)))))
+                                        (diag-bind π (vg a) vf))))
     where E = arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many))
 
   pair-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
     (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] C ! pure)
     (x : RS.Env Γ (Ψ₁ +ᵘ Ψ₂))
-    → GM.⟦ ⊢pairᶜ df dg ⟧ fmt δ x
+    → GM.⟦ ⊢pairᶜ (·p-diag π) df dg ⟧ fmt δ x
       ≡ (GM.⟦ df ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x) >>=ᵖ λ vf →
          GM.⟦ dg ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x) >>=ᵖ λ vg →
          λ a → bindM π (vf a) λ b → bindM π (vg a) λ c → returnM π (b , c))
   pair-sem {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢let (wk-⊢′ _ dg)
-                          (⊢lam refl (⊢pair (⊢app (⊢var′ (suc (suc zero)) π) (⊢var′ zero π))
-                                            (⊢app (⊢var′ (suc zero) π) (⊢var′ zero π))))))
+                          (⊢lam refl (⊢sub-eff (·p-diag π) (⊢pair (⊢app (⊢var (suc (suc zero))) (⊢var zero))
+                                                                 (⊢app (⊢var (suc zero)) (⊢var zero)))))))
                         fmt δ x)
           (bindC (cong (GM.⟦ df ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x))
                  (λ vf → bindC (trans (RS.wk-sem _ dg fmt δ _)
                                       (cong (GM.⟦ dg ⟧ fmt δ) (env-subst₂ {Γ = Γ} _ _ E (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x)))
                                (λ vg → extensionality λ a →
-                                  cong₂ (λ m n → bindM π m λ b → bindM π n λ c → returnM π (b , c))
-                                        (trans (bindM-idˡ π vf _) (bindM-idˡ π a _))
-                                        (trans (bindM-idˡ π vg _) (bindM-idˡ π a _)))))
+                                  trans (cong (subM (·p-diag π))
+                                          (cong₂ (λ m n → bindᵍ π π m λ b → bindM π n λ c → returnM π (b , c))
+                                                 (trans (>>=ᵖ-β vf _) (>>=ᵖ-β a _))
+                                                 (trans (>>=ᵖ-β vg _) (>>=ᵖ-β a _))))
+                                        (diag-bind π (vf a) _))))
     where E = trans (arms One Ψ₁ Ψ₂ (trans (cong₂ _+ᵘ_ (z+qz Many) (z+qz Many)) (+ᵘ-identityˡ zeroUsage)))
                     (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂))
 
   case-arm : ∀ {A B C : Type} {π} (vf : ⟦ A ⟧ᵛ → M π ⟦ C ⟧ᵛ) (vg : ⟦ B ⟧ᵛ → M π ⟦ C ⟧ᵛ) (ab : ⟦ A ⟧ᵛ Data.Sum.⊎ ⟦ B ⟧ᵛ)
-           → [ (λ a → bindM π (returnM π vf) λ f → bindM π (returnM π a) λ y → f y)
-             , (λ b → bindM π (returnM π vg) λ g → bindM π (returnM π b) λ y → g y) ]′ ab
+           → [ (λ a → vf >>=ᵖ λ f → a >>=ᵖ λ y → f y)
+             , (λ b → vg >>=ᵖ λ g → b >>=ᵖ λ y → g y) ]′ ab
              ≡ [ vf , vg ]′ ab
-  case-arm {π = π} vf vg (inj₁ a) = trans (bindM-idˡ π vf _) (bindM-idˡ π a _)
-  case-arm {π = π} vf vg (inj₂ b) = trans (bindM-idˡ π vg _) (bindM-idˡ π b _)
+  case-arm vf vg (inj₁ a) = trans (>>=ᵖ-β vf _) (>>=ᵖ-β a _)
+  case-arm vf vg (inj₂ b) = trans (>>=ᵖ-β vg _) (>>=ᵖ-β b _)
 
   case-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
     (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] C ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ B ⇒[ mk-kind Many π ] C ! pure)
@@ -201,15 +217,15 @@ module Comb {δ : GM.DefSem} where
   case-sem {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} df dg x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢let (wk-⊢′ _ dg)
-                          (⊢lam refl (⊢case⊔ (⊢var′ zero π)
-                                            (⊢app (⊢var′ (suc (suc (suc zero))) π) (⊢var′ zero π))
-                                            (⊢app (⊢var′ (suc (suc zero)) π) (⊢var′ zero π))))))
+                          (⊢lam refl (⊢case⊔ (⊢var zero)
+                                            (⊢app (⊢var (suc (suc (suc zero)))) (⊢var zero))
+                                            (⊢app (⊢var (suc (suc zero))) (⊢var zero))))))
                         fmt δ x)
           (bindC (cong (GM.⟦ df ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x))
                  (λ vf → bindC (trans (RS.wk-sem _ dg fmt δ _)
                                       (cong (GM.⟦ dg ⟧ fmt δ) (env-subst₂ {Γ = Γ} _ _ E (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x)))
                                (λ vg → extensionality λ ab →
-                                  trans (bindM-idˡ π ab _)
+                                  trans (>>=ᵖ-β ab _)
                                         (case-arm {A = A} {B = B} {C = C} {π = π} vf vg ab))))
     where E = trans (arms One Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (trans (cong₂ _⊔ᵘ_ (z+qz Many) (z+qz Many)) z⊔z))
                                            (+ᵘ-identityˡ zeroUsage)))
@@ -222,14 +238,14 @@ module Comb {δ : GM.DefSem} where
   curry-sem {Γ = Γ} {Ψ} {π₀ = π₀} {π} df x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢lam refl (⊢sub-eff (pure⊑ π₀)
-                          (⊢lam refl (⊢app (⊢var′ (suc (suc zero)) π) (⊢pair (⊢var′ (suc zero) π) (⊢var′ zero π)))))))
+                          (⊢lam refl (⊢app (⊢var (suc (suc zero))) (⊢pair (⊢var (suc zero)) (⊢var zero)))))))
                         fmt δ x)
           (bindC (cong (GM.⟦ df ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-refl Ψ) x ∙ EA.restrict-refl {Γ = Γ} (⊑ᵘ-refl Ψ) x))
                  (λ vf → extensionality λ a → cong (subM (pure⊑ π₀)) (extensionality λ b →
-                    trans (bindM-idˡ π vf _)
-                          (trans (cong (λ m → bindM π m (λ y → vf y))
-                                       (trans (bindM-idˡ π a _) (bindM-idˡ π b _)))
-                                 (bindM-idˡ π (a , b) _)))))
+                    trans (>>=ᵖ-β vf _)
+                          (trans (cong (λ m → m >>=ᵖ (λ y → vf y))
+                                       (trans (>>=ᵖ-β a _) (>>=ᵖ-β b _)))
+                                 (>>=ᵖ-β (a , b) _)))))
     where E = trans (cong₂ _+ᵘ_ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (+ᵘ-identityˡ zeroUsage))) (z+qz Many))
                                 (*ᵘ-identityˡ Ψ))
                     (+ᵘ-identityˡ Ψ)
@@ -273,13 +289,15 @@ module Comb {δ : GM.DefSem} where
   ana-sem″ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} {π} wf dc x =
     extensionality λ a →
       trans (substΨ1 (+ᵘ-identityʳ (Many *ᵘ Ψ))
-                     (⊢unfold wf (⊢sub-eff (pure⊑ π₀) (wk-⊢′ A dc)) (⊢var′ zero π₀)) x a)
-      (trans (bindM-idˡ π₀ _ _)
-      (trans (bindM-idˡ π₀ a _)
-            (cong (λ C → ana-semᵛ π π₀ wf C a)
+                     (⊢sub-eff (pure⊑ π₀) (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))) x a)
+      (trans (cong (subM (pure⊑ π₀))
+        (trans (>>=ᵖ-β _ _)
+        (trans (>>=ᵖ-β a _)
+            (cong (λ C → ana-semᵛ π Once.Spec.Type.Grade.pure wf C a)
                   (trans (RS.wk-sem A dc fmt δ _)
                          (cong (GM.⟦ dc ⟧ fmt δ)
-                               (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x))))))
+                               (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x)))))))
+        (ana-sub π π₀ wf _ a))
 
   applyEff-sem : ∀ {n} {Γ : Ctx n} {A B : Type} (x : RS.Env Γ zeroUsage)
     → GM.⟦ ⊢applyEffᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
@@ -303,9 +321,9 @@ module Comb {δ : GM.DefSem} where
     → GM.⟦ ⊢cataᶜ wf da ⟧ fmt δ x
       ≡ (GM.⟦ da ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x) >>=ᵖ λ valg → λ v → cata-semᵛ π wf valg v)
   cata-sem′ {Γ = Γ} {Ψ} {π = π} wf da x =
-    trans (RS.⟦⟧-substΨ E (⊢let da (⊢lam refl (⊢fold wf (⊢var′ (suc zero) π) (⊢var′ zero π)))) fmt δ x)
+    trans (RS.⟦⟧-substΨ E (⊢let da (⊢lam refl (⊢fold wf (⊢var (suc zero)) (⊢var zero)))) fmt δ x)
           (bindC (cong (GM.⟦ da ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-*Many Ψ) x))
-                 (λ valg → extensionality λ v → trans (bindM-idˡ π valg _) (bindM-idˡ π v _)))
+                 (λ valg → extensionality λ v → trans (>>=ᵖ-β valg _) (>>=ᵖ-β v _)))
     where E = trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
                     (+ᵘ-identityˡ (Many *ᵘ Ψ))
 

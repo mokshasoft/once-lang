@@ -83,6 +83,14 @@ toT : ∀ π {X} → M π X → T X
 toT pure m = returnT m
 toT eff  m = m
 
+-- The GRADED bind (D311): run a `π₁` computation, then a `π₂` one; the whole
+-- is at the product `π₁ ·p π₂`. The grades form an ordered monoid, so `M` is a
+-- graded monad; `bindM π` is its diagonal.
+infixl 1 bindᵍ
+bindᵍ : ∀ π₁ π₂ {X Y} → M π₁ X → (X → M π₂ Y) → M (π₁ ·p π₂) Y
+bindᵍ pure π₂ m k = m >>=ᵖ k
+bindᵍ eff  π₂ m k = m >>=T λ x → toT π₂ (k x)
+
 ------------------------------------------------------------------------
 -- Pure codata: the final coalgebra of a first-order functor in Set.
 ------------------------------------------------------------------------
