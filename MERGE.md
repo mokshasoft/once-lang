@@ -90,6 +90,11 @@ Every design decision the branch embodies has a `D###` entry in
 `docs/compiler/decision-log.md` before the merge. A decision is anything a future session could
 ask "why is it this way?" about. Date an entry by when the decision was made.
 
+Every entry that sets or changes a rule also updates the decision state in the same commit —
+`docs/decisions/language.md` (what the Spec or a programmer sees) or `docs/decisions/internal.md`
+— so the state, read with `GOAL.md`, is the one place the current intent is found. An entry that
+contradicts `GOAL.md` changes `GOAL.md` openly or is wrong.
+
 **Steps 1–2 are presented for approval. Nothing below runs on an unapproved branch.**
 
 ## 3. Rebase on a fresh master

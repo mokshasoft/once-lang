@@ -1,6 +1,9 @@
 # Decision Log
 
-Design decisions made during the implementation of the Once compiler.
+Design decisions made during the implementation of the Once compiler — the HISTORY. Later
+entries supersede earlier ones. The current state of every rule is `docs/decisions/language.md`
+and `docs/decisions/internal.md`, read with `GOAL.md`; an entry that sets or changes a rule updates
+them in the same commit.
 
 ---
 
@@ -603,7 +606,9 @@ The three layers are collectively called **Strata**.
 ## D017: Refinement Types as Future Extension Path
 
 **Date**: 2025-12-09
-**Status**: Deferred
+**Status**: Superseded by OCP-0009 (2026-10-12): the extension path is dependent types with QTT
+grades. A refinement `{x : A | P x}` is then a Σ-type with an erased proof component, so nothing
+here is lost; it is not a separate type system.
 
 ### Context
 Sized buffers (`Buffer { size <= 1024 }`) would be useful for safety. We needed to decide whether to add dependent types or a simpler alternative.
@@ -1327,7 +1332,9 @@ The implementation plan mentioned adding a project configuration file for Once p
 ## D029: Let Bindings with Desugaring
 
 **Date**: 2025-12-12
-**Status**: Accepted
+**Status**: Superseded in part (2026-10-12). Multi-binding `let` remains the intent, but NOT with
+semicolons, and not as a second spelling of nested lets: a construct must have one way to be
+written. Its syntax is open. Today the verified parser accepts the single-binding form only.
 
 ### Context
 Adding let bindings to Once for local variable introduction. Multiple design options exist:
@@ -4901,6 +4908,13 @@ pure-bodied lambda subsumes up; an eff-bodied one cannot be pure) and
   Plan 0.39 (optimizer drops pure SigOps), Plan 0.52 M1.
 
 ## D070: Lambdas ARE Morphisms — Bracket-Abstract Them (the ⊢ᶜ/⊢ᵐ Split for Lambdas Is a Presentation Artifact)
+
+**Status**: Obsolete (2026-10-12), superseded by D127 and D310. There is no closed-morphism realm
+to bracket-abstract into: D127 made every arm an ordinary term in context (`Γ ⊢ e : A ⇒ B`), and
+the core (D310) has `lam` as the exponential transpose, meaning `Hom(Γ×A,B) ≅ Hom(Γ,A⇒B)`. The
+point-free combinators are derived from `lam` (`Spec.Core.Derived`). This is the standard
+categorical semantics of the λ-calculus (Lambek); D070's own argument, that the closed/open split is
+a presentation artifact, is what D127 carried through.
 
 ### Context
 
@@ -17875,6 +17889,8 @@ grades, the term model), D284 (0.94), OCP-0009. Commits 595f4680a (B), 87ff23d0c
   accepted programs fixed, so the surface lemmas remain the evidence for plan 0.94's property.
 - The A′ ex falso rules (D229) STAY. Removing them would change which programs are accepted. Narrowing
   no longer needs them: it is `subst-⊢`/`let-β` at `coerce` (D285).
+  **Correction (2026-10-12):** stale when written. D251 (2026-10-01) had already withdrawn D229's
+  `Void` rules; ex falso is the explicit eliminator `absurd`, and the Spec follows D251.
 - Plan 0.101 as a core change was already true (`⊢fold`/`⊢unfold` take a term in context).
 
 **The equality judgment waits for a consumer.** The `≈` rows (β/η per former) are unwritten. The first consumer they would have is the optimizer's
@@ -17982,6 +17998,8 @@ because `out-nz` reads `Output`, which the block itself just wrote.
 - **The A′ `Void`-narrowing gate is FALSE as stated under (a)**: `t-app` CHECKS its argument against
   the head's domain, so a head narrowed to `Void` leaves a checked-only argument (a lambda) nothing to
   check against. It also collides with `t-app-void` through the spine. The A′ rules stay (D229).
+  **Correction (2026-10-12):** stale when written. D251 (2026-10-01) had already withdrawn D229's
+  `Void` rules; ex falso is the explicit eliminator `absurd`, and the Spec follows D251.
 
 ### Where the moved-out items went
 - The narrowing gate → plan 0.102 phase B. Closed there as `subst-⊢`/`let-β` at `coerce`, with no
