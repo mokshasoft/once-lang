@@ -15,6 +15,7 @@ open import Once.Metatheory.TermModel using (termModel)
 open import Once.Metatheory.Effects using (effects)
 open import Once.Metatheory.Recursion using (recursion)
 open import Once.Metatheory.Freyd using (freyd)
+open import Once.Metatheory.Totality using (totality)
 import Once.Metatheory.Coherence as Coh
 import Once.Metatheory.SubLaws as SL
 import Once.Metatheory.ModeAgreement as MA
@@ -43,4 +44,5 @@ metatheory = record
   ; coherence   = λ S → Coh.coherence S
   ; freyd       = freyd
   ; recursion   = recursion
+  ; totality    = totality
   }

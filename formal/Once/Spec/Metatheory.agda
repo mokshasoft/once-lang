@@ -13,7 +13,7 @@
 -- (`scripts/metatheory-gate.sh`). `Once.Certified` carries the proofs, so
 -- each statement is on the apex and goes red when the Spec moves.
 --
--- Six parts:
+-- Seven parts:
 --   * `term-model` — for every signature of definitions `S`, the core's TERM
 --     MODEL (`Once.Spec.Core.TermModel`): substitution of terms is typed
 --     (`subst-⊢`), a pure `let` means its substitution (`let-β`, referential
@@ -37,6 +37,9 @@
 --   * `recursion` — the fold is the unique algebra morphism out of `μ`, and
 --     fusion holds (plan 0.112 D3). STATED, NOT YET PROVED: `Once.Metatheory`
 --     postulates both (`Once.Metatheory.Recursion`).
+--   * `totality` — Once is total and productive (D311): an effectful
+--     computation that returns is a finite tree, and every layer of every
+--     stream comes after finite work (`Spec.Totality`).
 --
 -- No type-safety theorem is needed in this setting: the meaning is a TOTAL
 -- function on derivations, so every well-typed program means something by
@@ -54,7 +57,21 @@ open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.TermModel using (TermModel) public
 open import Once.Spec.Core.Coherence using (Coherence)
 open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many)
-open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ⟦_⟧T)
+open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
+open import Once.Spec.Totality using (FiniteT; FiniteM; selfRef; forwardRef; defF; tickDefs; ticker)
+open import Once.Spec.Module using (ModTele; emptyScope)
+open import Once.Spec.Context using (∅)
+open import Once.Spec.Type.WellFormed using (wf-Id)
+open import Once.Spec.Type.Grade using (eff)
+open import Once.Spec.Type using (Id)
+open import Once.Spec.Type.Sub using (⊑-pe)
+open import Data.List using (_∷_; [])
+open import Data.Unit using (tt)
+open import Data.Product using (∃-syntax)
+open import Relation.Nullary using (¬_)
+open import Once.Denotation.TraceMonad using (call)
+import Once.Spec.Core.Typing
+import Once.Spec.Core.Meaning
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Meaning
@@ -168,6 +185,33 @@ record Freyd : Set₁ where
     discard-pure : ∀ {Y : Set} (m : T Y) → (∀ {W : Set} (k : T W) → (m >>=T λ _ → k) ≡ k)
                  → Σ[ y ∈ Y ] m ≡ returnT y
 
+-- Once is TOTAL and PRODUCTIVE (D311, plan 0.117 A; `Spec.Totality`). An
+-- effectful computation that returns ends, on every path, after finitely many
+-- events; so does each layer of every stream, effectful or not. With an
+-- inductive `T` these hold by construction, and that is their job here: a
+-- silent step in `T`, or a coinductive `T` without a guard — what general
+-- recursion would need (OCP-0003) — makes them false.
+--
+-- And what it does NOT give up (`Spec.Totality` names the programs): a
+-- definition cannot name itself or a later definition — there is no general
+-- recursion to be partial with — while a stream whose every layer performs an
+-- effect, the shape of every server, is typed, and its first layer does
+-- perform one.
+module TickTyping  = Once.Spec.Core.Typing tickDefs
+module TickMeaning = Once.Spec.Core.Meaning tickDefs
+
+record Totality : Set₁ where
+  field
+    finite     : ∀ {X : Set} (m : T X) → FiniteT m
+    productive : ∀ π {F} (wf : WellFormedF F) (v : ⟦ ν-type F π ⟧ᵛ) → FiniteM π (out-semᵛ π wf v)
+    no-self-reference    : ¬ ModTele emptyScope (selfRef ∷ [])
+    no-forward-reference : ¬ ModTele emptyScope (forwardRef ∷ defF ∷ [])
+    stream-typed : TickTyping._⊢[_]_∷_!_ ∅ Surface.[] ticker (ν-type Id eff) pure
+    stream-emits : ∀ fmt (ds : TickMeaning.DefSem)
+                 → ∃[ o ] ∃[ a ] ∃[ k ]
+                   TickMeaning.⟦ TickTyping.⊢out wf-Id (TickTyping.⊢sub-eff ⊑-pe stream-typed) ⟧ fmt ds tt
+                   ≡ call o a k
+
 record Metatheory : Set₁ where
   field
     term-model  : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → TermModel S
@@ -176,3 +220,4 @@ record Metatheory : Set₁ where
     coherence   : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → Coherence S
     freyd       : Freyd
     recursion   : Recursion
+    totality    : Totality

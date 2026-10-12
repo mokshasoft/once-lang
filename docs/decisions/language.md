@@ -66,7 +66,8 @@ entry updates the rule it changes here, in the same commit.
   wrong. Included: type substitution, the term model (a graded category;
   `⟦_⟧` preserves composition), the laws of `<:` and `⊑π`, usage
   mode-independence, coherence, Freyd, the fold's universal property and
-  unfold's computation law. (D304 ← D303, D305, D285, D240, D307, D309)
+  unfold's computation law, and totality: T+P, no self-reference, an
+  effectful stream that emits. (D304 ← D303, D305, D285, D240, D307, D309, D311)
 - **The extension path is dependent types with QTT grades** (OCP-0009); a
   refinement `{x : A | P x}` is a Σ-type with an erased proof, not a separate
   type system. (OCP-0009 ← D017)
