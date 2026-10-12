@@ -90,9 +90,11 @@ entry updates the rule it changes here, in the same commit.
   whether an effect happens. (D308)
 - **Effect-free value introductions are grade-polymorphic**; λ is pure, its
   body's grade rides the arrow. (D069, D231)
-- **Read the grade off the denotation**: `pair` and its arms share one grade
-  and run left first; `curry`'s outer arrow is effect-free and its inner arrow
-  carries the body's grade. (D222 ← D219, D066)
+- **Read the grade off the denotation**: `pair` runs its arms left first, and
+  its grade is the PRODUCT of theirs — every rule that sequences premises
+  takes a grade per premise (being implemented, plan 0.117 C0; until then they
+  share one grade); `curry`'s outer arrow is effect-free and its inner arrow
+  carries the body's grade. (D311 ← D222 ← D219, D066)
 - **Effects follow data flow, and reading order where there is none**: an
   effectful fold runs a product layer left first. (D286 ← D221)
 - **Applying an effectful closure with `apply`** gives the suspension
