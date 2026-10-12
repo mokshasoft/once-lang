@@ -24,7 +24,8 @@ import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Examples.PwCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
-module DirectedHoTT.Examples.Knot.JudgeDecodeBase (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Examples.Knot.JudgeDecodeBase (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) (𝓃 : ℕ) where
 
 
 
@@ -32,6 +33,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
+-- ★ the ENCODED judgement is the one at the bound 𝓃 (PLAN-REF K4); the
+--   ambient typing of Knot terms stays at the signature's size
+import DirectedHoTT.Spec.Typing 𝒮 𝓃 as ᴺ
+open ᴺ using () renaming ( _⊢_∷_ to _⊢ᴺ_∷_; _⊢ty_ to _⊢tyᴺ_ )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶ᵀ*-IMu; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-trans )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal )
@@ -51,7 +56,7 @@ open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf core using ( D⊢ )
 open import DirectedHoTT.Examples.Knot.JudgeConv 𝒮 wf core using ( TCV; TCV-sub; TCVat )
 open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( ⌜≅ᵀ⌝; ⌜≅ᵀ⌝-sub; El-⌜≅ᵀ⌝; K≅ᵀ; module ≅ᵀF )
 open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( sigT )
-open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; t𝒮 )
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; tN )
 open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf core using ( decConvT )
 
 ------------------------------------------------------------------------
@@ -60,11 +65,11 @@ open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf core using ( decConvT 
 
 IHTy : ℕ → Set
 IHTy N = (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {r : RTm ε} → sz r < N →
-         ◇ ⊢ r ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal r → Γ ⊢ty A
+         ◇ ⊢ r ∷ IMu JT (D⊢ (tN 𝓃)) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal r → Γ ⊢tyᴺ A
 
 IHTm : ℕ → Set
 IHTm N = (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {r : RTm ε} → sz r < N →
-         ◇ ⊢ r ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal r → Γ ⊢ t ∷ A
+         ◇ ⊢ r ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal r → Γ ⊢ᴺ t ∷ A
 
 ------------------------------------------------------------------------
 -- 2. A premise's Knot index reduces to the quoted Spec index (F3).
@@ -72,12 +77,12 @@ IHTm N = (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {r : RTm ε} → s
 
 -- tmIx j g t A = pair (pair (tag 1) j) (pair t (pair g A))
 tmIx≅ : {j g g' t t' A A' : RTm ε} → g ⟶* g' → t ⟶* t' → A ⟶* A' →
-        IMu JT (D⊢ t𝒮) (tmIx j g t A) ≅ᵀ IMu JT (D⊢ t𝒮) (tmIx j g' t' A')
+        IMu JT (D⊢ (tN 𝓃)) (tmIx j g t A) ≅ᵀ IMu JT (D⊢ (tN 𝓃)) (tmIx j g' t' A')
 tmIx≅ rg rt rA = red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-trans (⟶*-pairˡ rt) (⟶*-pairʳ (⟶*-trans (⟶*-pairˡ rg) (⟶*-pairʳ rA))))))
 
 -- tyIx j g A = pair (pair (tag 0) j) (pair A (pair g unit))
 tyIx≅ : {j g g' A A' : RTm ε} → g ⟶* g' → A ⟶* A' →
-        IMu JT (D⊢ t𝒮) (tyIx j g A) ≅ᵀ IMu JT (D⊢ t𝒮) (tyIx j g' A')
+        IMu JT (D⊢ (tN 𝓃)) (tyIx j g A) ≅ᵀ IMu JT (D⊢ (tN 𝓃)) (tyIx j g' A')
 tyIx≅ rg rA = red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (⟶*-trans (⟶*-pairˡ rA) (⟶*-pairʳ (⟶*-pairˡ rg)))))
 
 -- a numeral is a quoted number
@@ -96,22 +101,22 @@ private
   cv2-cong J J' G G' T T' A C C' refl refl refl refl = refl
 
 dconv : {N : ℕ} → IHTm N → (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {q : RTm ε} → sz q < N →
-        ◇ ⊢ q ∷ El (dpay JT (D⊢ t𝒮) ⌜ TCVat (hdTm t) t𝒮 (dep ⌊ Γ ⌋) (pfTm t) (pair (quoteCtx Γ) (quoteTy A)) ⌝ᵗ) → IsNormal q →
-        Γ ⊢ t ∷ A
+        ◇ ⊢ q ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ TCVat (hdTm t) (tN 𝓃) (dep ⌊ Γ ⌋) (pfTm t) (pair (quoteCtx Γ) (quoteTy A)) ⌝ᵗ) → IsNormal q →
+        Γ ⊢ᴺ t ∷ A
 dconv {N} ih Γ t A {q} hq dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))) done nq
   ▷ λ { (a , (b , (eq , ((da , db) , (na , nb))))) →
   unqTy {Γ = ⌊ Γ ⌋} (⊢conv da (credᵀ El-⌜Ty⌝)) na
   ▷ λ { (A₀ , eqA) →
-  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT (D⊢ t𝒮) Z)) (EQ a)) (⊢conv db (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ a) done)))))) done nb
+  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT (D⊢ (tN 𝓃)) Z)) (EQ a)) (⊢conv db (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ a) done)))))) done nb
   ▷ λ { (r , (b' , (eq' , ((dr , db') , (nr , nb'))))) →
   pay-σ db' done nb'
   ▷ λ { (e , (_ , (_ , ((de , _) , (ne , _))))) →
-  ⊢conv (ih Γ t A₀ (<ˡ eq' (<ʳ eq hq))
-           (subst (λ z → ◇ ⊢ r ∷ IMu JT (D⊢ t𝒮) (tmIx j g z (quoteTy A₀))) (sym (quote-hdTm t))
-             (subst (λ z → ◇ ⊢ r ∷ IMu JT (D⊢ t𝒮) (tmIx j g T z)) eqA dr)) nr)
+  ᴺ.⊢conv (ih Γ t A₀ (<ˡ eq' (<ʳ eq hq))
+           (subst (λ z → ◇ ⊢ r ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx j g z (quoteTy A₀))) (sym (quote-hdTm t))
+             (subst (λ z → ◇ ⊢ r ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx j g T z)) eqA dr)) nr)
         (decConvT A₀ A (subst (λ z → ◇ ⊢ e ∷ K≅ᵀ q𝒮 j z X) eqA
-                         (⊢conv (⊢conv de El-⌜≅ᵀ⌝) (red→≅ᵀ (≅ᵀF.KF-⟶ᵀ* (step (βfst q𝒮 (num (Defs.size 𝒮))) done))))) ne) } } } }
+                         (⊢conv (⊢conv de El-⌜≅ᵀ⌝) (red→≅ᵀ (≅ᵀF.KF-⟶ᵀ* (step (βfst q𝒮 (num 𝓃)) done))))) ne) } } } }
   where
     j g T X c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -119,14 +124,14 @@ dconv {N} ih Γ t A {q} hq dq nq =
     T = conₗ (hdTm t) (pfTm t)
     X = quoteTy A
     c = pair g X
-    R : ⌜ TCV t𝒮 j (fst c) T (snd c) ⌝ᵗ ⟶* ⌜ TCV t𝒮 j g T X ⌝ᵗ
-    R = mono-by {Δ = ε} {n = 5} {as = t𝒮 ∷ j ∷ fst c ∷ T ∷ snd c ∷ []} {as' = t𝒮 ∷ j ∷ g ∷ T ∷ X ∷ []}
+    R : ⌜ TCV (tN 𝓃) j (fst c) T (snd c) ⌝ᵗ ⟶* ⌜ TCV (tN 𝓃) j g T X ⌝ᵗ
+    R = mono-by {Δ = ε} {n = 5} {as = (tN 𝓃) ∷ j ∷ fst c ∷ T ∷ snd c ∷ []} {as' = (tN 𝓃) ∷ j ∷ g ∷ T ∷ X ∷ []}
           ⌜ TCV v₀ v₁ v₂ v₃ v₄ ⌝ᵗ
-          (TCV-sub (σₗ (t𝒮 ∷ j ∷ fst c ∷ T ∷ snd c ∷ [])) v₀ v₁ v₂ v₃ v₄)
-          (TCV-sub (σₗ (t𝒮 ∷ j ∷ g ∷ T ∷ X ∷ [])) v₀ v₁ v₂ v₃ v₄)
+          (TCV-sub (σₗ ((tN 𝓃) ∷ j ∷ fst c ∷ T ∷ snd c ∷ [])) v₀ v₁ v₂ v₃ v₄)
+          (TCV-sub (σₗ ((tN 𝓃) ∷ j ∷ g ∷ T ∷ X ∷ [])) v₀ v₁ v₂ v₃ v₄)
           (done ∷ʳ done ∷ʳ step (βfst g X) done ∷ʳ done ∷ʳ step (βsnd g X) done ∷ʳ []ʳ)
-    EQ : (a : RTm ε) → subTm (single a) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) v₀) (tσ (⌜≅ᵀ⌝ (sigT (w1 t𝒮)) (w1 j) v₀ (w1 X)) tι) ⌝ᵗ
-                       ≡ ⌜ tρ (tmIx j g T a) (tσ (⌜≅ᵀ⌝ (sigT t𝒮) j a X) tι) ⌝ᵗ
+    EQ : (a : RTm ε) → subTm (single a) ⌜ tρ (tmIx (w1 j) (w1 g) (w1 T) v₀) (tσ (⌜≅ᵀ⌝ (sigT (w1 (tN 𝓃))) (w1 j) v₀ (w1 X)) tι) ⌝ᵗ
+                       ≡ ⌜ tρ (tmIx j g T a) (tσ (⌜≅ᵀ⌝ (sigT (tN 𝓃)) j a X) tι) ⌝ᵗ
     EQ a = cv2-cong _ _ _ _ _ _ a _ _ (wk-cancel-tm a j) (wk-cancel-tm a g) (wk-cancel-tm a T)
-             (trans (⌜≅ᵀ⌝-sub (single a) (sigT (w1 t𝒮)) (w1 j) v₀ (w1 X))
-                    (cong₃ (λ q x y → ⌜≅ᵀ⌝ (sigT q) x a y) (wk-cancel-tm a t𝒮) (wk-cancel-tm a j) (wk-cancel-tm a X)))
+             (trans (⌜≅ᵀ⌝-sub (single a) (sigT (w1 (tN 𝓃))) (w1 j) v₀ (w1 X))
+                    (cong₃ (λ q x y → ⌜≅ᵀ⌝ (sigT q) x a y) (wk-cancel-tm a (tN 𝓃)) (wk-cancel-tm a j) (wk-cancel-tm a X)))

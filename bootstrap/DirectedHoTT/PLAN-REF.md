@@ -305,7 +305,7 @@ Next: Lib, then Examples, then the Knot.
 - ✅ K3. Generators (`gen-knot.py`, `gen-judge.py`): rows take `q`; a family
   citing another passes `q`; module parameters (the ambient signature)
   and one instance per (module, arguments) emitted by the generators.
-- 🟡 K4 (✅ δ, ⊢ref, RefCon; ⬜ the SigWf image). Hand rows: δ (`Knot/Ref`: `kref n ⟶ εwkK 1 j (bodies q n)` under
+- ✅ K4 (δ, ⊢ref, RefCon; the SigWf image + its faithfulness, 2026-10-12). Hand rows: δ (`Knot/Ref`: `kref n ⟶ εwkK 1 j (bodies q n)` under
   `n < size q`), `⊢ref` (`Knot/RefJudge`: `kref n : εwkK 0 j (types q n)`
   under `n < bound`), `Knot/RefCon`; the internal image of `Spec/SigWf`.
 - ✅ K5 (green in the 2026-10-10 sweep). Decoders and agreement at `q = ⌜𝒮⌝` (`RedDecode`, `JudgeDecodeHand`,
@@ -514,7 +514,7 @@ Next: Lib, then Examples, then the Knot.
   profile's conversion/unfolding heads for `M._.name` / `Inst.…name`
   copies of signature-free definitions.
 
-### 2026-10-12 — signature extension; K4's SigWf image, first half
+### 2026-10-12 — signature extension; K4's SigWf image, closed
 
 - **`⊑ᴰ-▸ : 𝒮 ⊑ᴰ (𝒮 ▸ᴷ e)`** (`Spec/SigExtend`). Its two facts moved to
   `Spec/Syntax`, beside `lookupK`: `<ˢ→≠` (a name below n is not n,
@@ -522,21 +522,40 @@ Next: Lib, then Examples, then the Knot.
   newest entry skips it). `Algorithm/NbETable` and `Knot/QuoteSig` had
   private copies; they now use these (NbETable's was a 25-line tower).
 - **K4, the internal image of `Spec/SigWf` — split in two.**
-  1. ✅ written and checked (`Examples/Knot/SigWf`, 11 s; sweep ALL GREEN, 289 modules, run under `tools/mem-guard.sh`): the code and its typing.
-     `⌜EntryOK⌝ q m` = the typing family at the parameter `(q , m)` — the
+  1. ✅ (`Examples/Knot/SigWf`): the code and its typing. `⌜EntryOK⌝ q m`
+     = the typing family at the parameter `tAt q m = (q , m)` — the
      entry's PREFIX is the bound — inhabited at `◇ ⊢ty typesQ q m` and
-     `◇ ⊢ bodiesQ q m ∷ typesQ q m`; `⌜WfK⌝ q = Π m. m+1 ≤ sizeQ q →
-     ⌜EntryOK⌝ q m`. The Π form is Spec's `EntriesOK`, with the bound as
-     the `Hom Nat` premise the δ/⊢ref rows already use; no large
-     elimination.
-  2. ⬜ Faithfulness: `⌜WfK⌝ q𝒮` inhabited iff `WfK 𝒮`. Blocked on a real
-     generalisation: the K5 layer (TypingAgree, JudgeDecode{,Base,Hand,
-     Tm,Ty}, Exact, ConvHead; ~570 uses of `t𝒮`) is fixed at the bound
-     `size 𝒮`, and its one `Spec.Typing 𝒮 (size 𝒮)` instance plays TWO
-     roles — the ambient typing of Knot terms (stays at `size`) and the
-     judgement being encoded/decoded (must become `n`). Plan: `t𝒮` →
-     `tAt q𝒮 (num n)`; the encoded judgement from a second, qualified
-     `Spec.Typing 𝒮 n` instance (`ᴺ`), its libraries at `Entries.sigOK n`;
-     the ⊢ref row's side condition decodes to `d <ˢ n`. Measure the use
-     sites before and after: a second Typing instance per file is the
-     module-argument cost seen in Red (2026-10-09/10).
+     `◇ ⊢ bodiesQ q m ∷ typesQ q m`. ★ CHANGED 2026-10-12 from the Π form
+     (`Π m. m+1 ≤ sizeQ q → ⌜EntryOK⌝ q m`, Spec's `EntriesOK` reading) to
+     Spec's `WfUpTo` itself: `⌜WfUpTo⌝ q k = natrec ⌜Unit⌝ (⌜Σ⌝ IH
+     (⌜EntryOK⌝ q m)) k`, `⌜WfK⌝ q = ⌜WfUpTo⌝ q (sizeQ q)` — a natrec into
+     `U` (precedent `Lib/DvdArith.nfam`). The Π form's ENCODING needs one
+     internal function of a variable `m` returning entry m's closed proof
+     (a table by internal case analysis); the recursive form is nested
+     pairs, and it is literally the kernel's definition.
+  2. ✅ Faithfulness (`Examples/Knot/SigWfAgree`: `decWfK : ◇ ⊢ k ∷ El
+     (⌜WfK⌝ q𝒮) → WfK 𝒮`, `enWfK : WfK 𝒮 → Σ k. Θ ⊢ k ∷ El (⌜WfK⌝ q𝒮)`). It needed the K5 layer at EVERY bound: its one
+     `Spec.Typing 𝒮 (size 𝒮)` instance played two roles — the ambient
+     typing of Knot terms (stays at `size`) and the judgement encoded /
+     decoded (now at `𝓃`). Done as planned:
+     - the K5 modules (TypingAgree, JudgeDecode{,Base,Hand,Tm,Ty}, Exact,
+       ConvHead) take a module parameter `(𝓃 : ℕ)` after `core`;
+       `t𝒮` is gone, replaced by `tN 𝓃 = tAt q𝒮 (num 𝓃)` (`Knot/QuoteSig`;
+       `tAt`/`⊢tAt` moved to `Knot/QSig`), `⊢belowT` takes the bound;
+     - the encoded judgement is `import Spec.Typing 𝒮 𝓃 as ᴺ` with
+       `_⊢ᴺ_∷_`/`_⊢tyᴺ_` and `ᴺ.`-qualified constructors (the encoded
+       side is the rarer one: result types, one constructor per clause);
+     - `tools/planref.py` has a class `N` (a `C` module whose text uses
+       `𝓃`, or imports an `N` module); the generators emit `tN 𝓃` and the
+       `ᴺ` instance; regenerated output differs in 4 files (JudgeDecode{,Ty,Tm}, ConvHead);
+     - ⊢ref's side condition decodes to `d <ˢ 𝓃` (`homLt d 𝓃`).
+     `SigWfAgree` imports TypingAgree/Exact UNAPPLIED (an instance per
+     entry, at its bound) and adds `⌜EntryOK⌝-sub` (via `D⊢-sub`, from
+     `SD-sub` + `FIBMₒ-sub`) for `WfUpTo-suc : ⌜WfUpTo⌝ q (k+1) ⟶ ⌜WfUpTo⌝ q
+     k × ⌜EntryOK⌝ q k`. Stated at `q𝒮`, as the K5 decoders are; at an
+     arbitrary quoted `q` it would need decoders at arbitrary `q` (open).
+  - Cost of the bound parameter: none measurable. Single-module times
+    (before → after): JudgeDecodeTm 146 → 159 s, JudgeDecode 27 → 29,
+    JudgeDecodeTy 26 → 27, TypingAgree 43 → 43, Exact 17 → 16,
+    JudgeDecodeHand/Base 15 → 15, ConvHead 13 → 13, SigWf 11 → 10 (all
+    within the ±12% noise floor); SigWfAgree 20 s.

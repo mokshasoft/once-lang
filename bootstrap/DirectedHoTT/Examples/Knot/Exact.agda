@@ -20,8 +20,9 @@
 --
 -- ★ PLAN-REF (D082): the judgements are read AT THE QUOTED AMBIENT
 --   SIGNATURE — reduction and conversion at `q𝒮 = quoteDefs 𝒮`, typing at
---   `t𝒮 = (q𝒮 , (Defs.size 𝒮))` (`Knot/QuoteSig`): the Knot over `𝒮` says exactly what
---   the kernel over `𝒮` says.
+--   `tN 𝓃 = (q𝒮 , 𝓃)` (`Knot/QuoteSig`): the Knot over `𝒮` says exactly what
+--   the kernel over `𝒮` says, the typing at any bound 𝓃 (`Spec.Typing 𝒮 𝓃`,
+--   PLAN-REF K4: an entry is judged at its prefix).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -31,13 +32,18 @@ import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Examples.PwCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
-module DirectedHoTT.Examples.Knot.Exact (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
+module DirectedHoTT.Examples.Knot.Exact (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) (𝓃 : ℕ) where
 
 
 
 open import normalizer.Syntax.Types using ( _≡_; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
+-- ★ the ENCODED judgement is the one at the bound 𝓃 (PLAN-REF K4); the
+--   ambient typing of Knot terms stays at the signature's size
+import DirectedHoTT.Spec.Typing 𝒮 𝓃 as ᴺ
+open ᴺ using () renaming ( _⊢_∷_ to _⊢ᴺ_∷_; _⊢ty_ to _⊢tyᴺ_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; pw?; pwBody; stkA?; stkC?; flat?; 𝔹; true )
 open import DirectedHoTT.Metatheory.LogicalRelation 𝒮 using ( IsNormal; WN )
 open import DirectedHoTT.Metatheory.Fundamental 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) (Entries.refsᵂ 𝒮 wf) using ( wnorm )
@@ -52,11 +58,11 @@ open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core using ( K⟶ᵀ )
 open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( K≅; K≅ᵀ )
 open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf using ( KPw )
 open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( KNNC; KStkA; KStkC; KFlat )
-open import DirectedHoTT.Examples.Knot.JudgeDecode 𝒮 wf core using ( decTy; decTm )
+open import DirectedHoTT.Examples.Knot.JudgeDecode 𝒮 wf core 𝓃 using ( decTy; decTm )
 open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf core using ( decRed )
 open import DirectedHoTT.Examples.Knot.RedTDecode 𝒮 wf core using ( decRedT )
 open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf core using ( decConv; decConvT )
-open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; t𝒮 )
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; tN )
 open import DirectedHoTT.Examples.Knot.LookupDecode 𝒮 wf using ( decLk )
 open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf core using ( decPw )
 open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf using ( decNNC; decStkA; decStkC; decFlat )
@@ -73,11 +79,11 @@ private
   ... | k' , (d' , n') = dec k' d' n'
 
 exactTy : (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →
-          ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → Γ ⊢ty A
+          ◇ ⊢ k ∷ IMu JT (D⊢ (tN 𝓃)) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → Γ ⊢tyᴺ A
 exactTy Γ A = via (λ _ d n → decTy Γ A d n)
 
 exactTm : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →
-          ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → Γ ⊢ t ∷ A
+          ◇ ⊢ k ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → Γ ⊢ᴺ t ∷ A
 exactTm Γ t A = via (λ _ d n → decTm Γ t A d n)
 
 exactRed : {Γ : Cx} (t u : RTm Γ) {k : RTm ε} → ◇ ⊢ k ∷ K⟶ q𝒮 (dep Γ) (quoteTm t) (quoteTm u) → t ⟶ u

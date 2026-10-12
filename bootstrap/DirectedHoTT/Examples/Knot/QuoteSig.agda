@@ -259,20 +259,21 @@ module _ (𝒯 : Defs) where
 
 ------------------------------------------------------------------------
 -- 6. ★ THE AMBIENT SIGNATURE, quoted: the parameter a decoder reads a
---    closed derivation at (reduction: `q𝒮`; typing, with the bound: `t𝒮`).
+--    closed derivation at (reduction: `q𝒮`; typing, at a bound 𝓃: `tN 𝓃`).
 ------------------------------------------------------------------------
 
 q𝒮 : RTm Δ
 q𝒮 = quoteDefs 𝒮
 
-t𝒮 : RTm Δ
-t𝒮 = pair q𝒮 (num (Defs.size 𝒮))
+-- typing at the bound 𝓃: the names below 𝓃 (`Spec.Typing 𝒮 𝓃`)
+tN : ℕ → RTm Δ
+tN 𝓃 = tAt q𝒮 (num 𝓃)
 
 ⊢q𝒮 : {Ξ : Ctx} → Ξ ⊢ q𝒮 ∷ El ⌜QSig⌝
 ⊢q𝒮 = ⊢quoteDefs 𝒮
 
-⊢t𝒮 : {Ξ : Ctx} → Ξ ⊢ t𝒮 ∷ El ⌜TSig⌝
-⊢t𝒮 = ⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) ⊢q𝒮 (toI (⊢num (Defs.size 𝒮)))) (csymᵀ (credᵀ (El-⌜Σ⌝ ⌜QSig⌝ ⌜Nat⌝)))
+⊢tN : {Ξ : Ctx} (𝓃 : ℕ) → Ξ ⊢ tN 𝓃 ∷ El ⌜TSig⌝
+⊢tN 𝓃 = ⊢tAt ⊢q𝒮 (toI (⊢num 𝓃))
 
 ------------------------------------------------------------------------
 -- 7. The order on names, decoded: a closed proof of `d + 1 ≤ m` (the
@@ -312,5 +313,5 @@ private
 ⊢below : {Ξ : Ctx} {d : ℕ} → d <ˢ Defs.size 𝒮 → Ξ ⊢ unit ∷ El (⌜Hom⌝ ⌜Nat⌝ (nsuc (quoteℕ d)) (sizeQ q𝒮))
 ⊢below {d = d} lt = ⊢conv ⊢unit (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans (homAt d _ (sizeQ-at 𝒮)) (homLt⁻ d _ lt))))
 
-⊢belowT : {Ξ : Ctx} {d : ℕ} → d <ˢ (Defs.size 𝒮) → Ξ ⊢ unit ∷ El (⌜Hom⌝ ⌜Nat⌝ (nsuc (quoteℕ d)) (boundT t𝒮))
-⊢belowT {d = d} lt = ⊢conv ⊢unit (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans (homAt d _ (step (βsnd _ _) done)) (homLt⁻ d _ lt))))
+⊢belowT : {Ξ : Ctx} {d : ℕ} (𝓃 : ℕ) → d <ˢ 𝓃 → Ξ ⊢ unit ∷ El (⌜Hom⌝ ⌜Nat⌝ (nsuc (quoteℕ d)) (boundT (tN 𝓃)))
+⊢belowT {d = d} _ lt = ⊢conv ⊢unit (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans (homAt d _ (step (βsnd _ _) done)) (homLt⁻ d _ lt))))
