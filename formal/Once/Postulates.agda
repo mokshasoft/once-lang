@@ -73,6 +73,21 @@ postulate
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
+-- Postulate P4: coherence of the core meaning (plan 0.116), a SCAFFOLD
+------------------------------------------------------------------------
+--
+-- `coherence`, postulated in `Once.Metatheory.Coherence` until plan 0.116 D1.
+--
+-- NEEDED BY: nothing; it discharges the Spec's claim (`Spec.Core.Coherence`).
+-- JUSTIFICATION: true once an erased position is pure (plan 0.116 B); the
+--   proof is induction on two derivations of one judgment.
+-- IMPACT: if false, some judgment has two meanings — the class of bug the
+--   claim exists to catch.
+-- RUNTIME EFFECT: none (erased).
+--
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- Semantic Gap S1: Fixed Point Semantics
 ------------------------------------------------------------------------
 --

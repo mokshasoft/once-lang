@@ -101,14 +101,14 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-app : ∀ {Ψ₁ Ψ₂ q π A' A B' B} {f' f x' x : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.app f' x' ≡ G.app f x} {eB : B' ≡ B}
              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind q π ] B') ≡ (A T.⇒[ T.mk-kind q π ] B)) (ex : x' ≡ x) (eA : A' ≡ A)
-             (df : Γ' ⊢[ Ψ₁ ] f' ∷ A' T.⇒[ T.mk-kind q π ] B' ! π) (dx : Γ' ⊢[ Ψ₂ ] x' ∷ A' ! π)
+             (df : Γ' ⊢[ Ψ₁ ] f' ∷ A' T.⇒[ T.mk-kind q π ] B' ! π) (dx : Γ' ⊢[ Ψ₂ ] x' ∷ A' ! T.positionGrade q π)
          → tr eΓ et eB (GT.⊢app df dx) ≡ GT.⊢app (tr eΓ ef eF df) (tr eΓ ex eA dx)
   tr-app {eΓ = refl} {refl} {refl} refl refl refl refl df dx = refl
 
   tr-let : ∀ {Ψ₁ Ψ₂ q π A' A B' B} {e' e : G.Tm n} {b' b : G.Tm (suc n)}
              {eΓ : Γ' ≡ Γ} {et : G.let′ e' b' ≡ G.let′ e b} {eB : B' ≡ B}
              (ee : e' ≡ e) (eA : A' ≡ A) (eΓA : (Γ' C., A') ≡ (Γ C., A)) (eb : b' ≡ b) (eB′ : B' ≡ B)
-             (de : Γ' ⊢[ Ψ₁ ] e' ∷ A' ! π) (db : (Γ' C., A') ⊢[ q ∷ Ψ₂ ] b' ∷ B' ! π)
+             (de : Γ' ⊢[ Ψ₁ ] e' ∷ A' ! T.positionGrade q π) (db : (Γ' C., A') ⊢[ q ∷ Ψ₂ ] b' ∷ B' ! π)
          → tr eΓ et eB (GT.⊢let de db) ≡ GT.⊢let (tr eΓ ee eA de) (tr eΓA eb eB′ db)
   tr-let {eΓ = refl} {refl} {refl} refl refl refl refl refl de db = refl
 

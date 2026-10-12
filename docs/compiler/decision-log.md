@@ -18228,3 +18228,20 @@ Plan 0.112 names the algebraic structures the formalization already has. Three c
 ### Consequences
 - `Metatheory` has four fields: `term-model`, `type-system`, `effects`, `recursion`.
 - Open: C5's scope (functor vs full Freyd; "pure = central" is provable for the free `T`), F's object and equality. G moved to plan 0.114, with a new finding: effects vanish at quantity `Zero`.
+
+## D308 — AN ERASED POSITION IS PURE; THE MEANING IS A FUNCTION OF THE JUDGMENT; EFFECTS FORM A FREYD CATEGORY (2026-10-12)
+
+**Relates**: plan 0.116, D143 (erasure), D250 (`pure` = referential transparency), D276 (affine grades), D304 (metatheory placement), OCP-0009 ("Arrows / Freyd")
+
+### Context
+The core meaning gave `let x = e in b` at quantity `Zero` the meaning of `b` alone, even when `e` was effectful, and affine sub-usage made the same judgment derivable at `One`, where `e` ran: one judgment, two meanings. D143 introduced the erasure when "purity remains ignored"; D250 later made purity semantic and the erased positions were never revisited. `Spec.Type.Grade` said "no law couples the two grades".
+
+### Decision
+1. **One law couples quantity and purity: an erased position is pure.** A `Zero` position is never evaluated — it has no resources at run time — so only a pure computation may sit there. `⊢let`'s right-hand side and `⊢app`'s argument are typed at `positionGrade q π` (`pure` at `Zero`, `π` otherwise), in the ground and the polymorphic core. "Evaluate and discard" was considered and is impossible: the erased variables are not in the environment. An unused effectful right-hand side is bound at `One`.
+2. **The meaning is a function of the judgment** (`Spec.Core.Coherence`, a `Spec.Metatheory` field): any two derivations of one core judgment mean the same. Postulated as a scaffold (P4) until plan 0.116 D1; stated only now that it is believed true.
+3. **Effects form a Freyd category** (`Spec.Metatheory.Freyd`): a computation is central (commutes with every computation) iff it is pure, and only a pure computation may be skipped. Proved (`Metatheory.Freyd`): `T` is free over call/halt. So D250's `pure` is the categorical one.
+4. Usage counts copies of values; it never decides whether an effect happens.
+
+### Consequences
+- The surface elaborates to pure core terms, so no compiled program changes.
+- `⊢sub-eff`'s meaning is the unit `subM` (D250), not "identity"; the stale comments are corrected.

@@ -10,7 +10,11 @@
 --     argument is consumed — `Zero` (erased), `One` (linear), `Many`;
 --   * by a `Purity`: whether running it has observable effects — `pure`, or
 --     `eff`, ordered `pure ≤ eff`.
--- No law couples the two, so all four combinations are arrows.
+-- All four combinations are arrows. One law couples the two where a
+-- computation sits in a position (plan 0.116): an ERASED position is never run
+-- — it has no resources at run time — so what sits there must be pure
+-- (`positionGrade`). Usage counts copies of values; it never decides whether
+-- an effect happens.
 ------------------------------------------------------------------------
 
 module Once.Spec.Type.Grade where
@@ -87,6 +91,15 @@ pure ⊔p p = p
 eff  ⊔p _ = eff
 
 infixr 5 _⊔p_
+
+-- The grade a computation may have in a position used `q` times, inside a
+-- term of grade `π`: an erased position (`Zero`) is never evaluated, so only a
+-- pure computation may sit there (dropping an effectful one would lose its
+-- effect — plan 0.116 §0); any other position is evaluated, once, at `π`.
+positionGrade : Quantity → Purity → Purity
+positionGrade Zero _ = pure
+positionGrade One  π = π
+positionGrade Many π = π
 
 ------------------------------------------------------------------------
 -- The grade of an arrow

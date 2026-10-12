@@ -16,7 +16,7 @@
 --     This is what lets a combinator be a λ-definition: `compose f g`'s body
 --     `g (f x)` is an effectful term at an effectful arrow. Subeffecting
 --     (`pure ⊑ eff`, D068) is the one non-syntax-directed rule, `⊢sub-eff`,
---     and has no term: the grade is erased.
+--     and has no term; it means the monad's unit (D250).
 --
 -- Value introductions conclude at `pure` (D069: effect-free intros are
 -- grade-polymorphic — via `⊢sub-eff`). Multi-premise rules share one `π`
@@ -39,7 +39,7 @@ module Once.Spec.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
@@ -69,16 +69,19 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → (Γ , A) ⊢[ q' ∷ Ψ ] t ∷ B ! π
        → Γ ⊢[ Ψ ] lam t ∷ A ⇒[ mk-kind q π ] B ! pure
 
-  -- QTT application: the argument's usage scales by the arrow's grade.
+  -- QTT application: the argument's usage scales by the arrow's grade. An
+  -- erased argument (`q = Zero`) is never evaluated, so it is pure
+  -- (`positionGrade`, plan 0.116).
   ⊢app : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B f x}
        → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π
-       → Γ ⊢[ Ψ₂ ] x ∷ A ! π
+       → Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π
        → Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app f x ∷ B ! π
 
-  -- `let x = e in b`: the RHS scales by the bound variable's usage in `b`
-  -- (at `Zero` it is not evaluated — D143).
+  -- `let x = e in b`: the RHS scales by the bound variable's usage in `b`.
+  -- At `Zero` it is not evaluated (D143), so it must be pure
+  -- (`positionGrade`, plan 0.116): an unused effectful RHS is bound at `One`.
   ⊢let : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B e b}
-       → Γ ⊢[ Ψ₁ ] e ∷ A ! π
+       → Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π
        → (Γ , A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π
        → Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ e b ∷ B ! π
 
@@ -170,7 +173,9 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   ⊢sub-use : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {π : Purity} {A t}
            → Ψ ⊑ᵘ Ψ′ → Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ′ ] t ∷ A ! π
 
-  -- D068: pure ⊑ eff is SUBSUMPTION — no term, identity meaning.
+  -- D068: pure ⊑ eff is SUBSUMPTION — no term. Its meaning is not the
+  -- identity but the unit `subM` (D250): the embedding of values into
+  -- computations, J of the Freyd category (plan 0.116).
   ⊢sub-eff : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π π′ : Purity} {A t}
            → π ⊑π π′ → Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ ] t ∷ A ! π′
 
@@ -192,4 +197,12 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case s l r ∷ C ! π
 ⊢case⊔ {Ψₗ = Ψₗ} {Ψᵣ} {qℓ} {qr} ds dl dr =
   ⊢case ds (⊢sub-use (⊑ᵘ-keep qℓ (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) dl) (⊢sub-use (⊑ᵘ-keep qr (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) dr)
+
+-- A pure computation may sit in any position: `positionGrade q pure` is `pure`
+-- at every `q` (plan 0.116). By cases, so it is the same derivation.
+⊢at-position : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A t} (q : Quantity)
+             → Γ ⊢[ Ψ ] t ∷ A ! pure → Γ ⊢[ Ψ ] t ∷ A ! positionGrade q pure
+⊢at-position Zero d = d
+⊢at-position One  d = d
+⊢at-position Many d = d
 

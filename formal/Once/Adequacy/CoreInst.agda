@@ -110,6 +110,14 @@ module WithSG (sg : SigGround) where
     subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.ref d (λ i → ρ̂ (τ′ i)) ∷ X ! pure) (sym (ρ̂-ref d τ′))
       (GT.⊢ref d (λ i → ρ̂ (τ′ i)) (λ i e → ρ̂-base (k i e)))
 
+  -- `⊢at-position` (a pure derivation in a position of quantity `q`, plan
+  -- 0.116) is the derivation itself at every `q`, so `ρ̂ᶜ` commutes with it.
+  ρ̂ᶜ-at : ∀ (q : T.Quantity) {n} {Γ : C.Ctx n} {Ψ t A} (d : Γ ⊢[ Ψ ] t ∷ A ! pure)
+        → ρ̂ᶜ (GT.⊢at-position q d) ≡ GT.⊢at-position q (ρ̂ᶜ d)
+  ρ̂ᶜ-at T.Zero d = refl
+  ρ̂ᶜ-at T.One  d = refl
+  ρ̂ᶜ-at T.Many d = refl
+
   -- The context of the instantiated abstraction is the substituted context.
   ρ̂S-abs : ∀ {n} (Γ : C.Ctx n) → absCtx Δ Γ ⟪ τ ⟫ᶜ ≡ ρ̂S Γ
   ρ̂S-abs C.∅           = refl
@@ -335,7 +343,7 @@ module WithSG (sg : SigGround) where
          → Ψ₁ ≡ Ψ₂ → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢lam le d₁ ≅ GT.⊢lam le d₂
     ≅lam refl refl H.refl = H.refl
     ≅let : ∀ {A B q π Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ e₁ e₂ b₁ b₂}
-             {de₁ : Γ ⊢[ Ψ₁ ] e₁ ∷ A ! π} {de₂ : Γ ⊢[ Ψ₁′ ] e₂ ∷ A ! π}
+             {de₁ : Γ ⊢[ Ψ₁ ] e₁ ∷ A ! T.positionGrade q π} {de₂ : Γ ⊢[ Ψ₁′ ] e₂ ∷ A ! T.positionGrade q π}
              {db₁ : (Γ C., A) ⊢[ q C.∷ Ψ₂ ] b₁ ∷ B ! π} {db₂ : (Γ C., A) ⊢[ q C.∷ Ψ₂′ ] b₂ ∷ B ! π}
          → Ψ₁ ≡ Ψ₁′ → e₁ ≡ e₂ → de₁ ≅ de₂ → Ψ₂ ≡ Ψ₂′ → b₁ ≡ b₂ → db₁ ≅ db₂ → GT.⊢let de₁ db₁ ≅ GT.⊢let de₂ db₂
     ≅let refl refl H.refl refl refl H.refl = H.refl

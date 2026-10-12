@@ -13,7 +13,7 @@
 -- (`scripts/metatheory-gate.sh`). `Once.Certified` carries the proofs, so
 -- each statement is on the apex and goes red when the Spec moves.
 --
--- Four parts:
+-- Six parts:
 --   * `term-model` — for every signature of definitions `S`, the core's TERM
 --     MODEL (`Once.Spec.Core.TermModel`): substitution of terms is typed
 --     (`subst-⊢`), a pure `let` means its substitution (`let-β`, referential
@@ -27,6 +27,13 @@
 --     grade's `M π` is a monad, subeffecting `subM` and the erasure `toT` to
 --     the interaction tree are monad morphisms, and the observation `run`
 --     respects return and bind (`then` threads the history).
+--   * `coherence` — the core meaning is a function of the JUDGMENT, not of the
+--     derivation chosen for it (plan 0.116; `Spec.Core.Coherence`).
+--   * `freyd` — effects form a Freyd category (plan 0.116): a computation is
+--     central (commutes with every other) exactly when it is pure, and only a
+--     pure computation may be skipped. So `pure` (D250: referential
+--     transparency) is the categorical notion, and a meaning that drops or
+--     moves an effectful computation is unsound.
 --   * `recursion` — the fold is the unique algebra morphism out of `μ`, and
 --     fusion holds (plan 0.112 D3). STATED, NOT YET PROVED: `Once.Metatheory`
 --     postulates both (`Once.Metatheory.Recursion`).
@@ -40,11 +47,12 @@ module Once.Spec.Metatheory where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
-open import Data.Product using (Σ-syntax; _×_)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.TermModel using (TermModel) public
+open import Once.Spec.Core.Coherence using (Coherence)
 open import Once.Spec.Type.Grade using (Purity; mk-kind; Many)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
@@ -130,9 +138,31 @@ record Recursion : Set₁ where
                 → (∀ y → bindM π (alg y) f ≡ bindM π (mapLayerᵛ π wf f y) alg′)
                 → ∀ v → bindM π (cata-semᵛ π wf alg v) f ≡ cata-semᵛ π wf alg′ v
 
+-- Effects form a Freyd category (plan 0.116). Values and pure maps are the
+-- category C, computations `X → T Y` the premonoidal category K = Kleisli(T),
+-- and subeffecting `returnT` (D250, `subM ⊑-pe`) the embedding J : C → K.
+-- A computation is CENTRAL when it commutes with every computation: running it
+-- before or after another gives the same tree.
+Central : ∀ {Y : Set} → T Y → Set₁
+Central {Y} m = ∀ {W : Set} (n : T W)
+              → (m >>=T λ y → n >>=T λ w → returnT (y , w)) ≡ (n >>=T λ w → m >>=T λ y → returnT (y , w))
+
+record Freyd : Set₁ where
+  field
+    -- J's image is central: a pure computation commutes with every computation
+    pure-central : ∀ {Y : Set} (y : Y) → Central (returnT y)
+    -- and only it: a central computation is pure (`T` is free over call/halt)
+    central-pure : ∀ {Y : Set} (m : T Y) → Central m → Σ[ y ∈ Y ] m ≡ returnT y
+    -- only a pure computation may be skipped: one whose run can be dropped
+    -- before every continuation is a value
+    discard-pure : ∀ {Y : Set} (m : T Y) → (∀ {W : Set} (k : T W) → (m >>=T λ _ → k) ≡ k)
+                 → Σ[ y ∈ Y ] m ≡ returnT y
+
 record Metatheory : Set₁ where
   field
     term-model  : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → TermModel S
     type-system : TypeSystem
     effects     : Effects
+    coherence   : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → Coherence S
+    freyd       : Freyd
     recursion   : Recursion

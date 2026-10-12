@@ -14,6 +14,8 @@ open import Once.Spec.Metatheory using (Metatheory; TypeSystem)
 open import Once.Metatheory.TermModel using (termModel)
 open import Once.Metatheory.Effects using (effects)
 open import Once.Metatheory.Recursion using (recursion)
+open import Once.Metatheory.Freyd using (freyd)
+import Once.Metatheory.Coherence as Coh
 import Once.Metatheory.SubLaws as SL
 import Once.Metatheory.ModeAgreement as MA
 
@@ -38,5 +40,7 @@ metatheory = record
   { term-model  = termModel
   ; type-system = typeSystem
   ; effects     = effects
+  ; coherence   = λ S → Coh.coherence S
+  ; freyd       = freyd
   ; recursion   = recursion
   }

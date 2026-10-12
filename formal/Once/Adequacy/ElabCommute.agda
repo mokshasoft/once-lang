@@ -38,7 +38,7 @@ open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
 import Once.Spec.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (mk-kind; Many; pure; eff)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; positionGrade)
 open import Once.Spec.Type using (μ-type; ν-type)
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
@@ -122,9 +122,17 @@ private
 
   ≅app : ∀ {n} {Γ : C.Ctx n} {Ψ₁ Ψ₂ q π A₁ A₂ B₁ B₂ f₁ f₂ x₁ x₂}
            {df₁ : Γ ⊢[ Ψ₁ ] f₁ ∷ A₁ T.⇒[ mk-kind q π ] B₁ ! π} {df₂ : Γ ⊢[ Ψ₁ ] f₂ ∷ A₂ T.⇒[ mk-kind q π ] B₂ ! π}
-           {dx₁ : Γ ⊢[ Ψ₂ ] x₁ ∷ A₁ ! π} {dx₂ : Γ ⊢[ Ψ₂ ] x₂ ∷ A₂ ! π}
+           {dx₁ : Γ ⊢[ Ψ₂ ] x₁ ∷ A₁ ! positionGrade q π} {dx₂ : Γ ⊢[ Ψ₂ ] x₂ ∷ A₂ ! positionGrade q π}
        → A₁ ≡ A₂ → B₁ ≡ B₂ → f₁ ≡ f₂ → df₁ ≅ df₂ → x₁ ≡ x₂ → dx₁ ≅ dx₂ → GT.⊢app df₁ dx₁ ≅ GT.⊢app df₂ dx₂
   ≅app refl refl refl H.refl refl H.refl = H.refl
+
+  -- `⊢at-position q` preserves `≅` (it is the derivation itself at every `q`).
+  ≅at : ∀ (q : Quantity) {n₁ n₂} {Γ₁ : C.Ctx n₁} {Γ₂ : C.Ctx n₂} {Ψ₁ Ψ₂ t₁ t₂ A₁ A₂}
+          {d₁ : Γ₁ ⊢[ Ψ₁ ] t₁ ∷ A₁ ! pure} {d₂ : Γ₂ ⊢[ Ψ₂ ] t₂ ∷ A₂ ! pure}
+      → d₁ ≅ d₂ → GT.⊢at-position q d₁ ≅ GT.⊢at-position q d₂
+  ≅at Zero h = h
+  ≅at One  h = h
+  ≅at Many h = h
 
   -- The arm combinators' terms: `let′ f (let′ (wk g) B)`.
   arms : ∀ {n} {f₁ f g₁ g : G.Tm n} {B : G.Tm (suc (suc n))} → f₁ ≡ ρ̂ₜ f → g₁ ≡ ρ̂ₜ g
@@ -301,7 +309,8 @@ mutual
   dr-i (t-pair a b)       = ≅2 _ _ GT.⊢pair refl (tm-i a) (dr-i a) refl (tm-i b) (dr-i b)
   dr-i (t-neg d)          = ≅1 _ _ (GT.⊢prim G.p-neg) refl (tm-i d) (dr-i d)
   dr-i (t-neg-float i f l p) = H.refl
-  dr-i (t-let d₁ d₂)      = ≅let refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂)
+  dr-i (t-let d₁ d₂)      =
+    ≅let refl (tm-i d₁) (H.trans (≅at _ (dr-i d₁)) (H.≡-to-≅ (sym (ρ̂ᶜ-at _ _)))) refl (tm-i d₂) (dr-i d₂)
   dr-i (t-case ds dl dx)  = ≅case⊔ refl (tm-i ds) (dr-i ds) refl (tm-i dl) (dr-i dl) refl (tm-i dx) (dr-i dx)
   dr-i (t-binop-arith {op = OpAdd} o d₁ d₂) =
     ≅1 _ _ (GT.⊢prim G.p-add) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
@@ -402,7 +411,8 @@ mutual
     H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))) _)
             (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff))))
                   refl (H.sym (c-outEff wf)) (tm-i d) (dr-i d))
-  dr-i (t-app h df dx)       = ≅2 _ _ GT.⊢app refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)
+  dr-i (t-app h df dx)       =
+    ≅2 _ _ GT.⊢app refl (tm-i df) (dr-i df) refl (tm-c dx) (H.trans (≅at _ (dr-c dx)) (H.≡-to-≅ (sym (ρ̂ᶜ-at _ _))))
   dr-i (t-effApp h df dx)    =
     H.trans (≅2 _ _ DT.⊢effAppᶜ refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.sym (c-effApp (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx))))
   dr-i (t-app-spine h da df) = ≅2 _ _ GT.⊢app refl (tm-d df) (dr-d df) refl (tm-i da) (dr-i da)

@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade)
 open import Once.Spec.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
@@ -182,11 +182,11 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
 
   ⊢app : ∀ {n} {Γ : PCtx m n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B f x}
        → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π
-       → Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! π
+       → Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π
        → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app f x ∷ B ! π
 
   ⊢let : ∀ {n} {Γ : PCtx m n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B e b}
-       → Δ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! π
+       → Δ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π
        → Δ ⊩ (Γ , A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π
        → Δ ⊩ Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ e b ∷ B ! π
 

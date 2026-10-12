@@ -212,7 +212,7 @@ elabᵢ V (t-annot _ d)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
 elabᵢ V (t-neg d)         = lift1 (prim p-neg) (⊢prim p-neg) (elabᵢ V d)
 elabᵢ V (t-neg-float i f l p) = lit (lit-float (negate (decimalOf i f l))) , ⊢lit-float
-elabᵢ V (t-let d₁ d₂)     = let (e , ⊢e) = elabᵢ V d₁ ; (b , ⊢b) = elabᵢ V d₂ in let′ e b , ⊢let ⊢e ⊢b
+elabᵢ V (t-let d₁ d₂)     = let (e , ⊢e) = elabᵢ V d₁ ; (b , ⊢b) = elabᵢ V d₂ in let′ e b , ⊢let (⊢at-position _ ⊢e) ⊢b
 elabᵢ V (t-case ds dl dr) =
   let (s , ⊢s) = elabᵢ V ds ; (l , ⊢l) = elabᵢ V dl ; (r , ⊢r) = elabᵢ V dr
   in case s l r , ⊢case⊔ ⊢s ⊢l ⊢r
@@ -279,7 +279,7 @@ elabᵢ V (t-apply-app-infer d)     = appC ⊢applyᶜ (elabᵢ V d)
 elabᵢ V (t-apply-eff-app-infer d) = appC ⊢applyEffᶜ (elabᵢ V d)
 elabᵢ V (t-Out-app-infer wf refl d)     = appC (⊢outᶜ wf) (elabᵢ V d)
 elabᵢ V (t-Out-eff-app-infer wf refl d) = appC (⊢outEffᶜ wf) (elabᵢ V d)
-elabᵢ V (t-app _ df dx)    = lift2 app ⊢app (elabᵢ V df) (elabᶜ V dx)
+elabᵢ V (t-app _ df dx)    = lift2 app (λ f x → ⊢app f (⊢at-position _ x)) (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-effApp _ df dx) = lift2 effAppᶜ ⊢effAppᶜ (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-app-spine _ dx df) = lift2 app ⊢app (elabᵈ V df) (elabᵢ V dx)
 

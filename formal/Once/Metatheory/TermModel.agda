@@ -22,7 +22,7 @@ module Once.Metatheory.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 open import Data.Nat using (suc)
 open import Data.Fin using (suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; positionGrade)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type.Sub using (pure⊑)
 open import Once.Target.Arch using (TargetNum)
@@ -94,7 +94,7 @@ module _ (fmt : TargetNum) (δ : GM.DefSem) where
                 {t : Tm (suc n)} {u : Tm n}
                 (dt : (Γ , A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
                 (x : Env Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ))
-            → GM.⟦ subst-⊢ dt du ⟧ fmt δ x ≡ GM.⟦ ⊢let (⊢sub-eff (pure⊑ π) du) dt ⟧ fmt δ x
+            → GM.⟦ subst-⊢ dt du ⟧ fmt δ x ≡ GM.⟦ ⊢let (⊢sub-eff (pure⊑ (positionGrade q π)) du) dt ⟧ fmt δ x
   let-β-sem {Γ = Γ} {Ψₜ} {Ψᵤ} {Zero} dt du x =
     trans (⟦retype⟧ (single-usage Zero Ψₜ Ψᵤ) (sub-⊢ dt (single-ty du)) fmt δ x)
       (trans (sub-sem dt (single-ty du) _) (cong (GM.⟦ dt ⟧ fmt δ) (single-env0 du x)))
