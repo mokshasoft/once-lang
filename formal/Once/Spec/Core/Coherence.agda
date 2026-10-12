@@ -15,7 +15,8 @@
 -- same — no finite observation tells them apart (`Spec.Equivalence`; not `≡`,
 -- since two streams built differently can behave identically) — at every
 -- target format, at definitions and an environment whose values are
--- themselves well-behaved (each the same as itself: a function respects
+-- themselves well-behaved (each the same as itself — a definition whatever
+-- proof of its instance's kinds is passed — : a function respects
 -- sameness of its arguments — the usual premise of a logical relation; an
 -- arbitrary Agda function need not, and nothing in Agda proves it does).
 --
@@ -42,9 +43,11 @@ open import Once.Spec.Core.Typing S using (_⊢[_]_∷_!_)
 open import Once.Spec.Core.Meaning S using (⟦_⟧; DefSem; defs; Env)
 open import Once.Spec.Equivalence using (Same; SameM)
 
--- The definitions' meanings are well-behaved: each the same as itself.
+-- The definitions' meanings are well-behaved: each the same as itself, and
+-- not depending on which proof shows its instance respects the kinds (a
+-- proof is not data).
 SameDefs : DefSem → Set
-SameDefs δ = ∀ d τ r → Same (Schema.type (S !! d) ⟪ τ ⟫) (defs δ d τ r) (defs δ d τ r)
+SameDefs δ = ∀ d τ r r′ → Same (Schema.type (S !! d) ⟪ τ ⟫) (defs δ d τ r) (defs δ d τ r′)
 
 record Coherence : Set where
   field

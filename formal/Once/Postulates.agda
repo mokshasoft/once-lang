@@ -75,18 +75,9 @@ postulate
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- Postulate P4: coherence of the core meaning (plan 0.116), a SCAFFOLD
-------------------------------------------------------------------------
---
--- `coherence`, postulated in `Once.Metatheory.Coherence` until plan 0.116 D1.
---
--- NEEDED BY: nothing; it discharges the Spec's claim (`Spec.Core.Coherence`).
--- JUSTIFICATION: true once an erased position is pure (plan 0.116 B); the
---   proof is induction on two derivations of one judgment.
--- IMPACT: if false, some judgment has two meanings — the class of bug the
---   claim exists to catch.
--- RUNTIME EFFECT: none (erased).
---
+-- P4 (retired): coherence of the core meaning — PROVED by plan 0.116 D1
+-- (`Once.Metatheory.Coherence`), after D310 made a core term determine its
+-- type. The number is not reused.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------

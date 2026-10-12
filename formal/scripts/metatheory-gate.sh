@@ -20,6 +20,10 @@ allowed='^Once\.(Spec|Spec\..*|Type|Type\..*|Surface\..*|Denotation\..*|Target\.
 declare -A exception=(
   [Once.TypeCheck.Classify]="the typing judgment's premises (composeMid, classifyAppHead, NamedCtx): MERGE.md §1, plan 0.80/D134"
   [Once.CanonicalName]="the Spec's name type (canonical names in Resolution and the judgment)"
+  [Once.Semantics.Functor]="the Spec's stream observation (Spec.Equivalence: SFunctor, ⟦_⟧SF) and μ/ν layers"
+  [Once.Functor.Translate]="the Spec's ν value domain (⟦ ν F π ⟧ᵛ = νᵖ (translateF …)); validity proofs' irrelevance"
+  [Once.Semantics.Machine]="the Spec's μ value domain (⟦ μ F ⟧ᵛ = Val.⟦μ⟧ F, sem-In, the layer coercions)"
+  [Once.Word]="the machine-word carrier the Spec's ν value domain is built at (Carrier)"
 )
 declare -A spec=()
 closure=$(cd .. && python3 formal/scripts/spec-closure.py)
