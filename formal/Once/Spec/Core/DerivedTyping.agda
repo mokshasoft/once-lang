@@ -38,29 +38,31 @@ open import Once.Spec.Core.Derived S
 ⊢var′ i π = ⊢sub-eff (pure⊑ π) (⊢var i)
 
 ------------------------------------------------------------------------
--- The closed combinators: at zero usage, at any grade of their arrow.
+-- The closed combinators: at zero usage, at any grade of their arrow. The
+-- body is computed purely and then embedded at the arrow's grade (the unit,
+-- once, outermost), so its meaning is the grade's `returnM` of a value.
 ------------------------------------------------------------------------
 
 ⊢idᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → Γ ⊢[ zeroUsage ] idᶜ A π ∷ A ⇒[ mk-kind Many π ] A ! pure
 ⊢idᶜ {π = π} = ⊢lam refl (⊢var′ zero π)
 
 ⊢fstᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] fstᶜ A B π ∷ (A * B) ⇒[ mk-kind Many π ] A ! pure
-⊢fstᶜ {π = π} = ⊢lam refl (⊢fst (⊢var′ zero π))
+⊢fstᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢fst (⊢var zero)))
 
 ⊢sndᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] sndᶜ A B π ∷ (A * B) ⇒[ mk-kind Many π ] B ! pure
-⊢sndᶜ {π = π} = ⊢lam refl (⊢snd (⊢var′ zero π))
+⊢sndᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢snd (⊢var zero)))
 
 ⊢inlᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] inlᶜ A B π ∷ A ⇒[ mk-kind Many π ] (A + B) ! pure
-⊢inlᶜ {π = π} = ⊢lam refl (⊢inl (⊢var′ zero π))
+⊢inlᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢inl (⊢var zero)))
 
 ⊢inrᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] inrᶜ A B π ∷ B ⇒[ mk-kind Many π ] (A + B) ! pure
-⊢inrᶜ {π = π} = ⊢lam refl (⊢inr (⊢var′ zero π))
+⊢inrᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢inr (⊢var zero)))
 
 ⊢terminalᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → Γ ⊢[ zeroUsage ] terminalᶜ A π ∷ A ⇒[ mk-kind Many π ] Unit ! pure
 ⊢terminalᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) ⊢unit)
 
 ⊢initialᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → Γ ⊢[ zeroUsage ] initialᶜ A π ∷ Void ⇒[ mk-kind Many π ] A ! pure
-⊢initialᶜ {π = π} = ⊢lam refl (⊢absurd (⊢var′ zero π))
+⊢initialᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢absurd (⊢var zero)))
 
 ------------------------------------------------------------------------
 -- Usage algebra

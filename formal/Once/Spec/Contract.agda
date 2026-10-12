@@ -93,6 +93,11 @@ contractOf c (A ⇒[ mk-kind One  Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind Many Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind One  Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
 contractOf c (A ⇒[ mk-kind Many Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
+-- D311: an operation at `prod` is still one call (`HonestFFI` keeps it out of
+-- signatures; the form is the effectful one, as `arrow-sem` reads it).
+contractOf c (A ⇒[ mk-kind Zero Ty.prod ] B) = contract-eff c UnitT B (isVoid? B) (isUnit? B)
+contractOf c (A ⇒[ mk-kind One  Ty.prod ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
+contractOf c (A ⇒[ mk-kind Many Ty.prod ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
 {-# CATCHALL #-}
 contractOf c T                            = value (key c UnitT T)
 

@@ -103,6 +103,7 @@ sigOp-σ-irrel : ∀ {n} {Γ : Srf.Ctx n} {A : Type} (c : CallEnv) (r r′ : Str
   → SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt (SD.defsSem c r) dγ ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt (SD.defsSem c r′) dγ
 sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero T.pure ] _} c r r′ s (con-fun _ _) dγ = refl
 sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero T.eff ] _}  c r r′ s (con-fun _ _) dγ = refl
+sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero T.prod ] _} c r r′ s (con-fun _ _) dγ = refl
 sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind One _ ] _}  c r r′ s (con-fun _ _) dγ = refl
 sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Many _ ] _} c r r′ s (con-fun _ _) dγ = refl
 sigOp-σ-irrel {A = _ T.⇒[ _ ] _} c r r′ s (con-base ()) dγ

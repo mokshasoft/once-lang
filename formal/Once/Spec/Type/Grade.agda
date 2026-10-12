@@ -8,8 +8,9 @@
 -- An arrow `A ⇒[ k ] B` is graded twice, independently:
 --   * by a usage `Quantity` (quantitative type theory): how many times the
 --     argument is consumed — `Zero` (erased), `One` (linear), `Many`;
---   * by a `Purity`: whether running it has observable effects — `pure`, or
---     `eff`, ordered `pure ≤ eff`; sequencing multiplies grades (`_·p_`).
+--   * by a `Purity`: whether running it has observable effects and whether
+--     it may run forever — `pure ≤ eff ≤ prod` (D311); sequencing multiplies
+--     grades (`_·p_`).
 -- All four combinations are arrows. One law couples the two where a
 -- computation sits in a position (plan 0.116): an ERASED position is never run
 -- — it has no resources at run time — so what sits there must be pure
@@ -77,18 +78,29 @@ Many  ≤q One   = false
 Many  ≤q Many  = true
 
 ------------------------------------------------------------------------
--- Effect: the order pure ≤ eff
+-- Effect: the order pure ≤ eff ≤ prod
+--
+-- Two axes laid out on a line (D311): whether a computation has effects,
+-- and whether it may run forever. The pure-and-forever corner is empty — a
+-- pure computation that never returns is divergence, which Once does not
+-- have, and pure infinite DATA is a value of a `ν` type — so the three
+-- inhabited corners are ordered.
 ------------------------------------------------------------------------
 
 data Purity : Set where
   pure : Purity   -- no observable effects
-  eff  : Purity   -- may have observable effects
+  eff  : Purity   -- may have observable effects, and returns
+  prod : Purity   -- may have observable effects, and may run forever: each
+                  -- next event after finite work (PRODUCTIVE)
 
 -- Join: the least grade above both — the grade at which two arms meet, of
 -- which exactly one runs.
 _⊔p_ : Purity → Purity → Purity
-pure ⊔p p = p
-eff  ⊔p _ = eff
+pure ⊔p p    = p
+eff  ⊔p pure = eff
+eff  ⊔p eff  = eff
+eff  ⊔p prod = prod
+prod ⊔p _    = prod
 
 infixr 5 _⊔p_
 
@@ -99,8 +111,11 @@ infixr 5 _⊔p_
 -- yet not above `pure`. A rule that runs premises in order concludes at the
 -- product of their grades, left to right.
 _·p_ : Purity → Purity → Purity
-pure ·p p = p
-eff  ·p _ = eff
+pure ·p p    = p
+eff  ·p pure = eff
+eff  ·p eff  = eff
+eff  ·p prod = prod
+prod ·p _    = prod
 
 infixr 6 _·p_
 

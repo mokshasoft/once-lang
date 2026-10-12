@@ -57,9 +57,10 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.TermModel using (TermModel) public
 open import Once.Spec.Core.Coherence using (Coherence)
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; prod; mk-kind; Many; _·p_)
+open import Once.Spec.Iterative using (TreeEq∞; return∞; _>>=∞_)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
-open import Once.Spec.Totality using (FiniteT; FiniteM; selfRef; forwardRef; defF; tickDefs; ticker)
+open import Once.Spec.Totality using (FiniteT; ProductiveM; selfRef; forwardRef; defF; tickDefs; ticker)
 open import Once.Spec.Module using (ModTele; emptyScope)
 open import Once.Spec.Context using (∅)
 open import Once.Spec.Type.WellFormed using (wf-Id)
@@ -77,7 +78,7 @@ open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Meaning
   using ( T ; returnT ; _>>=T_ ; Interp ; run ; then ; SigOpEvent
-        ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT ; bindᵍ
+        ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT∞ ; bindᵍ ; EqM
         ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ )
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.Spec.Typing.Scope using (NamedCtx)
@@ -123,22 +124,22 @@ record TypeSystem : Set where
 record Effects : Set₁ where
   field
     -- each grade's `M π` is a monad
-    M-identityˡ : ∀ π {X Y : Set} (x : X) (k : X → M π Y) → bindM π (returnM π x) k ≡ k x
-    M-identityʳ : ∀ π {X : Set} (m : M π X) → bindM π m (returnM π) ≡ m
+    M-identityˡ : ∀ π {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM π x) k) (k x)
+    M-identityʳ : ∀ π {X : Set} (m : M π X) → EqM π (bindM π m (returnM π)) m
     M-assoc     : ∀ π {X Y Z : Set} (m : M π X) (f : X → M π Y) (g : Y → M π Z)
-                → bindM π (bindM π m f) g ≡ bindM π m (λ x → bindM π (f x) g)
+                → EqM π (bindM π (bindM π m f) g) (bindM π m (λ x → bindM π (f x) g))
     -- subeffecting is a monad morphism `M π → M π′`
-    subM-return : ∀ {π π′} (g : π ⊑π π′) {X : Set} (x : X) → subM g (returnM π x) ≡ returnM π′ x
+    subM-return : ∀ {π π′} (g : π ⊑π π′) {X : Set} (x : X) → EqM π′ (subM g (returnM π x)) (returnM π′ x)
     subM-bind   : ∀ {π π′} (g : π ⊑π π′) {X Y : Set} (m : M π X) (k : X → M π Y)
-                → subM g (bindM π m k) ≡ bindM π′ (subM g m) (λ x → subM g (k x))
-    -- so is the erasure of a grade to the interaction tree
-    toT-return  : ∀ π {X : Set} (x : X) → toT π (returnM π x) ≡ returnT x
-    toT-bind    : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
-                → toT π (bindM π m k) ≡ (toT π m >>=T λ x → toT π (k x))
+                → EqM π′ (subM g (bindM π m k)) (bindM π′ (subM g m) (λ x → subM g (k x)))
+    -- so is the erasure of a grade to the completely iterative monad (D311)
+    toT∞-return : ∀ π {X : Set} (x : X) → TreeEq∞ _≡_ (toT∞ π (returnM π x)) (return∞ x)
+    toT∞-bind   : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
+                → TreeEq∞ _≡_ (toT∞ π (bindM π m k)) (toT∞ π m >>=∞ λ x → toT∞ π (k x))
     -- and of the GRADED bind (D311): `M` is a graded monad over the grades'
-    -- ordered monoid, and erasing it gives `T`'s bind
-    toT-bindᵍ   : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
-                → toT (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≡ (toT π₁ m >>=T λ x → toT π₂ (k x))
+    -- ordered monoid, and erasing it gives `T∞`'s bind
+    toT∞-bindᵍ  : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
+                → TreeEq∞ _≡_ (toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k)) (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
     -- the observation respects return and bind
     run-return  : ∀ (ι : Interp) (h : List SigOpEvent) {X Y : Set} (x : X) (f : X → T Y)
                 → then ι h (run ι h (returnT x)) f ≡ run ι h (f x)
@@ -152,14 +153,14 @@ record Recursion : Set₁ where
     -- `fold alg` is the only `h` that commutes with the constructor
     fold-unique : ∀ π {F A} (wf : WellFormedF F) (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)
                     (h : ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ)
-                → (∀ x → h (in-valueᵛ wf x) ≡ bindM π (mapLayerᵛ π wf h x) alg)
-                → ∀ v → h v ≡ cata-semᵛ π wf alg v
+                → (∀ x → EqM π (h (in-valueᵛ wf x)) (bindM π (mapLayerᵛ π wf h x) alg))
+                → ∀ v → EqM π (h v) (cata-semᵛ π wf alg v)
     -- fusion: a map that commutes with the algebras commutes with the folds
     fold-fusion : ∀ π {F A B} (wf : WellFormedF F)
                     (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg′ : ⟦ ⟦ F ⟧T B ⟧ᵛ → M π ⟦ B ⟧ᵛ)
                     (f : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ)
-                → (∀ y → bindM π (alg y) f ≡ bindM π (mapLayerᵛ π wf f y) alg′)
-                → ∀ v → bindM π (cata-semᵛ π wf alg v) f ≡ cata-semᵛ π wf alg′ v
+                → (∀ y → EqM π (bindM π (alg y) f) (bindM π (mapLayerᵛ π wf f y) alg′))
+                → ∀ v → EqM π (bindM π (cata-semᵛ π wf alg v) f) (cata-semᵛ π wf alg′ v)
     -- unfold's computation law (plan 0.116 E): forcing `unfold c s` runs the
     -- coalgebra FUNCTION on the seed (once per forced layer; its term was
     -- evaluated once, when the stream was built — D273) and puts `unfold c` at
@@ -167,8 +168,8 @@ record Recursion : Set₁ where
     -- it, every observation of a stream is determined; uniqueness holds up to
     -- bisimilarity (the final T∘F-coalgebra).
     unfold-out  : ∀ π {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
-                → out-semᵛ π wf (ana-semᵛ π pure wf clo a)
-                  ≡ bindM π (clo a) (mapLayerᵛ π wf (λ a′ → returnM π (ana-semᵛ π pure wf clo a′)))
+                → EqM π (out-semᵛ π wf (ana-semᵛ π pure wf clo a))
+                    (bindM π (clo a) (mapLayerᵛ π wf (λ a′ → returnM π (ana-semᵛ π pure wf clo a′))))
 
 -- Effects form a Freyd category (plan 0.116). Values and pure maps are the
 -- category C, computations `X → T Y` the premonoidal category K = Kleisli(T),
@@ -208,7 +209,7 @@ module TickMeaning = Once.Spec.Core.Meaning tickDefs
 record Totality : Set₁ where
   field
     finite     : ∀ {X : Set} (m : T X) → FiniteT m
-    productive : ∀ π {F} (wf : WellFormedF F) (v : ⟦ ν-type F π ⟧ᵛ) → FiniteM π (out-semᵛ π wf v)
+    productive : ∀ π {F} (wf : WellFormedF F) (v : ⟦ ν-type F π ⟧ᵛ) → ProductiveM π (out-semᵛ π wf v)
     no-self-reference    : ¬ ModTele emptyScope (selfRef ∷ [])
     no-forward-reference : ¬ ModTele emptyScope (forwardRef ∷ defF ∷ [])
     stream-typed : TickTyping._⊢[_]_∷_!_ ∅ Surface.[] ticker (ν-type Id eff) pure

@@ -22,13 +22,12 @@ open import Once.Spec.Contract using (ISig)
 
 module Once.Metatheory.Coherence {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Once.Spec.Equivalence using (TreeEq)
 open import Once.Spec.Core.Coherence S using (Coherence)
-open import Once.Metatheory.Coherence.Relation using (TreeEq-map; S→Same)
+open import Once.Metatheory.Coherence.Relation using (≈∞→N; S→Same)
 open import Once.Metatheory.Coherence.Env using (Same-Agree)
 open import Once.Metatheory.Coherence.Fundamental S using (FL)
 
 coherence : Coherence
 coherence = record
   { coherent = λ {_} {Γ} {Ψ} {_} {A} d d′ fmt δ sd x sx n →
-      TreeEq-map (λ r → S→Same A r n) (FL fmt δ sd d d′ (Same-Agree Γ Ψ sx)) }
+      ≈∞→N (λ r → S→Same A r n) (FL fmt δ sd d d′ (Same-Agree Γ Ψ sx)) n }

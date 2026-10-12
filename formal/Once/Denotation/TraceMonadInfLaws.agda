@@ -13,14 +13,14 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; [_]; take)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad
   using (T; ret; call; halt; _>>=T_; Interp; run; run-call; callAnswer; callEvent)
 open import Once.Spec.Equivalence using (TreeEq)
 import Once.Spec.Equivalence as TM
-open import Once.Denotation.TraceMonadInf
+open import Once.Spec.Iterative
 open T∞
 open TreeEq∞
 
@@ -112,3 +112,64 @@ force≈ (≈∞-map f h) = ≈∞-mapF f (force≈ h)
 ≈∞-mapF f (ret≈∞ r)  = ret≈∞ (f r)
 ≈∞-mapF f (call≈∞ g) = call≈∞ (λ b → ≈∞-map f (g b))
 ≈∞-mapF f halt≈∞     = halt≈∞
+
+------------------------------------------------------------------------
+-- The monad laws, up to bisimilarity.
+------------------------------------------------------------------------
+
+open import Once.Spec.Iterative using (return∞)
+
+≈∞-idˡ : ∀ {X Y} (x : X) (k : X → T∞ Y) → TreeEq∞ _≡_ (return∞ x >>=∞ k) (k x)
+force≈ (≈∞-idˡ x k) = ≈∞-reflF (λ _ → refl) (force (k x))
+
+≈∞-idʳ : ∀ {X} (m : T∞ X) → TreeEq∞ _≡_ (m >>=∞ return∞) m
+≈∞-idʳF : ∀ {X} (l : T∞F X (T∞ X)) → NodeEq _≡_ (TreeEq∞ _≡_) (bind∞F l return∞) l
+force≈ (≈∞-idʳ m) = ≈∞-idʳF (force m)
+≈∞-idʳF (ret∞ x)      = ret≈∞ refl
+≈∞-idʳF (call∞ o a k) = call≈∞ (λ b → ≈∞-idʳ (k b))
+≈∞-idʳF (halt∞ o a)   = halt≈∞
+
+≈∞-assoc : ∀ {X Y Z} (m : T∞ X) (f : X → T∞ Y) (g : Y → T∞ Z)
+         → TreeEq∞ _≡_ ((m >>=∞ f) >>=∞ g) (m >>=∞ λ x → f x >>=∞ g)
+≈∞-assocF : ∀ {X Y Z} (l : T∞F X (T∞ X)) (f : X → T∞ Y) (g : Y → T∞ Z)
+          → NodeEq _≡_ (TreeEq∞ _≡_) (bind∞F (bind∞F l f) g) (bind∞F l λ x → f x >>=∞ g)
+force≈ (≈∞-assoc m f g) = ≈∞-assocF (force m) f g
+≈∞-assocF (ret∞ x)      f g = ≈∞-reflF (λ _ → refl) (bind∞F (force (f x)) g)
+≈∞-assocF (call∞ o a k) f g = call≈∞ (λ b → ≈∞-assoc (k b) f g)
+≈∞-assocF (halt∞ o a)   f g = halt≈∞
+
+------------------------------------------------------------------------
+-- A tree of `T∞` against a FINITE tree (the IR's, which is `T` until the
+-- compiler runs forever too, plan 0.117 G): the same nodes, read off the
+-- finite side, the leaves related by `R`. Inductive on the finite tree.
+------------------------------------------------------------------------
+
+open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
+
+data RelT∞′ {X Y : Set} (R : X → Y → Set) : T∞ X → T Y → Set where
+  rel∞-ret  : ∀ {m x y} → force m ≡ ret∞ x → R x y → RelT∞′ R m (ret y)
+  rel∞-call : ∀ {m o a k} {k′ : _ → T Y} → force m ≡ call∞ o a k
+            → (∀ b → RelT∞′ R (k b) (k′ b)) → RelT∞′ R m (call o a k′)
+  rel∞-halt : ∀ {m o a} → force m ≡ halt∞ o a → RelT∞′ R m (halt o a)
+
+-- Only the root's node matters.
+RelT∞′-force : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {t : T Y}
+             → force m ≡ force m′ → RelT∞′ R m′ t → RelT∞′ R m t
+RelT∞′-force e (rel∞-ret e′ r)  = rel∞-ret (trans e e′) r
+RelT∞′-force e (rel∞-call e′ h) = rel∞-call (trans e e′) h
+RelT∞′-force e (rel∞-halt e′)   = rel∞-halt (trans e e′)
+
+RelT∞′-bind : ∀ {X Y X′ Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {m : T∞ X} {t : T X′}
+                {k : X → T∞ Y} {g : X′ → T Y′}
+            → RelT∞′ R m t → (∀ {a b} → R a b → RelT∞′ R′ (k a) (g b))
+            → RelT∞′ R′ (m >>=∞ k) (t >>=T g)
+RelT∞′-bind {m = m} {k = k} (rel∞-ret e r) c = RelT∞′-force (cong (λ l → bind∞F l k) e) (c r)
+RelT∞′-bind {m = m} {k = k} (rel∞-call e h) c =
+  rel∞-call (cong (λ l → bind∞F l k) e) (λ b → RelT∞′-bind (h b) c)
+RelT∞′-bind {m = m} {k = k} (rel∞-halt e) c = rel∞-halt (cong (λ l → bind∞F l k) e)
+
+-- A finite relation, embedded.
+RelT∞′-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelT∞′ R (embed m) t
+RelT∞′-embed (rel-ret r)  = rel∞-ret refl r
+RelT∞′-embed (rel-call h) = rel∞-call refl (λ b → RelT∞′-embed (h b))
+RelT∞′-embed rel-halt     = rel∞-halt refl

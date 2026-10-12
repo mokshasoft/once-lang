@@ -40,6 +40,11 @@ open import Once.Spec.Contract using (ISig; Impl; key; valueOf)
 open import Once.Spec.ContractLaws using (value-∈; base-contract)
 open import Once.Denotation.TraceMonad using (ret; returnT; _>>=T_; fmapT; pureHalf; interp)
 open import Once.Denotation.ValueDomain using (νᵈ; anaᵈ; seqF; module νᵈ)
+open import Once.Spec.Iterative
+  using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; embed; ν∞; ana∞)
+open Once.Spec.Iterative.T∞ using (force)
+open Once.Spec.Iterative.ν∞ using (force∞)
+open import Once.Denotation.TraceMonad using (T; call; halt)
 open νᵈ using (forceᵈ)
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.GradedDomain
@@ -53,6 +58,7 @@ open import Once.Arith.SigOp.Builders using (arrow-info)
 fmapM : ∀ π {X Y} → (X → Y) → M π X → M π Y
 fmapM pure f m = f m
 fmapM eff  f m = fmapT f m
+fmapM prod f m = fmap∞ f m
 
 ------------------------------------------------------------------------
 -- Base types: the graded value IS the machine value, up to the products and
@@ -99,6 +105,7 @@ cf⁻¹ᵛ C (wf-Prod f g) (x , y)  = cf⁻¹ᵛ C f x , cf⁻¹ᵛ C g y
 seqM : ∀ π (G : Functor) {X : Set} → ⟦ G ⟧F (M π X) → M π (⟦ G ⟧F X)
 seqM pure G x = x
 seqM eff  G x = seqF G x
+seqM prod G x = seqF∞ G x
 
 ------------------------------------------------------------------------
 -- μ: introduction and the fold.
@@ -163,10 +170,39 @@ ana-semᵛ {F} {A} pure π′ wf clo a =
 ana-semᵛ {F} {A} eff π′ wf clo a =
   returnM π′ (anaᵈ (translateF Carrier Carrier F)
                    (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a)
+ana-semᵛ {F} {A} prod π′ wf clo a =
+  returnM π′ (ana∞ (translateF Carrier Carrier F)
+                   (λ a′ → fmap∞ (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a)
 
 out-semᵛ : ∀ π {F} → WellFormedF F → ⟦ ν-type F π ⟧ᵛ → M π ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᵛ
 out-semᵛ pure {F} wf v = cf⁻¹ᵛ (ν-type F pure) wf (coerce-ν-out wf _ (forceᵖ v))
 out-semᵛ eff  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
+out-semᵛ prod {F} wf v = fmap∞ (λ layer → cf⁻¹ᵛ (ν-type F prod) wf (coerce-ν-out wf _ layer)) (force∞ v)
+
+-- `eff ⊑ prod` and `pure ⊑ prod` at ν: a stream whose layers are finite
+-- trees, or always there, is one whose layers are trees of `T∞` (D311). The
+-- maps are named and written by hand (D062).
+embν∞ᵈ  : ∀ {H} → νᵈ H → ν∞ H
+embLay∞ : ∀ (H : SFunctor) → T (⟦ H ⟧SF (νᵈ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
+mapEmbν∞ᵈ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵈ H) → ⟦ G ⟧SF (ν∞ H)
+force∞ (embν∞ᵈ {H} v) = embLay∞ H (forceᵈ v)
+force (embLay∞ H (ret l))      = ret∞ (mapEmbν∞ᵈ H H l)
+force (embLay∞ H (call o a k)) = call∞ o a (λ b → embLay∞ H (k b))
+force (embLay∞ H (halt o a))   = halt∞ o a
+mapEmbν∞ᵈ H (SK B)     x        = x
+mapEmbν∞ᵈ H SId        x        = embν∞ᵈ x
+mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν∞ᵈ H G₁ x)
+mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν∞ᵈ H G₂ y)
+mapEmbν∞ᵈ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵈ H G₁ x , mapEmbν∞ᵈ H G₂ y
+
+embν∞ᵖ    : ∀ {H} → νᵖ H → ν∞ H
+mapEmbν∞ᵖ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵖ H) → ⟦ G ⟧SF (ν∞ H)
+force (force∞ (embν∞ᵖ {H} v)) = ret∞ (mapEmbν∞ᵖ H H (forceᵖ v))
+mapEmbν∞ᵖ H (SK B)     x        = x
+mapEmbν∞ᵖ H SId        x        = embν∞ᵖ x
+mapEmbν∞ᵖ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν∞ᵖ H G₁ x)
+mapEmbν∞ᵖ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν∞ᵖ H G₂ y)
+mapEmbν∞ᵖ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵖ H G₁ x , mapEmbν∞ᵖ H G₂ y
 
 ------------------------------------------------------------------------
 -- Subtyping coercions (D226), graded.
@@ -187,6 +223,9 @@ out-semᵛ eff  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (co
 ⟦ sub-ν ⊑-pure ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-eff  ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-pe   ⟧<:ᵛ x = embν x
+⟦ sub-ν ⊑-prod ⟧<:ᵛ x = x
+⟦ sub-ν ⊑-pp   ⟧<:ᵛ x = embν∞ᵖ x
+⟦ sub-ν ⊑-ep   ⟧<:ᵛ x = embν∞ᵈ x
 ⟦ sub-rigid ⟧<:ᵛ x = x
 
 ------------------------------------------------------------------------
@@ -220,3 +259,11 @@ sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom 
   λ a → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
   λ a → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) (prjB bDom a))
+-- D311: a foreign operation declared at `prod` is still one call that returns
+-- or halts (`arrow-sem` reads `prod` as `eff`), read as a tree of `T∞`.
+sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero prod} bDom bCod) m =
+  λ _ → embed (fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Unit} {Cod} (mk-kind Zero prod) cn base-Unit bCod) tt))
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One prod} bDom bCod) m =
+  λ a → embed (fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind One prod) cn bDom bCod) (prjB bDom a)))
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many prod} bDom bCod) m =
+  λ a → embed (fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) (prjB bDom a)))

@@ -16,6 +16,9 @@
 -- `eff` both also need `T`'s bind to be a congruence in its continuation,
 -- which is the `extensionality` postulate (`Once.Postulates` P1).
 --
+-- Equality is the grade's (`EqM`): at `prod` the trees may be infinite, so
+-- bisimilarity, never `≡` (D201, D311).
+--
 -- Nothing proves anything FROM these postulates today: they are claims on the
 -- apex (`Once.Certified`'s `language` field), each to be discharged here.
 ------------------------------------------------------------------------
@@ -26,6 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Type using (μ-type; ⟦_⟧T)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Metatheory using (Recursion)
+open import Once.Denotation.GradedDomain using (EqM)
 open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM; returnM)
 open import Once.Spec.Type.Grade using (pure)
 open import Once.Denotation.GradedOps using (in-valueᵛ; cata-semᵛ; mapLayerᵛ; ana-semᵛ; out-semᵛ)
@@ -33,18 +37,18 @@ open import Once.Denotation.GradedOps using (in-valueᵛ; cata-semᵛ; mapLayer�
 postulate
   fold-unique : ∀ π {F A} (wf : WellFormedF F) (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)
                   (h : ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ)
-              → (∀ x → h (in-valueᵛ wf x) ≡ bindM π (mapLayerᵛ π wf h x) alg)
-              → ∀ v → h v ≡ cata-semᵛ π wf alg v
+              → (∀ x → EqM π (h (in-valueᵛ wf x)) (bindM π (mapLayerᵛ π wf h x) alg))
+              → ∀ v → EqM π (h v) (cata-semᵛ π wf alg v)
 
   fold-fusion : ∀ π {F A B} (wf : WellFormedF F)
                   (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg′ : ⟦ ⟦ F ⟧T B ⟧ᵛ → M π ⟦ B ⟧ᵛ)
                   (f : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ)
-              → (∀ y → bindM π (alg y) f ≡ bindM π (mapLayerᵛ π wf f y) alg′)
-              → ∀ v → bindM π (cata-semᵛ π wf alg v) f ≡ cata-semᵛ π wf alg′ v
+              → (∀ y → EqM π (bindM π (alg y) f) (bindM π (mapLayerᵛ π wf f y) alg′))
+              → ∀ v → EqM π (bindM π (cata-semᵛ π wf alg v) f) (cata-semᵛ π wf alg′ v)
 
   unfold-out  : ∀ π {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
-              → out-semᵛ π wf (ana-semᵛ π pure wf clo a)
-                ≡ bindM π (clo a) (mapLayerᵛ π wf (λ a′ → returnM π (ana-semᵛ π pure wf clo a′)))
+              → EqM π (out-semᵛ π wf (ana-semᵛ π pure wf clo a))
+                  (bindM π (clo a) (mapLayerᵛ π wf (λ a′ → returnM π (ana-semᵛ π pure wf clo a′))))
 
 recursion : Recursion
 recursion = record { fold-unique = fold-unique ; fold-fusion = fold-fusion ; unfold-out = unfold-out }

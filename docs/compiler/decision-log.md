@@ -18354,6 +18354,23 @@ as the program's entry (the user, 2026-10-12).
   round that would stop without an event is written with its test before the `iter` or after
   that round's input. A round ending the PROGRAM by `halt` performs an event either way.
 
+### Landed in plan 0.117 C1 (2026-10-12)
+- `Purity` is `pure ⊑ eff ⊑ prod`; `M prod = T∞` (`Once.Spec.Iterative`: the final coalgebra of
+  `T`'s functor, no silent node), `⟦ ν-type F prod ⟧ᵛ = ν∞` (layers of `T∞`).
+- ONE erasure: `toT∞ : M π X → T∞ X` (the finite erasure `toT` cannot exist at `prod`).
+  Coherence is proved over it, node by node as bisimilarity (`TreeEq∞`); the Spec's
+  observation (`ObsM n`) reads a computation's first `n` nodes, so a computation that runs
+  forever is observed as one that returns: by its finite prefixes.
+- Equality of computations is the grade's (`EqM`): `≡` at `pure`/`eff`, bisimilarity at
+  `prod`. `Effects` and `Recursion` are stated with it, so no law assumes bisimilarity is `≡`
+  (D201).
+- `Totality.productive` at `prod`: every node of the tree is an event or the end
+  (`ProductiveT∞`, coinductive) — what a silent step would break.
+- A foreign operation is one call: `HonestFFI` keeps `prod` out of signatures; the contract
+  form at `prod` is the effectful one, for consistency.
+- The compiler relates a `prod` meaning to the IR's (finite) tree inductively on the finite
+  side (`RelT∞′`), so every compiled program — none is `prod` before phase F — keeps its proof.
+
 ### Not reused
 `Once/IR/Guarded.agda` (deleted in c59c6c661) marked the recursive positions of a coalgebra's
 LAYER (`GRec`); it was deprecated under OCP-0003 because layer productivity follows from

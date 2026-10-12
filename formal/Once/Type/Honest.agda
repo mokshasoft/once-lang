@@ -69,6 +69,14 @@ NotSingleton (rigid _ _)  = ⊥
 DataCod : Purity → Type → Set
 DataCod pure B = NotEmpty B
 DataCod eff  B = NotEmpty B × NotSingleton B
+DataCod prod B = ⊥
+
+-- D311: a foreign operation is ONE call, which returns or halts; it is never
+-- declared at `prod` (a computation that may run forever).
+OneCall : Purity → Set
+OneCall pure = ⊤
+OneCall eff  = ⊤
+OneCall prod = ⊥
 
 -- The codomain `B` of an arrow at grade `π`.
 HonestCod : Purity → Type → Set
@@ -79,8 +87,8 @@ HonestCod π (A * B)                    = DataCod π (A * B)
 HonestCod π (A + B)                    = DataCod π (A + B)
 HonestCod π (μ-type _)                 = ⊥   -- B2: not first-order data
 HonestCod π (ν-type _ _)               = ⊥
-HonestCod π Int                        = ⊤
-HonestCod π Float                      = ⊤
+HonestCod π Int                        = OneCall π
+HonestCod π Float                      = OneCall π
 HonestCod π (rigid _ _)                = ⊥   -- D243: an FFI signature is ground
 
 -- A constant is a pure value: it must be inhabited.
@@ -103,6 +111,12 @@ HonestFFI (rigid _ _)             = ⊥   -- D243: an FFI signature is ground
 isEff? : (π : Purity) → Maybe (π ≡ eff)
 isEff? pure = nothing
 isEff? eff  = just refl
+isEff? prod = nothing
+
+oneCall? : (π : Purity) → Maybe (OneCall π)
+oneCall? pure = just tt
+oneCall? eff  = just tt
+oneCall? prod = nothing
 
 -- Two witnesses, or the first that exists (no `with`: proofs follow by cases).
 both : ∀ {A B : Set} → Maybe A → Maybe B → Maybe (A × B)
@@ -142,6 +156,7 @@ notSingleton? (rigid _ _)  = nothing
 dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
 dataCod? pure B = notEmpty? B
 dataCod? eff  B = both (notEmpty? B) (notSingleton? B)
+dataCod? prod B = nothing
 
 honestCod? : (π : Purity) (B : Type) → Maybe (HonestCod π B)
 honestCod? π Unit                     = isEff? π
@@ -151,8 +166,8 @@ honestCod? π (A * B)                  = dataCod? π (A * B)
 honestCod? π (A + B)                  = dataCod? π (A + B)
 honestCod? π (μ-type _)               = nothing
 honestCod? π (ν-type _ _)             = nothing
-honestCod? π Int                      = just tt
-honestCod? π Float                    = just tt
+honestCod? π Int                      = oneCall? π
+honestCod? π Float                    = oneCall? π
 honestCod? π (rigid _ _)              = nothing
 
 honest? : (T : Type) → Maybe (HonestFFI T)
@@ -218,6 +233,12 @@ notSingleton?-complete (rigid _ _)  ()
 dataCod?-complete : ∀ (π : Purity) (B : Type) → DataCod π B → ∃[ h ] dataCod? π B ≡ just h
 dataCod?-complete pure B h       = notEmpty?-complete B h
 dataCod?-complete eff  B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
+dataCod?-complete prod B ()
+
+oneCall?-complete : ∀ (π : Purity) → OneCall π → ∃[ h ] oneCall? π ≡ just h
+oneCall?-complete pure tt = tt , refl
+oneCall?-complete eff  tt = tt , refl
+oneCall?-complete prod ()
 
 honestCod?-complete : ∀ (π : Purity) (B : Type) → HonestCod π B → ∃[ h ] honestCod? π B ≡ just h
 honestCod?-complete π Unit                    refl = refl , refl
@@ -227,8 +248,8 @@ honestCod?-complete π (A * B)                 h    = dataCod?-complete π (A * 
 honestCod?-complete π (A + B)                 h    = dataCod?-complete π (A + B) h
 honestCod?-complete π (μ-type _)              ()
 honestCod?-complete π (ν-type _ _)            ()
-honestCod?-complete π Int                     tt   = tt , refl
-honestCod?-complete π Float                   tt   = tt , refl
+honestCod?-complete π Int                     h    = oneCall?-complete π h
+honestCod?-complete π Float                   h    = oneCall?-complete π h
 honestCod?-complete π (rigid _ _)             ()
 
 honest?-complete : ∀ {T : Type} → HonestFFI T → ∃[ h ] honest? T ≡ just h

@@ -7,7 +7,7 @@
 -- related computations.
 --
 --     FL : Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ′ ] t ∷ A ! π′ → Agree Γ Ψ Ψ′ x x′
---        → TreeEq (S A) (toT π (⟦ d ⟧ x)) (toT π′ (⟦ d′ ⟧ x′))
+--        → TreeEq∞ (S A) (toT∞ π (⟦ d ⟧ x)) (toT∞ π′ (⟦ d′ ⟧ x′))
 --
 -- By induction on the two derivations. `⊢sub-use` restricts an environment
 -- (agreement survives), `⊢sub-eff` is invisible as a tree (`toT-subM`); the
@@ -33,7 +33,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; mk-kind; _≤q_; positionGrade; _·p_)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; prod; mk-kind; _≤q_; positionGrade; _·p_)
 open import Once.Spec.Type using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Int; base-Float; base-Unit; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun; WellFormedF)
@@ -45,7 +45,9 @@ open import Once.Spec.Contract using (Impl; Key; valueKeys; valueOf; valueOf-at;
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Same)
 open import Once.Spec.Core.PolyTy using (_!!_; _⟪_⟫; module Schema)
 open Schema using (arity; kinds; type)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT; bindM; returnM; subM; bindᵍ)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
+open import Once.Spec.Iterative using (TreeEq∞)
+open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; embed-≈)
 open import Once.Denotation.TraceMonad using (T; ret; fmapT)
 open import Once.Denotation.PhaseV using (bindᵛ)
 open import Once.Denotation.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ)
@@ -60,26 +62,26 @@ open import Once.Metatheory.Coherence.Layer
 open import Once.Metatheory.Coherence.Uniqueness Sg using (uniq)
 
 ------------------------------------------------------------------------
--- The graded monad, compared through `toT` at two grades
+-- The graded monad, compared through `toT∞` at two grades
 ------------------------------------------------------------------------
 
 bind≈ : ∀ π π′ {X Y : Set} {R : X → X → Set} {R′ : Y → Y → Set}
           {m : M π X} {m′ : M π′ X} {k : X → M π Y} {k′ : X → M π′ Y}
-      → TreeEq R (toT π m) (toT π′ m′)
-      → (∀ {a b} → R a b → TreeEq R′ (toT π (k a)) (toT π′ (k′ b)))
-      → TreeEq R′ (toT π (bindM π m k)) (toT π′ (bindM π′ m′ k′))
-bind≈ π π′ {m = m} {m′} {k} {k′} h c = TreeEq-≡ (toT-bindM π m k) (toT-bindM π′ m′ k′) (TreeEq-bind h c)
+      → TreeEq∞ R (toT∞ π m) (toT∞ π′ m′)
+      → (∀ {a b} → R a b → TreeEq∞ R′ (toT∞ π (k a)) (toT∞ π′ (k′ b)))
+      → TreeEq∞ R′ (toT∞ π (bindM π m k)) (toT∞ π′ (bindM π′ m′ k′))
+bind≈ π π′ {m = m} {m′} {k} {k′} h c = ≈∞-rewrite (toT∞-bindM π m k) (toT∞-bindM π′ m′ k′) (≈∞-bind h c)
 
 bind≈ᵍ : ∀ π₁ π₂ π₁′ π₂′ {X Y : Set} {R : X → X → Set} {R′ : Y → Y → Set}
           {m : M π₁ X} {m′ : M π₁′ X} {k : X → M π₂ Y} {k′ : X → M π₂′ Y}
-      → TreeEq R (toT π₁ m) (toT π₁′ m′)
-      → (∀ {a b} → R a b → TreeEq R′ (toT π₂ (k a)) (toT π₂′ (k′ b)))
-      → TreeEq R′ (toT (π₁ ·p π₂) (bindᵍ π₁ π₂ m k)) (toT (π₁′ ·p π₂′) (bindᵍ π₁′ π₂′ m′ k′))
+      → TreeEq∞ R (toT∞ π₁ m) (toT∞ π₁′ m′)
+      → (∀ {a b} → R a b → TreeEq∞ R′ (toT∞ π₂ (k a)) (toT∞ π₂′ (k′ b)))
+      → TreeEq∞ R′ (toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k)) (toT∞ (π₁′ ·p π₂′) (bindᵍ π₁′ π₂′ m′ k′))
 bind≈ᵍ π₁ π₂ π₁′ π₂′ {m = m} {m′} {k} {k′} h c =
-  TreeEq-≡ (toT-bindᵍ π₁ π₂ m k) (toT-bindᵍ π₁′ π₂′ m′ k′) (TreeEq-bind h c)
+  ≈∞-rewrite (toT∞-bindᵍ π₁ π₂ m k) (toT∞-bindᵍ π₁′ π₂′ m′ k′) (≈∞-bind h c)
 
-retM≈ : ∀ π π′ {X : Set} {R : X → X → Set} {a b : X} → R a b → TreeEq R (toT π (returnM π a)) (toT π′ (returnM π′ b))
-retM≈ π π′ {a = a} {b} r = TreeEq-≡ (toT-returnM π a) (toT-returnM π′ b) (ret≈ r)
+retM≈ : ∀ π π′ {X : Set} {R : X → X → Set} {a b : X} → R a b → TreeEq∞ R (toT∞ π (returnM π a)) (toT∞ π′ (returnM π′ b))
+retM≈ π π′ {a = a} {b} r = ≈∞-rewrite (toT∞-returnM π a) (toT∞-returnM π′ b) (retT≈ r)
 
 ------------------------------------------------------------------------
 -- Leaves
@@ -152,17 +154,23 @@ sigop-S : ∀ fmt {Σ} (I : Impl Σ) c {A} (k : IsConcrete A) m m′
 sigop-S fmt I c (con-base ib) m m′ =
   S-base ib (cong (λ f → injB ib (f tt)) (valueOf-irr I _ _ _))
 sigop-S fmt I c (con-fun {k = mk-kind Zero pure} bA bB) m m′ =
-  ret≈ (S-base bB (cong (λ f → injB bB (f tt)) (valueOf-irr I _ _ _)))
+  retT≈ (S-base bB (cong (λ f → injB bB (f tt)) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind Zero eff} bA bB) m m′ =
-  TreeEq-refl (S-refl-base bB) _
+  embed-≈ (TreeEq-refl (S-refl-base bB) _)
+sigop-S fmt I c (con-fun {k = mk-kind Zero prod} bA bB) m m′ =
+  embed-≈ (TreeEq-refl (S-refl-base bB) _)
 sigop-S fmt I c (con-fun {k = mk-kind One pure} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = ret≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
+  rewrite S-base-≡ bA s = retT≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind Many pure} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = ret≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
+  rewrite S-base-≡ bA s = retT≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind One eff} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = TreeEq-refl (S-refl-base bB) _
+  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
 sigop-S fmt I c (con-fun {k = mk-kind Many eff} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = TreeEq-refl (S-refl-base bB) _
+  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+sigop-S fmt I c (con-fun {k = mk-kind One prod} bA bB) m m′ a a′ s
+  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+sigop-S fmt I c (con-fun {k = mk-kind Many prod} bA bB) m m′ a a′ s
+  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
 
 ------------------------------------------------------------------------
 -- THE LEMMA
@@ -172,7 +180,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
 
   FL : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {t A π π′}
        (d : Γ ⊢[ Ψ ] t ∷ A ! π) (d′ : Γ ⊢[ Ψ′ ] t ∷ A ! π′)
-     → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq (S A) (toT π (⟦ d ⟧ fmt δ x)) (toT π′ (⟦ d′ ⟧ fmt δ x′))
+     → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq∞ (S A) (toT∞ π (⟦ d ⟧ fmt δ x)) (toT∞ π′ (⟦ d′ ⟧ fmt δ x′))
 
   private
     -- `lam`: the body's head usage is a usage; the bound variable is held on a
@@ -209,7 +217,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
              (df : Γ ⊢[ Ψ₁ ] f ∷ A₁ ⇒[ mk-kind q₁ π ] B ! π₁) (dx : Γ ⊢[ Ψ₂ ] a ∷ A₁ ! positionGrade q₁ π₂)
              (df′ : Γ ⊢[ Ψ₁′ ] f ∷ A₂ ⇒[ mk-kind q₂ π′ ] B ! π₁′) (dx′ : Γ ⊢[ Ψ₂′ ] a ∷ A₂ ! positionGrade q₂ π₂′)
          → ∀ {x x′} → Agree Γ _ _ x x′
-         → TreeEq (S B) (toT _ (⟦ ⊢app df dx ⟧ fmt δ x)) (toT _ (⟦ ⊢app df′ dx′ ⟧ fmt δ x′))
+         → TreeEq∞ (S B) (toT∞ _ (⟦ ⊢app df dx ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢app df′ dx′ ⟧ fmt δ x′))
     appS {q₁ = Zero} {π = π} {π₁ = π₁} {π₁′ = π₁′} refl df dx df′ dx′ h =
       bind≈ᵍ π₁ π π₁′ π (FL df df′ (restrict₂ _ _ h)) (λ s → s)
     appS {q₁ = One} {π = π} {π₁ = π₁} {π₂ = π₂} {π₁′ = π₁′} {π₂′ = π₂′} refl df dx df′ dx′ h =
@@ -222,7 +230,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
              (de : Γ ⊢[ Ψ₁ ] e ∷ A₁ ! positionGrade q π₁) (db : (Γ ,ᶜ A₁) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π₂)
              (de′ : Γ ⊢[ Ψ₁′ ] e ∷ A₂ ! positionGrade q π₁′) (db′ : (Γ ,ᶜ A₂) ⊢[ q ∷ Ψ₂′ ] b ∷ B ! π₂′)
          → ∀ {x x′} → Agree Γ _ _ x x′
-         → TreeEq (S B) (toT _ (⟦ ⊢let de db ⟧ fmt δ x)) (toT _ (⟦ ⊢let de′ db′ ⟧ fmt δ x′))
+         → TreeEq∞ (S B) (toT∞ _ (⟦ ⊢let de db ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢let de′ db′ ⟧ fmt δ x′))
     letS {A₁ = A₁} {q = Zero} refl de db de′ db′ h = FL db db′ (bind00 {A = A₁} (restrict₂ _ _ h))
     letS {A₁ = A₁} {q = One} {π₁ = π₁} {π₂ = π₂} {π₁′ = π₁′} {π₂′ = π₂′} refl de db de′ db′ h =
       bind≈ᵍ π₁ π₂ π₁′ π₂′ (FL de de′ (restrict₂ _ _ h)) λ {v} {v′} s → FL db db′ (bind₂ {A = A₁} One One {a = v} {a′ = v′} (restrict₂ _ _ h) s)
@@ -231,12 +239,12 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
 
     fstS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A B B′ π π′ p} (eq : (A * B) ≡ (A * B′))
              (d : Γ ⊢[ Ψ ] p ∷ A * B ! π) (d′ : Γ ⊢[ Ψ′ ] p ∷ A * B′ ! π′)
-         → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq (S A) (toT π (⟦ ⊢fst d ⟧ fmt δ x)) (toT π′ (⟦ ⊢fst d′ ⟧ fmt δ x′))
+         → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq∞ (S A) (toT∞ π (⟦ ⊢fst d ⟧ fmt δ x)) (toT∞ π′ (⟦ ⊢fst d′ ⟧ fmt δ x′))
     fstS {π = π} {π′} refl d d′ h = bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ (proj₁ s)
 
     sndS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A A′ B π π′ p} (eq : (A * B) ≡ (A′ * B))
              (d : Γ ⊢[ Ψ ] p ∷ A * B ! π) (d′ : Γ ⊢[ Ψ′ ] p ∷ A′ * B ! π′)
-         → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq (S B) (toT π (⟦ ⊢snd d ⟧ fmt δ x)) (toT π′ (⟦ ⊢snd d′ ⟧ fmt δ x′))
+         → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq∞ (S B) (toT∞ π (⟦ ⊢snd d ⟧ fmt δ x)) (toT∞ π′ (⟦ ⊢snd d′ ⟧ fmt δ x′))
     sndS {π = π} {π′} refl d d′ h = bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ (proj₂ s)
 
     -- `case`: the scrutinees are related, so both take the same arm.
@@ -244,10 +252,10 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
              (dl : (Γ ,ᶜ A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π) (dr : (Γ ,ᶜ B) ⊢[ qr ∷ Ψ ] r ∷ C ! π)
              (dl′ : (Γ ,ᶜ A) ⊢[ qℓ ∷ Ψ′ ] l ∷ C ! π′) (dr′ : (Γ ,ᶜ B) ⊢[ qr ∷ Ψ′ ] r ∷ C ! π′)
            → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → (v v′ : ⟦ A + B ⟧ᵛ) → S (A + B) v v′
-         → TreeEq (S C)
-             (toT π (Data.Sum.[ (λ a → ⟦ dl ⟧ fmt δ (bindᵛ {Γ = Γ} {A = A} qℓ x a))
+         → TreeEq∞ (S C)
+             (toT∞ π (Data.Sum.[ (λ a → ⟦ dl ⟧ fmt δ (bindᵛ {Γ = Γ} {A = A} qℓ x a))
                               , (λ b → ⟦ dr ⟧ fmt δ (bindᵛ {Γ = Γ} {A = B} qr x b)) ]′ v))
-             (toT π′ (Data.Sum.[ (λ a → ⟦ dl′ ⟧ fmt δ (bindᵛ {Γ = Γ} {A = A} qℓ x′ a))
+             (toT∞ π′ (Data.Sum.[ (λ a → ⟦ dl′ ⟧ fmt δ (bindᵛ {Γ = Γ} {A = A} qℓ x′ a))
                                , (λ b → ⟦ dr′ ⟧ fmt δ (bindᵛ {Γ = Γ} {A = B} qr x′ b)) ]′ v′))
     armS {A = A} {qℓ = qℓ} dl dr dl′ dr′ h (inj₁ a) (inj₁ a′) s = FL dl dl′ (bind₂ {A = A} qℓ qℓ {a = a} {a′ = a′} h s)
     armS {B = B} {qr = qr} dl dr dl′ dr′ h (inj₂ b) (inj₂ b′) s = FL dr dr′ (bind₂ {A = B} qr qr {a = b} {a′ = b′} h s)
@@ -260,7 +268,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
               (ds′ : Γ ⊢[ Ψs′ ] sc ∷ A′ + B′ ! π₁′) (dl′ : (Γ ,ᶜ A′) ⊢[ qℓ ∷ Ψ′ ] l ∷ C ! π₂′)
               (dr′ : (Γ ,ᶜ B′) ⊢[ qr ∷ Ψ′ ] r ∷ C ! π₂′)
           → ∀ {x x′} → Agree Γ _ _ x x′
-          → TreeEq (S C) (toT _ (⟦ ⊢case ds dl dr ⟧ fmt δ x)) (toT _ (⟦ ⊢case ds′ dl′ dr′ ⟧ fmt δ x′))
+          → TreeEq∞ (S C) (toT∞ _ (⟦ ⊢case ds dl dr ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢case ds′ dl′ dr′ ⟧ fmt δ x′))
     caseS {π₁ = π₁} {π₂} {π₁′} {π₂′} refl ds dl dr ds′ dl′ dr′ h =
       bind≈ᵍ π₁ π₂ π₁′ π₂′ (FL ds ds′ (restrict₂ _ _ h)) λ {v} {v′} s → armS dl dr dl′ dr′ (restrict₂ _ _ h) v v′ s
 
@@ -270,7 +278,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
            → (da : Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π₁) (dt : Γ ⊢[ Ψt ] t ∷ μ-type F ! π₂)
               (da′ : Γ ⊢[ Ψa′ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π′ ] A ! π₁′) (dt′ : Γ ⊢[ Ψt′ ] t ∷ μ-type F ! π₂′)
           → ∀ {x x′} → Agree Γ _ _ x x′
-          → TreeEq (S A) (toT _ (⟦ ⊢fold wf da dt ⟧ fmt δ x)) (toT _ (⟦ ⊢fold wf′ da′ dt′ ⟧ fmt δ x′))
+          → TreeEq∞ (S A) (toT∞ _ (⟦ ⊢fold wf da dt ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢fold wf′ da′ dt′ ⟧ fmt δ x′))
     foldS {π = π} {π₁ = π₁} {π₂} {π₁′} {π₂′} refl wf .wf refl da dt da′ dt′ h =
       bind≈ᵍ π₁ _ π₁′ _ (FL da da′ (restrict₂ _ _ h)) λ {alg} {alg′} salg →
       bind≈ᵍ π₂ π π₂′ π (FL dt dt′ (restrict₂ _ _ h)) λ {v} {v′} e → fold-v alg alg′ salg e
@@ -284,7 +292,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
              → (dc : Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! π₁) (ds : Γ ⊢[ Ψs ] sd ∷ A ! π₂)
                 (dc′ : Γ ⊢[ Ψc′ ] c ∷ A′ ⇒[ mk-kind Many π ] ⟦ F ⟧T A′ ! π₁′) (ds′ : Γ ⊢[ Ψs′ ] sd ∷ A′ ! π₂′)
             → ∀ {x x′} → Agree Γ _ _ x x′
-            → TreeEq (S (ν-type F π)) (toT _ (⟦ ⊢unfold wf dc ds ⟧ fmt δ x)) (toT _ (⟦ ⊢unfold wf′ dc′ ds′ ⟧ fmt δ x′))
+            → TreeEq∞ (S (ν-type F π)) (toT∞ _ (⟦ ⊢unfold wf dc ds ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢unfold wf′ dc′ ds′ ⟧ fmt δ x′))
     unfoldS {π = π} {π₁} {π₂} {π₁′} {π₂′} refl wf .wf refl dc ds dc′ ds′ h =
       bind≈ᵍ π₁ π₂ π₁′ π₂′ (FL dc dc′ (restrict₂ _ _ h)) λ {clo} {clo′} sc →
       bind≈ π₂ π₂′ (FL ds ds′ (restrict₂ _ _ h)) λ ss → ana-S π π₂ π₂′ wf clo clo′ sc ss
@@ -294,8 +302,8 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
              (d : Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁) (d′ : Γ ⊢[ Ψ′ ] t ∷ ν-type F′ π′ ! π₁′)
          → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′
          → (e : ⟦ F′ ⟧T (ν-type F′ π′) ≡ ⟦ F ⟧T (ν-type F π))
-         → TreeEq (S (⟦ F ⟧T (ν-type F π))) (toT (π₁ ·p π) (⟦ ⊢out wf d ⟧ fmt δ x))
-                  (toT (π₁′ ·p π′) (subst (λ X → M (π₁′ ·p π′) ⟦ X ⟧ᵛ) e (⟦ ⊢out wf′ d′ ⟧ fmt δ x′)))
+         → TreeEq∞ (S (⟦ F ⟧T (ν-type F π))) (toT∞ (π₁ ·p π) (⟦ ⊢out wf d ⟧ fmt δ x))
+                  (toT∞ (π₁′ ·p π′) (subst (λ X → M (π₁′ ·p π′) ⟦ X ⟧ᵛ) e (⟦ ⊢out wf′ d′ ⟧ fmt δ x′)))
     outS {π = π} {π₁ = π₁} {π₁′} refl wf wf′ d d′ h refl rewrite WellFormedF-irrelevant wf′ wf =
       bind≈ᵍ π₁ π π₁′ π (FL d d′ h) λ s → out-S π wf s
 
@@ -305,32 +313,32 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
              (d : Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁) (d′ : Γ ⊢[ Ψ′ ] out t ∷ X ! π′)
              (e : X ≡ ⟦ F ⟧T (ν-type F π))
          → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′
-         → TreeEq (S (⟦ F ⟧T (ν-type F π))) (toT (π₁ ·p π) (⟦ ⊢out wf d ⟧ fmt δ x))
-                  (toT π′ (subst (λ X → M π′ ⟦ X ⟧ᵛ) e (⟦ d′ ⟧ fmt δ x′)))
+         → TreeEq∞ (S (⟦ F ⟧T (ν-type F π))) (toT∞ (π₁ ·p π) (⟦ ⊢out wf d ⟧ fmt δ x))
+                  (toT∞ π′ (subst (λ X → M π′ ⟦ X ⟧ᵛ) e (⟦ d′ ⟧ fmt δ x′)))
     outL wf d (⊢sub-use p d′) refl h = outL wf d d′ refl (restrictʳ p h)
-    outL wf d (⊢sub-eff g d′) refl h = TreeEq-≡ refl (toT-subM g _) (outL wf d d′ refl h)
+    outL wf d (⊢sub-eff g d′) refl h = ≈∞-rewrite (≈refl _) (toT∞-subM g _) (outL wf d d′ refl h)
     outL wf d (⊢out wf′ d′) e h = outS (uniq d d′) wf wf′ d d′ h e
 
     coerceS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A B π π′ t} (p p′ : A <: B) → p ≡ p′
              → (d : Γ ⊢[ Ψ ] t ∷ A ! π) (d′ : Γ ⊢[ Ψ′ ] t ∷ A ! π′)
             → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′
-            → TreeEq (S B) (toT π (⟦ ⊢coerce p d ⟧ fmt δ x)) (toT π′ (⟦ ⊢coerce p′ d′ ⟧ fmt δ x′))
+            → TreeEq∞ (S B) (toT∞ π (⟦ ⊢coerce p d ⟧ fmt δ x)) (toT∞ π′ (⟦ ⊢coerce p′ d′ ⟧ fmt δ x′))
     coerceS {π = π} {π′} p .p refl d d′ h =
-      TreeEq-≡ (toT-fmapM π ⟦ p ⟧<:ᵛ _) (toT-fmapM π′ ⟦ p ⟧<:ᵛ _)
-        (TreeEq-bind (FL d d′ h) λ s → ret≈ (coerce-S p s))
+      ≈∞-rewrite (toT∞-fmapM π ⟦ p ⟧<:ᵛ _) (toT∞-fmapM π′ ⟦ p ⟧<:ᵛ _)
+        (≈∞-bind (FL d d′ h) λ s → retT≈ (coerce-S p s))
 
   FL (⊢sub-use p d) d′ h = FL d d′ (restrictˡ p h)
-  FL (⊢sub-eff g d) d′ h = TreeEq-≡ (toT-subM g _) refl (FL d d′ h)
+  FL (⊢sub-eff g d) d′ h = ≈∞-rewrite (toT∞-subM g _) (≈refl _) (FL d d′ h)
   FL (⊢out wf d) d′ h = outL wf d d′ refl h
   {-# CATCHALL #-}
   FL d (⊢sub-use p d′) h = FL d d′ (restrictʳ p h)
   {-# CATCHALL #-}
-  FL d (⊢sub-eff g d′) h = TreeEq-≡ refl (toT-subM g _) (FL d d′ h)
-  FL {Γ = Γ} (⊢var i) (⊢var .i) h = ret≈ (lookup-S Γ i h)
-  FL (⊢lam {q = q} {q' = q₁} le d) (⊢lam {q' = q₂} le′ d′) h = ret≈ (lamS q q₁ q₂ le le′ d d′ h)
+  FL d (⊢sub-eff g d′) h = ≈∞-rewrite (≈refl _) (toT∞-subM g _) (FL d d′ h)
+  FL {Γ = Γ} (⊢var i) (⊢var .i) h = retT≈ (lookup-S Γ i h)
+  FL (⊢lam {q = q} {q' = q₁} le d) (⊢lam {q' = q₂} le′ d′) h = retT≈ (lamS q q₁ q₂ le le′ d d′ h)
   FL (⊢app df dx) (⊢app df′ dx′) h = appS (uniq df df′) df dx df′ dx′ h
   FL (⊢let de db) (⊢let de′ db′) h = letS (uniq de de′) de db de′ db′ h
-  FL ⊢unit ⊢unit h = ret≈ tt
+  FL ⊢unit ⊢unit h = retT≈ tt
   FL (⊢pair {π₁ = π₁} {π₂} da db) (⊢pair {π₁ = π₁′} {π₂′} da′ db′) h =
     bind≈ᵍ π₁ π₂ π₁′ π₂′ (FL da da′ (restrict₂ _ _ h)) λ sa →
     bind≈ π₂ π₂′ (FL db db′ (restrict₂ _ _ h)) λ sb → retM≈ π₂ π₂′ (sa , sb)
@@ -345,10 +353,10 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
   FL (⊢fold wf da dt) (⊢fold wf′ da′ dt′) h = foldS (uniq da da′) wf wf′ (WellFormedF-irrelevant wf wf′) da dt da′ dt′ h
   FL (⊢unfold wf dc ds) (⊢unfold wf′ dc′ ds′) h = unfoldS (uniq dc dc′) wf wf′ (WellFormedF-irrelevant wf wf′) dc ds dc′ ds′ h
   FL (⊢coerce p d) (⊢coerce p′ d′) h = coerceS p p′ (<:-unique p p′) d d′ h
-  FL ⊢lit-int ⊢lit-int h = ret≈ refl
-  FL ⊢lit-float ⊢lit-float h = ret≈ refl
+  FL ⊢lit-int ⊢lit-int h = retT≈ refl
+  FL ⊢lit-float ⊢lit-float h = retT≈ refl
   FL (⊢prim {π = π} p d) (⊢prim {π = π′} .p d′) h =
     bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ (S-base (cod-base p) (cong (primSem p fmt) (S-base-≡ (dom-base p) s)))
   FL (⊢sigop c k _ _ m) (⊢sigop .c k′ _ _ m′) h
-    rewrite IsConcrete-irrelevant k′ k = ret≈ (sigop-S fmt (impl δ) c k m m′)
-  FL (⊢ref d τ r) (⊢ref .d .τ r′) h = ret≈ (Same→S (type (Sg !! d) ⟪ τ ⟫) (sd d τ r r′))
+    rewrite IsConcrete-irrelevant k′ k = retT≈ (sigop-S fmt (impl δ) c k m m′)
+  FL (⊢ref d τ r) (⊢ref .d .τ r′) h = retT≈ (Same→S (type (Sg !! d) ⟪ τ ⟫) (sd d τ r r′))

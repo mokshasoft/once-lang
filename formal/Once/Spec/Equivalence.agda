@@ -11,9 +11,12 @@
 --   * a base value (`Int`, `Float`, a `μ` value) is observed whole: `≡`;
 --   * a pair componentwise, a sum by its side and its content;
 --   * an arrow by its results at arguments that are the same (at every depth);
---   * a computation (`T`) by its events, in order, and its result: the same
---     call with the same argument, and equivalent continuations at every answer;
---     or the same halt; or equivalent results;
+--   * a computation by its events, in order, and its result, to every finite
+--     DEPTH `n`: its first `n` nodes — the same call with the same argument,
+--     and equivalent continuations at every answer; or the same halt; or
+--     equivalent results. Every grade's computation is read as a tree of the
+--     completely iterative monad (`toT∞`, D311), so a computation that runs
+--     forever is observed as one that returns: by its finite prefixes;
 --   * a stream (`ν`) to every finite DEPTH `n`: its first `n` layers.
 -- A meaning at `ν` is codata, so `≡` cannot compare two streams that behave
 -- identically but are built differently; every finite observation can.
@@ -29,9 +32,12 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; eff; prod; mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
-open import Once.Spec.Meaning using (T; M; ⟦_⟧ᵛ; toT)
+open import Once.Spec.Meaning using (T; M; ⟦_⟧ᵛ; toT∞)
+open import Once.Spec.Iterative using (T∞; NodeEq; ν∞)
+open Once.Spec.Iterative.T∞ using (force)
+open Once.Spec.Iterative.ν∞ using (force∞)
 open import Once.Denotation.TraceMonad using (ret; call; halt)
 open import Once.Denotation.GradedDomain using (νᵖ; module νᵖ)
 open import Once.Denotation.ValueDomain using (νᵈ; module νᵈ)
@@ -47,6 +53,11 @@ data TreeEq {X : Set} (R : X → X → Set) : T X → T X → Set where
   ret≈  : ∀ {x y} → R x y → TreeEq R (ret x) (ret y)
   call≈ : ∀ {o a k k′} → (∀ b → TreeEq R (k b) (k′ b)) → TreeEq R (call o a k) (call o a k′)
   halt≈ : ∀ {o a} → TreeEq R (halt o a) (halt o a)
+
+-- A tree of the completely iterative monad to depth `n`: its first `n` nodes.
+TreeEqN : ∀ {X : Set} → ℕ → (X → X → Set) → T∞ X → T∞ X → Set
+TreeEqN zero    R _ _  = ⊤
+TreeEqN (suc n) R m m′ = NodeEq R (TreeEqN n R) (force m) (force m′)
 
 ------------------------------------------------------------------------
 -- One layer of a stream: its constant parts (base values) equal, its
@@ -71,6 +82,10 @@ LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′
 νᵈ-upto H zero    _ _ = ⊤
 νᵈ-upto H (suc n) v w = TreeEq (LayerEq H (νᵈ-upto H n)) (forceᵈ v) (forceᵈ w)
 
+ν∞-upto : ∀ (H : SFunctor) → ℕ → ν∞ H → ν∞ H → Set
+ν∞-upto H zero    _ _ = ⊤
+ν∞-upto H (suc n) v w = TreeEqN (suc n) (LayerEq H (ν∞-upto H n)) (force∞ v) (force∞ w)
+
 ------------------------------------------------------------------------
 -- Values and computations of a type, observed to depth `n`.
 ------------------------------------------------------------------------
@@ -78,7 +93,7 @@ LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′
 Obs  : ℕ → (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᵛ → Set
 ObsM : ℕ → (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → M π ⟦ A ⟧ᵛ → Set
 
-ObsM n π A m m′ = TreeEq (Obs n A) (toT π m) (toT π m′)
+ObsM n π A m m′ = TreeEqN n (Obs n A) (toT∞ π m) (toT∞ π m′)
 
 Obs n Unit        _ _ = ⊤
 Obs n Void        _ _ = ⊤
@@ -96,6 +111,7 @@ Obs n (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a�
 Obs n (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a′) → ObsM n π B (f a) (g a′)
 Obs n (ν-type F pure) v w = νᵖ-upto _ n v w
 Obs n (ν-type F eff)  v w = νᵈ-upto _ n v w
+Obs n (ν-type F prod) v w = ν∞-upto _ n v w
 
 ------------------------------------------------------------------------
 -- The equivalence: every finite observation agrees.

@@ -221,6 +221,7 @@ mutual
     map2P PEff (typeToPoly a) (typeToPoly b)
   {-# CATCHALL #-}
   typeToPoly (a ⇒[ mk-kind _ eff ] b) = nothing
+  typeToPoly (a ⇒[ mk-kind _ prod ] b) = nothing   -- D311: no surface form yet (plan 0.117 F)
   typeToPoly (μ-type F) with functorToPoly F
   ... | just G  = just (Pμ-type G)
   ... | nothing = nothing

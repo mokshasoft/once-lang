@@ -169,6 +169,10 @@ open Once.Semantics.Functor.νS using (unfoldS)
 ⟦ A ⇒[ mk-kind Zero eff ] B ⟧ᵍ  = ⟦ Unit ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind One  eff ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind Many eff ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
+-- D311: a contract at `prod` is still one call, which may stop.
+⟦ A ⇒[ mk-kind Zero prod ] B ⟧ᵍ = ⟦ Unit ⟧ → Res ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind One  prod ] B ⟧ᵍ = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind Many prod ] B ⟧ᵍ = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A * B ⟧ᵍ = ⟦ A ⟧ᵍ × ⟦ B ⟧ᵍ
 ⟦ A + B ⟧ᵍ = ⟦ A ⟧ᵍ ⊎ ⟦ B ⟧ᵍ
 -- First-order: no arrow inside, so the machine value.
@@ -187,6 +191,9 @@ eraseᵍ {A ⇒[ mk-kind Many pure ] B} f = λ x → returns (eraseᵍ (f x))
 eraseᵍ {A ⇒[ mk-kind Zero eff ] B}  f = λ u → mapRes eraseᵍ (f u)
 eraseᵍ {A ⇒[ mk-kind One  eff ] B}  f = λ x → mapRes eraseᵍ (f x)
 eraseᵍ {A ⇒[ mk-kind Many eff ] B}  f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {A ⇒[ mk-kind Zero prod ] B} f = λ u → mapRes eraseᵍ (f u)
+eraseᵍ {A ⇒[ mk-kind One  prod ] B} f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {A ⇒[ mk-kind Many prod ] B} f = λ x → mapRes eraseᵍ (f x)
 eraseᵍ {A * B} (a , b) = eraseᵍ a , eraseᵍ b
 eraseᵍ {A + B} (inj₁ a) = inj₁ (eraseᵍ a)
 eraseᵍ {A + B} (inj₂ b) = inj₂ (eraseᵍ b)

@@ -22,7 +22,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (refl; sym; subst)
 
 open import Once.Word using (Carrier)
-open import Once.Spec.Type.Grade using (Purity; pure; eff)
+open import Once.Spec.Type.Grade using (Purity; pure; eff; prod)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Translate using (translateF)
@@ -34,6 +34,8 @@ open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
 open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Denotation.GradedOps using (cf⁻¹ᵛ; seqM; cata-semᵛ)
+open import Once.Spec.Iterative using (T∞; seqF∞)
+open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; RelT∞′-bind)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Adequacy.SeqRel using (RelF; seqF-rel)
 open import Once.Adequacy.GradedRelation fmt using (RelGV; RelGT; RelGM; injB-rel)
@@ -84,6 +86,18 @@ seqF-relᵖ (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
       RelT′-bind (RelF H R) (RelF (G ⊗ H) R) (seqF-relᵖ H R rH)
         (λ v v′ rv → rel-ret (ru , rv)))
 
+-- A layer of possibly infinite trees against a layer of finite ones (D311).
+seqF∞-rel : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set) {l : ⟦ G ⟧F (T∞ X)} {r : ⟦ G ⟧F (T Y)}
+          → RelF G (RelT∞′ R) l r → RelT∞′ (RelF G R) (seqF∞ G l) (seqF G r)
+seqF∞-rel (K A)   R eq  = rel∞-ret refl eq
+seqF∞-rel Id      R rel = rel
+seqF∞-rel (G ⊕ H) R {inj₁ x} {inj₁ y} rel = RelT∞′-bind (seqF∞-rel G R rel) (λ z → rel∞-ret refl z)
+seqF∞-rel (G ⊕ H) R {inj₂ x} {inj₂ y} rel = RelT∞′-bind (seqF∞-rel H R rel) (λ z → rel∞-ret refl z)
+seqF∞-rel (G ⊕ H) R {inj₁ _} {inj₂ _} ()
+seqF∞-rel (G ⊕ H) R {inj₂ _} {inj₁ _} ()
+seqF∞-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
+  RelT∞′-bind (seqF∞-rel G R rG) (λ ru → RelT∞′-bind (seqF∞-rel H R rH) (λ rv → rel∞-ret refl (ru , rv)))
+
 -- The algebra step at each grade.
 alg-step : ∀ (π : Purity) {F} {A : Type} (wfF : WellFormedF F)
              (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
@@ -107,6 +121,8 @@ alg-step eff {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
     {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
     (seqF-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf))
     (λ l₁ l₂ r → algR (z-relᵍ wfF r))
+alg-step prod {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
+  RelT∞′-bind (seqF∞-rel F (RelGV A) (out-relR wfF (RelGM prod A) rsf)) (λ r → algR (z-relᵍ wfF r))
 
 cata-bridgeᵍ : ∀ (π : Purity) {F} {A : Type} {wfF : WellFormedF F}
                  (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)

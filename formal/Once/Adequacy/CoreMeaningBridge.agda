@@ -42,7 +42,7 @@ open import Data.String using (_++_)
 open import Once.Postulates using (extensionality)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; bindᵍ)
 open import Once.Spec.Type.Sub using (·p-diag)
-open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
+open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ)
 open import Once.Denotation.TraceMonad using (T; interp; module Interp)
 open Interp using (sig; impl)
 open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
@@ -142,12 +142,14 @@ env-subst₂ {Γ = Γ} u v refl w x = EA.restrict-≡ {Γ = Γ} u v w x
 diag-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y) → subM (·p-diag π) (bindᵍ π π m k) ≡ bindM π m k
 diag-bind Once.Spec.Type.Grade.pure m k = refl
 diag-bind Once.Spec.Type.Grade.eff  m k = refl
+diag-bind Once.Spec.Type.Grade.prod m k = refl
 
 -- Pure codata built at `pure`, then subeffected, is built at the grade.
 ana-sub : ∀ {F A} π π₀ (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
         → subM (pure⊑ π₀) (ana-semᵛ π Once.Spec.Type.Grade.pure wf clo a) ≡ ana-semᵛ π π₀ wf clo a
 ana-sub Once.Spec.Type.Grade.pure π₀ wf clo a = refl
 ana-sub Once.Spec.Type.Grade.eff  π₀ wf clo a = refl
+ana-sub Once.Spec.Type.Grade.prod π₀ wf clo a = refl
 
 module Comb {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)
@@ -388,12 +390,12 @@ module _ {δ : GM.DefSem} where
            → ⟦ d ⟧ᶜ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᶜ V d) ⟧ fmt δ dγ
 
   bridge-c V ag t-id-check             dγ = refl
-  bridge-c V ag (t-fst-check {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
-  bridge-c V ag (t-snd-check {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
+  bridge-c V ag (t-fst-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
+  bridge-c V ag (t-snd-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
   bridge-c V ag t-terminal-morph-check dγ = refl
-  bridge-c V ag (t-initial-morph-check {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
-  bridge-c V ag (t-inl-morph-check {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
-  bridge-c V ag (t-inr-morph-check {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
+  bridge-c V ag (t-initial-morph-check {π = π}) dγ = extensionality λ ()
+  bridge-c V ag (t-inl-morph-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
+  bridge-c V ag (t-inr-morph-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
   bridge-c V ag (t-compose-check-g dg df) dγ =
     trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)) dγ))
@@ -559,10 +561,10 @@ module _ {δ : GM.DefSem} where
     trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))
   bridge-d V ag d-id dγ = refl
-  bridge-d V ag (d-fst {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
-  bridge-d V ag (d-snd {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
+  bridge-d V ag (d-fst {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
+  bridge-d V ag (d-snd {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
   bridge-d V ag d-terminal dγ = refl
-  bridge-d V ag (d-initial {π = π}) dγ = extensionality λ v → sym (bindM-idˡ π v _)
+  bridge-d V ag (d-initial {π = π}) dγ = extensionality λ ()
   bridge-d V ag (d-case df dg) dγ =
     trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.case-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))

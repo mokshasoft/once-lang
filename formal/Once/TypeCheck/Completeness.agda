@@ -991,6 +991,11 @@ mutual
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
         with caseGo-success eqf eqg
   ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
+  check-complete (t-case-copair-check {π = T.prod} df dg)
+    with check-completeV df | check-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        with caseGo-success eqf eqg
+  ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
   -- `pair`/`curry` are PURE-FIXED, so no π split: only the pure clause of
   -- `checkPair`/`checkCurry` can apply, and rewriting by the arms' results
   -- reduces its `with`-tree to the success.
@@ -1024,6 +1029,17 @@ mutual
         with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
   ...     | eqGo
             rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
+            _ , _ , _ , refl
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.prod} wfF dalg)
+    -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
+    -- dispatches on the decider, so recover its equation here.
+    with wellFormedF?-complete-at wfF
+  ... | eqW
+    with check-completeV dalg
+  ... | (_ , _ , _ , W , eqA)
+        with checkCataGo-just-success ctx alg F A T.prod wfF eqW eqA
+  ...     | eqGo
+            rewrite trans (checkCataGo-J ctx alg F A T.prod (just wfF) eqW) eqGo =
             _ , _ , _ , refl
   -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
   -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.

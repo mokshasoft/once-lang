@@ -147,6 +147,9 @@ mutual
   typeToGType (T.ν-type F T.eff) with functorToGFunctor F
   ... | just gf = just (G.GNuEff gf)
   ... | nothing = nothing
+  -- D311: `prod` has no surface syntax yet (plan 0.117 F).
+  typeToGType (_ T.⇒[ T.mk-kind _ T.prod ] _) = nothing
+  typeToGType (T.ν-type F T.prod) = nothing
 
   -- | Convert an internal `Functor` to a grammar-level functor.
   -- Fails iff a constant `K t` holds a non-expressible `t` (e.g. ν).
@@ -209,6 +212,8 @@ typeToGType-gtypeToType (T.ν-type F T.eff) .(G.GNuEff gf) refl | just gf
 typeToGType-gtypeToType (T.ν-type F T.pure) g eq with functorToGFunctor F in eqF
 typeToGType-gtypeToType (T.ν-type F T.pure) .(G.GNu gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
+typeToGType-gtypeToType (_ T.⇒[ T.mk-kind _ T.prod ] _) _ ()
+typeToGType-gtypeToType (T.ν-type F T.prod) _ ()
 
 functorToGFunctor-gfunctorToFunctor (T.K t) g eq with typeToGType t in eqt
 functorToGFunctor-gfunctorToFunctor (T.K t) .(G.GFK gt) refl | just gt

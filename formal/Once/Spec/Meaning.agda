@@ -80,7 +80,7 @@ open import Once.Denotation.Behavior public
 open import Once.Denotation.TraceMonad public
   using ( T ; returnT ; _>>=T_ ; Interp ; Run ; run ; then ; projTrace )
 open import Once.Denotation.GradedDomain public
-  using ( M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT ; bindᵍ )
+  using ( M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT∞ ; bindᵍ ; EqM )
 open import Once.Denotation.GradedOps public
   using ( fmapM ; seqM ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ ; sigOpRefᵛ )
 open import Once.Spec.Core.Meaning public

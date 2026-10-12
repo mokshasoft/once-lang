@@ -25,6 +25,7 @@ open import Once.Functor.Translate using (translateF)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.ValueDomain using (νᵈ)
 open import Once.Denotation.GradedDomain
+open import Once.Denotation.TraceMonadInfLaws using (≈∞-idˡ)
 
 opaque
   unfolding _>>=ᵖ_
@@ -42,8 +43,10 @@ opaque
 
 -- Left identity at every grade: definitional at `eff` (T's bind on a unit), the
 -- β-law of the opaque bind at `pure`.
-bindM-idˡ : ∀ π {X Y} (x : X) (k : X → M π Y) → bindM π (returnM π x) k ≡ k x
+bindM-idˡ : ∀ π {X Y} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM π x) k) (k x)
 
 bindM-idˡ pure x k = >>=ᵖ-β x k
 
 bindM-idˡ eff  x k = refl
+
+bindM-idˡ prod x k = ≈∞-idˡ x k

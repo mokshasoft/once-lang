@@ -11,8 +11,11 @@
 
 module Once.Metatheory.Totality where
 
-open import Once.Spec.Type.Grade using (pure; eff)
-open import Once.Spec.Totality using (FiniteT; fin-ret; fin-call; fin-halt)
+open import Once.Spec.Type.Grade using (pure; eff; prod)
+open import Once.Spec.Totality using (FiniteT; fin-ret; fin-call; fin-halt; ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
+open Once.Spec.Totality.ProductiveT∞ using (node)
+open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
+open Once.Spec.Iterative.T∞ using (force)
 open import Once.Spec.Metatheory using (Totality)
 open import Once.Denotation.TraceMonad using (T; ret; call; halt)
 open import Once.Denotation.GradedOps using (out-semᵛ)
@@ -24,10 +27,18 @@ finite (ret x)      = fin-ret
 finite (call o a k) = fin-call (λ b → finite (k b))
 finite (halt o a)   = fin-halt
 
+-- Every tree of `T∞` is productive: by the shape of its nodes.
+productive∞ : ∀ {X : Set} (m : T∞ X) → ProductiveT∞ m
+productiveN : ∀ {X : Set} (l : T∞F X (T∞ X)) → ProductiveNode ProductiveT∞ l
+node (productive∞ m) = productiveN (force m)
+productiveN (ret∞ x)      = prod-ret
+productiveN (call∞ o a k) = prod-call (λ b → productive∞ (k b))
+productiveN (halt∞ o a)   = prod-halt
+
 totality : Totality
 totality = record
   { finite     = finite
-  ; productive = λ { pure wf v → _ ; eff wf v → finite (out-semᵛ eff wf v) }
+  ; productive = λ { pure wf v → _ ; eff wf v → finite (out-semᵛ eff wf v) ; prod wf v → productive∞ (out-semᵛ prod wf v) }
   ; no-self-reference    = no-self-reference
   ; no-forward-reference = no-forward-reference
   ; stream-typed = stream-typed

@@ -27,22 +27,27 @@
 
 module Once.Spec.Type.Sub where
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; eff; prod; mk-kind; _·p_)
 open import Once.Spec.Type
   using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 
 infix 4 _⊑π_ _<:_
 
--- The effect order.
+-- The effect order: the line `pure ⊑ eff ⊑ prod` (D311), one derivation per
+-- pair.
 data _⊑π_ : Purity → Purity → Set where
   ⊑-pure : pure ⊑π pure
   ⊑-eff  : eff  ⊑π eff
   ⊑-pe   : pure ⊑π eff
+  ⊑-prod : prod ⊑π prod
+  ⊑-pp   : pure ⊑π prod
+  ⊑-ep   : eff  ⊑π prod
 
 -- `pure` is below every grade.
 pure⊑ : ∀ π → pure ⊑π π
 pure⊑ pure = ⊑-pure
 pure⊑ eff  = ⊑-pe
+pure⊑ prod = ⊑-pp
 
 -- Running a grade twice stays within it (D311: on today's grades the
 -- product is idempotent). What a rule with one grade for two sequenced parts
@@ -50,6 +55,7 @@ pure⊑ eff  = ⊑-pe
 ·p-diag : ∀ π → (π ·p π) ⊑π π
 ·p-diag pure = ⊑-pure
 ·p-diag eff  = ⊑-eff
+·p-diag prod = ⊑-prod
 
 data _<:_ : Type → Type → Set where
   sub-void   : ∀ {B} → Void <: B

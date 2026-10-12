@@ -139,6 +139,10 @@ entry updates the rule it changes here, in the same commit.
   `eff⁺` (an event first), `eff⁺ ⊑ eff`; grades are an ordered monoid and a
   sequencing rule concludes at the product of its premises' grades. An
   `iter` body is `eff⁺` as a whole: every round performs an event. (D311)
+- **A computation that may run forever means a tree of the completely
+  iterative monad** (`T∞`, no silent node), and every grade is read as one
+  (`toT∞`): equal computations are bisimilar trees, observed by their finite
+  prefixes; laws at `prod` hold up to bisimilarity, never `≡`. (D311, D201)
 - **Recursion is correct by construction**, and `make pragma-gate` keeps it
   so: no termination/positivity/coverage pragma may be added to the apex or
   compiler closure. (D242)

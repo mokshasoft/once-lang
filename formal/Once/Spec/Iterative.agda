@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.TraceMonadInf — the computation domain of a program that
+-- Once.Spec.Iterative — SPEC. The computation domain of a program that
 -- may RUN FOREVER (D311, plan 0.117 C1): the free COMPLETELY ITERATIVE monad
 -- on the call/halt signature (Aczel–Adámek–Milius–Velebil).
 --
@@ -18,7 +18,7 @@
 -- bisimulation-to-equality axiom).
 ------------------------------------------------------------------------
 
-module Once.Denotation.TraceMonadInf where
+module Once.Spec.Iterative where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; [_])

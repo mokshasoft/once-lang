@@ -9,7 +9,7 @@
 --   * `⊔q` is a semilattice (the usage of a case), and the order relation
 --     `_≤q'_` is a decidable total order whose Boolean form is `_≤q_`;
 --   * effect `(Purity, ⊔p, pure)` is a commutative monoid and a semilattice,
---     bounded by `pure` and `eff`, and `_⊑π_` is its order.
+--     bounded by `pure` and `prod`, and `_⊑π_` is its order.
 --
 -- The carriers are finite, so every law is proved by exhausting the cases.
 -- The structures are record VALUES; whether the Agda code later resolves them
@@ -27,9 +27,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; isEquivale
 open import Relation.Binary.Structures using (IsDecTotalOrder)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Type.Grade
-  using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; eff; _⊔p_)
+  using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; eff; prod; _⊔p_)
 open import Once.Spec.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep)
 
 ------------------------------------------------------------------------
 -- Usage: a commutative semiring
@@ -287,18 +287,29 @@ quantity-≤-isDecTotalOrder = record
 ≤q-complete m≤m = refl
 
 ------------------------------------------------------------------------
--- Effect: the two-point lattice pure ≤ eff
+-- Effect: the line pure ≤ eff ≤ prod (D311). The carrier is finite, so
+-- every law is by exhausting the cases.
 ------------------------------------------------------------------------
 
 ⊔p-assoc : ∀ a b c → (a ⊔p b) ⊔p c ≡ a ⊔p (b ⊔p c)
 ⊔p-assoc pure b c = refl
-⊔p-assoc eff b c = refl
+⊔p-assoc eff pure c = refl
+⊔p-assoc eff eff pure = refl
+⊔p-assoc eff eff eff = refl
+⊔p-assoc eff eff prod = refl
+⊔p-assoc eff prod c = refl
+⊔p-assoc prod b c = refl
 
 ⊔p-comm : ∀ a b → a ⊔p b ≡ b ⊔p a
 ⊔p-comm pure pure = refl
 ⊔p-comm pure eff = refl
+⊔p-comm pure prod = refl
 ⊔p-comm eff pure = refl
 ⊔p-comm eff eff = refl
+⊔p-comm eff prod = refl
+⊔p-comm prod pure = refl
+⊔p-comm prod eff = refl
+⊔p-comm prod prod = refl
 
 ⊔p-identityˡ : ∀ a → pure ⊔p a ≡ a
 ⊔p-identityˡ a = refl
@@ -306,17 +317,20 @@ quantity-≤-isDecTotalOrder = record
 ⊔p-identityʳ : ∀ a → a ⊔p pure ≡ a
 ⊔p-identityʳ pure = refl
 ⊔p-identityʳ eff = refl
+⊔p-identityʳ prod = refl
 
 ⊔p-idem : ∀ a → a ⊔p a ≡ a
 ⊔p-idem pure = refl
 ⊔p-idem eff = refl
+⊔p-idem prod = refl
 
--- `eff` absorbs.
-⊔p-zeroʳ : ∀ a → a ⊔p eff ≡ eff
+-- `prod` absorbs.
+⊔p-zeroʳ : ∀ a → a ⊔p prod ≡ prod
 ⊔p-zeroʳ pure = refl
 ⊔p-zeroʳ eff = refl
+⊔p-zeroʳ prod = refl
 
--- The grade monoid: composing two arrows takes the join of their grades.
+-- The join is a commutative monoid with unit `pure`.
 purity-isCommutativeMonoid : Structures.IsCommutativeMonoid {A = Purity} _≡_ _⊔p_ pure
 purity-isCommutativeMonoid = record
   { isMonoid = record
@@ -330,15 +344,30 @@ purity-isCommutativeMonoid = record
 ⊔p-upperˡ : ∀ a b → a ⊑π (a ⊔p b)
 ⊔p-upperˡ pure pure = ⊑-pure
 ⊔p-upperˡ pure eff = ⊑-pe
-⊔p-upperˡ eff b = ⊑-eff
+⊔p-upperˡ pure prod = ⊑-pp
+⊔p-upperˡ eff pure = ⊑-eff
+⊔p-upperˡ eff eff = ⊑-eff
+⊔p-upperˡ eff prod = ⊑-ep
+⊔p-upperˡ prod b = ⊑-prod
 
 ⊔p-upperʳ : ∀ a b → b ⊑π (a ⊔p b)
 ⊔p-upperʳ pure pure = ⊑-pure
 ⊔p-upperʳ pure eff = ⊑-eff
+⊔p-upperʳ pure prod = ⊑-prod
 ⊔p-upperʳ eff pure = ⊑-pe
 ⊔p-upperʳ eff eff = ⊑-eff
+⊔p-upperʳ eff prod = ⊑-prod
+⊔p-upperʳ prod pure = ⊑-pp
+⊔p-upperʳ prod eff = ⊑-ep
+⊔p-upperʳ prod prod = ⊑-prod
 
 ⊔p-least : ∀ {a b c} → a ⊑π c → b ⊑π c → (a ⊔p b) ⊑π c
 ⊔p-least ⊑-pure q = q
 ⊔p-least ⊑-pe q = q
-⊔p-least ⊑-eff _ = ⊑-eff
+⊔p-least ⊑-pp q = q
+⊔p-least ⊑-eff ⊑-pe = ⊑-eff
+⊔p-least ⊑-eff ⊑-eff = ⊑-eff
+⊔p-least ⊑-ep ⊑-pp = ⊑-ep
+⊔p-least ⊑-ep ⊑-ep = ⊑-ep
+⊔p-least ⊑-ep ⊑-prod = ⊑-prod
+⊔p-least ⊑-prod _ = ⊑-prod
