@@ -62,7 +62,13 @@ open import Once.Spec.Iterative using (TreeEq∞; return∞; _>>=∞_)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Spec.Guarded using (T⁺; iter∞)
 open import Data.Sum using (_⊎_; [_,_]′)
-open import Once.Spec.Iterative using (T∞)
+open import Once.Spec.Iterative using (T∞; events∞)
+open import Once.Denotation.TraceMonad using (PrefixFamily)
+open import Data.List using (List)
+open import Once.Spec.Totality using (echoDefs; echoSig; echoServer)
+open import Once.Spec.Type using (Void)
+open import Data.List using (length)
+open import Once.Denotation.TraceMonad using (interp)
 open import Once.Spec.Totality using (FiniteT; ProductiveM; ProductiveT∞; selfRef; forwardRef; defF; tickDefs; ticker)
 open import Once.Spec.Module using (ModTele; emptyScope)
 open import Once.Spec.Context using (∅)
@@ -217,6 +223,8 @@ record Freyd : Set₁ where
 -- perform one.
 module TickTyping  = Once.Spec.Core.Typing tickDefs
 module TickMeaning = Once.Spec.Core.Meaning tickDefs
+module EchoTyping  = Once.Spec.Core.Typing echoDefs
+module EchoMeaning = Once.Spec.Core.Meaning echoDefs
 
 record Totality : Set₁ where
   field
@@ -225,6 +233,11 @@ record Totality : Set₁ where
     -- a computation that may run forever (`prod`, a server's `iter`) reaches
     -- each next event, or its end, after finite work
     productive∞ : ∀ {X : Set} (m : T∞ X) → ProductiveT∞ m
+    -- … so its observation is defined at every depth: observing one event
+    -- further appends, the `n`-th has at most `n` events, and one short of its
+    -- budget is finished (D058, D179) — a server's behaviour as a returning
+    -- program's
+    observable∞ : ∀ {X : Set} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) → PrefixFamily (events∞ ι h m)
     no-self-reference    : ¬ ModTele emptyScope (selfRef ∷ [])
     no-forward-reference : ¬ ModTele emptyScope (forwardRef ∷ defF ∷ [])
     stream-typed : TickTyping._⊢[_]_∷_!_ ∅ Surface.[] ticker (ν-type Id eff) pure
@@ -232,6 +245,12 @@ record Totality : Set₁ where
                  → ∃[ o ] ∃[ a ] ∃[ k ]
                    TickMeaning.⟦ TickTyping.⊢out wf-Id (TickTyping.⊢sub-eff ⊑-pe stream-typed) ⟧ fmt ds tt
                    ≡ call o a k
+    -- and a SERVER (D311): `iter step ()`, an echo loop, is typed at `prod` …
+    server-typed : EchoTyping._⊢[_]_∷_!_ ∅ Surface.[] echoServer Void prod
+    -- … and runs forever: under every implementation, its observation at
+    -- depth `n` has exactly `n` events
+    server-runs  : ∀ fmt (ds : EchoMeaning.DefSem) n
+                 → length (events∞ (interp echoSig (EchoMeaning.impl ds)) [] (EchoMeaning.⟦ server-typed ⟧ fmt ds tt) n) ≡ n
 
 record Metatheory : Set₁ where
   field

@@ -20,8 +20,10 @@ open Once.Spec.Iterative.T∞ using (force)
 open import Once.Spec.Metatheory using (Totality)
 open import Once.Denotation.TraceMonad using (T; ret; call; halt)
 open import Once.Denotation.GradedOps using (out-semᵛ)
+open import Once.Denotation.TraceMonadInfLaws using (events∞-pf)
 open import Once.Metatheory.Witness.NoSelfRef using (no-self-reference; no-forward-reference)
 open import Once.Metatheory.Witness.Server using (stream-typed; stream-emits)
+import Once.Metatheory.Witness.Echo as Echo
 
 finite : ∀ {X : Set} (m : T X) → FiniteT m
 finite (ret x)      = fin-ret
@@ -41,8 +43,11 @@ totality = record
   { finite     = finite
   ; productive = λ { pure wf v → _ ; eff wf v → finite (out-semᵛ eff wf v) ; prod wf v → productive∞ (out-semᵛ prod wf v) ; eff⁺ wf v → finite (forget⁺ (out-semᵛ eff⁺ wf v)) }
   ; productive∞ = productive∞
+  ; observable∞ = events∞-pf
   ; no-self-reference    = no-self-reference
   ; no-forward-reference = no-forward-reference
   ; stream-typed = stream-typed
   ; stream-emits = stream-emits
+  ; server-typed = Echo.server-typed
+  ; server-runs  = Echo.server-runs
   }

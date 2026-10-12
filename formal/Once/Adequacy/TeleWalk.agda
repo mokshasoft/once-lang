@@ -74,6 +74,7 @@ open Once.Denotation.Program.IRFun using (fname)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.Telescope using (Tele; runProgram; program; noKinds; noVars; noResp)
+open import Once.Denotation.TraceMonadInfLaws using (events∞-embed)
 open import Once.Spec.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
 import Once.Spec.Core.Abstract as A
 import Once.Spec.Core.Translate as TR
@@ -179,7 +180,8 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {e
   -- interpretation (`RelT′-events`), so their first `n` events agree.
   trans ir-side (trans (sym (cong (take n) (RelT′-events ι [] (RelGT-bind {EffUU} {Once.Spec.Type.Unit} relM (λ rv → rv {tt} {tt} tt)))))
                        (trans (cong (λ (v : ⟦ EffUU ⟧ᵛ) → projTrace ι (v tt) n) (sym core≡))
-                              (sym (from-sem tl′ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero refl rest u n))))
+                              (trans (sym (events∞-embed ι [] _ n))
+                                     (sym (from-sem tl′ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero refl rest u n)))))
   where
     open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {Parser.mkFunInfo "main" ft bd false} {EffUU} g D {irFun} cf inv
     later = tableOf-go (FB.bundle→compiled rest-b) []

@@ -18405,6 +18405,19 @@ as the program's entry (the user, 2026-10-12).
 - Coherence covers it (`Coherence.Layer.Iter.iter-S`: related steps iterate to bisimilar
   trees). The surface has no `iter` yet (phase F), so the compiler is untouched.
 
+### Landed in plan 0.117 E (2026-10-12)
+- `main` is an ordinary function at any grade: a core `Program` records its entry's grade
+  (`Unit ⇒[ π ] Unit`), and `runProgram` observes `toT∞ π (main ())` with `events∞` — at the top
+  grade, where a server's run is as observable as one that returns. A program that returns (`eff`,
+  every compiled program today) observes the same prefixes as before (`events∞-embed`).
+- `Totality.observable∞`: every `T∞` run's observation is a prefix family (D058/D179's three
+  laws) — so `Behavior` is defined for a server at every depth. Proved (`events∞-pf`).
+- The witness (`Spec.Totality.echoServer`, `Metatheory.Witness.Echo`): an echo loop
+  `iter (λ _ → inr (write (read ()))) ()` is typed at `prod` (`server-typed`) and, under EVERY
+  implementation, observes exactly `n` events at depth `n` (`server-runs`): it runs forever and is
+  never silent. Proved through a general lemma (`Forever.runs`: a step whose calls are all
+  answered and that always loops).
+
 ### Not reused
 `Once/IR/Guarded.agda` (deleted in c59c6c661) marked the recursive positions of a coalgebra's
 LAYER (`GRec`); it was deprecated under OCP-0003 because layer productivity follows from

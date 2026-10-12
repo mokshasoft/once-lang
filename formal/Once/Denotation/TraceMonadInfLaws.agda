@@ -173,3 +173,61 @@ RelT∞′-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT�
 RelT∞′-embed (rel-ret r)  = rel∞-ret refl r
 RelT∞′-embed (rel-call h) = rel∞-call refl (λ b → RelT∞′-embed (h b))
 RelT∞′-embed rel-halt     = rel∞-halt refl
+
+------------------------------------------------------------------------
+-- THE OBSERVABLE IS A PREFIX FAMILY (D058, D179) for every tree of `T∞`:
+-- observing one event further appends, the `n`-th observation has at most `n`
+-- events, and one that has not filled its budget is finished. With no silent
+-- node each observation is computed by recursion on `n` alone — so a server's
+-- behaviour is defined at every depth, exactly as a returning program's.
+------------------------------------------------------------------------
+
+open import Data.Nat using (_≤_; _<_; z≤n; s≤s)
+open import Data.List using (length)
+open import Data.Product using (∃-syntax; _,_; proj₂)
+open import Once.Denotation.TraceMonad using (PrefixFamily; prefixFamily)
+
+events∞-bnd : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) n → length (events∞ ι h m n) ≤ n
+eventsF-bnd : ∀ {X} (ι : Interp) (h : List SigOpEvent) (l : T∞F X (T∞ X)) n → length (eventsF ι h l n) ≤ suc n
+eventsC-bnd : ∀ {X} (ι : Interp) h o a (k : _ → T∞ X) (r : Maybe _) n → length (eventsC ι h o a k r n) ≤ suc n
+events∞-bnd ι h m zero    = z≤n
+events∞-bnd ι h m (suc n) = eventsF-bnd ι h (force m) n
+eventsF-bnd ι h (ret∞ x)      n = z≤n
+eventsF-bnd ι h (halt∞ o a)   n = s≤s z≤n
+eventsF-bnd ι h (call∞ o a k) n = eventsC-bnd ι h o a k (callAnswer ι h o a) n
+eventsC-bnd ι h o a k (just b) n = s≤s (events∞-bnd ι (h ++ [ callEvent o a ]) (k b) n)
+eventsC-bnd ι h o a k nothing  n = s≤s z≤n
+
+events∞-coh : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) n
+            → ∃[ rest ] (events∞ ι h m (suc n) ≡ events∞ ι h m n ++ rest)
+eventsF-coh : ∀ {X} (ι : Interp) (h : List SigOpEvent) (l : T∞F X (T∞ X)) n
+            → ∃[ rest ] (eventsF ι h l (suc n) ≡ eventsF ι h l n ++ rest)
+eventsC-coh : ∀ {X} (ι : Interp) h o a (k : _ → T∞ X) (r : Maybe _) n
+            → ∃[ rest ] (eventsC ι h o a k r (suc n) ≡ eventsC ι h o a k r n ++ rest)
+events∞-coh ι h m zero    = _ , refl
+events∞-coh ι h m (suc n) = eventsF-coh ι h (force m) n
+eventsF-coh ι h (ret∞ x)      n = [] , refl
+eventsF-coh ι h (halt∞ o a)   n = [] , refl
+eventsF-coh ι h (call∞ o a k) n = eventsC-coh ι h o a k (callAnswer ι h o a) n
+eventsC-coh ι h o a k (just b) n =
+  proj₁ ih , cong (callEvent o a ∷_) (proj₂ ih)
+  where ih = events∞-coh ι (h ++ [ callEvent o a ]) (k b) n
+eventsC-coh ι h o a k nothing  n = [] , refl
+
+events∞-sat : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) n
+            → length (events∞ ι h m n) < n → events∞ ι h m (suc n) ≡ events∞ ι h m n
+eventsF-sat : ∀ {X} (ι : Interp) (h : List SigOpEvent) (l : T∞F X (T∞ X)) n
+            → length (eventsF ι h l n) < suc n → eventsF ι h l (suc n) ≡ eventsF ι h l n
+eventsC-sat : ∀ {X} (ι : Interp) h o a (k : _ → T∞ X) (r : Maybe _) n
+            → length (eventsC ι h o a k r n) < suc n → eventsC ι h o a k r (suc n) ≡ eventsC ι h o a k r n
+events∞-sat ι h m zero    ()
+events∞-sat ι h m (suc n) lt = eventsF-sat ι h (force m) n lt
+eventsF-sat ι h (ret∞ x)      n lt = refl
+eventsF-sat ι h (halt∞ o a)   n lt = refl
+eventsF-sat ι h (call∞ o a k) n lt = eventsC-sat ι h o a k (callAnswer ι h o a) n lt
+eventsC-sat ι h o a k (just b) n (s≤s lt) =
+  cong (callEvent o a ∷_) (events∞-sat ι (h ++ [ callEvent o a ]) (k b) n lt)
+eventsC-sat ι h o a k nothing  n lt = refl
+
+events∞-pf : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) → PrefixFamily (events∞ ι h m)
+events∞-pf ι h m = prefixFamily (events∞-bnd ι h m) (events∞-sat ι h m) (events∞-coh ι h m)

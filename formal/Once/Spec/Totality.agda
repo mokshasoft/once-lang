@@ -103,3 +103,38 @@ open import Once.Spec.Core.Syntax tickDefs using (Tm; unfold; sigop; lit; lit-in
 
 ticker : Tm 0
 ticker = unfold Id (sigop tick tickTy) (lit (lit-int (+ 0)))
+
+-- A SERVER (D311): an echo loop over two operations of the interpretation,
+-- `read : Unit → Int` and `write : Int → Unit`, each a call (`eff⁺`: an event
+-- first). One round reads a value and writes it back, then loops; it never
+-- answers `inj₁` (`Void`), so the loop runs forever — `iter step () : Void`
+-- at `prod`. Every round performs two events, so the run is never silent.
+open import Once.Spec.Type using (Unit; Void)
+open import Once.Spec.Type.Grade using (eff⁺; prod)
+
+readTy writeTy : Type
+readTy  = Unit ⇒[ mk-kind Many eff⁺ ] Int
+writeTy = Int ⇒[ mk-kind Many eff⁺ ] Unit
+
+echoSig : ISig
+echoSig = ("read" , readTy) ∷ ("write" , writeTy) ∷ []
+
+echoDefs : Sig echoSig 0
+echoDefs = []
+
+readN writeN : CanonicalName
+readN  = canonical ("read" ∷ [])
+writeN = canonical ("write" ∷ [])
+
+import Once.Spec.Core.Syntax
+module EchoSyntax = Once.Spec.Core.Syntax echoDefs
+
+-- step = λ _ → inr (write (read ()))
+echoStep : EchoSyntax.Tm 0
+echoStep = EchoSyntax.lam Unit Many eff⁺
+             (EchoSyntax.inr Void (EchoSyntax.app (EchoSyntax.sigop writeN writeTy)
+                                                   (EchoSyntax.app (EchoSyntax.sigop readN readTy) EchoSyntax.unit)))
+
+-- the server = iter step ()
+echoServer : EchoSyntax.Tm 0
+echoServer = EchoSyntax.iter echoStep EchoSyntax.unit
