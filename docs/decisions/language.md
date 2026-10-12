@@ -123,8 +123,13 @@ entry updates the rule it changes here, in the same commit.
   productive. (D062, D224, GOAL.md; reasoning: OCP-0003)
 - **No general recursion**: a definition sees exactly the definitions declared
   before it — never itself, never a later one; a module is one
-  declaration-ordered telescope. The core has no `fix`. Long-running
-  programs are written with `ana`. (D241, D234)
+  declaration-ordered telescope. The core has no `fix`. (D241, D234)
+- **Once is total and productive** (T+P): a pure computation is a value; an
+  effectful computation reaches each next event after finite work. A server
+  — any program that runs forever — is GUARDED ITERATION over the completely
+  iterative monad (an event before every loop), not general recursion and
+  not `ana`; `main` is an ordinary function, specified only as the entry.
+  Being implemented (plan 0.117). (D311)
 - **Recursion is correct by construction**, and `make pragma-gate` keeps it
   so: no termination/positivity/coverage pragma may be added to the apex or
   compiler closure. (D242)

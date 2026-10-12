@@ -18289,3 +18289,59 @@ The meaning is defined on DERIVATIONS, so D308's coherence ("two derivations of 
 - The DirectedHoTT kernel met the same question and chose types in terms (PLAN-BIDI 1b: "a kernel term, in its context, determines its type"; decision 5 an annotated layer, which made uniqueness of types short). It kept its unannotated kernel because its meaning is reduction on raw terms; ours is on derivations, so the annotations belong in the core `Tm` itself.
 - The hidden choices are where D308's bug lived (an erased position that one derivation ran). Recording them makes the class unrepresentable instead of argued away.
 - **Correction (same day).** A first version used the checking-mode criterion (*given the judgment's type, every premise's is determined*: `app A q`, `fst B`, `out F`, …). It is not enough: `⊢sub-eff` lets a judgment's GRADE vary, grades occur inside types (an arrow's `π`, `ν`'s `π`), and rules pass the judgment's grade into premise types (`app`'s head at `A ⇒[ q , π ] B ! π`, `fold`'s algebra, `out`'s stream). So premise types still drifted between derivations, and through `fold`'s carrier reached a binder's type. Under the inference-mode criterion no type drifts at all, and the same set of annotations also gives the de Bruijn property (a core term can be type-checked without guessing).
+
+---
+
+## D311 — ONCE IS TOTAL + PRODUCTIVE; A SERVER IS GUARDED ITERATION OF AN EFFECT, AND `main` IS AN ORDINARY FUNCTION (2026-10-12)
+
+**Relates**: GOAL.md ("A server, a REPL, any long-running interactive program"; "Structured
+recursion only"), OCP-0003, D058/D179 (`Behavior`: the first `n` events, for total+productive
+systems), D233/D309 (effectful `unfold`), D241 (no self-reference), D250 (`pure` = referential
+transparency), D307/D308 (effects: a family of monads, a Freyd category), plan 0.117.
+
+### Context
+GOAL.md says Once must express a server. It cannot. `Eff A B` means `A → T B`, and `T`
+(`Denotation/TraceMonad.agda`: `ret` / `call` / `halt`) is INDUCTIVE, so every effectful
+function — `main` or any other — ends after finitely many events. An effectful `unfold` builds a
+lazy stream, but nothing can force infinitely many layers: that would be an infinite effectful
+computation, and `T` has none. `language.md` §5 ("long-running programs are written with `ana`")
+was wrong. Nor did the Spec STATE that Once is total and productive: it was true of the domain
+(no pragmas, `M pure X = X`, `T` inductive) and written only in `Behavior`'s header.
+
+`main` is not the problem and gets no special type: it is an ordinary function, specified only
+as the program's entry (the user, 2026-10-12).
+
+### Decision
+1. **Once is a T+P language, and the Spec says so** (`Spec.Metatheory`, part `totality`): a pure
+   computation is a value (TOTAL); an effectful computation reaches each next event, or its end,
+   after finite work (PRODUCTIVE); so `Behavior n` is defined for every program at every `n`.
+2. **The domain of possibly-infinite effectful computation is the free COMPLETELY ITERATIVE
+   monad** on the call/halt signature (Aczel–Adámek–Milius–Velebil): the final coalgebra of the
+   same three constructors as `T`, with NO silent step. Interaction trees with `Tau` (an Elgot
+   monad over the delay monad) are rejected: they model partiality, and silent divergence would
+   become a meaning that `Behavior` cannot observe (D058).
+3. **A server is GUARDED ITERATION in the Kleisli category**: `iter : (A → T (B + A)) → (A → T∞ B)`
+   for a step that performs an event before it loops. The Spec claim is that `iter f` is the
+   UNIQUE solution of `x = f >=> [ret, x]` (as `fold-unique` is for `μ`). Without the guard,
+   `x = x` has every tree as a solution — the guard is what makes the meaning unique, not a
+   convention. A round may do any finite pure work; a round that drops what it received is
+   guarded by the call that received it. An explicit no-op is an Interpretation's operation and is
+   observable, never a hidden step.
+4. **`main` is an ordinary function**, specified only as the entry. A server is
+   `main = iter step`.
+
+### Open inside plan 0.117 (decided before its phase C)
+- **G1 — where `T∞` sits.** (a) a third grade `pure ⊑ eff ⊑ prod`: `eff` stays the inductive `T`
+  (an effectful function that RETURNS — total), `prod` is `T∞`; or (b) `eff` itself becomes `T∞`.
+  Recommended (a): it states more (a handler that always returns is a type), and leaves the
+  terminating effectful world — its laws as equalities, its 98 importing modules — unchanged.
+- **G2 — how the guard is stated.** (a) the round is headed by a generic effect (Plotkin–Power):
+  `iter g op h`, `x = g >=> call op >=> h >=> [ret, x]`; (b) a guarded grade `eff⁺` meaning `T⁺`
+  (root is an event; a module over `T`), which needs per-premise grades for sequencing; (c) a
+  guardedness predicate on core terms. Recommended: (a) first — guarded by construction, no change
+  to the grade algebra.
+
+### Not reused
+`Once/IR/Guarded.agda` (deleted in c59c6c661) marked the recursive positions of a coalgebra's
+LAYER (`GRec`); it was deprecated under OCP-0003 because layer productivity follows from
+totality. The guard here is on EVENTS, one level up, and has no counterpart there.
