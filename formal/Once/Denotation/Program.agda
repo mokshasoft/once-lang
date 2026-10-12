@@ -32,7 +32,7 @@ open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR using (IR)
 open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; IRTy; Unit)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.Denotation.TraceMonad using (T; unlinkedT)
 open import Once.SigOp.Info using (FFIAnswers; SigOpInfo; SigOpSem; pureV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open SigOpInfo using (name; sem)

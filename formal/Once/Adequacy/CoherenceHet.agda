@@ -13,7 +13,7 @@
 -- (`CoherenceLaws`).
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.CoherenceHet (fmt : TargetNum) where
 

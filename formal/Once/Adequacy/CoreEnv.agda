@@ -16,7 +16,7 @@
 -- extractor's guard), and such a name is not (it has a dot, or is empty).
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; sigOf)
 open import Once.Denotation.TraceMonad using (interp)

@@ -17,7 +17,7 @@
 --     and computes `⟦ p ⟧<:`, former by former, from `LiftFnReduce`'s lemmas.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.CoerceFaithful (fmt : TargetNum) (ρ : CallEnv) where

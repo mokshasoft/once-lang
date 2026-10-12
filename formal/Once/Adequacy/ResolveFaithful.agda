@@ -22,7 +22,7 @@
 
 open import Once.Spec.Typing.Scope using (PolyCtx; Imports)
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 

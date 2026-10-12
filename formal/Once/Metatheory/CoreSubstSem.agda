@@ -37,7 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Context using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Surface.GradeMatrix using (Grades; _⋆_; ⋆-mono; extΦ; ⋆-ext)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)

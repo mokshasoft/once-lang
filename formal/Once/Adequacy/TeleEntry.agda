@@ -14,7 +14,7 @@
 -- says the implementation side returns a related value silently.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Denotation.TraceMonad using (Interp; pureHalf)

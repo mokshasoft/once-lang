@@ -41,7 +41,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; CallEnv; sigOpT; 
 open CallEnv using (ffiE)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰ; seqF; coerce-functor⁻¹-D; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.Spec.Float.Decimal using (round)
-open import Once.Target.Arch using (TargetNum; module TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)

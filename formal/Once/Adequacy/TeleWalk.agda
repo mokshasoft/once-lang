@@ -23,7 +23,7 @@
 -- two runs.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Denotation.TraceMonad using (Interp; pureHalf; interp)
 open import Once.Spec.Contract using (ISig; Impl)

@@ -15,7 +15,7 @@
 -- Also: a lookup skips an entry of another name, and finds its own.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.SigOp.Info using (FFIAnswers)
 

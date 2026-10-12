@@ -54,7 +54,7 @@ open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; b
 -- | Machine-level interpretation (Int ≡ ℕ).
 open import Once.Spec.Word using (Carrier)
 -- Plan 0.74 J5 (D059): a SigOp's machine semantics is TARGET-RELATIVE.
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Arith.Prim using (ArithPrim; primSem)
 

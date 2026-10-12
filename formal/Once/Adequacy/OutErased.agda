@@ -19,7 +19,7 @@
 --     forced computation's own.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.OutErased (fmt : TargetNum) (ρ : CallEnv) where

@@ -34,7 +34,7 @@ module Once.Spec.Core.Coherence {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Once.Spec.Type.Grade using (Purity)
 open import Once.Spec.Type using (Type)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Context using (Ctx; Usage)
 import Once.Spec.Context as SC
 open import Once.Spec.Core.PolyTy using (_!!_; _⟪_⟫; module Schema)

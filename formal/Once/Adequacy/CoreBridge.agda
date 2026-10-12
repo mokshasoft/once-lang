@@ -20,7 +20,7 @@
 -- an entry like any other, and the compiled program's `main` is the call of it.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 
 -- Plan 0.105: at an interpretation `ι`.

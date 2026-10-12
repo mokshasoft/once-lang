@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup; thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)
 open import Once.Spec.Core.Rename S using (ren-⊢; ren-cong; keep-extR)

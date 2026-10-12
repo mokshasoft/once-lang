@@ -24,7 +24,7 @@ open import Once.Arith.CmpOp using (cmp-word)
 open import Once.Spec.Bool using (truth)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Word as OnceWord
-open import Once.Target.Arch using (TargetNum; module TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Spec.Float.Arith as FA
 import Once.Semantics.Value Carrier Carrier as M

@@ -68,7 +68,7 @@ open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent
 -- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are
 -- recursive and a parameterised module stops reducing at a variable instance.
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.Denotation.TraceMonad
   using (projTrace; PrefixFamily; Interp; pureHalf)
 open import Once.Denotation.TraceMonadLaws using (projTrace-pf)

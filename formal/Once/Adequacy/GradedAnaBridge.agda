@@ -14,7 +14,7 @@
 -- seeds of the two domains (`anaᵈ-∼` is already heterogeneous in its seeds).
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.GradedAnaBridge (fmt : TargetNum) where
 

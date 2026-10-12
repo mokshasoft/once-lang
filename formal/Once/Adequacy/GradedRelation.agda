@@ -14,7 +14,7 @@
 -- value — `RelGM pure B v m = RelGT B (returnT v) m`.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.GradedRelation (fmt : TargetNum) where
 

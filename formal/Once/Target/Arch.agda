@@ -39,41 +39,12 @@ open import Data.Nat using (ℕ; suc; _<_; s≤s; z≤n)
 open import Data.Integer using (ℤ)
 open import Data.Product using (Σ; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Once.Spec.Numerics using (TargetNum; mkTargetNum; module TargetNum)
 open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
 import Once.Spec.Word as OnceWord
 import Once.Word as OnceWordL
 
-------------------------------------------------------------------------
--- THE TARGET'S NUMERIC FACTS, in one record (plan 0.74, D115).
---
--- `Float` needed the format (D113) and `Int` needs the width for exactly the
--- same reason: `⟦ Int ⟧` is the RESIDUE, so `-5` denotes `2^w - 5` and is
--- width-relative just as a float literal is format-relative. One record
--- rather than two parallel `Arch → _` maps, so a target's numeric facts
--- cannot drift apart.
-------------------------------------------------------------------------
-
-record TargetNum : Set where
-  constructor mkTargetNum
-  field
-    -- | The machine word in BITS. `Int` is a signed two's-complement word of
-    -- this width (D054), so it also fixes the literal range: an `Int` holds
-    -- `-2^(int-bits-1) … 2^(int-bits-1)-1`, and a literal outside it is a
-    -- TYPE ERROR (D115).
-    int-bits     : ℕ
-    float-format : FloatFormat
-
-
-    -- | THE TARGET HAS AT LEAST ONE BIT (plan 0.74 J6, D115).
-    --
-    -- Only the arch can supply this, and it is not ceremony: the exactness
-    -- theorem below is FALSE at `int-bits ≡ 0`. There `half ≡ modulus ≡ 1`,
-    -- `InRange` admits `-1`, and `fromℤ (-1)` is `0` — a literal that is
-    -- accepted and then silently means something else, which is the whole
-    -- failure mode D115 exists to forbid. A zero-bit target is not a target,
-    -- and this field is where that gets said.
-    int-bits-pos : 0 < int-bits
-
+-- The target's numeric facts are `Spec.Numerics.TargetNum`; each `Arch` gives one.
 open TargetNum
 
 ------------------------------------------------------------------------

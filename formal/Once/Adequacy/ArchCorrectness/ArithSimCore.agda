@@ -74,7 +74,7 @@ import Once.Word as OnceWordL
 -- generic frame `rf-other`.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; module TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Spec.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)

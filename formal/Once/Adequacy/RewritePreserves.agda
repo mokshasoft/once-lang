@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Postulates using (extensionality)
 import Once.Adequacy.LiftSound
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR
 open import Once.IRTy using (⌊_⌋; ⌈_⌉F; ⌈⟧TI-commute; ⌈_⌉; _≟IRTy_)
 open import Once.CanonicalName using (_≟ᶜ_)

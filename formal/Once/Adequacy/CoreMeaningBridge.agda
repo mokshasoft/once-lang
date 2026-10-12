@@ -16,7 +16,7 @@
 -- carry.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; sigOf)
 

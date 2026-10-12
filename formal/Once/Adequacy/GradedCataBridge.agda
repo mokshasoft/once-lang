@@ -13,7 +13,7 @@
 -- Kleisli sequencing of it is silent (`seqF-relᵖ`).
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.GradedCataBridge (fmt : TargetNum) where
 

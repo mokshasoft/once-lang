@@ -14,7 +14,7 @@
 -- `⟦_⟧ᴰ`). Match-to-refl + `subst-T-returnT`/`subst-arrowᴰ`/`pair-subst⁻`.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter

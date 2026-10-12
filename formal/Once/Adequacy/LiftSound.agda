@@ -13,7 +13,7 @@
 -- the monad's associativity), by a measure that re-association decreases.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.Denotation.DenotTrace using (CallEnv)
 
 module Once.Adequacy.LiftSound (fmt : TargetNum) (ρ : CallEnv) where
@@ -55,7 +55,7 @@ open import Once.SigOp.Info using (SigOpSem; mk-info'; primV; SigOpInfo)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 import Once.Spec.Type as Ty
 import Once.Type as Ty
-open import Once.Target.Arch using (module TargetNum)
+open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Spec.Word as OnceWord
 import Once.Spec.Float.Arith

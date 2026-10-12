@@ -21,7 +21,7 @@
 ------------------------------------------------------------------------
 
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.SigOp.Info using (FFIAnswers)
 

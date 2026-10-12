@@ -52,7 +52,7 @@ import Once.Semantics.Machine as Val
 -- so the reference meaning is too. Threaded as an explicit argument rather
 -- than a module parameter: `evalᴰ` is recursive, and a recursive function in
 -- a parameterised module stops reducing downstream at a variable instance.
-open import Once.Target.Arch using (TargetNum; module TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.SigOp.Info
   using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; FFIAnswers; module SigOpInfo)

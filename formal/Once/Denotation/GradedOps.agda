@@ -33,7 +33,7 @@ import Once.Semantics.Machine as Val
 open import Once.Semantics.Machine using (⟦_⟧F; sem-fmap; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
 open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Contract using (ISig; Impl; key; valueOf)

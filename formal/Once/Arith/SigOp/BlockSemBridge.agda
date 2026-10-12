@@ -41,7 +41,7 @@ import Once.Word as OnceWordL
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
 open import Once.Arith.SigOp.Block using (block-semM; projectM; readLeafM)
 
-open import Once.Target.Arch using (TargetNum; module TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 
 ------------------------------------------------------------------------

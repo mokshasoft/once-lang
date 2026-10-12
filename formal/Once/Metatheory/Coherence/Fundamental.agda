@@ -20,7 +20,7 @@
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Contract using (ISig)
-open import Once.Target.Arch using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Metatheory.Coherence.Fundamental {Fs : ISig} {s : ℕ} (Sg : Sig Fs s) where
 

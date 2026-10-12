@@ -278,7 +278,7 @@ open FrameSemantics
 fs-ffi : FrameSemantics → FFIAnswers
 fs-ffi FS = pureHalf (fs-interp FS)
 
-open import Once.Target.Arch using (TargetNum; mkTargetNum)
+open import Once.Spec.Numerics using (TargetNum; mkTargetNum)
 
 fs-numerics : FrameSemantics → TargetNum
 fs-numerics FS = mkTargetNum (8 * frame-word FS) (float-format FS) bits-pos
