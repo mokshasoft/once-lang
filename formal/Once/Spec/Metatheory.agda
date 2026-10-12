@@ -51,7 +51,7 @@ module Once.Spec.Metatheory where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
-open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
@@ -198,6 +198,10 @@ Central : ∀ {Y : Set} → T Y → Set₁
 Central {Y} m = ∀ {W : Set} (n : T W)
               → (m >>=T λ y → n >>=T λ w → returnT (y , w)) ≡ (n >>=T λ w → m >>=T λ y → returnT (y , w))
 
+-- The premonoidal pairing of two Kleisli maps: the first arm runs first.
+pairK : ∀ {X Y Z : Set} → (X → T Y) → (X → T Z) → X → T (Y × Z)
+pairK f g x = f x >>=T λ y → g x >>=T λ z → returnT (y , z)
+
 record Freyd : Set₁ where
   field
     -- J's image is central: a pure computation commutes with every computation
@@ -208,6 +212,16 @@ record Freyd : Set₁ where
     -- before every continuation is a value
     discard-pure : ∀ {Y : Set} (m : T Y) → (∀ {W : Set} (k : T W) → (m >>=T λ _ → k) ≡ k)
                  → Σ[ y ∈ Y ] m ≡ returnT y
+    -- the pairing is a PRODUCT on central arms (plan 0.112 G7): projecting
+    -- gives an arm back when the other is central (β) — its events are not
+    -- dropped — and pairing the projections of a central map is the map (η)
+    -- — its events are not doubled. On other arms it is only premonoidal.
+    pair-β₁ : ∀ {X Y Z : Set} (f : X → T Y) (g : X → T Z) → (∀ x → Central (g x))
+            → ∀ x → (pairK f g x >>=T λ p → returnT (proj₁ p)) ≡ f x
+    pair-β₂ : ∀ {X Y Z : Set} (f : X → T Y) (g : X → T Z) → (∀ x → Central (f x))
+            → ∀ x → (pairK f g x >>=T λ p → returnT (proj₂ p)) ≡ g x
+    pair-η  : ∀ {X Y Z : Set} (h : X → T (Y × Z)) → (∀ x → Central (h x))
+            → ∀ x → pairK (λ x → h x >>=T λ p → returnT (proj₁ p)) (λ x → h x >>=T λ p → returnT (proj₂ p)) x ≡ h x
 
 -- Once is TOTAL and PRODUCTIVE (D311, plan 0.117 A; `Spec.Totality`). An
 -- effectful computation that returns ends, on every path, after finitely many
