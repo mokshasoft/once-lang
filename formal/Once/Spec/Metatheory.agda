@@ -53,14 +53,14 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.TermModel using (TermModel) public
 open import Once.Spec.Core.Coherence using (Coherence)
-open import Once.Spec.Type.Grade using (Purity; mk-kind; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Meaning
   using ( T ; returnT ; _>>=T_ ; Interp ; run ; then ; SigOpEvent
         ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT
-        ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ )
+        ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ )
 open import Once.Spec.Syntax using (RawExpr)
 open import Once.Spec.Typing.Scope using (NamedCtx)
 open import Once.Spec.Typing using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_)
@@ -123,7 +123,8 @@ record Effects : Set₁ where
     run-bind    : ∀ (ι : Interp) (h : List SigOpEvent) {X Y : Set} (m : T X) (f : X → T Y)
                 → run ι h (m >>=T f) ≡ then ι h (run ι h m) f
 
--- The fold's universal property (plan 0.112 D3).
+-- The fold's universal property (plan 0.112 D3) and unfold's computation law
+-- (plan 0.116 E).
 record Recursion : Set₁ where
   field
     -- `fold alg` is the only `h` that commutes with the constructor
@@ -137,6 +138,15 @@ record Recursion : Set₁ where
                     (f : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ)
                 → (∀ y → bindM π (alg y) f ≡ bindM π (mapLayerᵛ π wf f y) alg′)
                 → ∀ v → bindM π (cata-semᵛ π wf alg v) f ≡ cata-semᵛ π wf alg′ v
+    -- unfold's computation law (plan 0.116 E): forcing `unfold c s` runs the
+    -- coalgebra FUNCTION on the seed (once per forced layer; its term was
+    -- evaluated once, when the stream was built — D273) and puts `unfold c` at
+    -- the recursive positions. An effectful coalgebra is a server (D233). With
+    -- it, every observation of a stream is determined; uniqueness holds up to
+    -- bisimilarity (the final T∘F-coalgebra).
+    unfold-out  : ∀ π {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
+                → out-semᵛ π wf (ana-semᵛ π pure wf clo a)
+                  ≡ bindM π (clo a) (mapLayerᵛ π wf (λ a′ → returnM π (ana-semᵛ π pure wf clo a′)))
 
 -- Effects form a Freyd category (plan 0.116). Values and pure maps are the
 -- category C, computations `X → T Y` the premonoidal category K = Kleisli(T),

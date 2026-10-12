@@ -18245,3 +18245,9 @@ The core meaning gave `let x = e in b` at quantity `Zero` the meaning of `b` alo
 ### Consequences
 - The surface elaborates to pure core terms, so no compiled program changes.
 - `⊢sub-eff`'s meaning is the unit `subM` (D250), not "identity"; the stale comments are corrected.
+
+## D309 — THE CORE'S `unfold` EVALUATES ITS COALGEBRA TERM ONCE; ITS FUNCTION RUNS PER LAYER (D247 REVISED) (2026-10-12)
+
+**Relates**: D247 (revised), D273, D233, D131, plan 0.116 E (plan 0.112 G3)
+
+**Decision.** `⟦ ⊢unfold dc ds ⟧` binds the coalgebra term `dc` once, then the seed `ds` (left to right, as `app`, `pair` and `fold`), and `ana-semᵛ` takes the coalgebra FUNCTION, applied in each forced layer. D247 had the core store the coalgebra's computation and re-run it per layer; D273 already made the source meaning and the IR's `Ana` bind it once, so the core disagreed with both. The coalgebra function may be effectful: an effectful stream is the final T∘F-coalgebra (ν(T∘F), D233), a server is one, and its anamorphism takes a Kleisli map `A → T (F A)`. `Spec.Metatheory.Recursion.unfold-out` states the computation law (postulated, P5), so the Spec — not only this log — says what `unfold` means.

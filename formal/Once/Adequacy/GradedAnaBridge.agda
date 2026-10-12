@@ -116,8 +116,9 @@ in-relᵍ-T {A} {G} wf {g} eg {m₁} {m₂} rm =
 
 ------------------------------------------------------------------------
 -- The unfold, at each coalgebra grade `π` and construction grade `π₀`. The
--- Spec's coalgebra is a VALUE `c₁`; SD's is a computation `cT` bound in each
--- layer; the premise relates the computation to a silent return of `c₁`.
+-- Spec's coalgebra is a VALUE `c₁` (its term was evaluated once, D273); SD's is
+-- a computation `cT` bound in each layer; the premise relates the computation
+-- to a silent return of `c₁`.
 ------------------------------------------------------------------------
 
 -- SD's unfold, as `⟦ ana ⟧ˢ` builds it.
@@ -129,11 +130,8 @@ ana-bridgeᵍ : ∀ (π π₀ : Purity) {A : Type} {F : Functor} (wfF : WellForm
                 (c₁ : ⟦ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ⟧ᵛ) (cT : T ⟦ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ⟧ᴰ)
             → RelGT (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A) (returnT c₁) cT
             → ∀ {a b} → RelGV A a b
-            → RelGM π₀ (ν-type F π) (ana-semᵛ π π₀ wfF (returnM π₀ c₁) a) (returnT (anaSD F wfF π cT b))
-ana-bridgeᵍ pure π₀ {A} {F} wfF c₁ cT rc {a} {b} rab =
-  subst (λ m → RelGM π₀ (ν-type F pure) m (returnT (anaSD F wfF pure cT b)))
-        (sym (bindM-idˡ π₀ c₁ (λ clo → returnM π₀ (anaᵖ H (λ a′ → coerce-ν-in F _ (cfᵛ A wfF (clo a′))) a))))
-        (retR π₀)
+            → RelGM π₀ (ν-type F π) (ana-semᵛ π π₀ wfF c₁ a) (returnT (anaSD F wfF π cT b))
+ana-bridgeᵍ pure π₀ {A} {F} wfF c₁ cT rc {a} {b} rab = retR π₀
   where
     H = translateF Carrier Carrier F
     cr : CoalgRel H (RelGV A)
@@ -158,6 +156,6 @@ ana-bridgeᵍ eff π₀ {A} {F} wfF c₁ cT rc {a} {b} rab = retR π₀
       where
         kr = RelGT-bind {A = A ⇒[ mk-kind Many eff ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A} {t₁ = returnT c₁} {t₂ = cT} {f = λ clo → clo x} {g = λ clo → clo y}
                         rc (λ rfg → rfg r)
-    retR : ∀ π₀ → RelGM π₀ (ν-type F eff) (ana-semᵛ eff π₀ wfF (returnM π₀ c₁) a) (returnT (anaSD F wfF eff cT b))
+    retR : ∀ π₀ → RelGM π₀ (ν-type F eff) (ana-semᵛ eff π₀ wfF c₁ a) (returnT (anaSD F wfF eff cT b))
     retR pure = rel-ret (anaᵈ-∼ H cr rab)
     retR eff  = rel-ret (anaᵈ-∼ H cr rab)

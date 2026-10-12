@@ -270,7 +270,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
   -- plan 0.113 B1: the algebra's usage is ω-scaled; it reads `dγ` restricted.
   (⟦ dalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
 ⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {π = π} wfF dcoalg) fmt ρ dγ =
-  λ a → ana-semᵛ π π₀ wfF (returnM π₀ ((⟦ dcoalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ))) a
+  λ a → ana-semᵛ π π₀ wfF ((⟦ dcoalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ)) a
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
 ⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt ρ dγ = fmapᵖ ⟦ p ⟧<:ᵛ ((⟦ d ⟧ᵢ fmt ρ) dγ)
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives

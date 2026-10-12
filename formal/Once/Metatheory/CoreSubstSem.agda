@@ -343,9 +343,8 @@ module Rows (fmt : TargetNum) (δ : GM.DefSem) where
       where E = trans (⋆-+ (Many *ᵘ Ψa) Ψt Φ) (cong (_+ᵘ (Ψt ⋆ Φ)) (⋆-* Many Ψa Φ))
     sub-sem {Φ = Φ} (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π′ = π′} wf dc ds) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
-            (cong₂ (λ m c → bindM π′ m (λ s → ana-semᵛ π π′ wf c s))
-                   (ih ds h _ (sym (sym E)) _ x)
-                   (ih dc h _ (sym (sym E)) _ x))
+            (bindC {π′} (ih dc h _ (sym (sym E)) _ x)
+                   (λ clo → bindC {π′} (ih ds h _ (sym (sym E)) _ x) (λ _ → refl)))
       where E = trans (⋆-+ (Many *ᵘ Ψc) Ψs Φ) (cong (_+ᵘ (Ψs ⋆ Φ)) (⋆-* Many Ψc Φ))
     sub-sem (⊢out {π = π} wf d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢coerce {π = π} p d) h x = cong (fmapM π _) (sub-sem d h x)

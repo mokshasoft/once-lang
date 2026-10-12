@@ -269,16 +269,17 @@ module Comb {δ : GM.DefSem} where
   ana-sem″ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π} {c}
     (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
     → GM.⟦ ⊢anaᶜ {π₀ = π₀} wf dc ⟧ fmt δ x
-      ≡ (λ a → ana-semᵛ π π₀ wf (returnM π₀ (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x))) a)
+      ≡ (λ a → ana-semᵛ π π₀ wf (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a)
   ana-sem″ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} {π} wf dc x =
     extensionality λ a →
       trans (substΨ1 (+ᵘ-identityʳ (Many *ᵘ Ψ))
                      (⊢unfold wf (⊢sub-eff (pure⊑ π₀) (wk-⊢′ A dc)) (⊢var′ zero π₀)) x a)
+      (trans (bindM-idˡ π₀ _ _)
       (trans (bindM-idˡ π₀ a _)
-            (cong (λ C → ana-semᵛ π π₀ wf (returnM π₀ C) a)
+            (cong (λ C → ana-semᵛ π π₀ wf C a)
                   (trans (RS.wk-sem A dc fmt δ _)
                          (cong (GM.⟦ dc ⟧ fmt δ)
-                               (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x)))))
+                               (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x))))))
 
   applyEff-sem : ∀ {n} {Γ : Ctx n} {A B : Type} (x : RS.Env Γ zeroUsage)
     → GM.⟦ ⊢applyEffᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
@@ -411,7 +412,7 @@ module _ {δ : GM.DefSem} where
   bridge-c {ctx = ctx} V ag (t-initial-app-check d) dγ = app-comb {F = λ w → ⊥-elim w} _ (λ v → >>=ᵖ-β v (λ w → ⊥-elim w)) (bridge-c V ag d (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ))
   -- D273: the coalgebra lives in the context — no `close`, read at `dγ`.
   bridge-c {ctx = ctx} V ag (t-ana-check {π₀ = π₀} {π = π} wf dcoalg) dγ =
-    trans (cong (λ C → λ a → ana-semᵛ π π₀ wf (returnM π₀ C) a) (bridge-c V ag dcoalg _))
+    trans (cong (λ C → λ a → ana-semᵛ π π₀ wf C a) (bridge-c V ag dcoalg _))
           (sym (Comb.ana-sem″ {δ = δ} wf (proj₂ (elabᶜ V dcoalg)) dγ))
   bridge-c {ctx = ctx} V ag (t-apply-check {A = A} {B = B} dp) dγ =
     trans (bindC (bridge-i V ag dp _) (λ fa → refl))

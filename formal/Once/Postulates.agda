@@ -60,7 +60,9 @@ postulate
 -- Postulates P2, P3: the fold's universal property (plan 0.112 D3)
 ------------------------------------------------------------------------
 --
--- `fold-unique` and `fold-fusion`, postulated in `Once.Metatheory.Recursion`
+-- `fold-unique` and `fold-fusion` (and P5, `unfold-out`, plan 0.116 E: unfold's
+-- computation law — definitional up to the ν coercions), postulated in
+-- `Once.Metatheory.Recursion`
 -- (their statements need the meaning, which this module does not import).
 --
 -- NEEDED BY: nothing; they discharge the Spec's claims

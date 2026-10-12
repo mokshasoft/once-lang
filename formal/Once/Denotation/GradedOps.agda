@@ -150,18 +150,19 @@ mutual
   mapEmbν H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν H G₂ y)
   mapEmbν H (G₁ S⊗ G₂) (x , y)  = mapEmbν H G₁ x , mapEmbν H G₂ y
 
--- `unfold c s` at coalgebra grade `π`, built at grade `π′`. A pure ν needs a
--- pure coalgebra FUNCTION, so the term computing it runs once, when the stream
--- is built. An effectful ν stores that computation and runs it in each forced
--- layer (D247), as the Kleisli `ana-sem` does.
+-- `unfold c s` at coalgebra grade `π`, built at grade `π′`, given the
+-- coalgebra's FUNCTION `clo` (its term was evaluated once, when the stream was
+-- built — D273, as the IR's `Ana` and `cata`'s algebra, D131) and the seed. A
+-- pure ν needs a pure coalgebra function; an effectful one runs the function in
+-- each forced layer — a server is such a stream (D233), its coalgebra reads the
+-- next request.
 ana-semᵛ : ∀ {F A} (π π′ : Purity) → WellFormedF F
-         → M π′ (⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → M π′ ⟦ ν-type F π ⟧ᵛ
-ana-semᵛ {F} {A} pure π′ wf cM a =
-  bindM π′ cM λ clo →
-    returnM π′ (anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a)
-ana-semᵛ {F} {A} eff π′ wf cM a =
+         → (⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → M π′ ⟦ ν-type F π ⟧ᵛ
+ana-semᵛ {F} {A} pure π′ wf clo a =
+  returnM π′ (anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a)
+ana-semᵛ {F} {A} eff π′ wf clo a =
   returnM π′ (anaᵈ (translateF Carrier Carrier F)
-                   (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (toT π′ cM >>=T λ clo → clo a′)) a)
+                   (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a)
 
 out-semᵛ : ∀ π {F} → WellFormedF F → ⟦ ν-type F π ⟧ᵛ → M π ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᵛ
 out-semᵛ pure {F} wf v = cf⁻¹ᵛ (ν-type F pure) wf (coerce-ν-out wf _ (forceᵖ v))

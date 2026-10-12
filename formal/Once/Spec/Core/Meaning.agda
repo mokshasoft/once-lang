@@ -158,11 +158,14 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
   -- plan 0.113 B1: the algebra's part is ω-scaled (it runs per node).
   bindM π (⟦ da ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) dγ)) λ valg →
   bindM π (⟦ dt ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) dγ)) λ v → cata-semᵛ π wf valg v
--- D247 at an effectful ν: the coalgebra's computation is stored and run in each
--- forced layer. A pure ν's coalgebra is a function, computed when it is built.
+-- `unfold c s`, left to right: the coalgebra TERM is evaluated once, then the
+-- seed (D273, plan 0.116 E: as `fold`'s algebra, D131, and the IR's `Ana`); the
+-- coalgebra FUNCTION runs in each forced layer, so an effectful one (a server,
+-- D233) emits per layer.
 ⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} {π = π} {π′ = π′} wf dc ds ⟧ fmt ρ dγ =
+  bindM π′ (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) λ clo →
   bindM π′ (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ)) λ s →
-    ana-semᵛ π π′ wf (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) s
+    ana-semᵛ π π′ wf clo s
 ⟦ ⊢out {π = π} wf d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) (out-semᵛ π wf)
 
 ⟦ ⊢coerce {π = π} p d ⟧ fmt ρ dγ = fmapM π ⟦ p ⟧<:ᵛ (⟦ d ⟧ fmt ρ dγ)

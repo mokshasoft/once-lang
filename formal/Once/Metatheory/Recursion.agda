@@ -3,7 +3,8 @@
 
 ------------------------------------------------------------------------
 -- Once.Metatheory.Recursion — the fold's universal property
--- (`Spec.Metatheory.Recursion`, plan 0.112 D3).
+-- (`Spec.Metatheory.Recursion`, plan 0.112 D3) and unfold's computation law
+-- (plan 0.116 E).
 --
 -- POSTULATED, NOT PROVED. The statements are the Spec's; they were moved to
 -- where they belong (the language's metatheory) before their proofs exist.
@@ -25,8 +26,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Type using (μ-type; ⟦_⟧T)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Metatheory using (Recursion)
-open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM)
-open import Once.Denotation.GradedOps using (in-valueᵛ; cata-semᵛ; mapLayerᵛ)
+open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM; returnM)
+open import Once.Spec.Type.Grade using (pure)
+open import Once.Denotation.GradedOps using (in-valueᵛ; cata-semᵛ; mapLayerᵛ; ana-semᵛ; out-semᵛ)
 
 postulate
   fold-unique : ∀ π {F A} (wf : WellFormedF F) (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)
@@ -40,5 +42,9 @@ postulate
               → (∀ y → bindM π (alg y) f ≡ bindM π (mapLayerᵛ π wf f y) alg′)
               → ∀ v → bindM π (cata-semᵛ π wf alg v) f ≡ cata-semᵛ π wf alg′ v
 
+  unfold-out  : ∀ π {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
+              → out-semᵛ π wf (ana-semᵛ π pure wf clo a)
+                ≡ bindM π (clo a) (mapLayerᵛ π wf (λ a′ → returnM π (ana-semᵛ π pure wf clo a′)))
+
 recursion : Recursion
-recursion = record { fold-unique = fold-unique ; fold-fusion = fold-fusion }
+recursion = record { fold-unique = fold-unique ; fold-fusion = fold-fusion ; unfold-out = unfold-out }
