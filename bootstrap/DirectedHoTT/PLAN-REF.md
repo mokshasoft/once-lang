@@ -312,7 +312,7 @@ Next: Lib, then Examples, then the Knot.
   `RedAgree`, `TypingAgree`): `n < size` from the `Hom Nat` premise, the
   body from `quoteTm` injectivity after the lookup computes.
 - ✅ K6 (all signature examples green in the 2026-10-10 sweep). The signature-building examples (SigCore, SigMeth, PwCore, the NbE
-  agreement tests) at their `kernel S`; then MEASURE (step 5 of §4).
+  agreement tests) at their `kernel S`; then MEASURE (step 5 of §4) — ✅ 2026-10-12: cost-neutral after the level-indexed table (49.4M unfoldings vs 49.0M; 81 s).
 
 ### 2026-10-07 — Knot stage: K2 done, K3 underway
 
@@ -580,3 +580,54 @@ Next: Lib, then Examples, then the Knot.
     split has no customer, so ⏸. Trigger: the first module that needs
     one Lib/Knot datatype at two signatures (e.g. faithfulness at an
     arbitrary quoted `q`, or the core examples meeting the ambient Knot).
+
+### 2026-10-12 — step 5, the measurement: the table's LOOKUP was the cost
+
+- **PwCore after PLAN-REF, first measurement** (cold, alone, `-A64m -c`):
+  95 s, 4.1 GB peak, **72.9M unfoldings**, against the baseline of 49.0M
+  and 3.4 GB (PLAN-BIDI §3e, after the `lvlAt` fix). It was worse, not better.
+- **Head-by-head against the surviving reports** (`PwCore-eraname.json`
+  minus the later `len` fix ≈ the 49.0M baseline): `eval`, `force`/
+  `forceR`/`refV` (3.38M each), `lookup`, `inst` and readback are
+  UNCHANGED (within 5%). References are forced exactly as often as
+  before, and evaluation barely dropped (`eval` 5.19M → 4.92M). All
+  of the +24M was NEW: `lookupTT` + `pickV` (8.7M each) + 8.4M `_==_`.
+  - ★ So E4's premise was a misreading: the "~38% reference
+    evaluation" counted `eval`/`force` for EVERY value. Re-evaluating
+    bodies was never the cost. The table is still the right shape (it is
+    the mathematics, and the clarity win is real); its lookup was not.
+  - The lookup walked a telescope from the NEWEST entry, comparing
+    `d == n` per step (as `lookupK` walks the signature): 252k lookups ×
+    35 steps × 3 unfoldings. References name OLD entries, the library at
+    the bottom of the signature.
+- **Fix: index by LEVEL.** A name is a de Bruijn level, so the table is a
+  list OLDEST FIRST (`TVals`) and `lookupL` recurses structurally on the
+  name: one unfolding per step, no comparison. Extension is `snocᵗ`
+  (built once per entry, shared). A `Defs` whose `len` exceeds its
+  telescope gets explicit `skipᵗ` levels that read as the stuck reference,
+  as `lookupK` places them. `NbETable.lookT-step` keeps its statement
+  (now a lemma, `look-snoc`), so `okUpTo` is unchanged. `extendAt` loses
+  its unused level argument.
+
+- **Measured after the fix** (same method: cold, alone, `-A64m -c`; the
+  profile in the staged tree):
+
+  | PwCore | unfoldings | allocated | time | peak |
+  |---|---|---|---|---|
+  | baseline (PLAN-BIDI §3e) | 49.0M | — | 84.5 s (shared) | 3.4 GB (profiler heap) |
+  | table walked from the top | 72.9M | 336 GB | 95 s | 4.1 GB |
+  | ★ table indexed by level | **49.4M** | **248 GB** | **81 s** | 4.0 GB |
+
+  `lookupL`: 2.7M steps for 252k lookups (~11 each, one unfolding per
+  step), against 26M. Every other head is unchanged.
+- ★ **Step 5's verdict.** At PwCore, PLAN-REF is cost-NEUTRAL in
+  unfoldings (49.4M vs 49.0M) and somewhat faster. It did not deliver the
+  ~38% E4 predicted, because that prediction misattributed the cost (see
+  above). What PLAN-REF bought is its other two criteria: the
+  mathematics (a reference IS a projection; D082) and clarity (`ref d`
+  with no body, `⊢ref` without a premise, `EraName` deleted). The
+  remaining evaluator cost is `eval`/`force` on every value; that is
+  PLAN-EVAL's business, not the reference representation's.
+- Lesson: before predicting a saving from a profile, attribute each head
+  to the code path that CALLS it. `force`/`refV` run for every value,
+  not just references; only `lookup*` was reference-specific.

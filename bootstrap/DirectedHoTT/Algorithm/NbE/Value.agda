@@ -282,40 +282,63 @@ pwSpine? v              = nothing
 
 
 ------------------------------------------------------------------------
--- ★ The table: entry d's value, a telescope like the signature's.
+-- ★ The table: entry d's value, indexed by LEVEL from the bottom.
+--
+-- A name is a de Bruijn LEVEL (entry 0 is the oldest), so the table is a
+-- list OLDEST FIRST and lookup is structural recursion on the name: one
+-- unfolding per step, no comparison.  ★ MEASURED 2026-10-12 (PLAN-REF
+-- step 5): the first table was a telescope walked from the NEWEST entry,
+-- comparing `d == n` at each step (as `lookupK` walks the signature):
+-- PwCore's 252k lookups averaged 35 steps of three unfoldings each
+-- (`lookupTT`, `pickV`, `_==_`: 26M of its 72.9M), because references
+-- name OLD entries — the library at the bottom of the signature.
+--
+-- `skip` is a level with no entry (a `Defs` whose `len` exceeds its
+-- telescope: the missing names are the LOWEST ones, `lookupK`'s default);
+-- it reads as the stuck reference, as a name beyond the table does.
 ------------------------------------------------------------------------
 
-data TTele : Set where
-  ∅ᵗ   : TTele
-  _▸ᵗ_ : TTele → Val → TTele
-infixl 5 _▸ᵗ_
+data TVals : Set where
+  []ᵗ   : TVals
+  _∷ᵗ_  : Val → TVals → TVals
+  skipᵗ : TVals → TVals
+infixr 5 _∷ᵗ_
 
 record Tbl : Set where
   constructor mkT
   field
-    tlen  : ℕ
-    ttele : TTele
+    tvals : TVals
 open Tbl public
 
-pickV : Bool → Val → Val → Val
-pickV true  x y = x
-pickV false x y = y
-
-lookupTT : ℕ → TTele → ℕ → Val
-lookupTT (suc n) (T ▸ᵗ v) d = pickV (d == n) v (lookupTT n T d)
-lookupTT zero    _        d = vref d
-lookupTT (suc n) ∅ᵗ       d = vref d
+-- the entry at level k of the list; `d` is the name asked for (its stuck value)
+lookupL : TVals → ℕ → ℕ → Val
+lookupL []ᵗ        k       d = vref d
+lookupL (v ∷ᵗ us)  zero    d = v
+lookupL (v ∷ᵗ us)  (suc k) d = lookupL us k d
+lookupL (skipᵗ us) zero    d = vref d
+lookupL (skipᵗ us) (suc k) d = lookupL us k d
 
 -- entry d's value; a name beyond the table is its own value (stuck, as δ is)
 lookupT : Tbl → ℕ → Val
-lookupT t d = lookupTT (tlen t) (ttele t) d
+lookupT t d = lookupL (tvals t) d d
+
+-- the newest entry goes LAST (built once per entry, shared: `NbETable`)
+snocᵗ : TVals → Val → TVals
+snocᵗ []ᵗ        v = v ∷ᵗ []ᵗ
+snocᵗ (w ∷ᵗ ws)  v = w ∷ᵗ snocᵗ ws v
+snocᵗ (skipᵗ ws) v = skipᵗ (snocᵗ ws v)
 
 ∅T : Tbl
-∅T = mkT 0 ∅ᵗ
+∅T = mkT []ᵗ
 
 _▸T_ : Tbl → Val → Tbl
-mkT n T ▸T v = mkT (suc n) (T ▸ᵗ v)
+mkT us ▸T v = mkT (snocᵗ us v)
 infixl 5 _▸T_
+
+-- what `lookupT` of an extended table is, in the telescope's terms
+pickV : Bool → Val → Val → Val
+pickV true  x y = x
+pickV false x y = y
 
 ------------------------------------------------------------------------
 -- 6. ★ READING a value as a term (PLAN-EVAL E3).  Levels are read through

@@ -152,8 +152,8 @@ module SigExtend (base : Sig) (abase : ℕ → ATm ε) (wbase : WfSig base)
            R (EntryWf (sigAt i) (entryAt i)) → R (Stage (suc i))
     next i w t teq (err w') = err (primStringAppend "entry " (primStringAppend (primShowNat (ix i)) (primStringAppend " › " w')))
     next i w t teq (ok e)   =
-      ok (stage (w , e) (NT.extendAt (len (sigAt i)) t (eBody (entryAt i)))
-                (cong (λ x → NT.extendAt (len (sigAt i)) x (eBody (entryAt i))) teq))
+      ok (stage (w , e) (NT.extendAt t (eBody (entryAt i)))
+                (cong (λ x → NT.extendAt x (eBody (entryAt i))) teq))
 
     step : (i : ℕ) → R (Stage i) → R (Stage (suc i))
     step i (err w)              = err w
