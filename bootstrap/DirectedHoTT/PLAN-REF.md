@@ -513,3 +513,30 @@ Next: Lib, then Examples, then the Knot.
   non-parameterised one. A regression after a parameterisation: look in the
   profile's conversion/unfolding heads for `M._.name` / `Inst.…name`
   copies of signature-free definitions.
+
+### 2026-10-12 — signature extension; K4's SigWf image, first half
+
+- **`⊑ᴰ-▸ : 𝒮 ⊑ᴰ (𝒮 ▸ᴷ e)`** (`Spec/SigExtend`). Its two facts moved to
+  `Spec/Syntax`, beside `lookupK`: `<ˢ→≠` (a name below n is not n,
+  structural via `<ˢ-pred`/`<ˢ-down`) and `lookupK-▸` (a lookup below the
+  newest entry skips it). `Algorithm/NbETable` and `Knot/QuoteSig` had
+  private copies; they now use these (NbETable's was a 25-line tower).
+- **K4, the internal image of `Spec/SigWf` — split in two.**
+  1. ✅ written and checked (`Examples/Knot/SigWf`, 11 s; sweep ALL GREEN, 289 modules, run under `tools/mem-guard.sh`): the code and its typing.
+     `⌜EntryOK⌝ q m` = the typing family at the parameter `(q , m)` — the
+     entry's PREFIX is the bound — inhabited at `◇ ⊢ty typesQ q m` and
+     `◇ ⊢ bodiesQ q m ∷ typesQ q m`; `⌜WfK⌝ q = Π m. m+1 ≤ sizeQ q →
+     ⌜EntryOK⌝ q m`. The Π form is Spec's `EntriesOK`, with the bound as
+     the `Hom Nat` premise the δ/⊢ref rows already use; no large
+     elimination.
+  2. ⬜ Faithfulness: `⌜WfK⌝ q𝒮` inhabited iff `WfK 𝒮`. Blocked on a real
+     generalisation: the K5 layer (TypingAgree, JudgeDecode{,Base,Hand,
+     Tm,Ty}, Exact, ConvHead; ~570 uses of `t𝒮`) is fixed at the bound
+     `size 𝒮`, and its one `Spec.Typing 𝒮 (size 𝒮)` instance plays TWO
+     roles — the ambient typing of Knot terms (stays at `size`) and the
+     judgement being encoded/decoded (must become `n`). Plan: `t𝒮` →
+     `tAt q𝒮 (num n)`; the encoded judgement from a second, qualified
+     `Spec.Typing 𝒮 n` instance (`ᴺ`), its libraries at `Entries.sigOK n`;
+     the ⊢ref row's side condition decodes to `d <ˢ n`. Measure the use
+     sites before and after: a second Typing instance per file is the
+     module-argument cost seen in Red (2026-10-09/10).
