@@ -177,6 +177,13 @@ module _ {Ξ : Ctx} {t : RTm ⌊ Ξ ⌋} (dt : Ξ ⊢ t ∷ El ⌜TSig⌝) where
   ⊢boundT : Ξ ⊢ boundT t ∷ El ⌜Nat⌝
   ⊢boundT = ⊢snd dΣ
 
+-- the typing parameter at a quoted signature and a bound
+tAt : RTm Δ → RTm Δ → RTm Δ
+tAt q m = pair q m
+
+⊢tAt : {Ξ : Ctx} {q m : RTm ⌊ Ξ ⌋} → Ξ ⊢ q ∷ El ⌜QSig⌝ → Ξ ⊢ m ∷ El ⌜Nat⌝ → Ξ ⊢ tAt q m ∷ El ⌜TSig⌝
+⊢tAt dq dm = ⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) dq dm) (csymᵀ (credᵀ (El-⌜Σ⌝ ⌜QSig⌝ ⌜Nat⌝)))
+
 ⌜TSig⌝-ren : (ρ : Ren Δ Θ) → renTm ρ (⌜TSig⌝ {Δ}) ≡ ⌜TSig⌝
 ⌜TSig⌝-ren ρ = trans (sym (subTm-var ρ ⌜TSig⌝)) (⌜TSig⌝-sub ⟨ ρ ⟩ᵣ)
 

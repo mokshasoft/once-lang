@@ -35,4 +35,4 @@ import DirectedHoTT.Examples.Knot.Ren
 import DirectedHoTT.Examples.Knot.RenAgree
 import DirectedHoTT.Examples.Knot.Sig
 import DirectedHoTT.Examples.Knot.SigWf
-import DirectedHoTT.Examples.Knot.Sub
+import DirectedHoTT.Examples.Knot.SigWfAgree

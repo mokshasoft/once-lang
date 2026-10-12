@@ -11,17 +11,18 @@
 -- bound, so an entry cannot cite itself or a later name (acyclicity, as
 -- `Spec/SigWf.WfUpTo`):
 --
---     ⌜EntryOK⌝ q m = ⌜⊢ty⌝ (q , m) ◇ (typesQ q m)  ×  ⌜⊢⌝ (q , m) ◇ (bodiesQ q m) (typesQ q m)
---     ⌜WfK⌝ q       = Π (m : Nat) → m + 1 ≤ sizeQ q → ⌜EntryOK⌝ q m
+--     ⌜EntryOK⌝ q m   = ⌜⊢ty⌝ (q , m) ◇ (typesQ q m)  ×  ⌜⊢⌝ (q , m) ◇ (bodiesQ q m) (typesQ q m)
+--     ⌜WfUpTo⌝ q 0     = Unit
+--     ⌜WfUpTo⌝ q (k+1) = ⌜WfUpTo⌝ q k  ×  ⌜EntryOK⌝ q k
+--     ⌜WfK⌝ q          = ⌜WfUpTo⌝ q (sizeQ q)
 --
--- The Π form is Spec's own `EntriesOK` (`∀ {d} → d <ˢ n → EntryOK d`),
--- with the bound stated as the `Hom Nat` premise of the δ / ⊢ref rows
--- (`Knot/Ref`, `Knot/RefJudge`; decoded by `QuoteSig.homLt`).  No large
--- elimination is needed.
+-- `Spec/SigWf.WfK` itself, not its `EntriesOK` reading (`Π m. m+1 ≤ size →
+-- …`): that form's ENCODING needs one internal function of a variable `m`
+-- returning entry m's closed proof — a table built by internal case
+-- analysis — where the recursive form is nested pairs.
 --
--- Faithfulness (`⌜WfK⌝ ⌜𝒮⌝` inhabited iff `WfK 𝒮`) needs the typing
--- agreement at every bound `m ≤ size`, not only at `size` (`t𝒮`): see
--- PLAN-REF 2026-10-12.
+-- Faithfulness (`⌜WfK⌝ ⌜𝒮⌝` inhabited iff `WfK 𝒮`) reads entry m at the
+-- bound m: the K5 layer is at every bound `𝓃` (PLAN-REF 2026-10-12).
 --
 -- `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
@@ -39,10 +40,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; cong )
 open import DirectedHoTT.Spec.Syntax hiding ( Fin )
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢wk )
-open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( ⊢isuc )
+open import DirectedHoTT.Lib.Strong 𝒮 (Defs.size 𝒮) using ( natAsEl; elAsNat )
 open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf using ( dep; ⊢dep' )
 open import DirectedHoTT.Examples.Knot.Ctx 𝒮 wf using ( quoteCtx; ⊢quoteCtx )
-open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( ⌜QSig⌝; ⌜TSig⌝; sizeQ; typesQ; bodiesQ; ⊢sizeQ; ⊢typesQ; ⊢bodiesQ; wkQ )
+open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( ⌜QSig⌝; tAt; ⊢tAt; sizeQ; typesQ; bodiesQ; ⊢sizeQ; ⊢typesQ; ⊢bodiesQ; wkQ )
 open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( JT; ⊢JT; tyIx; tmIx; ⊢tyIx; ⊢tmIx )
 open import DirectedHoTT.Examples.Knot.Judge 𝒮 wf core using ( D⊢; ⊢D⊢ )
 
@@ -51,17 +52,7 @@ private
     Δ : Cx
 
 ------------------------------------------------------------------------
--- 1. The typing parameter at a quoted signature and a bound
-------------------------------------------------------------------------
-
-tAt : RTm Δ → RTm Δ → RTm Δ
-tAt q m = pair q m
-
-⊢tAt : {Ξ : Ctx} {q m : RTm ⌊ Ξ ⌋} → Ξ ⊢ q ∷ El ⌜QSig⌝ → Ξ ⊢ m ∷ El ⌜Nat⌝ → Ξ ⊢ tAt q m ∷ El ⌜TSig⌝
-⊢tAt dq dm = ⊢conv (⊢pair (ty-El ⊢⌜Nat⌝) dq dm) (csymᵀ (credᵀ (El-⌜Σ⌝ ⌜QSig⌝ ⌜Nat⌝)))
-
-------------------------------------------------------------------------
--- 2. ★ ONE ENTRY, judged at its prefix
+-- 1. ★ ONE ENTRY, judged at its prefix
 ------------------------------------------------------------------------
 
 -- `◇ ⊢ty typesQ q m` and `◇ ⊢ bodiesQ q m ∷ typesQ q m`, at the bound m
@@ -83,18 +74,27 @@ module _ {Ξ : Ctx} {q m : RTm ⌊ Ξ ⌋} (dq : Ξ ⊢ q ∷ El ⌜QSig⌝) (dm
   ⊢⌜EntryOK⌝ = ⊢⌜Σ⌝ ⊢⌜EntryTy⌝ (⊢wk {Ξ} {El (⌜EntryTy⌝ q m)} {⌜EntryTm⌝ q m} {U} ⊢⌜EntryTm⌝)
 
 ------------------------------------------------------------------------
--- 3. ★ THE WHOLE SIGNATURE: every name below the size is a well-formed
---    entry (`WfK`, in Spec's `EntriesOK` form)
+-- 2. ★ THE WHOLE SIGNATURE: Spec's `WfUpTo`, literally — the entries below
+--    `k`, each judged at its prefix, as an iterated Σ by recursion on `k`
+--    (a `natrec` into `U`, as `Lib/DvdArith.nfam`)
 ------------------------------------------------------------------------
 
+-- WfUpTo 𝒮 zero = ⊤ ;  WfUpTo 𝒮 (suc m) = WfUpTo 𝒮 m × EntryOK 𝒮 m m
+⌜WfUpTo⌝ : RTm Δ → RTm Δ → RTm Δ
+⌜WfUpTo⌝ q k = natrec ⌜Unit⌝ (⌜Σ⌝ (var vz) (renTm vs (⌜EntryOK⌝ (renTm vs (renTm vs q)) (var (vs vz))))) k
+
 ⌜WfK⌝ : RTm Δ → RTm Δ
-⌜WfK⌝ q = ⌜Π⌝ ⌜Nat⌝ (⌜Π⌝ (⌜Hom⌝ ⌜Nat⌝ (nsuc (var vz)) (sizeQ (renTm vs q)))
-                        (⌜EntryOK⌝ (renTm vs (renTm vs q)) (var (vs vz))))
+⌜WfK⌝ q = ⌜WfUpTo⌝ q (sizeQ q)
+
+⊢⌜WfUpTo⌝ : {Ξ : Ctx} {q k : RTm ⌊ Ξ ⌋} → Ξ ⊢ q ∷ El ⌜QSig⌝ → Ξ ⊢ k ∷ El ⌜Nat⌝ → Ξ ⊢ ⌜WfUpTo⌝ q k ∷ U
+⊢⌜WfUpTo⌝ {Ξ} {q} dq dk = ⊢natrec ty-U ⊢⌜Unit⌝ stepᵁ (elAsNat dk)
+  where
+  Ξ₂ : Ctx
+  Ξ₂ = (Ξ ▹ Nat) ▹ U
+  E : RTm ⌊ Ξ₂ ⌋
+  E = ⌜EntryOK⌝ (renTm vs (renTm vs q)) (var (vs vz))
+  stepᵁ : Ξ₂ ⊢ ⌜Σ⌝ (var vz) (renTm vs E) ∷ U
+  stepᵁ = ⊢⌜Σ⌝ (⊢var here) (⊢wk {Ξ₂} {El (var vz)} {E} {U} (⊢⌜EntryOK⌝ (wkQ (wkQ dq)) (natAsEl (⊢var (there here)))))
 
 ⊢⌜WfK⌝ : {Ξ : Ctx} {q : RTm ⌊ Ξ ⌋} → Ξ ⊢ q ∷ El ⌜QSig⌝ → Ξ ⊢ ⌜WfK⌝ q ∷ U
-⊢⌜WfK⌝ {Ξ} {q} dq =
-  ⊢⌜Π⌝ ⊢⌜Nat⌝ (⊢⌜Π⌝ (⊢⌜Hom⌝ ⊢⌜Nat⌝ (⊢isuc dm) (⊢sizeQ (wkQ dq)))
-                    (⊢⌜EntryOK⌝ (wkQ (wkQ dq)) (⊢var (there here))))
-  where
-  dm : (Ξ ▹ El ⌜Nat⌝) ⊢ var vz ∷ El ⌜Nat⌝
-  dm = ⊢var here
+⊢⌜WfK⌝ dq = ⊢⌜WfUpTo⌝ dq (⊢sizeQ dq)

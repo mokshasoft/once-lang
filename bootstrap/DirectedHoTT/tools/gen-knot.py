@@ -632,7 +632,7 @@ open import DirectedHoTT.Examples.Knot.Conv using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConGen
 open import DirectedHoTT.Examples.Knot.RefCon using ( conv⊢ref )
 open import DirectedHoTT.Examples.Knot.QSig using ( sigT )
-open import DirectedHoTT.Examples.Knot.QuoteSig using ( t𝒮; ⊢t𝒮 )
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( tN; ⊢tN )
 
 ------------------------------------------------------------------------
 -- ★ The Knot's `⊢conv` rows are ONE PER SUBJECT HEAD (`conv⊢…`), so the
@@ -642,8 +642,8 @@ open import DirectedHoTT.Examples.Knot.QuoteSig using ( t𝒮; ⊢t𝒮 )
 
 convAt : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) {Θ : Ctx} {A B r e : RTm ⌊ Θ ⌋} →
          Θ ⊢ A ∷ K 0 (dep ⌊ Γ ⌋) → Θ ⊢ B ∷ K 0 (dep ⌊ Γ ⌋) →
-         Θ ⊢ r ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) A) → Θ ⊢ e ∷ El (⌜≅ᵀ⌝ (sigT t𝒮) (dep ⌊ Γ ⌋) A B) →
-         Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) B))
+         Θ ⊢ r ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) A) → Θ ⊢ e ∷ El (⌜≅ᵀ⌝ (sigT (tN 𝓃)) (dep ⌊ Γ ⌋) A B) →
+         Σ (RTm ⌊ Θ ⌋) (λ c → Θ ⊢ c ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) B))
 """
 
 def gen_convhead(rows):
@@ -659,7 +659,7 @@ def gen_convhead(rows):
             if f[0] == "nat": return "(⊢quoteℕ %s)" % a
             return "(⊢quoteVar %s)" % a
         ds = " ".join(df(f, a) for f, a in zip(fs, args))
-        L.append("convAt Γ %s dA dB dr de = _ , conv⊢%s ⊢t𝒮 (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) %sdA dB dr de" % (
+        L.append("convAt Γ %s dA dB dr de = _ , conv⊢%s (⊢tN 𝓃) (⊢dep' ⌊ Γ ⌋) (⊢quoteCtx Γ) %sdA dB dr de" % (
             pat, kname(name)[1:], ds + " " if ds else ""))
     L.append("")
     return "\n".join(L)

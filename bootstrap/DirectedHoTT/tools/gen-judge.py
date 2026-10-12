@@ -2770,9 +2770,9 @@ closeᵀ {u = u} {v} r e = subst (λ w → _ ⟶ᵀ w) (sym (quoteTy-inj u v (nf
 """
 
 # ★ PLAN-REF: a decoder reads a CLOSED derivation, at the quoted ambient
-#   signature (`Knot/QuoteSig`): `q𝒮` for reduction and conversion, `t𝒮`
+#   signature (`Knot/QuoteSig`): `q𝒮` for reduction and conversion, `tN 𝓃`
 #   (with the bound) for typing, `unit` for a family over nothing
-def DQ(fam): return {"⊢": "t𝒮", "⊢ty": "t𝒮", "Pw": "unit"}.get(fam, "q𝒮")
+def DQ(fam): return {"⊢": "(tN 𝓃)", "⊢ty": "(tN 𝓃)", "Pw": "unit"}.get(fam, "q𝒮")
 
 def comp_name(fam, h, r): return "cd%s%s₍%d₎" % (fam, h, r)
 
@@ -3092,6 +3092,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+-- ★ the ENCODED judgement is the one at the bound 𝓃 (PLAN-REF K4); the
+--   ambient typing of Knot terms stays at the signature's size
+import DirectedHoTT.Spec.Typing 𝒮 𝓃 as ᴺ
+open ᴺ using () renaming ( _⊢_∷_ to _⊢ᴺ_∷_; _⊢ty_ to _⊢tyᴺ_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; nonatc-ren; occ-ren-tm; avoids-wk )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; wk-cancel-tm )
@@ -3124,7 +3128,7 @@ open import DirectedHoTT.Examples.Knot.OpAgree
 open import DirectedHoTT.Examples.Knot.PredsDecode
 open import DirectedHoTT.Examples.Knot.LookupDecode using ( decLk )
 open import DirectedHoTT.Examples.Knot.JudgeDecodeBase
-open import DirectedHoTT.Examples.Knot.QuoteSig using ( t𝒮 )
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( tN )
 
 """
 
@@ -3165,14 +3169,14 @@ def judge_dec(fam, h, r, rec):
     def Cs(A_):
         return "(pair (quoteCtx Γ) %s)" % ("unit" if S == 0 else "(quoteTy %s)" % A_)
     def entry(A_): return csf[r][0](DQ(fam), "(dep ⌊ Γ ⌋)", PPs(), Cs(A_))
-    def concl(A_): return ("Γ ⊢ty %s" % subj) if S == 0 else ("Γ ⊢ %s ∷ %s" % (subj, A_))
+    def concl(A_): return ("Γ ⊢tyᴺ %s" % subj) if S == 0 else ("Γ ⊢ᴺ %s ∷ %s" % (subj, A_))
     def wl(xs): return "(%s)" % " ∷ ".join(xs + ["[]"])
     fvn = ["f%d" % i for i in range(len(fs))]
     binds = "".join(" (%s : %s)" % (a, vty(f)) for a, f in zip(fvars, fs))
     def sig_(hn, qbinds, A_):
         Ab = " (A : RTy ⌊ Γ ⌋)" if (S == 1 and A_ == "A") else ""
         return ["%s : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx)%s%s%s {w : RTm ε} → sz w < N →" % (hn, binds, qbinds, Ab),
-                "  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) %s) → IsNormal w → %s" % (entry(A_), concl(A_)),
+                "  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) %s) → IsNormal w → %s" % (entry(A_), concl(A_)),
                 "%s ihTy ihTm Γ%s%s%s {w} hq dq nq =" % (hn, "".join(" " + a for a in fvars),
                     "".join(" " + x for x in _re.findall(r"\((Q\d+) :", qbinds)), " A" if Ab else "")]
     out = []
@@ -3187,15 +3191,15 @@ def judge_dec(fam, h, r, rec):
         L0 = sig_(base, "", "A")
         PN = "P" + al.pfx
         u0 = csf[r][0](DQ(fam), "j", "p", "c")
-        u1 = "%s.CASE t𝒮 j X0 (pair (fst c) p)" % PN
-        u2 = "%s.CASE t𝒮 j X0 c'" % PN
+        u1 = "%s.CASE (tN 𝓃) j X0 (pair (fst c) p)" % PN
+        u2 = "%s.CASE (tN 𝓃) j X0 c'" % PN
         chain0 = "(⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᵃ (step (βsnd g X0) done)) (%s.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done))))" % (
             u0, u1, u2, PN, PN)
         ispat = "eqv"
         for x_ in reversed(qn): ispat = "(%s , %s)" % (x_, ispat)
         L0 += ["  pat-hit 0 %d (hdTy A) dq₃ nq" % SIG[case][2],
                "  ▷ λ e → is%s A e" % case,
-               "  ▷ λ { %s → subst (λ z → Γ ⊢ %s ∷ z) (sym eqv) (%s ihTy ihTm Γ%s%s hq (subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) %s)) eqv dq) nq) }" % (
+               "  ▷ λ { %s → subst (λ z → Γ ⊢ᴺ %s ∷ z) (sym eqv) (%s ihTy ihTm Γ%s%s hq (subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) %s)) eqv dq) nq) }" % (
                    ispat, subj, hn1, "".join(" " + a for a in fvars), "".join(" " + x for x in qn), entry("z")),
                "  where",
                "    %s : RTm ε" % " ".join(["j", "g"] + fvn + ["X0", "p", "c", "c'"]),
@@ -3203,8 +3207,8 @@ def judge_dec(fam, h, r, rec):
         L0 += ["    f%d = %s" % (i, qf(fs[i], fvars[i])) for i in range(len(fs))]
         L0 += ["    X0 = quoteTy A", "    p = %s" % PPs().replace("(quoteTm ", "(quoteTm ") , "    c = pair g X0", "    c' = pair g p",
                "    dq₁ = ⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ %s)))" % chain0,
-               "    dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) (%s.CASE t𝒮 j z c'))) (quote-hdTy A) dq₁" % PN,
-               "    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s.case-any {q = t𝒮} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))" % PN, ""]
+               "    dq₂ = subst (λ z → ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) (%s.CASE (tN 𝓃) j z c'))) (quote-hdTy A) dq₁" % PN,
+               "    dq₃ = ⊢conv dq₂ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s.case-any {q = (tN 𝓃)} {j = j} {pl = pfTy A} {c = c'} (atᵍ 0) (nhTy A)))))" % PN, ""]
         # the p line above must use the where-names
         L0 = [l if not l.startswith("    p = ") else "    p = %s" % ("".join("(pair %s " % x for x in fvn) + "unit" + ")" * len(fvn)) for l in L0]
         A_ = Ares
@@ -3240,7 +3244,7 @@ def judge_dec(fam, h, r, rec):
         eq = "(trans (%s-sub (single e%d) %s) (%s-cong %s %s))" % (tn(k + 1), k, " ".join(nx), tn(k + 1),
              " ".join("(subTm (single e%d) %s) %s" % (k, u_, v_) for u_, v_ in zip(nx, a_ + ["e%d" % k])),
              " ".join(["(wk-cancel-tm e%d %s)" % (k, x) for x in a_] + ["refl"]))
-        return "(⊢-cast (cong (λ Z → El (dpay JT (D⊢ t𝒮) Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (eq, dq, k)
+        return "(⊢-cast (cong (λ Z → El (dpay JT (D⊢ (tN 𝓃)) Z)) %s) (⊢conv %s (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e%d) done))))))" % (eq, dq, k)
     kval = dict(val, X="X0")
     kexpr = lambda a: al.body.expr(a, kval)
     # ── Spec side of a Knot expression, and its F3 agreement (Knot ⟶* quote Spec)
@@ -3395,13 +3399,13 @@ def judge_dec(fam, h, r, rec):
         if e[0] == "ty":
             _, d, g, T = e
             ix = "tyIx %s %s %s" % (kexpr(d), kexpr(g), kexpr(T))
-            pr = subst_es("◇ ⊢ r%d ∷ IMu JT (D⊢ t𝒮) (%s)" % (t, ix), "dr%d" % t)
+            pr = subst_es("◇ ⊢ r%d ∷ IMu JT (D⊢ (tN 𝓃)) (%s)" % (t, ix), "dr%d" % t)
             if agctx(g) or ag(T): pr = "(⊢conv %s (tyIx≅ %s %s))" % (pr, agctx(g) or "done", ag(T) or "done")
             lines.append("  ihTy %s %s %s %s nr%d" % (sctx(g), sx(T), bound[t], pr, t))
         else:
             _, d, g, s_, T = e
             ix = "tmIx %s %s %s %s" % (kexpr(d), kexpr(g), kexpr(s_), kexpr(T))
-            pr = subst_es("◇ ⊢ r%d ∷ IMu JT (D⊢ t𝒮) (%s)" % (t, ix), "dr%d" % t)
+            pr = subst_es("◇ ⊢ r%d ∷ IMu JT (D⊢ (tN 𝓃)) (%s)" % (t, ix), "dr%d" % t)
             if agctx(g) or ag(s_) or ag(T):
                 pr = "(⊢conv %s (tmIx≅ %s %s %s))" % (pr, agctx(g) or "done", ag(s_) or "done", ag(T) or "done")
             lines.append("  ihTm %s %s %s %s %s nr%d" % (sctx(g), sx(s_), sx(T), bound[t], pr, t))
@@ -3414,16 +3418,16 @@ def judge_dec(fam, h, r, rec):
         lines.append("  quoteTy-inj %s %s (nf-≅ (quoteTy-normal {Γ = ⌊ Γ ⌋} %s) (quoteTy-normal {Γ = ⌊ Γ ⌋} %s) %s)" % (A_, sx(T), A_, sx(T), pr))
         lines.append("  ▷ λ eqA →")
     # the Spec rule
-    if fam == "⊢ty": ctor = JTYCTOR[h]
-    elif h == "pair": ctor = "⊢pair"
-    elif h == "tr": ctor = "⊢trU" if r == 0 else "⊢tr"
-    else: ctor = "⊢" + spec_name(h)
+    if fam == "⊢ty": ctor = "ᴺ." + JTYCTOR[h]
+    elif h == "pair": ctor = "ᴺ.⊢pair"
+    elif h == "tr": ctor = "ᴺ.⊢trU" if r == 0 else "ᴺ.⊢tr"
+    else: ctor = "ᴺ.⊢" + spec_name(h)
     args = JARGS.get((fam, h, r), " ".join("D%d" % i for i in range(len(rows))))
     app = "(%s %s)" % (ctor, args) if args else ctor
     if (fam, h, r) == ("⊢", "tr", 1):
-        app = ("(subst (λ z → Γ ⊢ %s ∷ z) (cong₂ (λ C D → El (⌜Hom⌝ C D E6)) (wk-cancel-tm E6 E1) (wk-cancel-tm E6 E2))"
-               " (⊢tr D0 D1 D2 (nonatc-ren vs P3) (occ-ren-tm avoids-wk E1) (occ-ren-tm avoids-wk E2) D3 D4 D5"
-               " (subst (λ z → Γ ⊢ a2 ∷ z) (sym (cong₂ (λ C D → El (⌜Hom⌝ C D E5)) (wk-cancel-tm E5 E1) (wk-cancel-tm E5 E2))) D6)))") % (
+        app = ("(subst (λ z → Γ ⊢ᴺ %s ∷ z) (cong₂ (λ C D → El (⌜Hom⌝ C D E6)) (wk-cancel-tm E6 E1) (wk-cancel-tm E6 E2))"
+               " (ᴺ.⊢tr D0 D1 D2 (nonatc-ren vs P3) (occ-ren-tm avoids-wk E1) (occ-ren-tm avoids-wk E2) D3 D4 D5"
+               " (subst (λ z → Γ ⊢ᴺ a2 ∷ z) (sym (cong₂ (λ C D → El (⌜Hom⌝ C D E5)) (wk-cancel-tm E5 E1) (wk-cancel-tm E5 E2))) D6)))") % (
                "(tr %s a1 a2)" % ov["a0"])
     res = app
     if ford:
@@ -3446,13 +3450,13 @@ def judge_dec(fam, h, r, rec):
     if case:
         PN = "P" + al.pfx
         u0 = csf[r][0](DQ(fam), "j", "p", "c")
-        u1 = "%s.CASE t𝒮 j X0 (pair (fst c) p)" % PN
-        u2 = "%s.CASE t𝒮 j X0 c'" % PN
-        u3 = "⌜ %s t𝒮 j q c' ⌝ᵗ" % al.pfx
+        u1 = "%s.CASE (tN 𝓃) j X0 (pair (fst c) p)" % PN
+        u2 = "%s.CASE (tN 𝓃) j X0 c'" % PN
+        u3 = "⌜ %s (tN 𝓃) j q c' ⌝ᵗ" % al.pfx
         wh.append("    R₀ : %s ⟶* %s" % (u0, tgt))
         wh.append("    R₀ = ⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᵃ (step (βsnd g X0) done))" % (u0, u1, tgt, PN))
         wh.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.CASE-⟶ᶜ (⟶*-pairˡ (step (βfst g X0) done)))" % (u1, u2, tgt, PN))
-        wh.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.case-β {q = t𝒮} {j = j} {pl = q} {c = c\'} (atᵍ 0) (atʰ %d)) R₁))" % (
+        wh.append("           (⟶*-trans {t = %s} {u = %s} {v = %s} (%s.case-β {q = (tN 𝓃)} {j = j} {pl = q} {c = c\'} (atᵍ 0) (atʰ %d)) R₁))" % (
             u2, u3, tgt, PN, SIG[case][2]))
     else:
         wh.append("    R₀ = R₁")
@@ -3494,6 +3498,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; Σ; _,_; ⊥-elim )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing hiding ( _×_; _,,_ )
+-- ★ the ENCODED judgement is the one at the bound 𝓃 (PLAN-REF K4); the
+--   ambient typing of Knot terms stays at the signature's size
+import DirectedHoTT.Spec.Typing 𝒮 𝓃 as ᴺ
+open ᴺ using () renaming ( _⊢_∷_ to _⊢ᴺ_∷_; _⊢ty_ to _⊢tyᴺ_ )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( IsNormal )
 open import DirectedHoTT.Metatheory.Canonicity using ( sz; _≤_; ≤-refl )
 open import DirectedHoTT.Lib.Sugar using ( Cons; []; _∷_; conₗ; _,ₚ_; nth-z; nth-s )
@@ -3514,12 +3522,12 @@ open import DirectedHoTT.Examples.Knot.JudgeDecodeBase
 open import DirectedHoTT.Examples.Knot.JudgeDecodeTy
 open import DirectedHoTT.Examples.Knot.JudgeDecodeTm
 open import DirectedHoTT.Examples.Knot.JudgeDecodeHand
-open import DirectedHoTT.Examples.Knot.QuoteSig using ( t𝒮 )
+open import DirectedHoTT.Examples.Knot.QuoteSig using ( tN )
 
 decTyW : {N : ℕ} → Acc N → (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {k : RTm ε} → sz k ≤ N →
-         ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢ty A
+         ◇ ⊢ k ∷ IMu JT (D⊢ (tN 𝓃)) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢tyᴺ A
 decTmW : {N : ℕ} → Acc N → (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {k : RTm ε} → sz k ≤ N →
-         ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ t ∷ A
+         ◇ ⊢ k ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ᴺ t ∷ A
 
 """
 
@@ -3548,18 +3556,18 @@ def gen_judge_dispatch():
             if recs:
                 rec0 = recs[min(recs)]
                 nc = rec0["nc"]
-                ents = [rec0["csf"][r][0]("t𝒮", j, PP, C) for r in range(nc)]
+                ents = [rec0["csf"][r][0]("(tN 𝓃)", j, PP, C) for r in range(nc)]
                 hands = None
             elif (fam, h) == ("⊢", "ref"):
-                nc = 2; ents = ["⌜ T⊢ref t𝒮 %s %s %s ⌝ᵗ" % (j, PP, C), "⌜ TCVat %d t𝒮 %s %s %s ⌝ᵗ" % (K, j, PP, C)]
+                nc = 2; ents = ["⌜ T⊢ref (tN 𝓃) %s %s %s ⌝ᵗ" % (j, PP, C), "⌜ TCVat %d (tN 𝓃) %s %s %s ⌝ᵗ" % (K, j, PP, C)]
                 hands = "jdref ihTy ihTm Γ a0 A"
             else:
                 raise ValueError(("no rows", fam, h))
             ix = "tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy %s)" % patE if S == 0 else "tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm %s) (quoteTy A)" % patE
             hdr = "%s (acc rs) Γ %s%s {k} hk dk nk =" % (dn, pat, "" if S == 0 else " A")
             cl = [hdr,
-                  "  rows-elim< (rows-dec {I = JT} {D = (D⊢ t𝒮)} {i = %s} {m = %d} {Cs = %s}" % (ix, nc, " ∷ ".join(ents + ["[]"])),
-                  "    (fibK {s = %d} {k = %d} {q = t𝒮} {j = dep ⌊ Γ ⌋} {p = %s} {c = %s} (atᵍ %d) (atʰ %d)) dk nk)" % (S, K, PP, C, S, K)]
+                  "  rows-elim< (rows-dec {I = JT} {D = (D⊢ (tN 𝓃))} {i = %s} {m = %d} {Cs = %s}" % (ix, nc, " ∷ ".join(ents + ["[]"])),
+                  "    (fibK {s = %d} {k = %d} {q = (tN 𝓃)} {j = dep ⌊ Γ ⌋} {p = %s} {c = %s} (atᵍ %d) (atʰ %d)) dk nk)" % (S, K, PP, C, S, K)]
             alts_ = []
             for r in range(nc):
                 nth = "nth-z"
@@ -3579,10 +3587,10 @@ def gen_judge_dispatch():
             L += cl + [""]
     L += ["-- ★ the theorems",
           "decTy : (Γ : Ctx) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →",
-          "        ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢ty A",
+          "        ◇ ⊢ k ∷ IMu JT (D⊢ (tN 𝓃)) (tyIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTy A)) → IsNormal k → Γ ⊢tyᴺ A",
           "decTy Γ A {k} dk nk = decTyW (<-wf (sz k)) Γ A ≤-refl dk nk", "",
           "decTm : (Γ : Ctx) (t : RTm ⌊ Γ ⌋) (A : RTy ⌊ Γ ⌋) {k : RTm ε} →",
-          "        ◇ ⊢ k ∷ IMu JT (D⊢ t𝒮) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ t ∷ A",
+          "        ◇ ⊢ k ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx (dep ⌊ Γ ⌋) (quoteCtx Γ) (quoteTm t) (quoteTy A)) → IsNormal k → Γ ⊢ᴺ t ∷ A",
           "decTm Γ t A {k} dk nk = decTmW (<-wf (sz k)) Γ t A ≤-refl dk nk"]
     return L
 

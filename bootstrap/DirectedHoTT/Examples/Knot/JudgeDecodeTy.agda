@@ -7,8 +7,9 @@ open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
 import DirectedHoTT.Examples.PwCore as Core₀
+open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
-module DirectedHoTT.Examples.Knot.JudgeDecodeTy (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
+module DirectedHoTT.Examples.Knot.JudgeDecodeTy (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) (𝓃 : ℕ) where
 
 
 ------------------------------------------------------------------------
@@ -28,6 +29,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
+-- ★ the ENCODED judgement is the one at the bound 𝓃 (PLAN-REF K4); the
+--   ambient typing of Knot terms stays at the signature's size
+import DirectedHoTT.Spec.Typing 𝒮 𝓃 as ᴺ
+open ᴺ using () renaming ( _⊢_∷_ to _⊢ᴺ_∷_; _⊢ty_ to _⊢tyᴺ_ )
 open import DirectedHoTT.Spec.Variance using ( NoNatC; nonatc-ren; occ-ren-tm; avoids-wk )
 open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; ⟶ᵀ*-El; ⟶*-dpayᶜ; ⟶*-trans; ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; wk-cancel-tm )
@@ -59,16 +64,16 @@ open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
 open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf
 open import DirectedHoTT.Examples.Knot.LookupDecode 𝒮 wf using ( decLk )
-open import DirectedHoTT.Examples.Knot.JudgeDecodeBase 𝒮 wf core
-open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( t𝒮 )
+open import DirectedHoTT.Examples.Knot.JudgeDecodeBase 𝒮 wf core 𝓃
+open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( tN )
 
 
 jdᵀbase₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tybase t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (base {⌊ Γ ⌋})
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tybase (tN 𝓃) (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (base {⌊ Γ ⌋})
 jdᵀbase₍0₎ ihTy ihTm Γ {w} hq dq nq =
   pay-ι (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ _ →
-  ty-base
+  ᴺ.ty-base
   where
     j g p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -79,11 +84,11 @@ jdᵀbase₍0₎ ihTy ihTm Γ {w} hq dq nq =
     R₀ = R₁
 
 jdᵀU₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyU t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (U {⌊ Γ ⌋})
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyU (tN 𝓃) (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (U {⌊ Γ ⌋})
 jdᵀU₍0₎ ihTy ihTm Γ {w} hq dq nq =
   pay-ι (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ _ →
-  ty-U
+  ᴺ.ty-U
   where
     j g p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -94,7 +99,7 @@ jdᵀU₍0₎ ihTy ihTm Γ {w} hq dq nq =
     R₀ = R₁
 
 jdᵀPi₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTy (⌊ Γ ⌋)) (a1 : RTy (⌊ Γ ⌋ ∙)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyPi t𝒮 (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (Π a0 a1)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyPi (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (Π a0 a1)
 jdᵀPi₍0₎ ihTy ihTm Γ a0 a1 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
@@ -104,7 +109,7 @@ jdᵀPi₍0₎ ihTy ihTm Γ a0 a1 {w} hq dq nq =
   ▷ λ D0 →
   ihTy (Γ ▹ a0) a1 (<ˡ eq1 (<ʳ eq0 hq)) dr1 nr1
   ▷ λ D1 →
-  (ty-Π D0 D1) } }
+  (ᴺ.ty-Π D0 D1) } }
   where
     j g f0 f1 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -117,7 +122,7 @@ jdᵀPi₍0₎ ihTy ihTm Γ a0 a1 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀSg₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTy (⌊ Γ ⌋)) (a1 : RTy (⌊ Γ ⌋ ∙)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tySg t𝒮 (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (Σ' a0 a1)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tySg (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTy a1) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (Σ' a0 a1)
 jdᵀSg₍0₎ ihTy ihTm Γ a0 a1 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
@@ -127,7 +132,7 @@ jdᵀSg₍0₎ ihTy ihTm Γ a0 a1 {w} hq dq nq =
   ▷ λ D0 →
   ihTy (Γ ▹ a0) a1 (<ˡ eq1 (<ʳ eq0 hq)) dr1 nr1
   ▷ λ D1 →
-  (ty-Σ D0 D1) } }
+  (ᴺ.ty-Σ D0 D1) } }
   where
     j g f0 f1 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -140,13 +145,13 @@ jdᵀSg₍0₎ ihTy ihTm Γ a0 a1 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀEl₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyEl t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (El a0)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyEl (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (El a0)
 jdᵀEl₍0₎ ihTy ihTm Γ a0 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
   ihTm Γ a0 U (<ˡ eq0 hq) dr0 nr0
   ▷ λ D0 →
-  (ty-El D0) }
+  (ᴺ.ty-El D0) }
   where
     j g f0 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -158,7 +163,7 @@ jdᵀEl₍0₎ ihTy ihTm Γ a0 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀHom₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTy (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyHom t𝒮 (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (Hom a0 a1 a2)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyHom (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (Hom a0 a1 a2)
 jdᵀHom₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
@@ -172,7 +177,7 @@ jdᵀHom₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
   ▷ λ D1 →
   ihTm Γ a2 a0 (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) dr2 nr2
   ▷ λ D2 →
-  (ty-Hom D0 D1 D2) } } }
+  (ᴺ.ty-Hom D0 D1 D2) } } }
   where
     j g f0 f1 f2 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -186,11 +191,11 @@ jdᵀHom₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀUnit₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyUnit t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (Unit {⌊ Γ ⌋})
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyUnit (tN 𝓃) (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (Unit {⌊ Γ ⌋})
 jdᵀUnit₍0₎ ihTy ihTm Γ {w} hq dq nq =
   pay-ι (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ _ →
-  ty-Unit
+  ᴺ.ty-Unit
   where
     j g p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -201,11 +206,11 @@ jdᵀUnit₍0₎ ihTy ihTm Γ {w} hq dq nq =
     R₀ = R₁
 
 jdᵀNat₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyNat t𝒮 (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (Nat {⌊ Γ ⌋})
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyNat (tN 𝓃) (dep ⌊ Γ ⌋) unit ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (Nat {⌊ Γ ⌋})
 jdᵀNat₍0₎ ihTy ihTm Γ {w} hq dq nq =
   pay-ι (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ _ →
-  ty-Nat
+  ᴺ.ty-Nat
   where
     j g p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -216,7 +221,7 @@ jdᵀNat₍0₎ ihTy ihTm Γ {w} hq dq nq =
     R₀ = R₁
 
 jdᵀId₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTy (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyId t𝒮 (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (Id a0 a1 a2)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyId (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTy a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (Id a0 a1 a2)
 jdᵀId₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
@@ -230,7 +235,7 @@ jdᵀId₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
   ▷ λ D1 →
   ihTm Γ a2 a0 (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) dr2 nr2
   ▷ λ D2 →
-  (ty-Id D0 D1 D2) } } }
+  (ᴺ.ty-Id D0 D1 D2) } } }
   where
     j g f0 f1 f2 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -244,7 +249,7 @@ jdᵀId₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀIMu₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTm (⌊ Γ ⌋)) (a2 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyIMu t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (IMu a0 a1 a2)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyIMu (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTm a1) ,ₚ (quoteTm a2) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (IMu a0 a1 a2)
 jdᵀIMu₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
@@ -258,7 +263,7 @@ jdᵀIMu₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
   ▷ λ D1 →
   ihTm Γ a2 (El a0) (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) dr2 nr2
   ▷ λ D2 →
-  (ty-IMu D0 D1 D2) } } }
+  (ᴺ.ty-IMu D0 D1 D2) } } }
   where
     j g f0 f1 f2 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -272,13 +277,13 @@ jdᵀIMu₍0₎ ihTy ihTm Γ a0 a1 a2 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀDesc₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyDesc t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (Desc a0)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyDesc (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (Desc a0)
 jdᵀDesc₍0₎ ihTy ihTm Γ a0 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
   ihTm Γ a0 U (<ˡ eq0 hq) dr0 nr0
   ▷ λ D0 →
-  (ty-Desc D0) }
+  (ᴺ.ty-Desc D0) }
   where
     j g f0 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -290,11 +295,11 @@ jdᵀDesc₍0₎ ihTy ihTm Γ a0 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀDIh₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) (a1 : RTy (⌊ Γ ⌋ ∙ ∙)) (a2 : RTm (⌊ Γ ⌋)) (a3 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyDIh t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (DIh a0 a1 a2 a3)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyDIh (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ (quoteTy a1) ,ₚ (quoteTm a2) ,ₚ (quoteTm a3) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (DIh a0 a1 a2 a3)
 jdᵀDIh₍0₎ ihTy ihTm Γ a0 a1 a2 a3 {w} hq dq nq =
   pay-σ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (e0 , (b0 , (eq0 , ((de0 , dq1) , (ne0 , nq1))))) →
-  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT (D⊢ t𝒮) Z)) (trans (T⊢tyDIh⁽1⁾-sub (single e0) (w1 j) (w1 g) (w1 f0) (w1 f1) (w1 f2) (w1 f3) v₀) (T⊢tyDIh⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 g)) g (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 f3)) f3 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 g) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 f3) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
+  pay-ρ (⊢-cast (cong (λ Z → El (dpay JT (D⊢ (tN 𝓃)) Z)) (trans (T⊢tyDIh⁽1⁾-sub (single e0) (w1 j) (w1 g) (w1 f0) (w1 f1) (w1 f2) (w1 f3) v₀) (T⊢tyDIh⁽1⁾-cong (subTm (single e0) (w1 j)) j (subTm (single e0) (w1 g)) g (subTm (single e0) (w1 f0)) f0 (subTm (single e0) (w1 f1)) f1 (subTm (single e0) (w1 f2)) f2 (subTm (single e0) (w1 f3)) f3 (subTm (single e0) v₀) e0 (wk-cancel-tm e0 j) (wk-cancel-tm e0 g) (wk-cancel-tm e0 f0) (wk-cancel-tm e0 f1) (wk-cancel-tm e0 f2) (wk-cancel-tm e0 f3) refl))) (⊢conv dq1 (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (step (β _ e0) done)))))) done nq1
   ▷ λ { (r0 , (b1 , (eq1 , ((dr0 , dq2) , (nr0 , nq2))))) →
   pay-ρ dq2 done nq2
   ▷ λ { (r1 , (b2 , (eq2 , ((dr1 , dq3) , (nr1 , nq3))))) →
@@ -306,17 +311,17 @@ jdᵀDIh₍0₎ ihTy ihTm Γ a0 a1 a2 a3 {w} hq dq nq =
   ▷ λ { (r4 , (b5 , (eq5 , ((dr4 , dq6) , (nr4 , nq6))))) →
   unqTm {Γ = ⌊ Γ ⌋} (⊢conv de0 (credᵀ El-⌜Tm⌝)) ne0
   ▷ λ { (E0 , eqE0) →
-  ihTm Γ E0 U (<ˡ eq1 (<ʳ eq0 hq)) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT (D⊢ t𝒮) (tmIx j g z (kU))) eqE0 dr0) nr0
+  ihTm Γ E0 U (<ˡ eq1 (<ʳ eq0 hq)) (subst (λ z → ◇ ⊢ r0 ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx j g z (kU))) eqE0 dr0) nr0
   ▷ λ D0 →
-  ihTm Γ a0 (DescF E0) (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) (⊢conv (subst (λ z → ◇ ⊢ r1 ∷ IMu JT (D⊢ t𝒮) (tmIx j g f0 (DF j z))) eqE0 dr1) (tmIx≅ done done (DF-agree E0))) nr1
+  ihTm Γ a0 (DescF E0) (<ˡ eq2 (<ʳ eq1 (<ʳ eq0 hq))) (⊢conv (subst (λ z → ◇ ⊢ r1 ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx j g f0 (DF j z))) eqE0 dr1) (tmIx≅ done done (DF-agree E0))) nr1
   ▷ λ D1 →
-  ihTy (motCtx Γ E0 a0) a1 (<ˡ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))) (⊢conv (subst (λ z → ◇ ⊢ r2 ∷ IMu JT (D⊢ t𝒮) (tyIx (nsuc (nsuc j)) (mc j g z f0) f1)) eqE0 dr2) (tyIx≅ (mc-agree Γ E0 a0) done)) nr2
+  ihTy (motCtx Γ E0 a0) a1 (<ˡ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))) (⊢conv (subst (λ z → ◇ ⊢ r2 ∷ IMu JT (D⊢ (tN 𝓃)) (tyIx (nsuc (nsuc j)) (mc j g z f0) f1)) eqE0 dr2) (tyIx≅ (mc-agree Γ E0 a0) done)) nr2
   ▷ λ D2 →
-  ihTm Γ a2 (Desc E0) (<ˡ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq))))) (subst (λ z → ◇ ⊢ r3 ∷ IMu JT (D⊢ t𝒮) (tmIx j g f2 (kDesc z))) eqE0 dr3) nr3
+  ihTm Γ a2 (Desc E0) (<ˡ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq))))) (subst (λ z → ◇ ⊢ r3 ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx j g f2 (kDesc z))) eqE0 dr3) nr3
   ▷ λ D3 →
-  ihTm Γ a3 (El (dpay E0 a0 a2)) (<ˡ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))))) (subst (λ z → ◇ ⊢ r4 ∷ IMu JT (D⊢ t𝒮) (tmIx j g f3 (kEl (kdpay z f0 f2)))) eqE0 dr4) nr4
+  ihTm Γ a3 (El (dpay E0 a0 a2)) (<ˡ eq5 (<ʳ eq4 (<ʳ eq3 (<ʳ eq2 (<ʳ eq1 (<ʳ eq0 hq)))))) (subst (λ z → ◇ ⊢ r4 ∷ IMu JT (D⊢ (tN 𝓃)) (tmIx j g f3 (kEl (kdpay z f0 f2)))) eqE0 dr4) nr4
   ▷ λ D4 →
-  (ty-DIh D0 D1 D2 D3 D4) } } } } } } }
+  (ᴺ.ty-DIh D0 D1 D2 D3 D4) } } } } } } }
   where
     j g f0 f1 f2 f3 p c : RTm ε
     j = dep ⌊ Γ ⌋
@@ -331,13 +336,13 @@ jdᵀDIh₍0₎ ihTy ihTm Γ a0 a1 a2 a3 {w} hq dq nq =
     R₀ = R₁
 
 jdᵀFin₍0₎ : {N : ℕ} → IHTy N → IHTm N → (Γ : Ctx) (a0 : RTm (⌊ Γ ⌋)) {w : RTm ε} → sz w < N →
-  ◇ ⊢ w ∷ El (dpay JT (D⊢ t𝒮) ⌜ T⊢tyFin t𝒮 (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢ty (RTy.Fin a0)
+  ◇ ⊢ w ∷ El (dpay JT (D⊢ (tN 𝓃)) ⌜ T⊢tyFin (tN 𝓃) (dep ⌊ Γ ⌋) ((quoteTm a0) ,ₚ unit) ((quoteCtx Γ) ,ₚ unit) ⌝ᵗ) → IsNormal w → Γ ⊢tyᴺ (RTy.Fin a0)
 jdᵀFin₍0₎ ihTy ihTm Γ a0 {w} hq dq nq =
   pay-ρ (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R₀)))) done nq
   ▷ λ { (r0 , (b0 , (eq0 , ((dr0 , dq1) , (nr0 , nq1))))) →
   ihTm Γ a0 Nat (<ˡ eq0 hq) dr0 nr0
   ▷ λ D0 →
-  (ty-Fin D0) }
+  (ᴺ.ty-Fin D0) }
   where
     j g f0 p c : RTm ε
     j = dep ⌊ Γ ⌋

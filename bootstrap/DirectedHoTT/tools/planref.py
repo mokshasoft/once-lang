@@ -24,6 +24,13 @@ that does, is over a signature CONTAINING the core: its header gains
 projection from the ambient signature, so a use of a name is a
 hypothesis on it.  Already-converted modules are UPGRADED in place.
 
+★ A `C` module that reads or writes a judgement AT A BOUND (PLAN-REF K4:
+the K5 layer, `Knot/TypingAgree`, `Knot/JudgeDecode…`) — its text uses the
+bound `𝓃`, or it imports such a module — is class `N`: its header gains
+`(𝓃 : ℕ)` after `core`.  Its ambient typing stays at `Defs.size 𝒮`; the
+judgement it encodes/decodes is the template's own explicit
+`import DirectedHoTT.Spec.Typing 𝒮 𝓃 as ᴺ`.
+
   planref.py FILE...        rewrite the files in place
   (library) convert_text(text) -> text
 """
@@ -42,12 +49,14 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 #   4 s → 3416 s)
 N_, OK_, REFS_ = '(Defs.size 𝒮)', '(Entries.okᵂ 𝒮 wf)', '(Entries.refsᵂ 𝒮 wf)'
 ARGS = {'R': '𝒮', 'T': '𝒮 ' + N_, 'O': '𝒮 %s %s' % (N_, OK_), 'F': '𝒮 %s %s %s' % (N_, OK_, REFS_),
-        'W': '𝒮 wf', 'C': '𝒮 wf core'}
-ATOM = r'(?:𝒮|wf|core|\(Defs\.size 𝒮\)|\(Entries\.okᵂ 𝒮 wf\)|\(Entries\.refsᵂ 𝒮 wf\))'
+        'W': '𝒮 wf', 'C': '𝒮 wf core', 'N': '𝒮 wf core 𝓃'}
+ATOM = r'(?:𝒮|wf|core|𝓃|\(Defs\.size 𝒮\)|\(Entries\.okᵂ 𝒮 wf\)|\(Entries\.refsᵂ 𝒮 wf\))'
 ARGRE = ATOM + r'(?: ' + ATOM + r')*'
 CORE_PRE = ('open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )\n'
             'import DirectedHoTT.Examples.PwCore as Core₀\n')
 CORE_HDR = '(𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮)'
+BOUND_PRE = 'open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )\n'
+BOUND_HDR = CORE_HDR + ' (𝓃 : ℕ)'
 SPEC_ARGS = {'DirectedHoTT.Spec.Typing': '𝒮 (Defs.size 𝒮)', 'DirectedHoTT.Spec.Reduction': '𝒮'}
 QUAL = r'(?=\s+(?:using|hiding|renaming|public|as)\b|\s*$)'
 _cls = {}
@@ -64,7 +73,9 @@ def module_class(mod):
             s = open(p).read()
             m = re.search(r'^module ' + re.escape(mod) + r'\b(.*?)\bwhere', s, re.M | re.S)
             ps = m.group(1) if m else ''
-            if '(core :' in ps:
+            if '(core :' in ps and '(𝓃 : ℕ)' in ps:
+                c = 'N'
+            elif '(core :' in ps:
                 c = 'C'
             elif '(wf : WfK' in ps:
                 c = 'W'
@@ -101,11 +112,13 @@ def convert_text(text):
            'import DirectedHoTT.Metatheory.Entries as Entries\n')
     post = '\n'
     head, body = text[:hm.start()], text[hm.end():]
-    if _cls.get(me) == 'C':
+    if _cls.get(me) == 'N':
+        text = head + pre + CORE_PRE + BOUND_PRE + f'module {me} {BOUND_HDR} where' + post + body
+    elif _cls.get(me) == 'C':
         text = head + pre + CORE_PRE + f'module {me} {CORE_HDR} where' + post + body
     else:
         text = head + pre + f'module {me} (𝒮 : Defs) (wf : WfK 𝒮) where' + post + body
-    hm = re.search(r'^module \S+ \(𝒮 : Defs\) \(wf : WfK 𝒮\)(?: \(core : [^)]*\))? where$', text, re.M)
+    hm = re.search(r'^module \S+ \(𝒮 : Defs\) \(wf : WfK 𝒮\)(?: \(core : [^)]*\))?(?: \(𝓃 : ℕ\))? where$', text, re.M)
     head, body = text[:hm.end()], text[hm.end():]
 
     # arguments
@@ -187,7 +200,7 @@ def upgrade_text(text):
     if not hm:
         return text
     me = hm.group(1)
-    if _cls.get(me) != 'C':
+    if _cls.get(me) not in ('C', 'N'):
         return text
     if not hm.group(2):
         text = text[:hm.start()] + CORE_PRE + f'module {me} {CORE_HDR} where' + text[hm.end():]
@@ -220,6 +233,20 @@ def convert_all(outs):
             if any(i in cset or (i not in names.values() and module_class(i) == 'C') for i in imps):
                 cset.add(n)
                 changed = True
+    # ★ the bound's users: a `C` module whose text uses `𝓃`, or that imports one
+    nset = {n for n in names.values() if module_class(n) == 'N'}
+    nset |= {names[p] for p, t in outs.items() if names[p] in cset and re.search(r'(?<![\w])𝓃(?![\w])', t)}
+    changed = True
+    while changed:
+        changed = False
+        for p, t in outs.items():
+            n = names[p]
+            if n in nset or n not in cset:
+                continue
+            imps = re.findall(r'(?:open import|import) (DirectedHoTT\.[A-Za-z.]+)', t)
+            if any(i in nset or (i not in names.values() and module_class(i) == 'N') for i in imps):
+                nset.add(n)
+                changed = True
     w = set(cset)
     changed = True
     while changed:
@@ -233,7 +260,7 @@ def convert_all(outs):
                 w.add(n)
                 changed = True
     for n in w:
-        _cls[n] = 'C' if n in cset else 'W'
+        _cls[n] = 'N' if n in nset else 'C' if n in cset else 'W'
     # the signature-free Spec.Base vocabulary from Spec.Base, never an instance
     return {p: base_unshare.convert_text(upgrade_text(convert_text(t))) for p, t in outs.items()}
 
