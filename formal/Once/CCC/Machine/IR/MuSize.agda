@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Value Carrier Carrier using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap;
   sem-Out; sem-In; sem-In-Out; sem-cata-compute)
 

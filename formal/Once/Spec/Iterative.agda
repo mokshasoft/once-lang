@@ -25,7 +25,7 @@ open import Data.List using (List; []; _∷_; _++_; [_])
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (tt)
 
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as V
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad

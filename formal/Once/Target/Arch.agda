@@ -40,7 +40,8 @@ open import Data.Integer using (ℤ)
 open import Data.Product using (Σ; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Float.Dyadic using (FloatFormat; binary32; binary64)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
+import Once.Word as OnceWordL
 
 ------------------------------------------------------------------------
 -- THE TARGET'S NUMERIC FACTS, in one record (plan 0.74, D115).
@@ -116,7 +117,7 @@ tn-lower tn z p = OnceWord.Width.toWord (int-bits tn) z p
 tn-exact : (tn : TargetNum) (z : ℤ) (p : OnceWord.Width.InRange (int-bits tn) z)
          → OnceWord.Width.toℤ (int-bits tn) (tn-lower tn z p) ≡ z
 tn-exact tn z p with pos⇒suc (int-bits-pos tn)
-... | (b , eqb) = OnceWord.Width.toℤ∘fromℤ (int-bits tn) b eqb z p
+... | (b , eqb) = OnceWordL.WidthLaws.toℤ∘fromℤ (int-bits tn) b eqb z p
 
 arch-numerics : Arch → TargetNum
 arch-numerics x86-64  = mkTargetNum 64 binary64 (s≤s z≤n)

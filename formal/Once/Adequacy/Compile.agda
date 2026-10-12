@@ -87,7 +87,7 @@ open import Function using (case_of_)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 open import Once.Target.Arch using (Arch)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
 

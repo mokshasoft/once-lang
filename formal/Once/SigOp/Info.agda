@@ -52,7 +52,7 @@ open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; b
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
 
 -- | Machine-level interpretation (Int ≡ ℕ).
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 -- Plan 0.74 J5 (D059): a SigOp's machine semantics is TARGET-RELATIVE.
 open import Once.Target.Arch using (TargetNum)
 import Once.Semantics.Value Carrier Carrier as M

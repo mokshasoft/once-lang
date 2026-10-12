@@ -54,9 +54,11 @@ open import Once.Arith.Machine.WordSem using (module Sem)
 open Sem bits F using (eval-arith-W)
 import Once.Arith.Machine.CompileCorrect as CC
 open CC bits F using (abs-validity)
-open import Once.Word using (module Width)
+open import Once.Spec.Word using (module Width)
 
-open Width bits using (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; norm; modulus; modulus≢0)
+open Width bits using (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; norm; modulus; modulus≢0)
+open import Once.Word using (module WidthLaws)
+open WidthLaws bits using (shlᵂ; sdiv2ᵏ)
 open Exec bits F using (step; run-abstract)
 import Once.Float.Arith as FA
 open import Once.Float.Decimal using (Decimal; round)

@@ -32,8 +32,10 @@ open import Relation.Nullary using (yes; no)
 open import Once.CCC.Label using (_≡ᵇᴸ_)
 -- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR (D054 — the runtime
 -- value type IS the modular word, and wraparound is defined semantics).
-import Once.Word as W64R
+import Once.Spec.Word as W64R
+import Once.Word as W64RL
 module W = W64R.Width 64
+module WL = W64RL.WidthLaws 64
 
 ------------------------------------------------------------------------
 -- Machine State

@@ -40,7 +40,7 @@ open import Once.IR
 open import Once.IRTy
   using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; WellFormedFI; fits-int; fits-float; IRTy)
 open import Once.Float.Decimal using (round)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 -- plan 0.98: `eval` is NO LONGER IMPORTED. The Spec's meaning is `evalᴰ`, and
 -- after the enumeration above nothing in it routes through the pure model.
 -- D224 deleted `eval` outright (it is REFUTED: `IR A Void` is inhabited while

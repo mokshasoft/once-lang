@@ -28,7 +28,7 @@ open import Once.Spec.Type.WellFormed using (IsBaseType)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; baseA)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 
 ------------------------------------------------------------------------

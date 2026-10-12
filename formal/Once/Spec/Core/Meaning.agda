@@ -31,7 +31,7 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (refl)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 open import Once.Float.Decimal using (round)
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)

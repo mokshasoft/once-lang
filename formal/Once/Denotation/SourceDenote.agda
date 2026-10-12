@@ -23,7 +23,7 @@
 module Once.Denotation.SourceDenote where
 
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (tt)

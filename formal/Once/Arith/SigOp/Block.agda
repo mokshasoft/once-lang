@@ -40,7 +40,7 @@ open import Once.Spec.Name using (bare)
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; numtype-as-type; shape-as-type)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 -- PLAN 0.74 J5: was `module W = OnceWord.Word64`. `block-semM` is the
 -- definitional modular-`Word` evaluator an arith BLOCK denotes, and a block
 -- is lowered by all three backends, so its width is the target's.

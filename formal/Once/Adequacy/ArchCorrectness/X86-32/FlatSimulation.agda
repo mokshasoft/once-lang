@@ -42,7 +42,7 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Float.Dyadic using (binary32)
 open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 32
 import Data.Nat as ℕ
 
@@ -150,8 +150,8 @@ b-mov-reg-reg prog s dst src = refl
 
 -- mov (reg dst) (imm n): tag/reg-op immediate loads (load-tag-lit, …).
 -- PLAN 0.70 PHASE D: the machine NORMS an immediate (an immediate field holds a
--- machine word), so this readout says so. Consumers convert with `W.norm-id` /
--- `W.norm-0` where they know the immediate fits.
+-- machine word), so this readout says so. Consumers convert with `WL.norm-id` /
+-- `WL.norm-0` where they know the immediate fits.
 b-mov-reg-imm : ∀ (prog : Program) (s : X.State) (dst : Reg) (n : ℕ)
   → execInstr prog s (mov (reg dst) (imm n))
     ≡ just (mkstate (xwriteReg (xregs s) dst (X.W.norm n))
@@ -372,7 +372,7 @@ block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame dataP
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) dst w ; pc = pc s + 1 }))
-                (X.W.norm-id fits)
+                (X.WL.norm-id fits)
                 (step-mov-ri {compile-trace prog} {s} {dst} {n} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
@@ -396,17 +396,17 @@ block-step-load-tag-lit {hv} prog fs s n cc h ft fits =
 block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one) → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-one) edx 1 cc h ft refl (X.W.1<modulus (s≤s z≤n)) refl (refl , refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-one) edx 1 cc h ft refl (X.WL.1<modulus (s≤s z≤n)) refl (refl , refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero) → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) edx 0 cc h ft refl X.W.0<modulus refl (refl , refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) edx 0 cc h ft refl X.WL.0<modulus refl (refl , refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero) → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op count-zero) edi 0 cc h ft refl X.W.0<modulus refl (refl , refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op count-zero) edi 0 cc h ft refl X.WL.0<modulus refl (refl , refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _ _))
 
 block-step-scratch-load-count : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count) → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
@@ -713,8 +713,8 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo'
     in-range : slots n < X.W.modulus
     in-range = ≤-<-trans fits esp<mod
     borrow-free : xreadReg (xregs s) esp X.W.⊖ X.W.norm (slots n) ≡ xreadReg (xregs s) esp ∸ slots n
-    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) esp) (slots n) in-range)
-                        (X.W.⊖≡∸ (xreadReg (xregs s) esp) (slots n) fits esp<mod)
+    borrow-free = trans (X.WL.⊖-normʳ (xreadReg (xregs s) esp) (slots n) in-range)
+                        (X.WL.⊖≡∸ (xreadReg (xregs s) esp) (slots n) fits esp<mod)
     newFlags : X.Flags
     newFlags = updateFlags (xreadReg (xregs s) esp ∸ slots n)
     post : X.State
@@ -808,8 +808,8 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     in-range : slots b < X.W.modulus
     in-range = ≤-<-trans fits esp<mod
     borrow-free : xreadReg (xregs s) esp X.W.⊖ X.W.norm (slots b) ≡ xreadReg (xregs s) esp ∸ slots b
-    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) esp) (slots b) in-range)
-                        (X.W.⊖≡∸ (xreadReg (xregs s) esp) (slots b) fits esp<mod)
+    borrow-free = trans (X.WL.⊖-normʳ (xreadReg (xregs s) esp) (slots b) in-range)
+                        (X.WL.⊖≡∸ (xreadReg (xregs s) esp) (slots b) fits esp<mod)
     step-sub : X.step-not-halted (compile-trace prog) post-lab ≡ just post-sub
     step-sub = subst (λ w → X.step-not-halted (compile-trace prog) post-lab
                             ≡ just (record s { regs = xwriteReg (xregs s) esp w
@@ -905,8 +905,8 @@ block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤esp fit
     in-range : slots b < X.W.modulus
     in-range = ≤-<-trans fits esp<mod
     borrow-free : xreadReg (xregs s) esp X.W.⊖ X.W.norm (slots b) ≡ xreadReg (xregs s) esp ∸ slots b
-    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) esp) (slots b) in-range)
-                        (X.W.⊖≡∸ (xreadReg (xregs s) esp) (slots b) fits esp<mod)
+    borrow-free = trans (X.WL.⊖-normʳ (xreadReg (xregs s) esp) (slots b) in-range)
+                        (X.WL.⊖≡∸ (xreadReg (xregs s) esp) (slots b) fits esp<mod)
     step-sub : X.step-not-halted (compile-trace prog) post-lea ≡ just post-sub
     step-sub = subst (λ w → X.step-not-halted (compile-trace prog) post-lea
                             ≡ just (record post-lea { regs = xwriteReg (xregs post-lea) esp w
@@ -1306,8 +1306,8 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
     wrap-free : xreadReg (xregs s) esp X.W.⊕ X.W.norm (slots b) ≡ xreadReg (xregs s) esp + slots b
     -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
     -- which norms its sum anyway, so a pre-normed argument is unobservable.
-    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs s) esp) (slots b))
-                      (X.W.⊕≡+ (xreadReg (xregs s) esp) (slots b) no-wrap)
+    wrap-free = trans (X.WL.⊕-normʳ (xreadReg (xregs s) esp) (slots b))
+                      (X.WL.⊕≡+ (xreadReg (xregs s) esp) (slots b) no-wrap)
     step-add : X.step-not-halted (compile-trace prog) s ≡ just post-add
     step-add = subst (λ w → X.step-not-halted (compile-trace prog) s
                             ≡ just (record s { regs = xwriteReg (xregs s) esp w
@@ -1417,8 +1417,8 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost no-wrap =
     wrap-free : xreadReg (xregs s) esp X.W.⊕ X.W.norm (slots n) ≡ xreadReg (xregs s) esp + slots n
     -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
     -- which norms its sum anyway, so a pre-normed argument is unobservable.
-    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs s) esp) (slots n))
-                      (X.W.⊕≡+ (xreadReg (xregs s) esp) (slots n) no-wrap)
+    wrap-free = trans (X.WL.⊕-normʳ (xreadReg (xregs s) esp) (slots n))
+                      (X.WL.⊕≡+ (xreadReg (xregs s) esp) (slots n) no-wrap)
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) esp w
@@ -1484,7 +1484,7 @@ block-step-load-const {hv} prog fs s v cc h ft fits =
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) eax w ; pc = pc s + 1 }))
-                (X.W.norm-id fits32)
+                (X.WL.norm-id fits32)
                 (step-mov-ri {compile-trace prog} {s} {eax} {IntW.fromℤ v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
@@ -1528,7 +1528,7 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) eax w ; pc = pc s + 1 }))
-                (X.W.norm-id fits32)
+                (X.WL.norm-id fits32)
                 (step-mov-ri {compile-trace prog} {s} {eax} {(round binary32) v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
@@ -1890,8 +1890,8 @@ block-step-count-inc {hv} prog fs s k cc h ft c-eq no-wrap =
     wrap-free : xreadReg (xregs s) edi X.W.⊕ X.W.norm 1 ≡ xreadReg (xregs s) edi + 1
     -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
     -- which norms its sum anyway, so a pre-normed argument is unobservable.
-    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs s) edi) 1)
-                      (X.W.⊕≡+ (xreadReg (xregs s) edi) 1 no-wrap)
+    wrap-free = trans (X.WL.⊕-normʳ (xreadReg (xregs s) edi) 1)
+                      (X.WL.⊕≡+ (xreadReg (xregs s) edi) 1 no-wrap)
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) edi w
@@ -1944,8 +1944,8 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow edx<mod =
     in-range : 1 < X.W.modulus
     in-range = ≤-<-trans no-borrow edx<mod
     borrow-free : xreadReg (xregs s) edx X.W.⊖ X.W.norm 1 ≡ xreadReg (xregs s) edx ∸ 1
-    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) edx) 1 in-range)
-                        (X.W.⊖≡∸ (xreadReg (xregs s) edx) 1 no-borrow edx<mod)
+    borrow-free = trans (X.WL.⊖-normʳ (xreadReg (xregs s) edx) 1 in-range)
+                        (X.WL.⊖≡∸ (xreadReg (xregs s) edx) 1 no-borrow edx<mod)
     post : X.State
     post = record s { regs = xwriteReg (xregs s) edx (xreadReg (xregs s) edx ∸ 1)
                     ; flags = updateFlags (xreadReg (xregs s) edx ∸ 1) ; pc = pc s + 1 }
@@ -2306,8 +2306,8 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfs wfc wfcl wf-heap wf-stack
               ≡ xreadReg (xregs post-mov) esi + slots n
     -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
     -- which norms its sum anyway, so a pre-normed argument is unobservable.
-    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs post-mov) esi) (slots n))
-                      (X.W.⊕≡+ (xreadReg (xregs post-mov) esi) (slots n) no-wrap)
+    wrap-free = trans (X.WL.⊕-normʳ (xreadReg (xregs post-mov) esi) (slots n))
+                      (X.WL.⊕≡+ (xreadReg (xregs post-mov) esi) (slots n) no-wrap)
     step2 : X.step-not-halted (compile-trace prog) post-mov ≡ just post-add
     step2 = subst (λ w → X.step-not-halted (compile-trace prog) post-mov
                          ≡ just (record post-mov { regs = xwriteReg (xregs post-mov) esi w

@@ -48,7 +48,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Nat using (ℕ; _*_; NonZero; _<_; suc; s≤s; z≤n)
 open import Data.Bool using (Bool)

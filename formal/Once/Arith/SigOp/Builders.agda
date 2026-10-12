@@ -34,8 +34,8 @@ open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Int; ba
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Word using (Carrier)
-import Once.Word as OnceWord
+open import Once.Spec.Word using (Carrier)
+import Once.Spec.Word as OnceWord
 -- PLAN 0.74 J5: `module W = OnceWord.Word64` USED TO BE HERE, and it was the
 -- bug. These descriptors serve all three targets and one of them is 32-bit;
 -- the width now arrives as the `TargetNum` every `semM` takes.

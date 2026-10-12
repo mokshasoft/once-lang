@@ -30,7 +30,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type.Grade using (Purity)
 open import Once.Spec.Type using (Type; Functor; ν-type; ⟦_⟧T)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)

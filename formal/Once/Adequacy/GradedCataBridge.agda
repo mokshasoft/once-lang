@@ -21,7 +21,7 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (refl; sym; subst)
 
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type.Grade using (Purity; pure; eff; prod)
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pp)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type; K; Id; _⊕_; _⊗_)

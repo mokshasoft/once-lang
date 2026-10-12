@@ -54,7 +54,7 @@ import Once.IR as IR
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; fmapT-∘; fmapT-cong)
 open import Once.Functor.Translate using (translateF)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.Denotation.SourceDenote as SD
 

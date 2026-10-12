@@ -29,7 +29,7 @@ open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Type.WellFormed using (base-Unit)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 open import Once.SigOp.Info using (FFIAnswers)

@@ -90,7 +90,7 @@ open HeapRef using (ref-id)
 -- below the machine so the IR can import them without the machine. Re-exported.
 open import Once.CCC.Machine.Locations
 open import Once.Float.Decimal using (round)
-import Once.Word as Word
+import Once.Spec.Word as Word
 import Data.Nat as ℕ
 
 -- Plan 0.14: the abstract-trace allocator instance lives in

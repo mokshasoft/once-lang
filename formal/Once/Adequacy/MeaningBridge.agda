@@ -113,7 +113,7 @@ open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-v
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Functor.Translate using (translateF)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Semantics.Functor using (⟦_⟧SF)
 open import Once.SigOp.Info using (semP; int-prim; mk-info'; FFIAnswers)

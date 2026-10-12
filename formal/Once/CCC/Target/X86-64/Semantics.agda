@@ -26,8 +26,10 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_; thunk; module LabelId)
 open LabelId using (idx)
 -- Plan 0.70 phase C (PROBE): the machine's arithmetic is MODULAR.
-import Once.Word as W64
+import Once.Spec.Word as W64
+import Once.Word as W64L
 module W = W64.Width 64
+module WL = W64L.WidthLaws 64
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
 open import Data.Bool using (Bool; true; false; if_then_else_)

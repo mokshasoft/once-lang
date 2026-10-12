@@ -22,7 +22,7 @@
 module Once.Denotation.Meaning where
 
 import Data.Integer as ℤ
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 open import Once.Float.Decimal using (decimalOf; round; negate)
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)

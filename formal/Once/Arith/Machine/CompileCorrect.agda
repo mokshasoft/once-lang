@@ -46,9 +46,12 @@ open Exec bits F using (step; run-abstract)
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
-open import Once.Word using (module Width)
+open import Once.Spec.Word using (module Width)
 open Width bits using
-  (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0; shlᵂ; sdiv2ᵏ; ⊗-pow2;
+  (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0)
+open import Once.Word using (module WidthLaws)
+open WidthLaws bits using
+  (shlᵂ; sdiv2ᵏ; ⊗-pow2;
    /ˢ-zero; %ˢ-zero; fromℤ-0; fromℤ-in-range; fromℤ-neg1;
    /ˢ-negOne; %ˢ-negOne; /ˢ-in-range; %ˢ-in-range; 0<modulus)
 open import Once.Arith.CmpOp using (CmpOp; cmp-word; cmp-bit)

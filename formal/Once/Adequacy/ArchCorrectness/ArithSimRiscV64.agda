@@ -52,11 +52,13 @@ import Once.Arith.Backend.RiscV64.ExecArith as EA
 open import Once.Arith.Backend.RiscV64.Preserve using (step-of-preserves)
 open Once.Arith.Backend.RiscV64.Preserve.AgreeCCC using (a-sp)
 open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
+import Once.Word as OnceWordL
 -- riscv64 really is 64-bit, so this one is CORRECT and stays. Written as an
 -- explicit width rather than the `Word64` alias so it reads as a claim about
 -- THIS target rather than as the default nobody chose (plan 0.74 J5).
 module W = OnceWord.Width 64
+module WL = OnceWordL.WidthLaws 64
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
 open import Once.Target.Arch using (riscv64; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
@@ -120,8 +122,8 @@ val-riscv64 (XI.Xrem-rrr d a b)        s _ = rd s a W.%ˢ rd s b
 val-riscv64 (XI.Xcmp-rrr o d a b)      s _ = cmp-bit 64 o (rd s a) (rd s b)
 val-riscv64 (XI.Xdiv-safe-rrr d a b)   s _ = rd s a W./ˢ rd s b
 val-riscv64 (XI.Xrem-safe-rrr d a b)   s _ = rd s a W.%ˢ rd s b
-val-riscv64 (XI.Xshl-rri d src imm)    s _ = W.shlᵂ (rd s src) imm
-val-riscv64 (XI.Xsdiv-pow2-rri d src imm) s _ = W.sdiv2ᵏ (rd s src) imm
+val-riscv64 (XI.Xshl-rri d src imm)    s _ = WL.shlᵂ (rd s src) imm
+val-riscv64 (XI.Xsdiv-pow2-rri d src imm) s _ = WL.sdiv2ᵏ (rd s src) imm
 val-riscv64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
 -- PLAN 0.75 F4: the INTENDED value of each float instruction, defined — the
 -- D117 pattern. What the real `fadd.d` / `addsd` does is the named

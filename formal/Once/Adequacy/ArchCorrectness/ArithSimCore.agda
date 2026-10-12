@@ -65,7 +65,8 @@ open import Once.Arith.SigOp.Block using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord)
 open import Once.Arith.Backend.BlockValueSemM using (block-value-semM)
 
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
+import Once.Word as OnceWordL
 
 ------------------------------------------------------------------------
 -- `tgt` — each XInstr's primary arith target (arch-neutral). `nothing` for
@@ -93,7 +94,8 @@ open import Once.Float.Decimal using (round)
 module At (tn : TargetNum) where
 
   open Correct (int-bits tn) (float-format tn) using (exec-xinstr; exec-xprog; exec-xprog-++; xreg-idx)
-  open OnceWord.Width (int-bits tn) using (toℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; fromℤ)
+  open OnceWord.Width (int-bits tn) using (toℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; fromℤ)
+  open OnceWordL.WidthLaws (int-bits tn) using (shlᵂ; sdiv2ᵏ)
 
   tgt : XInstr → Maybe XReg
   tgt (XI.Xmov-imm d _)         = just d

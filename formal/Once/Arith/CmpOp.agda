@@ -14,7 +14,7 @@ module Once.Arith.CmpOp where
 
 open import Data.Bool using (Bool; not; if_then_else_)
 open import Data.Nat using (ℕ)
-open import Once.Word using (module Width)
+open import Once.Spec.Word using (module Width)
 
 data CmpOp : Set where
   c-lt c-le c-gt c-ge c-eq c-ne : CmpOp

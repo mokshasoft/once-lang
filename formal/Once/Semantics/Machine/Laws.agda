@@ -16,5 +16,5 @@ module Once.Semantics.Machine.Laws where
 
 open import Data.Nat using (ℕ)
 
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Value.Laws Carrier Decimal public

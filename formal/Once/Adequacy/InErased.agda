@@ -29,7 +29,7 @@ open import Function using (id)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; trans; sym; subst; subst-subst-sym)
 
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (Functor; μ-type; ⟦_⟧T)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Functor.Translate using (translateF)

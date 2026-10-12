@@ -27,7 +27,7 @@ import Once.Spec.Type.Grade as Ty
 open import Once.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent)
 

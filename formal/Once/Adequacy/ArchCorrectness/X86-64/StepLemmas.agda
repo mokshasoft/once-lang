@@ -162,7 +162,7 @@ step-pop ft rd rewrite ft | rd = refl
 -- immediate, because an instruction's immediate field is a machine word and a
 -- wider value has no encoding. So this lemma can only conclude `writeReg r n`
 -- so these lemmas say `W.norm n` — EXACTLY what `execInstr` does, and nothing
--- more. A consumer that knows its immediate fits converts with `W.norm-id`,
+-- more. A consumer that knows its immediate fits converts with `WL.norm-id`,
 -- paying the range obligation where it has the facts to pay it. At the
 -- `instr-load-const` site that obligation IS the seam `lit-word : Carrier →
 -- Word` used to pass over silently: the model used to admit a register holding
@@ -304,12 +304,12 @@ nz-val x rng =
   trans (cong (λ m → ((x W.⊖ x) W.⊖ (if (x <ᵇ m) then 1 else 0)) W.⊕ m) n1) (go x rng)
   where
     n1 : W.norm 1 ≡ 1
-    n1 = W.norm-id (W.1<modulus (s≤s z≤n))
+    n1 = WL.norm-id (WL.1<modulus (s≤s z≤n))
     go : ∀ (y : ℕ) → y < W.modulus
        → ((y W.⊖ y) W.⊖ (if (y <ᵇ 1) then 1 else 0)) W.⊕ 1 ≡ (if y ≡ᵇ 0 then 0 else 1)
-    go zero    _   = W.sbb-zero (W.1<modulus (s≤s z≤n))
-    go (suc zero)    rng = W.sbb-pos 1 rng (W.1<modulus (s≤s z≤n))
-    go (suc (suc k)) rng = W.sbb-pos (suc (suc k)) rng (W.1<modulus (s≤s z≤n))
+    go zero    _   = WL.sbb-zero (WL.1<modulus (s≤s z≤n))
+    go (suc zero)    rng = WL.sbb-pos 1 rng (WL.1<modulus (s≤s z≤n))
+    go (suc (suc k)) rng = WL.sbb-pos (suc (suc k)) rng (WL.1<modulus (s≤s z≤n))
 
 -- add reg, reg (the lea-indexed doublings: `add rcx, rcx`)
 step-add-rr : ∀ {prog s r r'}

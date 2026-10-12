@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.IR
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 import Once.IRTy as II
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ; ⟦_⟧ᴰᴵ)
 -- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
@@ -57,7 +57,7 @@ import Once.Spec.Type as Ty
 import Once.Type as Ty
 open import Once.Target.Arch using (module TargetNum)
 open TargetNum using (int-bits; float-format)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 import Once.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 open import Once.Denotation.TraceMonad using ()

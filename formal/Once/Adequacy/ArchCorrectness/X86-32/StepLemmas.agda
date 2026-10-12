@@ -13,7 +13,7 @@
 -- x86-64 measured a `norm`-premise formulation of `step-mov-ri` that DID NOT
 -- TYPECHECK IN 900 s, because a `rewrite` by a modulus equation forces
 -- reduction against `2 ^ 32` at every use. Consumers that know their immediate
--- fits convert with `W.norm-id`, where they have the facts to pay for it.
+-- fits convert with `WL.norm-id`, where they have the facts to pay for it.
 --
 -- THREE PLACES x86-32 GENUINELY DIFFERS FROM x86-64, and they are the reason
 -- this is written rather than copied:
@@ -197,7 +197,7 @@ step-pop ft rd rewrite ft | rd = refl
 
 -- add reg, imm. Plan 0.70 phase C: the machine adds MODULARLY at 32 bits, so
 -- this says `⊕` and carries NO no-overflow premise (D054: wraparound is defined
--- semantics). A consumer needing plain `+` converts with `W.⊕≡+`, paying the
+-- semantics). A consumer needing plain `+` converts with `WL.⊕≡+`, paying the
 -- `< modulus` obligation as a LAYOUT bound of the HeapRoom/StackRoom family
 -- (D087) — never as an assumption about what user values do.
 step-add-ri : ∀ {prog s r n}
@@ -229,12 +229,12 @@ nz-val x rng =
   trans (cong (λ m → ((x W.⊖ x) W.⊖ (if (x <ᵇ m) then 1 else 0)) W.⊕ m) n1) (go x rng)
   where
     n1 : W.norm 1 ≡ 1
-    n1 = W.norm-id (W.1<modulus (s≤s z≤n))
+    n1 = WL.norm-id (WL.1<modulus (s≤s z≤n))
     go : ∀ (y : ℕ) → y < W.modulus
        → ((y W.⊖ y) W.⊖ (if (y <ᵇ 1) then 1 else 0)) W.⊕ 1 ≡ (if y ≡ᵇ 0 then 0 else 1)
-    go zero             _   = W.sbb-zero (W.1<modulus (s≤s z≤n))
-    go (suc zero)       rng = W.sbb-pos 1 rng (W.1<modulus (s≤s z≤n))
-    go (suc (suc k))    rng = W.sbb-pos (suc (suc k)) rng (W.1<modulus (s≤s z≤n))
+    go zero             _   = WL.sbb-zero (WL.1<modulus (s≤s z≤n))
+    go (suc zero)       rng = WL.sbb-pos 1 rng (WL.1<modulus (s≤s z≤n))
+    go (suc (suc k))    rng = WL.sbb-pos (suc (suc k)) rng (WL.1<modulus (s≤s z≤n))
 
 -- add reg, reg (the `lea-indexed` doublings: `add eax, eax`)
 step-add-rr : ∀ {prog s r r'}
@@ -246,7 +246,7 @@ step-add-rr : ∀ {prog s r r'}
 step-add-rr ft rewrite ft = refl
 
 -- sub reg, imm. Modular likewise (`⊖`); a consumer that knows the subtraction
--- does not borrow converts with `W.⊖≡∸`, which is exactly what the `fits`/`room`
+-- does not borrow converts with `WL.⊖≡∸`, which is exactly what the `fits`/`room`
 -- premises beside every stack reservation supply.
 step-sub-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (sub (reg r) (imm n))

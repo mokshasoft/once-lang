@@ -22,7 +22,7 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type.Grade using (mk-kind; Many; Purity; pure; eff⁺; eff; prod)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; ν-type; _⇒[_]_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)

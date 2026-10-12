@@ -36,7 +36,7 @@ open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.String using (String)
 
 open import Once.Spec.Type using (Type; Int; Float)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad using (Interp; CallOp; callKey; calls; pures; answer; pure)

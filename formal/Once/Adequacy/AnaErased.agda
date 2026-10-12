@@ -36,7 +36,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type as TT using (Functor; _*_; _+_)
 open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)

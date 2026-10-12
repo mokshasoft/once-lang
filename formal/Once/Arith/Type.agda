@@ -13,7 +13,7 @@
 module Once.Arith.Type where
 
 open import Data.Bool using (Bool; true; false)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Float.Decimal using (Decimal)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 

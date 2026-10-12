@@ -43,8 +43,10 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
 import Once.CCC.Target.X86-64.Semantics as X
-import Once.Word as W64
+import Once.Spec.Word as W64
+import Once.Word as W64L
 module W = W64.Width 64
+module WL = W64L.WidthLaws 64
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Label using (EntryId)

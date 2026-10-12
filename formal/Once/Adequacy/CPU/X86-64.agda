@@ -63,8 +63,10 @@ open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 import Once.Arith.Backend.X86-64.RunTrace as RT
 open X64 using (State; readReg; readMem)
 open X64.State using (regs; memory)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
+import Once.Word as OnceWordL
 module W = OnceWord.Word64
+module WL = OnceWordL.WidthLaws 64
 open import Data.Nat using (_*_)
 open import Data.Maybe using (just; nothing)
 
@@ -138,8 +140,8 @@ val-x86-64 (XI.Xrem-rrr d a b)        s _ = rd s a W.%ˢ rd s b
 val-x86-64 (XI.Xdiv-safe-rrr d a b)   s _ = rd s a W./ˢ rd s b
 val-x86-64 (XI.Xrem-safe-rrr d a b)   s _ = rd s a W.%ˢ rd s b
 val-x86-64 (XI.Xcmp-rrr o d a b)      s _ = cmp-bit 64 o (rd s a) (rd s b)
-val-x86-64 (XI.Xshl-rri d src imm)    s _ = W.shlᵂ (rd s src) imm
-val-x86-64 (XI.Xsdiv-pow2-rri d src imm) s _ = W.sdiv2ᵏ (rd s src) imm
+val-x86-64 (XI.Xshl-rri d src imm)    s _ = WL.shlᵂ (rd s src) imm
+val-x86-64 (XI.Xsdiv-pow2-rri d src imm) s _ = WL.sdiv2ᵏ (rd s src) imm
 val-x86-64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
 -- PLAN 0.75 F4: the INTENDED value of each float instruction, DEFINED — the
 -- D117 pattern. That the real `addsd` / `fadd.d` computes it is the named

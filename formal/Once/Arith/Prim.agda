@@ -22,8 +22,8 @@ open import Data.Unit using (tt)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.CmpOp using (cmp-word)
 open import Once.Spec.Bool using (truth)
-open import Once.Word using (Carrier)
-import Once.Word as OnceWord
+open import Once.Spec.Word using (Carrier)
+import Once.Spec.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Float.Arith as FA

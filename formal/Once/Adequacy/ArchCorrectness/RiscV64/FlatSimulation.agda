@@ -84,7 +84,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
   using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
 open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; a0; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
@@ -291,7 +291,7 @@ block-step-li {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame ra-keep d
     snh = subst (λ w → R.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = R.writeReg (R.State.regs s) dst w
                                         ; pc = R.State.pc s + 1 }))
-                (R.W.norm-id fits)
+                (R.WL.norm-id fits)
                 (step-li {compile-trace prog} {s} {dst} {ℤ.+ n} fetch-rv)
     exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
@@ -316,21 +316,21 @@ block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog 
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one)
   → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op scratch-one) s3 1 cc h ft refl (R.W.1<modulus (s≤s z≤n)) refl (refl , refl , refl) refl
+  block-step-li prog fs s (instr-reg-op scratch-one) s3 1 cc h ft refl (R.WL.1<modulus (s≤s z≤n)) refl (refl , refl , refl) refl
     (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-scratch _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero)
   → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op scratch-zero) s3 0 cc h ft refl R.W.0<modulus refl (refl , refl , refl) refl
+  block-step-li prog fs s (instr-reg-op scratch-zero) s3 0 cc h ft refl R.WL.0<modulus refl (refl , refl , refl) refl
     (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-scratch _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero)
   → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op count-zero) s4 0 cc h ft refl R.W.0<modulus refl (refl , refl , refl) refl
+  block-step-li prog fs s (instr-reg-op count-zero) s4 0 cc h ft refl R.WL.0<modulus refl (refl , refl , refl) refl
     (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-count _ _))
 
 ------------------------------------------------------------------------
@@ -521,8 +521,8 @@ block-step-lea-slot {hv} prog fs s slot cc h ft no-wrap =
     -- for `⊕`) and then the modularity (the no-wrap premise).
     addr-eq : R.readReg (R.State.regs s) sp R.W.⊕ R.W.fromℤ (ℤ.+ (slot-to-disp slot))
             ≡ R.readReg (R.State.regs s) sp + slot-to-disp slot
-    addr-eq = trans (R.W.⊕-normʳ (R.readReg (R.State.regs s) sp) (slot-to-disp slot))
-                    (R.W.⊕≡+ (R.readReg (R.State.regs s) sp) (slot-to-disp slot) no-wrap)
+    addr-eq = trans (R.WL.⊕-normʳ (R.readReg (R.State.regs s) sp) (slot-to-disp slot))
+                    (R.WL.⊕≡+ (R.readReg (R.State.regs s) sp) (slot-to-disp slot) no-wrap)
     post : R.State
     post = record s { regs = R.writeReg (R.State.regs s) a0
                                (R.readReg (R.State.regs s) sp + slot-to-disp slot)
@@ -677,8 +677,8 @@ block-step-count-inc {hv} prog fs s k cc h ft c-eq no-wrap =
                      (fetch-block-head prog (fpc fs) (instr-reg-op count-inc) ft)
     wrap-free : R.readReg (R.State.regs s) s4 R.W.⊕ R.W.fromℤ (ℤ.+ 1)
               ≡ R.readReg (R.State.regs s) s4 + 1
-    wrap-free = trans (R.W.⊕-normʳ (R.readReg (R.State.regs s) s4) 1)
-                      (R.W.⊕≡+ (R.readReg (R.State.regs s) s4) 1 no-wrap)
+    wrap-free = trans (R.WL.⊕-normʳ (R.readReg (R.State.regs s) s4) 1)
+                      (R.WL.⊕≡+ (R.readReg (R.State.regs s) s4) 1 no-wrap)
     post : R.State
     post = record s { regs = R.writeReg (R.State.regs s) s4 (R.readReg (R.State.regs s) s4 + 1)
                     ; pc = R.State.pc s + 1 }
@@ -719,8 +719,8 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow s3<mod =
     in-range = ≤-<-trans no-borrow s3<mod
     borrow-free : R.readReg (R.State.regs s) s3 R.W.⊕ R.W.fromℤ (ℤ.-[1+ 0 ])
                 ≡ R.readReg (R.State.regs s) s3 ∸ 1
-    borrow-free = trans (R.W.⊕-neg-suc (R.readReg (R.State.regs s) s3) 0 in-range)
-                        (R.W.⊖≡∸ (R.readReg (R.State.regs s) s3) 1 no-borrow s3<mod)
+    borrow-free = trans (R.WL.⊕-neg-suc (R.readReg (R.State.regs s) s3) 0 in-range)
+                        (R.WL.⊖≡∸ (R.readReg (R.State.regs s) s3) 1 no-borrow s3<mod)
     post : R.State
     post = record s { regs = R.writeReg (R.State.regs s) s3 (R.readReg (R.State.regs s) s3 ∸ 1)
                     ; pc = R.State.pc s + 1 }
@@ -1578,7 +1578,7 @@ block-step-alloc-stack-step {hv} prog fs s n cc ft fits sp<mod =
   subst (λ w → R.step-not-halted (compile-trace prog) s
                ≡ just (record s { regs = R.writeReg (R.State.regs s) sp w
                                 ; pc = R.State.pc s + 1 }))
-        (R.W.⊕-neg (R.readReg (R.State.regs s) sp) (slots n) fits sp<mod)
+        (R.WL.⊕-neg (R.readReg (R.State.regs s) sp) (slots n) fits sp<mod)
         (step-addi {compile-trace prog} {s} {sp} {sp} {ℤ.-_ (ℤ.+ (slots n))} fetch-rv)
   where
     po = pc-off cc
@@ -1600,8 +1600,8 @@ block-step-dealloc-stack-step {hv} prog fs s n cc ft no-wrap =
   subst (λ w → R.step-not-halted (compile-trace prog) s
                ≡ just (record s { regs = R.writeReg (R.State.regs s) sp w
                                 ; pc = R.State.pc s + 1 }))
-        (trans (R.W.⊕-normʳ (R.readReg (R.State.regs s) sp) (slots n))
-               (R.W.⊕≡+ (R.readReg (R.State.regs s) sp) (slots n) no-wrap))
+        (trans (R.WL.⊕-normʳ (R.readReg (R.State.regs s) sp) (slots n))
+               (R.WL.⊕≡+ (R.readReg (R.State.regs s) sp) (slots n) no-wrap))
         (step-addi {compile-trace prog} {s} {sp} {sp} {ℤ.+ (slots n)} fetch-rv)
   where
     po = pc-off cc
@@ -1763,8 +1763,8 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfs wfc wfcl wf-heap wf-stack
                         lo-fits
     wrap-free : R.readReg (R.State.regs post-mv) s2 R.W.⊕ R.W.fromℤ (ℤ.+ (slots n))
               ≡ R.readReg (R.State.regs post-mv) s2 + slots n
-    wrap-free = trans (R.W.⊕-normʳ (R.readReg (R.State.regs post-mv) s2) (slots n))
-                      (R.W.⊕≡+ (R.readReg (R.State.regs post-mv) s2) (slots n) no-wrap)
+    wrap-free = trans (R.WL.⊕-normʳ (R.readReg (R.State.regs post-mv) s2) (slots n))
+                      (R.WL.⊕≡+ (R.readReg (R.State.regs post-mv) s2) (slots n) no-wrap)
     step2 : R.step-not-halted (compile-trace prog) post-mv ≡ just post-add
     step2 = subst (λ w → R.step-not-halted (compile-trace prog) post-mv
                          ≡ just (record post-mv { regs = R.writeReg (R.State.regs post-mv) s2 w
@@ -1825,7 +1825,7 @@ block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits
     step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) post-lla
                               ≡ just (record post-lla { regs = R.writeReg (R.State.regs post-lla) sp w
                                                       ; pc = R.State.pc s + 1 + 1 }))
-                       (R.W.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
+                       (R.WL.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
                        (step-addi {compile-trace prog} {post-lla} {sp} {sp}
                                   {ℤ.-_ (ℤ.+ (slots b))} fetch-addi)
     exec-eq : R.exec 2 (compile-trace prog) s ≡ just post-addi
@@ -1909,7 +1909,7 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
     step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) post-lab
                               ≡ just (record s { regs = R.writeReg (R.State.regs s) sp w
                                                ; pc = R.State.pc s + 1 + 1 }))
-                       (R.W.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
+                       (R.WL.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
                        (step-addi {compile-trace prog} {post-lab} {sp} {sp}
                                   {ℤ.-_ (ℤ.+ (slots b))} fetch-addi)
     -- step 3: THE SPILL. `sp` is back where the abstract frame's window ends —
@@ -2115,8 +2115,8 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req bslots feq 
     newsp = R.readReg (R.State.regs post-ld) sp + slots b + slot-size
     wrap-free : R.readReg (R.State.regs post-ld) sp R.W.⊕ R.W.fromℤ (ℤ.+ (slots (suc b)))
               ≡ newsp
-    wrap-free = trans (R.W.⊕-normʳ (R.readReg (R.State.regs s) sp) (slots (suc b)))
-                (trans (R.W.⊕≡+ (R.readReg (R.State.regs s) sp) (slots (suc b)) no-wrap)
+    wrap-free = trans (R.WL.⊕-normʳ (R.readReg (R.State.regs s) sp) (slots (suc b)))
+                (trans (R.WL.⊕≡+ (R.readReg (R.State.regs s) sp) (slots (suc b)) no-wrap)
                 (trans (cong (R.readReg (R.State.regs s) sp +_) suc-slots)
                        (sym (+-assoc (R.readReg (R.State.regs s) sp) (slots b) slot-size))))
     post-addi : R.State
@@ -2275,7 +2275,7 @@ block-step-call {hv} prog fs s hl ℓ jx cc h ft ceq heq live fteq lo' lo'≤lo 
                               ≡ just (record post-ld
                                         { regs = R.writeReg (R.State.regs post-ld) sp w
                                         ; pc = R.State.pc post-ld + 1 }))
-                       (R.W.⊕-neg (R.readReg (R.State.regs post-ld) sp) slot-size fits sp<mod)
+                       (R.WL.⊕-neg (R.readReg (R.State.regs post-ld) sp) slot-size fits sp<mod)
                        (step-addi {compile-trace prog} {post-ld} {sp} {sp}
                                   {ℤ.-_ (ℤ.+ slot-size)} fetch-addi)
     -- step 3: the transfer, and the LINK
@@ -2394,7 +2394,7 @@ block-step-call-fn {hv} prog fs s f jx cc h ft fteq lo' lo'≤lo front-lo' lo'�
                               ≡ just (record s
                                         { regs = R.writeReg (R.State.regs s) sp w
                                         ; pc = R.State.pc s + 1 }))
-                       (R.W.⊕-neg (R.readReg (R.State.regs s) sp) slot-size fits sp<mod)
+                       (R.WL.⊕-neg (R.readReg (R.State.regs s) sp) slot-size fits sp<mod)
                        (step-addi {compile-trace prog} {s} {sp} {sp}
                                   {ℤ.-_ (ℤ.+ slot-size)} fetch-addi)
     -- step 2: the transfer, and the LINK

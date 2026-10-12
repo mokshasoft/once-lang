@@ -28,8 +28,10 @@ open import Once.CCC.Label using (_≡ᵇᴸ_)
 -- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR (D054), at THIS
 -- target's width — 32, which is the whole reason `Once.Word` is parameterised
 -- by `bits` rather than fixed at 64.
-import Once.Word as W32
+import Once.Spec.Word as W32
+import Once.Word as W32L
 module W = W32.Width 32
+module WL = W32L.WidthLaws 32
 
 ------------------------------------------------------------------------
 -- Machine State

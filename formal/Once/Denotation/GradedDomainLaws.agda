@@ -19,7 +19,7 @@ open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pp)
 import Once.Semantics.Machine as Val
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 open import Once.Functor.Translate using (translateF)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)

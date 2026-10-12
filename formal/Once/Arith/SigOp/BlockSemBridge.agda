@@ -36,7 +36,8 @@ open import Once.Arith.Type using (NInt; NFloat)
 import Once.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
+import Once.Word as OnceWordL
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
 open import Once.Arith.SigOp.Block using (block-semM; projectM; readLeafM)
 
@@ -60,6 +61,7 @@ module _ (tn : TargetNum) where
   open Sem (int-bits tn) (float-format tn) using (eval-arith-W)
   F = float-format tn
   module W = OnceWord.Width (int-bits tn)
+  module WL = OnceWordL.WidthLaws (int-bits tn)
 
   ------------------------------------------------------------------------
   -- The input representation bridge: ℤ-tree → Word-tree (fromℤ at leaves).

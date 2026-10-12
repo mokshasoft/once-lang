@@ -17,7 +17,7 @@
 module Once.Arith.Machine.WordSem where
 
 open import Data.Nat using (ℕ)
-import Once.Word as W
+import Once.Spec.Word as W
 open import Once.Arith.Machine.Shape using (⟦_⟧S; readLeaf)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)

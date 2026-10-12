@@ -45,7 +45,8 @@ import Once.CCC.Target.X86-32.Semantics as X32
 open X32 using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
 open X32.State using (regs; memory)
 import Once.Arith.Backend.X86-32.ExecArith as EA
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
+import Once.Word as OnceWordL
 -- PLAN 0.74 J5 — THIS LINE WAS THE BUG THE PLAN WENT LOOKING FOR.
 --
 -- It read `module W = OnceWord.Word64`, and it is load-bearing: `val-x86-32`,
@@ -57,6 +58,7 @@ import Once.Word as OnceWord
 -- arith correspondence was a statement about a 64-bit machine that x86-32 is
 -- not.
 module W = OnceWord.Width 32
+module WL = OnceWordL.WidthLaws 32
 import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
 open import Once.Target.Arch using (x86-32; arch-numerics)
 -- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
@@ -101,8 +103,8 @@ val-x86-32 (XI.Xrem-rrr d a b)        s _ = rd s a W.%ˢ rd s b
 val-x86-32 (XI.Xcmp-rrr o d a b)      s _ = cmp-bit 32 o (rd s a) (rd s b)
 val-x86-32 (XI.Xdiv-safe-rrr d a b)   s _ = rd s a W./ˢ rd s b
 val-x86-32 (XI.Xrem-safe-rrr d a b)   s _ = rd s a W.%ˢ rd s b
-val-x86-32 (XI.Xshl-rri d src imm)    s _ = W.shlᵂ (rd s src) imm
-val-x86-32 (XI.Xsdiv-pow2-rri d src imm) s _ = W.sdiv2ᵏ (rd s src) imm
+val-x86-32 (XI.Xshl-rri d src imm)    s _ = WL.shlᵂ (rd s src) imm
+val-x86-32 (XI.Xsdiv-pow2-rri d src imm) s _ = WL.sdiv2ᵏ (rd s src) imm
 val-x86-32 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
 -- PLAN 0.75 F4: the INTENDED value of each float instruction, defined — the
 -- D117 pattern. What the real `fadd.d` / `addsd` does is the named

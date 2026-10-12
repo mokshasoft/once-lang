@@ -37,7 +37,7 @@ open Once.Spec.Guarded.ν⁺ using (force⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺; forget-anaRoot)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; sfmapCata)
 open import Once.Functor.Translate using (translateF)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Machine as Val
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; fmapT)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; νᵖ; module νᵖ)

@@ -64,7 +64,7 @@ fusion-compose-correct g f x = refl
 ------------------------------------------------------------------------
 
 open import Data.Integer using (ℤ)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Semantics.Value Carrier Carrier using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 

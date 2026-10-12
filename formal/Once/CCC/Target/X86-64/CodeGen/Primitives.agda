@@ -25,7 +25,7 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.Float.Dyadic using (binary64)
 open import Once.Float.Decimal using (round)
-import Once.Word as OnceWord
+import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.Semantics.Machine using (LitPayload)
 

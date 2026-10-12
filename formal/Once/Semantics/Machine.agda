@@ -21,7 +21,7 @@
 module Once.Semantics.Machine where
 
 -- Instantiate the value semantics at the target `Word` carrier (D054).
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 -- D113: `Float` follows D054 — its denotation is the TARGET'S REPRESENTATION,
 -- not an exact value. IEEE `fadd` rounds and exact dyadic `+` does not, so an
 -- exact denotation is the same unprovable straddle D054 removed for `Int`.

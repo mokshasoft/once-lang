@@ -45,7 +45,7 @@ open import Once.Denotation.DenotTrace
 open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
-open import Once.Word using (Carrier)
+open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Functor.Translate using (translateF; ⟦_,_⟧-base)

@@ -30,7 +30,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Arith.Machine.AbsState
 open import Once.Arith.Machine.Shape
-open import Once.Word using (module Width)
+open import Once.Spec.Word using (module Width)
+open import Once.Word using (module WidthLaws)
 open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
 open import Once.Float.Dyadic using (FloatFormat)
 open import Once.Float.Decimal using (Decimal; round)
@@ -182,7 +183,8 @@ maybe-zero-f nothing  = 0
 -- baked, and the float instructions read `F` exactly as the integer ones read
 -- `bits`.
 module Exec (bits : ℕ) (F : FloatFormat) where
-  open Width bits using (fromℤ; toℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ)
+  open Width bits using (fromℤ; toℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
+  open WidthLaws bits using (shlᵂ; sdiv2ᵏ)
 
   -- | One abstract step.
   step : ∀ {sh} → AbstractInstr → ArithAbsState sh → ArithAbsState sh
