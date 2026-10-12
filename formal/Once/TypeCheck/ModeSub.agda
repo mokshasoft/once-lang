@@ -121,7 +121,7 @@ mutual
   dc-sub (d-infer w _ _) c = sub-cod (ic-sub w c)
   {-# CATCHALL #-}
   dc-sub dd (t-sub d p) = di-cod (agree-di dd d) p
-  dc-sub (d-lam _ b) (t-lam _ b′) = ic-sub b b′
+  dc-sub (d-lam b) (t-lam _ b′) = ic-sub b b′
   dc-sub (d-compose dg df) (t-compose-check-g dg′ df′) = cg-sub (proj₁ (agree-dd dg dg′)) df df′
   dc-sub (d-compose dg df) (t-compose-check-f wf s dg′) = di-cod (agree-di df wf) s
   dc-sub d-id t-id-check = <:-refl _

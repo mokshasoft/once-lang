@@ -183,9 +183,9 @@ mutual
     -- The check is a conversion of a synthesis; its type is the arrow `d-infer` reads, aligned.
     dc-sub : ∀ {Ψ Ψ′ p} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {d : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B) ⨾ Ψ′}
            → Rdi dd d → Rdc {B′ = B′} dd (t-sub d p)
-    dc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p ≤p′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
+    dc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
                {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B′ ⨾ (q₁′ Surface.Usage.∷ Ψ′)}
-           → ∀ {u u′} → Ric b b′ → Rdc (d-lam {π = π} {u = u} ≤p b) (t-lam {u = u′} ≤p′ b′)
+           → ∀ {u u′} → Ric b b′ → Rdc (d-lam {π = π} {u = u} b) (t-lam {u = u′} ≤p′ b′)
     -- `d-compose` against the `g` route: the outer arm's domain is aligned.
     dc-cg : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂′}
               {df : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (M ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₁′}
@@ -222,9 +222,9 @@ mutual
                → Rdi dd w → Rdd (d-infer w a g) dd
     dd-infer-r : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B′) ⨾ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ}
                → Rdi dd w → Rdd dd (d-infer w a g)
-    dd-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p ≤p′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
+    dd-lam : ∀ {x q₁ q₁′ Ψ Ψ′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
                {b′ : extendNamedCtx ctx x A ⊢ᵢ e ∶ B′ ⨾ (q₁′ Surface.Usage.∷ Ψ′)}
-           → ∀ {u u′} → Rii b b′ → Rdd (d-lam {π = π} {u = u} ≤p b) (d-lam {u = u′} ≤p′ b′)
+           → ∀ {u u′} → Rii b b′ → Rdd (d-lam {π = π} {u = u} b) (d-lam {u = u′} b′)
     -- The outer half is domain-given at the middle the inner half determines, aligned.
     dd-compose : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂′}
                    {df : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B′ ⨾ Ψ₁′}

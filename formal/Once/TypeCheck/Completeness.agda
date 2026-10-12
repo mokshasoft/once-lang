@@ -842,7 +842,7 @@ mutual
     → ctx ⊢ᵈ f ∶ X ⇒[ T.pure ]↦ B ⨾ Ψf
     → ∃[ eE ] ∃[ d ] ∃[ f' ]
         inferElab ctx (Raw.RApp f x) ≡ success B (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
-  spine-complete f x eqAH dX dF@(d-lam _ _) =
+  spine-complete f x eqAH dX dF@(d-lam _) =
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX dF@(d-compose _ _) =
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
@@ -881,10 +881,10 @@ mutual
   given-complete {ctx} (d-poly {x = x} {A = A} {π = π} ln li lp ¬g as inc ki@(θ , eθ , _) g)
     rewrite poly-head-fails ctx x ln li lp ¬g =
       DPoly.from-lookups ctx x A π (Error.UnboundVariable x) ln li lp ¬g as inc θ eθ g ki
-  given-complete {ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} {u = u} leq bd)
+  given-complete {ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} {u = u} bd)
     with inferElabV (Classify.extendNamedCtx ctx x A) body | infer-complete bd
   ... | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | (_ , _ , _ , refl)
-      with E.decideLeq q' T.Many | decideLeq-just q' T.Many leq
+      with E.decideLeq q' T.Many | decideLeq-just q' T.Many (T.≤q-Many q')
   ...   | just _ | _ , refl = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
   given-complete {ctx} (d-compose {f = f} {g = g} {A = A} {M = M} {π = π} dg df)
     with elabGivenV ctx g A π | given-complete dg

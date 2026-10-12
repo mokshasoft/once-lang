@@ -286,7 +286,7 @@ mutual
   tm-d (d-infer w p g)     = cong (G.coerce _ _) (tm-i w)
   tm-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
     cong (G.coerce _ _) (cong (G.ref (entry lp)) (nat-inst lp ng ki))
-  tm-d (d-lam le d)        = cong (G.lam _ _ _) (tm-i d)
+  tm-d (d-lam d)           = cong (G.lam _ _ _) (tm-i d)
   tm-d (d-compose dg df)   = arms (tm-d df) (tm-d dg)
   tm-d d-id                = refl
   tm-d d-fst               = refl
@@ -485,7 +485,7 @@ mutual
   dr-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
     ≅coerce (cong (G.ref (entry lp)) (nat-inst lp ng ki))
             (refE-dr (entry lp) (inst lp ng (ρ̂-ki {sc} ki)) (inst lp ng ki) (nat-inst lp ng ki))
-  dr-d (d-lam {u = u} le d) =
+  dr-d (d-lam {u = u} d) =
     ≅lam refl (tm-i d) (≅1 _ _ (GT.⊢sub-eff u) refl (tm-i d) (dr-i d))
   dr-d (d-compose dg df)   =
     H.trans (≅2 _ _ (DT.⊢composeᶜ (·p-diag _)) refl (tm-d df) (dr-d df) refl (tm-d dg) (dr-d dg)) (H.sym (c-compose (·p-diag _) (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg))))

@@ -554,9 +554,9 @@ module _ {δ : GM.DefSem} where
   bridge-d V ag (d-infer {B = B} w a g) dγ = cong ⟦ sub-arr {q = Many} a (<:-refl B) g ⟧<:ᵛ (bridge-i V ag w dγ)
   bridge-d V ag (d-poly {A = A} {B = B} _ _ lp ng _ _ ki g) dγ =
     cong ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<:ᵛ (trans (Agree.agree-inst ag lp ng ki) (refSem-⊢ (inst V lp ng ki) dγ))
-  bridge-d V ag (d-lam {q' = Zero} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
-  bridge-d V ag (d-lam {q' = One} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
-  bridge-d V ag (d-lam {q' = Many} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
+  bridge-d V ag (d-lam {q' = Zero} {u = u} d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
+  bridge-d V ag (d-lam {q' = One} {u = u} d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
+  bridge-d V ag (d-lam {q' = Many} {u = u} d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
   bridge-d V ag (d-compose dg df) dγ =
     trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))

@@ -480,9 +480,9 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- instance, converted to the given grade.
 ⟦_⟧ᵈ {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) fmt ρ dγ =
   fmapᵖ ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<:ᵛ (defAt (NamedCtx.polys ctx) x (defs ρ) lp _ ki)
-⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Zero} {u = u} _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
-⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One} {u = u}  _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
-⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} {u = u} _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
+⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Zero} {u = u}d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One} {u = u} d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
+⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} {u = u}d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
 ⟦_⟧ᵈ {ctx = ctx} (d-compose {π = π} dg df) fmt ρ dγ =
   (⟦ df ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=ᵖ λ vg →
   λ a → bindM π (vg a) vf

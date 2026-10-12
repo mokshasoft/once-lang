@@ -45,11 +45,13 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
 
-open import Once.Denotation.Behavior using (Source; Behavior)
+open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
+open import Once.Denotation.TraceMonad using (PrefixFamily)
+open Once.Denotation.TraceMonad.PrefixFamily using (bnd; sat; coh)
+open import Once.Denotation.TraceMonadInfLaws using (events∞-pf)
 
-open import Once.Denotation.BehaviorLaws using (behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Spec.Core.Telescope using (runProgram)
+open import Once.Spec.Core.Telescope using (runProgram; Program; program)
 open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 import Once.IR as IR
@@ -500,10 +502,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- against. The compiled program's `main` is the call of that entry, so the
   -- telescope walk's per-entry invariant at `main` is the equation of the two
   -- runs (`CoreBridge.program-core`), in the world those signatures and `I`
-  -- make. The trace family IS the core run; the three laws are BORROWED from
-  -- the compiled program it is proved equal to (`behavior-by`, D179 — the laws
-  -- are about `at` alone, so they transport along the equality; nothing about
-  -- the core is assumed).
+  -- make. The trace family IS the core run, and its three laws (D179) are the
+  -- core run's own (`runProgram-pf`).
   core-run : ∀ (arch : Arch) (tp : Typed) (I : Impl (sigOfT tp)) → ℕ → List SigOpEvent
   core-run arch tp I = runProgram (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp) (CB.implFor (arch-numerics arch) tp I)
 
@@ -513,13 +513,15 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     trans (cong (λ x → at (⟦ programAt (moduleTable m) x ⟧IR (arch-numerics arch) (interp (moduleSig m) I)) n) mi)
           (CB.program-core (arch-numerics arch) m mt hvm I ir mi n)
 
+  -- The meaning's behaviour is the core run itself: every run of `T∞` is a
+  -- prefix family (`events∞-pf`), so the three laws come from the meaning, not
+  -- from the compiled program.
+  runProgram-pf : ∀ {Fs} fmt (P : Program Fs) (I : Impl Fs) → PrefixFamily (runProgram fmt P I)
+  runProgram-pf {Fs} fmt (program defs d e) I = events∞-pf (interp Fs I) _ _
+
   ⟦_⟧ᵈᴵ : Arch → (tp : Typed) → Impl (sigOfT tp) → Behavior
-  ⟦ arch ⟧ᵈᴵ tp I =
-    behavior-by (⟦ moduleToProgram (proj₁ tp) ⟧IR (arch-numerics arch) (interp (sigOfT tp) I)) (core-run arch tp I)
-                (ir-core arch tp I ir mi)
-    where
-      ir = proj₁ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
-      mi = proj₂ (MC.moduleToIR-complete (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))
+  ⟦ arch ⟧ᵈᴵ tp I = mkBehavior (core-run arch tp I) (coh pf) (bnd pf) (sat pf)
+    where pf = runProgram-pf (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp) (CB.implFor (arch-numerics arch) tp I)
 
   ----------------------------------------------------------------------
   -- Plan 0.105: the semantic half, at an interpretation `ι` — the world the

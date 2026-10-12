@@ -1265,9 +1265,9 @@ bridge-d (d-infer {B = B} w a g) re er = RelGT-sub (sub-arr {q = Many} a (<:-ref
 bridge-d {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) re er =
   RelGT-sub (sub-arr {q = Many} (<:-refl A) (<:-refl B) g)
     (envrel-at (NamedCtx.polys ctx) x (proj₁ er) lp (A ⇒[ mk-kind Many π′ ] B) ki)
-bridge-d (d-lam {B = B} {q' = Zero} {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind0 re) er))
-bridge-d (d-lam {B = B} {q' = One}  {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind One re rv) er))
-bridge-d (d-lam {B = B} {q' = Many} {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind Many re rv) er))
+bridge-d (d-lam {B = B} {q' = Zero} {π = π} {u = u} d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind0 re) er))
+bridge-d (d-lam {B = B} {q' = One}  {π = π} {u = u} d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind One re rv) er))
+bridge-d (d-lam {B = B} {q' = Many} {π = π} {u = u} d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind Many re rv) er))
 bridge-d (d-compose {A = A} {M = M} {B = B} {π = π} dg df) re er =
   RelGᵖ-bind {A = M ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] B}
             (bridge-d df (reˡ re) er) (λ {f₁} {f₂} rf →

@@ -486,7 +486,7 @@ mutual
   agree-dc (d-infer w _ _) c = agree-ic w c
   {-# CATCHALL #-}
   agree-dc dd (t-sub d _) = proj₂ (proj₂ (proj₂ (proj₂ (agree-di dd d))))
-  agree-dc (d-lam _ b) (t-lam _ b′) with agree-ic b b′
+  agree-dc (d-lam b) (t-lam _ b′) with agree-ic b b′
   ... | refl = refl
   agree-dc (d-compose dg df) (t-compose-check-g dg′ df′) with agree-dd dg dg′
   ... | refl , refl = cong (_+ᵘ _) (agree-dc df df′)
@@ -506,7 +506,7 @@ mutual
   -- agree-di
   agree-di (d-infer w _ g) d with agree-ii w d
   ... | refl , refl = _ , _ , refl , g , refl
-  agree-di (d-lam _ _) ()
+  agree-di (d-lam _) ()
   agree-di (d-compose _ _) d = ⊥-elim (noinf-compose d)
   agree-di d-id d = ⊥-elim (noinf-id d)
   agree-di d-fst d = ⊥-elim (noinf-fst d)
@@ -529,7 +529,7 @@ mutual
   {-# CATCHALL #-}
   agree-dd dd (d-infer w _ _) with agree-di dd w
   ... | _ , _ , refl , _ , refl = refl , refl
-  agree-dd (d-lam _ b) (d-lam _ b′) with agree-ii b b′
+  agree-dd (d-lam b) (d-lam b′) with agree-ii b b′
   ... | refl , refl = refl , refl
   agree-dd (d-compose dg df) (d-compose dg′ df′) with agree-dd dg dg′
   ... | refl , refl with agree-dd df df′

@@ -41,7 +41,7 @@ open import Data.String using (String; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Spec.Type.Grade using (mk-kind; Many; pure)
+open import Once.Spec.Type.Grade using (mk-kind; Many; pure; ≤q-Many)
 open import Once.Spec.Type using (Type; Int; Float; _*_; _⇒[_]_)
 open import Once.Spec.Type.Poly using (Ground; extractGround)
 open import Once.Spec.Type.Instance using (KindedInstance)
@@ -286,7 +286,7 @@ elabᵢ V (t-app-spine _ dx df) = lift2 app ⊢app (elabᵈ V df) (elabᵢ V dx)
 elabᵈ V (d-infer {B = B} w a g) = coerceE (sub-arr a (<:-refl B) g) (elabᵢ V w)
 elabᵈ V (d-poly {A = A} {B = B} _ _ lp ng _ _ ins g) =
   coerceE (sub-arr (<:-refl A) (<:-refl B) g) (refE (entry V lp) (inst V lp ng ins))
-elabᵈ V (d-lam {u = u} ≤p d) = let (b , ⊢b) = elabᵢ V d in lam _ _ _ b , ⊢lam ≤p (⊢sub-eff u ⊢b)
+elabᵈ V (d-lam {q' = q'} {u = u} d) = let (b , ⊢b) = elabᵢ V d in lam _ _ _ b , ⊢lam (≤q-Many q') (⊢sub-eff u ⊢b)
 elabᵈ V (d-compose dg df)    = lift2 (composeᶜ _ _) (⊢composeᶜ (·p-diag _)) (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V (d-id {u = u}) = idᶜ _ _ , ⊢idᶜ u
 elabᵈ V (d-fst {u = u}) = fstᶜ _ _ _ , ⊢fstᶜ u

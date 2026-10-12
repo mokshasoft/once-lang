@@ -2161,7 +2161,7 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success B (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' Once.Spec.Type.Grade.Many
   ...   | just eq = withUnit (failure (BuiltinTypeMismatch "lambda") , tt) π λ u →
-                    success B Ψ (Surface.lam Once.Spec.Type.Grade.Many eq bodyE) (suc d) fr , d-lam {u = u} eq wBody
+                    success B Ψ (Surface.lam Once.Spec.Type.Grade.Many eq bodyE) (suc d) fr , d-lam {u = u} wBody
   ...   | nothing = failure (UsageViolation x Once.Spec.Type.Grade.Many q') , tt
   elabGivenV ctx (Raw.RResolved cn) A π = elabGivenLeaf ctx cn A π (classifyAppHeadView (Raw.RResolved cn)) (inferElabV ctx (Raw.RResolved cn))
   elabGivenV ctx (Raw.RApp f g) A π = elabGivenApp ctx f g A π (classifyAppHeadView f) (inferElabV ctx (Raw.RApp f g))

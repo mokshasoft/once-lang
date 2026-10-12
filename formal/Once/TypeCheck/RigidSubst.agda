@@ -275,7 +275,7 @@ mutual
   subst-d′ ir (d-infer w p g)      = d-infer (subst-i′ ir w) (ρ̂-<: p) g
   subst-d′ {Γ = Γ} {D = D} ir (d-poly {x = x} {schema = sch} ln li lp ng as cv ki g) =
     d-poly (lk-nothing x Γ D ln) li lp ng as cv (ρ̂-ki {sch} ki) g
-  subst-d′ ir (d-lam {u = u} le d)         = d-lam {u = u} le (subst-i′ ir d)
+  subst-d′ ir (d-lam {u = u} d)            = d-lam {u = u} (subst-i′ ir d)
   subst-d′ ir (d-compose dg df)    = d-compose (subst-d′ ir dg) (subst-d′ ir df)
   subst-d′ ir (d-id {u = u})                 = d-id {u = u}
   subst-d′ ir (d-fst {u = u})                = d-fst {u = u}

@@ -33,7 +33,7 @@ module Once.Denotation.Realize where
 
 open import Data.Integer using ()   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
-open import Once.Spec.Type.Grade using (Many; Purity; mk-kind)
+open import Once.Spec.Type.Grade using (Many; Purity; mk-kind; ≤q-Many)
 open import Once.Spec.Type using (Type; μ-type; ν-type; _⇒[_]_)
 open import Once.Spec.Type.Sub using (sub-arr)
 open import Once.Metatheory.SubLaws using (<:-refl)
@@ -269,7 +269,7 @@ realize-d (d-infer {B = B} w a g) = coerce (sub-arr a (<:-refl B) g) (realize-in
 -- Plan 0.103 phase 2b: as the check-mode polymorphic reference — the body's
 -- reference elaboration, closed, converted to the given grade.
 realize-d (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ _ _ _ _ _ g) = coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly x (A ⇒[ mk-kind Many π′ ] B))
-realize-d (d-lam ≤p d)            = lam Many ≤p (realize-infer d)
+realize-d (d-lam {q' = q'} d)     = lam Many (≤q-Many q') (realize-infer d)
 realize-d (d-compose dg df)       = comp' (realize-d df) (realize-d dg)
 realize-d d-id       = lift-morphism IR.id
 realize-d d-fst      = lift-morphism IR.fst

@@ -138,7 +138,7 @@ mutual
   coh-dc (dc-infer {a = a} {g = g} {w = w} {c = c} r) p =
     twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (MS.ic-sub w c) (coh-ic r (MS.ic-sub w c))
   coh-dc (dc-sub {p = sub-arr a₀ b₀ g₀} r) p = dcsub-h p a₀ b₀ g₀ (coh-di r a₀ g₀)
-  coh-dc (dc-lam {≤p = ≤p} {≤p′ = ≤p′} r) p = lamc-h ≤p ≤p′ p (coh-ic r p)
+  coh-dc (dc-lam {q₁ = q₁} {≤p′ = ≤p′} r) p = lamc-h (T.≤q-Many q₁) ≤p′ p (coh-ic r p)
   coh-dc (dc-cg r₁ r₂) p = cg-h p (coh-dc r₂ p) (coh-dd r₁)
   coh-dc (dc-cf {s = s@(sub-arr _ _ g′)} {dg = dg} {dg′ = dg′} rdi rdc) p =
     cf-h (MS.dc-sub dg dg′) p g′ s (coh-di rdi (MS.dc-sub dg dg′) g′) (coh-dc rdc (MS.dc-sub dg dg′))
@@ -162,7 +162,7 @@ mutual
          → Rdd dd dd′ → RD dd ≅ RD dd′
   coh-dd (dd-infer-l {a = a} {g = g} r) = ≅-sym (coh-di r a g)
   coh-dd (dd-infer-r {a = a} {g = g} r) = coh-di r a g
-  coh-dd (dd-lam {≤p = ≤p} {≤p′ = ≤p′} r) = lamd-h ≤p ≤p′ (coh-ii r)
+  coh-dd (dd-lam {q₁ = q₁} {q₁′ = q₁′} r) = lamd-h (T.≤q-Many q₁) (T.≤q-Many q₁′) (coh-ii r)
   coh-dd (dd-compose r₁ r₂) = comp-h (coh-dd r₂) (coh-dd r₁)
   coh-dd dd-id = ≅-refl
   coh-dd dd-fst = ≅-refl

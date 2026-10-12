@@ -328,7 +328,7 @@ mutual
   route-dc (d-infer w _ _) c = dc-infer (route-ic w c)
   {-# CATCHALL #-}
   route-dc dd (t-sub d p) = dcsub-r dd d p (agree-di dd d)
-  route-dc (d-lam _ b) (t-lam _ b′) = dc-lam (route-ic b b′)
+  route-dc (d-lam b) (t-lam _ b′) = dc-lam (route-ic b b′)
   route-dc (d-compose dg df) (t-compose-check-g dg′ df′) = cg-r dg df dg′ df′ (proj₁ (agree-dd dg dg′))
   route-dc (d-compose dg df) (t-compose-check-f wf _ dg′) = dc-cf (route-di df wf) (route-dc dg dg′)
   route-dc d-id t-id-check = dc-id
@@ -341,7 +341,7 @@ mutual
   route-dc (d-cata _ a) (t-cata-check _ a′) = dc-cata (route-ic a a′)
   route-dc (d-poly _ _ _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = dc-poly
   route-di (d-infer w _ _) d = di-infer (route-ii w d)
-  route-di (d-lam _ _) ()
+  route-di (d-lam _) ()
   route-di (d-compose _ _) d = ⊥-elim (noinf-compose d)
   route-di d-id d = ⊥-elim (noinf-id d)
   route-di d-fst d = ⊥-elim (noinf-fst d)
@@ -357,7 +357,7 @@ mutual
   route-dd (d-infer w _ _) dd′ = dd-infer-l (route-di dd′ w)
   {-# CATCHALL #-}
   route-dd dd (d-infer w _ _) = dd-infer-r (route-di dd w)
-  route-dd (d-lam _ b) (d-lam _ b′) = dd-lam (route-ii b b′)
+  route-dd (d-lam b) (d-lam b′) = dd-lam (route-ii b b′)
   route-dd (d-compose dg df) (d-compose dg′ df′) = comp-r dg df dg′ df′ (proj₁ (agree-dd dg dg′))
   route-dd d-id d-id = dd-id
   route-dd d-fst d-fst = dd-fst

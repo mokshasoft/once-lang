@@ -21,6 +21,7 @@
 module Once.Spec.Type.Grade where
 
 open import Data.Bool using (Bool; true; false)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- Usage: the semiring {0, 1, ω}
@@ -76,6 +77,12 @@ One   ≤q Many  = true
 Many  ≤q Zero  = false
 Many  ≤q One   = false
 Many  ≤q Many  = true
+
+-- ω is the top of the order: every usage may stand where ω is expected.
+≤q-Many : ∀ q → (q ≤q Many) ≡ true
+≤q-Many Zero = refl
+≤q-Many One  = refl
+≤q-Many Many = refl
 
 ------------------------------------------------------------------------
 -- Effect: the order pure ≤ eff ≤ prod, with eff⁺ ≤ eff

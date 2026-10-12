@@ -895,7 +895,6 @@ mutual
     -- A lambda whose body synthesizes once its binder has the given type.
     d-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr} {A B : Type} {q' : Quantity}
               {π : Once.Spec.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Type.Grade.pure ⊑π π}
-          → (q' Once.Spec.Type.Grade.≤q Once.Spec.Type.Grade.Many) ≡ true
           → (extendNamedCtx ctx x A) ⊢ᵢ body ∶ B ⨾ (q' ∷ Ψ)
           → ctx ⊢ᵈ RLam x body ∶ A ⇒[ π ]↦ B ⨾ Ψ
     -- A nested composite: the inner half determines the middle, the outer half

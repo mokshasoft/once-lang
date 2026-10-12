@@ -269,7 +269,7 @@ realize-refs-i (t-app-spine _ dx df) = realize-refs-d df , realize-refs-i dx
 
 realize-refs-d (d-infer w a g) = realize-refs-i w
 realize-refs-d (d-poly eL eI eP ¬g as inc ki g) = _ , eP , ki
-realize-refs-d (d-lam ≤p d)      = realize-refs-i d
+realize-refs-d (d-lam d)         = realize-refs-i d
 realize-refs-d (d-compose dg df) = realize-refs-d df , realize-refs-d dg
 realize-refs-d d-id       = tt
 realize-refs-d d-fst      = tt
