@@ -15351,6 +15351,8 @@ were never going to be the theorem).
 
 ## D222 — READ THE GRADE OFF THE DENOTATION: `pair` SHARES ONE π, `curry` HAS TWO (2026-09-20)
 
+**Status**: Superseded in part by D311 (2026-10-12): the shared π gives way to a grade per premise and their product (a guarded grade is not above `pure`, so sequencing is not the join); `curry`'s two grades stand.
+
 The design call plan 0.95 A owed, made from what the terms MEAN rather than from
 what the elaborator happens to accept.
 

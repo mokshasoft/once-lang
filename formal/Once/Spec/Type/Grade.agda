@@ -9,7 +9,7 @@
 --   * by a usage `Quantity` (quantitative type theory): how many times the
 --     argument is consumed — `Zero` (erased), `One` (linear), `Many`;
 --   * by a `Purity`: whether running it has observable effects — `pure`, or
---     `eff`, ordered `pure ≤ eff`.
+--     `eff`, ordered `pure ≤ eff`; sequencing multiplies grades (`_·p_`).
 -- All four combinations are arrows. One law couples the two where a
 -- computation sits in a position (plan 0.116): an ERASED position is never run
 -- — it has no resources at run time — so what sits there must be pure
@@ -84,13 +84,25 @@ data Purity : Set where
   pure : Purity   -- no observable effects
   eff  : Purity   -- may have observable effects
 
--- Join: composing two arrows takes the join of their grades; `pure` is the
--- unit and `eff` absorbs.
+-- Join: the least grade above both — the grade at which two arms meet, of
+-- which exactly one runs.
 _⊔p_ : Purity → Purity → Purity
 pure ⊔p p = p
 eff  ⊔p _ = eff
 
 infixr 5 _⊔p_
+
+-- SEQUENCING (D311): running one computation and then another has the
+-- PRODUCT of their grades. Grades are an ordered monoid with unit `pure`; on
+-- `pure ⊑ eff` the product happens to be the join, but it is a separate
+-- operation: a guarded grade (an event first) is absorbing under sequencing
+-- yet not above `pure`. A rule that runs premises in order concludes at the
+-- product of their grades, left to right.
+_·p_ : Purity → Purity → Purity
+pure ·p p = p
+eff  ·p _ = eff
+
+infixr 6 _·p_
 
 -- The grade a computation may have in a position used `q` times, inside a
 -- term of grade `π`: an erased position (`Zero`) is never evaluated, so only a
