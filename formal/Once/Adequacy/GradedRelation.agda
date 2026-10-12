@@ -24,15 +24,19 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff; prod; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pp)
+open import Once.Spec.Guarded using (ν⁺; T⁺; call⁺; halt⁺; forget⁺)
+open Once.Spec.Guarded.ν⁺ using (force⁺)
+open import Once.Denotation.GuardedLaws using (forget-bind⁺)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
-open import Once.Denotation.GradedOps using (prjB; injB; embν; mapEmbν; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; embν∞ᵖ; mapEmbν∞ᵖ)
+open import Once.Denotation.GradedOps using (fmapM; embν⁺ᵈ; embRoot⁺; embTree⁺; mapEmbν⁺ᵈ; prjB; injB; embν; mapEmbν; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; embν∞ᵖ; mapEmbν∞ᵖ)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; RelT′; rel-ret)
-open import Once.Denotation.TraceMonadLaws using (RelT′-bind)
+open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
+open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; forgetᵇ; injectᵇ; module νᵈ)
 open νᵈ using (forceᵈ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
@@ -60,6 +64,15 @@ record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᵈ F) : Set where
 
 open _∼ᵖᵈ_
 
+-- A stream whose layers begin with an event (`ν-type F eff⁺`, D311) against the
+-- Kleisli one: each forced layer's tree, forgotten, is related to it.
+record _∼⁺ᵈ_ {F : SFunctor} (x : ν⁺ F) (y : νᵈ F) : Set where
+  coinductive
+  field
+    force-∼⁺ᵈ : RelT′ (⟦ F ⟧SF-rel (_∼⁺ᵈ_ {F})) (forget⁺ (force⁺ x)) (forceᵈ y)
+
+open _∼⁺ᵈ_
+
 -- A stream whose layers may take forever (`ν-type F prod`, D311) against the
 -- Kleisli one: each forced layer's tree is related to the finite one.
 record _∼∞ᵈ_ {F : SFunctor} (x : ν∞ F) (y : νᵈ F) : Set where
@@ -80,6 +93,7 @@ RelGT : ∀ (A : Type) → T ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
 -- embedding into `T` (`toT pure = returnT`).
 RelGM : ∀ (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
 RelGM pure A m t = RelGT A (returnT m) t
+RelGM eff⁺ A m t = RelGT A (forget⁺ m) t
 RelGM eff  A m t = RelGT A m t
 -- D311: a tree that may be infinite against the IR's finite one.
 RelGM prod A m t = RelT∞′ (RelGV A) m t
@@ -94,6 +108,7 @@ RelGV Float       x y = x ≡ y
 RelGV (μ-type F)  x y = x ≡ y
 RelGV (ν-type F pure) x y = x ∼ᵖᵈ y
 RelGV (ν-type F eff)  x y = x ∼ᵈ y
+RelGV (ν-type F eff⁺) x y = x ∼⁺ᵈ y
 RelGV (ν-type F prod) x y = x ∼∞ᵈ y
 RelGV (rigid _ _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
@@ -149,11 +164,27 @@ RelGM-bind : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : �
 RelGM-bind pure {A} {B} {m} {t₂} {k} {g} = RelGᵖ-bind {A} {B} {m} {t₂} {k} {g}
 RelGM-bind eff  {A} {B} {m} {t₂} {k} {g} = RelGT-bind {A} {B} {m} {t₂} {k} {g}
 RelGM-bind prod {A} {B} {m} {t₂} {k} {g} = RelT∞′-bind
+RelGM-bind eff⁺ {A} {B} {m} {t₂} {k} {g} rm rk =
+  subst (λ t → RelGT B t (t₂ >>=T g)) (sym (forget-bind⁺ m (λ x → forget⁺ (k x))))
+        (RelGT-bind {A} {B} {forget⁺ m} {t₂} {λ x → forget⁺ (k x)} {g} rm rk)
 
-RelGM-return : ∀ π {A} {x y} → RelGV A x y → RelGM π A (returnM π x) (returnT y)
-RelGM-return pure {A} rv = RelGT-return {A} rv
-RelGM-return eff  {A} rv = RelGT-return {A} rv
-RelGM-return prod {A} rv = rel∞-ret refl rv
+-- The graded map: both sides map their result along related functions. No
+-- unit needed — at `eff⁺` the map keeps the root event.
+RelGM-fmap : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t : T ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
+           → RelGM π A m t
+           → (∀ {a b} → RelGV A a b → RelGV B (f a) (g b))
+           → RelGM π B (fmapM π f m) (fmapT g t)
+RelGM-fmap pure {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
+RelGM-fmap eff  {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
+RelGM-fmap eff⁺ {A} {B} {m} {t} {f} rm h =
+  subst (λ t′ → RelGT B t′ (fmapT _ t)) (sym (forget-bind⁺ m (λ x → ret (f x))))
+        (RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm)
+RelGM-fmap prod rm h = RelT∞′-bind rm (λ r → rel∞-ret refl (h r))
+
+RelGM-return : ∀ {π} (u : pure ⊑π π) {A} {x y} → RelGV A x y → RelGM π A (returnM u x) (returnT y)
+RelGM-return ⊑-pure {A} rv = RelGT-return {A} rv
+RelGM-return ⊑-pe   {A} rv = RelGT-return {A} rv
+RelGM-return ⊑-pp   {A} rv = rel∞-ret refl rv
 
 ------------------------------------------------------------------------
 -- The FFI boundary. Contracts are first-order (plan 0.105), so at a base type
@@ -231,6 +262,35 @@ mutual
   mapEmbν∞ᵈ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
   mapEmbν∞ᵈ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbν∞ᵈ-∼ H G₁ r₁ , mapEmbν∞ᵈ-∼ H G₂ r₂
 
+-- `eff⁺ ⊑ eff` at ν (D311 C2): forgetting that each layer begins with an
+-- event keeps the stream related to the Kleisli one.
+mutual
+  embν⁺ᵈ-∼ : ∀ {H : SFunctor} {x : ν⁺ H} {y : νᵈ H} → x ∼⁺ᵈ y → embν⁺ᵈ x ∼ᵈ y
+  force-∼ (embν⁺ᵈ-∼ {H} {x} r) = embRoot⁺-∼ H (force⁺ x) (force-∼⁺ᵈ r)
+
+  embRoot⁺-∼ : ∀ (H : SFunctor) (m : T⁺ (⟦ H ⟧SF (ν⁺ H))) {m′ : T (⟦ H ⟧SF (νᵈ H))}
+             → RelT′ (⟦ H ⟧SF-rel (_∼⁺ᵈ_ {H})) (forget⁺ m) m′
+             → RelT′ (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (embRoot⁺ H m) m′
+  embRoot⁺-∼ H (call⁺ o a k) (rel-call f) = rel-call (λ b → embTree⁺-∼ H (f b))
+  embRoot⁺-∼ H (halt⁺ o a)   rel-halt     = rel-halt
+
+  embTree⁺-∼ : ∀ (H : SFunctor) {m : T (⟦ H ⟧SF (ν⁺ H))} {m′ : T (⟦ H ⟧SF (νᵈ H))}
+             → RelT′ (⟦ H ⟧SF-rel (_∼⁺ᵈ_ {H})) m m′
+             → RelT′ (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (embTree⁺ H m) m′
+  embTree⁺-∼ H (rel-ret rr) = rel-ret (mapEmbν⁺ᵈ-∼ H H rr)
+  embTree⁺-∼ H (rel-call f) = rel-call (λ b → embTree⁺-∼ H (f b))
+  embTree⁺-∼ H rel-halt     = rel-halt
+
+  mapEmbν⁺ᵈ-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (ν⁺ H)} {l′ : ⟦ G ⟧SF (νᵈ H)}
+              → ⟦ G ⟧SF-rel (_∼⁺ᵈ_ {H}) l l′ → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) (mapEmbν⁺ᵈ H G l) l′
+  mapEmbν⁺ᵈ-∼ H (SK B)     r = r
+  mapEmbν⁺ᵈ-∼ H SId        r = embν⁺ᵈ-∼ r
+  mapEmbν⁺ᵈ-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = mapEmbν⁺ᵈ-∼ H G₁ r
+  mapEmbν⁺ᵈ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = mapEmbν⁺ᵈ-∼ H G₂ r
+  mapEmbν⁺ᵈ-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+  mapEmbν⁺ᵈ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+  mapEmbν⁺ᵈ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbν⁺ᵈ-∼ H G₁ r₁ , mapEmbν⁺ᵈ-∼ H G₂ r₂
+
 mutual
   embν∞ᵖ-∼ : ∀ {H : SFunctor} {x : νᵖ H} {y : νᵈ H} → x ∼ᵖᵈ y → embν∞ᵖ x ∼∞ᵈ y
   force-∼∞ᵈ (embν∞ᵖ-∼ {H} r) = layᵖ H (force-∼ᵖᵈ r)
@@ -251,7 +311,7 @@ mutual
   mapEmbν∞ᵖ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbν∞ᵖ-∼ H G₁ r₁ , mapEmbν∞ᵖ-∼ H G₂ r₂
 
 -- A pure meaning, embedded at any grade (what a lambda's body is, D250).
-RelGM-ret : ∀ π {B} {v : ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM π v) t
-RelGM-ret pure r = r
-RelGM-ret eff  r = r
-RelGM-ret prod (rel-ret r) = rel∞-ret refl r
+RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
+RelGM-ret ⊑-pure r = r
+RelGM-ret ⊑-pe   r = r
+RelGM-ret ⊑-pp   (rel-ret r) = rel∞-ret refl r

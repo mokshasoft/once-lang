@@ -37,7 +37,7 @@ open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 open import Once.Spec.Type.Grade using (Zero; One; Many)
 open import Once.Spec.Context using (Ctx; Usage; _↾_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; returnM; bindM; bindᵍ; subM)
+open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
@@ -139,12 +139,12 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
 
 ⟦ ⊢pair {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {π₂ = π₂} da db ⟧ fmt ρ dγ =
   bindᵍ π₁ π₂ (⟦ da ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ)) λ a →
-  bindM π₂ (⟦ db ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ)) λ b → returnM π₂ (a , b)
-⟦ ⊢fst {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (proj₁ v)
-⟦ ⊢snd {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (proj₂ v)
+  fmapM π₂ (λ b → a , b) (⟦ db ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
+⟦ ⊢fst {π = π} d ⟧ fmt ρ dγ = fmapM π proj₁ (⟦ d ⟧ fmt ρ dγ)
+⟦ ⊢snd {π = π} d ⟧ fmt ρ dγ = fmapM π proj₂ (⟦ d ⟧ fmt ρ dγ)
 
-⟦ ⊢inl {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (inj₁ v)
-⟦ ⊢inr {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (inj₂ v)
+⟦ ⊢inl {π = π} d ⟧ fmt ρ dγ = fmapM π inj₁ (⟦ d ⟧ fmt ρ dγ)
+⟦ ⊢inr {π = π} d ⟧ fmt ρ dγ = fmapM π inj₂ (⟦ d ⟧ fmt ρ dγ)
 ⟦ ⊢case {Γ = Γ} {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁} {π₂ = π₂} {A = A} {B = B} ds dl dr ⟧ fmt ρ dγ =
   bindᵍ π₁ π₂ (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψs Ψ) dγ)) λ v →
   [ (λ a → ⟦ dl ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} qℓ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψs Ψ) dγ) a))
@@ -153,19 +153,18 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
 
 ⟦ ⊢absurd {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → ⊥-elim v
 
-⟦ ⊢roll {π = π} wf d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (in-valueᵛ wf v)
-⟦ ⊢fold {Γ = Γ} {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} wf da dt ⟧ fmt ρ dγ =
+⟦ ⊢roll {π = π} wf d ⟧ fmt ρ dγ = fmapM π (in-valueᵛ wf) (⟦ d ⟧ fmt ρ dγ)
+⟦ ⊢fold {Γ = Γ} {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} u wf da dt ⟧ fmt ρ dγ =
   -- plan 0.113 B1: the algebra's part is ω-scaled (it runs per node).
   bindᵍ π₁ _ (⟦ da ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) dγ)) λ valg →
-  bindᵍ π₂ π (⟦ dt ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) dγ)) λ v → cata-semᵛ π wf valg v
+  bindᵍ π₂ π (⟦ dt ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) dγ)) λ v → cata-semᵛ u wf valg v
 -- `unfold c s`, left to right: the coalgebra TERM is evaluated once, then the
 -- seed (D273, plan 0.116 E: as `fold`'s algebra, D131, and the IR's `Ana`); the
 -- coalgebra FUNCTION runs in each forced layer, so an effectful one (a server,
 -- D233) emits per layer.
 ⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ = π₂} wf dc ds ⟧ fmt ρ dγ =
   bindᵍ π₁ π₂ (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) λ clo →
-  bindM π₂ (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ)) λ s →
-    ana-semᵛ π π₂ wf clo s
+  fmapM π₂ (ana-semᵛ π wf clo) (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ))
 ⟦ ⊢out {π = π} {π₁ = π₁} wf d ⟧ fmt ρ dγ = bindᵍ π₁ π (⟦ d ⟧ fmt ρ dγ) (out-semᵛ π wf)
 
 ⟦ ⊢coerce {π = π} p d ⟧ fmt ρ dγ = fmapM π ⟦ p ⟧<:ᵛ (⟦ d ⟧ fmt ρ dγ)
@@ -173,7 +172,7 @@ primSem p-i2f fmt v = semP i2f-info int-prim fmt v
 ⟦ ⊢lit-int {i = i} ⟧   fmt ρ dγ = OnceWord.Width.fromℤ (int-bits fmt) i
 ⟦ ⊢lit-float {d = d} ⟧ fmt ρ dγ = round (float-format fmt) d
 
-⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → returnM π (primSem p fmt v)
+⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = fmapM π (primSem p fmt) (⟦ d ⟧ fmt ρ dγ)
 
 ⟦ ⊢sigop {A = A} c k _ _ m ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt (sigOf S) (impl ρ) c k m
 

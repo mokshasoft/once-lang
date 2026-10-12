@@ -102,10 +102,10 @@ ren-⊢ {Δ = Δ} θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {A = A} {B = B} {C = C} {s =
        (subst (λ u → (Δ , B ^ Many) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) r) (ren-⊢ (keep θ) dr)))
 ren-⊢ θ (⊢absurd d) = ⊢absurd (ren-⊢ θ d)
 ren-⊢ θ (⊢roll wf d) = ⊢roll wf (ren-⊢ θ d)
-ren-⊢ {Δ = Δ} θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {F = F} {alg = alg} {t = t} wf da dt) =
+ren-⊢ {Δ = Δ} θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {F = F} {alg = alg} {t = t} u wf da dt) =
   subst (λ U → Δ ⊢[ U ] fold F (ren (thin-var θ) alg) (ren (thin-var θ) t) ∷ _ ! _)
     (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψa) Ψt) (cong (_+ᵘ thin-usage θ Ψt) (thin-usage-*ᵘ θ Many Ψa))))
-    (⊢fold wf (ren-⊢ θ da) (ren-⊢ θ dt))
+    (⊢fold u wf (ren-⊢ θ da) (ren-⊢ θ dt))
 ren-⊢ {Δ = Δ} θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {F = F} {c = c} {s = sd} wf dc ds) =
   subst (λ U → Δ ⊢[ U ] unfold F (ren (thin-var θ) c) (ren (thin-var θ) sd) ∷ _ ! _)
     (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))))

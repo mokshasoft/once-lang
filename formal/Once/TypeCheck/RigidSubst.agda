@@ -239,26 +239,26 @@ mutual
 
   subst-c′ : ∀ {n Γ D imps polys sg e A Ψ} → TopRF imps sg
            → mkCtx n Γ D imps polys sg ⊢ᶜ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
-  subst-c′ ir t-id-check             = t-id-check
-  subst-c′ ir t-fst-check            = t-fst-check
-  subst-c′ ir t-snd-check            = t-snd-check
-  subst-c′ ir t-terminal-morph-check = t-terminal-morph-check
-  subst-c′ ir t-initial-morph-check  = t-initial-morph-check
-  subst-c′ ir t-inl-morph-check      = t-inl-morph-check
-  subst-c′ ir t-inr-morph-check      = t-inr-morph-check
+  subst-c′ ir (t-id-check {u = u})             = t-id-check {u = u}
+  subst-c′ ir (t-fst-check {u = u})            = t-fst-check {u = u}
+  subst-c′ ir (t-snd-check {u = u})            = t-snd-check {u = u}
+  subst-c′ ir (t-terminal-morph-check {u = u}) = t-terminal-morph-check {u = u}
+  subst-c′ ir (t-initial-morph-check {u = u})  = t-initial-morph-check {u = u}
+  subst-c′ ir (t-inl-morph-check {u = u})      = t-inl-morph-check {u = u}
+  subst-c′ ir (t-inr-morph-check {u = u})      = t-inr-morph-check {u = u}
   subst-c′ ir (t-compose-check-g dg df) = t-compose-check-g (subst-d′ ir dg) (subst-c′ ir df)
   subst-c′ ir (t-compose-check-f wf p dg) = t-compose-check-f (subst-i′ ir wf) (ρ̂-<: p) (subst-c′ ir dg)
   subst-c′ ir (t-case-copair-check df dg) = t-case-copair-check (subst-c′ ir df) (subst-c′ ir dg)
   subst-c′ ir (t-pair-morph-check df dg)  = t-pair-morph-check (subst-c′ ir df) (subst-c′ ir dg)
-  subst-c′ ir (t-curry-check df)          = t-curry-check (subst-c′ ir df)
-  subst-c′ ir (t-cata-check {F = F} {A = A} {π = π} wf da) =
-    t-cata-check (ρ̂-wf wf)
+  subst-c′ ir (t-curry-check {u = u} df)          = t-curry-check {u = u} (subst-c′ ir df)
+  subst-c′ ir (t-cata-check {F = F} {A = A} {π = π} {u = u} wf da) =
+    t-cata-check {u = u} (ρ̂-wf wf)
       (cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir da)
-  subst-c′ ir (t-ana-check {F = F} {A = A} {π = π} wf dc) =
-    t-ana-check (ρ̂-wf wf)
+  subst-c′ ir (t-ana-check {F = F} {A = A} {π = π} {u = u} wf dc) =
+    t-ana-check {u = u} (ρ̂-wf wf)
       (cong (λ X → ρ̂ A ⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir dc)
   subst-c′ ir (t-sub d p)           = t-sub (subst-i′ ir d) (ρ̂-<: p)
-  subst-c′ ir (t-lam le d)          = t-lam le (subst-c′ ir d)
+  subst-c′ ir (t-lam {u = u} le d)          = t-lam {u = u} le (subst-c′ ir d)
   subst-c′ ir (t-pair-lit-check a b) = t-pair-lit-check (subst-c′ ir a) (subst-c′ ir b)
   subst-c′ ir (t-In-app-check {F = F} wf d) =
     t-In-app-check (ρ̂-wf wf) (ρ̂-⟦⟧ F (μ-type F) ⇝ᶜ subst-c′ ir d)
@@ -275,14 +275,14 @@ mutual
   subst-d′ ir (d-infer w p g)      = d-infer (subst-i′ ir w) (ρ̂-<: p) g
   subst-d′ {Γ = Γ} {D = D} ir (d-poly {x = x} {schema = sch} ln li lp ng as cv ki g) =
     d-poly (lk-nothing x Γ D ln) li lp ng as cv (ρ̂-ki {sch} ki) g
-  subst-d′ ir (d-lam le d)         = d-lam le (subst-i′ ir d)
+  subst-d′ ir (d-lam {u = u} le d)         = d-lam {u = u} le (subst-i′ ir d)
   subst-d′ ir (d-compose dg df)    = d-compose (subst-d′ ir dg) (subst-d′ ir df)
-  subst-d′ ir d-id                 = d-id
-  subst-d′ ir d-fst                = d-fst
-  subst-d′ ir d-snd                = d-snd
-  subst-d′ ir d-terminal           = d-terminal
-  subst-d′ ir d-initial            = d-initial
+  subst-d′ ir (d-id {u = u})                 = d-id {u = u}
+  subst-d′ ir (d-fst {u = u})                = d-fst {u = u}
+  subst-d′ ir (d-snd {u = u})                = d-snd {u = u}
+  subst-d′ ir (d-terminal {u = u})           = d-terminal {u = u}
+  subst-d′ ir (d-initial {u = u})            = d-initial {u = u}
   subst-d′ ir (d-case df dg)       = d-case (subst-d′ ir df) (subst-d′ ir dg)
   subst-d′ ir (d-pair df dg)       = d-pair (subst-d′ ir df) (subst-d′ ir dg)
-  subst-d′ ir (d-cata {F = F} {A = A} {π = π} wf da) =
-    d-cata (ρ̂-wf wf) (cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A) ⇝ᵢ subst-i′ ir da)
+  subst-d′ ir (d-cata {F = F} {A = A} {π = π} {u = u} wf da) =
+    d-cata {u = u} (ρ̂-wf wf) (cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A) ⇝ᵢ subst-i′ ir da)

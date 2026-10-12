@@ -28,6 +28,7 @@ open import Data.Nat using (suc; _<?_)
 import Data.Nat
 open import Data.Unit using (tt)
 open import Relation.Nullary using (Dec; yes; no)
+import Once.Spec.Type.Sub
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
@@ -170,12 +171,12 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-roll {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl d
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-fold : ∀ {Ψa Ψt π π₁ π₂ F' F A' A} {a' a t' t : G.Tm n} {wf' wf}
+  tr-fold : ∀ {Ψa Ψt π π₁ π₂ F' F A' A} {a' a t' t : G.Tm n} {wf' wf} {u : Once.Spec.Type.Sub._⊑π_ T.pure π}
               {eΓ : Γ' ≡ Γ} {et : G.fold F' a' t' ≡ G.fold F a t} {eA : A' ≡ A}
               (eF : F' ≡ F) (ea : a' ≡ a) (eAl : (T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A') ≡ (T.⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A))
               (eA′ : A' ≡ A) (ed : t' ≡ t) (eM : T.μ-type F' ≡ T.μ-type F)
               (da : Γ' ⊢[ Ψa ] a' ∷ T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A' ! π₁) (dt : Γ' ⊢[ Ψt ] t' ∷ T.μ-type F' ! π₂)
-          → tr eΓ et eA (GT.⊢fold wf' da dt) ≡ GT.⊢fold wf (tr eΓ ea eAl da) (tr eΓ ed eM dt)
+          → tr eΓ et eA (GT.⊢fold u wf' da dt) ≡ GT.⊢fold u wf (tr eΓ ea eAl da) (tr eΓ ed eM dt)
   tr-fold {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl da dt
     rewrite WellFormedF-irrelevant wf' wf = refl
 
@@ -335,10 +336,10 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
     trans (tr-roll (rtF-id F) (rtT-id t) (cong (λ G → T.⟦ G ⟧T (T.μ-type G)) (rtF-id F)) _)
           (cong (GT.⊢roll wf) (trans (tr-subst (⟦⟧F-⟪⟫ (absF Δ F) (Ty.μ-type (absF Δ F)) σ) _)
                                 (trans (tr-isubst {r = r} (absTy-⟦⟧ Δ F (T.μ-type F)) _) (irr (RT d) (RT-id d)))))
-  RT-id (GT.⊢fold {π = π} {F = F} {A = A} wf a t) =
+  RT-id (GT.⊢fold {π = π} {F = F} {A = A} u wf a t) =
     trans (tr-fold (rtF-id F) (rtT-id _) (cong₂ (λ G X → T.⟦ G ⟧T X T.⇒[ T.mk-kind T.Many π ] X) (rtF-id F) (rt-id A))
                    (rt-id A) (rtT-id _) (rt-id _) _ (RT t))
-          (cong₂ (GT.⊢fold wf)
+          (cong₂ (GT.⊢fold u wf)
             (trans (tr-subst (⟦⟧F-⟪⟫ (absF Δ F) (absTy Δ A) σ) _)
                    (trans (tr-isubst {r = r} (absTy-⟦⟧ Δ F A) _) (irr (RT a) (RT-id a))))
             (RT-id t))

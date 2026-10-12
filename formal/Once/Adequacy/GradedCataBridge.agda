@@ -23,6 +23,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; subst)
 
 open import Once.Word using (Carrier)
 open import Once.Spec.Type.Grade using (Purity; pure; eff; prod)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pp)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Translate using (translateF)
@@ -99,13 +100,13 @@ seqF∞-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
   RelT∞′-bind (seqF∞-rel G R rG) (λ ru → RelT∞′-bind (seqF∞-rel H R rH) (λ rv → rel∞-ret refl (ru , rv)))
 
 -- The algebra step at each grade.
-alg-step : ∀ (π : Purity) {F} {A : Type} (wfF : WellFormedF F)
+alg-step : ∀ {π : Purity} (u : pure ⊑π π) {F} {A : Type} (wfF : WellFormedF F)
              (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
          → (∀ {x y} → RelGV (⟦ F ⟧T A) x y → RelGM π A (alg₁ x) (alg₂ y))
          → ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (RelGM π A) y₁ y₂
-         → RelGM π A (bindM π (seqM π F (coerce-μ-out wfF (M π ⟦ A ⟧ᵛ) y₁)) λ l → alg₁ (cf⁻¹ᵛ A wfF l))
+         → RelGM π A (bindM π (seqM u F (coerce-μ-out wfF (M π ⟦ A ⟧ᵛ) y₁)) λ l → alg₁ (cf⁻¹ᵛ A wfF l))
                      (cata-ev-algᴰ-D {F} {A} wfF alg₂ (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂))
-alg-step pure {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
+alg-step ⊑-pure {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
   subst (λ v → RelGT A (returnT v) (cata-ev-algᴰ-D {F} {A} wfF alg₂ (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)))
         (sym (>>=ᵖ-β (coerce-μ-out wfF ⟦ A ⟧ᵛ y₁) (λ l → alg₁ (cf⁻¹ᵛ A wfF l))))
         (RelT′-bind (RelF F (RelGV A)) (RelGV A)
@@ -114,20 +115,20 @@ alg-step pure {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
           {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
           (seqF-relᵖ F (RelGV A) (out-relR wfF (RelGM pure A) rsf))
           (λ l₁ l₂ r → algR (z-relᵍ wfF r)))
-alg-step eff {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
+alg-step ⊑-pe {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
   RelT′-bind (RelF F (RelGV A)) (RelGV A)
     {m = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᵛ) y₁)} {m′ = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)}
     {f = λ l → alg₁ (cf⁻¹ᵛ A wfF l)}
     {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
     (seqF-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf))
     (λ l₁ l₂ r → algR (z-relᵍ wfF r))
-alg-step prod {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
+alg-step ⊑-pp {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
   RelT∞′-bind (seqF∞-rel F (RelGV A) (out-relR wfF (RelGM prod A) rsf)) (λ r → algR (z-relᵍ wfF r))
 
-cata-bridgeᵍ : ∀ (π : Purity) {F} {A : Type} {wfF : WellFormedF F}
+cata-bridgeᵍ : ∀ {π : Purity} (u : pure ⊑π π) {F} {A : Type} {wfF : WellFormedF F}
                  (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
              → (∀ {x y} → RelGV (⟦ F ⟧T A) x y → RelGM π A (alg₁ x) (alg₂ y))
              → ∀ {a : ⟦ μ-type F ⟧ᵛ} {b : ⟦ μ-type F ⟧ᴰ} → RelGV (μ-type F) a b
-             → RelGM π A (cata-semᵛ π wfF alg₁ a) (cata-sem wfF alg₂ b)
-cata-bridgeᵍ π {F} {A} {wfF} alg₁ alg₂ algR {a} refl =
-  cataS-rel (RelGM π A) (alg-step π wfF alg₁ alg₂ algR) a
+             → RelGM π A (cata-semᵛ u wfF alg₁ a) (cata-sem wfF alg₂ b)
+cata-bridgeᵍ {π} u {F} {A} {wfF} alg₁ alg₂ algR {a} refl =
+  cataS-rel (RelGM π A) (alg-step u wfF alg₁ alg₂ algR) a

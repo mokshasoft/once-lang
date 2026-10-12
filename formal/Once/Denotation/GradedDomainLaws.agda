@@ -17,7 +17,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; pure⊑)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pp)
 import Once.Semantics.Machine as Val
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
@@ -41,12 +41,12 @@ opaque
   >>=ᵖ-idʳ : ∀ {X : Set} (m : X) → (m >>=ᵖ λ x → x) ≡ m
   >>=ᵖ-idʳ m = refl
 
--- Left identity at every grade: definitional at `eff` (T's bind on a unit), the
--- β-law of the opaque bind at `pure`.
-bindM-idˡ : ∀ π {X Y} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM π x) k) (k x)
+-- Left identity at every grade with a unit: definitional at `eff` (T's bind on
+-- a unit), the β-law of the opaque bind at `pure`, bisimilarity at `prod`.
+bindM-idˡ : ∀ {π} (u : pure ⊑π π) {X Y} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM u x) k) (k x)
 
-bindM-idˡ pure x k = >>=ᵖ-β x k
+bindM-idˡ ⊑-pure x k = >>=ᵖ-β x k
 
-bindM-idˡ eff  x k = refl
+bindM-idˡ ⊑-pe   x k = refl
 
-bindM-idˡ prod x k = ≈∞-idˡ x k
+bindM-idˡ ⊑-pp   x k = ≈∞-idˡ x k

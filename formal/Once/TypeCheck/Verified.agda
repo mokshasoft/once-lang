@@ -792,6 +792,7 @@ record VerifiedTypeChecker : Set₁ where
                      (q' Once.Spec.Context.Usage.∷ Ψ') B}
         {d' f' : _} {π : Once.Spec.Type.Grade.Purity}
       → (q' Once.Spec.Type.Grade.≤q q) ≡ Data.Bool.true
+      → Once.Spec.Type.Sub._⊑π_ Once.Spec.Type.Grade.pure π
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' Once.Spec.Context.Usage.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -866,7 +867,7 @@ record VerifiedTypeChecker : Set₁ where
     grade-order      : Relation.Binary.Structures.IsDecTotalOrder {A = Once.Spec.Type.Grade.Quantity} _≡_
                          Once.Spec.Context._≤q'_
     effect-monoid    : Algebra.Structures.IsCommutativeMonoid {A = Once.Spec.Type.Grade.Purity} _≡_
-                         Once.Spec.Type.Grade._⊔p_ Once.Spec.Type.Grade.pure
+                         Once.Spec.Type.Grade._·p_ Once.Spec.Type.Grade.pure
     usage-semimodule : ∀ {n} → Algebra.Module.Structures.IsLeftSemimodule GM.quantity-semiring _≡_
                          (Once.Spec.Context._+ᵘ_ {n}) Once.Spec.Context.zeroUsage Once.Spec.Context._*ᵘ_
     usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Spec.Context.Usage n} _≡_

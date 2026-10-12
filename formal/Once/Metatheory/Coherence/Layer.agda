@@ -21,16 +21,19 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst₂)
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff; prod; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod; mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid;
   Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
   WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid;
-  ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep)
-open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; Same; TreeEqN)
+  _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
+open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; ν⁺-upto; Same; TreeEqN)
+open import Once.Spec.Guarded using (T⁺; forget⁺; fmap⁺; ν⁺; ana⁺; anaRoot⁺; anaTree⁺; mapAna⁺; call⁺; halt⁺)
+open Once.Spec.Guarded.ν⁺ using (force⁺)
+open import Once.Denotation.GuardedLaws using (forget-bind⁺; forget-anaRoot)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; sfmapCata)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
@@ -39,7 +42,8 @@ open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; fmapT)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; νᵖ; module νᵖ)
 open import Once.Denotation.ValueDomain using (νᵈ; module νᵈ; anaᵈ; anaTree; mapAnaᵈ; seqF)
 open import Once.Denotation.GradedOps using (fmapM; injB; prjB; cfᵛ; cf⁻¹ᵛ; seqM; cata-semᵛ; anaᵖ; mapAnaᵖ;
-  embν; mapEmbν; ana-semᵛ; out-semᵛ; ⟦_⟧<:ᵛ; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; embν∞ᵖ; mapEmbν∞ᵖ)
+  embν; mapEmbν; ana-semᵛ; out-semᵛ; ⟦_⟧<:ᵛ; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; embν∞ᵖ; mapEmbν∞ᵖ;
+  embν⁺ᵈ; embRoot⁺; embTree⁺; mapEmbν⁺ᵈ)
 open import Once.Spec.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; TreeEq∞; NodeEq; ret≈∞; call≈∞; halt≈∞;
          ν∞; ana∞; anaTree∞; anaLayer∞; mapAna∞)
@@ -205,14 +209,14 @@ embed⁻¹F (ret x)      (ret y)        (ret≈∞ r)  = ret≈ r
 embed⁻¹F (call o a k) (call .o .a k′) (call≈∞ f) = call≈ (λ b → embed⁻¹ (k b) (k′ b) (f b))
 embed⁻¹F (halt o a)   (halt .o .a)    halt≈∞     = halt≈
 
-seqM-rel : ∀ π (F : Functor) {X} {R : X → X → Set} {x y}
+seqM-rel : ∀ {π} (u : pure ⊑π π) (F : Functor) {X} {R : X → X → Set} {x y}
          → LiftF F (λ m m′ → TreeEq∞ R (toT∞ π m) (toT∞ π m′)) x y
-         → TreeEq∞ (LiftF F R) (toT∞ π (seqM π F x)) (toT∞ π (seqM π F y))
-seqM-rel pure F r = retT≈ (LiftF-map F un-ret∞ r)
-seqM-rel eff  F {x = x} {y} r = embed-≈ (seqF-rel F (LiftF-mapᵈ F r))
+         → TreeEq∞ (LiftF F R) (toT∞ π (seqM u F x)) (toT∞ π (seqM u F y))
+seqM-rel ⊑-pure F r = retT≈ (LiftF-map F un-ret∞ r)
+seqM-rel ⊑-pe   F {x = x} {y} r = embed-≈ (seqF-rel F (LiftF-mapᵈ F r))
   where LiftF-mapᵈ : ∀ (G : Functor) {u v} → LiftF G (λ m m′ → TreeEq∞ _ (embed m) (embed m′)) u v → LiftF G (TreeEq _) u v
         LiftF-mapᵈ G = LiftF-map G (λ {m} {m′} h → embed⁻¹ m m′ h)
-seqM-rel prod F r = seqF∞-rel F r
+seqM-rel ⊑-pp   F r = seqF∞-rel F r
 
 private
   ret-≈ : ∀ {X} (x : X) → TreeEq∞ _≡_ (embed (ret x)) (return∞ x)
@@ -228,6 +232,10 @@ toT∞-fmapM eff  h m =
   ≈∞-rewrite (embed-bind m (λ x → ret (h x))) (≈refl _)
              (≈∞-bind {R = _≡_} (≈refl (embed m)) λ { refl → ret-≈ _ })
 toT∞-fmapM prod h m = ≈refl (fmap∞ h m)
+toT∞-fmapM eff⁺ h m =
+  ≈∞-rewrite (≡→≈ (cong embed (forget-bind⁺ m (λ x → ret (h x))))) (≈refl _) (toT∞-fmapM eff h (forget⁺ m))
+  where ≡→≈ : ∀ {X} {a b : T∞ X} → a ≡ b → TreeEq∞ _≡_ a b
+        ≡→≈ {a = a} refl = ≈refl a
 
 -- Two bisimilarities of trees, composed.
 ≈trans : ∀ {X} {a b c : T∞ X} → TreeEq∞ _≡_ a b → TreeEq∞ _≡_ b c → TreeEq∞ _≡_ a c
@@ -237,21 +245,21 @@ toT∞-fmapM prod h m = ≈refl (fmap∞ h m)
 -- μ: the fold, by induction on the value
 ------------------------------------------------------------------------
 
-module Fold (π : Purity) {F : Functor} {A : Type} (wf : WellFormedF F)
+module Fold {π : Purity} (u : pure ⊑π π) {F : Functor} {A : Type} (wf : WellFormedF F)
             (alg alg′ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)
             (salg : ∀ a a′ → S (⟦ F ⟧T A) a a′ → TreeEq∞ (S A) (toT∞ π (alg a)) (toT∞ π (alg′ a′))) where
 
   private
     H = translateF Carrier Carrier F
     φ φ′ : ⟦ H ⟧SF (M π ⟦ A ⟧ᵛ) → M π ⟦ A ⟧ᵛ
-    φ  x = bindM π (seqM π F (Val.coerce-μ-out wf (M π ⟦ A ⟧ᵛ) x)) λ layer → alg  (cf⁻¹ᵛ A wf layer)
-    φ′ x = bindM π (seqM π F (Val.coerce-μ-out wf (M π ⟦ A ⟧ᵛ) x)) λ layer → alg′ (cf⁻¹ᵛ A wf layer)
+    φ  x = bindM π (seqM u F (Val.coerce-μ-out wf (M π ⟦ A ⟧ᵛ) x)) λ layer → alg  (cf⁻¹ᵛ A wf layer)
+    φ′ x = bindM π (seqM u F (Val.coerce-μ-out wf (M π ⟦ A ⟧ᵛ) x)) λ layer → alg′ (cf⁻¹ᵛ A wf layer)
 
   mutual
-    cata-S : ∀ (v : μS H) → SM π A (cata-semᵛ π wf alg v) (cata-semᵛ π wf alg′ v)
+    cata-S : ∀ (v : μS H) → SM π A (cata-semᵛ u wf alg v) (cata-semᵛ u wf alg′ v)
     cata-S ⟨ x ⟩ =
       ≈∞-rewrite (toT∞-bindM π _ _) (toT∞-bindM π _ _)
-        (≈∞-bind (seqM-rel π F (coerce-out-rel wf (layer-S H x)))
+        (≈∞-bind (seqM-rel u F (coerce-out-rel wf (layer-S H x)))
                  (λ l → salg _ _ (cf⁻¹-rel A wf l)))
 
     layer-S : ∀ (G : SFunctor) (x : ⟦ G ⟧SF (μS H))
@@ -369,22 +377,62 @@ module UnfoldProd {F : Functor} {A : Type} (wf : WellFormedF F)
   ana-Same : ∀ {a a′} → S A a a′ → Same (ν-type F prod) (ana∞ H c a) (ana∞ H c′ a′)
   ana-Same s n = ana-upto n s
 
+module UnfoldGuarded {F : Functor} {A : Type} (wf : WellFormedF F)
+                     (clo clo′ : ⟦ A ⟧ᵛ → T⁺ ⟦ ⟦ F ⟧T A ⟧ᵛ)
+                     (sc : ∀ {a a′} → S A a a′ → TreeEq (S (⟦ F ⟧T A)) (forget⁺ (clo a)) (forget⁺ (clo′ a′))) where
+
+  private
+    H = translateF Carrier Carrier F
+    g : ⟦ ⟦ F ⟧T A ⟧ᵛ → ⟦ H ⟧SF ⟦ A ⟧ᵛ
+    g l = Val.coerce-ν-in F _ (cfᵛ A wf l)
+    c c′ : ⟦ A ⟧ᵛ → T⁺ (⟦ H ⟧SF ⟦ A ⟧ᵛ)
+    c  a = fmap⁺ g (clo a)
+    c′ a = fmap⁺ g (clo′ a)
+
+    step : ∀ {a a′} → S A a a′ → TreeEq (LayerEq H (S A)) (forget⁺ (c a)) (forget⁺ (c′ a′))
+    step {a} {a′} s =
+      subst₂ (TreeEq (LayerEq H (S A))) (sym (forget-bind⁺ (clo a) (λ l → ret (g l)))) (sym (forget-bind⁺ (clo′ a′) (λ l → ret (g l))))
+        (TreeEq-bind (sc s) (λ r → ret≈ (coerce-in-rel F (cf-rel A wf r))))
+
+  mutual
+    ana-upto : ∀ n {a a′} → S A a a′ → ν⁺-upto H n (ana⁺ H c a) (ana⁺ H c′ a′)
+    ana-upto zero    s = tt
+    ana-upto (suc n) {a} {a′} s =
+      subst₂ (TreeEq (LayerEq H (ν⁺-upto H n))) (sym (forget-anaRoot H c (c a))) (sym (forget-anaRoot H c′ (c′ a′)))
+        (tree-upto n (step s))
+
+    tree-upto : ∀ n {t t′} → TreeEq (LayerEq H (S A)) t t′
+              → TreeEq (LayerEq H (ν⁺-upto H n)) (anaTree⁺ H c t) (anaTree⁺ H c′ t′)
+    tree-upto n (ret≈ l)  = ret≈ (map-upto H n l)
+    tree-upto n (call≈ k) = call≈ (λ b → tree-upto n (k b))
+    tree-upto n halt≈     = halt≈
+
+    map-upto : ∀ (G : SFunctor) n {x y} → LayerEq G (S A) x y
+             → LayerEq G (ν⁺-upto H n) (mapAna⁺ H G c x) (mapAna⁺ H G c′ y)
+    map-upto (SK B)   n e = e
+    map-upto SId      n s = ana-upto n s
+    map-upto (G S⊕ G₂) n {inj₁ x} {inj₁ y} r = map-upto G n r
+    map-upto (G S⊕ G₂) n {inj₂ x} {inj₂ y} r = map-upto G₂ n r
+    map-upto (G S⊕ G₂) n {inj₁ _} {inj₂ _} ()
+    map-upto (G S⊕ G₂) n {inj₂ _} {inj₁ _} ()
+    map-upto (G S⊗ G₂) n (r , r′) = map-upto G n r , map-upto G₂ n r′
+
+  ana-Same : ∀ {a a′} → S A a a′ → Same (ν-type F eff⁺) (ana⁺ H c a) (ana⁺ H c′ a′)
+  ana-Same s n = ana-upto n s
+
 -- The unfold's meaning, at every grade of the stream: the coalgebra functions
--- related as arrows, the seeds related.
--- (The stream is built at any grade `π′`, `π″`: building emits nothing.)
-ana-S : ∀ (π π′ π″ : Purity) {F A} (wf : WellFormedF F) (clo clo′ : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ)
+-- related as arrows, the seeds related. The stream is a VALUE (building it
+-- runs nothing); the rule embeds it at the grade it is built at.
+ana-S : ∀ (π : Purity) {F A} (wf : WellFormedF F) (clo clo′ : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ)
       → (∀ a a′ → S A a a′ → TreeEq∞ (S (⟦ F ⟧T A)) (toT∞ π (clo a)) (toT∞ π (clo′ a′)))
       → ∀ {a a′} → S A a a′
-      → TreeEq∞ (S (ν-type F π)) (toT∞ π′ (ana-semᵛ π π′ wf clo a)) (toT∞ π″ (ana-semᵛ π π″ wf clo′ a′))
-ana-S pure π′ π″ {F} {A} wf clo clo′ sc s =
-  ≈∞-rewrite (toT∞-returnM π′ _) (toT∞-returnM π″ _)
-    (retT≈ (UnfoldPure.ana-Same wf clo clo′ (λ s′ → un-ret∞ (sc _ _ s′)) s))
-ana-S eff  π′ π″ {F} {A} wf clo clo′ sc s =
-  ≈∞-rewrite (toT∞-returnM π′ _) (toT∞-returnM π″ _)
-    (retT≈ (UnfoldEff.ana-Same wf clo clo′ (λ {a} {a′} s′ → embed⁻¹ (clo a) (clo′ a′) (sc _ _ s′)) s))
-ana-S prod π′ π″ {F} {A} wf clo clo′ sc s =
-  ≈∞-rewrite (toT∞-returnM π′ _) (toT∞-returnM π″ _)
-    (retT≈ (UnfoldProd.ana-Same wf clo clo′ (λ s′ → sc _ _ s′) s))
+      → S (ν-type F π) (ana-semᵛ π wf clo a) (ana-semᵛ π wf clo′ a′)
+ana-S pure {F} {A} wf clo clo′ sc s = UnfoldPure.ana-Same wf clo clo′ (λ s′ → un-ret∞ (sc _ _ s′)) s
+ana-S eff⁺ {F} {A} wf clo clo′ sc s =
+  UnfoldGuarded.ana-Same wf clo clo′ (λ {a} {a′} s′ → embed⁻¹ (forget⁺ (clo a)) (forget⁺ (clo′ a′)) (sc _ _ s′)) s
+ana-S eff  {F} {A} wf clo clo′ sc s =
+  UnfoldEff.ana-Same wf clo clo′ (λ {a} {a′} s′ → embed⁻¹ (clo a) (clo′ a′) (sc _ _ s′)) s
+ana-S prod {F} {A} wf clo clo′ sc s = UnfoldProd.ana-Same wf clo clo′ (λ s′ → sc _ _ s′) s
 
 ------------------------------------------------------------------------
 -- ν: out
@@ -401,6 +449,20 @@ out-S eff {F} wf {v} {w} h =
       (TreeEq-map (∀-LayerEq (translateF Carrier Carrier F))
         (∀-TreeEq (forceᵈ v) (forceᵈ w) (λ n → h (suc n))))
       (λ l → ret≈ (cf⁻¹-rel (ν-type F eff) wf (coerce-out-rel wf l))))
+out-S eff⁺ {F} wf {v} {w} h =
+  ≈∞-rewrite (e v) (e w)
+    (embed-≈
+      (TreeEq-bind
+        (TreeEq-map (∀-LayerEq H) (∀-TreeEq (forget⁺ (force⁺ v)) (forget⁺ (force⁺ w)) (λ n → h (suc n))))
+        (λ l → ret≈ (cf⁻¹-rel (ν-type F eff⁺) wf (coerce-out-rel wf l)))))
+  where
+    H = translateF Carrier Carrier F
+    k : _ → T _
+    k layer = ret (cf⁻¹ᵛ (ν-type F eff⁺) wf (Val.coerce-ν-out wf _ layer))
+    e : ∀ x → TreeEq∞ _≡_ (embed (forget⁺ (Once.Spec.Guarded._>>=⁺_ (force⁺ x) k))) (embed (forget⁺ (force⁺ x) >>=T k))
+    e x = ≡→≈ (cong embed (forget-bind⁺ (force⁺ x) k))
+      where ≡→≈ : ∀ {X} {a b : T∞ X} → a ≡ b → TreeEq∞ _≡_ a b
+            ≡→≈ {a = a} refl = ≈refl a
 out-S prod {F} wf {v} {w} h =
   ≈∞-bind
     (≈∞-map (∀-LayerEq H)
@@ -449,6 +511,29 @@ module Emb∞ᵈ (H : SFunctor) where
   map-upto (G S⊕ G₂) n {inj₂ _} {inj₁ _} ()
   map-upto (G S⊗ G₂) n (r , r′) = map-upto G n r , map-upto G₂ n r′
 
+module Emb⁺ᵈ (H : SFunctor) where
+  private
+    root : ∀ (m : T⁺ (⟦ H ⟧SF (ν⁺ H))) → embRoot⁺ H m ≡ embTree⁺ H (forget⁺ m)
+    root (call⁺ o a k) = refl
+    root (halt⁺ o a)   = refl
+  emb-upto : ∀ n {v w} → ν⁺-upto H n v w → νᵈ-upto H n (embν⁺ᵈ v) (embν⁺ᵈ w)
+  lay      : ∀ n {t t′} → TreeEq (LayerEq H (ν⁺-upto H n)) t t′
+           → TreeEq (LayerEq H (νᵈ-upto H n)) (embTree⁺ H t) (embTree⁺ H t′)
+  map-upto : ∀ (G : SFunctor) n {x y} → LayerEq G (ν⁺-upto H n) x y
+           → LayerEq G (νᵈ-upto H n) (mapEmbν⁺ᵈ H G x) (mapEmbν⁺ᵈ H G y)
+  emb-upto zero    h = tt
+  emb-upto (suc n) {v} {w} h = subst₂ (TreeEq (LayerEq H (νᵈ-upto H n))) (sym (root (force⁺ v))) (sym (root (force⁺ w))) (lay n h)
+  lay n (ret≈ l)  = ret≈ (map-upto H n l)
+  lay n (call≈ f) = call≈ (λ b → lay n (f b))
+  lay n halt≈     = halt≈
+  map-upto (SK B)   n e = e
+  map-upto SId      n h = emb-upto n h
+  map-upto (G S⊕ G₂) n {inj₁ x} {inj₁ y} r = map-upto G n r
+  map-upto (G S⊕ G₂) n {inj₂ x} {inj₂ y} r = map-upto G₂ n r
+  map-upto (G S⊕ G₂) n {inj₁ _} {inj₂ _} ()
+  map-upto (G S⊕ G₂) n {inj₂ _} {inj₁ _} ()
+  map-upto (G S⊗ G₂) n (r , r′) = map-upto G n r , map-upto G₂ n r′
+
 module Emb∞ᵖ (H : SFunctor) where
   emb-upto : ∀ n {v w} → νᵖ-upto H n v w → ν∞-upto H n (embν∞ᵖ v) (embν∞ᵖ w)
   map-upto : ∀ (G : SFunctor) n {x y} → LayerEq G (νᵖ-upto H n) x y
@@ -489,4 +574,8 @@ coerce-S (sub-ν {F = F} ⊑-pe) s n = Emb.emb-upto (translateF Carrier Carrier 
 coerce-S (sub-ν ⊑-prod) s = s
 coerce-S (sub-ν {F = F} ⊑-pp) s n = Emb∞ᵖ.emb-upto (translateF Carrier Carrier F) n (s n)
 coerce-S (sub-ν {F = F} ⊑-ep) s n = Emb∞ᵈ.emb-upto (translateF Carrier Carrier F) n (s n)
+coerce-S (sub-ν ⊑-g) s = s
+coerce-S (sub-ν {F = F} ⊑-ge) s n = Emb⁺ᵈ.emb-upto (translateF Carrier Carrier F) n (s n)
+coerce-S (sub-ν {F = F} ⊑-gp) s n =
+  Emb∞ᵈ.emb-upto (translateF Carrier Carrier F) n (Emb⁺ᵈ.emb-upto (translateF Carrier Carrier F) n (s n))
 coerce-S sub-rigid s = s

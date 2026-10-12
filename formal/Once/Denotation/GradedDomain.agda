@@ -33,7 +33,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; pure⊑)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
 import Once.Semantics.Machine as Val
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
@@ -41,6 +41,7 @@ open import Once.Functor.Translate using (translateF)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.ValueDomain using (νᵈ)
 open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; embed; ν∞; TreeEq∞)
+open import Once.Spec.Guarded using (T⁺; forget⁺; _>>=⁺_; _⁺=<<_; fmap⁺; ν⁺)
 
 ------------------------------------------------------------------------
 -- The grade's monad.
@@ -48,6 +49,7 @@ open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; embed; ν∞; 
 
 M : Purity → Set → Set
 M pure X = X
+M eff⁺ X = T⁺ X
 M eff  X = T X
 M prod X = T∞ X
 
@@ -66,12 +68,13 @@ opaque
 infixl 1 bindM
 bindM : ∀ π {X Y} → M π X → (X → M π Y) → M π Y
 bindM pure m k = m >>=ᵖ k
+bindM eff⁺ m k = m >>=⁺ λ x → forget⁺ (k x)
 bindM eff  m k = m >>=T k
 bindM prod m k = m >>=∞ k
 
 -- Subeffecting is the monad morphism `M π → M π′`: the unit into a grade with
--- effects, and the embedding of the finite trees into the possibly infinite
--- ones (D311).
+-- effects, the embedding of the guarded trees into the trees, and of the
+-- finite trees into the possibly infinite ones (D311).
 subM : ∀ {π π′} → π ⊑π π′ → ∀ {X} → M π X → M π′ X
 subM ⊑-pure m = m
 subM ⊑-eff  m = m
@@ -79,17 +82,22 @@ subM ⊑-pe   m = returnT m
 subM ⊑-prod m = m
 subM ⊑-pp   m = return∞ m
 subM ⊑-ep   m = embed m
+subM ⊑-g    m = m
+subM ⊑-ge   m = forget⁺ m
+subM ⊑-gp   m = embed (forget⁺ m)
 
--- The unit of every grade: a pure value, subeffected (what the core does when a
--- variable is used at grade `π`, `⊢sub-eff (pure⊑ π) (⊢var i)`).
-returnM : ∀ π {X} → X → M π X
-returnM π x = subM (pure⊑ π) x
+-- The unit of a grade WITH one (`pure ⊑π π`; the guard has none, D311): a
+-- pure value, subeffected (what the core does when a variable is used at
+-- grade `π`, `⊢sub-eff u (⊢var i)`).
+returnM : ∀ {π} → pure ⊑π π → ∀ {X} → X → M π X
+returnM u x = subM u x
 
 
 -- Two computations at a grade are EQUAL: as values or finite trees, `≡`; as
 -- trees that may be infinite (`prod`), bisimilar (D201, D311).
 EqM : ∀ π {X : Set} → M π X → M π X → Set
 EqM pure m m′ = m ≡ m′
+EqM eff⁺ m m′ = m ≡ m′
 EqM eff  m m′ = m ≡ m′
 EqM prod m m′ = TreeEq∞ _≡_ m m′
 
@@ -97,6 +105,7 @@ EqM prod m m′ = TreeEq∞ _≡_ m m′
 -- a grade (D311), what coherence and the observation read a computation as.
 toT∞ : ∀ π {X} → M π X → T∞ X
 toT∞ pure m = return∞ m
+toT∞ eff⁺ m = embed (forget⁺ m)
 toT∞ eff  m = embed m
 toT∞ prod m = m
 
@@ -106,7 +115,12 @@ toT∞ prod m = m
 infixl 1 bindᵍ
 bindᵍ : ∀ π₁ π₂ {X Y} → M π₁ X → (X → M π₂ Y) → M (π₁ ·p π₂) Y
 bindᵍ pure π₂   m k = m >>=ᵖ k
+bindᵍ eff⁺ pure m k = fmap⁺ k m
+bindᵍ eff⁺ eff⁺ m k = m >>=⁺ λ x → forget⁺ (k x)
+bindᵍ eff⁺ eff  m k = m >>=⁺ k
+bindᵍ eff⁺ prod m k = embed (forget⁺ m) >>=∞ k
 bindᵍ eff  pure m k = m >>=T λ x → returnT (k x)
+bindᵍ eff  eff⁺ m k = m ⁺=<< k
 bindᵍ eff  eff  m k = m >>=T k
 bindᵍ eff  prod m k = embed m >>=∞ k
 bindᵍ prod π₂   m k = m >>=∞ λ x → toT∞ π₂ (k x)
@@ -137,6 +151,7 @@ record νᵖ (F : SFunctor) : Set where
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ
 ⟦ μ-type F ⟧ᵛ   = Val.⟦ μ-type F ⟧
 ⟦ ν-type F pure ⟧ᵛ = νᵖ (translateF Carrier Carrier F)
+⟦ ν-type F eff⁺ ⟧ᵛ = ν⁺ (translateF Carrier Carrier F)
 ⟦ ν-type F eff ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
 ⟦ ν-type F prod ⟧ᵛ = ν∞ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᵛ        = Val.⟦ Int ⟧

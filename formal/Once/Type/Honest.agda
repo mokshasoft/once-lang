@@ -70,6 +70,7 @@ DataCod : Purity → Type → Set
 DataCod pure B = NotEmpty B
 DataCod eff  B = NotEmpty B × NotSingleton B
 DataCod prod B = ⊥
+DataCod eff⁺ B = NotEmpty B × NotSingleton B
 
 -- D311: a foreign operation is ONE call, which returns or halts; it is never
 -- declared at `prod` (a computation that may run forever).
@@ -77,11 +78,20 @@ OneCall : Purity → Set
 OneCall pure = ⊤
 OneCall eff  = ⊤
 OneCall prod = ⊥
+OneCall eff⁺ = ⊤
+
+-- An effectful grade of one call: the codomain may be `Unit` (it emits) or
+-- `Void` (it halts). The guard `eff⁺` is exactly that (D311).
+Effectful : Purity → Set
+Effectful eff  = ⊤
+Effectful eff⁺ = ⊤
+Effectful pure = ⊥
+Effectful prod = ⊥
 
 -- The codomain `B` of an arrow at grade `π`.
 HonestCod : Purity → Type → Set
-HonestCod π Unit                       = π ≡ eff
-HonestCod π Void                       = π ≡ eff
+HonestCod π Unit                       = Effectful π
+HonestCod π Void                       = Effectful π
 HonestCod π (A ⇒[ mk-kind q π′ ] B)    = HonestCod π′ B
 HonestCod π (A * B)                    = DataCod π (A * B)
 HonestCod π (A + B)                    = DataCod π (A + B)
@@ -112,11 +122,19 @@ isEff? : (π : Purity) → Maybe (π ≡ eff)
 isEff? pure = nothing
 isEff? eff  = just refl
 isEff? prod = nothing
+isEff? eff⁺ = nothing
 
 oneCall? : (π : Purity) → Maybe (OneCall π)
 oneCall? pure = just tt
 oneCall? eff  = just tt
 oneCall? prod = nothing
+oneCall? eff⁺ = just tt
+
+effectful? : (π : Purity) → Maybe (Effectful π)
+effectful? eff  = just tt
+effectful? eff⁺ = just tt
+effectful? pure = nothing
+effectful? prod = nothing
 
 -- Two witnesses, or the first that exists (no `with`: proofs follow by cases).
 both : ∀ {A B : Set} → Maybe A → Maybe B → Maybe (A × B)
@@ -157,10 +175,11 @@ dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
 dataCod? pure B = notEmpty? B
 dataCod? eff  B = both (notEmpty? B) (notSingleton? B)
 dataCod? prod B = nothing
+dataCod? eff⁺ B = both (notEmpty? B) (notSingleton? B)
 
 honestCod? : (π : Purity) (B : Type) → Maybe (HonestCod π B)
-honestCod? π Unit                     = isEff? π
-honestCod? π Void                     = isEff? π
+honestCod? π Unit                     = effectful? π
+honestCod? π Void                     = effectful? π
 honestCod? π (A ⇒[ mk-kind q π′ ] B)  = honestCod? π′ B
 honestCod? π (A * B)                  = dataCod? π (A * B)
 honestCod? π (A + B)                  = dataCod? π (A + B)
@@ -234,15 +253,21 @@ dataCod?-complete : ∀ (π : Purity) (B : Type) → DataCod π B → ∃[ h ] d
 dataCod?-complete pure B h       = notEmpty?-complete B h
 dataCod?-complete eff  B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
 dataCod?-complete prod B ()
+dataCod?-complete eff⁺ B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
+
+effectful?-complete : ∀ (π : Purity) → Effectful π → ∃[ h ] effectful? π ≡ just h
+effectful?-complete eff  tt = tt , refl
+effectful?-complete eff⁺ tt = tt , refl
 
 oneCall?-complete : ∀ (π : Purity) → OneCall π → ∃[ h ] oneCall? π ≡ just h
 oneCall?-complete pure tt = tt , refl
 oneCall?-complete eff  tt = tt , refl
 oneCall?-complete prod ()
+oneCall?-complete eff⁺ tt = tt , refl
 
 honestCod?-complete : ∀ (π : Purity) (B : Type) → HonestCod π B → ∃[ h ] honestCod? π B ≡ just h
-honestCod?-complete π Unit                    refl = refl , refl
-honestCod?-complete π Void                    refl = refl , refl
+honestCod?-complete π Unit                    h    = effectful?-complete π h
+honestCod?-complete π Void                    h    = effectful?-complete π h
 honestCod?-complete π (A ⇒[ mk-kind q π′ ] B) h    = honestCod?-complete π′ B h
 honestCod?-complete π (A * B)                 h    = dataCod?-complete π (A * B) h
 honestCod?-complete π (A + B)                 h    = dataCod?-complete π (A + B) h

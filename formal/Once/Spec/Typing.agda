@@ -567,33 +567,33 @@ mutual
     -- conditions do not move to the elaborator; they cease to exist.
     ----------------------------------------------------------------
 
-    t-id-check : ∀ {ctx : NamedCtx} {T : Type} {π : Once.Spec.Type.Grade.Purity}
+    t-id-check : ∀ {ctx : NamedCtx} {T : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                → ctx ⊢ᶜ RResolved (gen "id") ∶ (T Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] T)
                        ⨾ Surface.zeroUsage
 
-    t-fst-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity}
+    t-fst-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                 → ctx ⊢ᶜ RResolved (gen "fst") ∶ ((A * B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)
                         ⨾ Surface.zeroUsage
 
-    t-snd-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity}
+    t-snd-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                 → ctx ⊢ᶜ RResolved (gen "snd") ∶ ((A * B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B)
                         ⨾ Surface.zeroUsage
 
-    t-terminal-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity}
+    t-terminal-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                            → ctx ⊢ᶜ RResolved (gen "terminal")
                                    ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Unit)
                                    ⨾ Surface.zeroUsage
 
-    t-initial-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity}
+    t-initial-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                           → ctx ⊢ᶜ RResolved (gen "initial")
                                   ∶ (Void Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A)
                                   ⨾ Surface.zeroUsage
 
-    t-inl-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity}
+    t-inl-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                       → ctx ⊢ᶜ RResolved (gen "inl") ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A + B))
                               ⨾ Surface.zeroUsage
 
-    t-inr-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity}
+    t-inr-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                       → ctx ⊢ᶜ RResolved (gen "inr") ∶ (B Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A + B))
                               ⨾ Surface.zeroUsage
 
@@ -664,7 +664,7 @@ mutual
     -- VALUE category — currying a computation yields a value, which is `returnT`.
     t-curry-check : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
                     {π₀ π : Once.Spec.Type.Grade.Purity}
-                    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                    {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Type.Grade.pure ⊑π π₀}
                   → ctx ⊢ᶜ f ∶ ((A * B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] C) ⨾ Ψ
                   → ctx ⊢ᶜ RApp (RResolved (gen "curry")) f
                           ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π₀ ]
@@ -684,7 +684,7 @@ mutual
     -- a decision procedure. The elaborator still uses `wellFormedF?` — that is
     -- where an algorithm belongs — and hands its output over as the witness.
     t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
-                   {π : Once.Spec.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                   {π : Once.Spec.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Type.Grade.pure ⊑π π}
                  → WellFormedF F
                  → ctx ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A) ⨾ Ψ
                  → ctx ⊢ᶜ RApp (RResolved (gen "cata")) alg
@@ -706,7 +706,7 @@ mutual
     -- D233: the stream carries the coalgebra's grade; building it runs
     -- nothing, so `ana`'s own arrow is free (`π₀`, as `curry`'s outer arrow).
     t-ana-check : ∀ {ctx : NamedCtx} {coalg : RawExpr} {F : Functor} {A : Type}
-                  {π₀ π : Once.Spec.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  {π₀ π : Once.Spec.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Type.Grade.pure ⊑π π₀}
                 → WellFormedF F
                 → ctx ⊢ᶜ coalg ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (⟦ F ⟧T A)) ⨾ Ψ
                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg
@@ -734,7 +734,7 @@ mutual
     -- lifted by `t-subsume`; this derives exactly those typings.
     t-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr}
             {A B : Type} {q q' : Quantity} {π : Once.Spec.Type.Grade.Purity}
-            {Ψ : Surface.Usage (NamedCtx.size ctx)}
+            {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Type.Grade.pure ⊑π π}
           → (q' Once.Spec.Type.Grade.≤q q) ≡ true
           → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ (q' ∷ Ψ)
           → ctx ⊢ᶜ RLam x body ∶ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q π ] B) ⨾ Ψ
@@ -894,7 +894,7 @@ mutual
            → ctx ⊢ᵈ RVar x ∶ A ⇒[ π ]↦ B ⨾ zeroUsage
     -- A lambda whose body synthesizes once its binder has the given type.
     d-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr} {A B : Type} {q' : Quantity}
-              {π : Once.Spec.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+              {π : Once.Spec.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Type.Grade.pure ⊑π π}
           → (q' Once.Spec.Type.Grade.≤q Once.Spec.Type.Grade.Many) ≡ true
           → (extendNamedCtx ctx x A) ⊢ᵢ body ∶ B ⨾ (q' ∷ Ψ)
           → ctx ⊢ᵈ RLam x body ∶ A ⇒[ π ]↦ B ⨾ Ψ
@@ -906,17 +906,17 @@ mutual
               → ctx ⊢ᵈ f ∶ M ⇒[ π ]↦ B ⨾ Ψ₁
               → ctx ⊢ᵈ RApp (RApp (RResolved (gen "compose")) f) g ∶ A ⇒[ π ]↦ B ⨾ (Ψ₁ Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ₂))
     -- D230: the point-free generators whose output their input determines.
-    d-id       : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity}
+    d-id       : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                → ctx ⊢ᵈ RResolved (gen "id") ∶ A ⇒[ π ]↦ A ⨾ Surface.zeroUsage
-    d-fst      : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity}
+    d-fst      : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                → ctx ⊢ᵈ RResolved (gen "fst") ∶ (A * B) ⇒[ π ]↦ A ⨾ Surface.zeroUsage
-    d-snd      : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity}
+    d-snd      : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                → ctx ⊢ᵈ RResolved (gen "snd") ∶ (A * B) ⇒[ π ]↦ B ⨾ Surface.zeroUsage
-    d-terminal : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity}
+    d-terminal : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                → ctx ⊢ᵈ RResolved (gen "terminal") ∶ A ⇒[ π ]↦ Unit ⨾ Surface.zeroUsage
     -- `initial`'s output is its least possible one: `Void` (`Void <: B` for every
     -- `B`, and `¡` is unique).
-    d-initial  : ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity}
+    d-initial  : ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} {u : Once.Spec.Type.Grade.pure ⊑π π}
                → ctx ⊢ᵈ RResolved (gen "initial") ∶ Void ⇒[ π ]↦ Void ⨾ Surface.zeroUsage
     -- The copair: both branches determine the SAME output.
     d-case     : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Spec.Type.Grade.Purity}
@@ -932,7 +932,7 @@ mutual
     -- D228 (phase C′): `cata` is the eliminator of `μF`; its carrier is what the
     -- algebra SYNTHESIZES (initiality: `cata alg` is determined by `alg`).
     d-cata     : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type} {π : Once.Spec.Type.Grade.Purity}
-                   {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                   {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Type.Grade.pure ⊑π π}
                → WellFormedF F
                → ctx ⊢ᵢ alg ∶ ((⟦ F ⟧T A) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A) ⨾ Ψ
                → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)

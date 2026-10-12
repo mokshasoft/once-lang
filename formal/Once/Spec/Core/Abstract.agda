@@ -164,8 +164,8 @@ abs-⊢ Δ sg (GT.⊢absurd e) = ⊢absurd (abs-⊢ Δ sg e)
 abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢roll {F = F} {t = t} wf d) =
   ⊢roll (abs-wf Δ wf)
     (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] absTm Δ t ∷ X ! π) (absTy-⟦⟧ Δ F (T.μ-type F)) (abs-⊢ Δ sg d))
-abs-⊢ Δ sg {Γ = Γ} (GT.⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F} {A = A} {alg = alg} wf a t) =
-  ⊢fold (abs-wf Δ wf)
+abs-⊢ Δ sg {Γ = Γ} (GT.⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F} {A = A} {alg = alg} u wf a t) =
+  ⊢fold u (abs-wf Δ wf)
     (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψa ] absTm Δ alg ∷ X ⇒[ mk-kind Many π ] absTy Δ A ! π₁)
            (absTy-⟦⟧ Δ F A) (abs-⊢ Δ sg a))
     (abs-⊢ Δ sg t)

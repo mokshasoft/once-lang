@@ -51,7 +51,7 @@ open import Once.Denotation.Phase using (lookupᴰUsed)
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; returnM; bindM; _>>=ᵖ_)
 open import Once.Denotation.GradedOps
-  using (cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
+  using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 import Data.List as L
@@ -168,6 +168,8 @@ sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.T
   returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff) cn base-Unit bCod) tt))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Type.Grade.prod} bDom bCod) =
   returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.prod) cn base-Unit bCod) tt))
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Type.Grade.eff⁺} bDom bCod) =
+  returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff⁺) cn base-Unit bCod) tt))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
   returnT (λ arg → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =
@@ -245,13 +247,13 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 --
 -- The leaves are `returnᵖ` of the plain categorical generator, as they were.
 ------------------------------------------------------------------------
-⟦_⟧ᶜ {ctx = ctx} (t-id-check {π = π}     ) fmt ρ dγ = λ a  → returnM π a
-⟦_⟧ᶜ {ctx = ctx} (t-fst-check {π = π}    ) fmt ρ dγ = λ ab → returnM π (proj₁ ab)
-⟦_⟧ᶜ {ctx = ctx} (t-snd-check {π = π}    ) fmt ρ dγ = λ ab → returnM π (proj₂ ab)
-⟦_⟧ᶜ {ctx = ctx} (t-terminal-morph-check {π = π}) fmt ρ dγ = λ _  → returnM π tt
+⟦_⟧ᶜ {ctx = ctx} (t-id-check {u = u}) fmt ρ dγ = λ a  → returnM u a
+⟦_⟧ᶜ {ctx = ctx} (t-fst-check {u = u}) fmt ρ dγ = λ ab → returnM u (proj₁ ab)
+⟦_⟧ᶜ {ctx = ctx} (t-snd-check {u = u}) fmt ρ dγ = λ ab → returnM u (proj₂ ab)
+⟦_⟧ᶜ {ctx = ctx} (t-terminal-morph-check {u = u}) fmt ρ dγ = λ _  → returnM u tt
 ⟦_⟧ᶜ {ctx = ctx} (t-initial-morph-check  ) fmt ρ dγ = λ v  → ⊥-elim v
-⟦_⟧ᶜ {ctx = ctx} (t-inl-morph-check {π = π}) fmt ρ dγ = λ a  → returnM π (inj₁ a)
-⟦_⟧ᶜ {ctx = ctx} (t-inr-morph-check {π = π}) fmt ρ dγ = λ b  → returnM π (inj₂ b)
+⟦_⟧ᶜ {ctx = ctx} (t-inl-morph-check {u = u}) fmt ρ dγ = λ a  → returnM u (inj₁ a)
+⟦_⟧ᶜ {ctx = ctx} (t-inr-morph-check {u = u}) fmt ρ dγ = λ b  → returnM u (inj₂ b)
 ⟦_⟧ᶜ {ctx = ctx} (t-compose-check-g {π = π} dg df) fmt ρ dγ =
   (⟦ df ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=ᵖ λ vg →
   λ a → bindM π (vg a) vf
@@ -263,28 +265,28 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
   returnᵖ (λ ab → [ vf , vg ]′ ab)
 ⟦_⟧ᶜ {ctx = ctx} (t-pair-morph-check {π = π} df dg) fmt ρ dγ =
   (⟦ df ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ vg →
-  λ a → bindM π (vf a) λ b → bindM π (vg a) λ c → returnM π (b , c)
-⟦_⟧ᶜ {ctx = ctx} (t-curry-check {π₀ = π₀} df) fmt ρ dγ =
-  (⟦ df ⟧ᶜ fmt ρ) dγ >>=ᵖ λ vf → λ a → returnM π₀ (λ b → vf (a , b))
+  λ a → bindM π (vf a) λ b → fmapM π (λ c → (b , c)) (vg a)
+⟦_⟧ᶜ {ctx = ctx} (t-curry-check {u = u} df) fmt ρ dγ =
+  (⟦ df ⟧ᶜ fmt ρ) dγ >>=ᵖ λ vf → λ a → returnM u (λ b → vf (a , b))
 -- PLAN 0.101 (D265, D273): the algebra / coalgebra is typed in the ambient
 -- context, so it reads the term's own environment `dγ`.
-⟦_⟧ᶜ {ctx = ctx} (t-cata-check {π = π} wfF dalg) fmt ρ dγ =
+⟦_⟧ᶜ {ctx = ctx} (t-cata-check {u = u} wfF dalg) fmt ρ dγ =
   -- plan 0.113 B1: the algebra's usage is ω-scaled; it reads `dγ` restricted.
-  (⟦ dalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
-⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {π = π} wfF dcoalg) fmt ρ dγ =
-  λ a → ana-semᵛ π π₀ wfF ((⟦ dcoalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ)) a
+  (⟦ dalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ u wfF valg v
+⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {π = π} {u = u} wfF dcoalg) fmt ρ dγ =
+  λ a → returnM u (ana-semᵛ π wfF ((⟦ dcoalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ)) a)
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
 ⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt ρ dγ = fmapᵖ ⟦ p ⟧<:ᵛ ((⟦ d ⟧ᵢ fmt ρ) dγ)
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives
 -- an argument; the binder's usage `q'` decides whether it enters the body's
 -- environment. `q' ≤q q` (the rule's own premise) rules out the off-diagonal
 -- cases — an erased arrow cannot have a body that uses its argument.
-⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Zero} {q' = Zero} {π = π} _ d) fmt ρ dγ = λ _ → returnM π ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
-⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = One}  {q' = Zero} {π = π} _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
-⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = Zero} {π = π} _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
-⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = One}  {q' = One} {π = π}  _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
-⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = One} {π = π}  _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
-⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = Many} {π = π} _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Zero} {q' = Zero} {u = u} _ d) fmt ρ dγ = λ _ → returnM u ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = One}  {q' = Zero} {u = u} _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = Zero} {u = u} _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = One}  {q' = One} {u = u}  _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = One} {u = u}  _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = Many} {u = u} _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᶜ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
 ⟦_⟧ᶜ {ctx = ctx} (t-pair-lit-check da db) fmt ρ dγ = (⟦ da ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ db ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → returnᵖ (a , b)
 ⟦_⟧ᶜ {ctx = ctx} (t-In-app-check wfF d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ v → returnᵖ (in-valueᵛ wfF v)
 ⟦_⟧ᶜ {ctx = ctx} (t-apply-check dp) fmt ρ dγ = (⟦ dp ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ fa → proj₁ fa (proj₂ fa)
@@ -478,22 +480,22 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- instance, converted to the given grade.
 ⟦_⟧ᵈ {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) fmt ρ dγ =
   fmapᵖ ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<:ᵛ (defAt (NamedCtx.polys ctx) x (defs ρ) lp _ ki)
-⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Zero} {π = π} _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
-⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One} {π = π}  _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
-⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} {π = π} _ d) fmt ρ dγ = λ a → returnM π ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
+⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Zero} {u = u} _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = One} {u = u}  _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
+⟦_⟧ᵈ {ctx = ctx} (d-lam {A = A} {q' = Many} {u = u} _ d) fmt ρ dγ = λ a → returnM u ((⟦ d ⟧ᵢ fmt ρ) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
 ⟦_⟧ᵈ {ctx = ctx} (d-compose {π = π} dg df) fmt ρ dγ =
   (⟦ df ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=ᵖ λ vg →
   λ a → bindM π (vg a) vf
-⟦_⟧ᵈ {ctx = ctx} (d-id {π = π}) fmt ρ dγ = λ a  → returnM π a
-⟦_⟧ᵈ {ctx = ctx} (d-fst {π = π}) fmt ρ dγ = λ ab → returnM π (proj₁ ab)
-⟦_⟧ᵈ {ctx = ctx} (d-snd {π = π}) fmt ρ dγ = λ ab → returnM π (proj₂ ab)
-⟦_⟧ᵈ {ctx = ctx} (d-terminal {π = π}) fmt ρ dγ = λ _  → returnM π tt
+⟦_⟧ᵈ {ctx = ctx} (d-id {u = u}) fmt ρ dγ = λ a  → returnM u a
+⟦_⟧ᵈ {ctx = ctx} (d-fst {u = u}) fmt ρ dγ = λ ab → returnM u (proj₁ ab)
+⟦_⟧ᵈ {ctx = ctx} (d-snd {u = u}) fmt ρ dγ = λ ab → returnM u (proj₂ ab)
+⟦_⟧ᵈ {ctx = ctx} (d-terminal {u = u}) fmt ρ dγ = λ _  → returnM u tt
 ⟦_⟧ᵈ {ctx = ctx} d-initial  fmt ρ dγ = λ v  → ⊥-elim v
 ⟦_⟧ᵈ {ctx = ctx} (d-case df dg) fmt ρ dγ =
   (⟦ df ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ vg →
   returnᵖ (λ ab → [ vf , vg ]′ ab)
 ⟦_⟧ᵈ {ctx = ctx} (d-pair {π = π} df dg) fmt ρ dγ =
   (⟦ df ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ vg →
-  λ a → bindM π (vf a) λ b → bindM π (vg a) λ c → returnM π (b , c)
-⟦_⟧ᵈ {ctx = ctx} (d-cata {π = π} wfF dalg) fmt ρ dγ =
-  (⟦ dalg ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ π wfF valg v
+  λ a → bindM π (vf a) λ b → fmapM π (λ c → (b , c)) (vg a)
+⟦_⟧ᵈ {ctx = ctx} (d-cata {u = u} wfF dalg) fmt ρ dγ =
+  (⟦ dalg ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ u wfF valg v

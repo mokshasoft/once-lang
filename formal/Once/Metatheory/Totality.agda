@@ -11,7 +11,8 @@
 
 module Once.Metatheory.Totality where
 
-open import Once.Spec.Type.Grade using (pure; eff; prod)
+open import Once.Spec.Type.Grade using (pure; eff⁺; eff; prod)
+open import Once.Spec.Guarded using (forget⁺)
 open import Once.Spec.Totality using (FiniteT; fin-ret; fin-call; fin-halt; ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
 open Once.Spec.Totality.ProductiveT∞ using (node)
 open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
@@ -38,7 +39,7 @@ productiveN (halt∞ o a)   = prod-halt
 totality : Totality
 totality = record
   { finite     = finite
-  ; productive = λ { pure wf v → _ ; eff wf v → finite (out-semᵛ eff wf v) ; prod wf v → productive∞ (out-semᵛ prod wf v) }
+  ; productive = λ { pure wf v → _ ; eff wf v → finite (out-semᵛ eff wf v) ; prod wf v → productive∞ (out-semᵛ prod wf v) ; eff⁺ wf v → finite (forget⁺ (out-semᵛ eff⁺ wf v)) }
   ; no-self-reference    = no-self-reference
   ; no-forward-reference = no-forward-reference
   ; stream-typed = stream-typed

@@ -20,7 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sub
 
 open import Once.Spec.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff; _·p_)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (⊑-pe; pure⊑; _⊑π_)
+open import Once.Spec.Type.Sub using (⊑-pe; _⊑π_)
 open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Surface.Thinning using (thin-usage-refl)
@@ -30,39 +30,37 @@ open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.Derived S
 
--- Every grade is above `pure`.
--- `pure⊑` (every grade is above `pure`) is `Once.Type.Sub`'s.
-
--- A variable at any grade.
-⊢var′ : ∀ {n} {Γ : Ctx n} (i : Fin n) (π : Purity) → Γ ⊢[ singleUse i One ] var i ∷ Once.Spec.Context.lookup Γ i ! π
-⊢var′ i π = ⊢sub-eff (pure⊑ π) (⊢var i)
+-- A variable at any grade with a unit (D311: not at the guard `eff⁺`).
+⊢var′ : ∀ {n} {Γ : Ctx n} (i : Fin n) {π : Purity} → pure ⊑π π → Γ ⊢[ singleUse i One ] var i ∷ Once.Spec.Context.lookup Γ i ! π
+⊢var′ i u = ⊢sub-eff u (⊢var i)
 
 ------------------------------------------------------------------------
--- The closed combinators: at zero usage, at any grade of their arrow. The
--- body is computed purely and then embedded at the arrow's grade (the unit,
--- once, outermost), so its meaning is the grade's `returnM` of a value.
+-- The closed combinators: at zero usage, at any grade of their arrow that has
+-- a unit (`pure ⊑π π`). The body is computed purely and then embedded at the
+-- arrow's grade (the unit, once, outermost), so its meaning is the grade's
+-- `returnM` of a value. None is at the guard `eff⁺`: none performs an event.
 ------------------------------------------------------------------------
 
-⊢idᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → Γ ⊢[ zeroUsage ] idᶜ A π ∷ A ⇒[ mk-kind Many π ] A ! pure
-⊢idᶜ {π = π} = ⊢lam refl (⊢var′ zero π)
+⊢idᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] idᶜ A π ∷ A ⇒[ mk-kind Many π ] A ! pure
+⊢idᶜ u = ⊢lam refl (⊢var′ zero u)
 
-⊢fstᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] fstᶜ A B π ∷ (A * B) ⇒[ mk-kind Many π ] A ! pure
-⊢fstᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢fst (⊢var zero)))
+⊢fstᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] fstᶜ A B π ∷ (A * B) ⇒[ mk-kind Many π ] A ! pure
+⊢fstᶜ u = ⊢lam refl (⊢sub-eff u (⊢fst (⊢var zero)))
 
-⊢sndᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] sndᶜ A B π ∷ (A * B) ⇒[ mk-kind Many π ] B ! pure
-⊢sndᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢snd (⊢var zero)))
+⊢sndᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] sndᶜ A B π ∷ (A * B) ⇒[ mk-kind Many π ] B ! pure
+⊢sndᶜ u = ⊢lam refl (⊢sub-eff u (⊢snd (⊢var zero)))
 
-⊢inlᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] inlᶜ A B π ∷ A ⇒[ mk-kind Many π ] (A + B) ! pure
-⊢inlᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢inl (⊢var zero)))
+⊢inlᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] inlᶜ A B π ∷ A ⇒[ mk-kind Many π ] (A + B) ! pure
+⊢inlᶜ u = ⊢lam refl (⊢sub-eff u (⊢inl (⊢var zero)))
 
-⊢inrᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] inrᶜ A B π ∷ B ⇒[ mk-kind Many π ] (A + B) ! pure
-⊢inrᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢inr (⊢var zero)))
+⊢inrᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] inrᶜ A B π ∷ B ⇒[ mk-kind Many π ] (A + B) ! pure
+⊢inrᶜ u = ⊢lam refl (⊢sub-eff u (⊢inr (⊢var zero)))
 
-⊢terminalᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → Γ ⊢[ zeroUsage ] terminalᶜ A π ∷ A ⇒[ mk-kind Many π ] Unit ! pure
-⊢terminalᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) ⊢unit)
+⊢terminalᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] terminalᶜ A π ∷ A ⇒[ mk-kind Many π ] Unit ! pure
+⊢terminalᶜ u = ⊢lam refl (⊢sub-eff u ⊢unit)
 
-⊢initialᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → Γ ⊢[ zeroUsage ] initialᶜ A π ∷ Void ⇒[ mk-kind Many π ] A ! pure
-⊢initialᶜ {π = π} = ⊢lam refl (⊢sub-eff (pure⊑ π) (⊢absurd (⊢var zero)))
+⊢initialᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] initialᶜ A π ∷ Void ⇒[ mk-kind Many π ] A ! pure
+⊢initialᶜ u = ⊢lam refl (⊢sub-eff u (⊢absurd (⊢var zero)))
 
 ------------------------------------------------------------------------
 -- Usage algebra
@@ -136,35 +134,35 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
                             (⊢app (⊢var (suc (suc zero))) (⊢var zero))))))
 
 ⊢curryᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C : Type} {π₀ π : Purity} {f}
-        → Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure
+        → pure ⊑π π₀ → Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure
         → Γ ⊢[ Ψ ] curryᶜ A B π₀ π f ∷ A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C) ! pure
-⊢curryᶜ {Γ = Γ} {Ψ} {π₀ = π₀} {π} df =
+⊢curryᶜ {Γ = Γ} {Ψ} {π₀ = π₀} {π} u₀ df =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (trans (cong₂ _+ᵘ_ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (+ᵘ-identityˡ zeroUsage))) (z+qz Many))
                            (*ᵘ-identityˡ Ψ))
                (+ᵘ-identityˡ Ψ))
-        (⊢let df (⊢lam refl (⊢sub-eff (pure⊑ π₀)
+        (⊢let df (⊢lam refl (⊢sub-eff u₀
           (⊢lam refl (⊢app (⊢var (suc (suc zero))) (⊢pair (⊢var (suc zero)) (⊢var zero)))))))
 
 ⊢cataᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π : Purity} {alg}
-       → WellFormedF F
+       → pure ⊑π π → WellFormedF F
        → Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure
        → Γ ⊢[ Many *ᵘ Ψ ] cataᶜ F π alg ∷ μ-type F ⇒[ mk-kind Many π ] A ! pure
 -- Plan 0.113 B1: inside the body the algebra's variable is used ω times (the
 -- fold applies it per node), so the `let` charges `Many *ᵘ Ψ` — the surface rule.
-⊢cataᶜ {Γ = Γ} {Ψ} {π = π} wf da =
+⊢cataᶜ {Γ = Γ} {Ψ} {π = π} u wf da =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
                (+ᵘ-identityˡ (Many *ᵘ Ψ)))
-        (⊢let da (⊢lam refl (⊢fold wf (⊢var (suc zero)) (⊢var zero))))
+        (⊢let da (⊢lam refl (⊢fold u wf (⊢var (suc zero)) (⊢var zero))))
 
 ⊢anaᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π : Purity} {c}
-      → WellFormedF F
+      → pure ⊑π π₀ → WellFormedF F
       → Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure
       → Γ ⊢[ Many *ᵘ Ψ ] anaᶜ F A π₀ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
-⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} wf dc =
+⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} u₀ wf dc =
   ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
-                   (⊢sub-eff (pure⊑ π₀) (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))))
+                   (⊢sub-eff u₀ (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))))
 
 ------------------------------------------------------------------------
 -- The remaining closed combinators and the suspensions.
@@ -187,13 +185,13 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
            → Γ ⊢[ zeroUsage ] applyEffᶜ A B
                ∷ ((A ⇒[ mk-kind Many eff ] B) * A) ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many eff ] B) ! pure
 ⊢applyEffᶜ {Γ = Γ} = subst (λ U → Γ ⊢[ U ] applyEffᶜ _ _ ∷ _ ! pure) (z+qz Many)
-  (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var′ (suc zero) eff)) (⊢snd (⊢var′ (suc zero) eff)))))
+  (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var′ (suc zero) ⊑-pe)) (⊢snd (⊢var′ (suc zero) ⊑-pe)))))
 
 ⊢outEffᶜ : ∀ {n} {Γ : Ctx n} {F : Functor}
          → WellFormedF F
          → Γ ⊢[ zeroUsage ] outEffᶜ F
              ∷ ν-type F eff ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff)) ! pure
-⊢outEffᶜ wf = ⊢lam refl (⊢lam refl (⊢out wf (⊢var′ (suc zero) eff)))
+⊢outEffᶜ wf = ⊢lam refl (⊢lam refl (⊢out wf (⊢var′ (suc zero) ⊑-pe)))
 
 -- Applying an effectful arrow builds its suspension: exactly the surface's
 -- `Ψ₁ +ᵘ Many *ᵘ Ψ₂`.

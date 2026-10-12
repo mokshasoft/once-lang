@@ -38,7 +38,7 @@ open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
-open import Once.Spec.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; eff; prod)
+open import Once.Spec.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; eff⁺; eff; prod)
 open import Once.Denotation.TraceMonadInfLaws using (RelT∞′-embed; RelT∞′; RelT∞′-bind; rel∞-ret)
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
@@ -59,7 +59,7 @@ open import Once.Spec.Contract using (key; valueOf-at; _∈K?_)
 open import Once.Spec.ContractLaws using (value-∈)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; module CallEnv)
+open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; sigOpSemT; module CallEnv)
 open CallEnv using (ffiE)
 open import Once.Spec.Typing.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
@@ -105,17 +105,23 @@ open import Once.Spec.Name using (CanonicalName; bare; showCanonical)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; prjB-rel; injB-rel; embν-∼; module _∼ᵖᵈ_; module _∼∞ᵈ_; embν∞ᵖ-∼; embν∞ᵈ-∼)
+  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; RelGM-fmap; prjB-rel; injB-rel; embν-∼; module _∼ᵖᵈ_; module _∼∞ᵈ_; module _∼⁺ᵈ_; embν∞ᵖ-∼; embν∞ᵈ-∼; embν⁺ᵈ-∼)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼∞ᵈ_ using (force-∼∞ᵈ)
-open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ)
+open _∼⁺ᵈ_ using (force-∼⁺ᵈ)
+open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCall⁺)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Semantics.Functor using (⟦_⟧SF)
-open import Once.SigOp.Info using (semP; int-prim)
+open import Once.SigOp.Info using (semP; int-prim; mk-info'; FFIAnswers)
+open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
+open import Once.Spec.Guarded using (forget⁺; fmap⁺; module ν⁺)
+open ν⁺ using (force⁺)
+open import Once.Denotation.GuardedLaws using (forget-bind⁺)
+open import Once.Spec.Type using (isVoid?; isUnit?)
 import Once.Semantics.Machine as Val
 open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.Adequacy.GradedCataBridge fmt using (cata-bridgeᵍ)
@@ -330,6 +336,26 @@ val-rel : ∀ (ι : Interp) {D C} (s : String) (bC : IsBaseType C) (x : Val.⟦ 
 val-rel ι {D} {C} s bC x p (yes p₀) = rel-ret (injB-rel bC (TM.pure ι (key s D C) p₀ x))
 val-rel ι s bC x p (no ¬p)  = ⊥-elim (¬p p)
 
+-- D311 C2: a foreign operation at the guard is the generic effect — its call,
+-- forgotten, is the IR's call (the same decisions on the codomain).
+opCall⁺-sem : ∀ {A B} (h : FFIAnswers) (cn : CanonicalName) (bA : IsBaseType A) (bB : IsBaseType B)
+                (dv : Dec (B ≡ Once.Spec.Type.Void)) (du : Dec (B ≡ Unit)) (x : Val.⟦ A ⟧)
+            → forget⁺ (opCall⁺ cn bA dv du x)
+              ≡ sigOpSemT fmt h (mk-info' cn (arrow-sem-eff dv du) bA bB) (arrow-sem-eff dv du) x
+opCall⁺-sem h cn bA bB (yes refl) du         x = refl
+opCall⁺-sem h cn bA bB (no _)     (yes refl) x = refl
+opCall⁺-sem h cn bA bB (no _)     (no _)     x = refl
+
+-- …and so, mapped into the two value domains, related to it.
+opCall⁺-rel : ∀ {A B} (ι : Interp) (q : Quantity) (cn : CanonicalName) (bA : IsBaseType A) (bB : IsBaseType B) (x : Val.⟦ A ⟧)
+            → RelGT B (forget⁺ (fmap⁺ (injB bB) (opCall⁺ cn bA (isVoid? B) (isUnit? B) x)))
+                      (fmapT (injectᵇ bB) (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q eff⁺) cn bA bB) x))
+opCall⁺-rel {B = B} ι q cn bA bB x =
+  subst (λ t → RelGT B t (fmapT (injectᵇ bB) (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q eff⁺) cn bA bB) x)))
+        (sym (trans (forget-bind⁺ (opCall⁺ cn bA (isVoid? B) (isUnit? B) x) (λ y → TM.ret (injB bB y)))
+                    (cong (fmapT (injB bB)) (opCall⁺-sem (pureHalf ι) cn bA bB (isVoid? B) (isUnit? B) x))))
+        (same-tree bB (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q eff⁺) cn bA bB) x))
+
 sigOpRef-rel : ∀ {A} (ι : Interp) (cn : CanonicalName) (conc : IsConcrete A) (m : (showCanonical cn , A) ∈ sig ι)
              → RelGM pure A (sigOpRefᵛ fmt (sig ι) (impl ι) cn conc m) (sigOpRefᴰ fmt (pureHalf ι) cn conc)
 sigOpRef-rel {A} ι cn (con-base ib) m =
@@ -374,6 +400,20 @@ sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many prod} bDom bCo
     (λ x → fmapT (injB bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) x))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) x))
     (λ x → same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) x)) r))
+
+-- D311 C2: at the guard, the generic effect.
+sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero eff⁺} bDom bCod) m =
+  rel-ret (opCall⁺-rel ι Zero cn base-Unit bCod tt)
+sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bDom bCod) m =
+  rel-ret (ptr-rel {Dom} {Cod} bDom
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
+    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff⁺) cn bDom bCod) x))
+    (opCall⁺-rel ι One cn bDom bCod))
+sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff⁺} bDom bCod) m =
+  rel-ret (ptr-rel {Dom} {Cod} bDom
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
+    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff⁺) cn bDom bCod) x))
+    (opCall⁺-rel ι Many cn bDom bCod))
 
 -- Value-position named reference. SD's `sigOp` dispatches on `A`'s shape: at a
 -- base (`con-base`) type the arrow clause can't fire, so SD's catch-all IS the
@@ -421,6 +461,9 @@ sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero eff ] Cod} ι cn (con-fun bDom bCod)
 sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero prod ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
   subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero prod ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero prod} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero prod} bDom bCod)))
         eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero prod} bDom bCod) m)
+sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero eff⁺ ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
+  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero eff⁺ ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod)))
+        eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod) m)
 sigop-ref-bridge {A = Dom ⇒[ mk-kind One π ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
   subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind One π ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind One π} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind One π} bDom bCod)))
         eq (sigOpRef-rel ι cn (con-fun {k = mk-kind One π} bDom bCod) m)
@@ -499,6 +542,18 @@ out-app-bridge {F} {eff} {wfF} {vᴸ} {vᴿ} rel =
           {g = λ l → cf⁻¹ᵛ (ν-type F eff) wfF (coerce-ν-out wfF _ l)}
           {g′ = λ layer → coerce-functor⁻¹-D wfF (ν-type F eff) (coerce-ν-out wfF _ layer)}
           (λ x y r → out-relᵍ {A = ν-type F eff} wfF r) (force-∼ rel))
+-- D311 C2: a stream whose layers begin with an event — the forgotten root
+-- against the Kleisli force, mapped by the `Out` coercions.
+out-app-bridge {F} {eff⁺} {wfF} {vᴸ} {vᴿ} rel =
+  subst (RelGT (⟦ F ⟧T (ν-type F eff⁺)) (forget⁺ (out-semᵛ eff⁺ wfF vᴸ)))
+        (sym (liftFn-Out {π = eff⁺} wfF vᴿ))
+        (subst (λ t → RelGT (⟦ F ⟧T (ν-type F eff⁺)) t
+                        (fmapT (λ layer → coerce-functor⁻¹-D wfF (ν-type F eff⁺) (coerce-ν-out wfF _ layer)) (Once.Denotation.ValueDomain.νᵈ.forceᵈ vᴿ)))
+               (sym (forget-bind⁺ (force⁺ vᴸ) (λ l → TM.ret (cf⁻¹ᵛ (ν-type F eff⁺) wfF (coerce-ν-out wfF _ l)))))
+          (RelT′-fmap (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV (ν-type F eff⁺))) (RelGV (⟦ F ⟧T (ν-type F eff⁺)))
+            {g = λ l → cf⁻¹ᵛ (ν-type F eff⁺) wfF (coerce-ν-out wfF _ l)}
+            {g′ = λ layer → coerce-functor⁻¹-D wfF (ν-type F eff⁺) (coerce-ν-out wfF _ layer)}
+            (λ x y r → out-relᵍ {A = ν-type F eff⁺} wfF r) (force-∼⁺ᵈ rel)))
 -- D311: a stream whose layers may take forever — the layer's tree against the
 -- Kleisli force, mapped by the `Out` coercions.
 out-app-bridge {F} {prod} {wfF} {vᴸ} {vᴿ} rel =
@@ -597,6 +652,9 @@ mutual
   RelGV-sub (sub-ν ⊑-prod) r = r
   RelGV-sub (sub-ν ⊑-pp)   r = embν∞ᵖ-∼ r
   RelGV-sub (sub-ν ⊑-ep)   r = embν∞ᵈ-∼ r
+  RelGV-sub (sub-ν ⊑-g)    r = r
+  RelGV-sub (sub-ν ⊑-ge)   r = embν⁺ᵈ-∼ r
+  RelGV-sub (sub-ν ⊑-gp)   r = embν∞ᵈ-∼ (embν⁺ᵈ-∼ r)
   RelGV-sub (sub-arr {q = Zero} a b g) r = RelGM-sub g b r
   RelGV-sub (sub-arr {q = One}  a b g) r = λ ra → RelGM-sub g b (r (RelGV-sub a ra))
   RelGV-sub (sub-arr {q = Many} a b g) r = λ ra → RelGM-sub g b (r (RelGV-sub a ra))
@@ -618,6 +676,9 @@ mutual
   RelGM-sub ⊑-prod b r = RelT∞′-bind r (λ rr → rel∞-ret refl (RelGV-sub b rr))
   RelGM-sub ⊑-pp   b (rel-ret rr) = rel∞-ret refl (RelGV-sub b rr)
   RelGM-sub ⊑-ep   b r = RelT∞′-embed (RelGT-sub b r)
+  RelGM-sub {B = B} {B′} ⊑-g  b r = RelGM-fmap eff⁺ {B} {B′} r (RelGV-sub b)
+  RelGM-sub {B = B} {B′} ⊑-ge b r = RelGM-fmap eff⁺ {B} {B′} r (RelGV-sub b)
+  RelGM-sub {B = B} {B′} ⊑-gp b r = RelT∞′-embed (RelGM-fmap eff⁺ {B} {B′} r (RelGV-sub b))
 
 ------------------------------------------------------------------------
 -- Plan 0.103 phase 1c: the two DEFINITIONS environments related, entry by
@@ -1054,25 +1115,25 @@ bridge-i (t-app-spine {X = X} {T = T} _ darg df) re er =
 -- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
 -- re-aimed at `⊢ᶜ` — the `subst` moves `liftFn`'s funext-reduction out of the
 -- way exactly as `wrapM` used to.
-bridge-c (t-id-check {T = T} {π = π}) re er =
-  rel-ret (subst (RelGV (T ⇒[ mk-kind Many π ] T) (λ a → returnM π a))
-               (sym (liftFn-id {T})) (λ rv → RelGM-return π {T} rv))
-bridge-c (t-fst-check {A = A} {B = B} {π = π}) re er =
-  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnM π (proj₁ ab)))
-               (sym (liftFn-fst {A} {B})) (λ rv → RelGM-return π {A} (proj₁ rv)))
-bridge-c (t-snd-check {A = A} {B = B} {π = π}) re er =
-  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM π (proj₂ ab)))
-               (sym (liftFn-snd {A} {B})) (λ rv → RelGM-return π {B} (proj₂ rv)))
-bridge-c (t-terminal-morph-check {A = A} {π = π}) re er =
-  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM π tt))
-               (sym (liftFn-terminal {A})) (λ _ → RelGM-return π {Once.Spec.Type.Unit} tt))
+bridge-c (t-id-check {T = T} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV (T ⇒[ mk-kind Many π ] T) (λ a → returnM u a))
+               (sym (liftFn-id {T})) (λ rv → RelGM-return u {T} rv))
+bridge-c (t-fst-check {A = A} {B = B} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnM u (proj₁ ab)))
+               (sym (liftFn-fst {A} {B})) (λ rv → RelGM-return u {A} (proj₁ rv)))
+bridge-c (t-snd-check {A = A} {B = B} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM u (proj₂ ab)))
+               (sym (liftFn-snd {A} {B})) (λ rv → RelGM-return u {B} (proj₂ rv)))
+bridge-c (t-terminal-morph-check {A = A} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM u tt))
+               (sym (liftFn-terminal {A})) (λ _ → RelGM-return u {Once.Spec.Type.Unit} tt))
 bridge-c (t-initial-morph-check) re er = rel-ret (λ { {a = ()} })
-bridge-c (t-inl-morph-check {A = A} {B = B} {π = π}) re er =
-  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] (A + B)) (λ a → returnM π (inj₁ a)))
-               (sym (liftFn-inl {A} {B})) (λ rv → RelGM-return π {A + B} rv))
-bridge-c (t-inr-morph-check {A = A} {B = B} {π = π}) re er =
-  rel-ret (subst (RelGV (B ⇒[ mk-kind Many π ] (A + B)) (λ b → returnM π (inj₂ b)))
-               (sym (liftFn-inr {B} {A})) (λ rv → RelGM-return π {A + B} rv))
+bridge-c (t-inl-morph-check {A = A} {B = B} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] (A + B)) (λ a → returnM u (inj₁ a)))
+               (sym (liftFn-inl {A} {B})) (λ rv → RelGM-return u {A + B} rv))
+bridge-c (t-inr-morph-check {A = A} {B = B} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV (B ⇒[ mk-kind Many π ] (A + B)) (λ b → returnM u (inj₂ b)))
+               (sym (liftFn-inr {B} {A})) (λ rv → RelGM-return u {A + B} rv))
 
 -- D127: the COMBINATORS. Both sides now bind their arms and then build the
 -- same function from the results, so each is a `RelGᵖ-bind`/`RelGT-return`
@@ -1111,33 +1172,32 @@ bridge-c (t-pair-morph-check {A = A} {B = B} {C = C} {π = π} df dg) re er =
             {B = A ⇒[ mk-kind Many π ] (B * C)}
             (bridge-c dg (reʳ re) er) (λ {g₁} {g₂} rg →
   RelGT-return {A = A ⇒[ mk-kind Many π ] (B * C)}
-              {x = λ a → bindM π (f₁ a) λ b → bindM π (g₁ a) λ c → returnM π (b , c)}
-              {y = λ a → f₂ a >>=T λ b → g₂ a >>=T λ c → returnT (b , c)}
+              {x = λ a → bindM π (f₁ a) λ b → fmapM π (λ c → (b , c)) (g₁ a)}
+              {y = λ a → f₂ a >>=T λ b → fmapT (λ c → (b , c)) (g₂ a)}
               (λ rv → RelGM-bind π {B} {B * C} (rf rv) (λ {b₁} {b₂} rb →
-                       RelGM-bind π {C} {B * C} (rg rv) (λ {e₁} {e₂} rc →
-                         RelGM-return π {B * C} {x = b₁ , e₁} {y = b₂ , e₂} (rb , rc))))))
-bridge-c (t-curry-check {A = A} {B = B} {C = C} {π₀ = π₀} {π = π} df) re er =
+                       RelGM-fmap π {C} {B * C} (rg rv) (λ rc → rb , rc)))))
+bridge-c (t-curry-check {A = A} {B = B} {C = C} {π₀ = π₀} {π = π} {u = u} df) re er =
   RelGᵖ-bind {A = (A * B) ⇒[ mk-kind Many π ] C}
             {B = A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C)}
             (bridge-c df re er) (λ {c₁} {c₂} rf →
   RelGT-return {A = A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C)}
-              {x = λ a → returnM π₀ (λ b → c₁ (a , b))}
+              {x = λ a → returnM u (λ b → c₁ (a , b))}
               {y = λ a → returnT (λ b → c₂ (a , b))}
               (λ {a} {b} rv →
-                 RelGM-return π₀ {B ⇒[ mk-kind Many π ] C}
+                 RelGM-return u {B ⇒[ mk-kind Many π ] C}
                              {x = λ z → c₁ (a , z)} {y = λ z → c₂ (b , z)}
                              (λ rv' → rf (rv , rv'))))
 -- The cata: the algebra is BOUND on both sides (D131), so this is a bind over
 -- the algebra followed by the fold congruence `cata-bridge` — which is exactly
 -- why that lemma is now stated over two ALGEBRAS.
-bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re er =
+bridge-c (t-cata-check {F = F} {A = A} {π = π} {u = u} wfF dalg) re er =
   RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
             {B = μ-type F ⇒[ mk-kind Many π ] A}
             (bridge-c dalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} ralg →   -- plan 0.113 B1
   RelGT-return {A = μ-type F ⇒[ mk-kind Many π ] A}
-              {x = λ v → cata-semᵛ π wfF c₁ v}
+              {x = λ v → cata-semᵛ u wfF c₁ v}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (returnT c₂)) x}
-              (λ {a} {b} rv → cata-bridgeᵍ π {wfF = wfF} c₁ c₂ ralg rv))
+              (λ {a} {b} rv → cata-bridgeᵍ u {wfF = wfF} c₁ c₂ ralg rv))
 -- D193 / D273: the unfold. The coalgebra lives in the context and the source
 -- side binds it ONCE (`⟦ ana ⟧ˢ`, as `cata`), so this is `cata`'s shape: the
 -- coalgebra's own bridge through `RelGᵖ-bind`, then `ana-bridge` per related
@@ -1145,26 +1205,27 @@ bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re er =
 -- what `RelGV` asks for there) comes from coalgebraic extensionality.
 -- (`RelGT-bind` at `returnT`, not `RelGᵖ-bind`: the Spec clause applies its
 -- continuation directly rather than through the opaque `>>=ᵖ`.)
-bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} wfF dcoalg) re er =
+bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} {u = u} wfF dcoalg) re er =
   RelGT-bind {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
             {B = A ⇒[ mk-kind Many π₀ ] ν-type F π}
             (bridge-c dcoalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} rco →
   RelGT-return {A = A ⇒[ mk-kind Many π₀ ] ν-type F π}
     (λ {a} {b} rab →
-      ana-bridgeᵍ π π₀ wfF c₁ (returnT c₂)
-                  (RelGT-return {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} rco) rab))
+      RelGM-return u {ν-type F π}
+        (ana-bridgeᵍ π wfF c₁ (returnT c₂)
+                     (RelGT-return {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} rco) rab)))
 -- D226: the mode switch. Both sides map their result along the same `⟦ p ⟧<:`,
 -- and the relation respects every conversion (`RelGT-sub`).
 bridge-c (t-sub d p) re er = RelGT-sub p (bridge-i d re er)
 -- D143: `q` (the arrow) decides whether the RELATION supplies an argument;
 -- `q'` (the binder) decides whether it enters the environment. Six clauses,
 -- mirroring `⟦_⟧ᶜ`'s own split — `q' ≤q q` rules the rest out.
-bridge-c (t-lam {B = B} {q = Zero} {q' = Zero} {π = π} _ d) re er = rel-ret (RelGM-ret π {B} (bridge-c d (rel-bind0 re) er))
-bridge-c (t-lam {B = B} {q = One}  {q' = Zero} {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-c d (rel-bind0 re) er))
-bridge-c (t-lam {B = B} {q = Many} {q' = Zero} {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-c d (rel-bind0 re) er))
-bridge-c (t-lam {B = B} {q = One}  {q' = One}  {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-c d (rel-bind One re rv) er))
-bridge-c (t-lam {B = B} {q = Many} {q' = One}  {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-c d (rel-bind One re rv) er))
-bridge-c (t-lam {B = B} {q = Many} {q' = Many} {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-c d (rel-bind Many re rv) er))
+bridge-c (t-lam {B = B} {q = Zero} {q' = Zero} {π = π} {u = u} _ d) re er = rel-ret (RelGM-ret u {B} (bridge-c d (rel-bind0 re) er))
+bridge-c (t-lam {B = B} {q = One}  {q' = Zero} {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-c d (rel-bind0 re) er))
+bridge-c (t-lam {B = B} {q = Many} {q' = Zero} {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-c d (rel-bind0 re) er))
+bridge-c (t-lam {B = B} {q = One}  {q' = One}  {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-c d (rel-bind One re rv) er))
+bridge-c (t-lam {B = B} {q = Many} {q' = One}  {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-c d (rel-bind One re rv) er))
+bridge-c (t-lam {B = B} {q = Many} {q' = Many} {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-c d (rel-bind Many re rv) er))
 bridge-c (t-pair-lit-check {A = A} {B = B} da db) re er =
   RelGᵖ-bind {A = A} {B = A * B} (bridge-c da (reˡ re) er)
             (λ ra → RelGᵖ-bind {A = B} {B = A * B} (bridge-c db (reʳ re) er)
@@ -1204,9 +1265,9 @@ bridge-d (d-infer {B = B} w a g) re er = RelGT-sub (sub-arr {q = Many} a (<:-ref
 bridge-d {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π′ = π′} _ _ lp _ _ _ ki g) re er =
   RelGT-sub (sub-arr {q = Many} (<:-refl A) (<:-refl B) g)
     (envrel-at (NamedCtx.polys ctx) x (proj₁ er) lp (A ⇒[ mk-kind Many π′ ] B) ki)
-bridge-d (d-lam {B = B} {q' = Zero} {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-i d (rel-bind0 re) er))
-bridge-d (d-lam {B = B} {q' = One}  {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-i d (rel-bind One re rv) er))
-bridge-d (d-lam {B = B} {q' = Many} {π = π} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret π {B} (bridge-i d (rel-bind Many re rv) er))
+bridge-d (d-lam {B = B} {q' = Zero} {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind0 re) er))
+bridge-d (d-lam {B = B} {q' = One}  {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind One re rv) er))
+bridge-d (d-lam {B = B} {q' = Many} {π = π} {u = u} _ d) re er = rel-ret λ {a} {b} rv → (RelGM-ret u {B} (bridge-i d (rel-bind Many re rv) er))
 bridge-d (d-compose {A = A} {M = M} {B = B} {π = π} dg df) re er =
   RelGᵖ-bind {A = M ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] B}
             (bridge-d df (reˡ re) er) (λ {f₁} {f₂} rf →
@@ -1215,18 +1276,18 @@ bridge-d (d-compose {A = A} {M = M} {B = B} {π = π} dg df) re er =
   RelGT-return {A = A ⇒[ mk-kind Many π ] B}
               {x = λ a → bindM π (g₁ a) f₁} {y = λ a → g₂ a >>=T f₂}
               (λ rv → RelGM-bind π {M} {B} (rg rv) rf)))
-bridge-d (d-id {A = T} {π = π}) re er =
-  rel-ret (subst (RelGV (T ⇒[ mk-kind Many π ] T) (λ a → returnM π a))
-               (sym (liftFn-id {T})) (λ rv → RelGM-return π {T} rv))
-bridge-d (d-fst {A = A} {B = B} {π = π}) re er =
-  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnM π (proj₁ ab)))
-               (sym (liftFn-fst {A} {B})) (λ rv → RelGM-return π {A} (proj₁ rv)))
-bridge-d (d-snd {A = A} {B = B} {π = π}) re er =
-  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM π (proj₂ ab)))
-               (sym (liftFn-snd {A} {B})) (λ rv → RelGM-return π {B} (proj₂ rv)))
-bridge-d (d-terminal {A = A} {π = π}) re er =
-  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM π tt))
-               (sym (liftFn-terminal {A})) (λ _ → RelGM-return π {Once.Spec.Type.Unit} tt))
+bridge-d (d-id {A = T} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV (T ⇒[ mk-kind Many π ] T) (λ a → returnM u a))
+               (sym (liftFn-id {T})) (λ rv → RelGM-return u {T} rv))
+bridge-d (d-fst {A = A} {B = B} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnM u (proj₁ ab)))
+               (sym (liftFn-fst {A} {B})) (λ rv → RelGM-return u {A} (proj₁ rv)))
+bridge-d (d-snd {A = A} {B = B} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM u (proj₂ ab)))
+               (sym (liftFn-snd {A} {B})) (λ rv → RelGM-return u {B} (proj₂ rv)))
+bridge-d (d-terminal {A = A} {π = π} {u = u}) re er =
+  rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM u tt))
+               (sym (liftFn-terminal {A})) (λ _ → RelGM-return u {Once.Spec.Type.Unit} tt))
 bridge-d d-initial re er = rel-ret (λ { {a = ()} })
 bridge-d (d-case {A = A} {B = B} {C = C} {π = π} df dg) re er =
   RelGᵖ-bind {A = A ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
@@ -1246,16 +1307,15 @@ bridge-d (d-pair {A = A} {B = B} {C = C} {π = π} df dg) re er =
             {B = A ⇒[ mk-kind Many π ] (B * C)}
             (bridge-d dg (reʳ re) er) (λ {g₁} {g₂} rg →
   RelGT-return {A = A ⇒[ mk-kind Many π ] (B * C)}
-              {x = λ a → bindM π (f₁ a) λ b → bindM π (g₁ a) λ c → returnM π (b , c)}
-              {y = λ a → f₂ a >>=T λ b → g₂ a >>=T λ c → returnT (b , c)}
+              {x = λ a → bindM π (f₁ a) λ b → fmapM π (λ c → (b , c)) (g₁ a)}
+              {y = λ a → f₂ a >>=T λ b → fmapT (λ c → (b , c)) (g₂ a)}
               (λ rv → RelGM-bind π {B} {B * C} (rf rv) (λ {b₁} {b₂} rb →
-                       RelGM-bind π {C} {B * C} (rg rv) (λ {e₁} {e₂} rc →
-                         RelGM-return π {B * C} {x = b₁ , e₁} {y = b₂ , e₂} (rb , rc))))))
-bridge-d (d-cata {F = F} {A = A} {π = π} wfF dalg) re er =
+                       RelGM-fmap π {C} {B * C} (rg rv) (λ rc → rb , rc)))))
+bridge-d (d-cata {F = F} {A = A} {π = π} {u = u} wfF dalg) re er =
   RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
             {B = μ-type F ⇒[ mk-kind Many π ] A}
             (bridge-i dalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} ralg →
   RelGT-return {A = μ-type F ⇒[ mk-kind Many π ] A}
-              {x = λ v → cata-semᵛ π wfF c₁ v}
+              {x = λ v → cata-semᵛ u wfF c₁ v}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (returnT c₂)) x}
-              (λ {a} {b} rv → cata-bridgeᵍ π {wfF = wfF} c₁ c₂ ralg rv))
+              (λ {a} {b} rv → cata-bridgeᵍ u {wfF = wfF} c₁ c₂ ralg rv))

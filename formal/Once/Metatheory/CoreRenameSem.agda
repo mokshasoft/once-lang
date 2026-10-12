@@ -277,13 +277,12 @@ ren-sem θ (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {π₂ = π�
   trans (⟦⟧-substΨ (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) _ fmt δ x)
         (bindCᵍ {π₁} {π₂} (trans (ren-sem θ da fmt δ _)
                       (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) (sym (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))) _ x)))
-               (λ a → bindC {π₂} (trans (ren-sem θ db fmt δ _)
-                                   (cong (GM.⟦ db ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) (sym (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))) _ x)))
-                            (λ b → refl)))
-ren-sem θ (⊢fst {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
-ren-sem θ (⊢snd {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
-ren-sem θ (⊢inl {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
-ren-sem θ (⊢inr {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
+               (λ a → cong (fmapM π₂ _) (trans (ren-sem θ db fmt δ _)
+                                   (cong (GM.⟦ db ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) (sym (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))) _ x)))))
+ren-sem θ (⊢fst {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem θ (⊢snd {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem θ (⊢inl {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem θ (⊢inr {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁} {π₂ = π₂} {l = l} {r = r} ds dl dr) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
         (bindCᵍ {π₁} {π₂} (trans (ren-sem θ ds fmt δ _)
@@ -300,10 +299,10 @@ ren-sem θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁
                                              (envEq θ (⊑ᵘ-+ʳ Ψs Ψ) (sym (sym E)) _ x)))) }))
   where E = thin-usage-+ᵘ θ Ψs Ψ
 ren-sem θ (⊢absurd {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
-ren-sem θ (⊢roll {π = π} wf d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
+ren-sem θ (⊢roll {π = π} wf d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 -- plan 0.113 B1: the algebra's part is ω-scaled (left of the sum), as `app`'s
 -- argument is (right of its sum) — the same transport, mirrored.
-ren-sem θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} wf da dt) fmt δ x =
+ren-sem θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} u wf da dt) fmt δ x =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
         (bindCᵍ {π₁} (trans (ren-sem θ da fmt δ _)
                       (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) (sym (sym E)) _ x)))
@@ -315,15 +314,14 @@ ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ =
   trans (⟦⟧-substΨ (sym E) _ fmt δ x)
         (bindCᵍ {π₁} {π₂} (trans (ren-sem θ dc fmt δ _)
                        (cong (GM.⟦ dc ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) (sym (sym E)) _ x)))
-               (λ clo → bindC {π₂} (trans (ren-sem θ ds fmt δ _)
-                                      (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (sym (sym E)) _ x)))
-                                (λ _ → refl)))
+               (λ clo → cong (fmapM π₂ _) (trans (ren-sem θ ds fmt δ _)
+                                      (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (sym (sym E)) _ x)))))
   where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))
 ren-sem θ (⊢out {π = π} {π₁ = π₁} wf d) fmt δ x = bindCᵍ {π₁} {π} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x
 ren-sem {Δ = Δ} θ ⊢lit-float fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-float fmt δ x
-ren-sem θ (⊢prim {π = π} p d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
+ren-sem θ (⊢prim {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ (⊢sigop c k h g m) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g m) fmt δ x
 ren-sem θ (⊢sub-eff g d) fmt δ x = cong (subM g) (ren-sem θ d fmt δ x)
 -- D276: sub-usaging is a restriction, and restriction commutes with thinning.

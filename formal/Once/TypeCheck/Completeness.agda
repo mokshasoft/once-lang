@@ -65,7 +65,7 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Spec.Type using (Functor; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; sub-int; sub-float; sub-unit; sub-prod)
+open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pp; sub-int; sub-float; sub-unit; sub-prod)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Type.DecEq using (_≟T_)
@@ -73,7 +73,7 @@ open import Once.Spec.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; clas
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.Metatheory.ModeAgreement using (mode-agree-ic; mode-agree-dc)
-open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success)
+open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; withUnit-elim)
 
 
 -- The per-rule lemmas (split for the 30 s per-module check budget).
@@ -308,12 +308,14 @@ given-infer-complete {A = A} {A′} {π = π} {π′} (success _ _ _ _ _ , _) re
 -- `d-cata`: the algebra synthesizes the arrow the fold needs.
 given-cata-complete : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type} {π : T.Purity}
     (wfF : WellFormedF F) {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
-    (r : VerifiedInferResult ctx alg)
+    (u : T.pure ⊑π π) (r : VerifiedInferResult ctx alg)
   → proj₁ r ≡ success (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
   → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′   -- plan 0.113 B1
-given-cata-complete {F = F} {A} {π} wfF (success _ _ _ _ _ , _) refl
+given-cata-complete {F = F} {A} {π} wfF {Ψ = Ψ} u (success _ _ _ _ _ , _) refl
   with (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A)
-... | yes refl = _ , _ , _ , refl
+... | yes refl =
+  withUnit-elim _ u _
+    (λ res → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ res ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′) (λ u′ → _ , _ , _ , refl)
 ... | no ¬p = ⊥-elim (¬p refl)
 
 -- compose, `f`'s route: `f` synthesizes, converts, and `g` is checked at the
@@ -879,21 +881,21 @@ mutual
   given-complete {ctx} (d-poly {x = x} {A = A} {π = π} ln li lp ¬g as inc ki@(θ , eθ , _) g)
     rewrite poly-head-fails ctx x ln li lp ¬g =
       DPoly.from-lookups ctx x A π (Error.UnboundVariable x) ln li lp ¬g as inc θ eθ g ki
-  given-complete {ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} leq bd)
+  given-complete {ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} {u = u} leq bd)
     with inferElabV (Classify.extendNamedCtx ctx x A) body | infer-complete bd
   ... | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | (_ , _ , _ , refl)
       with E.decideLeq q' T.Many | decideLeq-just q' T.Many leq
-  ...   | just _ | _ , refl = _ , _ , _ , refl
+  ...   | just _ | _ , refl = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
   given-complete {ctx} (d-compose {f = f} {g = g} {A = A} {M = M} {π = π} dg df)
     with elabGivenV ctx g A π | given-complete dg
   ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
       with elabGivenV ctx f M π | given-complete df
   ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
-  given-complete d-id = _ , _ , _ , refl
-  given-complete d-fst = _ , _ , _ , refl
-  given-complete d-snd = _ , _ , _ , refl
-  given-complete d-terminal = _ , _ , _ , refl
-  given-complete d-initial = _ , _ , _ , refl
+  given-complete (d-id {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
+  given-complete (d-fst {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
+  given-complete (d-snd {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
+  given-complete (d-terminal {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
+  given-complete (d-initial {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
   given-complete {ctx} (d-case {f = f} {g = g} {A = A} {B = B} {C = C} {π = π} df dg)
     with elabGivenV ctx f A π | given-complete df
   ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
@@ -907,9 +909,9 @@ mutual
   ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
       with elabGivenV ctx g A π | given-complete dg
   ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
-  given-complete {ctx} (d-cata {alg = alg} {F = F} {A = A} {π = π} wfF dalg)
+  given-complete {ctx} (d-cata {alg = alg} {F = F} {A = A} {π = π} {u = u} wfF dalg)
     rewrite wellFormedF?-complete-at wfF =
-      given-cata-complete wfF (inferElabV ctx alg)
+      given-cata-complete wfF u (inferElabV ctx alg)
         (proj₂ (proj₂ (proj₂ (infer-complete dalg))))
 
   -- Plan 0.49 / D063: the MORPHISM-COMPLETENESS theorem. A `⊢ᵐ` morphism
@@ -942,10 +944,10 @@ mutual
         checkElab ctx e A ≡ success Ψ eE d f
 
   check-complete {ctx}
-    (t-lam {x = x} {body = body} {A = A} {B = B} {q = q} {q' = q'}
+    (t-lam {x = x} {body = body} {A = A} {B = B} {q = q} {q' = q'} {u = u}
            leq-eq bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
-    in check-complete-RLam ctx x body A q q' B leq-eq eqBody
+    in check-complete-RLam ctx x body A q q' B leq-eq u eqBody
 
   -- t-embed (infer ⊆ check): ONE clause — the switch is `iFromInfer`, which
   -- recurses structurally on the INFER derivation (the 22 former per-shape clauses
@@ -955,20 +957,20 @@ mutual
   -- D127: the seven POINT-FREE LEAVES. Each is the elaborator's own
   -- `RVar`-fallback lemma, which never depended on the purity — generalising
   -- those to any `π` is what lets these rules stay grade-poly.
-  check-complete {ctx} (t-id-check {T = T}) =
-    checkElab-fallback-RVar-id {ctx} T
-  check-complete {ctx} (t-fst-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-fst {ctx} A B
-  check-complete {ctx} (t-snd-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-snd {ctx} A B
-  check-complete {ctx} (t-terminal-morph-check {A = A}) =
-    checkElab-fallback-RVar-terminal {ctx} A
-  check-complete {ctx} (t-initial-morph-check {A = A}) =
-    checkElab-fallback-RVar-initial {ctx} A
-  check-complete {ctx} (t-inl-morph-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-inl {ctx} A B
-  check-complete {ctx} (t-inr-morph-check {A = A} {B = B}) =
-    checkElab-fallback-RVar-inr {ctx} A B
+  check-complete {ctx} (t-id-check {T = T} {u = u}) =
+    checkElab-fallback-RVar-id {ctx} T u
+  check-complete {ctx} (t-fst-check {A = A} {B = B} {u = u}) =
+    checkElab-fallback-RVar-fst {ctx} A B u
+  check-complete {ctx} (t-snd-check {A = A} {B = B} {u = u}) =
+    checkElab-fallback-RVar-snd {ctx} A B u
+  check-complete {ctx} (t-terminal-morph-check {A = A} {u = u}) =
+    checkElab-fallback-RVar-terminal {ctx} A u
+  check-complete {ctx} (t-initial-morph-check {A = A} {u = u}) =
+    checkElab-fallback-RVar-initial {ctx} A u
+  check-complete {ctx} (t-inl-morph-check {A = A} {B = B} {u = u}) =
+    checkElab-fallback-RVar-inl {ctx} A B u
+  check-complete {ctx} (t-inr-morph-check {A = A} {B = B} {u = u}) =
+    checkElab-fallback-RVar-inr {ctx} A B u
   -- Plan 0.94 §10: compose's two routes. `g`'s is the elaborator's first, so
   -- a `g`-route derivation is followed step by step; an `f`-route derivation
   -- meets it through `compose-g-complete`.
@@ -996,6 +998,11 @@ mutual
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
         with caseGo-success eqf eqg
   ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
+  check-complete (t-case-copair-check {π = T.eff⁺} df dg)
+    with check-completeV df | check-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        with caseGo-success eqf eqg
+  ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
   -- `pair`/`curry` are PURE-FIXED, so no π split: only the pure clause of
   -- `checkPair`/`checkCurry` can apply, and rewriting by the arms' results
   -- reduces its `with`-tree to the success.
@@ -1003,52 +1010,53 @@ mutual
     with check-completeV df | check-completeV dg
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
         rewrite eqf | eqg = _ , _ , _ , refl
-  check-complete (t-curry-check df)
+  check-complete (t-curry-check {u = u} df)
     with check-completeV df
-  ... | (_ , _ , _ , Wf , eqf) rewrite eqf = _ , _ , _ , refl
+  ... | (_ , _ , _ , Wf , eqf) rewrite eqf =
+    withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ eE d f) (λ _ → _ , _ , _ , refl)
   -- cata: split on π like compose/case. `checkCataGoV-pure-J` is the dispatch
   -- bridge at pure; at eff the algebra IS an eff derivation so the eff `Go`
   -- succeeds and the first branch fires.
-  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.pure} wfF dalg)
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.pure} {u = ⊑-pure} wfF dalg)
     -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
     -- dispatches on the decider, so recover its equation here.
     with wellFormedF?-complete-at wfF
   ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
-        with checkCataGo-just-success ctx alg F A T.pure wfF eqW eqA
+        with checkCataGo-just-success ctx alg F A T.pure wfF eqW eqA ⊑-pure
   ...     | eqGo = _ , _ , _ ,
             cong proj₁ (trans (checkCataGoV-pure-J ctx alg F A (just wfF) eqW) eqGo)
-  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.eff} wfF dalg)
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.eff} {u = ⊑-pe} wfF dalg)
     -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
     -- dispatches on the decider, so recover its equation here.
     with wellFormedF?-complete-at wfF
   ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
-        with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
+        with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA ⊑-pe
   ...     | eqGo
             rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
             _ , _ , _ , refl
-  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.prod} wfF dalg)
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.prod} {u = ⊑-pp} wfF dalg)
     -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
     -- dispatches on the decider, so recover its equation here.
     with wellFormedF?-complete-at wfF
   ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
-        with checkCataGo-just-success ctx alg F A T.prod wfF eqW eqA
+        with checkCataGo-just-success ctx alg F A T.prod wfF eqW eqA ⊑-pp
   ...     | eqGo
             rewrite trans (checkCataGo-J ctx alg F A T.prod (just wfF) eqW) eqGo =
             _ , _ , _ , refl
   -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
   -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.
-  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {π = π} wfF dcoalg)
+  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {π = π} {u = u} wfF dcoalg)
     with wellFormedF?-complete-at wfF
   ... | eqW
     with check-completeV dcoalg
   ... | (_ , _ , _ , W , eqA)
-        with checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqA
+        with checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqA u
   ...     | eqGo = _ , _ , _ ,
             cong proj₁ (trans (checkAnaGoV-J ctx coalg F A π₀ π (just wfF) eqW) eqGo)
   check-complete (t-In-app-check {arg = arg} {F = F} wfF dArg) =

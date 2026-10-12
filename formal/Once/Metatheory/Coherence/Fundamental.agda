@@ -33,12 +33,12 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; prod; mk-kind; _≤q_; positionGrade; _·p_)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; prod; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
 open import Once.Spec.Type using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Int; base-Float; base-Unit; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun; WellFormedF)
-open import Once.Spec.Type.Sub using (_<:_)
-open import Once.Metatheory.SubLaws using (<:-unique)
+open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
+open import Once.Metatheory.SubLaws using (<:-unique; ⊑π-unique)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)
 open import Once.Spec.Context using (Ctx; Usage; _∷_) renaming (_,_ to _,ᶜ_)
 open import Once.Spec.Contract using (Impl; Key; valueKeys; valueOf; valueOf-at; _∈K?_)
@@ -80,8 +80,11 @@ bind≈ᵍ : ∀ π₁ π₂ π₁′ π₂′ {X Y : Set} {R : X → X → Set}
 bind≈ᵍ π₁ π₂ π₁′ π₂′ {m = m} {m′} {k} {k′} h c =
   ≈∞-rewrite (toT∞-bindᵍ π₁ π₂ m k) (toT∞-bindᵍ π₁′ π₂′ m′ k′) (≈∞-bind h c)
 
-retM≈ : ∀ π π′ {X : Set} {R : X → X → Set} {a b : X} → R a b → TreeEq∞ R (toT∞ π (returnM π a)) (toT∞ π′ (returnM π′ b))
-retM≈ π π′ {a = a} {b} r = ≈∞-rewrite (toT∞-returnM π a) (toT∞-returnM π′ b) (retT≈ r)
+-- Mapping a pure function over two related computations, at their grades.
+fmap≈ : ∀ π π′ {X Y : Set} {R : X → X → Set} {R′ : Y → Y → Set} {m : M π X} {m′ : M π′ X} {f g : X → Y}
+      → TreeEq∞ R (toT∞ π m) (toT∞ π′ m′) → (∀ {a b} → R a b → R′ (f a) (g b))
+      → TreeEq∞ R′ (toT∞ π (fmapM π f m)) (toT∞ π′ (fmapM π′ g m′))
+fmap≈ π π′ {m = m} {m′} {f} {g} h c = ≈∞-rewrite (toT∞-fmapM π f m) (toT∞-fmapM π′ g m′) (≈∞-bind h λ r → retT≈ (c r))
 
 ------------------------------------------------------------------------
 -- Leaves
@@ -159,6 +162,8 @@ sigop-S fmt I c (con-fun {k = mk-kind Zero eff} bA bB) m m′ =
   embed-≈ (TreeEq-refl (S-refl-base bB) _)
 sigop-S fmt I c (con-fun {k = mk-kind Zero prod} bA bB) m m′ =
   embed-≈ (TreeEq-refl (S-refl-base bB) _)
+sigop-S fmt I c (con-fun {k = mk-kind Zero eff⁺} bA bB) m m′ =
+  embed-≈ (TreeEq-refl (S-refl-base bB) _)
 sigop-S fmt I c (con-fun {k = mk-kind One pure} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = retT≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind Many pure} bA bB) m m′ a a′ s
@@ -170,6 +175,10 @@ sigop-S fmt I c (con-fun {k = mk-kind Many eff} bA bB) m m′ a a′ s
 sigop-S fmt I c (con-fun {k = mk-kind One prod} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
 sigop-S fmt I c (con-fun {k = mk-kind Many prod} bA bB) m m′ a a′ s
+  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+sigop-S fmt I c (con-fun {k = mk-kind One eff⁺} bA bB) m m′ a a′ s
+  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+sigop-S fmt I c (con-fun {k = mk-kind Many eff⁺} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
 
 ------------------------------------------------------------------------
@@ -240,12 +249,12 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
     fstS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A B B′ π π′ p} (eq : (A * B) ≡ (A * B′))
              (d : Γ ⊢[ Ψ ] p ∷ A * B ! π) (d′ : Γ ⊢[ Ψ′ ] p ∷ A * B′ ! π′)
          → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq∞ (S A) (toT∞ π (⟦ ⊢fst d ⟧ fmt δ x)) (toT∞ π′ (⟦ ⊢fst d′ ⟧ fmt δ x′))
-    fstS {π = π} {π′} refl d d′ h = bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ (proj₁ s)
+    fstS {π = π} {π′} refl d d′ h = fmap≈ π π′ (FL d d′ h) λ s → proj₁ s
 
     sndS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A A′ B π π′ p} (eq : (A * B) ≡ (A′ * B))
              (d : Γ ⊢[ Ψ ] p ∷ A * B ! π) (d′ : Γ ⊢[ Ψ′ ] p ∷ A′ * B ! π′)
          → ∀ {x x′} → Agree Γ Ψ Ψ′ x x′ → TreeEq∞ (S B) (toT∞ π (⟦ ⊢snd d ⟧ fmt δ x)) (toT∞ π′ (⟦ ⊢snd d′ ⟧ fmt δ x′))
-    sndS {π = π} {π′} refl d d′ h = bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ (proj₂ s)
+    sndS {π = π} {π′} refl d d′ h = fmap≈ π π′ (FL d d′ h) λ s → proj₂ s
 
     -- `case`: the scrutinees are related, so both take the same arm.
     armS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A B C qℓ qr π π′ l r}
@@ -278,13 +287,14 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
            → (da : Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π₁) (dt : Γ ⊢[ Ψt ] t ∷ μ-type F ! π₂)
               (da′ : Γ ⊢[ Ψa′ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π′ ] A ! π₁′) (dt′ : Γ ⊢[ Ψt′ ] t ∷ μ-type F ! π₂′)
           → ∀ {x x′} → Agree Γ _ _ x x′
-          → TreeEq∞ (S A) (toT∞ _ (⟦ ⊢fold wf da dt ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢fold wf′ da′ dt′ ⟧ fmt δ x′))
-    foldS {π = π} {π₁ = π₁} {π₂} {π₁′} {π₂′} refl wf .wf refl da dt da′ dt′ h =
+          → (u : pure ⊑π π) (u′ : pure ⊑π π′)
+          → TreeEq∞ (S A) (toT∞ _ (⟦ ⊢fold u wf da dt ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢fold u′ wf′ da′ dt′ ⟧ fmt δ x′))
+    foldS {π = π} {π₁ = π₁} {π₂} {π₁′} {π₂′} refl wf .wf refl da dt da′ dt′ h u u′ rewrite ⊑π-unique u′ u =
       bind≈ᵍ π₁ _ π₁′ _ (FL da da′ (restrict₂ _ _ h)) λ {alg} {alg′} salg →
       bind≈ᵍ π₂ π π₂′ π (FL dt dt′ (restrict₂ _ _ h)) λ {v} {v′} e → fold-v alg alg′ salg e
       where
         fold-v : ∀ alg alg′ salg {v v′} → v ≡ v′ → _
-        fold-v alg alg′ salg {v} refl = Fold.cata-S π wf alg alg′ salg v
+        fold-v alg alg′ salg {v} refl = Fold.cata-S u wf alg alg′ salg v
 
     unfoldS : ∀ {n} {Γ : Ctx n} {Ψc Ψs Ψc′ Ψs′ : Usage n} {F A A′ π π₁ π₂ π₁′ π₂′ c sd}
                 (eq : (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A) ≡ (A′ ⇒[ mk-kind Many π ] ⟦ F ⟧T A′))
@@ -295,7 +305,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
             → TreeEq∞ (S (ν-type F π)) (toT∞ _ (⟦ ⊢unfold wf dc ds ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢unfold wf′ dc′ ds′ ⟧ fmt δ x′))
     unfoldS {π = π} {π₁} {π₂} {π₁′} {π₂′} refl wf .wf refl dc ds dc′ ds′ h =
       bind≈ᵍ π₁ π₂ π₁′ π₂′ (FL dc dc′ (restrict₂ _ _ h)) λ {clo} {clo′} sc →
-      bind≈ π₂ π₂′ (FL ds ds′ (restrict₂ _ _ h)) λ ss → ana-S π π₂ π₂′ wf clo clo′ sc ss
+      fmap≈ π₂ π₂′ (FL ds ds′ (restrict₂ _ _ h)) λ ss → ana-S π wf clo clo′ sc ss
 
     outS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {F F′ π π′ π₁ π₁′ t}
              (eq : ν-type F π ≡ ν-type F′ π′) (wf : WellFormedF F) (wf′ : WellFormedF F′)
@@ -341,22 +351,22 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
   FL ⊢unit ⊢unit h = retT≈ tt
   FL (⊢pair {π₁ = π₁} {π₂} da db) (⊢pair {π₁ = π₁′} {π₂′} da′ db′) h =
     bind≈ᵍ π₁ π₂ π₁′ π₂′ (FL da da′ (restrict₂ _ _ h)) λ sa →
-    bind≈ π₂ π₂′ (FL db db′ (restrict₂ _ _ h)) λ sb → retM≈ π₂ π₂′ (sa , sb)
+    fmap≈ π₂ π₂′ (FL db db′ (restrict₂ _ _ h)) λ sb → (sa , sb)
   FL (⊢fst d) (⊢fst d′) h = fstS (uniq d d′) d d′ h
   FL (⊢snd d) (⊢snd d′) h = sndS (uniq d d′) d d′ h
-  FL (⊢inl {π = π} d) (⊢inl {π = π′} d′) h = bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ s
-  FL (⊢inr {π = π} d) (⊢inr {π = π′} d′) h = bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ s
+  FL (⊢inl {π = π} d) (⊢inl {π = π′} d′) h = fmap≈ π π′ (FL d d′ h) λ s → s
+  FL (⊢inr {π = π} d) (⊢inr {π = π′} d′) h = fmap≈ π π′ (FL d d′ h) λ s → s
   FL (⊢case ds dl dr) (⊢case ds′ dl′ dr′) h = caseS (uniq ds ds′) ds dl dr ds′ dl′ dr′ h
   FL (⊢absurd {π = π} d) (⊢absurd {π = π′} d′) h = bind≈ π π′ (FL d d′ h) λ {v} _ → ⊥-elim v
   FL (⊢roll {π = π} wf d) (⊢roll {π = π′} wf′ d′) h =
-    bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ (trans (roll-≡ wf s) (cong (λ w → in-valueᵛ w _) (WellFormedF-irrelevant wf wf′)))
-  FL (⊢fold wf da dt) (⊢fold wf′ da′ dt′) h = foldS (uniq da da′) wf wf′ (WellFormedF-irrelevant wf wf′) da dt da′ dt′ h
+    fmap≈ π π′ (FL d d′ h) λ s → (trans (roll-≡ wf s) (cong (λ w → in-valueᵛ w _) (WellFormedF-irrelevant wf wf′)))
+  FL (⊢fold u wf da dt) (⊢fold u′ wf′ da′ dt′) h = foldS (uniq da da′) wf wf′ (WellFormedF-irrelevant wf wf′) da dt da′ dt′ h u u′
   FL (⊢unfold wf dc ds) (⊢unfold wf′ dc′ ds′) h = unfoldS (uniq dc dc′) wf wf′ (WellFormedF-irrelevant wf wf′) dc ds dc′ ds′ h
   FL (⊢coerce p d) (⊢coerce p′ d′) h = coerceS p p′ (<:-unique p p′) d d′ h
   FL ⊢lit-int ⊢lit-int h = retT≈ refl
   FL ⊢lit-float ⊢lit-float h = retT≈ refl
   FL (⊢prim {π = π} p d) (⊢prim {π = π′} .p d′) h =
-    bind≈ π π′ (FL d d′ h) λ s → retM≈ π π′ (S-base (cod-base p) (cong (primSem p fmt) (S-base-≡ (dom-base p) s)))
+    fmap≈ π π′ (FL d d′ h) λ s → (S-base (cod-base p) (cong (primSem p fmt) (S-base-≡ (dom-base p) s)))
   FL (⊢sigop c k _ _ m) (⊢sigop .c k′ _ _ m′) h
     rewrite IsConcrete-irrelevant k′ k = retT≈ (sigop-S fmt (impl δ) c k m m′)
   FL (⊢ref d τ r) (⊢ref .d .τ r′) h = retT≈ (Same→S (type (Sg !! d) ⟪ τ ⟫) (sd d τ r r′))

@@ -18371,6 +18371,27 @@ as the program's entry (the user, 2026-10-12).
 - The compiler relates a `prod` meaning to the IR's (finite) tree inductively on the finite
   side (`RelT∞′`), so every compiled program — none is `prod` before phase F — keeps its proof.
 
+### Landed in plan 0.117 C2 (2026-10-12)
+- `Purity` is `pure | eff⁺ | eff | prod`: the join `⊔p` is a band without a unit
+  (`pure ⊔ eff⁺ = eff`), the product `·p` a commutative monoid (`pure` the unit, `eff⁺`
+  absorbing the finite grades, `prod` absorbing all) and monotone. `⊑π` gains `eff⁺ ⊑ eff⁺`,
+  `eff⁺ ⊑ eff`, `eff⁺ ⊑ prod`; the old `pure⊑ π` is gone — a UNIT is evidence `pure ⊑π π`.
+- `M eff⁺ = T⁺` (`Once.Spec.Guarded`: a call or a halt at the root; `forget⁺` into `T`; `T`
+  acts on it from either side), `⟦ ν-type F eff⁺ ⟧ᵛ = ν⁺` (each forced layer begins with an
+  event). Laws (`forget-bind⁺`, `assoc⁺`) in `Denotation.GuardedLaws`.
+- The unit is a premise wherever a meaning returns a value at the arrow's grade:
+  `returnM u`, the combinators `id`/`fst`/`snd`/`inl`/`inr`/`terminal`/`initial`, `lam`,
+  `curry` (its outer grade), `ana` (its construction grade), and a FOLD's algebra grade (a fold
+  traverses a layer whose leaves run nothing). The checker decides it (`withUnit`). The
+  meaning MAPS over a premise (`fmapM`) where it bound and returned; `ana-semᵛ` returns the
+  stream value, the rule embeds it.
+- A foreign operation at `eff⁺` is the generic effect (`opCall⁺`); `HonestFFI` admits `eff⁺`
+  (`Effectful`) alongside `eff` for `Unit`/`Void` codomains; it is one call.
+- No surface form yet (phase F): the front end rejects `eff⁺` where it rejects `prod`. The
+  surface `compose`/`pair` still share one grade (`·p-diag`); per-premise surface grades are C2b.
+- Coherence and the compiler relate a guarded meaning through `forget⁺` (`RelGM eff⁺`,
+  `_∼⁺ᵈ_` for its streams); the apex and backstop are green.
+
 ### Not reused
 `Once/IR/Guarded.agda` (deleted in c59c6c661) marked the recursive positions of a coalgebra's
 LAYER (`GRec`); it was deprecated under OCP-0003 because layer productivity follows from

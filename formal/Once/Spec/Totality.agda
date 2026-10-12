@@ -27,7 +27,8 @@
 module Once.Spec.Totality where
 
 open import Data.Unit using (⊤)
-open import Once.Spec.Type.Grade using (Purity; pure; eff; prod)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod)
+open import Once.Spec.Guarded using (forget⁺)
 open import Once.Spec.Meaning using (T; M)
 open import Once.Denotation.TraceMonad using (ret; call; halt)
 open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
@@ -55,6 +56,7 @@ ProductiveM : ∀ π {X : Set} → M π X → Set
 ProductiveM pure _ = ⊤
 ProductiveM eff  m = FiniteT m
 ProductiveM prod m = ProductiveT∞ m
+ProductiveM eff⁺ m = FiniteT (forget⁺ m)
 
 ------------------------------------------------------------------------
 -- What the claims are tested on (`Spec.Metatheory.Totality`).

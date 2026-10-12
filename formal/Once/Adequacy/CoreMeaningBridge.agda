@@ -51,7 +51,7 @@ open import Once.Spec.Typing
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; returnᵖ)
 open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
-open import Once.Denotation.GradedOps using (sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
+open import Once.Denotation.GradedOps using (fmapM; sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Spec.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE)
 open View
@@ -109,7 +109,7 @@ open import Once.Spec.Type.Grade using (Many; mk-kind; pure; eff)
 open import Once.Spec.Type using (_⇒[_]_)
 open import Once.Denotation.PhaseV using (restrictᵛ)
 open import Once.Spec.Core.Syntax S
-open import Once.Spec.Type.Sub using (pure⊑; sub-arr)
+open import Once.Spec.Type.Sub using (_⊑π_; sub-arr)
 open import Once.Metatheory.SubLaws using (<:-refl)
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.DerivedTyping S
@@ -142,18 +142,16 @@ env-subst₂ {Γ = Γ} u v refl w x = EA.restrict-≡ {Γ = Γ} u v w x
 diag-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y) → subM (·p-diag π) (bindᵍ π π m k) ≡ bindM π m k
 diag-bind Once.Spec.Type.Grade.pure m k = refl
 diag-bind Once.Spec.Type.Grade.eff  m k = refl
+diag-bind Once.Spec.Type.Grade.eff⁺ m k = refl
 diag-bind Once.Spec.Type.Grade.prod m k = refl
-
--- Pure codata built at `pure`, then subeffected, is built at the grade.
-ana-sub : ∀ {F A} π π₀ (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
-        → subM (pure⊑ π₀) (ana-semᵛ π Once.Spec.Type.Grade.pure wf clo a) ≡ ana-semᵛ π π₀ wf clo a
-ana-sub Once.Spec.Type.Grade.pure π₀ wf clo a = refl
-ana-sub Once.Spec.Type.Grade.eff  π₀ wf clo a = refl
-ana-sub Once.Spec.Type.Grade.prod π₀ wf clo a = refl
 
 module Comb {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)
   bindC {a = a} refl h = cong (a >>=ᵖ_) (extensionality h)
+
+  -- A pure bind against the core's map (D311 C2: unary core rules map).
+  fmapC : ∀ {X Y : Set} {a a' : X} (f : X → Y) → a ≡ a' → (a >>=ᵖ f) ≡ f a'
+  fmapC {a = a} f refl = >>=ᵖ-β a f
 
   compose-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
     (df : Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π ] C ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] B ! pure)
@@ -183,7 +181,7 @@ module Comb {δ : GM.DefSem} where
     → GM.⟦ ⊢pairᶜ (·p-diag π) df dg ⟧ fmt δ x
       ≡ (GM.⟦ df ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x) >>=ᵖ λ vf →
          GM.⟦ dg ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x) >>=ᵖ λ vg →
-         λ a → bindM π (vf a) λ b → bindM π (vg a) λ c → returnM π (b , c))
+         λ a → bindM π (vf a) λ b → fmapM π (λ c → (b , c)) (vg a))
   pair-sem {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢let (wk-⊢′ _ dg)
@@ -195,7 +193,7 @@ module Comb {δ : GM.DefSem} where
                                       (cong (GM.⟦ dg ⟧ fmt δ) (env-subst₂ {Γ = Γ} _ _ E (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x)))
                                (λ vg → extensionality λ a →
                                   trans (cong (subM (·p-diag π))
-                                          (cong₂ (λ m n → bindᵍ π π m λ b → bindM π n λ c → returnM π (b , c))
+                                          (cong₂ (λ m n → bindᵍ π π m λ b → fmapM π (λ c → (b , c)) n)
                                                  (trans (>>=ᵖ-β vf _) (>>=ᵖ-β a _))
                                                  (trans (>>=ᵖ-β vg _) (>>=ᵖ-β a _))))
                                         (diag-bind π (vf a) _))))
@@ -234,19 +232,19 @@ module Comb {δ : GM.DefSem} where
                     (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂))
 
   curry-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C : Type} {π₀ π} {f}
-    (df : Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure) (x : RS.Env Γ Ψ)
-    → GM.⟦ ⊢curryᶜ {π₀ = π₀} df ⟧ fmt δ x
-      ≡ (GM.⟦ df ⟧ fmt δ x >>=ᵖ λ vf → λ a → returnM π₀ (λ b → vf (a , b)))
-  curry-sem {Γ = Γ} {Ψ} {π₀ = π₀} {π} df x =
+    (u₀ : pure ⊑π π₀) (df : Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure) (x : RS.Env Γ Ψ)
+    → GM.⟦ ⊢curryᶜ u₀ df ⟧ fmt δ x
+      ≡ (GM.⟦ df ⟧ fmt δ x >>=ᵖ λ vf → λ a → returnM u₀ (λ b → vf (a , b)))
+  curry-sem {Γ = Γ} {Ψ} {π₀ = π₀} {π} u₀ df x =
     trans (RS.⟦⟧-substΨ E
-                        (⊢let df (⊢lam refl (⊢sub-eff (pure⊑ π₀)
+                        (⊢let df (⊢lam refl (⊢sub-eff u₀
                           (⊢lam refl (⊢app (⊢var (suc (suc zero))) (⊢pair (⊢var (suc zero)) (⊢var zero)))))))
                         fmt δ x)
           (bindC (cong (GM.⟦ df ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-refl Ψ) x ∙ EA.restrict-refl {Γ = Γ} (⊑ᵘ-refl Ψ) x))
-                 (λ vf → extensionality λ a → cong (subM (pure⊑ π₀)) (extensionality λ b →
+                 (λ vf → extensionality λ a → cong (subM u₀) (extensionality λ b →
                     trans (>>=ᵖ-β vf _)
                           (trans (cong (λ m → m >>=ᵖ (λ y → vf y))
-                                       (trans (>>=ᵖ-β a _) (>>=ᵖ-β b _)))
+                                       (>>=ᵖ-β a _))
                                  (>>=ᵖ-β (a , b) _)))))
     where E = trans (cong₂ _+ᵘ_ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (+ᵘ-identityˡ zeroUsage))) (z+qz Many))
                                 (*ᵘ-identityˡ Ψ))
@@ -274,7 +272,7 @@ module Comb {δ : GM.DefSem} where
     → GM.⟦ ⊢applyᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → proj₁ fa (proj₂ fa))
   apply-sem {Γ = Γ} x =
     trans (RS.⟦⟧-substΨ {Γ = Γ} (z+qz Many) (⊢lam refl (⊢app (⊢fst (⊢var zero)) (⊢snd (⊢var zero)))) fmt δ x)
-          (extensionality λ fa → bind2β _ proj₁ _ proj₂ (λ f a → f a))
+          (extensionality λ fa → trans (>>=ᵖ-β _ _) (>>=ᵖ-β _ _))
 
   -- The transport under a binder used once.
   substΨ1 : ∀ {n} {Γ : Ctx n} {X : Type} {U U' : Usage n} {t B π} (e : U ≡ U')
@@ -285,27 +283,25 @@ module Comb {δ : GM.DefSem} where
 
   -- plan 0.113 B1: the coalgebra's usage is ω-scaled; it reads `x` restricted.
   ana-sem″ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π} {c}
-    (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
-    → GM.⟦ ⊢anaᶜ {π₀ = π₀} wf dc ⟧ fmt δ x
-      ≡ (λ a → ana-semᵛ π π₀ wf (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a)
-  ana-sem″ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} {π} wf dc x =
+    (u₀ : pure ⊑π π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
+    → GM.⟦ ⊢anaᶜ u₀ wf dc ⟧ fmt δ x
+      ≡ (λ a → returnM u₀ (ana-semᵛ π wf (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a))
+  ana-sem″ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} {π} u₀ wf dc x =
     extensionality λ a →
       trans (substΨ1 (+ᵘ-identityʳ (Many *ᵘ Ψ))
-                     (⊢sub-eff (pure⊑ π₀) (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))) x a)
-      (trans (cong (subM (pure⊑ π₀))
+                     (⊢sub-eff u₀ (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))) x a)
+      (cong (subM u₀)
         (trans (>>=ᵖ-β _ _)
-        (trans (>>=ᵖ-β a _)
-            (cong (λ C → ana-semᵛ π Once.Spec.Type.Grade.pure wf C a)
+            (cong (λ C → ana-semᵛ π wf C a)
                   (trans (RS.wk-sem A dc fmt δ _)
                          (cong (GM.⟦ dc ⟧ fmt δ)
-                               (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x)))))))
-        (ana-sub π π₀ wf _ a))
+                               (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x))))))
 
   applyEff-sem : ∀ {n} {Γ : Ctx n} {A B : Type} (x : RS.Env Γ zeroUsage)
     → GM.⟦ ⊢applyEffᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
   applyEff-sem {Γ = Γ} x =
     trans (RS.⟦⟧-substΨ {Γ = Γ} (z+qz Many)
-             (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var′ (suc zero) eff)) (⊢snd (⊢var′ (suc zero) eff))))) fmt δ x) refl
+             (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var′ (suc zero) Once.Spec.Type.Sub.⊑-pe)) (⊢snd (⊢var′ (suc zero) Once.Spec.Type.Sub.⊑-pe))))) fmt δ x) refl
 
   effApp-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B : Type} {f t}
     (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many eff ] B ! pure) (dx : Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
@@ -319,11 +315,11 @@ module Comb {δ : GM.DefSem} where
             (sym (trans (>>=ᵖ-β _ _) (>>=ᵖ-β _ _)))
 
   cata-sem′ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π} {alg}
-    (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
-    → GM.⟦ ⊢cataᶜ wf da ⟧ fmt δ x
-      ≡ (GM.⟦ da ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x) >>=ᵖ λ valg → λ v → cata-semᵛ π wf valg v)
-  cata-sem′ {Γ = Γ} {Ψ} {π = π} wf da x =
-    trans (RS.⟦⟧-substΨ E (⊢let da (⊢lam refl (⊢fold wf (⊢var (suc zero)) (⊢var zero)))) fmt δ x)
+    (u : pure ⊑π π) (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
+    → GM.⟦ ⊢cataᶜ u wf da ⟧ fmt δ x
+      ≡ (GM.⟦ da ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x) >>=ᵖ λ valg → λ v → cata-semᵛ u wf valg v)
+  cata-sem′ {Γ = Γ} {Ψ} {π = π} u wf da x =
+    trans (RS.⟦⟧-substΨ E (⊢let da (⊢lam refl (⊢fold u wf (⊢var (suc zero)) (⊢var zero)))) fmt δ x)
           (bindC (cong (GM.⟦ da ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-*Many Ψ) x))
                  (λ valg → extensionality λ v → trans (>>=ᵖ-β valg _) (>>=ᵖ-β v _)))
     where E = trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
@@ -361,6 +357,10 @@ module _ {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)
   bindC {a = a} refl h = cong (a >>=ᵖ_) (extensionality h)
 
+  -- A pure bind against the core's map (D311 C2: unary core rules map).
+  fmapC : ∀ {X Y : Set} {a a' : X} (f : X → Y) → a ≡ a' → (a >>=ᵖ f) ≡ f a'
+  fmapC {a = a} f refl = >>=ᵖ-β a f
+
   -- A closed pure combinator applied to an argument: the surface binds the
   -- argument into `F`; the core applies the combinator's value `c`, which agrees
   -- with `F` pointwise — one β-step of the pure bind.
@@ -373,9 +373,9 @@ module _ {δ : GM.DefSem} where
   binK : ∀ {X Y Z : Set} {m₁ m₁' : X} {m₂ m₂' : Y} {K : X × Y → Z}
        → m₁ ≡ m₁' → m₂ ≡ m₂'
        → (m₁ >>=ᵖ λ a → m₂ >>=ᵖ λ b → K (a , b))
-         ≡ ((m₁' >>=ᵖ λ a → m₂' >>=ᵖ λ b → returnᵖ (a , b)) >>=ᵖ K)
+         ≡ K (m₁' >>=ᵖ λ a → (a , m₂'))
   binK {m₁' = m₁'} {m₂' = m₂'} {K = K} refl refl =
-    sym (trans (>>=ᵖ-assoc m₁' _ K) (bindC refl (λ a → trans (>>=ᵖ-assoc m₂' _ K) (bindC refl (λ b → >>=ᵖ-β (a , b) K)))))
+    trans (>>=ᵖ-β m₁' _) (trans (>>=ᵖ-β m₂' _) (sym (cong K (>>=ᵖ-β m₁' _))))
 
   bridge-d : ∀ {ctx e A B π Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
              (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (dγ : EnvRun ctx Ψ)
@@ -390,12 +390,12 @@ module _ {δ : GM.DefSem} where
            → ⟦ d ⟧ᶜ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᶜ V d) ⟧ fmt δ dγ
 
   bridge-c V ag t-id-check             dγ = refl
-  bridge-c V ag (t-fst-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
-  bridge-c V ag (t-snd-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
+  bridge-c V ag (t-fst-check {u = u}) dγ = refl
+  bridge-c V ag (t-snd-check {u = u}) dγ = refl
   bridge-c V ag t-terminal-morph-check dγ = refl
   bridge-c V ag (t-initial-morph-check {π = π}) dγ = extensionality λ ()
-  bridge-c V ag (t-inl-morph-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
-  bridge-c V ag (t-inr-morph-check {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
+  bridge-c V ag (t-inl-morph-check {u = u}) dγ = refl
+  bridge-c V ag (t-inr-morph-check {u = u}) dγ = refl
   bridge-c V ag (t-compose-check-g dg df) dγ =
     trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)) dγ))
@@ -408,32 +408,32 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-pair-morph-check df dg) dγ =
     trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-c V ag dg _) (λ vg → refl)))
           (sym (Comb.pair-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg)) dγ))
-  bridge-c V ag (t-curry-check df) dγ =
+  bridge-c V ag (t-curry-check {u = u} df) dγ =
     trans (bindC (bridge-c V ag df dγ) (λ vf → refl))
-          (sym (Comb.curry-sem {δ = δ} (proj₂ (elabᶜ V df)) dγ))
-  bridge-c V ag (t-cata-check wf dalg) dγ =
+          (sym (Comb.curry-sem {δ = δ} u (proj₂ (elabᶜ V df)) dγ))
+  bridge-c V ag (t-cata-check {u = u} wf dalg) dγ =
     trans (bindC (bridge-c V ag dalg _) (λ valg → refl))
-          (sym (Comb.cata-sem′ {δ = δ} wf (proj₂ (elabᶜ V dalg)) dγ))
+          (sym (Comb.cata-sem′ {δ = δ} u wf (proj₂ (elabᶜ V dalg)) dγ))
   bridge-c V ag (t-sub d p) dγ = cong ⟦ p ⟧<:ᵛ (bridge-i V ag d dγ)
-  bridge-c V ag (t-lam {q = Zero} {q' = Zero} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
-  bridge-c V ag (t-lam {q = One}  {q' = Zero} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
-  bridge-c V ag (t-lam {q = Many} {q' = Zero} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
-  bridge-c V ag (t-lam {q = One}  {q' = One} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
-  bridge-c V ag (t-lam {q = Many} {q' = One} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
-  bridge-c V ag (t-lam {q = Many} {q' = Many} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Zero} {q' = Zero} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = One}  {q' = Zero} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Many} {q' = Zero} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = One}  {q' = One} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Many} {q' = One} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-c V ag d _)
+  bridge-c V ag (t-lam {q = Many} {q' = Many} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-c V ag d _)
   bridge-c V ag (t-lam {q = Zero} {q' = One}  () d) dγ
   bridge-c V ag (t-lam {q = Zero} {q' = Many} () d) dγ
   bridge-c V ag (t-lam {q = One}  {q' = Many} () d) dγ
   bridge-c V ag (t-pair-lit-check da db) dγ =
-    bindC (bridge-c V ag da _) (λ a → bindC (bridge-c V ag db _) (λ b → refl))
-  bridge-c V ag (t-In-app-check wf d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-c V ag d _)
-  bridge-c V ag (t-inl-app-check d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-c V ag d _)
-  bridge-c V ag (t-inr-app-check d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-c V ag d _)
+    bindC (bridge-c V ag da _) (λ a → trans (>>=ᵖ-β _ _) (cong (a ,_) (bridge-c V ag db _)))
+  bridge-c V ag (t-In-app-check wf d) dγ = app-comb _ (λ v → refl) (bridge-c V ag d _)
+  bridge-c V ag (t-inl-app-check d) dγ = app-comb _ (λ v → refl) (bridge-c V ag d _)
+  bridge-c V ag (t-inr-app-check d) dγ = app-comb _ (λ v → refl) (bridge-c V ag d _)
   bridge-c {ctx = ctx} V ag (t-initial-app-check d) dγ = app-comb {F = λ w → ⊥-elim w} _ (λ v → >>=ᵖ-β v (λ w → ⊥-elim w)) (bridge-c V ag d (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ))
   -- D273: the coalgebra lives in the context — no `close`, read at `dγ`.
-  bridge-c {ctx = ctx} V ag (t-ana-check {π₀ = π₀} {π = π} wf dcoalg) dγ =
-    trans (cong (λ C → λ a → ana-semᵛ π π₀ wf C a) (bridge-c V ag dcoalg _))
-          (sym (Comb.ana-sem″ {δ = δ} wf (proj₂ (elabᶜ V dcoalg)) dγ))
+  bridge-c {ctx = ctx} V ag (t-ana-check {π₀ = π₀} {π = π} {u = u} wf dcoalg) dγ =
+    trans (cong (λ C → λ a → returnM u (ana-semᵛ π wf C a)) (bridge-c V ag dcoalg _))
+          (sym (Comb.ana-sem″ {δ = δ} u wf (proj₂ (elabᶜ V dcoalg)) dγ))
   bridge-c {ctx = ctx} V ag (t-apply-check {A = A} {B = B} dp) dγ =
     trans (bindC (bridge-i V ag dp _) (λ fa → refl))
           (sym (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})
@@ -455,8 +455,8 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) dγ =
     trans (Agree.agree-ground ag lp g) (refSem-⊢ (ground V lp g) dγ)
   bridge-i V ag (t-annot _ d) dγ = bridge-c V ag d dγ
-  bridge-i V ag (t-pair da db) dγ = bindC (bridge-i V ag da _) (λ a → bindC (bridge-i V ag db _) (λ b → refl))
-  bridge-i V ag (t-neg d) dγ = bindC (bridge-i V ag d dγ) (λ v → refl)
+  bridge-i V ag (t-pair da db) dγ = bindC (bridge-i V ag da _) (λ a → trans (>>=ᵖ-β _ _) (cong (a ,_) (bridge-i V ag db _)))
+  bridge-i V ag (t-neg d) dγ = fmapC _ (bridge-i V ag d dγ)
   bridge-i V ag (t-neg-float i f l p) dγ = refl
   bridge-i V ag (t-let {q = Zero} d₁ d₂) dγ = bridge-i V ag d₂ _
   bridge-i V ag (t-let {q = One} d₁ d₂) dγ = bindC (bridge-i V ag d₁ _) (λ v → bridge-i V ag d₂ _)
@@ -495,10 +495,10 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-binop-arith-float {op = OpGe} () _ _) dγ
   bridge-i V ag (t-binop-arith-float {op = OpEq} () _ _) dγ
   bridge-i V ag (t-binop-arith-float {op = OpNe} () _ _) dγ
-  bridge-i V ag (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) dγ = binK (bindC (bridge-i V ag d₁ _) (λ _ → refl)) (bridge-i V ag d₂ _)
-  bridge-i V ag (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) dγ = binK (bindC (bridge-i V ag d₁ _) (λ _ → refl)) (bridge-i V ag d₂ _)
-  bridge-i V ag (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) dγ = binK (bindC (bridge-i V ag d₁ _) (λ _ → refl)) (bridge-i V ag d₂ _)
-  bridge-i V ag (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) dγ = binK (bindC (bridge-i V ag d₁ _) (λ _ → refl)) (bridge-i V ag d₂ _)
+  bridge-i V ag (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) dγ = binK (fmapC _ (bridge-i V ag d₁ _)) (bridge-i V ag d₂ _)
+  bridge-i V ag (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) dγ = binK (fmapC _ (bridge-i V ag d₁ _)) (bridge-i V ag d₂ _)
+  bridge-i V ag (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) dγ = binK (fmapC _ (bridge-i V ag d₁ _)) (bridge-i V ag d₂ _)
+  bridge-i V ag (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) dγ = binK (fmapC _ (bridge-i V ag d₁ _)) (bridge-i V ag d₂ _)
   bridge-i V ag (t-binop-arith-float-il {op = OpMod} () _ _) dγ
   bridge-i V ag (t-binop-arith-float-il {op = OpLt} () _ _) dγ
   bridge-i V ag (t-binop-arith-float-il {op = OpLe} () _ _) dγ
@@ -506,10 +506,10 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-binop-arith-float-il {op = OpGe} () _ _) dγ
   bridge-i V ag (t-binop-arith-float-il {op = OpEq} () _ _) dγ
   bridge-i V ag (t-binop-arith-float-il {op = OpNe} () _ _) dγ
-  bridge-i V ag (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bindC (bridge-i V ag d₂ _) (λ _ → refl))
-  bridge-i V ag (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bindC (bridge-i V ag d₂ _) (λ _ → refl))
-  bridge-i V ag (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bindC (bridge-i V ag d₂ _) (λ _ → refl))
-  bridge-i V ag (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bindC (bridge-i V ag d₂ _) (λ _ → refl))
+  bridge-i V ag (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (fmapC _ (bridge-i V ag d₂ _))
+  bridge-i V ag (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (fmapC _ (bridge-i V ag d₂ _))
+  bridge-i V ag (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (fmapC _ (bridge-i V ag d₂ _))
+  bridge-i V ag (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (fmapC _ (bridge-i V ag d₂ _))
   bridge-i V ag (t-binop-arith-float-ir {op = OpMod} () _ _) dγ
   bridge-i V ag (t-binop-arith-float-ir {op = OpLt} () _ _) dγ
   bridge-i V ag (t-binop-arith-float-ir {op = OpLe} () _ _) dγ
@@ -529,8 +529,8 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-binop-cmp {op = OpDiv} () _ _) dγ
   bridge-i V ag (t-binop-cmp {op = OpMod} () _ _) dγ
   bridge-i V ag (t-id-app d) dγ = trans (bridge-i V ag d _) (sym (trans (>>=ᵖ-β _ _) (>>=ᵖ-idʳ _)))
-  bridge-i V ag (t-fst-app d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-i V ag d _)
-  bridge-i V ag (t-snd-app d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-i V ag d _)
+  bridge-i V ag (t-fst-app d) dγ = app-comb _ (λ v → refl) (bridge-i V ag d _)
+  bridge-i V ag (t-snd-app d) dγ = app-comb _ (λ v → refl) (bridge-i V ag d _)
   bridge-i {ctx = ctx} V ag (t-terminal-app d) dγ = bindC (bridge-i V ag d (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)) (λ v → refl)
   bridge-i V ag (t-Out-app-infer wf refl d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-i V ag d _)
   bridge-i V ag (t-Out-eff-app-infer wf refl d) dγ = app-comb _ (λ v → refl) (bridge-i V ag d _)
@@ -554,15 +554,15 @@ module _ {δ : GM.DefSem} where
   bridge-d V ag (d-infer {B = B} w a g) dγ = cong ⟦ sub-arr {q = Many} a (<:-refl B) g ⟧<:ᵛ (bridge-i V ag w dγ)
   bridge-d V ag (d-poly {A = A} {B = B} _ _ lp ng _ _ ki g) dγ =
     cong ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<:ᵛ (trans (Agree.agree-inst ag lp ng ki) (refSem-⊢ (inst V lp ng ki) dγ))
-  bridge-d V ag (d-lam {q' = Zero} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-i V ag d _)
-  bridge-d V ag (d-lam {q' = One} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-i V ag d _)
-  bridge-d V ag (d-lam {q' = Many} {π = π} le d) dγ = extensionality λ a → cong (subM (pure⊑ π)) (bridge-i V ag d _)
+  bridge-d V ag (d-lam {q' = Zero} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
+  bridge-d V ag (d-lam {q' = One} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
+  bridge-d V ag (d-lam {q' = Many} {u = u} le d) dγ = extensionality λ a → cong (subM u) (bridge-i V ag d _)
   bridge-d V ag (d-compose dg df) dγ =
     trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))
   bridge-d V ag d-id dγ = refl
-  bridge-d V ag (d-fst {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
-  bridge-d V ag (d-snd {π = π}) dγ = extensionality λ v → cong (subM (pure⊑ π)) (sym (>>=ᵖ-β v _))
+  bridge-d V ag (d-fst {u = u}) dγ = refl
+  bridge-d V ag (d-snd {u = u}) dγ = refl
   bridge-d V ag d-terminal dγ = refl
   bridge-d V ag (d-initial {π = π}) dγ = extensionality λ ()
   bridge-d V ag (d-case df dg) dγ =
@@ -571,7 +571,7 @@ module _ {δ : GM.DefSem} where
   bridge-d V ag (d-pair df dg) dγ =
     trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.pair-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))
-  bridge-d V ag (d-cata wf dalg) dγ =
+  bridge-d V ag (d-cata {u = u} wf dalg) dγ =
     trans (bindC (bridge-i V ag dalg _) (λ valg → refl))
-          (sym (Comb.cata-sem′ {δ = δ} wf (proj₂ (elabᵢ V dalg)) dγ))
+          (sym (Comb.cata-sem′ {δ = δ} u wf (proj₂ (elabᵢ V dalg)) dγ))
 

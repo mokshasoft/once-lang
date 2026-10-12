@@ -11,7 +11,7 @@ module Once.Metatheory.SubLaws where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Spec.Type.Grade using (Purity; pure; eff; prod; mk-kind)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod; mk-kind)
 open import Once.Spec.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Type using (_≟q_)
 open import Once.Type.DecEq using (_≟F_; _≟T_)
@@ -19,44 +19,39 @@ open import Once.Spec.Type.Sub
 open import Once.Type.Sub
 
 ⊑π-unique : ∀ {π π′} (g h : π ⊑π π′) → g ≡ h
-
 ⊑π-unique ⊑-pure ⊑-pure = refl
-
-⊑π-unique ⊑-eff  ⊑-eff  = refl
-
-⊑π-unique ⊑-pe   ⊑-pe   = refl
-
+⊑π-unique ⊑-eff ⊑-eff = refl
+⊑π-unique ⊑-pe ⊑-pe = refl
 ⊑π-unique ⊑-prod ⊑-prod = refl
-
-⊑π-unique ⊑-pp   ⊑-pp   = refl
-
-⊑π-unique ⊑-ep   ⊑-ep   = refl
+⊑π-unique ⊑-pp ⊑-pp = refl
+⊑π-unique ⊑-ep ⊑-ep = refl
+⊑π-unique ⊑-g ⊑-g = refl
+⊑π-unique ⊑-ge ⊑-ge = refl
+⊑π-unique ⊑-gp ⊑-gp = refl
 
 ⊑π-refl : ∀ π → π ⊑π π
-
 ⊑π-refl pure = ⊑-pure
-
-⊑π-refl eff  = ⊑-eff
-
+⊑π-refl eff⁺ = ⊑-g
+⊑π-refl eff = ⊑-eff
 ⊑π-refl prod = ⊑-prod
 
 ⊑π-trans : ∀ {π₁ π₂ π₃} → π₁ ⊑π π₂ → π₂ ⊑π π₃ → π₁ ⊑π π₃
-
-⊑π-trans ⊑-pure g     = g
-
-⊑π-trans ⊑-eff  ⊑-eff = ⊑-eff
-
-⊑π-trans ⊑-pe   ⊑-eff = ⊑-pe
-
-⊑π-trans ⊑-pe   ⊑-ep  = ⊑-pp
-
-⊑π-trans ⊑-eff  ⊑-ep  = ⊑-ep
-
-⊑π-trans ⊑-pp   ⊑-prod = ⊑-pp
-
-⊑π-trans ⊑-ep   ⊑-prod = ⊑-ep
-
+⊑π-trans ⊑-pure ⊑-pure = ⊑-pure
+⊑π-trans ⊑-pure ⊑-pe = ⊑-pe
+⊑π-trans ⊑-pure ⊑-pp = ⊑-pp
+⊑π-trans ⊑-eff ⊑-eff = ⊑-eff
+⊑π-trans ⊑-eff ⊑-ep = ⊑-ep
+⊑π-trans ⊑-pe ⊑-eff = ⊑-pe
+⊑π-trans ⊑-pe ⊑-ep = ⊑-pp
 ⊑π-trans ⊑-prod ⊑-prod = ⊑-prod
+⊑π-trans ⊑-pp ⊑-prod = ⊑-pp
+⊑π-trans ⊑-ep ⊑-prod = ⊑-ep
+⊑π-trans ⊑-g ⊑-g = ⊑-g
+⊑π-trans ⊑-g ⊑-ge = ⊑-ge
+⊑π-trans ⊑-g ⊑-gp = ⊑-gp
+⊑π-trans ⊑-ge ⊑-eff = ⊑-ge
+⊑π-trans ⊑-ge ⊑-ep = ⊑-gp
+⊑π-trans ⊑-gp ⊑-prod = ⊑-gp
 
 <:-unique : ∀ {A B} (p q : A <: B) → p ≡ q
 

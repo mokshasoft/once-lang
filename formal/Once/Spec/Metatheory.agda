@@ -124,16 +124,16 @@ record TypeSystem : Set where
 record Effects : Set₁ where
   field
     -- each grade's `M π` is a monad
-    M-identityˡ : ∀ π {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM π x) k) (k x)
-    M-identityʳ : ∀ π {X : Set} (m : M π X) → EqM π (bindM π m (returnM π)) m
+    M-identityˡ : ∀ {π} (u : pure ⊑π π) {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM u x) k) (k x)
+    M-identityʳ : ∀ {π} (u : pure ⊑π π) {X : Set} (m : M π X) → EqM π (bindM π m (returnM u)) m
     M-assoc     : ∀ π {X Y Z : Set} (m : M π X) (f : X → M π Y) (g : Y → M π Z)
                 → EqM π (bindM π (bindM π m f) g) (bindM π m (λ x → bindM π (f x) g))
     -- subeffecting is a monad morphism `M π → M π′`
-    subM-return : ∀ {π π′} (g : π ⊑π π′) {X : Set} (x : X) → EqM π′ (subM g (returnM π x)) (returnM π′ x)
+    subM-return : ∀ {π π′} (u : pure ⊑π π) (g : π ⊑π π′) (u′ : pure ⊑π π′) {X : Set} (x : X) → EqM π′ (subM g (returnM u x)) (returnM u′ x)
     subM-bind   : ∀ {π π′} (g : π ⊑π π′) {X Y : Set} (m : M π X) (k : X → M π Y)
                 → EqM π′ (subM g (bindM π m k)) (bindM π′ (subM g m) (λ x → subM g (k x)))
     -- so is the erasure of a grade to the completely iterative monad (D311)
-    toT∞-return : ∀ π {X : Set} (x : X) → TreeEq∞ _≡_ (toT∞ π (returnM π x)) (return∞ x)
+    toT∞-return : ∀ {π} (u : pure ⊑π π) {X : Set} (x : X) → TreeEq∞ _≡_ (toT∞ π (returnM u x)) (return∞ x)
     toT∞-bind   : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
                 → TreeEq∞ _≡_ (toT∞ π (bindM π m k)) (toT∞ π m >>=∞ λ x → toT∞ π (k x))
     -- and of the GRADED bind (D311): `M` is a graded monad over the grades'
@@ -151,25 +151,25 @@ record Effects : Set₁ where
 record Recursion : Set₁ where
   field
     -- `fold alg` is the only `h` that commutes with the constructor
-    fold-unique : ∀ π {F A} (wf : WellFormedF F) (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)
+    fold-unique : ∀ {π} (u : pure ⊑π π) {F A} (wf : WellFormedF F) (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)
                     (h : ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ)
-                → (∀ x → EqM π (h (in-valueᵛ wf x)) (bindM π (mapLayerᵛ π wf h x) alg))
-                → ∀ v → EqM π (h v) (cata-semᵛ π wf alg v)
+                → (∀ x → EqM π (h (in-valueᵛ wf x)) (bindM π (mapLayerᵛ u wf h x) alg))
+                → ∀ v → EqM π (h v) (cata-semᵛ u wf alg v)
     -- fusion: a map that commutes with the algebras commutes with the folds
-    fold-fusion : ∀ π {F A B} (wf : WellFormedF F)
+    fold-fusion : ∀ {π} (u : pure ⊑π π) {F A B} (wf : WellFormedF F)
                     (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg′ : ⟦ ⟦ F ⟧T B ⟧ᵛ → M π ⟦ B ⟧ᵛ)
                     (f : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ)
-                → (∀ y → EqM π (bindM π (alg y) f) (bindM π (mapLayerᵛ π wf f y) alg′))
-                → ∀ v → EqM π (bindM π (cata-semᵛ π wf alg v) f) (cata-semᵛ π wf alg′ v)
+                → (∀ y → EqM π (bindM π (alg y) f) (bindM π (mapLayerᵛ u wf f y) alg′))
+                → ∀ v → EqM π (bindM π (cata-semᵛ u wf alg v) f) (cata-semᵛ u wf alg′ v)
     -- unfold's computation law (plan 0.116 E): forcing `unfold c s` runs the
     -- coalgebra FUNCTION on the seed (once per forced layer; its term was
     -- evaluated once, when the stream was built — D273) and puts `unfold c` at
     -- the recursive positions. An effectful coalgebra is a server (D233). With
     -- it, every observation of a stream is determined; uniqueness holds up to
     -- bisimilarity (the final T∘F-coalgebra).
-    unfold-out  : ∀ π {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
-                → EqM π (out-semᵛ π wf (ana-semᵛ π pure wf clo a))
-                    (bindM π (clo a) (mapLayerᵛ π wf (λ a′ → returnM π (ana-semᵛ π pure wf clo a′))))
+    unfold-out  : ∀ {π} (u : pure ⊑π π) {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
+                → EqM π (out-semᵛ π wf (ana-semᵛ π wf clo a))
+                    (bindM π (clo a) (mapLayerᵛ u wf (λ a′ → returnM u (ana-semᵛ π wf clo a′))))
 
 -- Effects form a Freyd category (plan 0.116). Values and pure maps are the
 -- category C, computations `X → T Y` the premonoidal category K = Kleisli(T),

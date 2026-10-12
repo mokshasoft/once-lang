@@ -222,6 +222,7 @@ mutual
   {-# CATCHALL #-}
   typeToPoly (a ⇒[ mk-kind _ eff ] b) = nothing
   typeToPoly (a ⇒[ mk-kind _ prod ] b) = nothing   -- D311: no surface form yet (plan 0.117 F)
+  typeToPoly (a ⇒[ mk-kind _ eff⁺ ] b) = nothing
   typeToPoly (μ-type F) with functorToPoly F
   ... | just G  = just (Pμ-type G)
   ... | nothing = nothing

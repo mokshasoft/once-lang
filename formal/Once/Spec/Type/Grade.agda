@@ -78,26 +78,38 @@ Many  ≤q One   = false
 Many  ≤q Many  = true
 
 ------------------------------------------------------------------------
--- Effect: the order pure ≤ eff ≤ prod
+-- Effect: the order pure ≤ eff ≤ prod, with eff⁺ ≤ eff
 --
 -- Two axes laid out on a line (D311): whether a computation has effects,
 -- and whether it may run forever. The pure-and-forever corner is empty — a
 -- pure computation that never returns is divergence, which Once does not
 -- have, and pure infinite DATA is a value of a `ν` type — so the three
--- inhabited corners are ordered.
+-- inhabited corners are ordered. Below `eff` sits the GUARD `eff⁺`: an
+-- effectful computation whose first node is an event; it is not above
+-- `pure` (a value performs no event).
 ------------------------------------------------------------------------
 
 data Purity : Set where
   pure : Purity   -- no observable effects
+  eff⁺ : Purity   -- an event FIRST, then returns: the guard of iteration (D311)
   eff  : Purity   -- may have observable effects, and returns
   prod : Purity   -- may have observable effects, and may run forever: each
                   -- next event after finite work (PRODUCTIVE)
 
 -- Join: the least grade above both — the grade at which two arms meet, of
--- which exactly one runs.
+-- which exactly one runs. `pure` and `eff⁺` meet at `eff` (one arm may
+-- perform no event).
 _⊔p_ : Purity → Purity → Purity
-pure ⊔p p    = p
+pure ⊔p pure = pure
+pure ⊔p eff⁺ = eff
+pure ⊔p eff  = eff
+pure ⊔p prod = prod
+eff⁺ ⊔p pure = eff
+eff⁺ ⊔p eff⁺ = eff⁺
+eff⁺ ⊔p eff  = eff
+eff⁺ ⊔p prod = prod
 eff  ⊔p pure = eff
+eff  ⊔p eff⁺ = eff
 eff  ⊔p eff  = eff
 eff  ⊔p prod = prod
 prod ⊔p _    = prod
@@ -105,14 +117,20 @@ prod ⊔p _    = prod
 infixr 5 _⊔p_
 
 -- SEQUENCING (D311): running one computation and then another has the
--- PRODUCT of their grades. Grades are an ordered monoid with unit `pure`; on
--- `pure ⊑ eff` the product happens to be the join, but it is a separate
--- operation: a guarded grade (an event first) is absorbing under sequencing
--- yet not above `pure`. A rule that runs premises in order concludes at the
--- product of their grades, left to right.
+-- PRODUCT of their grades. Grades are an ordered monoid with unit `pure`;
+-- `prod` absorbs, and `eff⁺` absorbs the finite grades — an event in either
+-- part is an event first of the whole, since the part before it either has
+-- one or returns at once. So the product is not the join: `pure ·p eff⁺` is
+-- `eff⁺`, which is not above `pure`. A rule that runs premises in order
+-- concludes at the product of their grades, left to right.
 _·p_ : Purity → Purity → Purity
 pure ·p p    = p
+eff⁺ ·p pure = eff⁺
+eff⁺ ·p eff⁺ = eff⁺
+eff⁺ ·p eff  = eff⁺
+eff⁺ ·p prod = prod
 eff  ·p pure = eff
+eff  ·p eff⁺ = eff⁺
 eff  ·p eff  = eff
 eff  ·p prod = prod
 prod ·p _    = prod

@@ -92,8 +92,8 @@ entry updates the rule it changes here, in the same commit.
   body's grade rides the arrow. (D069, D231)
 - **Read the grade off the denotation**: `pair` runs its arms left first, and
   its grade is the PRODUCT of theirs — every rule that sequences premises
-  takes a grade per premise (being implemented, plan 0.117 C0; until then they
-  share one grade); `curry`'s outer arrow is effect-free and its inner arrow
+  takes a grade per premise (in the core; the surface `compose`/`pair` still
+  share one grade, plan 0.117 C2b); `curry`'s outer arrow is effect-free and its inner arrow
   carries the body's grade. (D311 ← D222 ← D219, D066)
 - **Effects follow data flow, and reading order where there is none**: an
   effectful fold runs a product layer left first. (D286 ← D221)
@@ -139,6 +139,11 @@ entry updates the rule it changes here, in the same commit.
   `eff⁺` (an event first), `eff⁺ ⊑ eff`; grades are an ordered monoid and a
   sequencing rule concludes at the product of its premises' grades. An
   `iter` body is `eff⁺` as a whole: every round performs an event. (D311)
+- **The guard has no unit**: a value performs no event, so whatever returns a
+  value at its arrow's grade — the combinators, λ, `curry`'s outer arrow,
+  `ana`'s construction, a fold's algebra — needs a grade above `pure`
+  (evidence `pure ⊑ π`); the meaning maps over a premise instead of binding
+  and returning. (D311)
 - **A computation that may run forever means a tree of the completely
   iterative monad** (`T∞`, no silent node), and every grade is read as one
   (`toT∞`): equal computations are bisimilar trees, observed by their finite

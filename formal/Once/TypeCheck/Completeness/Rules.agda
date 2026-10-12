@@ -43,7 +43,7 @@ open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved;
 open import Once.Spec.Name using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
-  using (via; apply-pure; apply-eff)
+  using (via; apply-pure; apply-eff; withUnit-elim)
 open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQualified-aux; inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
 import Once.Spec.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
@@ -63,6 +63,7 @@ open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
+open import Once.Spec.Type.Sub using (_⊑π_)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
@@ -789,15 +790,17 @@ check-complete-RLam :
                  (q' Surface.Usage.∷ Ψ') B}
     {d' f' : ℕ} {π : T.Purity}
   → (q' T.≤q q) ≡ true
+  → T.pure ⊑π π
   → checkElab (Classify.extendNamedCtx ctx x A) body B
       ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q π ] B) ≡ success Ψ' eE d f
-check-complete-RLam ctx x body A q q' B leqEq eqC
+check-complete-RLam ctx x body A q q' B {Ψ' = Ψ'} leqEq u eqC
   with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqC
 ... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
     with E.decideLeq q' q | decideLeq-just q' q leqEq
-...   | just _ | _ , refl = _ , _ , _ , refl
+...   | just _ | _ , refl =
+  withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success Ψ' eE d f) (λ u′ → _ , _ , _ , refl)
 
 ------------------------------------------------------------------------
 -- RDestruct (case / sum elimination)

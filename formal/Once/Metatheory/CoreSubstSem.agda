@@ -321,11 +321,11 @@ module Rows (fmt : TargetNum) (δ : GM.DefSem) where
     sub-sem {Φ = Φ} (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {π₂ = π₂} da db) h x =
       trans (⟦retype⟧ (sym (⋆-+ Ψ₁ Ψ₂ Φ)) _ fmt δ x)
             (bindCᵍ {π₁} {π₂} (ih da h _ (sym (sym (⋆-+ Ψ₁ Ψ₂ Φ))) _ x)
-                   (λ a → bindC {π₂} (ih db h _ (sym (sym (⋆-+ Ψ₁ Ψ₂ Φ))) _ x) (λ _ → refl)))
-    sub-sem (⊢fst {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
-    sub-sem (⊢snd {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
-    sub-sem (⊢inl {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
-    sub-sem (⊢inr {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
+                   (λ a → cong (fmapM π₂ _) (ih db h _ (sym (sym (⋆-+ Ψ₁ Ψ₂ Φ))) _ x)))
+    sub-sem (⊢fst {π = π} d) h x = cong (fmapM π _) (sub-sem d h x)
+    sub-sem (⊢snd {π = π} d) h x = cong (fmapM π _) (sub-sem d h x)
+    sub-sem (⊢inl {π = π} d) h x = cong (fmapM π _) (sub-sem d h x)
+    sub-sem (⊢inr {π = π} d) h x = cong (fmapM π _) (sub-sem d h x)
 
     sub-sem {Φ = Φ} (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁} {π₂ = π₂} {A = A} {B = B} ds dl dr) h x =
       trans (⟦retype⟧ (sym (⋆-+ Ψs Ψ Φ)) _ fmt δ x)
@@ -334,9 +334,9 @@ module Rows (fmt : TargetNum) (δ : GM.DefSem) where
                       ; (inj₂ b) → ihb B qr dr h _ (sym (sym (⋆-+ Ψs Ψ Φ))) _ x b }))
 
     sub-sem (⊢absurd {π = π} d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
-    sub-sem (⊢roll {π = π} wf d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
+    sub-sem (⊢roll {π = π} wf d) h x = cong (fmapM π _) (sub-sem d h x)
     -- plan 0.113 B1: the algebra's part is ω-scaled; `⋆` is linear (`⋆-*`).
-    sub-sem {Φ = Φ} (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} wf da dt) h x =
+    sub-sem {Φ = Φ} (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} u wf da dt) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
             (bindCᵍ {π₁} (ih da h _ (sym (sym E)) _ x)
                    (λ valg → bindCᵍ {π₂} {π} (ih dt h _ (sym (sym E)) _ x) (λ _ → refl)))
@@ -344,13 +344,13 @@ module Rows (fmt : TargetNum) (δ : GM.DefSem) where
     sub-sem {Φ = Φ} (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ = π₂} wf dc ds) h x =
       trans (⟦retype⟧ (sym E) _ fmt δ x)
             (bindCᵍ {π₁} {π₂} (ih dc h _ (sym (sym E)) _ x)
-                   (λ clo → bindC {π₂} (ih ds h _ (sym (sym E)) _ x) (λ _ → refl)))
+                   (λ clo → cong (fmapM π₂ _) (ih ds h _ (sym (sym E)) _ x)))
       where E = trans (⋆-+ (Many *ᵘ Ψc) Ψs Φ) (cong (_+ᵘ (Ψs ⋆ Φ)) (⋆-* Many Ψc Φ))
     sub-sem (⊢out {π = π} {π₁ = π₁} wf d) h x = bindCᵍ {π₁} {π} (sub-sem d h x) (λ _ → refl)
     sub-sem (⊢coerce {π = π} p d) h x = cong (fmapM π _) (sub-sem d h x)
     sub-sem {Δ = Δ} {Φ = Φ} ⊢lit-int h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) ⊢lit-int fmt δ x
     sub-sem {Δ = Δ} {Φ = Φ} ⊢lit-float h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) ⊢lit-float fmt δ x
-    sub-sem (⊢prim {π = π} p d) h x = bindC {π} (sub-sem d h x) (λ _ → refl)
+    sub-sem (⊢prim {π = π} p d) h x = cong (fmapM π _) (sub-sem d h x)
     sub-sem {Δ = Δ} {Φ = Φ} (⊢sigop c k hf rf m) h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) (⊢sigop c k hf rf m) fmt δ x
     sub-sem {Δ = Δ} {Φ = Φ} (⊢ref d τ r) h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) (⊢ref d τ r) fmt δ x
     sub-sem (⊢sub-eff g d) h x = cong (subM g) (sub-sem d h x)

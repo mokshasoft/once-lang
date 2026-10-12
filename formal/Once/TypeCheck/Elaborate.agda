@@ -286,6 +286,14 @@ given-infer ctx e A π (success (A′ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.m
 {-# CATCHALL #-}
 given-infer ctx e A π (success T Ψ eE d fr , w) = failure ComposeMiddleUndetermined , tt
 
+-- D311: a rule that builds a VALUE at an arrow's grade needs the grade's unit
+-- (`pure ⊑π π`); the guard `eff⁺` has none. Decided once, here.
+withUnit : ∀ {R : Set} → R → (π : Once.Spec.Type.Grade.Purity) → (Once.Spec.Type.Grade.pure ⊑π π → R) → R
+withUnit-aux : ∀ {R : Set} {π} → R → Dec (Once.Spec.Type.Grade.pure ⊑π π) → (Once.Spec.Type.Grade.pure ⊑π π → R) → R
+withUnit-aux r (yes u) k = k u
+withUnit-aux r (no _)  k = r
+withUnit r π k = withUnit-aux r (Once.Spec.Type.Grade.pure ⊑π? π) k
+
 -- The `d-cata` step: the algebra's synthesized arrow must be `⟦ F ⟧T A ⇒ A` at
 -- the given grade; then its codomain `A` is the fold's output.
 given-cata-dec : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (π : Once.Spec.Type.Grade.Purity)
@@ -297,8 +305,8 @@ given-cata-dec : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functo
                → Dec ((X Once.Spec.Type.⇒[ k ] A)
                         ≡ (⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A))
                → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Spec.Type.μ-type F) π
-given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (yes refl) =
-  success A (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr , d-cata wfF w
+given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (yes refl) = withUnit (failure (BuiltinTypeMismatch "cata") , tt) π λ u →
+  success A (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr , d-cata {u = u} wfF w
 given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (no _) = failure (BuiltinTypeMismatch "cata") , tt
 
 given-cata : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Spec.Type.Functor) (π : Once.Spec.Type.Grade.Purity)
@@ -601,6 +609,7 @@ asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Typ
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B))
 -- D311: no surface application of a `prod` arrow yet (plan 0.117 F).
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B))
+asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B))
 asFun (success Unit Ψ _ _ _)                             = notFun (NotFunction Unit)
 asFun (success Void Ψ _ _ _)                             = notFun (NotFunction Void)
 asFun (success Int Ψ _ _ _)                              = notFun (NotFunction Int)
@@ -909,6 +918,7 @@ inferElabV-RVar-poly-aux ctx x eL eI =
   inferElabV-RVar-poly-lookup-aux ctx x eL eI (lookupPoly (NamedCtx.polys ctx) x) refl
 
 
+
 -- Not mutually recursive with the block below: these never call back into
 -- it, so they stand outside it (its positivity and termination graphs span
 -- only what actually recurses).
@@ -917,20 +927,20 @@ elabGivenLeaf : (ctx : NamedCtx) (cn : CanonicalName) (A : Type) (π : Once.Spec
               → AppHeadView (Raw.RResolved cn) → VerifiedInferResult ctx (Raw.RResolved cn)
               → VerifiedGivenResult ctx (Raw.RResolved cn) A π
 -- The generators, read off the same head view the application dispatch uses.
-elabGivenLeaf ctx .(gen "id") A π ahv-id _ =
-  success A _ (Surface.lift-morphism IR.id) 0 0 , d-id
-elabGivenLeaf ctx .(gen "fst") (A Once.Spec.Type.* B) π ahv-fst _ =
-  success A _ (Surface.lift-morphism IR.fst) 0 0 , d-fst
+elabGivenLeaf ctx .(gen "id") A π ahv-id _ = withUnit (failure (BuiltinTypeMismatch "id") , tt) π λ u →
+  success A _ (Surface.lift-morphism IR.id) 0 0 , d-id {u = u}
+elabGivenLeaf ctx .(gen "fst") (A Once.Spec.Type.* B) π ahv-fst _ = withUnit (failure (BuiltinTypeMismatch "fst") , tt) π λ u →
+  success A _ (Surface.lift-morphism IR.fst) 0 0 , d-fst {u = u}
 {-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "fst") _ π ahv-fst _ = failure (BuiltinTypeMismatch "fst") , tt
-elabGivenLeaf ctx .(gen "snd") (A Once.Spec.Type.* B) π ahv-snd _ =
-  success B _ (Surface.lift-morphism IR.snd) 0 0 , d-snd
+elabGivenLeaf ctx .(gen "snd") (A Once.Spec.Type.* B) π ahv-snd _ = withUnit (failure (BuiltinTypeMismatch "snd") , tt) π λ u →
+  success B _ (Surface.lift-morphism IR.snd) 0 0 , d-snd {u = u}
 {-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "snd") _ π ahv-snd _ = failure (BuiltinTypeMismatch "snd") , tt
-elabGivenLeaf ctx .(gen "terminal") A π ahv-terminal _ =
-  success Unit _ (Surface.lift-morphism IR.terminal) 0 0 , d-terminal
-elabGivenLeaf ctx .(gen "initial") Void π ahv-initial _ =
-  success Void _ (Surface.lift-morphism IR.initial) 0 0 , d-initial
+elabGivenLeaf ctx .(gen "terminal") A π ahv-terminal _ = withUnit (failure (BuiltinTypeMismatch "terminal") , tt) π λ u →
+  success Unit _ (Surface.lift-morphism IR.terminal) 0 0 , d-terminal {u = u}
+elabGivenLeaf ctx .(gen "initial") Void π ahv-initial _ = withUnit (failure (BuiltinTypeMismatch "initial") , tt) π λ u →
+  success Void _ (Surface.lift-morphism IR.initial) 0 0 , d-initial {u = u}
 {-# CATCHALL #-}
 elabGivenLeaf ctx .(gen "initial") _ π ahv-initial _ = failure (BuiltinTypeMismatch "initial") , tt
 {-# CATCHALL #-}
@@ -973,6 +983,7 @@ inferOutGo ctx arg F Once.Spec.Type.Grade.eff Ψ argE d fr w (just wfF) eqW =
   , t-Out-eff-app-infer wfF refl w
 -- D311: no surface `Out` of a `prod` stream yet (plan 0.117 F).
 inferOutGo ctx arg F Once.Spec.Type.Grade.prod Ψ argE d fr w (just wfF) eqW = failure (BuiltinTypeMismatch "Out") , tt
+inferOutGo ctx arg F Once.Spec.Type.Grade.eff⁺ Ψ argE d fr w (just wfF) eqW = failure (BuiltinTypeMismatch "Out") , tt
 
 inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → NuView T
@@ -1028,6 +1039,7 @@ inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.eff B A') w
 ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
 -- D311: no surface application of a `prod` closure yet (plan 0.117 F).
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.prod B A') = failure (BuiltinTypeMismatch "apply") , tt
+inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.eff⁺ B A') = failure (BuiltinTypeMismatch "apply") , tt
 inferApplyAt ctx arg Ψ argE d fr w apply-other = failure (BuiltinTypeMismatch "apply") , tt
 
 inferApplyOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
@@ -1321,6 +1333,9 @@ ext-resolved-sem eff  (no _)     (no _)     = callsV
 ext-resolved-sem prod (yes refl) _          = haltsV refl
 ext-resolved-sem prod (no _)     (yes refl) = emitsV refl
 ext-resolved-sem prod (no _)     (no _)     = callsV
+ext-resolved-sem eff⁺ (yes refl) _          = haltsV refl
+ext-resolved-sem eff⁺ (no _)     (yes refl) = emitsV refl
+ext-resolved-sem eff⁺ (no _)     (no _)     = callsV
 
 ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
                       → Dec (B ≡ Void) → Dec (B ≡ Unit)
@@ -1462,8 +1477,8 @@ checkElabV-RVar-bbc-id-failure-aux :
 -- canonical builtin shape and on the lookup results. Success iff
 -- T = canonical & both lookups nothing & inner type-checks pass.
 checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Y) err with X ≟T Y
-... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 0 , t-id-check
+... | yes refl = withUnit (failure (BuiltinTypeMismatch "id") , tt) π λ u →
+      success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 0 , t-id-check {u = u}
 ... | no _ = failure (BuiltinTypeMismatch "id") , tt
 checkElabV-RVar-bbc-id-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-id-failure-aux ctx Void err = failure err , tt
@@ -1481,8 +1496,8 @@ checkElabV-RVar-bbc-fst-failure-aux :
   ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
   → VerifiedCheckResult ctx (Raw.RResolved (gen "fst")) T
 checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A') err with A ≟T A'
-... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 0 , t-fst-check
+... | yes refl = withUnit (failure (BuiltinTypeMismatch "fst") , tt) π λ u →
+      success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 0 , t-fst-check {u = u}
 ... | no _ = failure (BuiltinTypeMismatch "fst") , tt
 checkElabV-RVar-bbc-fst-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-fst-failure-aux ctx Void err = failure err , tt
@@ -1510,8 +1525,8 @@ checkElabV-RVar-bbc-snd-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "snd")) T
 -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
 checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B') err with B ≟T B'
-... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 0 , t-snd-check
+... | yes refl = withUnit (failure (BuiltinTypeMismatch "snd") , tt) π λ u →
+      success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 0 , t-snd-check {u = u}
 ... | no _ = failure (BuiltinTypeMismatch "snd") , tt
 checkElabV-RVar-bbc-snd-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-snd-failure-aux ctx Void err = failure err , tt
@@ -1539,7 +1554,8 @@ checkElabV-RVar-bbc-terminal-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "terminal")) T
 -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
 checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Unit) err =
-  success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 0 , t-terminal-morph-check
+  withUnit (failure (BuiltinTypeMismatch "terminal") , tt) π λ u →
+  success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 0 , t-terminal-morph-check {u = u}
 checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx Void err = failure err , tt
 checkElabV-RVar-bbc-terminal-failure-aux ctx Int err = failure err , tt
@@ -1575,7 +1591,8 @@ checkElabV-RVar-bbc-initial-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "initial")) T
 -- bbc-initial: canonical T = Void ⇒[Many,pure] A
 checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A) err =
-  success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 0 , t-initial-morph-check
+  withUnit (failure (BuiltinTypeMismatch "initial") , tt) π λ u →
+  success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 0 , t-initial-morph-check {u = u}
 checkElabV-RVar-bbc-initial-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-initial-failure-aux ctx Void err = failure err , tt
 checkElabV-RVar-bbc-initial-failure-aux ctx Int err = failure err , tt
@@ -1602,8 +1619,8 @@ checkElabV-RVar-bbc-inl-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "inl")) T
 -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
 checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A' Once.Spec.Type.+ B)) err with A ≟T A'
-... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism (IR.inl)) 0 0 , t-inl-morph-check
+... | yes refl = withUnit (failure (BuiltinTypeMismatch "inl") , tt) π λ u →
+      success Surface.zeroUsage (Surface.lift-morphism (IR.inl)) 0 0 , t-inl-morph-check {u = u}
 ... | no _ = failure (BuiltinTypeMismatch "inl") , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-inl-failure-aux ctx Void err = failure err , tt
@@ -1640,8 +1657,8 @@ checkElabV-RVar-bbc-inr-failure-aux :
   → VerifiedCheckResult ctx (Raw.RResolved (gen "inr")) T
 -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
 checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] (A Once.Spec.Type.+ B')) err with B ≟T B'
-... | yes refl =
-      success Surface.zeroUsage (Surface.lift-morphism (IR.inr)) 0 0 , t-inr-morph-check
+... | yes refl = withUnit (failure (BuiltinTypeMismatch "inr") , tt) π λ u →
+      success Surface.zeroUsage (Surface.lift-morphism (IR.inr)) 0 0 , t-inr-morph-check {u = u}
 ... | no _ = failure (BuiltinTypeMismatch "inr") , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx Unit err = failure err , tt
 checkElabV-RVar-bbc-inr-failure-aux ctx Void err = failure err , tt
@@ -2143,7 +2160,8 @@ mutual
   elabGivenV ctx (Raw.RLam x body) A π with inferElabV (extendNamedCtx ctx x A) body
   ... | failure err , _ = failure err , tt
   ... | success B (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' Once.Spec.Type.Grade.Many
-  ...   | just eq = success B Ψ (Surface.lam Once.Spec.Type.Grade.Many eq bodyE) (suc d) fr , d-lam eq wBody
+  ...   | just eq = withUnit (failure (BuiltinTypeMismatch "lambda") , tt) π λ u →
+                    success B Ψ (Surface.lam Once.Spec.Type.Grade.Many eq bodyE) (suc d) fr , d-lam {u = u} eq wBody
   ...   | nothing = failure (UsageViolation x Once.Spec.Type.Grade.Many q') , tt
   elabGivenV ctx (Raw.RResolved cn) A π = elabGivenLeaf ctx cn A π (classifyAppHeadView (Raw.RResolved cn)) (inferElabV ctx (Raw.RResolved cn))
   elabGivenV ctx (Raw.RApp f g) A π = elabGivenApp ctx f g A π (classifyAppHeadView f) (inferElabV ctx (Raw.RApp f g))
@@ -2204,7 +2222,8 @@ mutual
     with checkElabV ctx arg ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] C)
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , w =
-          success _ (Surface.curry' argE) (suc d) fr , t-curry-check w
+          withUnit (failure (BuiltinTypeMismatch "curry") , tt) π₀ λ u →
+          success _ (Surface.curry' argE) (suc d) fr , t-curry-check {u = u} w
   checkCurryOn _ _ _ curry-other = failure (BuiltinTypeMismatch "curry") , tt
 
 
@@ -2260,14 +2279,14 @@ mutual
   -- premise, and the empty debruijn context is what `Surface.cata` demands of
   -- the algebra it carries — the closedness is enforced by the CONTEXT, as it
   -- always was, not by a realm.
-  ... | success Ψ algE d fr , wArg =
+  ... | success Ψ algE d fr , wArg = withUnit (failure (BuiltinTypeMismatch "cata") , tt) π λ u →
           success _ (Surface.cata wfF algE) (suc d) fr
             -- PLAN 0.80 A1: the rule takes the WITNESS, not the decider
             -- equation. `wfF` is the decider's own output, bound by the
             -- `just wfF` pattern above — so the elaborator hands over exactly
             -- what it computed, and `eqW` is now only bookkeeping for the
             -- completeness proof's `J`-style helpers.
-            , t-cata-check wfF wArg
+            , t-cata-check {u = u} wfF wArg
 
   -- D192: the unfold. Same three moves as the fold — read `F` from the
   -- expected type, decide `WellFormedF F`, check the coalgebra — with the
@@ -2281,9 +2300,9 @@ mutual
   checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
     with checkElabV ctx coalg (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] ⟦ F ⟧T A)
   ... | failure err , _ = failure err , tt
-  ... | success Ψ coalgE d fr , wArg =
+  ... | success Ψ coalgE d fr , wArg = withUnit (failure (BuiltinTypeMismatch "ana") , tt) π₀ λ u →
           success _ (Surface.ana wfF coalgE) (suc d) fr
-            , t-ana-check wfF wArg
+            , t-ana-check {u = u} wfF wArg
 
 
 ------------------------------------------------------------------------
@@ -2415,7 +2434,8 @@ mutual
   checkElabV-wf ctx ac (Raw.RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q π ] B) with checkElabV (extendNamedCtx ctx x A) body B
   ... | failure err , _ = failure err , tt
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' q
-  ...   | just eq = success _ (Surface.lam q eq bodyE) (suc d) fr , t-lam eq wBody
+  ...   | just eq = withUnit (failure (BuiltinTypeMismatch "lambda") , tt) π λ u →
+                    success _ (Surface.lam q eq bodyE) (suc d) fr , t-lam {u = u} eq wBody
   ...   | nothing = failure (UsageViolation x q q') , tt
   -- Non-arrow T: a lambda has no check-mode rule.
   {-# CATCHALL #-}
@@ -2601,6 +2621,7 @@ mutual
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B)) , tt
+  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B)) , tt
 
   -- ahv-id : argument can have any type, result has the same type.
   inferElabV-RApp-dispatch ctx f arg ahv-id _ with inferElabV ctx arg
@@ -2788,8 +2809,11 @@ checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-k
 {-# CATCHALL #-}
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind _ Once.Spec.Type.Grade.eff ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.prod ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff⁺ ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.prod ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff⁺ ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.prod ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
+checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff⁺ ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Spec.Type.μ-type _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Spec.Type.ν-type _ _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success (Once.Spec.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt

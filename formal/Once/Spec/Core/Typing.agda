@@ -124,8 +124,11 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → WellFormedF F
         → Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧T (μ-type F) ! π
         → Γ ⊢[ Ψ ] roll F t ∷ μ-type F ! π
+  -- The algebra's grade has a UNIT (`pure ⊑π π`): a fold traverses each
+  -- layer, and a layer with no recursive position runs nothing (D311: not at
+  -- the guard `eff⁺`; a guarded algebra folds at `eff`).
   ⊢fold : ∀ {n} {Γ : Ctx n} {Ψa Ψt : Usage n} {π π₁ π₂ : Purity} {F : Functor} {A alg t}
-        → WellFormedF F
+        → pure ⊑π π → WellFormedF F
         → Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π₁
         → Γ ⊢[ Ψt ] t ∷ μ-type F ! π₂
         → Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold F alg t ∷ A ! π₁ ·p (π₂ ·p π)   -- plan 0.113 B1: ω-use of the algebra

@@ -122,8 +122,8 @@ tsubst σ r (⊢absurd e) = ⊢absurd (tsubst σ r e)
 tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢roll {F = F} {t = t} wf d) =
   ⊢roll (wf-⟨⟩ r wf)
     (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟨ σ ⟩ₜ ∷ X ! π) (⟦⟧F-⟨⟩ F (μ-type F) σ) (tsubst σ r d))
-tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F} {A = A} {alg = alg} wf a t) =
-  ⊢fold (wf-⟨⟩ r wf)
+tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F} {A = A} {alg = alg} u wf a t) =
+  ⊢fold u (wf-⟨⟩ r wf)
     (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψa ] alg ⟨ σ ⟩ₜ ∷ X ⇒[ mk-kind Many π ] A ⟨ σ ⟩ ! π₁) (⟦⟧F-⟨⟩ F A σ)
            (tsubst σ r a))
     (tsubst σ r t)

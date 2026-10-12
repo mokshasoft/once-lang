@@ -219,7 +219,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
         → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧F (μ-type F) ! π
         → Δ ⊩ Γ ⊢[ Ψ ] roll F t ∷ μ-type F ! π
   ⊢fold : ∀ {n} {Γ : PCtx m n} {Ψa Ψt : Usage n} {π π₁ π₂ : Purity} {F : Fun m} {A alg t}
-        → WFFun Δ F
+        → pure ⊑π π → WFFun Δ F
         → Δ ⊩ Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁
         → Δ ⊩ Γ ⊢[ Ψt ] t ∷ μ-type F ! π₂
         → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold F alg t ∷ A ! π₁ ·p (π₂ ·p π)
@@ -290,8 +290,8 @@ instantiate σ r (⊢absurd e) = GT.⊢absurd (instantiate σ r e)
 instantiate {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢roll {F = F} {t = t} wf d) =
   GT.⊢roll (wf-⟪⟫ r wf)
     (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ X ! π) (⟦⟧F-⟪⟫ F (μ-type F) σ) (instantiate σ r d))
-instantiate {Γ = Γ} σ r (⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F} {A = A} {alg = alg} wf a t) =
-  GT.⊢fold (wf-⟪⟫ r wf)
+instantiate {Γ = Γ} σ r (⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F} {A = A} {alg = alg} u wf a t) =
+  GT.⊢fold u (wf-⟪⟫ r wf)
     (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψa ] alg ⟪ σ ⟫ₜ ∷ X T.⇒[ mk-kind Many π ] A ⟪ σ ⟫ ! π₁) (⟦⟧F-⟪⟫ F A σ)
            (instantiate σ r a))
     (instantiate σ r t)
