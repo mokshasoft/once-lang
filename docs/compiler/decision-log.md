@@ -1333,8 +1333,8 @@ The implementation plan mentioned adding a project configuration file for Once p
 
 **Date**: 2025-12-12
 **Status**: Superseded in part (2026-10-12). Multi-binding `let` remains the intent, but NOT with
-semicolons, and not as a second spelling of nested lets: a construct must have one way to be
-written. Its syntax is open. Today the verified parser accepts the single-binding form only.
+semicolons: a construct must have one way to be written. A multi-binding `let` is its own
+construct, not a spelling of a `let` nested in a `let`. Its syntax is open. Today the verified parser accepts the single-binding form only.
 
 ### Context
 Adding let bindings to Once for local variable introduction. Multiple design options exist:

@@ -255,8 +255,9 @@ entry updates the rule it changes here, in the same commit.
   branches positional. (D042)
 - **`f x y = e`** is sugar for nested lambdas. (D039)
 - **One way to write a construct.** `let` binds one name (`let x = e in b`).
-  A multi-binding `let` is wanted, but not with semicolons and not as a second
-  spelling of nested lets; its syntax is open. (D029, superseded in part)
+  A multi-binding `let` is wanted (a different construct from a `let` nested
+  in a `let`), but not with semicolons; its syntax is open. (D029, superseded
+  in part)
 - **Libraries**: `Strata/Derived/Canonical.once` (universal-property
   morphisms), `Strata/Derived/Initial.once` (data types as initial algebras);
   `Result A E = A + E` with `ok = inl`. (D021, D024, D025, D016)
