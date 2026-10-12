@@ -341,7 +341,9 @@ Next: Lib, then Examples, then the Knot.
   parameter (class `C`; 33 Knot modules). The rejected alternative, a Knot
   that never cites the core with core-agreement as a separate theorem,
   reverts P4 and the direction of R4 (the Knot moving INTO the core).
-- ⬜ **Follow-up: split signature-free data out of parameterised modules.**
+- ⏸ **Follow-up: split signature-free data out of parameterised modules.**
+  DEFERRED with a trigger 2026-10-12 (see that day's entry): no module
+  meets two instances, so the split has no customer yet.
   - Agda datatypes are generative in their module's parameters:
     `Lib/Syn.Sig 𝒮₁ …` ≠ `Lib/Syn.Sig 𝒮₂ …`. So signature-independent
     data (`Fld`/`Shape`/`Sig`/`ShOK`/`SigOK`/`NthG`, `Lt`, `Cons`, `Tel`,
@@ -559,3 +561,22 @@ Next: Lib, then Examples, then the Knot.
     JudgeDecodeTy 26 → 27, TypingAgree 43 → 43, Exact 17 → 16,
     JudgeDecodeHand/Base 15 → 15, ConvHead 13 → 13, SigWf 11 → 10 (all
     within the ±12% noise floor); SigWfAgree 20 s.
+- **Open problem 4 (signature-free data in parameterised modules): the
+  cost half is CLOSED, the type half DEFERRED with a trigger.**
+  - The measured cost (2026-10-11) came from RE-EXPORTS: an instance copies
+    whatever its module `public`-re-exports. Two more such re-exports
+    remained, both now plain imports: `Algorithm/DecideConversion`
+    re-exported `DecEq`'s `Dec`/`yes`/`no` (no importer needed it), and
+    `Algorithm/NbE` re-exported `NbE/Value` (NbEScope, NbESound,
+    NbESoundTy, ConvLazyNbE and NbE/TblOK now import Value directly).
+  - ★ The rule is now a gate: `lint-imports.py` check 3 makes it an ERROR
+    for a parameterised module to `public`-re-export a non-parameterised
+    project module. The `--control` seeds it, and the sweep refuses on it.
+    It found the NbE case, which a grep missed.
+  - Datatype GENERATIVITY (`Lib/Syn.Sig 𝒮₁` ≠ `Sig 𝒮₂`) only bites where
+    two instances of one module meet. No module does (checked: per file,
+    no Lib/Knot module is imported at two argument lists; the only doubles
+    are `Spec.Typing`, whose data is signature-dependent anyway). The
+    split has no customer, so ⏸. Trigger: the first module that needs
+    one Lib/Knot datatype at two signatures (e.g. faithfulness at an
+    arbitrary quoted `q`, or the core examples meeting the ambient Knot).

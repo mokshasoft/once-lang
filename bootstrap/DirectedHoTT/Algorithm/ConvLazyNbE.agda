@@ -19,7 +19,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
-open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl; ⌊_⌋; ⌊_⌋ᵀ; ⌊_⌋ᵉ; len; lvl )
 import DirectedHoTT.Algorithm.NbE.TblOK as TO
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_; ⌊_⌋ )
 module DirectedHoTT.Algorithm.ConvLazyNbE (𝒮 : Defs) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where
@@ -30,7 +30,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Reduction 𝒮
 open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅; cong≅ᵗ; cong≅ᵀ )
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no; _≟Tm_; _≟Ty_ )
-open import DirectedHoTT.Algorithm.NbE tbl using ( eval; evalᵀ; force; ⌊_⌋; ⌊_⌋ᵀ; ⌊_⌋ᵉ; idEnv; len; lvl )
+open import DirectedHoTT.Algorithm.NbE tbl using ( eval; evalᵀ; force; idEnv )
 open import DirectedHoTT.Algorithm.NbESound 𝒮 tbl tok using ( S-eval; S-force; idEnv-read; sc-idEnv )
 open import DirectedHoTT.Algorithm.NbESoundTy 𝒮 tbl tok using ( T-eval )
 
