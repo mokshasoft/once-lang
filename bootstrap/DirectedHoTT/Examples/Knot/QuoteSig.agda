@@ -295,19 +295,10 @@ homLt zero    (suc m) dh = z<s m
 homLt (suc d) (suc m) dh = s<s (homLt d m (⊢conv dh (credᵀ (Hom-Nat-ss (nsuc (num d)) (num m)))))
 
 -- …and back: below the size, `d + 1 ≤ m` COMPUTES to `Unit`
-private
-  lt-pred : {d m : ℕ} → suc d <ˢ m → d <ˢ m
-  lt-pred <-here      = <-there <-here
-  lt-pred (<-there p) = <-there (lt-pred p)
-
-  lt-ss : {d m : ℕ} → suc d <ˢ suc m → d <ˢ m
-  lt-ss <-here      = <-here
-  lt-ss (<-there p) = lt-pred p
-
 homLt⁻ : (d m : ℕ) → d <ˢ m → Hom {Δ} Nat (nsuc (num d)) (num m) ⟶ᵀ* Unit
 homLt⁻ d       zero    ()
 homLt⁻ zero    (suc m) _ = stepᵀ (Hom-Nat-ss nzero (num m)) (stepᵀ (Hom-Nat-z (num m)) doneᵀ)
-homLt⁻ (suc d) (suc m) p = stepᵀ (Hom-Nat-ss (nsuc (num d)) (num m)) (homLt⁻ d m (lt-ss p))
+homLt⁻ (suc d) (suc m) p = stepᵀ (Hom-Nat-ss (nsuc (num d)) (num m)) (homLt⁻ d m (<ˢ-pred p))
 
 private
   -- the side condition's code at a quoted name, at numerals

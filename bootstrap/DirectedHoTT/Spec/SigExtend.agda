@@ -19,8 +19,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.SigExtend where
-open import normalizer.Syntax.Types using ( _≡_; refl )
-open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
+open import DirectedHoTT.Spec.Syntax using ( Defs; Def; kType; kBody; _▸ᴷ_; _<ˢ_; <-there; lookupK-▸ )
 
 infix 4 _⊑ᴰ_
 record _⊑ᴰ_ (𝒮 𝒮' : Defs) : Set where
@@ -31,3 +31,9 @@ record _⊑ᴰ_ (𝒮 𝒮' : Defs) : Set where
 
 ⊑ᴰ-refl : {𝒮 : Defs} → 𝒮 ⊑ᴰ 𝒮
 ⊑ᴰ-refl = record { inc = λ p → p ; type≡ = λ _ → refl ; body≡ = λ _ → refl }
+
+-- one entry extends a signature: the names below are untouched
+⊑ᴰ-▸ : {𝒮 : Defs} {e : Def} → 𝒮 ⊑ᴰ (𝒮 ▸ᴷ e)
+⊑ᴰ-▸ = record { inc   = <-there
+              ; type≡ = λ p → cong kType (sym (lookupK-▸ p))
+              ; body≡ = λ p → cong kBody (sym (lookupK-▸ p)) }

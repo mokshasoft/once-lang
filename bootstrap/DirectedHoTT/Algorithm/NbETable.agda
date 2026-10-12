@@ -87,11 +87,6 @@ module _ (𝒮 : Defs) where
     lookK-here : (n : ℕ) (T : DefTele) (e : Def) → lookupK (suc n) (T ▸ e) n ≡ e
     lookK-here n T e = subst (λ b → pickK b e (lookupK n T n) ≡ e) (sym (==-refl n)) refl
 
-    -- lookups past the new entry
-    lookK-there : (n : ℕ) (T : DefTele) (e : Def) {d : ℕ} → (d == n) ≡ false →
-                  lookupK (suc n) (T ▸ e) d ≡ lookupK n T d
-    lookK-there n T e {d} f = subst (λ b → pickK b e (lookupK n T d) ≡ lookupK n T d) (sym f) refl
-
     lookT-step : (n : ℕ) (t : Tbl) (v : Val) (d : ℕ) → tlen t ≡ n →
                  lookupT (mkT (suc n) (ttele t ▸ᵗ v)) d ≡ pickV (d == n) v (lookupT t d)
     lookT-step n (mkT .n T) v d refl = refl
@@ -105,32 +100,7 @@ module _ (𝒮 : Defs) where
     shrinkK : {n : ℕ} {T : DefTele} {e : Def} → KPrefix (suc n) (T ▸ e) → KPrefix n T
     shrinkK {n} {T} {e} (kprefix i a) =
       kprefix (λ p → i (<-there p))
-              (λ {d} p → trans (sym (cong kBody (lookK-there n T e (<ˢ→≠ p)))) (a (<-there p)))
-      where
-      <ˢ→≠ : ∀ {d m} → d <ˢ m → (d == m) ≡ false
-      <ˢ→≠ {d} {m} p = ≠-from p
-        where
-        ≠-from : ∀ {d m} → d <ˢ m → (d == m) ≡ false
-        ≠-from {d} {suc d} <-here = ==-suc d
-          where
-          ==-suc : (d : ℕ) → (d == suc d) ≡ false
-          ==-suc zero    = refl
-          ==-suc (suc d) = ==-suc d
-        ≠-from {d} {suc m} (<-there q) = lt→≠ d m q
-          where
-          lt→≠ : (d m : ℕ) → d <ˢ m → (d == suc m) ≡ false
-          lt→≠ zero    m       q        = refl
-          lt→≠ (suc d) zero    ()
-          lt→≠ (suc d) (suc m) <-here   = lt→≠' d
-            where
-            lt→≠' : (d : ℕ) → (d == suc (suc d)) ≡ false
-            lt→≠' zero    = refl
-            lt→≠' (suc d) = lt→≠' d
-          lt→≠ (suc d) (suc m) (<-there q) = lt→≠ d m (down q)
-            where
-            down : ∀ {a b} → suc a <ˢ b → a <ˢ b
-            down {a} {suc .(suc a)} <-here = <-there <-here
-            down {a} {suc b} (<-there r) = <-there (down r)
+              (λ {d} p → trans (sym (cong kBody (lookupK-▸ p))) (a (<-there p)))
 
   okUpTo : (n : ℕ) (T : DefTele) → KPrefix n T → TblOK (goT n T)
   okUpTo zero    _       _   = (λ d → tt) , (λ L d → crfl)

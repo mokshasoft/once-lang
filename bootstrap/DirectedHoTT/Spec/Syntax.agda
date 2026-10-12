@@ -1261,3 +1261,24 @@ private
 _<ˢ?_ : (d n : ℕ) → Dec (d <ˢ n)
 d <ˢ? zero  = no <ˢ-zero
 d <ˢ? suc n = <ˢ-suc (≟ℕ d n) (d <ˢ? n)
+
+<ˢ-down : ∀ {d n} → suc d <ˢ n → d <ˢ n
+<ˢ-down <-here      = <-there <-here
+<ˢ-down (<-there p) = <-there (<ˢ-down p)
+
+<ˢ-pred : ∀ {d n} → suc d <ˢ suc n → d <ˢ n
+<ˢ-pred <-here      = <-here
+<ˢ-pred (<-there p) = <ˢ-down p
+
+-- a name below n is not n
+<ˢ→≠ : ∀ {d n} → d <ˢ n → (d == n) ≡ false
+<ˢ→≠ {_}     {zero}  ()
+<ˢ→≠ {zero}  {suc n} _ = refl
+<ˢ→≠ {suc d} {suc n} p = <ˢ→≠ (<ˢ-pred p)
+
+-- so a lookup below the newest entry skips it (signature extension)
+pickK-false : ∀ {b x y} → b ≡ false → pickK b x y ≡ y
+pickK-false refl = refl
+
+lookupK-▸ : ∀ {n T e d} → d <ˢ n → lookupK (suc n) (T ▸ e) d ≡ lookupK n T d
+lookupK-▸ p = pickK-false (<ˢ→≠ p)
