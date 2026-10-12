@@ -30,7 +30,7 @@ This index is a map and was last re-derived from the code on 2026-10-11.
 | 0.112 categorical structures | draft | lawful structure records, then the renames |
 | 0.115 rejections check why | not started | about 68 bare `isLeft` test assertions |
 | 0.116 effects are Freyd | A next | coherence (one meaning per judgment) and Freyd (pure = central) on the apex; effects run once at `Zero` |
-| 0.117 total and productive | A next | T+P stated in the Spec; servers by guarded iteration over the completely iterative monad (D311) |
+| 0.117 total and productive | C next | T+P stated in the Spec; servers by guarded iteration over the completely iterative monad (D311) |
 
 ## Compiler and codegen
 

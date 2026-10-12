@@ -131,6 +131,12 @@ entry updates the rule it changes here, in the same commit.
   iterative monad (an event before every loop), not general recursion and
   not `ana`; `main` is an ordinary function, specified only as the entry.
   Being implemented (plan 0.117). (D311)
+- **Grades are two axes, laid out on a line**: effects and finiteness;
+  `pure ⊑ eff ⊑ prod` (`prod` may run forever), because the pure-and-forever
+  corner is empty (pure infinite data is a `ν` TYPE). The guard is the grade
+  `eff⁺` (an event first), `eff⁺ ⊑ eff`; grades are an ordered monoid and a
+  sequencing rule concludes at the product of its premises' grades. An
+  `iter` body is `eff⁺` as a whole: every round performs an event. (D311)
 - **Recursion is correct by construction**, and `make pragma-gate` keeps it
   so: no termination/positivity/coverage pragma may be added to the apex or
   compiler closure. (D242)

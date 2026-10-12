@@ -18330,16 +18330,27 @@ as the program's entry (the user, 2026-10-12).
 4. **`main` is an ordinary function**, specified only as the entry. A server is
    `main = iter step`.
 
-### Open inside plan 0.117 (decided before its phase C)
-- **G1 — where `T∞` sits.** (a) a third grade `pure ⊑ eff ⊑ prod`: `eff` stays the inductive `T`
-  (an effectful function that RETURNS — total), `prod` is `T∞`; or (b) `eff` itself becomes `T∞`.
-  Recommended (a): it states more (a handler that always returns is a type), and leaves the
-  terminating effectful world — its laws as equalities, its 98 importing modules — unchanged.
-- **G2 — how the guard is stated.** (a) the round is headed by a generic effect (Plotkin–Power):
-  `iter g op h`, `x = g >=> call op >=> h >=> [ret, x]`; (b) a guarded grade `eff⁺` meaning `T⁺`
-  (root is an event; a module over `T`), which needs per-premise grades for sequencing; (c) a
-  guardedness predicate on core terms. Recommended: (a) first — guarded by construction, no change
-  to the grade algebra.
+### Decided inside plan 0.117 (the user, 2026-10-12)
+- **G1 — the grades are two axes, laid out linearly.** Effects (none / some) and finiteness
+  (returns / may run forever) are independent concepts, but the pure-and-forever corner is EMPTY:
+  a pure computation that never returns is divergence (ruled out by T+P), and pure infinite DATA
+  is a value of a `ν` type — a type, not a grade. So the three inhabited corners are a line,
+  `pure ⊑ eff ⊑ prod`: `eff` keeps the inductive `T` (an effectful computation that RETURNS),
+  `prod` is `T∞`. "May run forever" is a property of the computation, not of its result, so it
+  lives in the grade, while `ν` covers the data side.
+- **G2 — the guard is a grade, `eff⁺`** (`T⁺`: the root is an event; the ideal of the
+  completely iterative monad), so guardedness is checked by typing, not by a syntactic
+  predicate (rejected: least principled) nor by a fixed head operation (rejected: sound but
+  incomplete — the op cannot depend on the input). `eff⁺ ⊑ eff`, and `pure`, `eff⁺` are
+  incomparable, so sequencing can no longer be the join: grades form an ORDERED MONOID —
+  `pure` the unit, `eff⁺` absorbing on either side below `prod` — and every rule that sequences
+  premises takes a grade per premise and concludes at their product. A case's arms still meet
+  at one grade (exactly one arm runs).
+- **The simple guard**: the whole loop body is graded `eff⁺` — every round performs an event,
+  also the one that leaves the loop. The exact form (only a round that loops again must) needs a
+  grade that depends on the side of the sum returned; one grade on the body cannot say it. A
+  round that would stop without an event is written with its test before the `iter` or after
+  that round's input. A round ending the PROGRAM by `halt` performs an event either way.
 
 ### Not reused
 `Once/IR/Guarded.agda` (deleted in c59c6c661) marked the recursive positions of a coalgebra's
