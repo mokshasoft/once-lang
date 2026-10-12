@@ -15,7 +15,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+open import DirectedHoTT.Algorithm.NbE.Value
 open import DirectedHoTT.Algorithm.NbERead using ( TblSc )
 module DirectedHoTT.Algorithm.NbEScope (tbl : Tbl) (tsc : TblSc tbl) where
 open import normalizer.Syntax.Types using ( _≡_; refl; _×_; _,_; ⊤; tt )

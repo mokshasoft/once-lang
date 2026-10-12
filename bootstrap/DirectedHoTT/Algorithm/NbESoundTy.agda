@@ -24,7 +24,7 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs; _<ˢ_; _<ˢ?_ )
-open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+open import DirectedHoTT.Algorithm.NbE.Value
 import DirectedHoTT.Algorithm.NbE.TblOK as TO
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_; ⌊_⌋ )
 module DirectedHoTT.Algorithm.NbESoundTy (𝒮 : Defs) (tbl : Tbl) (tok : TO.TblOK 𝒮 tbl) where

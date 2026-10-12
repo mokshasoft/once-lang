@@ -22,6 +22,11 @@ module DirectedHoTT.Examples.Knot.RedDecodeXi (𝒮 : Defs) (wf : WfK 𝒮) (cor
 -- peeled field by field, existentials unquoted, premises decoded by
 -- recursion, the Ford closed by `nf-≅` + quote injectivity.  Chained with
 -- `▷` (no `with`: with-over-knot-contexts-ooms).
+--
+-- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`; read by tools/sweep.sh):
+--   at `-A64m` it peaks at 5.3 GB + 2 GB swap and a GLOBAL OOM kills it
+--   unless the box is otherwise idle (kernel log 2026-10-12; killed 9 of
+--   ~17 sweep attempts, passing in 81–175 s otherwise). `-c`: 376 s.
 ------------------------------------------------------------------------
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )

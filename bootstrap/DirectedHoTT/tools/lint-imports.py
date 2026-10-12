@@ -19,6 +19,11 @@ WHAT IT CHECKS (both are the dominant error class of a kernel/Lib rename):
      "Distinctive" = defined in exactly one project module and never BOUND
      anywhere in the using module (patterns, binders, local decls), so a
      local variable that shadows a global is not reported.
+  3. a PARAMETERISED module that `public`-re-exports a NON-parameterised
+     project module.  Every application of the importer then copies the
+     re-exported definitions under its own name (`Inst._.single`), and two
+     heads for one function defeat syntactic equality: Gcd/LeEq 4 → 1057 s
+     (PLAN-REF, 2026-10-11).  Import the non-parameterised module directly.
 
 WHAT IT DOES NOT CHECK: types, arities, unbound LOCAL variables (`wD` with
   no `wD` in scope), anything inside `module _ … where` parameter plumbing
@@ -102,10 +107,12 @@ def import_stmts(src):
         yield bool(m.group(2)), m.group(3), "\n".join(rest)
 
 def parse_imports(src):
-    """[(module, opened?, using|None, hiding, renaming-pairs, public?)]"""
+    """[(module, opened?, using|None, hiding, renaming-pairs, public?, applied?)]"""
     out = []
     for opened, mod, rest in import_stmts(src):
         using = hiding = None; ren = []; public = "public" in rest.split()
+        head = re.split(r"\b(?:using|hiding|renaming|public|as)\b", rest, maxsplit=1)[0]
+        applied = bool(head.strip())
         for kw in ("using", "hiding", "renaming"):
             k = rest.find(kw)
             while k >= 0:
@@ -119,7 +126,7 @@ def parse_imports(src):
                         a, _, b = pr.partition(" to ")
                         ren.append((a.strip(), b.strip()))
                 k = rest.find(kw, q)
-        out.append((mod, opened, using, hiding or [], ren, public))
+        out.append((mod, opened, using, hiding or [], ren, public, applied))
     return out
 
 DECL = re.compile(r"^(?!open\b|import\b|module\b|infix|private\b|mutual\b|variable\b|abstract\b|postulate\b|record\b|data\b|syntax\b|pattern\b)([^\s:(){}]+(?:\s+[^\s:(){}]+)*)\s+:(?!:)", re.M)
@@ -235,6 +242,11 @@ def bound_names(src):
         b.update(names_in_list(m.group(1)))
     return b
 
+def parameterised(src):
+    """does the module header bind parameters?"""
+    m = re.search(r"^module\s+\S+(.*?)\bwhere\b", src, re.M | re.S)
+    return bool(m and re.search(r"[({]", m.group(1)))
+
 def load(files):
     mods = {}
     for f in files:
@@ -242,7 +254,7 @@ def load(files):
         src = strip_comments(raw)
         exp, loc = declared(src)
         mods[modname(f)] = dict(path=f, src=src, exp=exp, loc=loc,
-                                imps=parse_imports(src))
+                                imps=parse_imports(src), param=parameterised(src))
     return mods
 
 def exports(mods, name, seen=None):
@@ -250,7 +262,7 @@ def exports(mods, name, seen=None):
     if name in seen or name not in mods: return set()
     seen.add(name)
     m = mods[name]; e = set(m["exp"])
-    for (mod, opened, using, hiding, ren, public) in m["imps"]:
+    for (mod, opened, using, hiding, ren, public, applied) in m["imps"]:
         if public and mod in mods:
             sub = exports(mods, mod, seen)
             if using is not None: sub = set(using) & sub
@@ -266,13 +278,16 @@ def lint(mods, only=None):
     for n, m in mods.items():
         if only and n not in only: continue
         scope = set(m["exp"]) | set(m["loc"])
-        for (mod, opened, using, hiding, ren, public) in m["imps"]:
+        for (mod, opened, using, hiding, ren, public, applied) in m["imps"]:
             if mod not in mods:                      # outside the project
                 if opened:
                     scope |= set(using or []) | {b for _, b in ren}
                     if using is None: scope.add("*" + mod)
                 continue
             e = EXP[mod]
+            if public and m.get("param") and not applied and not mods[mod].get("param"):
+                findings.append((m["path"], "E", "parameterised module `public`-re-exports the non-parameterised %s "
+                                 "(every instance copies it; import it directly instead)" % mod))
             for x in (using or []) + hiding + [a for a, _ in ren]:
                 if x.startswith("module "):
                     scope |= modblock(x.split()[1])
@@ -329,21 +344,24 @@ def control():
     bad1 = src.replace("TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast )", "TySub 𝒮 (Defs.size 𝒮) using ( ⊢-cast; noSuchLemmaXYZ )", 1)
     # class 2: drop an import that the body needs
     bad2 = bad1.replace("open import DirectedHoTT.Metatheory.RedCong 𝒮 using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; ⟶ᵀ*-IMu; ⟶*-pairʳ; ⟶*-nsuc )\n", "", 1)
-    assert bad1 != src and bad2 != bad1, "control anchors moved — update control()"
+    # class 3: a parameterised module re-exporting a non-parameterised one
+    bad3 = bad2.replace("open import DirectedHoTT.Spec.SigWf using ( WfK )", "open import DirectedHoTT.Spec.SigWf using ( WfK ) public", 1)
+    assert bad1 != src and bad2 != bad1 and bad3 != bad2, "control anchors moved — update control()"
     tmpd = tempfile.mkdtemp()
     try:
-        p = os.path.join(tmpd, "RedIx.agda"); open(p, "w").write(bad2)
-        raw = strip_comments(bad2); exp, loc = declared(raw)
-        mods[target] = dict(path=p, src=raw, exp=exp, loc=loc, imps=parse_imports(raw))
+        p = os.path.join(tmpd, "RedIx.agda"); open(p, "w").write(bad3)
+        raw = strip_comments(bad3); exp, loc = declared(raw)
+        mods[target] = dict(path=p, src=raw, exp=exp, loc=loc, imps=parse_imports(raw), param=parameterised(raw))
         got = lint(mods, only={target})
     finally:
         shutil.rmtree(tmpd)
     msgs = [w for _, _, w in got]
     ok1 = any("noSuchLemmaXYZ" in w for w in msgs)
     ok2 = any("`⟶*-nsuc`" in w or "`⟶ᵀ*-IMu`" in w for w in msgs)
-    print("control: seeded unexported name %s · seeded missing import %s"
-          % ("CAUGHT" if ok1 else "MISSED", "CAUGHT" if ok2 else "MISSED"))
-    return 0 if (ok1 and ok2) else 2
+    ok3 = any("re-exports the non-parameterised DirectedHoTT.Spec.SigWf" in w for w in msgs)
+    print("control: seeded unexported name %s · seeded missing import %s · seeded public re-export %s"
+          % tuple("CAUGHT" if ok else "MISSED" for ok in (ok1, ok2, ok3)))
+    return 0 if (ok1 and ok2 and ok3) else 2
 
 if __name__ == "__main__":
     if "--control" in sys.argv: sys.exit(control())

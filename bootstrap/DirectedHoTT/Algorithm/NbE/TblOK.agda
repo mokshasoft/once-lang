@@ -16,13 +16,13 @@
 
 {-# OPTIONS --safe #-}
 open import DirectedHoTT.Spec.Syntax using ( Defs )
-open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
+open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl; Lv; ⌊_⌋; lookupT )
 module DirectedHoTT.Algorithm.NbE.TblOK (𝒮 : Defs) (tbl : Tbl) where
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; ref )
 open import DirectedHoTT.Spec.Reduction 𝒮 using ( _≅_ )
 open import normalizer.Syntax.Types using ( _×_; _,_ )
-open import DirectedHoTT.Algorithm.NbE tbl using ( Lv; ⌊_⌋; lookupT )
+
 open import DirectedHoTT.Algorithm.NbERead using ( TblSc )
 
 TblReads : Set

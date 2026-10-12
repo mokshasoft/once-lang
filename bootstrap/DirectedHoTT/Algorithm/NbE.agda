@@ -53,7 +53,10 @@ private
   variable
     Γ Δ : Cx
 
-open import DirectedHoTT.Algorithm.NbE.Value public
+-- ★ not `public`: a parameterised module never re-exports a non-parameterised
+--   one (each `NbE tbl` would copy Value's definitions; PLAN-REF D082).
+--   Importers take Value's names from `Algorithm/NbE/Value` directly.
+open import DirectedHoTT.Algorithm.NbE.Value
 
 ------------------------------------------------------------------------
 -- The evaluator's signatures (one mutual block).

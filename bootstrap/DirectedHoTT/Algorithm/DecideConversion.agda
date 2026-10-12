@@ -50,8 +50,9 @@ private
     Γ : Cx
 
 -- ★ `Dec` lives in `Algorithm/DecEq` (it has no dependencies there) and is
---   re-exported, so existing `using ( Dec; … )` importers are unchanged.
-open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no ) public
+--   NOT re-exported: a parameterised module never `public`-re-exports a
+--   non-parameterised one (each instance would copy it; PLAN-REF D082).
+open import DirectedHoTT.Algorithm.DecEq using ( Dec; yes; no )
 
 ------------------------------------------------------------------------
 -- Normal forms, and the confluence-powered core of the decision.

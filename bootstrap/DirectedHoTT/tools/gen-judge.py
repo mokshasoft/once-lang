@@ -1930,6 +1930,13 @@ RDOC = """-- The reduction judgement `FAMNAME` as a family fibred by its SUBJECT
 -- same stratum or a σ-field of the lower one, the target Forded) and the
 -- head's computation rules.
 """
+XIDOC_END = "-- `▷` (no `with`: with-over-knot-contexts-ooms).\n"
+XIGC = """--
+-- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`; read by tools/sweep.sh):
+--   at `-A64m` it peaks at 5.3 GB + 2 GB swap and a GLOBAL OOM kills it
+--   unless the box is otherwise idle (kernel log 2026-10-12; killed 9 of
+--   ~17 sweep attempts, passing in 81–175 s otherwise). `-c`: 376 s.
+"""
 REDGC = """--
 -- ⚠ Needs the COMPACTING COLLECTOR (`+RTS -c`; read by tools/sweep.sh):
 --   alone, deps built, 2026-10-11: 285 s / 3.8 GB + 1.7 GB swap at
@@ -2593,6 +2600,7 @@ def gen_red_dec(fams=("⟶",), mod="RedDecode"):
     # ★ split by consumption: the (non-recursive) rule helpers in their own module
     H = [hdr.replace("module DirectedHoTT.Examples.Knot.%s where" % mod, "module DirectedHoTT.Examples.Knot.%sXi where" % mod)
             .replace("open import DirectedHoTT.Lib.RowsElim\n", "")]
+    if mod == "RedDecode": H[0] = H[0].replace(XIDOC_END, XIDOC_END + XIGC, 1)
     for fam in fams:
         dn, RT, Q, _, arr = FAMSPEC[fam]
         F = FAMS[fam]
