@@ -39,7 +39,7 @@ open import Data.Nat using (ℕ; suc; _<_; s≤s; z≤n)
 open import Data.Integer using (ℤ)
 open import Data.Product using (Σ; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Float.Dyadic using (FloatFormat; binary32; binary64)
+open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
 import Once.Spec.Word as OnceWord
 import Once.Word as OnceWordL
 

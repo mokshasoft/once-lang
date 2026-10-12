@@ -5,7 +5,7 @@
 -- Once.Semantics.Machine.Laws
 --
 -- Machine-level (ℕ) instance of the value-semantics LAWS — the `ℕ`
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 -- counterpart of `Once.Semantics.Machine` for `Once.Semantics.Value.Laws`.
 -- Consumers that need the identity laws (`sem-cata-In-id`, `sem-ana-Out-id`,
 -- `sem-CoIn-CoOut`) import this; the definitions themselves stay in

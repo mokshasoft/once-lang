@@ -39,8 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Name using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
-open import Once.Float.Dyadic using (binary32)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Spec.Float.Dyadic using (binary32)
+open import Once.Spec.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 32

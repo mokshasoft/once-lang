@@ -24,7 +24,7 @@ module Once.IR where
 
 open import Once.Spec.Name using (CanonicalName)
 
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 -- Plan 0.52 M2: IR OBJECTS are the UNGRADED `Once.IRTy` (pure/eff arrows are
 -- the SAME object, so `arr` is retired). Re-exported so consumers get

@@ -51,7 +51,7 @@ open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open import Once.CCC.Label using (Label)
 open import Once.Spec.Name using (CanonicalName)
 
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence

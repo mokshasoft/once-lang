@@ -42,8 +42,8 @@ open import Data.List using ([]; _∷_; _++_)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import RISC-V syntax
-open import Once.Float.Dyadic using (binary64)
-open import Once.Float.Decimal using (round)
+open import Once.Spec.Float.Dyadic using (binary64)
+open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax

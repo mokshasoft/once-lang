@@ -39,7 +39,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj₂)
 open import Once.Spec.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (kindedInstance?)
-open import Once.Float.Decimal using (decimalOf)
+open import Once.Spec.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.Spec.Type.Grade
 open import Once.Spec.Type
@@ -1548,7 +1548,7 @@ _ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1
       ≡ failure (BinOpRightError (TypeMismatch Float Int))
 _ = refl
 
--- `/` on floats LOWERS now: `Once.Float.Arith.fdiv` is the correctly-rounded
+-- `/` on floats LOWERS now: `Once.Spec.Float.Arith.fdiv` is the correctly-rounded
 -- quotient (a sticky bit through the division), pinned against the machine on
 -- both formats, so the restriction this pin used to record is gone. The pin is
 -- kept and FLIPPED rather than deleted, so the change is legible here.

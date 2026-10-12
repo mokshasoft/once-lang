@@ -48,9 +48,9 @@ open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 
-open import Once.Float.Decimal using (Decimal; round)
-open Once.Float.Decimal.Decimal using (exp10; sig)
-import Once.Float.Arith as FA
+open import Once.Spec.Float.Decimal using (Decimal; round)
+open Once.Spec.Float.Decimal.Decimal using (exp10; sig)
+import Once.Spec.Float.Arith as FA
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
 -- (Core ℤ as I removed: block-info's semI deleted — block-semM is the meaning.)
@@ -81,7 +81,7 @@ show-zlit (-[1+_] n)     = "n" ++ showℕ (suc n) ++ "_"
 -- UNNORMALISED, because the payload is: `0.5` and `0.50` are distinct records
 -- (D116) and therefore distinct blocks. They round to the same word, so the
 -- two bodies are identical — a missed sharing opportunity, never a wrong
--- answer, and `Once.Float.Decimal` pins the pair agreeing.
+-- answer, and `Once.Spec.Float.Decimal` pins the pair agreeing.
 show-dlit : Decimal → String
 show-dlit d = show-zlit (sig d) ++ showℕ (exp10 d) ++ "_"
 
@@ -194,7 +194,7 @@ maybe-zeroM (just w) = w
 maybe-zeroM nothing  = 0
 
 -- PLAN 0.75 F4: kind-indexed, and the ops DISPATCH ON THE KIND. `Once.Word`'s
--- modular ops for `Int`, `Once.Float.Arith`'s for `Float`, both reading the
+-- modular ops for `Int`, `Once.Spec.Float.Arith`'s for `Float`, both reading the
 -- target out of the `TargetNum` they are handed — the same `semM` the per-op
 -- float SigOps use, so the blocked and per-op paths agree by construction
 -- rather than by two definitions that must be kept in step.

@@ -35,7 +35,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Denotation.TraceMonad using (Interp)
-open import Once.Float.Dyadic using (binary32)
+open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import x86-32 Layout for StackPointer and slot operations

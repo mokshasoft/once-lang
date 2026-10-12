@@ -59,9 +59,6 @@ import Once.Denotation.Realize
 import Once.Denotation.Trace
 import Once.Denotation.TraceMonad
 import Once.Denotation.ValueDomain
-import Once.Float.Arith
-import Once.Float.Decimal
-import Once.Float.Dyadic
 import Once.Functor.Decide
 import Once.Functor.Translate
 import Once.Grammar

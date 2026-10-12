@@ -56,7 +56,7 @@ open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence

@@ -23,7 +23,7 @@ open import Once.CCC.Machine.SMCore using (writeReg; Output; readReg; Input1; mo
 open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.Float.Decimal using (Decimal; round)
+open import Once.Spec.Float.Decimal using (Decimal; round)
 open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI)
 
 import Once.CCC.FrameSemantics

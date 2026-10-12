@@ -53,7 +53,7 @@ module Once.Spec.Core.Syntax {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Integer using (ℤ)
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type; Unit; Int; Float; _*_; _+_; Functor)
 open import Once.Spec.Type.Grade using (Quantity; Purity)

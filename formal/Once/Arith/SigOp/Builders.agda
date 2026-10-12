@@ -44,7 +44,7 @@ open TargetNum using (int-bits)
 
 -- | This target's modular arithmetic. The ONLY place the width is read.
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-import Once.Float.Arith as FA
+import Once.Spec.Float.Arith as FA
 import Once.Semantics.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 

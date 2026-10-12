@@ -22,9 +22,9 @@ open import Once.Arith.Machine.Shape using (⟦_⟧S; readLeaf)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Type using (NInt; NFloat)
-open import Once.Float.Dyadic using (FloatFormat)
-open import Once.Float.Decimal using (round)
-import Once.Float.Arith as FA
+open import Once.Spec.Float.Dyadic using (FloatFormat)
+open import Once.Spec.Float.Decimal using (round)
+import Once.Spec.Float.Arith as FA
 
 -- PLAN 0.75 F4: the FORMAT joins the width. Both are target facts and both
 -- arrive from the architecture — `bits` narrows an `Int` leaf, `F` rounds a
@@ -52,7 +52,7 @@ module Sem (bits : ℕ) (F : FloatFormat) where
   eval-arith-W {sh} {NInt}   (ainput p) inp = fromℤ (readLeaf p inp)
   eval-arith-W {sh} {NFloat} (ainput p) inp = readLeaf p inp
   -- The op DISPATCHES ON THE KIND. `Once.Word`'s modular ops for `Int`,
-  -- `Once.Float.Arith`'s for `Float` — and both are DEFINITIONS reading the
+  -- `Once.Spec.Float.Arith`'s for `Float` — and both are DEFINITIONS reading the
   -- target out of a parameter, which is D054's shape and D113's extension of
   -- it to the second type.
   eval-arith-W {n = NInt}   (aadd a b) inp = eval-arith-W a inp ⊕ eval-arith-W b inp

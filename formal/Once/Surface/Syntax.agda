@@ -22,7 +22,7 @@ open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
 open import Data.Fin using (Fin)
 open import Data.Bool using (true)
 open import Data.Integer using (ℤ)
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
 open import Once.Spec.Name using (CanonicalName)
@@ -152,7 +152,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   fadd  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   fsub  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   fmul  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
-  -- Division joins them (`Once.Float.Arith.fdiv`, correctly rounded via the
+  -- Division joins them (`Once.Spec.Float.Arith.fdiv`, correctly rounded via the
   -- sticky bit). TOTAL, so unlike integer `div` it carries no guard.
   fdiv  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   -- PLAN 0.75 F4 / D125: the widening itself, as a NODE rather than a silent

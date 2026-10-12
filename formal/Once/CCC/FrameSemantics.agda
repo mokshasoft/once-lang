@@ -48,7 +48,7 @@ open import Once.Memory.MemoryLayoutSemantics using (Addr)
 -- Plan 0.73 (D113): the target's FLOAT FORMAT is a target fact of exactly the
 -- kind this record already collects (`frame-word` is the machine word), so it
 -- joins them rather than getting a second mechanism of its own.
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Spec.Float.Dyadic using (FloatFormat)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Denotation.TraceMonad using (Interp; pureHalf)
 

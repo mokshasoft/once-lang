@@ -76,9 +76,9 @@ import Once.Word as OnceWordL
 
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
-import Once.Float.Arith as FA
+import Once.Spec.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
-open import Once.Float.Decimal using (round)
+open import Once.Spec.Float.Decimal using (round)
 
 ------------------------------------------------------------------------
 -- PLAN 0.74 J5 — parameterised by the TARGET.
@@ -410,7 +410,7 @@ module At (tn : TargetNum) where
     -- PLAN 0.75 F4: the FLOAT step lemmas. Same shape as their integer twins —
     -- "this instruction writes this value into this register" — and each arch
     -- discharges them from its own `execInstr`. The value is
-    -- `Once.Float.Arith`'s operation at the target's format, which is the same
+    -- `Once.Spec.Float.Arith`'s operation at the target's format, which is the same
     -- function the abstract machine and the denotation call, so a discharged
     -- lemma is `refl`-shaped and the pins are what check the operation.
     (rt-fadd    : ∀ d src s  → rr (e1 (XI.Xfadd-rr d src) s)  (arith-reg d) ≡ FA.fadd (float-format tn) (rr s (arith-reg d)) (rr s (arith-reg src)))

@@ -23,7 +23,7 @@ module Once.Denotation.Meaning where
 
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
-open import Once.Float.Decimal using (decimalOf; round; negate)
+open import Once.Spec.Float.Decimal using (decimalOf; round; negate)
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 open import Data.Fin using (Fin; zero; suc)
@@ -362,7 +362,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 ⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP mul-info int-prim fmt (a , b)
 -- PLAN 0.75 F4: the same three at `Float`, reading the same `semM` accessor —
 -- so the float family is not a second story about what arithmetic means, it is
--- the same story with `Once.Float.Arith`'s operations behind it.
+-- the same story with `Once.Spec.Float.Arith`'s operations behind it.
 ⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpAdd} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fadd-info int-prim fmt (a , b)
 ⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpSub} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fsub-info int-prim fmt (a , b)
 ⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpMul} _ d₁ d₂) fmt ρ dγ = (⟦ d₁ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ d₂ ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → semP fmul-info int-prim fmt (a , b)

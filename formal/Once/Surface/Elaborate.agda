@@ -14,7 +14,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.IR
 open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; μ-type; ⌊⟧T-commute; ν-type; base-Unit)
 open import Once.IR.Ref using (refIR)

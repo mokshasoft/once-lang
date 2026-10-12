@@ -19,8 +19,8 @@ open import Data.Nat using (ℕ)
 -- some convenient `binary64` here would bake a format where all targets must
 -- be served, which is the D109/D112 mistake. Taking it as a parameter makes
 -- the dependency visible and costs the instantiating arch one word.
-open import Once.Float.Dyadic using (FloatFormat)
-import Once.Float.Arith as FA
+open import Once.Spec.Float.Dyadic using (FloatFormat)
+import Once.Spec.Float.Arith as FA
 module Once.Arith.Machine.CompileCorrect (bits : ℕ) (F : FloatFormat) where
 
 open import Data.Nat using (suc; _<_; _^_)

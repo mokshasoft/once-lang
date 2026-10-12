@@ -40,7 +40,7 @@ open import Once.Semantics.ValueIR Carrier Carrier public
 ------------------------------------------------------------------------
 
 open import Once.Type using (FitsInReg; fits-int; fits-float)
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
 -- | A LITERAL'S PAYLOAD is not its denotation (D113).

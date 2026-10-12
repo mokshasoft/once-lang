@@ -58,7 +58,7 @@ import Once.Type as Ty
 open import Once.Target.Arch using (module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Spec.Word as OnceWord
-import Once.Float.Arith
+import Once.Spec.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 open import Once.Denotation.TraceMonad using ()
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityˡ)
@@ -445,7 +445,7 @@ fsig-at k sh nm (primV p-i2f) bA@b-Int cB@b-Float e lt eq a = conv (recognise-bo
          → BodyAt sh (SigOp (mk-info' nm (primV p-i2f) bA cB) ∘ e) body a
     conv (just r) er refl with body-sound k sh e lt er a
     ... | b , eb , rb = _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-i2f) bA cB))) eb
-                          , cong (λ x → just (Once.Float.Arith.i2f (float-format fmt) (W.toℤ fmt x))) (just-injective rb)
+                          , cong (λ x → just (Once.Spec.Float.Arith.i2f (float-format fmt) (W.toℤ fmt x))) (just-injective rb)
 
 fbin-case k sh nm p c op e lt (just (ra , rb)) er refl a with fbin-sound k sh e lt er a
 ... | (b₁ , b₂) , eb , r₁ , r₂ =

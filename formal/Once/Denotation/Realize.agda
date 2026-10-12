@@ -57,7 +57,7 @@ open import Once.Spec.Typing
          t-app-spine;
          t-var-poly-instantiate;
          t-var-poly-instantiate-infer; d-poly)
-open import Once.Float.Decimal using (decimalOf; negate)
+open import Once.Spec.Float.Decimal using (decimalOf; negate)
 open import Once.Spec.Context using (Usage; zeroUsage)
 open import Once.Surface.Syntax using (Expr; svar→expr; lam; app; effApp; pair; neg; let'; case'; int; float; unit; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Spec.Name using (bare)

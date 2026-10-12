@@ -37,8 +37,8 @@ open import Data.Maybe using (just)
 -- …and the pieces the LITERAL parameters' types need (phase D), likewise
 -- imported before the module header.
 open import Once.Type using (fits-int; fits-float)
-open import Once.Float.Dyadic using (binary64)
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Dyadic using (binary64)
+open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const)

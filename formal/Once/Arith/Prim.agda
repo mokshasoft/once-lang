@@ -26,7 +26,7 @@ open import Once.Spec.Word using (Carrier)
 import Once.Spec.Word as OnceWord
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
-import Once.Float.Arith as FA
+import Once.Spec.Float.Arith as FA
 import Once.Semantics.Value Carrier Carrier as M
 
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
@@ -54,7 +54,7 @@ neg-semM tn x = W.⊝_ tn x
 --
 -- The same shape as the integer family above and for the same reason. `⊕` is
 -- `norm tn (x + y)` — the exact operation in a scaffolding domain, then the
--- target's normalisation — and `Once.Float.Arith.fadd` is that sentence with
+-- target's normalisation — and `Once.Spec.Float.Arith.fadd` is that sentence with
 -- "rounding at the format" in place of "reduction mod 2^w". Neither is a
 -- postulate; both read the target out of the `TargetNum` they are handed.
 --

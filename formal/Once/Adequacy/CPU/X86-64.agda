@@ -53,10 +53,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- the arch-generic `Arith.Backend.RunTraceCore`. This DERIVES `run-trace` from
 -- `X64.run`'s step semantics, replacing the old opaque observable postulate.
 open import Once.Arith.Backend.XInstr.Syntax as XI
-import Once.Float.Arith as FA
+import Once.Spec.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
-open import Once.Float.Decimal using (round)
-open import Once.Float.Dyadic using (binary64)
+open import Once.Spec.Float.Decimal using (round)
+open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
@@ -146,7 +146,7 @@ val-x86-64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
 -- PLAN 0.75 F4: the INTENDED value of each float instruction, DEFINED — the
 -- D117 pattern. That the real `addsd` / `fadd.d` computes it is the named
 -- `float-xinstr-sim` residual in `ArithSimCore`, and the pins in
--- `Once.Float.Arith` against compiled C are what check it.
+-- `Once.Spec.Float.Arith` against compiled C are what check it.
 val-x86-64 (XI.Xfadd-rr d src)         s _ = FA.fadd binary64 (rd s d) (rd s src)
 val-x86-64 (XI.Xfsub-rr d src)         s _ = FA.fsub binary64 (rd s d) (rd s src)
 val-x86-64 (XI.Xfmul-rr d src)         s _ = FA.fmul binary64 (rd s d) (rd s src)

@@ -37,10 +37,10 @@ open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
-import Once.Float.Arith as FA
+import Once.Spec.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
-open import Once.Float.Decimal using (round)
-open import Once.Float.Dyadic using (binary64)
+open import Once.Spec.Float.Decimal using (round)
+open import Once.Spec.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Target.RiscV64.PhysReg using (Reg; a0; sp; t0)
@@ -128,7 +128,7 @@ val-riscv64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
 -- PLAN 0.75 F4: the INTENDED value of each float instruction, defined — the
 -- D117 pattern. What the real `fadd.d` / `addsd` does is the named
 -- `float-xinstr-sim` residual in `ArithSimCore`, and the pins in
--- `Once.Float.Arith` against compiled C are what check it.
+-- `Once.Spec.Float.Arith` against compiled C are what check it.
 val-riscv64 (XI.Xfadd-rr d src)          s _ = FA.fadd binary64 (rd s d) (rd s src)
 val-riscv64 (XI.Xfsub-rr d src)          s _ = FA.fsub binary64 (rd s d) (rd s src)
 val-riscv64 (XI.Xfmul-rr d src)          s _ = FA.fmul binary64 (rd s d) (rd s src)

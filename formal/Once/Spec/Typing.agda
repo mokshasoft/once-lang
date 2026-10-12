@@ -88,7 +88,7 @@ mutual
     -- could not be while the witness demanded a dyadic that does not exist.
     --
     -- The literal is `i.f` with `l` fraction digits; its value is
-    -- `Once.Float.Decimal.decimalOf i f l`, a TOTAL function, so nothing is
+    -- `Once.Spec.Float.Decimal.decimalOf i f l`, a TOTAL function, so nothing is
     -- carried.
     -- The source offset `p` rides along and is never read here: a position
     -- cannot affect whether a term is well-typed. It exists so a DIAGNOSTIC
@@ -251,7 +251,7 @@ mutual
     -- precisely so `-0.5` is `-5 /10^ 1` and the sign survives (D116), and
     -- `round` reads the sign through `signBit (sig d)` and the magnitude
     -- through `∣ sig d ∣` — so a negated decimal rounds by the SAME path,
-    -- with only the sign bit different. `Once.Float.Decimal.negate` is that
+    -- with only the sign bit different. `Once.Spec.Float.Decimal.negate` is that
     -- one function, and it exists already.
     --
     -- Deliberately NOT the general `⊢ᵢ e ∶ Float → ⊢ᵢ RUnaryOp OpNeg e`: that
@@ -307,7 +307,7 @@ mutual
     -- — Once had a `Float` you could write, negate and pass to a SigOp, and no
     -- arithmetic on it at all.
     --
-    -- WHAT IT MEANS is `Once.Float.Arith.fadd`/`fsub`/`fmul`, and those are
+    -- WHAT IT MEANS is `Once.Spec.Float.Arith.fadd`/`fsub`/`fmul`, and those are
     -- DEFINITIONS, not postulates, for D054's reason applied to the second
     -- type (D113): `Int`'s `⊕` is `norm tn (x + y)` — the exact operation in a
     -- scaffolding domain, then the target's normalisation — and rounding is

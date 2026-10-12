@@ -32,7 +32,7 @@ open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (refl)
 import Once.Spec.Word as OnceWord
-open import Once.Float.Decimal using (round)
+open import Once.Spec.Float.Decimal using (round)
 open import Once.Target.Arch using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 open import Once.Spec.Type.Grade using (Zero; One; Many; prod)
@@ -42,7 +42,7 @@ open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; bindᵍ; s
 open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
-import Once.Float.Arith as FA
+import Once.Spec.Float.Arith as FA
 open import Once.Spec.Bool using (truth)
 open import Data.Bool using (not)
 open import Once.Spec.Contract using (Impl)

@@ -33,7 +33,7 @@ open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; shape-as-type)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open import Once.Arith.Type using (NInt; NFloat)
-import Once.Float.Arith as FA
+import Once.Spec.Float.Arith as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 
 import Once.Spec.Word as OnceWord
@@ -116,7 +116,7 @@ module _ (tn : TargetNum) where
 
   -- PLAN 0.75 F4: kind-indexed, and the FLOAT clauses are structurally the
   -- same `cong`s. That is the point rather than a coincidence: both evaluators
-  -- call `Once.Float.Arith`'s operations at the SAME format — `F` here is
+  -- call `Once.Spec.Float.Arith`'s operations at the SAME format — `F` here is
   -- literally `float-format tn` — so there is nothing to reconcile, exactly as
   -- there is nothing to reconcile between two `⊕`s at the same width.
   -- With both `ainput` reads TOTAL, the four leaf lemmas above collapse to one

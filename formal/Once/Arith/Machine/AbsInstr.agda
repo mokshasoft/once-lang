@@ -33,9 +33,9 @@ open import Once.Arith.Machine.Shape
 open import Once.Spec.Word using (module Width)
 open import Once.Word using (module WidthLaws)
 open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
-open import Once.Float.Dyadic using (FloatFormat)
-open import Once.Float.Decimal using (Decimal; round)
-import Once.Float.Arith as FA
+open import Once.Spec.Float.Dyadic using (FloatFormat)
+open import Once.Spec.Float.Decimal using (Decimal; round)
+import Once.Spec.Float.Arith as FA
 
 ------------------------------------------------------------------------
 -- Abstract instruction set
@@ -235,7 +235,7 @@ module Exec (bits : ℕ) (F : FloatFormat) where
   step (reload slot dst) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         ArithAbsState.scratch s [ slot ] ] }
-  -- The float steps. Each reads `Once.Float.Arith` at `F` — the SAME
+  -- The float steps. Each reads `Once.Spec.Float.Arith` at `F` — the SAME
   -- functions `block-semM` and `eval-arith-W` call, so the abstract machine
   -- and the denotation cannot drift.
   step {sh} (load-finput p r) s = record s

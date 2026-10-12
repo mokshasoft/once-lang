@@ -17,7 +17,7 @@ open import Data.Nat using (ℕ; zero; suc)
 -- some convenient `binary64` here would bake a format where all targets must
 -- be served, which is the D109/D112 mistake. Taking it as a parameter makes
 -- the dependency visible and costs the instantiating arch one word.
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Spec.Float.Dyadic using (FloatFormat)
 module Once.Arith.Backend.Correct (bits : ℕ) (F : FloatFormat) where
 
 open import Data.Nat using (_≟_; _+_; _∸_; _%_)
@@ -60,8 +60,9 @@ open Width bits using (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; 
 open import Once.Word using (module WidthLaws)
 open WidthLaws bits using (shlᵂ; sdiv2ᵏ)
 open Exec bits F using (step; run-abstract)
-import Once.Float.Arith as FA
-open import Once.Float.Decimal using (Decimal; round)
+import Once.Spec.Float.Arith as FA
+import Once.Float.ArithLaws as FAL
+open import Once.Spec.Float.Decimal using (Decimal; round)
 
 ------------------------------------------------------------------------
 -- Abstract register ↔ concrete XReg index
@@ -107,7 +108,7 @@ exec-xinstr (Xshl-rri d src imm)      s = record s { regs = ArithAbsState.regs s
 exec-xinstr (Xsdiv-pow2-rri d src imm) s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op (λ x → sdiv2ᵏ x imm) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Xneg-r d)        s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op ⊝_ (ArithAbsState.regs s [ xreg-idx d ]) ] }
 -- PLAN 0.75 F4: the float instructions, read at `F` through
--- `Once.Float.Arith` — the SAME functions the abstract machine's `step` and
+-- `Once.Spec.Float.Arith` — the SAME functions the abstract machine's `step` and
 -- the denotation's `block-semM` call, so `refine-program` has nothing to
 -- reconcile beyond the register bookkeeping it already does.
 exec-xinstr (Xfadd-rr d src)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op (FA.fadd F) (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
@@ -592,7 +593,7 @@ refine-fadd dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x 
         ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
                   (trans (cong (λ r → bin-op (FA.fadd F) r (ArithAbsState.regs s [ a ]))
                                (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqb q)))
-                         (bin-op-comm (FA.fadd F) (FA.fadd-comm F) (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
+                         (bin-op-comm (FA.fadd F) (FAL.fadd-comm F) (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
 ...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
         (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
                         (bin-op (FA.fadd F) ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])
@@ -620,7 +621,7 @@ refine-fmul dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x 
         ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
                   (trans (cong (λ r → bin-op (FA.fmul F) r (ArithAbsState.regs s [ a ]))
                                (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqb q)))
-                         (bin-op-comm (FA.fmul F) (FA.fmul-comm F) (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
+                         (bin-op-comm (FA.fmul F) (FAL.fmul-comm F) (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
 ...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
         (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
                         (bin-op (FA.fmul F) ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])

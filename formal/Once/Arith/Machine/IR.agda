@@ -27,7 +27,7 @@ import Data.Sign as Sign
 
 open import Once.Spec.Type using (Type; Unit; Int)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
-open import Once.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Decimal using (Decimal)
 import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Arith.Machine.Shape
@@ -63,7 +63,7 @@ data MArithIR (sh : InputShape) : NumType → Set where
   aadd       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
   asub       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
   amul       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
-  -- `/` joins them: `Once.Float.Arith.fdiv` is the correctly-rounded quotient
+  -- `/` joins them: `Once.Spec.Float.Arith.fdiv` is the correctly-rounded quotient
   -- (the sticky bit through the division), pinned against the machine on both
   -- formats, so a float `adiv` now has a meaning to denote.
   adiv       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n

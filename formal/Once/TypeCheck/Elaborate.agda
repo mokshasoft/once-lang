@@ -71,8 +71,8 @@ open import Once.TypeCheck.Classify
 import Once.Spec.Type.WellFormed
 open import Once.Spec.Type.WellFormed using (IsConcrete; con-fun; IsBaseType)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)
-open import Once.Float.Decimal using (decimalOf)
-import Once.Float.Decimal as Decimal
+open import Once.Spec.Float.Decimal using (decimalOf)
+import Once.Spec.Float.Decimal as Decimal
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_; sub-arr)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Metatheory.SubLaws using (<:-refl)
@@ -1159,7 +1159,7 @@ inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A O
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Spec.Type.μ-type F) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Spec.Type.μ-type F))) , tt
 inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Spec.Type.ν-type F π) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Spec.Type.ν-type F π))) , tt
 -- both Float → op dispatch. Only `+`, `−` and `×` exist here
--- (`isFloatArithmeticOp`), and `Once.Float.Arith` records why.
+-- (`isFloatArithmeticOp`), and `Once.Spec.Float.Arith` records why.
 inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fadd e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fsub e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
 inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fmul e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
@@ -2548,7 +2548,7 @@ mutual
   -- lowering rather than the better of two. Both this and `Once.Denotation.
   -- Meaning`'s `⟦ t-neg-float ⟧ᵢ` name the SAME `negate ∘ decimalOf`, so
   -- agreement is `refl`-shaped and cannot falsify `round` — the pins in
-  -- `Once.Float.Decimal` against externally computed patterns are the check
+  -- `Once.Spec.Float.Decimal` against externally computed patterns are the check
   -- that means something (D117).
   --
   -- Depth `1` and the untouched fresh counter mirror the `RInt` fold: one

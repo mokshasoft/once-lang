@@ -39,8 +39,8 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Float.Dyadic using (binary32)
-open import Once.Float.Decimal using (round)
+open import Once.Spec.Float.Dyadic using (binary32)
+open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 32
 

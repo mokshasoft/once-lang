@@ -89,7 +89,7 @@ open HeapRef using (ref-id)
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.
 open import Once.CCC.Machine.Locations
-open import Once.Float.Decimal using (round)
+open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as Word
 import Data.Nat as ℕ
 
