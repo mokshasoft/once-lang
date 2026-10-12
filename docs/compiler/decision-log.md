@@ -18251,3 +18251,21 @@ The core meaning gave `let x = e in b` at quantity `Zero` the meaning of `b` alo
 **Relates**: D247 (revised), D273, D233, D131, plan 0.116 E (plan 0.112 G3)
 
 **Decision.** `⟦ ⊢unfold dc ds ⟧` binds the coalgebra term `dc` once, then the seed `ds` (left to right, as `app`, `pair` and `fold`), and `ana-semᵛ` takes the coalgebra FUNCTION, applied in each forced layer. D247 had the core store the coalgebra's computation and re-run it per layer; D273 already made the source meaning and the IR's `Ana` bind it once, so the core disagreed with both. The coalgebra function may be effectful: an effectful stream is the final T∘F-coalgebra (ν(T∘F), D233), a server is one, and its anamorphism takes a Kleisli map `A → T (F A)`. `Spec.Metatheory.Recursion.unfold-out` states the computation law (postulated, P5), so the Spec — not only this log — says what `unfold` means.
+
+## D310 — A CORE TERM, CHECKED AGAINST ITS TYPE, HAS ONE DERIVATION UP TO THE STRUCTURAL RULES (2026-10-12)
+
+**Relates**: D308 (coherence), plan 0.116 D1, OCP-0009 (the core's Curry-style binders, revised for the core only), D226/D305 (`coerce` carries its types; `<:` derivations are unique), DirectedHoTT `PLAN-BIDI.md` decisions 1b and 5 (branch `plan-ref`, the precedent)
+
+### Context
+The meaning is defined on DERIVATIONS, so D308's coherence ("two derivations of one judgment mean the same") is a theorem to prove. The Curry-style core let a derivation choose what the term did not record: `app`'s argument type and arrow quantity, `let′`'s bound type and quantity, `fst`/`snd`'s other component, `case`'s summands and arm quantities, `fold`'s and `out`'s functor, `unfold`'s seed type. Two derivations of one judgment could then type a subterm at different types (`unfold c s` at `ν(K (Int + Int))` and at `ν(K Int ⊕ K Int)`) or evaluate it on one side and erase it on the other (`app` at a `Zero` arrow and at `One`). Proving coherence over those choices needs a heterogeneous logical relation across type pairs, a unary one for the one-sided evaluation, and an untyped observation encoding of `μ`/`ν` values — a proof about an accident of the syntax, not about the language.
+
+### Decision
+1. **The core term records what its derivation would otherwise choose**: `app A q f x`, `let′ A q e b`, `fst B p`, `snd A p`, `case A B qℓ qr s l r`, `fold F alg t`, `unfold A c s`, `out F t`. The criterion: *given the term and its judgment's type, every premise's type and grade is determined.* Formers whose premises are already determined by the conclusion's type (`lam`, `pair`, `inl`, `inr`, `absurd`, `roll`, `prim`, …) carry nothing.
+2. **What remains of coherence is the structural rules**: where `⊢sub-use`, `⊢sub-eff` and `⊢coerce` sit, and `⊢lam`'s body head usage (a usage, as `⊢sub-use`). That is the classical coherence theorem (Reynolds; Curien–Ghelli; Breazu-Tannen et al.), proved over derivations at ONE type with the Spec's `Same`.
+3. **The surface stays bidirectional and Curry-style**; the elaborator, which constructs the core derivation, fills the annotations.
+
+### Why (not edit cost)
+- The categorical account interprets derivations in a model and needs a syntax in which a judgment has one derivation up to the structural rules (Lambek–Scott, Crole, Pitts): terms are morphisms, so their domains and codomains are in them.
+- The DirectedHoTT kernel met the same question and chose types in terms (PLAN-BIDI 1b: "a kernel term, in its context, determines its type"; decision 5 an annotated layer, which made uniqueness of types short). It kept its unannotated kernel because its meaning is reduction on raw terms; ours is on derivations, so the annotations belong in the core `Tm` itself.
+- The hidden choices are where D308's bug lived (an erased position that one derivation ran). Recording them makes the class unrepresentable instead of argued away.
+- The criterion is the checking-mode one (the judgment's type is given), which is what coherence needs. A full inference-mode core (`lam A`, `inl B`, …), as a de Bruijn checker would need, is a separate step if a core checker is ever wanted.
