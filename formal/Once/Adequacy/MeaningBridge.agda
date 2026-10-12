@@ -362,9 +362,10 @@ sigOpRef-rel {A} ι cn (con-base ib) m =
   val-rel ι (showCanonical cn) ib tt _ (key (showCanonical cn) Unit A ∈K? pures ι)
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m =
   rel-ret (val-rel ι (showCanonical cn) bCod tt _ (key (showCanonical cn) Unit Cod ∈K? pures ι))
--- plan 0.113 A3: an effectful erased arrow is the same CALL on both sides.
+-- An effectful arrow is the generic effect on both sides (the call, read at
+-- its grade).
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) m =
-  rel-ret (same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Unit} {Cod} (mk-kind Zero eff) cn base-Unit bCod) tt))
+  rel-ret (opCall⁺-rel ι Zero cn base-Unit bCod tt)
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) m =
   rel-ret (ptr-rel {Dom} {Cod} bDom
     (λ x → returnT (injB bCod (valueOf-at (impl ι) k (value-∈ m refl) (k ∈K? pures ι) x)))
@@ -378,29 +379,28 @@ sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCo
     (λ x → val-rel ι (showCanonical cn) bCod x (value-∈ m refl) (k ∈K? pures ι)))
   where k = key (showCanonical cn) Dom Cod
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} bDom
-    (λ x → fmapT (injB bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) x))
+  rel-ret (λ {a} {b} r → ptr-rel {Dom} {Cod} bDom
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) x))
-    (λ x → same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) x)))
+    (opCall⁺-rel ι One cn bDom bCod) r)
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} bDom
-    (λ x → fmapT (injB bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) x))
+  rel-ret (λ {a} {b} r → ptr-rel {Dom} {Cod} bDom
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) x))
-    (λ x → same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) x)))
+    (opCall⁺-rel ι Many cn bDom bCod) r)
 -- D311: an operation at `prod` is the same call, its tree embedded in `T∞`.
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero prod} bDom bCod) m =
-  rel-ret (RelT∞′-embed (same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Unit} {Cod} (mk-kind Zero prod) cn base-Unit bCod) tt)))
+  rel-ret (RelT∞′-embed (opCall⁺-rel ι Zero cn base-Unit bCod tt))
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One prod} bDom bCod) m =
   rel-ret (λ {a} {b} r → RelT∞′-embed (ptr-rel {Dom} {Cod} bDom
-    (λ x → fmapT (injB bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One prod) cn bDom bCod) x))
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One prod) cn bDom bCod) x))
-    (λ x → same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One prod) cn bDom bCod) x)) r))
+    (opCall⁺-rel ι One cn bDom bCod) r))
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many prod} bDom bCod) m =
   rel-ret (λ {a} {b} r → RelT∞′-embed (ptr-rel {Dom} {Cod} bDom
-    (λ x → fmapT (injB bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) x))
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) x))
-    (λ x → same-tree bCod (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) x)) r))
-
+    (opCall⁺-rel ι Many cn bDom bCod) r))
 -- D311 C2: at the guard, the generic effect.
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero eff⁺} bDom bCod) m =
   rel-ret (opCall⁺-rel ι Zero cn base-Unit bCod tt)

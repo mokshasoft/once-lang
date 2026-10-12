@@ -38,7 +38,7 @@ open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Contract using (ISig; Impl; key; valueOf)
 open import Once.Spec.ContractLaws using (value-∈; base-contract)
-open import Once.Denotation.TraceMonad using (ret; returnT; _>>=T_; fmapT; pureHalf; interp)
+open import Once.Denotation.TraceMonad using (ret; returnT; _>>=T_; fmapT)
 open import Once.Denotation.ValueDomain using (νᵈ; anaᵈ; seqF; module νᵈ)
 open import Once.Spec.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; embed; ν∞; ana∞)
@@ -48,12 +48,10 @@ open import Once.Denotation.TraceMonad using (T; call; halt; callOp; haltOp)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open νᵈ using (forceᵈ)
-open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.GradedDomain
-open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; fmap⁺; ν⁺; ana⁺)
+open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; fmap⁺; forget⁺; ν⁺; ana⁺)
 open Once.Spec.Guarded.ν⁺ using (force⁺)
 open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
-open import Once.Arith.SigOp.Builders using (arrow-info)
 
 ------------------------------------------------------------------------
 -- The grade's functor action.
@@ -264,8 +262,9 @@ mapEmbν∞ᵖ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵖ H G₁ x , mapEmbν�
 -- An FFI reference (`⊢sigop`), plan 0.105. A PURE contract is the
 -- interpretation's pure half at its argument — a value, so a pure reference is
 -- referentially transparent by its type. An effectful arrow's application is
--- the contract's computation (`sigOpT`, the IR's own dispatch): a call the
--- interpretation answers, an emitted event, or a halt. Contracts are
+-- the GENERIC EFFECT (`opCall⁺`): a call the interpretation answers, an
+-- emitted event, or a halt — read at the arrow's grade (`forget⁺` at `eff`,
+-- and as a tree of `T∞` at `prod`). Contracts are
 -- first-order (`IsConcrete`), so both sides cross by the base conversions.
 ------------------------------------------------------------------------
 
@@ -286,18 +285,17 @@ sigOpRefᵛ {A} fmt Σ I cn (con-base ib) m =
   injB ib (valueOf I (key (showCanonical cn) Unit A) (value-∈ m (base-contract (showCanonical cn) ib)) tt)
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m =
   λ _ → injB bCod (valueOf I (key (showCanonical cn) Unit Cod) (value-∈ m refl) tt)
--- plan 0.113 A3: an effectful erased arrow is a CALL with the erased slot `tt`
--- (D250) — the elaborator's `arrow-info (mk-kind Zero eff) cn base-Unit`.
+-- An effectful erased arrow is a CALL with the erased slot `tt` (D250).
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) m =
-  λ _ → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Unit} {Cod} (mk-kind Zero eff) cn base-Unit bCod) tt)
+  λ _ → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) m =
   λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) m =
   λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) m =
-  λ a → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) (prjB bDom a))
+  λ a → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
-  λ a → fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) (prjB bDom a))
+  λ a → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero eff⁺} bDom bCod) m =
   λ _ → fmap⁺ (injB bCod) (opCall⁺ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt)
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bDom bCod) m =
@@ -305,10 +303,10 @@ sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bD
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff⁺} bDom bCod) m =
   λ a → fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
 -- D311: a foreign operation declared at `prod` is still one call that returns
--- or halts (`arrow-sem` reads `prod` as `eff`), read as a tree of `T∞`.
+-- or halts, read as a tree of `T∞`.
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero prod} bDom bCod) m =
-  λ _ → embed (fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Unit} {Cod} (mk-kind Zero prod) cn base-Unit bCod) tt))
+  λ _ → embed (forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt)))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One prod} bDom bCod) m =
-  λ a → embed (fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind One prod) cn bDom bCod) (prjB bDom a)))
+  λ a → embed (forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many prod} bDom bCod) m =
-  λ a → embed (fmapT (injB bCod) (sigOpT fmt (pureHalf (interp Σ I)) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) (prjB bDom a)))
+  λ a → embed (forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))))
