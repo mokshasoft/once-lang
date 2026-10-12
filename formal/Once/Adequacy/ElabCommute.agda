@@ -56,7 +56,7 @@ open Schema using (arity)
 import Once.Spec.Core.Rename S as RN
 import Once.Spec.Core.DerivedTyping S as DT
 open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; def; importE; sigE; refE; InstanceOf)
-open RSm Δ τ r using (ρ̂; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
+open RSm Δ τ r using (ρ̂; ρ̂F; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
 import Once.Adequacy.CoreInst S Δ τ r as CI
 open CI using (ρ̂ₜ)
 open CI.WithSG sg
@@ -135,9 +135,9 @@ private
   ≅at Many h = h
 
   -- The arm combinators' terms: `let′ f (let′ (wk g) B)`.
-  arms : ∀ {n} {X₁ X₂ : T.Type} {q₁ q₂ : Quantity} {f₁ f g₁ g : G.Tm n} {B : G.Tm (suc (suc n))} → f₁ ≡ ρ̂ₜ f → g₁ ≡ ρ̂ₜ g
-       → G.let′ X₁ q₁ f₁ (G.let′ X₂ q₂ (G.wk g₁) B) ≡ G.let′ X₁ q₁ (ρ̂ₜ f) (G.let′ X₂ q₂ (ρ̂ₜ (G.wk g)) B)
-  arms ef eg = cong₂ (λ a b → G.let′ _ _ a (G.let′ _ _ b _)) ef (trans (cong G.wk eg) (sym (ρ̂ₜ-ren suc _)))
+  arms : ∀ {n} {q₁ q₂ : Quantity} {f₁ f g₁ g : G.Tm n} {B : G.Tm (suc (suc n))} → f₁ ≡ ρ̂ₜ f → g₁ ≡ ρ̂ₜ g
+       → G.let′ q₁ f₁ (G.let′ q₂ (G.wk g₁) B) ≡ G.let′ q₁ (ρ̂ₜ f) (G.let′ q₂ (ρ̂ₜ (G.wk g)) B)
+  arms ef eg = cong₂ (λ a b → G.let′ _ a (G.let′ _ b _)) ef (trans (cong G.wk eg) (sym (ρ̂ₜ-ren suc _)))
 
   closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
   closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
@@ -169,8 +169,8 @@ mutual
   tm-i (t-pair a b)       = cong₂ G.pair (tm-i a) (tm-i b)
   tm-i (t-neg d)          = cong (G.prim G.p-neg) (tm-i d)
   tm-i (t-neg-float i f l p) = refl
-  tm-i (t-let d₁ d₂)      = cong₂ (G.let′ _ _) (tm-i d₁) (tm-i d₂)
-  tm-i (t-case ds dl dr)  = trans (cong₂ (λ a b → G.case _ _ _ _ a b _) (tm-i ds) (tm-i dl)) (cong (G.case _ _ _ _ _ _) (tm-i dr))
+  tm-i (t-let d₁ d₂)      = cong₂ (G.let′ _) (tm-i d₁) (tm-i d₂)
+  tm-i (t-case ds dl dr)  = trans (cong₂ (λ a b → G.case _ _ a b _) (tm-i ds) (tm-i dl)) (cong (G.case _ _ _ _) (tm-i dr))
   tm-i (t-binop-arith {op = OpAdd} o d₁ d₂) = cong (G.prim G.p-add) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
   tm-i (t-binop-arith {op = OpSub} o d₁ d₂) = cong (G.prim G.p-sub) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
   tm-i (t-binop-arith {op = OpMul} o d₁ d₂) = cong (G.prim G.p-mul) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
@@ -226,20 +226,20 @@ mutual
   tm-i (t-binop-cmp {op = OpMul} () _ _)
   tm-i (t-binop-cmp {op = OpDiv} () _ _)
   tm-i (t-binop-cmp {op = OpMod} () _ _)
-  tm-i (t-id-app d)          = cong (G.app _ _ _) (tm-i d)
-  tm-i (t-fst-app d)         = cong (G.app _ _ _) (tm-i d)
-  tm-i (t-snd-app d)         = cong (G.app _ _ _) (tm-i d)
-  tm-i (t-terminal-app d)    = cong (G.app _ _ _) (tm-i d)
-  tm-i (t-apply-app-infer d) = cong (G.app _ _ _) (tm-i d)
-  tm-i (t-apply-eff-app-infer d) = cong (G.app _ _ _) (tm-i d)
-  tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pure))) _) (cong (G.app _ _ _) (tm-i d))
+  tm-i (t-id-app d)          = cong (G.app _) (tm-i d)
+  tm-i (t-fst-app d)         = cong (G.app _) (tm-i d)
+  tm-i (t-snd-app d)         = cong (G.app _) (tm-i d)
+  tm-i (t-terminal-app d)    = cong (G.app _) (tm-i d)
+  tm-i (t-apply-app-infer d) = cong (G.app _) (tm-i d)
+  tm-i (t-apply-eff-app-infer d) = cong (G.app _) (tm-i d)
+  tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pure))) _) (cong (G.app _) (tm-i d))
   tm-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))) _) (cong (G.app _ _ _) (tm-i d))
-  tm-i (t-app h df dx)       = cong₂ (G.app _ _) (tm-i df) (tm-c dx)
+    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))) _) (cong (G.app _) (tm-i d))
+  tm-i (t-app h df dx)       = cong₂ G.app (tm-i df) (tm-c dx)
   tm-i (t-effApp h df dx) =
-    cong₂ (λ a b → G.lam (G.app _ _ a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
+    cong₂ (λ a b → G.lam _ _ _ (G.app a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
                                       (trans (cong G.wk (tm-c dx)) (sym (ρ̂ₜ-ren suc _)))
-  tm-i (t-app-spine h da df) = cong₂ (G.app _ _) (tm-d df) (tm-i da)
+  tm-i (t-app-spine h da df) = cong₂ G.app (tm-d df) (tm-i da)
 
   tm-c : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₁ (elabᶜ V (subst-c′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᶜ V d))
@@ -255,21 +255,21 @@ mutual
     arms {f = G.coerce (B T.⇒[ mk-kind Many π′ ] C′) (B T.⇒[ mk-kind Many π ] C′′) _} (cong (G.coerce _ _) (tm-i wf)) (tm-c dg)
   tm-c (t-case-copair-check df dg) = arms (tm-c df) (tm-c dg)
   tm-c (t-pair-morph-check df dg)  = arms (tm-c df) (tm-c dg)
-  tm-c (t-curry-check df)          = cong (λ u → G.let′ _ _ u _) (tm-c df)
+  tm-c (t-curry-check df)          = cong (λ u → G.let′ _ u _) (tm-c df)
   tm-c (t-cata-check {F = F} {A = A} {π = π} wf da) =
-    cong₂ (λ X u → G.let′ (X T.⇒[ mk-kind Many π ] ρ̂ A) Many u _) (sym (ρ̂-⟦⟧ F A)) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
+    cong (λ u → G.let′ _ u _) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
   tm-c (t-ana-check {F = F} {A = A} {π = π} wf dc) =
-    cong (λ u → G.lam (G.unfold _ u (G.var zero)))
+    cong (λ u → G.lam _ _ _ (G.unfold _ u (G.var zero)))
          (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
                 (sym (ρ̂ₜ-ren suc _)))
   tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
-  tm-c (t-lam le d)         = cong G.lam (tm-c d)
+  tm-c (t-lam le d)         = cong (G.lam _ _ _) (tm-c d)
   tm-c (t-pair-lit-check a b) = cong₂ G.pair (tm-c a) (tm-c b)
-  tm-c (t-In-app-check {F = F} wf d) = cong₂ (λ X u → G.app X Many _ u) (sym (ρ̂-⟦⟧ F (μ-type F))) (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d))
-  tm-c (t-apply-check d)      = cong (G.app _ _ _) (tm-i d)
-  tm-c (t-inl-app-check d)    = cong (G.app _ _ _) (tm-c d)
-  tm-c (t-inr-app-check d)    = cong (G.app _ _ _) (tm-c d)
-  tm-c (t-initial-app-check d) = cong (G.app _ _ _) (tm-c d)
+  tm-c (t-In-app-check {F = F} wf d) = cong₂ (λ X u → G.app (G.lam X Many pure (G.roll (ρ̂F F) (G.var zero))) u) (sym (ρ̂-⟦⟧ F (μ-type F))) (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d))
+  tm-c (t-apply-check d)      = cong (G.app _) (tm-i d)
+  tm-c (t-inl-app-check d)    = cong (G.app _) (tm-c d)
+  tm-c (t-inr-app-check d)    = cong (G.app _) (tm-c d)
+  tm-c (t-initial-app-check d) = cong (G.app _) (tm-c d)
   tm-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     cong (G.ref (entry lp)) (nat-inst lp ng ki)
 
@@ -278,7 +278,7 @@ mutual
   tm-d (d-infer w p g)     = cong (G.coerce _ _) (tm-i w)
   tm-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
     cong (G.coerce _ _) (cong (G.ref (entry lp)) (nat-inst lp ng ki))
-  tm-d (d-lam le d)        = cong G.lam (tm-i d)
+  tm-d (d-lam le d)        = cong (G.lam _ _ _) (tm-i d)
   tm-d (d-compose dg df)   = arms (tm-d df) (tm-d dg)
   tm-d d-id                = refl
   tm-d d-fst               = refl
@@ -288,7 +288,7 @@ mutual
   tm-d (d-case df dg)      = arms (tm-d df) (tm-d dg)
   tm-d (d-pair df dg)      = arms (tm-d df) (tm-d dg)
   tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
-    cong₂ (λ X u → G.let′ (X T.⇒[ mk-kind Many π ] ρ̂ A) Many u _) (sym (ρ̂-⟦⟧ F A)) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
+    cong (λ u → G.let′ _ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
 
   dr-i : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))
@@ -462,7 +462,7 @@ mutual
     ≅lam refl (tm-c d) (≅1 _ _ (GT.⊢sub-eff (Once.Spec.Type.Sub.pure⊑ π)) refl (tm-c d) (dr-c d))
   dr-c (t-pair-lit-check a b) = ≅2 _ _ GT.⊢pair refl (tm-c a) (dr-c a) refl (tm-c b) (dr-c b)
   dr-c (t-In-app-check {F = F} wf d) =
-    ≅app (sym (ρ̂-⟦⟧ F (μ-type F))) refl refl (H.sym (c-in wf))
+    ≅app (sym (ρ̂-⟦⟧ F (μ-type F))) refl (cong (λ X → G.lam X Many pure (G.roll (ρ̂F F) (G.var zero))) (sym (ρ̂-⟦⟧ F (μ-type F)))) (H.sym (c-in wf))
          (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d)) (H.trans (⇝ᶜ-dr (ρ̂-⟦⟧ F (μ-type F)) _) (dr-c d))
   dr-c (t-apply-check d)     = ≅2 _ _ GT.⊢app refl refl (H.sym c-apply) refl (tm-i d) (dr-i d)
   dr-c (t-inl-app-check d)   = ≅2 _ _ GT.⊢app refl refl H.refl refl (tm-c d) (dr-c d)

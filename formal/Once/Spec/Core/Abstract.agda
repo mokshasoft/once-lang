@@ -78,21 +78,21 @@ absCtx-lookup Δ (Γ C., A ^ q) (suc i) = absCtx-lookup Δ Γ i
 
 absTm : ∀ {m n} (Δ : KCtx m) → G.Tm n → PTm m n
 absTm Δ (G.var i)        = var i
-absTm Δ (G.lam t)        = lam (absTm Δ t)
-absTm Δ (G.app A q t u)  = app (absTy Δ A) q (absTm Δ t) (absTm Δ u)
-absTm Δ (G.let′ A q t u) = let′ (absTy Δ A) q (absTm Δ t) (absTm Δ u)
+absTm Δ (G.lam A q π t)  = lam (absTy Δ A) q π (absTm Δ t)
+absTm Δ (G.app t u)      = app (absTm Δ t) (absTm Δ u)
+absTm Δ (G.let′ q t u)   = let′ q (absTm Δ t) (absTm Δ u)
 absTm Δ G.unit           = unit
 absTm Δ (G.pair t u)     = pair (absTm Δ t) (absTm Δ u)
-absTm Δ (G.fst B t)      = fst (absTy Δ B) (absTm Δ t)
-absTm Δ (G.snd A t)      = snd (absTy Δ A) (absTm Δ t)
-absTm Δ (G.inl t)        = inl (absTm Δ t)
-absTm Δ (G.inr t)        = inr (absTm Δ t)
-absTm Δ (G.case A B qℓ qr s l r) = case (absTy Δ A) (absTy Δ B) qℓ qr (absTm Δ s) (absTm Δ l) (absTm Δ r)
-absTm Δ (G.absurd t)     = absurd (absTm Δ t)
-absTm Δ (G.roll t)       = roll (absTm Δ t)
+absTm Δ (G.fst t)        = fst (absTm Δ t)
+absTm Δ (G.snd t)        = snd (absTm Δ t)
+absTm Δ (G.inl B t)      = inl (absTy Δ B) (absTm Δ t)
+absTm Δ (G.inr A t)      = inr (absTy Δ A) (absTm Δ t)
+absTm Δ (G.case qℓ qr s l r) = case qℓ qr (absTm Δ s) (absTm Δ l) (absTm Δ r)
+absTm Δ (G.absurd A t)   = absurd (absTy Δ A) (absTm Δ t)
+absTm Δ (G.roll F t)     = roll (absF Δ F) (absTm Δ t)
 absTm Δ (G.fold F a t)   = fold (absF Δ F) (absTm Δ a) (absTm Δ t)
-absTm Δ (G.unfold A c t) = unfold (absTy Δ A) (absTm Δ c) (absTm Δ t)
-absTm Δ (G.out F t)      = out (absF Δ F) (absTm Δ t)
+absTm Δ (G.unfold F c t) = unfold (absF Δ F) (absTm Δ c) (absTm Δ t)
+absTm Δ (G.out t)        = out (absTm Δ t)
 absTm Δ (G.coerce A B t) = coerce (absTy Δ A) (absTy Δ B) (absTm Δ t)
 absTm Δ (G.lit l)        = lit l
 absTm Δ (G.prim p t)     = prim p (absTm Δ t)
@@ -175,7 +175,7 @@ abs-⊢ Δ sg {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {π = π} {π′ = π′} {F =
            (absTy-⟦⟧ Δ F A) (abs-⊢ Δ sg k))
     (abs-⊢ Δ sg x)
 abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} (GT.⊢out {π = π} {F = F} {t = t} wf d) =
-  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] out (absF Δ F) (absTm Δ t) ∷ X ! π) (sym (absTy-⟦⟧ Δ F (T.ν-type F π)))
+  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] out (absTm Δ t) ∷ X ! π) (sym (absTy-⟦⟧ Δ F (T.ν-type F π)))
     (⊢out (abs-wf Δ wf) (abs-⊢ Δ sg d))
 abs-⊢ Δ sg (GT.⊢coerce p d) = ⊢coerce (abs-<: Δ p) (abs-⊢ Δ sg d)
 abs-⊢ Δ sg GT.⊢lit-int   = ⊢lit-int

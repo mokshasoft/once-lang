@@ -16,9 +16,9 @@
 -- usage (D127: composition is LINEAR in each arm), not an application's
 -- `Many *ᵘ Ψ`.
 --
--- A core term records the types its derivation would otherwise choose (D310),
--- so a combinator takes the types its arms are used at: `composeᶜ A B C π f g`
--- is `f ∘ g` for `g : A ⇒ B` and `f : B ⇒ C` at grade `π`.
+-- A core term determines its type (D310: every `lam` names its domain,
+-- quantity and grade), so a combinator takes the types it is used at:
+-- `composeᶜ A π f g` is `f ∘ g` at `A ⇒[ Many , π ] _`.
 --
 -- The compiler does not go through these terms: it emits `IR.compose` etc.
 -- directly, and owes one model lemma per combinator (the IR morphism means
@@ -33,7 +33,7 @@ module Once.Spec.Core.Derived {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
-open import Once.Spec.Type using (Type; Functor; _*_; _⇒[_]_; ⟦_⟧T)
+open import Once.Spec.Type using (Type; Functor; Unit; Void; _*_; _+_; _⇒[_]_; ⟦_⟧T; μ-type; ν-type)
 open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; One; Many)
 open import Once.Spec.Core.Syntax S
 
@@ -47,69 +47,66 @@ private
   v3 : ∀ {n} → Tm (ℕ.suc (ℕ.suc (ℕ.suc (ℕ.suc n))))
   v3 = var (suc (suc (suc zero)))
 
--- Closed morphisms.
-idᶜ inlᶜ inrᶜ terminalᶜ initialᶜ inᶜ : ∀ {n} → Tm n
-idᶜ       = lam v0
-inlᶜ      = lam (inl v0)
-inrᶜ      = lam (inr v0)
-terminalᶜ = lam unit
-initialᶜ  = lam (absurd v0)
-inᶜ       = lam (roll v0)
+-- Closed morphisms, at the arrow `_ ⇒[ Many , π ] _`.
+idᶜ terminalᶜ : ∀ {n} → Type → Purity → Tm n
+idᶜ       A π = lam A Many π v0
+terminalᶜ A π = lam A Many π unit
 
--- `fstᶜ B : A * B ⇒ A`, `sndᶜ A : A * B ⇒ B`.
-fstᶜ sndᶜ : ∀ {n} → Type → Tm n
-fstᶜ B = lam (fst B v0)
-sndᶜ A = lam (snd A v0)
+-- `fstᶜ A B π : A * B ⇒ A`, `sndᶜ A B π : A * B ⇒ B`; `inlᶜ A B π : A ⇒ A + B`, …
+fstᶜ sndᶜ inlᶜ inrᶜ : ∀ {n} → Type → Type → Purity → Tm n
+fstᶜ A B π = lam (A * B) Many π (fst v0)
+sndᶜ A B π = lam (A * B) Many π (snd v0)
+inlᶜ A B π = lam A Many π (inl B v0)
+inrᶜ A B π = lam B Many π (inr A v0)
 
--- `applyᶜ A B : (A ⇒ B) * A ⇒ B`, at a pure arrow.
+-- `initialᶜ A π : Void ⇒ A`.
+initialᶜ : ∀ {n} → Type → Purity → Tm n
+initialᶜ A π = lam Void Many π (absurd A v0)
+
+-- `applyᶜ A B : (A ⇒ B) * A ⇒ B`, at pure arrows.
 applyᶜ : ∀ {n} → Type → Type → Tm n
-applyᶜ A B = lam (app A Many (fst A v0) (snd (A ⇒[ mk-kind Many pure ] B) v0))
+applyᶜ A B = lam ((A ⇒[ mk-kind Many pure ] B) * A) Many pure (app (fst v0) (snd v0))
 
-outᶜ : ∀ {n} → Functor → Tm n
-outᶜ F = lam (out F v0)
+inᶜ outᶜ : ∀ {n} → Functor → Tm n
+inᶜ  F = lam (⟦ F ⟧T (μ-type F)) Many pure (roll F v0)
+outᶜ F = lam (ν-type F pure) Many pure (out v0)
 
 -- `compose f g` = f ∘ g: `f` evaluated first, `g` applied first.
-composeᶜ : ∀ {n} → Type → Type → Type → Purity → Tm n → Tm n → Tm n
-composeᶜ A B C π f g =
-  let′ (B ⇒[ mk-kind Many π ] C) One f
-    (let′ (A ⇒[ mk-kind Many π ] B) Many (wk g) (lam (app B Many v2 (app A Many v1 v0))))
+composeᶜ : ∀ {n} → Type → Purity → Tm n → Tm n → Tm n
+composeᶜ A π f g = let′ One f (let′ Many (wk g) (lam A Many π (app v2 (app v1 v0))))
 
 -- `⟨ f , g ⟩`: one shared grade (D222) — the arrow runs both arms.
-pairᶜ : ∀ {n} → Type → Type → Type → Purity → Tm n → Tm n → Tm n
-pairᶜ A B C π f g =
-  let′ (A ⇒[ mk-kind Many π ] B) One f
-    (let′ (A ⇒[ mk-kind Many π ] C) One (wk g) (lam (pair (app A Many v2 v0) (app A Many v1 v0))))
+pairᶜ : ∀ {n} → Type → Purity → Tm n → Tm n → Tm n
+pairᶜ A π f g = let′ One f (let′ One (wk g) (lam A Many π (pair (app v2 v0) (app v1 v0))))
 
 -- `[ f , g ]`.
-caseᶜ : ∀ {n} → Type → Type → Type → Purity → Tm n → Tm n → Tm n
-caseᶜ A B C π f g =
-  let′ (A ⇒[ mk-kind Many π ] C) One f
-    (let′ (B ⇒[ mk-kind Many π ] C) One (wk g)
-      (lam (case A B Many Many v0 (app A Many v3 v0) (app B Many v2 v0))))
+caseᶜ : ∀ {n} → Type → Type → Purity → Tm n → Tm n → Tm n
+caseᶜ A B π f g =
+  let′ One f (let′ One (wk g) (lam (A + B) Many π (case Many Many v0 (app v3 v0) (app v2 v0))))
 
 -- `curry f`: building the closure runs nothing (D222: the outer arrow is
 -- effect-free; the body's grade rides the inner arrow).
-curryᶜ : ∀ {n} → Type → Type → Type → Purity → Tm n → Tm n
-curryᶜ A B C π f = let′ ((A * B) ⇒[ mk-kind Many π ] C) One f (lam (lam (app (A * B) Many v2 (pair v1 v0))))
+curryᶜ : ∀ {n} → Type → Type → Purity → Purity → Tm n → Tm n
+curryᶜ A B π₀ π f = let′ One f (lam A Many π₀ (lam B Many π (app v2 (pair v1 v0))))
 
 -- `cata alg` / `ana coalg`: the algebra is evaluated once (D131).
-cataᶜ : ∀ {n} → Functor → Type → Purity → Tm n → Tm n
-cataᶜ F A π alg = let′ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Many alg (lam (fold F v1 v0))
+cataᶜ : ∀ {n} → Functor → Purity → Tm n → Tm n
+cataᶜ F π alg = let′ Many alg (lam (μ-type F) Many π (fold F v1 v0))
 -- D247: `ana`'s coalgebra is not evaluated at build — the ν stores it (D192).
-anaᶜ : ∀ {n} → Type → Tm n → Tm n
-anaᶜ A c = lam (unfold A (wk c) v0)
+anaᶜ : ∀ {n} → Functor → Type → Purity → Tm n → Tm n
+anaᶜ F A π₀ c = lam A Many π₀ (unfold F (wk c) v0)
 
 -- Applying an effectful arrow at the surface builds a SUSPENSION
 -- `Unit ⇒[eff] B`; head and argument are evaluated when it runs
 -- (`⟦ t-effApp ⟧ᵢ`).
-effAppᶜ : ∀ {n} → Type → Tm n → Tm n → Tm n
-effAppᶜ A f x = lam (app A Many (wk f) (wk x))
+effAppᶜ : ∀ {n} → Tm n → Tm n → Tm n
+effAppᶜ f x = lam Unit Many eff (app (wk f) (wk x))
 
 -- The SUSPENDED forms of the surface's effectful applied builtins: the
 -- argument is evaluated now, the effect when the suspension runs
 -- (`t-apply-eff-app-infer`, `t-Out-eff-app-infer`).
 applyEffᶜ : ∀ {n} → Type → Type → Tm n
-applyEffᶜ A B = lam (lam (app A Many (fst A v1) (snd (A ⇒[ mk-kind Many eff ] B) v1)))
+applyEffᶜ A B = lam ((A ⇒[ mk-kind Many eff ] B) * A) Many pure (lam Unit Many eff (app (fst v1) (snd v1)))
 
 outEffᶜ : ∀ {n} → Functor → Tm n
-outEffᶜ F = lam (lam (out F v1))
+outEffᶜ F = lam (ν-type F eff) Many pure (lam Unit Many eff (out v1))

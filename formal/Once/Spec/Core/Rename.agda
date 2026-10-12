@@ -30,33 +30,33 @@ open import Once.Spec.Core.Typing S
 -- Renaming is extensional in the renaming.
 ren-cong : ∀ {n m} {ρ ρ′ : Ren n m} → (∀ i → ρ i ≡ ρ′ i) → ∀ t → ren ρ t ≡ ren ρ′ t
 ren-cong h (var i)        = cong var (h i)
-ren-cong h (lam t)        = cong lam (ren-cong (extR-cong h) t)
+ren-cong h (lam A q π t)  = cong (lam A q π) (ren-cong (extR-cong h) t)
   where
     extR-cong : ∀ {n m} {ρ ρ′ : Ren n m} → (∀ i → ρ i ≡ ρ′ i) → ∀ i → extR ρ i ≡ extR ρ′ i
     extR-cong h zero    = refl
     extR-cong h (suc i) = cong suc (h i)
-ren-cong h (app A q t u)  = cong₂ (app A q) (ren-cong h t) (ren-cong h u)
-ren-cong {ρ = ρ} {ρ′} h (let′ A q t u) = cong₂ (let′ A q) (ren-cong h t) (ren-cong (ext h) u)
+ren-cong h (app t u)      = cong₂ app (ren-cong h t) (ren-cong h u)
+ren-cong {ρ = ρ} {ρ′} h (let′ q t u) = cong₂ (let′ q) (ren-cong h t) (ren-cong (ext h) u)
   where
     ext : (∀ i → ρ i ≡ ρ′ i) → ∀ i → extR ρ i ≡ extR ρ′ i
     ext h zero    = refl
     ext h (suc i) = cong suc (h i)
 ren-cong h unit           = refl
 ren-cong h (pair t u)     = cong₂ pair (ren-cong h t) (ren-cong h u)
-ren-cong h (fst B t)      = cong (fst B) (ren-cong h t)
-ren-cong h (snd A t)      = cong (snd A) (ren-cong h t)
-ren-cong h (inl t)        = cong inl (ren-cong h t)
-ren-cong h (inr t)        = cong inr (ren-cong h t)
-ren-cong {ρ = ρ} {ρ′} h (case A B qℓ qr s l r) = cong₂ (λ a b → a b) (cong₂ (case A B qℓ qr) (ren-cong h s) (ren-cong (ext h) l)) (ren-cong (ext h) r)
+ren-cong h (fst t)        = cong fst (ren-cong h t)
+ren-cong h (snd t)        = cong snd (ren-cong h t)
+ren-cong h (inl B t)      = cong (inl B) (ren-cong h t)
+ren-cong h (inr A t)      = cong (inr A) (ren-cong h t)
+ren-cong {ρ = ρ} {ρ′} h (case qℓ qr s l r) = cong₂ (λ a b → a b) (cong₂ (case qℓ qr) (ren-cong h s) (ren-cong (ext h) l)) (ren-cong (ext h) r)
   where
     ext : (∀ i → ρ i ≡ ρ′ i) → ∀ i → extR ρ i ≡ extR ρ′ i
     ext h zero    = refl
     ext h (suc i) = cong suc (h i)
-ren-cong h (absurd t)     = cong absurd (ren-cong h t)
-ren-cong h (roll t)       = cong roll (ren-cong h t)
+ren-cong h (absurd A t)   = cong (absurd A) (ren-cong h t)
+ren-cong h (roll F t)     = cong (roll F) (ren-cong h t)
 ren-cong h (fold F a t)   = cong₂ (fold F) (ren-cong h a) (ren-cong h t)
-ren-cong h (unfold A c t) = cong₂ (unfold A) (ren-cong h c) (ren-cong h t)
-ren-cong h (out F t)      = cong (out F) (ren-cong h t)
+ren-cong h (unfold F c t) = cong₂ (unfold F) (ren-cong h c) (ren-cong h t)
+ren-cong h (out t)        = cong out (ren-cong h t)
 ren-cong h (coerce A B t) = cong (coerce A B) (ren-cong h t)
 ren-cong h (lit l)        = refl
 ren-cong h (prim p t)     = cong (prim p) (ren-cong h t)
@@ -78,12 +78,12 @@ ren-⊢ {Δ = Δ} θ (⊢var {Γ = Γ} i) =
       (⊢var (thin-var θ i)))
 ren-⊢ {Δ = Δ} {Ψ = Ψ} {π = π} θ (⊢lam {q = q} {A = A} {B = B} {t = t} le d) =
   ⊢lam le (subst (λ u → (Δ , A ^ Many) ⊢[ _ ] u ∷ B ! _) (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d))
-ren-⊢ {Δ = Δ} θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} {A = A} {B = B} {f = f} {x = x} df dx) =
-  subst (λ U → Δ ⊢[ U ] app A q (ren (thin-var θ) f) (ren (thin-var θ) x) ∷ B ! _)
+ren-⊢ {Δ = Δ} θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} {B = B} {f = f} {x = x} df dx) =
+  subst (λ U → Δ ⊢[ U ] app (ren (thin-var θ) f) (ren (thin-var θ) x) ∷ B ! _)
     (sym (trans (thin-usage-+ᵘ θ Ψ₁ (q *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ q Ψ₂))))
     (⊢app (ren-⊢ θ df) (ren-⊢ θ dx))
 ren-⊢ {Δ = Δ} θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} {A = A} {B = B} {e = e} {b = b} de db) =
-  subst (λ U → Δ ⊢[ U ] let′ A q (ren (thin-var θ) e) (ren (extR (thin-var θ)) b) ∷ B ! _)
+  subst (λ U → Δ ⊢[ U ] let′ q (ren (thin-var θ) e) (ren (extR (thin-var θ)) b) ∷ B ! _)
     (sym (trans (thin-usage-+ᵘ θ Ψ₂ (q *ᵘ Ψ₁)) (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ q Ψ₁))))
     (⊢let (ren-⊢ θ de) (subst (λ u → (Δ , A ^ Many) ⊢[ _ ] u ∷ B ! _) (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db)))
 ren-⊢ {Δ = Δ} θ ⊢unit = subst (λ U → Δ ⊢[ U ] unit ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) ⊢unit
@@ -95,7 +95,7 @@ ren-⊢ θ (⊢snd d) = ⊢snd (ren-⊢ θ d)
 ren-⊢ θ (⊢inl d) = ⊢inl (ren-⊢ θ d)
 ren-⊢ θ (⊢inr d) = ⊢inr (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {A = A} {B = B} {C = C} {s = sc} {l = l} {r = r} ds dl dr) =
-  subst (λ U → Δ ⊢[ U ] case A B _ _ (ren (thin-var θ) sc) (ren (extR (thin-var θ)) l) (ren (extR (thin-var θ)) r) ∷ C ! _)
+  subst (λ U → Δ ⊢[ U ] case _ _ (ren (thin-var θ) sc) (ren (extR (thin-var θ)) l) (ren (extR (thin-var θ)) r) ∷ C ! _)
     (sym (thin-usage-+ᵘ θ Ψs Ψ))
     (⊢case (ren-⊢ θ ds)
        (subst (λ u → (Δ , A ^ Many) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) l) (ren-⊢ (keep θ) dl))
@@ -106,8 +106,8 @@ ren-⊢ {Δ = Δ} θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {F = F} {alg = alg} {t = t
   subst (λ U → Δ ⊢[ U ] fold F (ren (thin-var θ) alg) (ren (thin-var θ) t) ∷ _ ! _)
     (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψa) Ψt) (cong (_+ᵘ thin-usage θ Ψt) (thin-usage-*ᵘ θ Many Ψa))))
     (⊢fold wf (ren-⊢ θ da) (ren-⊢ θ dt))
-ren-⊢ {Δ = Δ} θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {A = A} {c = c} {s = sd} wf dc ds) =
-  subst (λ U → Δ ⊢[ U ] unfold A (ren (thin-var θ) c) (ren (thin-var θ) sd) ∷ _ ! _)
+ren-⊢ {Δ = Δ} θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {F = F} {c = c} {s = sd} wf dc ds) =
+  subst (λ U → Δ ⊢[ U ] unfold F (ren (thin-var θ) c) (ren (thin-var θ) sd) ∷ _ ! _)
     (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))))
     (⊢unfold wf (ren-⊢ θ dc) (ren-⊢ θ ds))
 ren-⊢ θ (⊢out wf d) = ⊢out wf (ren-⊢ θ d)

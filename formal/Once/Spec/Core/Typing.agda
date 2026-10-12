@@ -67,7 +67,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   ⊢lam : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {q q' : Quantity} {π : Purity} {A B t}
        → (q' ≤q q) ≡ true
        → (Γ , A) ⊢[ q' ∷ Ψ ] t ∷ B ! π
-       → Γ ⊢[ Ψ ] lam t ∷ A ⇒[ mk-kind q π ] B ! pure
+       → Γ ⊢[ Ψ ] lam A q π t ∷ A ⇒[ mk-kind q π ] B ! pure
 
   -- QTT application: the argument's usage scales by the arrow's grade. An
   -- erased argument (`q = Zero`) is never evaluated, so it is pure
@@ -75,7 +75,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   ⊢app : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B f x}
        → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π
        → Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π
-       → Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app A q f x ∷ B ! π
+       → Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app f x ∷ B ! π
 
   -- `let x = e in b`: the RHS scales by the bound variable's usage in `b`.
   -- At `Zero` it is not evaluated (D143), so it must be pure
@@ -83,7 +83,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   ⊢let : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B e b}
        → Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π
        → (Γ , A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π
-       → Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ A q e b ∷ B ! π
+       → Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ q e b ∷ B ! π
 
   ⊢unit : ∀ {n} {Γ : Ctx n} → Γ ⊢[ zeroUsage ] unit ∷ Unit ! pure
 
@@ -91,14 +91,14 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → Γ ⊢[ Ψ₁ ] a ∷ A ! π → Γ ⊢[ Ψ₂ ] b ∷ B ! π
         → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pair a b ∷ A * B ! π
   ⊢fst  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B p}
-        → Γ ⊢[ Ψ ] p ∷ A * B ! π → Γ ⊢[ Ψ ] fst B p ∷ A ! π
+        → Γ ⊢[ Ψ ] p ∷ A * B ! π → Γ ⊢[ Ψ ] fst p ∷ A ! π
   ⊢snd  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B p}
-        → Γ ⊢[ Ψ ] p ∷ A * B ! π → Γ ⊢[ Ψ ] snd A p ∷ B ! π
+        → Γ ⊢[ Ψ ] p ∷ A * B ! π → Γ ⊢[ Ψ ] snd p ∷ B ! π
 
   ⊢inl  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B a}
-        → Γ ⊢[ Ψ ] a ∷ A ! π → Γ ⊢[ Ψ ] inl a ∷ A + B ! π
+        → Γ ⊢[ Ψ ] a ∷ A ! π → Γ ⊢[ Ψ ] inl B a ∷ A + B ! π
   ⊢inr  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B b}
-        → Γ ⊢[ Ψ ] b ∷ B ! π → Γ ⊢[ Ψ ] inr b ∷ A + B ! π
+        → Γ ⊢[ Ψ ] b ∷ B ! π → Γ ⊢[ Ψ ] inr A b ∷ A + B ! π
   -- Exactly one arm runs, over ONE context usage `Ψ` (D276: the coproduct's
   -- copairing; an arm that uses less is sub-used, `⊢sub-use`, so the
   -- surface's per-position join is derived, not primitive).
@@ -106,11 +106,11 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → Γ ⊢[ Ψs ] s ∷ A + B ! π
         → (Γ , A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π
         → (Γ , B) ⊢[ qr ∷ Ψ ] r ∷ C ! π
-        → Γ ⊢[ Ψs +ᵘ Ψ ] case A B qℓ qr s l r ∷ C ! π
+        → Γ ⊢[ Ψs +ᵘ Ψ ] case qℓ qr s l r ∷ C ! π
 
   -- Ex falso: `Void` is initial.
   ⊢absurd : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A e}
-          → Γ ⊢[ Ψ ] e ∷ Void ! π → Γ ⊢[ Ψ ] absurd e ∷ A ! π
+          → Γ ⊢[ Ψ ] e ∷ Void ! π → Γ ⊢[ Ψ ] absurd A e ∷ A ! π
 
   -- μ F: its algebra structure `roll` and its (non-dependent) eliminator.
   -- The algebra is an ordinary term IN CONTEXT: it may capture (plan 0.101),
@@ -118,7 +118,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   ⊢roll : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {F : Functor} {t}
         → WellFormedF F
         → Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧T (μ-type F) ! π
-        → Γ ⊢[ Ψ ] roll t ∷ μ-type F ! π
+        → Γ ⊢[ Ψ ] roll F t ∷ μ-type F ! π
   ⊢fold : ∀ {n} {Γ : Ctx n} {Ψa Ψt : Usage n} {π : Purity} {F : Functor} {A alg t}
         → WellFormedF F
         → Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π
@@ -133,11 +133,11 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
           → WellFormedF F
           → Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! π′
           → Γ ⊢[ Ψs ] s ∷ A ! π′
-          → Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold A c s ∷ ν-type F π ! π′   -- B1
+          → Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F π ! π′   -- B1
   ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {F : Functor} {t}
        → WellFormedF F
        → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π
-       → Γ ⊢[ Ψ ] out F t ∷ ⟦ F ⟧T (ν-type F π) ! π
+       → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F π) ! π
 
   -- D226: subtyping is a COERCION term (it has content: `Void <: B` is `¡`).
   ⊢coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B t}
@@ -194,7 +194,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → Γ ⊢[ Ψs ] s ∷ A + B ! π
        → (Γ , A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π
        → (Γ , B) ⊢[ qr ∷ Ψᵣ ] r ∷ C ! π
-       → Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case A B qℓ qr s l r ∷ C ! π
+       → Γ ⊢[ Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ) ] case qℓ qr s l r ∷ C ! π
 ⊢case⊔ {Ψₗ = Ψₗ} {Ψᵣ} {qℓ} {qr} ds dl dr =
   ⊢case ds (⊢sub-use (⊑ᵘ-keep qℓ (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) dl) (⊢sub-use (⊑ᵘ-keep qr (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) dr)
 
