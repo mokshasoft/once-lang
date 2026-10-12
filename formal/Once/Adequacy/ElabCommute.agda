@@ -135,9 +135,9 @@ private
   ≅at Many h = h
 
   -- The arm combinators' terms: `let′ f (let′ (wk g) B)`.
-  arms : ∀ {n} {f₁ f g₁ g : G.Tm n} {B : G.Tm (suc (suc n))} → f₁ ≡ ρ̂ₜ f → g₁ ≡ ρ̂ₜ g
-       → G.let′ f₁ (G.let′ (G.wk g₁) B) ≡ G.let′ (ρ̂ₜ f) (G.let′ (ρ̂ₜ (G.wk g)) B)
-  arms ef eg = cong₂ (λ a b → G.let′ a (G.let′ b _)) ef (trans (cong G.wk eg) (sym (ρ̂ₜ-ren suc _)))
+  arms : ∀ {n} {X₁ X₂ : T.Type} {q₁ q₂ : Quantity} {f₁ f g₁ g : G.Tm n} {B : G.Tm (suc (suc n))} → f₁ ≡ ρ̂ₜ f → g₁ ≡ ρ̂ₜ g
+       → G.let′ X₁ q₁ f₁ (G.let′ X₂ q₂ (G.wk g₁) B) ≡ G.let′ X₁ q₁ (ρ̂ₜ f) (G.let′ X₂ q₂ (ρ̂ₜ (G.wk g)) B)
+  arms ef eg = cong₂ (λ a b → G.let′ _ _ a (G.let′ _ _ b _)) ef (trans (cong G.wk eg) (sym (ρ̂ₜ-ren suc _)))
 
   closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
   closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
@@ -169,8 +169,8 @@ mutual
   tm-i (t-pair a b)       = cong₂ G.pair (tm-i a) (tm-i b)
   tm-i (t-neg d)          = cong (G.prim G.p-neg) (tm-i d)
   tm-i (t-neg-float i f l p) = refl
-  tm-i (t-let d₁ d₂)      = cong₂ G.let′ (tm-i d₁) (tm-i d₂)
-  tm-i (t-case ds dl dr)  = trans (cong₂ (λ a b → G.case a b _) (tm-i ds) (tm-i dl)) (cong (G.case _ _) (tm-i dr))
+  tm-i (t-let d₁ d₂)      = cong₂ (G.let′ _ _) (tm-i d₁) (tm-i d₂)
+  tm-i (t-case ds dl dr)  = trans (cong₂ (λ a b → G.case _ _ _ _ a b _) (tm-i ds) (tm-i dl)) (cong (G.case _ _ _ _ _ _) (tm-i dr))
   tm-i (t-binop-arith {op = OpAdd} o d₁ d₂) = cong (G.prim G.p-add) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
   tm-i (t-binop-arith {op = OpSub} o d₁ d₂) = cong (G.prim G.p-sub) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
   tm-i (t-binop-arith {op = OpMul} o d₁ d₂) = cong (G.prim G.p-mul) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
@@ -226,20 +226,20 @@ mutual
   tm-i (t-binop-cmp {op = OpMul} () _ _)
   tm-i (t-binop-cmp {op = OpDiv} () _ _)
   tm-i (t-binop-cmp {op = OpMod} () _ _)
-  tm-i (t-id-app d)          = cong (G.app _) (tm-i d)
-  tm-i (t-fst-app d)         = cong (G.app _) (tm-i d)
-  tm-i (t-snd-app d)         = cong (G.app _) (tm-i d)
-  tm-i (t-terminal-app d)    = cong (G.app _) (tm-i d)
-  tm-i (t-apply-app-infer d) = cong (G.app _) (tm-i d)
-  tm-i (t-apply-eff-app-infer d) = cong (G.app _) (tm-i d)
-  tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pure))) _) (cong (G.app _) (tm-i d))
+  tm-i (t-id-app d)          = cong (G.app _ _ _) (tm-i d)
+  tm-i (t-fst-app d)         = cong (G.app _ _ _) (tm-i d)
+  tm-i (t-snd-app d)         = cong (G.app _ _ _) (tm-i d)
+  tm-i (t-terminal-app d)    = cong (G.app _ _ _) (tm-i d)
+  tm-i (t-apply-app-infer d) = cong (G.app _ _ _) (tm-i d)
+  tm-i (t-apply-eff-app-infer d) = cong (G.app _ _ _) (tm-i d)
+  tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pure))) _) (cong (G.app _ _ _) (tm-i d))
   tm-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))) _) (cong (G.app _) (tm-i d))
-  tm-i (t-app h df dx)       = cong₂ G.app (tm-i df) (tm-c dx)
+    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))) _) (cong (G.app _ _ _) (tm-i d))
+  tm-i (t-app h df dx)       = cong₂ (G.app _ _) (tm-i df) (tm-c dx)
   tm-i (t-effApp h df dx) =
-    cong₂ (λ a b → G.lam (G.app a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
+    cong₂ (λ a b → G.lam (G.app _ _ a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
                                       (trans (cong G.wk (tm-c dx)) (sym (ρ̂ₜ-ren suc _)))
-  tm-i (t-app-spine h da df) = cong₂ G.app (tm-d df) (tm-i da)
+  tm-i (t-app-spine h da df) = cong₂ (G.app _ _) (tm-d df) (tm-i da)
 
   tm-c : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₁ (elabᶜ V (subst-c′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᶜ V d))
@@ -255,21 +255,21 @@ mutual
     arms {f = G.coerce (B T.⇒[ mk-kind Many π′ ] C′) (B T.⇒[ mk-kind Many π ] C′′) _} (cong (G.coerce _ _) (tm-i wf)) (tm-c dg)
   tm-c (t-case-copair-check df dg) = arms (tm-c df) (tm-c dg)
   tm-c (t-pair-morph-check df dg)  = arms (tm-c df) (tm-c dg)
-  tm-c (t-curry-check df)          = cong (λ u → G.let′ u _) (tm-c df)
+  tm-c (t-curry-check df)          = cong (λ u → G.let′ _ _ u _) (tm-c df)
   tm-c (t-cata-check {F = F} {A = A} {π = π} wf da) =
-    cong (λ u → G.let′ u _) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
+    cong₂ (λ X u → G.let′ (X T.⇒[ mk-kind Many π ] ρ̂ A) Many u _) (sym (ρ̂-⟦⟧ F A)) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
   tm-c (t-ana-check {F = F} {A = A} {π = π} wf dc) =
-    cong (λ u → G.lam (G.unfold u (G.var zero)))
+    cong (λ u → G.lam (G.unfold _ u (G.var zero)))
          (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
                 (sym (ρ̂ₜ-ren suc _)))
   tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
   tm-c (t-lam le d)         = cong G.lam (tm-c d)
   tm-c (t-pair-lit-check a b) = cong₂ G.pair (tm-c a) (tm-c b)
-  tm-c (t-In-app-check {F = F} wf d) = cong (G.app _) (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d))
-  tm-c (t-apply-check d)      = cong (G.app _) (tm-i d)
-  tm-c (t-inl-app-check d)    = cong (G.app _) (tm-c d)
-  tm-c (t-inr-app-check d)    = cong (G.app _) (tm-c d)
-  tm-c (t-initial-app-check d) = cong (G.app _) (tm-c d)
+  tm-c (t-In-app-check {F = F} wf d) = cong₂ (λ X u → G.app X Many _ u) (sym (ρ̂-⟦⟧ F (μ-type F))) (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d))
+  tm-c (t-apply-check d)      = cong (G.app _ _ _) (tm-i d)
+  tm-c (t-inl-app-check d)    = cong (G.app _ _ _) (tm-c d)
+  tm-c (t-inr-app-check d)    = cong (G.app _ _ _) (tm-c d)
+  tm-c (t-initial-app-check d) = cong (G.app _ _ _) (tm-c d)
   tm-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     cong (G.ref (entry lp)) (nat-inst lp ng ki)
 
@@ -288,7 +288,7 @@ mutual
   tm-d (d-case df dg)      = arms (tm-d df) (tm-d dg)
   tm-d (d-pair df dg)      = arms (tm-d df) (tm-d dg)
   tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
-    cong (λ u → G.let′ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
+    cong₂ (λ X u → G.let′ (X T.⇒[ mk-kind Many π ] ρ̂ A) Many u _) (sym (ρ̂-⟦⟧ F A)) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
 
   dr-i : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))

@@ -8,9 +8,9 @@
 -- SPEC. The ground core (`Once.Spec.Core.Typing`) with its types generalized
 -- to `Ty m` (`Once.Spec.Core.PolyTy`) under a kinding context `Δ` — a
 -- PARAMETER of the judgment, so the rules do not double: one rule per former,
--- the same rule as the ground core with `Type` read as `Ty m`. Terms carry
--- types only in `coerce` (a conversion between open types) and `sigop` (an FFI
--- contract, always ground).
+-- the same rule as the ground core with `Type` read as `Ty m`. Terms carry the
+-- same annotations as the ground core's (D310), over open types; `sigop`'s
+-- FFI contract is always ground.
 --
 -- THE GROUND INSTANTIATION THEOREM (`instantiate`, plan 0.103 phase 5 at
 -- ground targets): a derivation over `Δ` and any kind-respecting ground
@@ -71,20 +71,20 @@ lookupP (Γ , _ ^ _) (suc i) = lookupP Γ i
 data PTm (m n : ℕ) : Set where
   var    : Fin n → PTm m n
   lam    : PTm m (suc n) → PTm m n
-  app    : PTm m n → PTm m n → PTm m n
-  let′   : PTm m n → PTm m (suc n) → PTm m n
+  app    : Ty m → Quantity → PTm m n → PTm m n → PTm m n
+  let′   : Ty m → Quantity → PTm m n → PTm m (suc n) → PTm m n
   unit   : PTm m n
   pair   : PTm m n → PTm m n → PTm m n
-  fst    : PTm m n → PTm m n
-  snd    : PTm m n → PTm m n
+  fst    : Ty m → PTm m n → PTm m n
+  snd    : Ty m → PTm m n → PTm m n
   inl    : PTm m n → PTm m n
   inr    : PTm m n → PTm m n
-  case   : PTm m n → PTm m (suc n) → PTm m (suc n) → PTm m n
+  case   : Ty m → Ty m → Quantity → Quantity → PTm m n → PTm m (suc n) → PTm m (suc n) → PTm m n
   absurd : PTm m n → PTm m n
   roll   : PTm m n → PTm m n
-  fold   : PTm m n → PTm m n → PTm m n
-  unfold : PTm m n → PTm m n → PTm m n
-  out    : PTm m n → PTm m n
+  fold   : Fun m → PTm m n → PTm m n → PTm m n
+  unfold : Ty m → PTm m n → PTm m n → PTm m n
+  out    : Fun m → PTm m n → PTm m n
   coerce : Ty m → Ty m → PTm m n → PTm m n
   lit    : Lit → PTm m n
   prim   : Prim → PTm m n → PTm m n
@@ -107,20 +107,20 @@ lookup-⟪⟫ (Γ , A ^ q) σ (suc i) = lookup-⟪⟫ Γ σ i
 _⟪_⟫ₜ : ∀ {m n} → PTm m n → GSub m → G.Tm n
 var i        ⟪ σ ⟫ₜ = G.var i
 lam t        ⟪ σ ⟫ₜ = G.lam (t ⟪ σ ⟫ₜ)
-app t u      ⟪ σ ⟫ₜ = G.app (t ⟪ σ ⟫ₜ) (u ⟪ σ ⟫ₜ)
-let′ t u     ⟪ σ ⟫ₜ = G.let′ (t ⟪ σ ⟫ₜ) (u ⟪ σ ⟫ₜ)
+app A q t u  ⟪ σ ⟫ₜ = G.app (A ⟪ σ ⟫) q (t ⟪ σ ⟫ₜ) (u ⟪ σ ⟫ₜ)
+let′ A q t u ⟪ σ ⟫ₜ = G.let′ (A ⟪ σ ⟫) q (t ⟪ σ ⟫ₜ) (u ⟪ σ ⟫ₜ)
 unit         ⟪ σ ⟫ₜ = G.unit
 pair t u     ⟪ σ ⟫ₜ = G.pair (t ⟪ σ ⟫ₜ) (u ⟪ σ ⟫ₜ)
-fst t        ⟪ σ ⟫ₜ = G.fst (t ⟪ σ ⟫ₜ)
-snd t        ⟪ σ ⟫ₜ = G.snd (t ⟪ σ ⟫ₜ)
+fst B t      ⟪ σ ⟫ₜ = G.fst (B ⟪ σ ⟫) (t ⟪ σ ⟫ₜ)
+snd A t      ⟪ σ ⟫ₜ = G.snd (A ⟪ σ ⟫) (t ⟪ σ ⟫ₜ)
 inl t        ⟪ σ ⟫ₜ = G.inl (t ⟪ σ ⟫ₜ)
 inr t        ⟪ σ ⟫ₜ = G.inr (t ⟪ σ ⟫ₜ)
-case s l r   ⟪ σ ⟫ₜ = G.case (s ⟪ σ ⟫ₜ) (l ⟪ σ ⟫ₜ) (r ⟪ σ ⟫ₜ)
+case A B qℓ qr s l r ⟪ σ ⟫ₜ = G.case (A ⟪ σ ⟫) (B ⟪ σ ⟫) qℓ qr (s ⟪ σ ⟫ₜ) (l ⟪ σ ⟫ₜ) (r ⟪ σ ⟫ₜ)
 absurd t     ⟪ σ ⟫ₜ = G.absurd (t ⟪ σ ⟫ₜ)
 roll t       ⟪ σ ⟫ₜ = G.roll (t ⟪ σ ⟫ₜ)
-fold a t     ⟪ σ ⟫ₜ = G.fold (a ⟪ σ ⟫ₜ) (t ⟪ σ ⟫ₜ)
-unfold c t   ⟪ σ ⟫ₜ = G.unfold (c ⟪ σ ⟫ₜ) (t ⟪ σ ⟫ₜ)
-out t        ⟪ σ ⟫ₜ = G.out (t ⟪ σ ⟫ₜ)
+fold F a t   ⟪ σ ⟫ₜ = G.fold (F ⟪ σ ⟫F) (a ⟪ σ ⟫ₜ) (t ⟪ σ ⟫ₜ)
+unfold A c t ⟪ σ ⟫ₜ = G.unfold (A ⟪ σ ⟫) (c ⟪ σ ⟫ₜ) (t ⟪ σ ⟫ₜ)
+out F t      ⟪ σ ⟫ₜ = G.out (F ⟪ σ ⟫F) (t ⟪ σ ⟫ₜ)
 coerce A B t ⟪ σ ⟫ₜ = G.coerce (A ⟪ σ ⟫) (B ⟪ σ ⟫) (t ⟪ σ ⟫ₜ)
 lit l        ⟪ σ ⟫ₜ = G.lit l
 prim p t     ⟪ σ ⟫ₜ = G.prim p (t ⟪ σ ⟫ₜ)
@@ -183,12 +183,12 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
   ⊢app : ∀ {n} {Γ : PCtx m n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B f x}
        → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π
        → Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π
-       → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app f x ∷ B ! π
+       → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ (q *ᵘ Ψ₂) ] app A q f x ∷ B ! π
 
   ⊢let : ∀ {n} {Γ : PCtx m n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B e b}
        → Δ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π
        → Δ ⊩ (Γ , A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π
-       → Δ ⊩ Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ e b ∷ B ! π
+       → Δ ⊩ Γ ⊢[ Ψ₂ +ᵘ (q *ᵘ Ψ₁) ] let′ A q e b ∷ B ! π
 
   ⊢unit : ∀ {n} {Γ : PCtx m n} → Δ ⊩ Γ ⊢[ zeroUsage ] unit ∷ Unit ! pure
 
@@ -196,9 +196,9 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
         → Δ ⊩ Γ ⊢[ Ψ₁ ] a ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ₂ ] b ∷ B ! π
         → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pair a b ∷ A * B ! π
   ⊢fst  : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A B p}
-        → Δ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π → Δ ⊩ Γ ⊢[ Ψ ] fst p ∷ A ! π
+        → Δ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π → Δ ⊩ Γ ⊢[ Ψ ] fst B p ∷ A ! π
   ⊢snd  : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A B p}
-        → Δ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π → Δ ⊩ Γ ⊢[ Ψ ] snd p ∷ B ! π
+        → Δ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π → Δ ⊩ Γ ⊢[ Ψ ] snd A p ∷ B ! π
 
   ⊢inl  : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A B a}
         → Δ ⊩ Γ ⊢[ Ψ ] a ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] inl a ∷ A + B ! π
@@ -209,7 +209,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
         → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A + B ! π
         → Δ ⊩ (Γ , A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π
         → Δ ⊩ (Γ , B) ⊢[ qr ∷ Ψ ] r ∷ C ! π
-        → Δ ⊩ Γ ⊢[ Ψs +ᵘ Ψ ] case s l r ∷ C ! π
+        → Δ ⊩ Γ ⊢[ Ψs +ᵘ Ψ ] case A B qℓ qr s l r ∷ C ! π
 
   ⊢absurd : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A e}
           → Δ ⊩ Γ ⊢[ Ψ ] e ∷ Void ! π → Δ ⊩ Γ ⊢[ Ψ ] absurd e ∷ A ! π
@@ -222,17 +222,17 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
         → WFFun Δ F
         → Δ ⊩ Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π
         → Δ ⊩ Γ ⊢[ Ψt ] t ∷ μ-type F ! π
-        → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold alg t ∷ A ! π
+        → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold F alg t ∷ A ! π
 
   ⊢unfold : ∀ {n} {Γ : PCtx m n} {Ψc Ψs : Usage n} {π π′ : Purity} {F : Fun m} {A c s}
           → WFFun Δ F
           → Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π′
           → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π′
-          → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold c s ∷ ν-type F π ! π′
+          → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold A c s ∷ ν-type F π ! π′
   ⊢out : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {F : Fun m} {t}
        → WFFun Δ F
        → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν-type F π ! π
-       → Δ ⊩ Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧F (ν-type F π) ! π
+       → Δ ⊩ Γ ⊢[ Ψ ] out F t ∷ ⟦ F ⟧F (ν-type F π) ! π
 
   ⊢coerce : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A B t}
           → A <:ₚ B → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] coerce A B t ∷ B ! π
@@ -301,7 +301,7 @@ instantiate {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {π = π} {π′ = π′} {F =
            (instantiate σ r k))
     (instantiate σ r s)
 instantiate {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {F = F} {t = t} wf d) =
-  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.out (t ⟪ σ ⟫ₜ) ∷ X ! π) (sym (⟦⟧F-⟪⟫ F (ν-type F π) σ))
+  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.out (F ⟪ σ ⟫F) (t ⟪ σ ⟫ₜ) ∷ X ! π) (sym (⟦⟧F-⟪⟫ F (ν-type F π) σ))
     (GT.⊢out (wf-⟪⟫ r wf) (instantiate σ r d))
 instantiate σ r (⊢coerce p d) = GT.⊢coerce (<:ₚ-⟪⟫ σ p) (instantiate σ r d)
 instantiate σ r ⊢lit-int = GT.⊢lit-int

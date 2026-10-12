@@ -99,14 +99,14 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-lam {eΓ = refl} {refl} {refl} refl refl refl d = refl
 
   tr-app : ∀ {Ψ₁ Ψ₂ q π A' A B' B} {f' f x' x : G.Tm n}
-             {eΓ : Γ' ≡ Γ} {et : G.app f' x' ≡ G.app f x} {eB : B' ≡ B}
+             {eΓ : Γ' ≡ Γ} {et : G.app A' q f' x' ≡ G.app A q f x} {eB : B' ≡ B}
              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind q π ] B') ≡ (A T.⇒[ T.mk-kind q π ] B)) (ex : x' ≡ x) (eA : A' ≡ A)
              (df : Γ' ⊢[ Ψ₁ ] f' ∷ A' T.⇒[ T.mk-kind q π ] B' ! π) (dx : Γ' ⊢[ Ψ₂ ] x' ∷ A' ! T.positionGrade q π)
          → tr eΓ et eB (GT.⊢app df dx) ≡ GT.⊢app (tr eΓ ef eF df) (tr eΓ ex eA dx)
   tr-app {eΓ = refl} {refl} {refl} refl refl refl refl df dx = refl
 
   tr-let : ∀ {Ψ₁ Ψ₂ q π A' A B' B} {e' e : G.Tm n} {b' b : G.Tm (suc n)}
-             {eΓ : Γ' ≡ Γ} {et : G.let′ e' b' ≡ G.let′ e b} {eB : B' ≡ B}
+             {eΓ : Γ' ≡ Γ} {et : G.let′ A' q e' b' ≡ G.let′ A q e b} {eB : B' ≡ B}
              (ee : e' ≡ e) (eA : A' ≡ A) (eΓA : (Γ' C., A') ≡ (Γ C., A)) (eb : b' ≡ b) (eB′ : B' ≡ B)
              (de : Γ' ⊢[ Ψ₁ ] e' ∷ A' ! T.positionGrade q π) (db : (Γ' C., A') ⊢[ q ∷ Ψ₂ ] b' ∷ B' ! π)
          → tr eΓ et eB (GT.⊢let de db) ≡ GT.⊢let (tr eΓ ee eA de) (tr eΓA eb eB′ db)
@@ -123,13 +123,13 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-pair {eΓ = refl} {refl} {refl} refl refl refl refl da db = refl
 
   tr-fst : ∀ {Ψ π A' A B' B} {p' p : G.Tm n}
-             {eΓ : Γ' ≡ Γ} {et : G.fst p' ≡ G.fst p} {eA : A' ≡ A}
+             {eΓ : Γ' ≡ Γ} {et : G.fst B' p' ≡ G.fst B p} {eA : A' ≡ A}
              (ep : p' ≡ p) (eP : (A' T.* B') ≡ (A T.* B)) (d : Γ' ⊢[ Ψ ] p' ∷ A' T.* B' ! π)
          → tr eΓ et eA (GT.⊢fst d) ≡ GT.⊢fst (tr eΓ ep eP d)
   tr-fst {eΓ = refl} {refl} {refl} refl refl d = refl
 
   tr-snd : ∀ {Ψ π A' A B' B} {p' p : G.Tm n}
-             {eΓ : Γ' ≡ Γ} {et : G.snd p' ≡ G.snd p} {eB : B' ≡ B}
+             {eΓ : Γ' ≡ Γ} {et : G.snd A' p' ≡ G.snd A p} {eB : B' ≡ B}
              (ep : p' ≡ p) (eP : (A' T.* B') ≡ (A T.* B)) (d : Γ' ⊢[ Ψ ] p' ∷ A' T.* B' ! π)
          → tr eΓ et eB (GT.⊢snd d) ≡ GT.⊢snd (tr eΓ ep eP d)
   tr-snd {eΓ = refl} {refl} {refl} refl refl d = refl
@@ -147,7 +147,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-inr {eΓ = refl} {refl} {refl} refl refl d = refl
 
   tr-case : ∀ {Ψs Ψ qℓ qr π A' A B' B C' C} {s' s : G.Tm n} {l' l r' r : G.Tm (suc n)}
-              {eΓ : Γ' ≡ Γ} {et : G.case s' l' r' ≡ G.case s l r} {eC : C' ≡ C}
+              {eΓ : Γ' ≡ Γ} {et : G.case A' B' qℓ qr s' l' r' ≡ G.case A B qℓ qr s l r} {eC : C' ≡ C}
               (es : s' ≡ s) (eS : (A' T.+ B') ≡ (A T.+ B))
               (eΓA : (Γ' C., A') ≡ (Γ C., A)) (el : l' ≡ l) (eC₁ : C' ≡ C)
               (eΓB : (Γ' C., B') ≡ (Γ C., B)) (er : r' ≡ r) (eC₂ : C' ≡ C)
@@ -171,7 +171,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
     rewrite WellFormedF-irrelevant wf' wf = refl
 
   tr-fold : ∀ {Ψa Ψt π F' F A' A} {a' a t' t : G.Tm n} {wf' wf}
-              {eΓ : Γ' ≡ Γ} {et : G.fold a' t' ≡ G.fold a t} {eA : A' ≡ A}
+              {eΓ : Γ' ≡ Γ} {et : G.fold F' a' t' ≡ G.fold F a t} {eA : A' ≡ A}
               (eF : F' ≡ F) (ea : a' ≡ a) (eAl : (T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A') ≡ (T.⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A))
               (eA′ : A' ≡ A) (ed : t' ≡ t) (eM : T.μ-type F' ≡ T.μ-type F)
               (da : Γ' ⊢[ Ψa ] a' ∷ T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A' ! π) (dt : Γ' ⊢[ Ψt ] t' ∷ T.μ-type F' ! π)
@@ -180,7 +180,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
     rewrite WellFormedF-irrelevant wf' wf = refl
 
   tr-unfold : ∀ {Ψc Ψs π π′ F' F A' A} {c' c s' s : G.Tm n} {wf' wf}
-                {eΓ : Γ' ≡ Γ} {et : G.unfold c' s' ≡ G.unfold c s} {eN : T.ν-type F' π ≡ T.ν-type F π}
+                {eΓ : Γ' ≡ Γ} {et : G.unfold A' c' s' ≡ G.unfold A c s} {eN : T.ν-type F' π ≡ T.ν-type F π}
                 (eF : F' ≡ F) (eA : A' ≡ A) (ec : c' ≡ c)
                 (eCo : (A' T.⇒[ T.mk-kind T.Many π ] T.⟦ F' ⟧T A') ≡ (A T.⇒[ T.mk-kind T.Many π ] T.⟦ F ⟧T A))
                 (es : s' ≡ s) (eA′ : A' ≡ A)
@@ -190,7 +190,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
     rewrite WellFormedF-irrelevant wf' wf = refl
 
   tr-out : ∀ {Ψ π F' F} {t' t : G.Tm n} {wf' wf}
-             {eΓ : Γ' ≡ Γ} {et : G.out t' ≡ G.out t} {eX : T.⟦ F' ⟧T (T.ν-type F' π) ≡ T.⟦ F ⟧T (T.ν-type F π)}
+             {eΓ : Γ' ≡ Γ} {et : G.out F' t' ≡ G.out F t} {eX : T.⟦ F' ⟧T (T.ν-type F' π) ≡ T.⟦ F ⟧T (T.ν-type F π)}
              (eF : F' ≡ F) (ed : t' ≡ t) (eN : T.ν-type F' π ≡ T.ν-type F π)
              (d : Γ' ⊢[ Ψ ] t' ∷ T.ν-type F' π ! π)
          → tr eΓ et eX (GT.⊢out wf' d) ≡ GT.⊢out wf (tr eΓ ed eN d)
@@ -275,20 +275,22 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
   rtT-id : ∀ {n} (t : G.Tm n) → absTm Δ t ⟪ σ ⟫ₜ ≡ t
   rtT-id (G.var i)        = refl
   rtT-id (G.lam t)        = cong G.lam (rtT-id t)
-  rtT-id (G.app t u)      = cong₂ G.app (rtT-id t) (rtT-id u)
-  rtT-id (G.let′ t u)     = cong₂ G.let′ (rtT-id t) (rtT-id u)
+  rtT-id (G.app A q t u)  = trans (cong (λ X → G.app X q _ _) (rt-id A)) (cong₂ (G.app A q) (rtT-id t) (rtT-id u))
+  rtT-id (G.let′ A q t u) = trans (cong (λ X → G.let′ X q _ _) (rt-id A)) (cong₂ (G.let′ A q) (rtT-id t) (rtT-id u))
   rtT-id G.unit           = refl
   rtT-id (G.pair t u)     = cong₂ G.pair (rtT-id t) (rtT-id u)
-  rtT-id (G.fst t)        = cong G.fst (rtT-id t)
-  rtT-id (G.snd t)        = cong G.snd (rtT-id t)
+  rtT-id (G.fst B t)      = cong₂ G.fst (rt-id B) (rtT-id t)
+  rtT-id (G.snd A t)      = cong₂ G.snd (rt-id A) (rtT-id t)
   rtT-id (G.inl t)        = cong G.inl (rtT-id t)
   rtT-id (G.inr t)        = cong G.inr (rtT-id t)
-  rtT-id (G.case s l r)   = trans (cong₂ (λ x y → G.case x y _) (rtT-id s) (rtT-id l)) (cong (G.case s l) (rtT-id r))
+  rtT-id (G.case A B qℓ qr s l r) =
+    trans (cong₂ (λ X Y → G.case X Y qℓ qr _ _ _) (rt-id A) (rt-id B))
+          (trans (cong₂ (λ x y → G.case A B qℓ qr x y _) (rtT-id s) (rtT-id l)) (cong (G.case A B qℓ qr s l) (rtT-id r)))
   rtT-id (G.absurd t)     = cong G.absurd (rtT-id t)
   rtT-id (G.roll t)       = cong G.roll (rtT-id t)
-  rtT-id (G.fold a t)     = cong₂ G.fold (rtT-id a) (rtT-id t)
-  rtT-id (G.unfold c t)   = cong₂ G.unfold (rtT-id c) (rtT-id t)
-  rtT-id (G.out t)        = cong G.out (rtT-id t)
+  rtT-id (G.fold F a t)   = trans (cong (λ H → G.fold H _ _) (rtF-id F)) (cong₂ (G.fold F) (rtT-id a) (rtT-id t))
+  rtT-id (G.unfold A c t) = trans (cong (λ X → G.unfold X _ _) (rt-id A)) (cong₂ (G.unfold A) (rtT-id c) (rtT-id t))
+  rtT-id (G.out F t)      = cong₂ G.out (rtF-id F) (rtT-id t)
   rtT-id (G.coerce A B t) = trans (cong₂ (λ x y → G.coerce x y _) (rt-id A) (rt-id B)) (cong (G.coerce A B) (rtT-id t))
   rtT-id (G.lit l)        = refl
   rtT-id (G.prim p t)     = cong (G.prim p) (rtT-id t)

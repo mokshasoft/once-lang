@@ -133,7 +133,7 @@ tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {π = π} {π′ = 
            (tsubst σ r k))
     (tsubst σ r x)
 tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {F = F} {t = t} wf d) =
-  subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] out (t ⟨ σ ⟩ₜ) ∷ X ! π) (sym (⟦⟧F-⟨⟩ F (ν-type F π) σ))
+  subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] out (F ⟨ σ ⟩F) (t ⟨ σ ⟩ₜ) ∷ X ! π) (sym (⟦⟧F-⟨⟩ F (ν-type F π) σ))
     (⊢out (wf-⟨⟩ r wf) (tsubst σ r d))
 tsubst σ r (⊢coerce p d) = ⊢coerce (<:ₚ-⟨⟩ σ p) (tsubst σ r d)
 tsubst σ r ⊢lit-int = ⊢lit-int

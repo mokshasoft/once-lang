@@ -6,10 +6,19 @@
 --
 -- SPEC. The core is the language definition; the bidirectional judgment is a
 -- surface that elaborates into it. Shaped as the non-dependent fragment of
--- OCP-0009's `Spec/Kernel` (`NbEPDirDBType`): well-scoped de Bruijn raw terms,
--- Curry-style binders (the typing judgment supplies the domain), and a
--- separate EXTRINSIC judgment (`Once.Spec.Core.Typing`). The dependent kernel
--- lands by adding formers here, never by introducing a second syntax.
+-- OCP-0009's `Spec/Kernel` (`NbEPDirDBType`): well-scoped de Bruijn raw terms
+-- and a separate EXTRINSIC judgment (`Once.Spec.Core.Typing`). The dependent
+-- kernel lands by adding formers here, never by introducing a second syntax.
+--
+-- A TERM RECORDS WHAT ITS DERIVATION WOULD OTHERWISE CHOOSE (D310): given the
+-- term and its judgment's type, every premise's type and grade is determined.
+-- So `app`, `let′` carry the argument's type and quantity, `fst`/`snd` the
+-- other component, `case` the summands and the arms' quantities, `fold`/`out`
+-- the functor, `unfold` the seed's type. A former whose premises the
+-- conclusion's type already fixes (`lam`, `pair`, `inl`, `roll`, …) carries
+-- nothing. The meaning is defined on derivations, and this is what makes it a
+-- function of the judgment (`Once.Spec.Core.Coherence`): two derivations can
+-- then differ only in where the structural rules sit.
 --
 -- What is NOT a former: the categorical combinators (`id`, `compose`, `fst`
 -- as a morphism, `pair`/`case` of arrows, `curry`, `apply`, `terminal`,
@@ -44,7 +53,8 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Integer using (ℤ)
 open import Once.Float.Decimal using (Decimal)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Spec.Type using (Type; Unit; Int; Float; _*_; _+_)
+open import Once.Spec.Type using (Type; Unit; Int; Float; _*_; _+_; Functor)
+open import Once.Spec.Type.Grade using (Quantity)
 
 ------------------------------------------------------------------------
 -- Literals and primitive operations
@@ -109,20 +119,21 @@ primCod p-i2f  = Float
 data Tm (n : ℕ) : Set where
   var    : Fin n → Tm n
   lam    : Tm (suc n) → Tm n
-  app    : Tm n → Tm n → Tm n
-  let′   : Tm n → Tm (suc n) → Tm n
+  app    : Type → Quantity → Tm n → Tm n → Tm n      -- app A q f x: f at A ⇒[ q , _ ] _
+  let′   : Type → Quantity → Tm n → Tm (suc n) → Tm n  -- let′ A q e b: x : A, used q times
   unit   : Tm n
   pair   : Tm n → Tm n → Tm n
-  fst    : Tm n → Tm n
-  snd    : Tm n → Tm n
+  fst    : Type → Tm n → Tm n                      -- fst B p: p : _ * B
+  snd    : Type → Tm n → Tm n                      -- snd A p: p : A * _
   inl    : Tm n → Tm n
   inr    : Tm n → Tm n
-  case   : Tm n → Tm (suc n) → Tm (suc n) → Tm n
+  case   : Type → Type → Quantity → Quantity       -- case A B qℓ qr s l r: s : A + B
+         → Tm n → Tm (suc n) → Tm (suc n) → Tm n
   absurd : Tm n → Tm n
   roll   : Tm n → Tm n
-  fold   : Tm n → Tm n → Tm n            -- fold alg t
-  unfold : Tm n → Tm n → Tm n            -- unfold coalg seed
-  out    : Tm n → Tm n
+  fold   : Functor → Tm n → Tm n → Tm n            -- fold F alg t: t : μ F
+  unfold : Type → Tm n → Tm n → Tm n               -- unfold A coalg seed: seed : A
+  out    : Functor → Tm n → Tm n                   -- out F t: t : ν F _
   coerce : Type → Type → Tm n → Tm n     -- coerce A B t, along A <: B
   lit    : Lit → Tm n
   prim   : Prim → Tm n → Tm n
@@ -144,20 +155,20 @@ extR ρ (suc i) = suc (ρ i)
 ren : ∀ {n m} → Ren n m → Tm n → Tm m
 ren ρ (var i)        = var (ρ i)
 ren ρ (lam t)        = lam (ren (extR ρ) t)
-ren ρ (app t u)      = app (ren ρ t) (ren ρ u)
-ren ρ (let′ t u)     = let′ (ren ρ t) (ren (extR ρ) u)
+ren ρ (app A q t u)  = app A q (ren ρ t) (ren ρ u)
+ren ρ (let′ A q t u) = let′ A q (ren ρ t) (ren (extR ρ) u)
 ren ρ unit           = unit
 ren ρ (pair t u)     = pair (ren ρ t) (ren ρ u)
-ren ρ (fst t)        = fst (ren ρ t)
-ren ρ (snd t)        = snd (ren ρ t)
+ren ρ (fst B t)      = fst B (ren ρ t)
+ren ρ (snd A t)      = snd A (ren ρ t)
 ren ρ (inl t)        = inl (ren ρ t)
 ren ρ (inr t)        = inr (ren ρ t)
-ren ρ (case s l r)   = case (ren ρ s) (ren (extR ρ) l) (ren (extR ρ) r)
+ren ρ (case A B qℓ qr s l r) = case A B qℓ qr (ren ρ s) (ren (extR ρ) l) (ren (extR ρ) r)
 ren ρ (absurd t)     = absurd (ren ρ t)
 ren ρ (roll t)       = roll (ren ρ t)
-ren ρ (fold a t)     = fold (ren ρ a) (ren ρ t)
-ren ρ (unfold c t)   = unfold (ren ρ c) (ren ρ t)
-ren ρ (out t)        = out (ren ρ t)
+ren ρ (fold F a t)   = fold F (ren ρ a) (ren ρ t)
+ren ρ (unfold A c t) = unfold A (ren ρ c) (ren ρ t)
+ren ρ (out F t)      = out F (ren ρ t)
 ren ρ (coerce A B t) = coerce A B (ren ρ t)
 ren ρ (lit l)        = lit l
 ren ρ (prim p t)     = prim p (ren ρ t)
@@ -177,20 +188,20 @@ extS σ (suc i) = wk (σ i)
 sub : ∀ {n m} → Sub n m → Tm n → Tm m
 sub σ (var i)        = σ i
 sub σ (lam t)        = lam (sub (extS σ) t)
-sub σ (app t u)      = app (sub σ t) (sub σ u)
-sub σ (let′ t u)     = let′ (sub σ t) (sub (extS σ) u)
+sub σ (app A q t u)  = app A q (sub σ t) (sub σ u)
+sub σ (let′ A q t u) = let′ A q (sub σ t) (sub (extS σ) u)
 sub σ unit           = unit
 sub σ (pair t u)     = pair (sub σ t) (sub σ u)
-sub σ (fst t)        = fst (sub σ t)
-sub σ (snd t)        = snd (sub σ t)
+sub σ (fst B t)      = fst B (sub σ t)
+sub σ (snd A t)      = snd A (sub σ t)
 sub σ (inl t)        = inl (sub σ t)
 sub σ (inr t)        = inr (sub σ t)
-sub σ (case s l r)   = case (sub σ s) (sub (extS σ) l) (sub (extS σ) r)
+sub σ (case A B qℓ qr s l r) = case A B qℓ qr (sub σ s) (sub (extS σ) l) (sub (extS σ) r)
 sub σ (absurd t)     = absurd (sub σ t)
 sub σ (roll t)       = roll (sub σ t)
-sub σ (fold a t)     = fold (sub σ a) (sub σ t)
-sub σ (unfold c t)   = unfold (sub σ c) (sub σ t)
-sub σ (out t)        = out (sub σ t)
+sub σ (fold F a t)   = fold F (sub σ a) (sub σ t)
+sub σ (unfold A c t) = unfold A (sub σ c) (sub σ t)
+sub σ (out F t)      = out F (sub σ t)
 sub σ (coerce A B t) = coerce A B (sub σ t)
 sub σ (lit l)        = lit l
 sub σ (prim p t)     = prim p (sub σ t)

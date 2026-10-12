@@ -44,10 +44,10 @@ open import Once.Spec.Core.Derived S
 ⊢idᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → Γ ⊢[ zeroUsage ] idᶜ ∷ A ⇒[ mk-kind Many π ] A ! pure
 ⊢idᶜ {π = π} = ⊢lam refl (⊢var′ zero π)
 
-⊢fstᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] fstᶜ ∷ (A * B) ⇒[ mk-kind Many π ] A ! pure
+⊢fstᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] fstᶜ B ∷ (A * B) ⇒[ mk-kind Many π ] A ! pure
 ⊢fstᶜ {π = π} = ⊢lam refl (⊢fst (⊢var′ zero π))
 
-⊢sndᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] sndᶜ ∷ (A * B) ⇒[ mk-kind Many π ] B ! pure
+⊢sndᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] sndᶜ A ∷ (A * B) ⇒[ mk-kind Many π ] B ! pure
 ⊢sndᶜ {π = π} = ⊢lam refl (⊢snd (⊢var′ zero π))
 
 ⊢inlᶜ : ∀ {n} {Γ : Ctx n} {A B : Type} {π : Purity} → Γ ⊢[ zeroUsage ] inlᶜ ∷ A ⇒[ mk-kind Many π ] (A + B) ! pure
@@ -95,7 +95,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢composeᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π : Purity} {f g}
           → Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π ] C ! pure
           → Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] B ! pure
-          → Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] composeᶜ f g ∷ A ⇒[ mk-kind Many π ] C ! pure
+          → Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] composeᶜ A B C π f g ∷ A ⇒[ mk-kind Many π ] C ! pure
 ⊢composeᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} df dg =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many)))
@@ -105,7 +105,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢pairᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π : Purity} {f g}
        → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure
        → Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] C ! pure
-       → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pairᶜ f g ∷ A ⇒[ mk-kind Many π ] (B * C) ! pure
+       → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pairᶜ A B C π f g ∷ A ⇒[ mk-kind Many π ] (B * C) ! pure
 ⊢pairᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (trans (arms One Ψ₁ Ψ₂ (trans (cong₂ _+ᵘ_ (z+qz Many) (z+qz Many)) (+ᵘ-identityˡ zeroUsage)))
@@ -117,7 +117,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢caseᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π : Purity} {f g}
        → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] C ! pure
        → Γ ⊢[ Ψ₂ ] g ∷ B ⇒[ mk-kind Many π ] C ! pure
-       → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] caseᶜ f g ∷ (A + B) ⇒[ mk-kind Many π ] C ! pure
+       → Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] caseᶜ A B C π f g ∷ (A + B) ⇒[ mk-kind Many π ] C ! pure
 ⊢caseᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (trans (arms One Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (trans (cong₂ _⊔ᵘ_ (z+qz Many) (z+qz Many)) z⊔z))
@@ -130,7 +130,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 
 ⊢curryᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C : Type} {π₀ π : Purity} {f}
         → Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure
-        → Γ ⊢[ Ψ ] curryᶜ f ∷ A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C) ! pure
+        → Γ ⊢[ Ψ ] curryᶜ A B C π f ∷ A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C) ! pure
 ⊢curryᶜ {Γ = Γ} {Ψ} {π₀ = π₀} {π} df =
   subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
         (trans (cong₂ _+ᵘ_ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (+ᵘ-identityˡ zeroUsage))) (z+qz Many))
@@ -142,7 +142,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢cataᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π : Purity} {alg}
        → WellFormedF F
        → Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure
-       → Γ ⊢[ Many *ᵘ Ψ ] cataᶜ alg ∷ μ-type F ⇒[ mk-kind Many π ] A ! pure
+       → Γ ⊢[ Many *ᵘ Ψ ] cataᶜ F A π alg ∷ μ-type F ⇒[ mk-kind Many π ] A ! pure
 -- Plan 0.113 B1: inside the body the algebra's variable is used ω times (the
 -- fold applies it per node), so the `let` charges `Many *ᵘ Ψ` — the surface rule.
 ⊢cataᶜ {Γ = Γ} {Ψ} {π = π} wf da =
@@ -154,7 +154,7 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢anaᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π : Purity} {c}
       → WellFormedF F
       → Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure
-      → Γ ⊢[ Many *ᵘ Ψ ] anaᶜ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
+      → Γ ⊢[ Many *ᵘ Ψ ] anaᶜ A c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
 ⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} wf dc =
   ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
                    (⊢unfold wf (⊢sub-eff (pure⊑ π₀) (wk-⊢′ A dc)) (⊢var′ zero π₀)))
@@ -164,8 +164,8 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ------------------------------------------------------------------------
 
 ⊢applyᶜ : ∀ {n} {Γ : Ctx n} {A B : Type}
-        → Γ ⊢[ zeroUsage ] applyᶜ ∷ ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many pure ] B ! pure
-⊢applyᶜ {Γ = Γ} = subst (λ U → Γ ⊢[ U ] applyᶜ ∷ _ ! pure) (z+qz Many)
+        → Γ ⊢[ zeroUsage ] applyᶜ A B ∷ ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many pure ] B ! pure
+⊢applyᶜ {Γ = Γ} = subst (λ U → Γ ⊢[ U ] applyᶜ _ _ ∷ _ ! pure) (z+qz Many)
   (⊢lam refl (⊢app (⊢fst (⊢var zero)) (⊢snd (⊢var zero))))
 
 ⊢inᶜ : ∀ {n} {Γ : Ctx n} {F : Functor}
@@ -173,18 +173,18 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢inᶜ wf = ⊢lam refl (⊢roll wf (⊢var zero))
 
 ⊢outᶜ : ∀ {n} {Γ : Ctx n} {F : Functor}
-      → WellFormedF F → Γ ⊢[ zeroUsage ] outᶜ ∷ ν-type F pure ⇒[ mk-kind Many pure ] ⟦ F ⟧T (ν-type F pure) ! pure
+      → WellFormedF F → Γ ⊢[ zeroUsage ] outᶜ F ∷ ν-type F pure ⇒[ mk-kind Many pure ] ⟦ F ⟧T (ν-type F pure) ! pure
 ⊢outᶜ wf = ⊢lam refl (⊢out wf (⊢var zero))
 
 ⊢applyEffᶜ : ∀ {n} {Γ : Ctx n} {A B : Type}
-           → Γ ⊢[ zeroUsage ] applyEffᶜ
+           → Γ ⊢[ zeroUsage ] applyEffᶜ A B
                ∷ ((A ⇒[ mk-kind Many eff ] B) * A) ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many eff ] B) ! pure
-⊢applyEffᶜ {Γ = Γ} = subst (λ U → Γ ⊢[ U ] applyEffᶜ ∷ _ ! pure) (z+qz Many)
+⊢applyEffᶜ {Γ = Γ} = subst (λ U → Γ ⊢[ U ] applyEffᶜ _ _ ∷ _ ! pure) (z+qz Many)
   (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var′ (suc zero) eff)) (⊢snd (⊢var′ (suc zero) eff)))))
 
 ⊢outEffᶜ : ∀ {n} {Γ : Ctx n} {F : Functor}
          → WellFormedF F
-         → Γ ⊢[ zeroUsage ] outEffᶜ
+         → Γ ⊢[ zeroUsage ] outEffᶜ F
              ∷ ν-type F eff ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff)) ! pure
 ⊢outEffᶜ wf = ⊢lam refl (⊢lam refl (⊢out wf (⊢var′ (suc zero) eff)))
 
@@ -193,6 +193,6 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢effAppᶜ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B : Type} {f x}
          → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many eff ] B ! pure
          → Γ ⊢[ Ψ₂ ] x ∷ A ! pure
-         → Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] effAppᶜ f x ∷ Unit ⇒[ mk-kind Many eff ] B ! pure
+         → Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] effAppᶜ A f x ∷ Unit ⇒[ mk-kind Many eff ] B ! pure
 ⊢effAppᶜ df dx = ⊢lam refl (⊢app (⊢sub-eff ⊑-pe (wk-⊢′ Unit df)) (⊢sub-eff ⊑-pe (wk-⊢′ Unit dx)))
 
