@@ -30,7 +30,8 @@ open import Once.Spec.Name using (CanonicalName)
 module Once.CCC.Codegen.ThunkScope (o : CanonicalName) where
 
 open import Data.Bool using (Bool; true; false; _∧_)
-open import Data.Nat using (ℕ; suc; _≤_; _<_; s≤s; z≤n; _+_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _≤_; _<_; s≤s; z≤n; _+_)
+import Data.Nat as ℕ
 open import Data.List using ([]; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -493,7 +494,7 @@ module Scope {FS : FrameSemantics} where
                           (ts-weaken ≤-refl (cata-label-mono (strat-branching F) bb n1 l1 at) ats)))))
     where
       B : ℕ
-      B = n1 + 7 + (4 *ℕ fsize F) + 4
+      B = n1 + 7 + (4 ℕ.* fsize F) + 4
       L : ℕ
       L = l1 + 4 + lsize F + lsize F
       low : l1 ≤ L

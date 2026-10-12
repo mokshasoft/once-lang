@@ -223,7 +223,7 @@ open import Data.List.Relation.Unary.All.Properties using (++⁻)
 import Data.List
 open import Data.Bool using (false)
 import Data.String
-open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_)
+import Data.List.Membership.DecPropositional Data.String._≟_ as StrMem
 open import Once.Adequacy.ImageWF using (lib-defs)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
 open import Once.Spec.Module using (moduleSig-ef; teleSig)
@@ -285,7 +285,7 @@ module Lib (m : Module) where
   -- every SigOp leaf names a block or an extern (`externs-of`'s construction)
   private
     calls-ok : All G (C.calls-of (C.rewrite-program lp))
-    calls-ok = Data.List.Relation.Unary.All.tabulate (λ {s} s∈ → split s s∈ (s ∈ˢ? C.block-syms (C.program-blocks lp)))
+    calls-ok = Data.List.Relation.Unary.All.tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? C.block-syms (C.program-blocks lp)))
       where
         split : ∀ s → s ∈ C.calls-of (C.rewrite-program lp) → _ → G s
         split s s∈ (yes b) = inj₁ (there (∈-++⁺ʳ (adefs (C.lib-image tbl)) b))

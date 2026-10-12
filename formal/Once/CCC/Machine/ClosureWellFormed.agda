@@ -30,7 +30,8 @@ open import Data.List using (List; [])
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Machine.ClosureWellFormed (o : CanonicalName) (tbl : List IRFun) where
 
-open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc)
+import Data.Nat as ℕ
 open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ; m≤n+m; +-monoʳ-≤; +-comm)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
@@ -843,8 +844,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         -- Consistency check: declared stack-budget covers the bump's slot delta.
         bump-fits-stack-budget : next-slot-delta bump ≤ stack-budget
         -- max-slot-written must cover the bump-derived final next-slot.
-        max-slot-geq-final : next-slot-delta bump +ℕ next-slot alloc ≤ max-slot-written
-        max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ stack-budget
+        max-slot-geq-final : next-slot-delta bump ℕ.+ next-slot alloc ≤ max-slot-written
+        max-slot-usage-bound : max-slot-written ≤ next-slot alloc ℕ.+ stack-budget
         frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
           halted s' ≡ false →
           readReg (regs s') Input1 ≡ SV-Ptr input-loc →
@@ -857,14 +858,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         trace-writes-below : TraceWritesBelow max-slot-written trace
         trace-slot-reads-below : TraceSlotReadsBelow max-slot-written trace
         scratch-budget : ℕ
-        scratch-bounded : max-slot-written ≤ next-slot (apply-bump bump alloc) +ℕ scratch-budget
+        scratch-bounded : max-slot-written ≤ next-slot (apply-bump bump alloc) ℕ.+ scratch-budget
 
       -- Derived projections (Plan 0.17.1):
       slot-monotone : next-slot alloc ≤ next-slot (apply-bump bump alloc)
       slot-monotone = m≤n+m (next-slot alloc) (next-slot-delta bump)
 
-      slot-stays-in-budget : next-slot (apply-bump bump alloc) ≤ next-slot alloc +ℕ stack-budget
-      slot-stays-in-budget = subst (_≤ next-slot alloc +ℕ stack-budget)
+      slot-stays-in-budget : next-slot (apply-bump bump alloc) ≤ next-slot alloc ℕ.+ stack-budget
+      slot-stays-in-budget = subst (_≤ next-slot alloc ℕ.+ stack-budget)
         (+-comm (next-slot alloc) (next-slot-delta bump))
         (+-monoʳ-≤ (next-slot alloc) bump-fits-stack-budget)
 
@@ -876,8 +877,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         max-heap-ref-written : ℕ
         -- Consistency check: declared heap-budget covers the bump's heap delta.
         bump-fits-heap-budget : next-heap-ref-delta bump ≤ heap-budget
-        max-heap-ref-geq-final : next-heap-ref-delta bump +ℕ next-heap-ref alloc ≤ max-heap-ref-written
-        max-heap-usage-bound : max-heap-ref-written ≤ next-heap-ref alloc +ℕ heap-budget
+        max-heap-ref-geq-final : next-heap-ref-delta bump ℕ.+ next-heap-ref alloc ≤ max-heap-ref-written
+        max-heap-usage-bound : max-heap-ref-written ≤ next-heap-ref alloc ℕ.+ heap-budget
 
       -- Derived projection (Plan 0.17.1):
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref (apply-bump bump alloc)
@@ -1040,10 +1041,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     (IRResultAWF.heap-monotone r)
     where
       -- After substituting budget = 0 and applying +-identityʳ to
-      -- collapse `n +ℕ 0` to `n`, we get the desired bound.
-      bound-via-budget : IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc +ℕ 0
+      -- collapse `n ℕ.+ 0` to `n`, we get the desired bound.
+      bound-via-budget : IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc ℕ.+ 0
       bound-via-budget = subst
-        (λ b → IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc +ℕ b)
+        (λ b → IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc ℕ.+ b)
         budget-eq
         (IRResultAWF.max-heap-usage-bound r)
 
@@ -1902,7 +1903,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   validityWF-alloc-advance : ∀ {m alloc A} (v : ⟦ A ⟧) loc s (n : ℕ) →
     ValidAtWF m alloc {A} v loc s →
-    let alloc' = record alloc { next-slot = next-slot alloc +ℕ n }
+    let alloc' = record alloc { next-slot = next-slot alloc ℕ.+ n }
     in ValidAtWF m alloc' v loc s
 
   validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n valid-unit-wf =
@@ -1917,7 +1918,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       -- Only the ALLOC moves, so a cell's read equation is untouched and an
       -- inline component transports unchanged.
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → CellAt alloc C c cl s
-         → CellAt (record alloc { next-slot = next-slot alloc +ℕ n }) C c cl s
+         → CellAt (record alloc { next-slot = next-slot alloc ℕ.+ n }) C c cl s
       go cl (cell-ptr {comp-loc = pl} r bf v) =
         cell-ptr r (stack-alloc-advances alloc n pl bf) (validityWF-alloc-advance _ pl s n v)
       go cl (cell-inline rep r) = cell-inline rep r
@@ -1941,7 +1942,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (stack-alloc-advances alloc n (sucLoc loc) slb)
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → CellAt alloc C c cl s
-         → CellAt (record alloc { next-slot = next-slot alloc +ℕ n }) C c cl s
+         → CellAt (record alloc { next-slot = next-slot alloc ℕ.+ n }) C c cl s
       go cl (cell-ptr {comp-loc = pl} r bf v) =
         cell-ptr r (stack-alloc-advances alloc n pl bf) (validityWF-alloc-advance _ pl s n v)
       go cl (cell-inline rep r) = cell-inline rep r

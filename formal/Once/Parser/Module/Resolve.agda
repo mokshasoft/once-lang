@@ -36,7 +36,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_; _++_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no; ¬_; does)
+open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
 open import Relation.Nullary.Decidable using (toWitness; toWitnessFalse; isYes)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
@@ -176,12 +177,6 @@ isBuiltinName-false x eq = toWitnessFalse (subst (λ b → T (not b)) (sym eq) t
 ... | yes gw = ⊥-elim (¬gw gw)
 ... | no  _  = refl
 
-elemStr : String → List String → Bool
-elemStr _ []       = false
-elemStr x (y ∷ ys) with x ≟ y
-... | yes _ = true
-... | no  _ = elemStr x ys
-
 -- | Names of own-module POLYMORPHIC definitions — a `DTypeSig name ty` whose
 -- `ty` is NON-ground (`isGround ty ≡ inj₂`), mirroring `extractFunctions`'
 -- ground/poly split (Once.Parser): a non-ground sig routes its `DFunDef` into a
@@ -278,7 +273,7 @@ canonExpr bound um am (RQualified name alias) with alias ≟ "this"
 ... | no  _ with lookupImportAlias am alias
 ...   | just path = RResolved (canonical (expandPath path ++L (name ∷ [])))
 ...   | nothing   = RQualified name alias
-canonExpr bound um am (RVar x)            = canonVar (elemStr x bound) (isBuiltinName x) (lookupUnaliased um x) x
+canonExpr bound um am (RVar x)            = canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x
 canonExpr bound um am (RResolved cn)      = RResolved cn
 canonExpr bound um am (RApp f x)          = RApp (canonExpr bound um am f) (canonExpr bound um am x)
 canonExpr bound um am (RLam x b)          = RLam x (canonExpr (x ∷ bound) um am b)
@@ -304,7 +299,7 @@ cls-canon : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
               {e : RawExpr}
           → ClosedLiftShape e → ClosedLiftShape (canonExpr bound um am e)
 cls-canon bound um am (cls-var {x = x})
-  with elemStr x bound | isBuiltinName x | lookupUnaliased um x
+  with does (x ∈? bound) | isBuiltinName x | lookupUnaliased um x
 ... | true  | _     | _       = cls-var
 ... | false | true  | _       = cls-res
 ... | false | false | just _  = cls-res

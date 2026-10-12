@@ -40,7 +40,7 @@ open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming ()
 open import Once.Spec.Name using (CanonicalName)
-open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
@@ -166,7 +166,7 @@ linkedAt-rewrite-at e es f A B (yes _) (no _)  _       lk = linkedAt-rewrite es 
 linkedAt-rewrite-at e es f A B (no _)  _       _       lk = linkedAt-rewrite es f A B lk
 linkedAt-rewrite []       f A B ()
 linkedAt-rewrite (e ∷ es) f A B lk =
-  linkedAt-rewrite-at e es f A B (fname e ≟cn f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
+  linkedAt-rewrite-at e es f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
 
 linked-retable : ∀ {σ : ISig} (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir → Linked σ (rewrite-table tbl) ir
 linked-retable tbl (g I.∘ f)       (lg , lf) = linked-retable tbl g lg , linked-retable tbl f lf

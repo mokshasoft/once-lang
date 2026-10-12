@@ -43,7 +43,8 @@ open AllocState using (next-slot)
 open LocState using (halted; regs)
 open import Data.Sum using (inj₂)
 open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
-open import Once.IRTy using (IRTy) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy)
+import Once.IRTy as IRT
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -82,7 +83,7 @@ module ArmRC {FS : FrameSemantics} where
                 (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
                 (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
                 {Bv : ⟦ B ⟧} {mIn : AllocMode} {loc : ValueLocation FS}
-                (vd : ValidAtWF mIn alloc {A +ᵀ B} (inj₂ Bv) loc s)
+                (vd : ValidAtWF mIn alloc {A IRT.+ B} (inj₂ Bv) loc s)
                 (rd : readReg (regs s) Input1 ≡ SV-Ptr loc)
                 (k : ℕ)
                 where

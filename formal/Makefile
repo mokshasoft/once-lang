@@ -15,7 +15,6 @@
 #
 # Standalone proofs (not part of compilation pipeline):
 #   make postulates   - Core postulates (pulled in automatically)
-#   make spf          - Strictly positive functors
 #
 # Target-specific steps (step-target):
 #   make ccc-x86-64    - CCC code gen for X86-64
@@ -127,11 +126,6 @@ postulates:
 	@echo "Type-checking postulates..."
 	@sh -c '$(AGDA_CMD) Once/Postulates.agda'
 
-
-.PHONY: spf
-spf:
-	@echo "Type-checking strictly positive functors..."
-	@sh -c '$(AGDA_CMD) Once/SPF.agda'
 
 #-----------------------------------------------------------------------------
 # Optimizer Completeness Proofs (separate from compiler)

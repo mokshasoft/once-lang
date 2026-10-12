@@ -24,6 +24,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
 open import Data.Char using (Char; isAlpha; isDigit)
 import Data.Char as Ch
+open import Data.Char.Properties using (_==_)
 open import Relation.Nullary using (does)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _≤_; _<_; s≤s; z≤n)
 -- `+` alone is ℤ's prefix constructor here (Data.Integer is imported below), so
@@ -34,7 +35,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Integer using (+_)
 open import Data.String using (String; fromList; toList)
-open import Agda.Builtin.Char using (primCharEquality; primCharToNat)
+open import Agda.Builtin.Char using (primCharToNat)
 
 -- | Convert Char to ℕ (character code)
 toNat : Char → ℕ
@@ -60,10 +61,6 @@ isIdentContinue c =
   (toNat c ≡ᵇ toNat '*') ∨
   (toNat c ≡ᵇ toNat '!') ∨
   (toNat c ≡ᵇ toNat '?')
-
--- | Character equality
-_==c_ : Char → Char → Bool
-c₁ ==c c₂ = primCharEquality c₁ c₂
 
 ------------------------------------------------------------------------
 -- Bounded-consumption helpers.
@@ -182,7 +179,7 @@ collectString cs with collectStringB cs
 skipLineB : (cs : List Char) → Σ[ rest ∈ List Char ] (length rest ≤ length cs)
 skipLineB [] = [] , z≤n
 skipLineB ('\n' ∷ cs) = '\n' ∷ cs , ≤-refl
-skipLineB (c ∷ cs) with c ==c '\n'
+skipLineB (c ∷ cs) with c == '\n'
 ... | true  = c ∷ cs , ≤-refl
 ... | false = let (rest , bnd) = skipLineB cs
               in  rest , m≤n⇒m≤1+n bnd
@@ -205,7 +202,7 @@ skipBlockB-WF (suc n) (c ∷ []) (acc rec) =
   let (rest , bnd) = skipBlockB-WF (suc n) [] (rec (s≤s z≤n))
   in  rest , m≤n⇒m≤1+n bnd
 skipBlockB-WF (suc n) (c₁ ∷ c₂ ∷ cs) (acc rec)
-  with c₁ ==c '{' ∧ c₂ ==c '-' | c₁ ==c '-' ∧ c₂ ==c '}'
+  with (c₁ == '{') ∧ (c₂ == '-') | (c₁ == '-') ∧ (c₂ == '}')
 ... | true  | _     =
         let (rest , bnd) =
               skipBlockB-WF (suc (suc n)) cs

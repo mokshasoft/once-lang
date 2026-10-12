@@ -14,7 +14,7 @@
 module Once.CCC.Machine.IR.MuSize where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
-  renaming (_+_ to _+ℕ_)
+import Data.Nat as ℕ
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; n≤1+n; n<1+n;
   m≤m+n; m≤n+m; ≤-<-trans)
 open import Data.Sum using (inj₁; inj₂)
@@ -36,7 +36,7 @@ sum-Id (K t)     x         = 0
 sum-Id Id        n         = n
 sum-Id (F₁ ⊕ F₂) (inj₁ x)  = sum-Id F₁ x
 sum-Id (F₁ ⊕ F₂) (inj₂ y)  = sum-Id F₂ y
-sum-Id (F₁ ⊗ F₂) (x , y)   = sum-Id F₁ x +ℕ sum-Id F₂ y
+sum-Id (F₁ ⊗ F₂) (x , y)   = sum-Id F₁ x ℕ.+ sum-Id F₂ y
 
 ------------------------------------------------------------------------
 -- μ-size: number of constructor nodes in a μ-value (one per layer).
@@ -132,8 +132,8 @@ abstract
 functor-size : Functor → ℕ
 functor-size (K t)     = 1
 functor-size Id        = 1
-functor-size (F₁ ⊕ F₂) = suc (functor-size F₁ +ℕ functor-size F₂)
-functor-size (F₁ ⊗ F₂) = suc (functor-size F₁ +ℕ functor-size F₂)
+functor-size (F₁ ⊕ F₂) = suc (functor-size F₁ ℕ.+ functor-size F₂)
+functor-size (F₁ ⊗ F₂) = suc (functor-size F₁ ℕ.+ functor-size F₂)
 
 fsize-inj-left : ∀ F₁ F₂ → functor-size F₁ < functor-size (F₁ ⊕ F₂)
 fsize-inj-left F₁ F₂ = s≤s (m≤m+n (functor-size F₁) (functor-size F₂))

@@ -12,7 +12,8 @@
 
 module Once.CCC.Target.X86-64.Syntax where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ)
+import Data.Nat as ℕ
 open import Data.List using (List; foldr)
 open import Data.String using (String)
 open import Once.CCC.Label using (LabelId; Label)
@@ -190,7 +191,7 @@ slot-size = 8
 
 -- | Convert slots to bytes: n slots = n * 8 bytes
 slots : ℕ → ℕ
-slots n = n *ℕ slot-size
+slots n = n ℕ.* slot-size
 
 ------------------------------------------------------------------------
 -- Stack consumption analysis
@@ -261,7 +262,7 @@ instr-consumed-slots (label _)        = 0
 -- | Total stack slots consumed by an instruction sequence
 -- Note: This counts allocations only, not the net change (ignores pop/add/ret)
 instrs-consumed-slots : List Instr → ℕ
-instrs-consumed-slots = foldr (λ i acc → instr-consumed-slots i +ℕ acc) 0
+instrs-consumed-slots = foldr (λ i acc → instr-consumed-slots i ℕ.+ acc) 0
 
 -- | Offsets for product fields
 fstOffset : ℕ

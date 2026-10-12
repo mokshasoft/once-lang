@@ -18,7 +18,7 @@
 -- relation for the parser, and it earns its keep only by being an INDEPENDENT
 -- statement: every side condition here is a PROPERTY (`x ∈ bound`,
 -- `GenWord x`, `FirstAt a p am`), never a call to the decider the resolver
--- happens to use (`elemStr`, `isBuiltinName`, `lookupImportAlias`). Reading it
+-- happens to use (`_∈?_`, `isBuiltinName`, `lookupImportAlias`). Reading it
 -- off `canonExpr` would make the bridge lemmas tautologies (D134).
 --
 -- D136 is the substance of `rv-gen`/`rv-own`: a lexical binder shadows, a

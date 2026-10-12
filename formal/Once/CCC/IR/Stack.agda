@@ -11,7 +11,8 @@
 
 module Once.CCC.IR.Stack where
 
-open import Data.Nat using (ℕ; suc; _≤_; _⊔_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _≤_; _⊔_)
+import Data.Nat as ℕ
 open import Data.Nat.Properties using (+-assoc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
@@ -85,13 +86,13 @@ sum-depth (wf-Prod wfL wfR) = sum-depth wfL ⊔ sum-depth wfR
 ir-stack-requirement : ∀ {A B} → IR A B → ℕ
 -- D062: stack requirement of a Fuse/Hylo's natural transform.
 ir-stack-requirement id = 0
-ir-stack-requirement (g ∘ f) = ir-stack-requirement f +ℕ ir-stack-requirement g
-ir-stack-requirement ⟨ f , g ⟩ = 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
+ir-stack-requirement (g ∘ f) = ir-stack-requirement f ℕ.+ ir-stack-requirement g
+ir-stack-requirement ⟨ f , g ⟩ = 1 ℕ.+ ir-stack-requirement f ℕ.+ ir-stack-requirement g ℕ.+ pair-slots
 ir-stack-requirement fst = 0
 ir-stack-requirement snd = 0
 ir-stack-requirement inl = pair-slots
 ir-stack-requirement inr = pair-slots
-ir-stack-requirement (case f g) = ir-stack-requirement f +ℕ ir-stack-requirement g
+ir-stack-requirement (case f g) = ir-stack-requirement f ℕ.+ ir-stack-requirement g
 ir-stack-requirement terminal = 0
 ir-stack-requirement initial = 0
 ir-stack-requirement (curry _) = pair-slots
@@ -106,7 +107,7 @@ ir-stack-requirement (out-μ _) = 0
 -- Uses a while-loop pattern at runtime
 -- product-depth accounts for save-slots needed during Product layer processing
 -- sum-depth * 2 accounts for Sum wrapper slots (OCP-0003 Option B)
-ir-stack-requirement (Cata wfF alg) = product-depth wfF +ℕ (sum-depth wfF *ℕ 2) +ℕ ir-stack-requirement alg +ℕ pair-slots
+ir-stack-requirement (Cata wfF alg) = product-depth wfF ℕ.+ (sum-depth wfF ℕ.* 2) ℕ.+ ir-stack-requirement alg ℕ.+ pair-slots
 -- Para: paramorphism, like Cata but with access to original structure
 -- product-depth accounts for save-slots needed during Product layer processing
 -- sum-depth * 2 accounts for Sum wrapper slots (OCP-0003 Option B)
@@ -115,7 +116,7 @@ ir-stack-requirement (Out _) = 0
 -- in-ν: constructs ν-value (Lambek inverse of Out)
 ir-stack-requirement (in-ν _) = 1
 -- Ana: produces ν-value lazily, needs stack for coalgebra
-ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg +ℕ pair-slots
+ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg ℕ.+ pair-slots
 -- Hylo: fused cata ∘ ana, combines both requirements
 -- Fuse: μ-anchored fusion (correct by construction)
 -- Guard/Unguard removed: productivity follows from IR totality
@@ -146,11 +147,11 @@ ir-scratch-requirement = ir-stack-requirement
 ------------------------------------------------------------------------
 
 ∘-stack-req : ∀ {A B C} (f : IR A B) (g : IR B C) →
-  ir-stack-requirement (g ∘ f) ≡ ir-stack-requirement f +ℕ ir-stack-requirement g
+  ir-stack-requirement (g ∘ f) ≡ ir-stack-requirement f ℕ.+ ir-stack-requirement g
 ∘-stack-req f g = refl
 
 ⟨,⟩-stack-req : ∀ {A B C} (f : IR A B) (g : IR A C) →
-  ir-stack-requirement ⟨ f , g ⟩ ≡ 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
+  ir-stack-requirement ⟨ f , g ⟩ ≡ 1 ℕ.+ ir-stack-requirement f ℕ.+ ir-stack-requirement g ℕ.+ pair-slots
 ⟨,⟩-stack-req f g = refl
 
 sigOp-stack-req : ∀ {A B} (si : SigOpInfo A B) →
@@ -162,21 +163,21 @@ sigOp-stack-req _ = refl
 ------------------------------------------------------------------------
 
 ⟨,⟩-capacity-for-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (slot cap : ℕ) →
-  slot +ℕ ir-stack-requirement ⟨ f , g ⟩ ≤ cap →
-  (slot +ℕ 1) +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots ≤ cap
+  slot ℕ.+ ir-stack-requirement ⟨ f , g ⟩ ≤ cap →
+  (slot ℕ.+ 1) ℕ.+ ir-stack-requirement f ℕ.+ ir-stack-requirement g ℕ.+ pair-slots ≤ cap
 ⟨,⟩-capacity-for-pair f g slot cap pf =
   let rf = ir-stack-requirement f
       rg = ir-stack-requirement g
       ps = pair-slots
-      step1 : slot +ℕ (1 +ℕ rf +ℕ rg +ℕ ps) ≤ cap
+      step1 : slot ℕ.+ (1 ℕ.+ rf ℕ.+ rg ℕ.+ ps) ≤ cap
       step1 = pf
-      step2 : (slot +ℕ 1) +ℕ (rf +ℕ rg +ℕ ps) ≤ cap
-      step2 = subst (_≤ cap) (sym (+-assoc slot 1 (rf +ℕ rg +ℕ ps))) step1
-      step3 : (slot +ℕ 1) +ℕ ((rf +ℕ rg) +ℕ ps) ≤ cap
+      step2 : (slot ℕ.+ 1) ℕ.+ (rf ℕ.+ rg ℕ.+ ps) ≤ cap
+      step2 = subst (_≤ cap) (sym (+-assoc slot 1 (rf ℕ.+ rg ℕ.+ ps))) step1
+      step3 : (slot ℕ.+ 1) ℕ.+ ((rf ℕ.+ rg) ℕ.+ ps) ≤ cap
       step3 = step2
-      step4 : ((slot +ℕ 1) +ℕ (rf +ℕ rg)) +ℕ ps ≤ cap
-      step4 = subst (_≤ cap) (sym (+-assoc (slot +ℕ 1) (rf +ℕ rg) ps)) step3
-      step5 : (((slot +ℕ 1) +ℕ rf) +ℕ rg) +ℕ ps ≤ cap
-      step5 = subst (λ x → x +ℕ ps ≤ cap) (sym (+-assoc (slot +ℕ 1) rf rg)) step4
+      step4 : ((slot ℕ.+ 1) ℕ.+ (rf ℕ.+ rg)) ℕ.+ ps ≤ cap
+      step4 = subst (_≤ cap) (sym (+-assoc (slot ℕ.+ 1) (rf ℕ.+ rg) ps)) step3
+      step5 : (((slot ℕ.+ 1) ℕ.+ rf) ℕ.+ rg) ℕ.+ ps ≤ cap
+      step5 = subst (λ x → x ℕ.+ ps ≤ cap) (sym (+-assoc (slot ℕ.+ 1) rf rg)) step4
   in step5
 

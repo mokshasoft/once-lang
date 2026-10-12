@@ -88,20 +88,6 @@ open import Once.Spec.Typing
 open import Once.TypeCheck.TargetView
 
 ------------------------------------------------------------------------
--- Weakening from Empty Context
-------------------------------------------------------------------------
-
--- | Weaken from empty context to arbitrary context
---
--- Built-in expressions have no free variables, so we can weaken them
--- from ∅ to any context Γ by repeatedly applying weaken.
---
--- Note: weaken and exchange functions are now imported from Once.Surface.Thinning
---
--- weakenFromEmpty is now imported from Once.Surface.Thinning; it produces
--- SExpr Γ zeroUsage A from SExpr S∅ Surface.zeroUsage A, propagating the usage index.
-
-------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)
 ------------------------------------------------------------------------
 
@@ -364,9 +350,6 @@ embedOrSubsume ctx e T (success T' Ψ eE d fr , w) = embedOrSubsume-dec ctx e T 
 -- builtin's specialized body directly given the ground type arguments.
 -- This is more principled: each builtin's body is a fixed small term
 -- and its specialization is a one-line function over ground types.
---
--- All return SExpr S∅ _ (closed expressions); weaken to the actual
--- context with weakenFromEmpty at the call site.
 
 -- Plan 0.2.4.5 D2: morphism-realm spec helpers.
 --

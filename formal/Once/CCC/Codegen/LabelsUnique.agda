@@ -33,7 +33,8 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.LabelsUnique (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _≤_; _<_; _+_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _≤_; _<_; _+_)
+import Data.Nat as ℕ
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
@@ -408,7 +409,7 @@ module Unique {FS : FrameSemantics} where
                  (cata-body-tl L (L + 1) bb at))))
     where
       B : ℕ
-      B = n1 + 7 + (4 *ℕ fsize F) + 4
+      B = n1 + 7 + (4 ℕ.* fsize F) + 4
       L : ℕ
       L = l1 + 4 + lsize F + lsize F
       P₁ = cata-call-setup B (B + 1) (B + 2) (B + 3) L

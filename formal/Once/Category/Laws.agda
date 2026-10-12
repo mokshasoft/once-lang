@@ -252,7 +252,7 @@ eval-bicase-id m (inj₂ b) = refl
 --   cata alg ∘ ana coalg = hylo alg coalg
 --
 -- Full proofs require functor fmap operations and universal properties.
--- See SPF.agda for the semantic foundations.
+-- See Semantics/Functor.agda for the semantic foundations.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------

@@ -57,6 +57,22 @@ postulate
                    (∀ x → f x ≡ g x) → f ≡ g
 
 ------------------------------------------------------------------------
+-- Postulates P2, P3: the fold's universal property (plan 0.112 D3)
+------------------------------------------------------------------------
+--
+-- `fold-unique` and `fold-fusion`, postulated in `Once.Metatheory.Recursion`
+-- (their statements need the meaning, which this module does not import).
+--
+-- NEEDED BY: nothing; they discharge the Spec's claims
+--   (`Spec.Metatheory.Recursion`) on the apex.
+-- JUSTIFICATION: induction on the (finite) μ tree; see that module.
+-- IMPACT: if false, the Spec's claim about `fold` is false; no compiler
+--   proof depends on them.
+-- RUNTIME EFFECT: none (erased).
+--
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- Semantic Gap S1: Fixed Point Semantics
 ------------------------------------------------------------------------
 --

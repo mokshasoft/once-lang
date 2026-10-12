@@ -12,6 +12,8 @@ module Once.Metatheory where
 
 open import Once.Spec.Metatheory using (Metatheory; TypeSystem)
 open import Once.Metatheory.TermModel using (termModel)
+open import Once.Metatheory.Effects using (effects)
+open import Once.Metatheory.Recursion using (recursion)
 import Once.Metatheory.SubLaws as SL
 import Once.Metatheory.ModeAgreement as MA
 
@@ -32,4 +34,9 @@ typeSystem = record
   }
 
 metatheory : Metatheory
-metatheory = record { term-model = termModel ; type-system = typeSystem }
+metatheory = record
+  { term-model  = termModel
+  ; type-system = typeSystem
+  ; effects     = effects
+  ; recursion   = recursion
+  }

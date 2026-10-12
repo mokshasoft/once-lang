@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float;
   _*_; _⇛_; μ-type; ν-type; K; Id; _⊕_; _⊗_; ⟦_⟧TI)
-  renaming (_+_ to _+ᵗ_)
+import Once.IRTy as IRT
 open import Once.IR using (IR; AllocMode; Heap; Stack;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; In; out-μ; Cata; Out; in-ν; Ana;
@@ -121,7 +121,7 @@ ty-eq Unit      Unit      = true
 ty-eq Int       Int       = true
 ty-eq Float     Float     = true
 ty-eq (a * b)   (c * d)   = ty-eq a c ∧ ty-eq b d
-ty-eq (a +ᵗ b)  (c +ᵗ d)  = ty-eq a c ∧ ty-eq b d
+ty-eq (a IRT.+ b)  (c IRT.+ d)  = ty-eq a c ∧ ty-eq b d
 ty-eq (a ⇛ b)   (c ⇛ d)   = ty-eq a c ∧ ty-eq b d
 ty-eq (μ-type f) (μ-type g) = func-eq f g
 ty-eq (ν-type f) (ν-type g) = func-eq f g
@@ -141,16 +141,16 @@ sub-reg _            e-any        = true
 sub-reg (e-repr a)   (e-repr b)   = ty-eq a b
 sub-reg (e-inl a b)  (e-inl c d)  = ty-eq a c ∧ ty-eq b d
 sub-reg (e-inr a b)  (e-inr c d)  = ty-eq a c ∧ ty-eq b d
-sub-reg (e-inl a b)  (e-repr c)   = ty-eq (a +ᵗ b) c
-sub-reg (e-inr a b)  (e-repr c)   = ty-eq (a +ᵗ b) c
+sub-reg (e-inl a b)  (e-repr c)   = ty-eq (a IRT.+ b) c
+sub-reg (e-inr a b)  (e-repr c)   = ty-eq (a IRT.+ b) c
 sub-reg (e-tag m)    (e-tag n)    = nat-eq m n
 sub-reg e-word       e-word       = true
 -- COMPLETED fresh converts to a typed representation at check points: a
 -- sum node needs tag 0/1 + a payload cell claiming the branch type; a pair
 -- needs both cells claiming the component types. Cell claims are PTR-only
 -- (`MeetsCell`), so the conversion demands `e-repr` cells exactly.
-sub-reg (e-fresh (just (e-tag zero)) (just (e-repr p))) (e-repr (a +ᵗ b)) = ty-eq p a
-sub-reg (e-fresh (just (e-tag (suc zero))) (just (e-repr p))) (e-repr (a +ᵗ b)) = ty-eq p b
+sub-reg (e-fresh (just (e-tag zero)) (just (e-repr p))) (e-repr (a IRT.+ b)) = ty-eq p a
+sub-reg (e-fresh (just (e-tag (suc zero))) (just (e-repr p))) (e-repr (a IRT.+ b)) = ty-eq p b
 sub-reg (e-fresh (just (e-repr p)) (just (e-repr q))) (e-repr (a * b)) = ty-eq p a ∧ ty-eq q b
 {-# CATCHALL #-}
 sub-reg _            _            = false
@@ -172,17 +172,17 @@ sub-expect s t = sub-reg (e-in1 s) (e-in1 t)
 
 -- the sum view of a TYPE (aux-style — no `with`, so it inverts)
 as-sum-of : IRTy → Maybe (IRTy × IRTy)
-as-sum-of (a +ᵗ b) = just (a , b)
+as-sum-of (a IRT.+ b) = just (a , b)
 {-# CATCHALL #-}
 as-sum-of _        = nothing
 
-as-sum-of-inv : ∀ T {a b} → as-sum-of T ≡ just (a , b) → T ≡ (a +ᵗ b)
-as-sum-of-inv (a +ᵗ b) refl = refl
+as-sum-of-inv : ∀ T {a b} → as-sum-of T ≡ just (a , b) → T ≡ (a IRT.+ b)
+as-sum-of-inv (a IRT.+ b) refl = refl
 
 -- view a representation expectation as a SUM (unfolding one μ/ν layer —
 -- the μ node IS its layer, `shape-μ`)
 as-sum : RegExpect → Maybe (IRTy × IRTy)
-as-sum (e-repr (a +ᵗ b))   = just (a , b)
+as-sum (e-repr (a IRT.+ b))   = just (a , b)
 as-sum (e-repr (μ-type f)) = as-sum-of (⟦ f ⟧TI (μ-type f))
 -- D189: a ν is a SUSPENSION — its cell holds the seed, not a tag — so a
 -- branch-tag site may NOT read one directly. It must be `Out`-ed first; the
@@ -199,7 +199,7 @@ is-ptr (e-repr (a * b))  = true
 is-ptr (e-repr (a ⇛ b))  = true
 is-ptr (e-repr (μ-type f)) = true
 is-ptr (e-repr (ν-type f)) = true
-is-ptr (e-repr (a +ᵗ b)) = true
+is-ptr (e-repr (a IRT.+ b)) = true
 is-ptr (e-inl a b)       = true
 is-ptr (e-inr a b)       = true
 is-ptr (e-fresh _ _)     = true
@@ -803,7 +803,7 @@ module Sem (FS : FrameSemantics) where
   ty-eq-sound (a * b) (c * d) ok
     rewrite ty-eq-sound a c (proj₁ (∧-split (ty-eq a c) _ ok))
           | ty-eq-sound b d (proj₂ (∧-split (ty-eq a c) _ ok)) = refl
-  ty-eq-sound (a +ᵗ b) (c +ᵗ d) ok
+  ty-eq-sound (a IRT.+ b) (c IRT.+ d) ok
     rewrite ty-eq-sound a c (proj₁ (∧-split (ty-eq a c) _ ok))
           | ty-eq-sound b d (proj₂ (∧-split (ty-eq a c) _ ok)) = refl
   ty-eq-sound (a ⇛ b) (c ⇛ d) ok
@@ -819,12 +819,12 @@ module Sem (FS : FrameSemantics) where
   -- a refinement rebuilds its sum shape (`shape-inl` / `shape-inr` intro)
 
   inl-shape : ∀ {alloc A B loc ls} (r : InlAt alloc A B loc ls)
-            → ShapeAt (InlAt.i-m r) alloc (A +ᵗ B) loc ls
+            → ShapeAt (InlAt.i-m r) alloc (A IRT.+ B) loc ls
   inl-shape r = shape-inl (InlAt.i-mode r) (InlAt.i-tag r) (InlAt.i-cell r)
                           (InlAt.i-bf-p r) (InlAt.i-bf-s r) (InlAt.i-pay r)
 
   inr-shape : ∀ {alloc A B loc ls} (r : InrAt alloc A B loc ls)
-            → ShapeAt (InrAt.r-m r) alloc (A +ᵗ B) loc ls
+            → ShapeAt (InrAt.r-m r) alloc (A IRT.+ B) loc ls
   inr-shape r = shape-inr (InrAt.r-mode r) (InrAt.r-tag r) (InrAt.r-cell r)
                           (InrAt.r-bf-p r) (InrAt.r-bf-s r) (InrAt.r-pay r)
 
@@ -840,9 +840,9 @@ module Sem (FS : FrameSemantics) where
     rewrite ty-eq-sound a c (proj₁ (∧-split (ty-eq a c) _ ok))
           | ty-eq-sound b d (proj₂ (∧-split (ty-eq a c) _ ok)) = m
   sub-reg-sound (e-inl a b) (e-repr c) ok (loc , v-eq , r)
-    rewrite sym (ty-eq-sound (a +ᵗ b) c ok) | v-eq = rs-ptr (inl-shape r)
+    rewrite sym (ty-eq-sound (a IRT.+ b) c ok) | v-eq = rs-ptr (inl-shape r)
   sub-reg-sound (e-inr a b) (e-repr c) ok (loc , v-eq , r)
-    rewrite sym (ty-eq-sound (a +ᵗ b) c ok) | v-eq = rs-ptr (inr-shape r)
+    rewrite sym (ty-eq-sound (a IRT.+ b) c ok) | v-eq = rs-ptr (inr-shape r)
   sub-reg-sound (e-tag m') (e-tag n) ok mm
     rewrite nat-eq-sound m' n ok = mm
   sub-reg-sound e-word e-word ok m = m
@@ -850,13 +850,13 @@ module Sem (FS : FrameSemantics) where
   -- the carried cell facts. The block start is a heap location whose ref
   -- sits just below the frontier, so `BeforeFrontier` for its cells is the
   -- frontier arithmetic; `LocMatchesMode Heap (AtDynamic _)` is `tt`.
-  sub-reg-sound (e-fresh (just (e-tag zero)) (just (e-repr p))) (e-repr (a +ᵗ b)) ok
+  sub-reg-sound (e-fresh (just (e-tag zero)) (just (e-repr p))) (e-repr (a IRT.+ b)) ok
     (hl , v-eq , off0 , suc-nhr , tag-cell , (ploc , pc-eq , pbf , pm , pshape))
     rewrite v-eq | sym (ty-eq-sound p a ok) =
     rs-ptr {m = Heap}
       (shape-inl tt tag-cell pc-eq pbf
         (heap-before (subst (ref-id (heap-ref hl) <_) suc-nhr ≤-refl)) pshape)
-  sub-reg-sound (e-fresh (just (e-tag (suc zero))) (just (e-repr p))) (e-repr (a +ᵗ b)) ok
+  sub-reg-sound (e-fresh (just (e-tag (suc zero))) (just (e-repr p))) (e-repr (a IRT.+ b)) ok
     (hl , v-eq , off0 , suc-nhr , tag-cell , (ploc , pc-eq , pbf , pm , pshape))
     rewrite v-eq | sym (ty-eq-sound p b ok) =
     rs-ptr {m = Heap}
@@ -996,7 +996,7 @@ module Sem (FS : FrameSemantics) where
   site-load-ptr (e-repr (a ⇛ b))    ok (rs-ptr {loc = loc} _) = loc , refl
   site-load-ptr (e-repr (μ-type f)) ok (rs-ptr {loc = loc} _) = loc , refl
   site-load-ptr (e-repr (ν-type f)) ok (rs-ptr {loc = loc} _) = loc , refl
-  site-load-ptr (e-repr (a +ᵗ b))   ok (rs-ptr {loc = loc} _) = loc , refl
+  site-load-ptr (e-repr (a IRT.+ b))   ok (rs-ptr {loc = loc} _) = loc , refl
   site-load-ptr (e-inl a b)     ok (loc , v-eq , _) = loc , v-eq
   site-load-ptr (e-inr a b)     ok (loc , v-eq , _) = loc , v-eq
   site-load-ptr (e-fresh c₀ c₁) ok (hl , v-eq , _)  = AtDynamic hl , v-eq
@@ -1009,7 +1009,7 @@ module Sem (FS : FrameSemantics) where
   site-load-ptr (e-repr Float)  () _
 
   -- a sum shape's node carries a written tag (0 for inl, 1 for inr)
-  tag-of-shape : ∀ {m alloc A B loc ls} → ShapeAt m alloc (A +ᵗ B) loc ls
+  tag-of-shape : ∀ {m alloc A B loc ls} → ShapeAt m alloc (A IRT.+ B) loc ls
                → Σ ℕ λ t → readLoc ls loc ≡ just (SV-Tag t)
   tag-of-shape (shape-inl {m = m} lm tg cell bfp bfs pay) = 0 , tag-at-read m 0 _ _ tg
   tag-of-shape (shape-inr {m = m} lm tg cell bfp bfs pay) = 1 , tag-at-read m 1 _ _ tg
@@ -1023,7 +1023,7 @@ module Sem (FS : FrameSemantics) where
            → as-sum-of T ≡ just (a , b)
            → ShapeAt m alloc T loc ls
            → Σ ℕ λ t → readLoc ls loc ≡ just (SV-Tag t)
-  tag-of-μ (a +ᵗ b) refl sh = tag-of-shape sh
+  tag-of-μ (a IRT.+ b) refl sh = tag-of-shape sh
 
   site-branch-tag : ∀ (e₁ : RegExpect) {alloc v ls} → tag-site-ok e₁ ≡ true
                   → MeetsR e₁ alloc v ls
@@ -1031,7 +1031,7 @@ module Sem (FS : FrameSemantics) where
                       × Σ ℕ λ t → readLoc ls loc ≡ just (SV-Tag t)
   site-branch-tag (e-fresh (just (e-tag t)) c₁) ok (hl , v-eq , _ , _ , tag-cell , _) =
     AtDynamic hl , v-eq , t , tag-cell
-  site-branch-tag (e-repr (a +ᵗ b)) ok (rs-ptr {loc = loc} sh) =
+  site-branch-tag (e-repr (a IRT.+ b)) ok (rs-ptr {loc = loc} sh) =
     loc , refl , tag-of-shape sh
   site-branch-tag (e-inl a b) ok (loc , v-eq , r) =
     loc , v-eq , 0 , tag-at-read (InlAt.i-m r) 0 _ _ (InlAt.i-tag r)

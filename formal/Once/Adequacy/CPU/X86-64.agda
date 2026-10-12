@@ -30,6 +30,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
+import Data.Nat as ℕ
 open import Data.Product using (_×_)
 
 open import Once.Denotation.Behavior      using (Behavior)
@@ -64,7 +65,7 @@ open X64 using (State; readReg; readMem)
 open X64.State using (regs; memory)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
-open import Data.Nat using (_*_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_*_)
 open import Data.Maybe using (just; nothing)
 
 ------------------------------------------------------------------------
@@ -107,7 +108,7 @@ def nothing  = 0
 -- rsp keeps every slot inside the reserved frame [rsp, rsp+8N) and makes the
 -- slot→address map unconditionally injective (see `sa-inj`, no frontier needed).
 scratch-addr : State → XScratch → X64.Word
-scratch-addr s sc = readReg (regs s) rsp +ℕ (8 * XScratch.slot sc)
+scratch-addr s sc = readReg (regs s) rsp ℕ.+ (8 * XScratch.slot sc)
 
 side-off : Side → X64.Word
 side-off Fst = 0
@@ -118,7 +119,7 @@ side-off Snd = 8
 path-load-go : State → X64.Word → InputPath → X64.Word
 path-load-go s addr []          = def (readMem (memory s) addr)
 path-load-go s addr (sd ∷ rest) =
-  path-load-go s (def (readMem (memory s) (addr +ℕ side-off sd))) rest
+  path-load-go s (def (readMem (memory s) (addr ℕ.+ side-off sd))) rest
 
 path-load : State → InputPath → X64.Word
 path-load s p = path-load-go s (readReg (regs s) rdi) p

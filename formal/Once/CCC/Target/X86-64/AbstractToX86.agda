@@ -13,7 +13,8 @@
 
 module Once.CCC.Target.X86-64.AbstractToX86 where
 
-open import Data.Nat using (ℕ; suc) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc)
+import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 
 -- Plan 0.10 Phase B: SigOp dispatch. Plan 0.30 cleanup: the two live
@@ -45,7 +46,7 @@ open import Once.CCC.Label using (once; callee)
 ------------------------------------------------------------------------
 
 slot-to-disp : Slot → ℕ
-slot-to-disp n = n *ℕ slot-size
+slot-to-disp n = n ℕ.* slot-size
 
 ------------------------------------------------------------------------
 -- AbstractInstr → x86 Program

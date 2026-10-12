@@ -98,6 +98,7 @@ slot-size>0 : 0 < slot-size
 slot-size>0 = nz⇒pos slot-size
 
 open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _≤_; z≤n)
+open import Once.Memory.Memory using (≡ᵇ-refl; ≢⇒≡ᵇfalse)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; m≤m+n; <-irrefl; ≤-<-trans; <-≤-trans; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans; m<n⇒m<1+n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n; +-identityʳ; m∸n≤m; *-identityˡ; <⇒≤)
 open import Data.Bool using (true; false; if_then_else_)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -1104,16 +1105,6 @@ sim-load-from-slot {hv} slot w fs s s' corr st-eq st =
 -- ≟HL) to the x86 memory update `writeMem` (decides addresses by ≡ᵇ).
 -- They agree because haddr hv is INJECTIVE (the memory injection).
 ------------------------------------------------------------------------
-≡ᵇ-refl : ∀ (n : ℕ) → (n ≡ᵇ n) ≡ true
-≡ᵇ-refl zero    = refl
-≡ᵇ-refl (suc n) = ≡ᵇ-refl n
-
-≢→≡ᵇfalse : ∀ {m n : ℕ} → (m ≡ n → ⊥) → (m ≡ᵇ n) ≡ false
-≢→≡ᵇfalse {zero}  {zero}  ¬p = ⊥-elim (¬p refl)
-≢→≡ᵇfalse {zero}  {suc n} _  = refl
-≢→≡ᵇfalse {suc m} {zero}  _  = refl
-≢→≡ᵇfalse {suc m} {suc n} ¬p = ≢→≡ᵇfalse {m} {n} (λ p → ¬p (cong suc p))
-
 -- A write OUTSIDE the virgin region leaves it virgin (plan 0.54 rung D step 3).
 -- The `≢` is what each writing instruction supplies: a heap write is below the
 -- frontier (`dom-below`), a stack write is at or above `lo` (`lo-le`).
@@ -1194,7 +1185,7 @@ read-write-hit mem waddr v' rewrite ≡ᵇ-refl waddr = refl
 
 read-write-miss : ∀ (mem : Memory) (waddr : ℕ) (v' : Word) (a : ℕ) → (a ≡ waddr → ⊥)
                 → readMem (writeMem mem waddr v') a ≡ readMem mem a
-read-write-miss mem waddr v' a ne rewrite ≢→≡ᵇfalse {a} {waddr} ne = refl
+read-write-miss mem waddr v' a ne rewrite ≢⇒≡ᵇfalse a waddr ne = refl
 
 -- THE FLOOR IS ONLY EVER READ AT THE HEAD, so replacing it there is the whole
 -- of both frame moves: `enter-frame` conses (the tail's floor becomes the

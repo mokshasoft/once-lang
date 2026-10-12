@@ -58,6 +58,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_; _∧_; T)
 open import Data.Empty using (⊥-elim)
 open import Data.Unit using (tt)
 open import Relation.Nullary using (does)
+open import Once.Memory.Memory using (≡ᵇ-refl)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
 -- | The machine-word carrier, SHARED BY ALL WIDTHS (D054 residue
@@ -330,10 +331,6 @@ module Width (bits : ℕ) where
   %ˢ-zero x = refl
 
   -- small Bool helpers
-  ≡ᵇ-refl : ∀ n → (n ℕ.≡ᵇ n) ≡ true
-  ≡ᵇ-refl zero    = refl
-  ≡ᵇ-refl (suc n) = ≡ᵇ-refl n
-
   ≡ᵇ0-false : ∀ {n} → 0 < n → (n ℕ.≡ᵇ 0) ≡ false
   ≡ᵇ0-false {suc _} _ = refl
 

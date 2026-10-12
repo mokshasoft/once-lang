@@ -31,7 +31,10 @@ open import Data.String using (String; toList)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; subst)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; proof)
+open import Relation.Nullary.Reflects using (Reflects; invert)
+open import Relation.Nullary.Decidable using (¬?)
+open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Data.Empty using (⊥-elim)
 open import Function using (case_of_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
@@ -42,7 +45,7 @@ open import Data.Sum.Properties using (inj₂-injective)
 open import Once.Parser using
   ( FunInfo; PolyFunInfo; Entry; e-fun; e-poly; funsOf; polysOf
   ; extractFunctions; extractFunctions-go; extractAliases
-  ; namesDistinct; nameElem; allValidIdentB; validIdentB; validCharsB
+  ; namesDistinct; allValidIdentB; validIdentB; validCharsB
   ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
 open import Once.Parser.Module.Core using (Module; mkModule)
@@ -103,16 +106,9 @@ allValidIdentB-sound (x ∷ xs) eq =
 -- Bool distinctness → `AllPairs _≢_`.
 ------------------------------------------------------------------------
 
-nameElem-false→All≢ : ∀ x xs → nameElem x xs ≡ false → All (λ y → x ≢ y) xs
-nameElem-false→All≢ x []       _  = []
-nameElem-false→All≢ x (y ∷ ys) eq with x ≟ y
-... | yes _  = ⊥-elim (T≢F eq)
-... | no ¬p  = (λ x≡y → ¬p x≡y) ∷ nameElem-false→All≢ x ys eq
-
 namesDistinct-sound : ∀ names → namesDistinct names ≡ true → AllPairs _≢_ names
-namesDistinct-sound []       _  = []
-namesDistinct-sound (x ∷ xs) eq =
-  nameElem-false→All≢ x xs (not-true→false (∧-elimˡ eq)) ∷ namesDistinct-sound xs (∧-elimʳ eq)
+namesDistinct-sound names eq =
+  invert (subst (Reflects (AllPairs _≢_ names)) eq (proof (allPairs? (λ x y → ¬? (x ≟ y)) names)))
 
 ------------------------------------------------------------------------
 -- Lift distinct+valid NAMES to distinct SYMBOLS via the proven encoding

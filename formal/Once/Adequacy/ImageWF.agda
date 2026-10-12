@@ -56,7 +56,7 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁺ʳ; �
 open import Data.Product using (proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
-open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_)
+import Data.List.Membership.DecPropositional Data.String._≟_ as StrMem
 import Data.String
 open import Once.CCC.Codegen.ImageSymbols using (heap-symbol; adefs)
 
@@ -94,7 +94,7 @@ ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 private
   calls-ok : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
            → All (ProgG m ir) (calls-of (rewrite-program (irProgram (moduleTable m) ir)))
-  calls-ok m ir = tabulate (λ {s} s∈ → split s s∈ (s ∈ˢ? block-syms (program-blocks p)))
+  calls-ok m ir = tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? block-syms (program-blocks p)))
     where
       p = irProgram (moduleTable m) ir
       split : ∀ s → s ∈ calls-of (rewrite-program p) → _ → ProgG m ir s

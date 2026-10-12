@@ -316,12 +316,12 @@ The `StackInvariant` predicate tracks the relationship between rsp and r15:
 
 ### S1: Fixed Point Semantics (Semantic Gap) — ADDRESSED
 
-This was a known limitation where `⟦ Fix F ⟧` used a newtype wrapper rather than true recursive substitution. **This is now addressed** by the SPF module (`Once/SPF.agda`).
+This was a known limitation where `⟦ Fix F ⟧` used a newtype wrapper rather than true recursive substitution. **This is now addressed** by the polynomial-functor semantics (`Once/Semantics/Functor.agda`).
 
 | Property | Value |
 |----------|-------|
 | **Type** | Semantic gap (addressed by SPF) |
-| **Location** | `Once/Semantics.agda` (old), `Once/SPF.agda` (solution) |
+| **Location** | `Once/Semantics.agda` (old), `Once/Semantics/Functor.agda` (solution; the standalone `Once/SPF.agda` was deleted 2026-10-12, plan 0.112) |
 | **Status** | SPF provides proper semantics; integration pending |
 | **Runtime effect** | None (operational semantics are correct) |
 
@@ -384,7 +384,7 @@ These handle the simplest cases but don't eliminate all counterexamples.
 
 ### Fixed Point Semantics (Fix, fold, unfold) — Semantic Gap S1 — ADDRESSED
 
-**Status**: The SPF module (`Once/SPF.agda`) now provides proper recursive type semantics. Integration into `Type.agda` and `Semantics.agda` is pending.
+**Status**: The polynomial-functor semantics (`Once/Semantics/Functor.agda`; the earlier standalone `Once/SPF.agda` was deleted, plan 0.112) provides proper recursive type semantics. Integration into `Type.agda` and `Semantics.agda` is pending.
 
 The original limitation was that `⟦ Fix F ⟧ = ⟦Fix⟧ ⟦ F ⟧` used a trivial newtype wrapper. The SPF module solves this with polynomial functors:
 
@@ -517,7 +517,7 @@ formal/Once/
 
 ## Future Work: SPF Integration
 
-The SPF module (`Once/SPF.agda`) now provides proper recursive type semantics via polynomial functors. **This is implemented and type-checks.**
+The polynomial-functor semantics (`Once/Semantics/Functor.agda`; the earlier standalone `Once/SPF.agda` was deleted, plan 0.112) provides proper recursive type semantics via polynomial functors. **This is implemented and type-checks.**
 
 ### What's Done (D037)
 

@@ -26,7 +26,7 @@ open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe)
 open import Data.List using (List; _∷_)
 open import Once.Spec.Name using (bare)
-open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -117,6 +117,6 @@ bare-injective refl = refl
 -- A head whose name ≠ "main" is skipped by findMain.
 findMain-skip : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
   ¬ (cfName cf ≡ bare "main") → findMain (cf ∷ rest) ≡ findMain rest
-findMain-skip cf rest ¬p with cfName cf ≟cn bare "main"
+findMain-skip cf rest ¬p with cfName cf ≟ᶜ bare "main"
 ... | yes p  = ⊥-elim (¬p p)
 ... | no ¬q  = findMain-here-no cf (isEffUU? (cfType cf)) (findMain rest) ¬q

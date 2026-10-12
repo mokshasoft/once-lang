@@ -15,59 +15,24 @@
 module Once.Memory.Memory where
 
 open import Data.Bool using (true; false; if_then_else_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
+open import Data.Nat using (ℕ; _≡ᵇ_; _≟_)
+open import Data.Nat.Properties using (≡ᵇ⇒≡)
+open import Data.Bool using (T)
+open import Data.Unit using (tt)
+open import Relation.Nullary.Decidable using (dec-true; dec-false)
 open import Data.Maybe using (Maybe; just)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; _≢_; inspect) renaming ([_] to ⟦_⟧)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; _≢_; inspect) renaming ([_] to ⟦_⟧)
 
 ------------------------------------------------------------------------
--- Boolean equality lemmas
+-- Boolean equality: `n ≡ᵇ n` is `does (n ≟ n)` by definition (stdlib).
 ------------------------------------------------------------------------
 
--- | n ≡ᵇ n is always true
 ≡ᵇ-refl : ∀ (n : ℕ) → (n ≡ᵇ n) ≡ true
-≡ᵇ-refl zero = refl
-≡ᵇ-refl (suc n) = ≡ᵇ-refl n
+≡ᵇ-refl n = dec-true (n ≟ n) refl
 
-------------------------------------------------------------------------
--- Address inequality helpers
-------------------------------------------------------------------------
-
--- | n ≢ n + suc k (used for proving disjoint stack addresses)
-n≢n+suc : ∀ (n k : ℕ) → n ≢ (n + suc k)
-n≢n+suc n k eq = helper n k (sym eq)
-  where
-    suc-injective : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
-    suc-injective refl = refl
-
-    helper : ∀ n k → (n + suc k) ≢ n
-    helper zero k ()
-    helper (suc n) k eq = helper n k (suc-injective eq)
-
--- | n ≡ᵇ (n + 8) is false (used for word-size aligned stack operations)
-n≢n+word-size-bool : ∀ (n : ℕ) → (n ≡ᵇ (n + 8)) ≡ false
-n≢n+word-size-bool zero = refl
-n≢n+word-size-bool (suc n) = n≢n+word-size-bool n
-
--- | (n + 8) ≡ᵇ n is false (swapped version)
-n+word-size≢n-bool : ∀ (n : ℕ) → ((n + 8) ≡ᵇ n) ≡ false
-n+word-size≢n-bool zero = refl
-n+word-size≢n-bool (suc n) = n+word-size≢n-bool n
-
--- | n ≡ᵇ (n + 16) is false
-n≢n+16-bool : ∀ (n : ℕ) → (n ≡ᵇ (n + 16)) ≡ false
-n≢n+16-bool zero = refl
-n≢n+16-bool (suc n) = n≢n+16-bool n
-
--- | (n + 16) ≡ᵇ n is false
-n+16≢n-bool : ∀ (n : ℕ) → ((n + 16) ≡ᵇ n) ≡ false
-n+16≢n-bool zero = refl
-n+16≢n-bool (suc n) = n+16≢n-bool n
-
--- | Boolean equality implies propositional equality
-≡ᵇ⇒≡ : ∀ (m n : ℕ) → (m ≡ᵇ n) ≡ true → m ≡ n
-≡ᵇ⇒≡ zero zero _ = refl
-≡ᵇ⇒≡ (suc m) (suc n) eq = cong suc (≡ᵇ⇒≡ m n eq)
+≢⇒≡ᵇfalse : ∀ (m n : ℕ) → m ≢ n → (m ≡ᵇ n) ≡ false
+≢⇒≡ᵇfalse m n ¬p = dec-false (m ≟ n) ¬p
 
 ------------------------------------------------------------------------
 -- Memory Model
@@ -109,7 +74,7 @@ readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
   readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
 readMem-writeMem-diff m addr1 addr2 v addr1≢addr2 with addr2 ≡ᵇ addr1 | inspect (_≡ᵇ addr1) addr2
 ... | false | _ = refl
-... | true | ⟦ eq ⟧ = ⊥-elim (addr1≢addr2 (sym (≡ᵇ⇒≡ addr2 addr1 eq)))
+... | true | ⟦ eq ⟧ = ⊥-elim (addr1≢addr2 (sym (≡ᵇ⇒≡ addr2 addr1 (subst T (sym eq) tt))))
 
 -- | Reading from a different address after a write returns the old value
 -- (boolean version - used by AArch64)

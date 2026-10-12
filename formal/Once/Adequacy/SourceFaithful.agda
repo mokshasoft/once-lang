@@ -65,7 +65,8 @@ open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-id; liftFn-fst; lift
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ)
-open import Once.IRTy using (IRTy; ⌊_⌋) renaming (_*_ to _*ᴵ_; _+_ to _+ᴵ_)
+open import Once.IRTy using (IRTy; ⌊_⌋)
+import Once.IRTy as IRT
 open import Function using (id)
 import Once.Semantics.Machine as Val
 import Once.Denotation.SourceDenote as SD
@@ -916,7 +917,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Zero _ e) dγ =
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
     ee = elaborate IR.Heap e
-    eeF : IR.IR (⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ *ᴵ ⌊ Unit ⌋) ⌊ B ⌋
+    eeF : IR.IR (⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ IRT.* ⌊ Unit ⌋) ⌊ B ⌋
     eeF = ee ∘ fst
     drop : ∀ u → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ * Unit} {B} eeF (dγ , u)
                  ≡ liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {B} ee dγ
@@ -940,7 +941,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} One _ e) dγ =
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
     ee = elaborate IR.Heap e
-    eeF : IR.IR (⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ *ᴵ ⌊ A ⌋) ⌊ B ⌋
+    eeF : IR.IR (⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ IRT.* ⌊ A ⌋) ⌊ B ⌋
     eeF = ee ∘ fst
     drop : ∀ a → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ * A} {B} eeF (dγ , a)
                  ≡ liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {B} ee dγ
@@ -964,7 +965,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Many _ e) dγ =
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
     ee = elaborate IR.Heap e
-    eeF : IR.IR (⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ *ᴵ ⌊ A ⌋) ⌊ B ⌋
+    eeF : IR.IR (⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ IRT.* ⌊ A ⌋) ⌊ B ⌋
     eeF = ee ∘ fst
     drop : ∀ a → liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ * A} {B} eeF (dγ , a)
                  ≡ liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {B} ee dγ
@@ -1618,7 +1619,7 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
     RR = elaborate IR.Heap r ∘ bindEnv {Γ = Γ} {A = B} IR.Heap qr
                             ∘ ⟨ restrictEnv {Γ = Γ} IR.Heap leR ∘ fst , snd ⟩
     reshape : ⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ
-            → ⟦ (⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋ *ᴵ ⌊ A ⌋) +ᴵ (⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋ *ᴵ ⌊ B ⌋) ⟧ᴰᴵ
+            → ⟦ (⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋ IRT.* ⌊ A ⌋) IRT.+ (⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋ IRT.* ⌊ B ⌋) ⟧ᴰᴵ
     reshape v = [ (λ a → inj₁ (Eall' , a)) , (λ b → inj₂ (Eall' , b)) ]′ v
     branchᴰ = λ v → [ (λ a → evalᴰ fmt ρ LL (Eall' , a)) , (λ b → evalᴰ fmt ρ RR (Eall' , b)) ]′ v
     dd-reduce : evalᴰ fmt ρ (distribute {⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} IR.Heap

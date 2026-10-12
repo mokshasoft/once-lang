@@ -30,7 +30,7 @@ open import Once.Type.Sub
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun)
 open import Once.Functor.Translate using (translateF)
 import Once.Semantics.Machine as Val
-open import Once.Semantics.Machine using (⟦_⟧F; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
+open import Once.Semantics.Machine using (⟦_⟧F; sem-fmap; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Target.Arch using (TargetNum)
@@ -111,6 +111,14 @@ cata-semᵛ : ∀ π {F A} → WellFormedF F
           → (⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) → ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ
 cata-semᵛ π {F} {A} wf alg =
   sem-cata wf (λ fc → bindM π (seqM π F fc) λ layer → alg (cf⁻¹ᵛ A wf layer))
+
+-- The functor's action on one layer at grade `π`: run `h` at every recursive
+-- position and sequence the results (a plain map at `pure`, Kleisli at `eff`).
+-- What a fold does to one layer before its algebra; the fold's laws
+-- (`Spec.Metatheory.Recursion`) are stated with it.
+mapLayerᵛ : ∀ π {F A B} → WellFormedF F
+          → (⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ) → ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ ⟦ F ⟧T B ⟧ᵛ
+mapLayerᵛ π {F} {A} {B} wf h x = fmapM π (cf⁻¹ᵛ B wf) (seqM π F (sem-fmap F h (cfᵛ A wf x)))
 
 ------------------------------------------------------------------------
 -- ν: pure codata, its embedding into the effectful one, unfold and out.

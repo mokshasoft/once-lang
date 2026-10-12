@@ -43,13 +43,6 @@ open LocState using (halted; regs)
 open CompUnit using (blocks)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
--- `m ≢ n` ⇒ the boolean `m ≡ᵇ n` is `false` (induction on m,n, matching `≡ᵇ`).
-≢⇒≡ᵇfalse : ∀ (m n : ℕ) → ¬ (m ≡ n) → (m ≡ᵇ n) ≡ false
-≢⇒≡ᵇfalse zero    zero    ne = ⊥-elim (ne refl)
-≢⇒≡ᵇfalse zero    (suc n) ne = refl
-≢⇒≡ᵇfalse (suc m) zero    ne = refl
-≢⇒≡ᵇfalse (suc m) (suc n) ne = ≢⇒≡ᵇfalse m n (λ eq → ne (cong suc eq))
-
 module FlatStepsAPI {FS : FrameSemantics} where
   open FlatMachine {FS}
 

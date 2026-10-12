@@ -13,7 +13,7 @@ module Once.Type.Match where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing; _>>=_)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String)
 import Data.String as Str
@@ -60,10 +60,6 @@ extendSubst x t s = extendSubst-aux x t s (lookupSubst x s)
 
 -- Maybe-handling helpers (no-with form).
 
-maybe-bind : ∀ {A B : Set} → (A → Maybe B) → Maybe A → Maybe B
-maybe-bind _ nothing  = nothing
-maybe-bind f (just a) = f a
-
 maybe-pair : ∀ {A B C : Set} → (A → B → C) → Maybe A → Maybe B → Maybe C
 maybe-pair f (just a) (just b) = just (f a b)
 maybe-pair _ (just _) nothing  = nothing
@@ -88,16 +84,16 @@ mutual
   instantiateAcc PInt            Int             s = just s
   instantiateAcc PFloat          Float           s = just s
   instantiateAcc (A P* B)        (a * b)         s =
-    maybe-bind (instantiateAcc B b) (instantiateAcc A a s)
+    (instantiateAcc A a s >>= instantiateAcc B b)
   instantiateAcc (A P+ B)        (a + b)         s =
-    maybe-bind (instantiateAcc B b) (instantiateAcc A a s)
+    (instantiateAcc A a s >>= instantiateAcc B b)
   instantiateAcc (A P⇒[ q ] B)   (a ⇒[ mk-kind q' pure ] b)   s =
     decide (q ≟q q')
-      (maybe-bind (instantiateAcc B b) (instantiateAcc A a s))
+      (instantiateAcc A a s >>= instantiateAcc B b)
   -- `Eff A B` is exactly the `Many` effectful arrow (plan 0.103 phase 2a:
   -- the decider agrees with `substPoly`).
   instantiateAcc (PEff A B)      (a ⇒[ mk-kind Many eff ] b)  s =
-    maybe-bind (instantiateAcc B b) (instantiateAcc A a s)
+    (instantiateAcc A a s >>= instantiateAcc B b)
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero eff ] _)  _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff ] _)   _ = nothing
   instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
@@ -214,9 +210,9 @@ mutual
   instantiateFunctor (PK A)    (K a)   s = instantiateAcc A a s
   instantiateFunctor PId       Id      s = just s
   instantiateFunctor (F P⊕ G) (f ⊕ g) s =
-    maybe-bind (instantiateFunctor G g) (instantiateFunctor F f s)
+    (instantiateFunctor F f s >>= instantiateFunctor G g)
   instantiateFunctor (F P⊗ G) (f ⊗ g) s =
-    maybe-bind (instantiateFunctor G g) (instantiateFunctor F f s)
+    (instantiateFunctor F f s >>= instantiateFunctor G g)
   instantiateFunctor (PK _)    Id      _ = nothing
   instantiateFunctor (PK _)    (_ ⊕ _) _ = nothing
   instantiateFunctor (PK _)    (_ ⊗ _) _ = nothing
@@ -247,11 +243,11 @@ mutual
     maybe-pair (λ a b → a ⇒[ mk-kind q pure ] b) (applySubst s A) (applySubst s B)
   applySubst s (PEff A B)      =
     maybe-pair (λ a b → a ⇒[ mk-kind Many eff ] b) (applySubst s A) (applySubst s B)
-  applySubst s (Pμ-type F)     = maybe-bind (λ f → just (μ-type f)) (applySubstFunctor s F)
-  applySubst s (Pν-type F π)   = maybe-bind (λ f → just (ν-type f π)) (applySubstFunctor s F)
+  applySubst s (Pμ-type F)     = applySubstFunctor s F >>= λ f → just (μ-type f)
+  applySubst s (Pν-type F π)   = applySubstFunctor s F >>= λ f → just (ν-type f π)
 
   applySubstFunctor : Subst → PolyFunctor → Maybe Functor
-  applySubstFunctor s (PK A)   = maybe-bind (λ a → just (K a)) (applySubst s A)
+  applySubstFunctor s (PK A)   = applySubst s A >>= λ a → just (K a)
   applySubstFunctor _ PId      = just Id
   applySubstFunctor s (F P⊕ G) =
     maybe-pair _⊕_ (applySubstFunctor s F) (applySubstFunctor s G)
@@ -271,7 +267,7 @@ mutual
 -- after substitution (shouldn't happen with well-formed schemas).
 schemaArrowCodomain : PolyType → Type → Maybe Type
 schemaArrowCodomain (A P⇒[ _ ] B) domain =
-  maybe-bind (λ subst → applySubst subst B) (instantiate A domain)
+  instantiate A domain >>= λ subst → applySubst subst B
 -- Schema is not an arrow → no codomain.
 schemaArrowCodomain (PTVar _)    _ = nothing
 schemaArrowCodomain PUnit        _ = nothing

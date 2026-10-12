@@ -11,7 +11,8 @@
 
 module Once.IR.Size where
 
-open import Data.Nat using (ℕ; suc; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; s≤s; z≤n)
+import Data.Nat as ℕ
 open import Data.Nat.Properties using (m<n+m; n<1+n; m≤m+n; m≤n+m; m≤n⇒m≤1+n)
 
 open import Once.IR
@@ -23,25 +24,25 @@ open import Once.IRTy using (_*_)
 
 ir-size : ∀ {A B} → IR A B → ℕ
 ir-size id = 1
-ir-size (g ∘ f) = 1 +ℕ ir-size g +ℕ ir-size f
-ir-size ⟨ f , g ⟩ = 1 +ℕ ir-size f +ℕ ir-size g
+ir-size (g ∘ f) = 1 ℕ.+ ir-size g ℕ.+ ir-size f
+ir-size ⟨ f , g ⟩ = 1 ℕ.+ ir-size f ℕ.+ ir-size g
 ir-size fst = 1
 ir-size snd = 1
 ir-size inl = 1
 ir-size inr = 1
-ir-size (case f g) = 1 +ℕ ir-size f +ℕ ir-size g
+ir-size (case f g) = 1 ℕ.+ ir-size f ℕ.+ ir-size g
 ir-size terminal = 1
 ir-size initial = 1
-ir-size (curry f) = 2 +ℕ ir-size f
+ir-size (curry f) = 2 ℕ.+ ir-size f
 ir-size apply = 1
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for size
 ir-size (In _) = 1
 ir-size (out-μ _) = 1             -- Lambek isomorphism inverse
-ir-size (Cata _ alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
+ir-size (Cata _ alg) = 2 ℕ.+ ir-size alg  -- Similar to curry: contains body
 ir-size (Out _) = 1
 ir-size (in-ν _) = 1            -- Lambek isomorphism inverse
-ir-size (Ana _ coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
+ir-size (Ana _ coalg) = 2 ℕ.+ ir-size coalg  -- Contains coalgebra body
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-size (SigOp _) = 1

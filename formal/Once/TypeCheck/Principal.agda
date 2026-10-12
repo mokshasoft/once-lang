@@ -35,11 +35,12 @@ open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing; _>>=_)
 open import Data.List using (List; []; _∷_) renaming (_++_ to _++ᴸ_)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; does)
+open import Relation.Nullary.Decidable using (isYes)
 import Relation.Nullary
 
 open import Once.Spec.Type.Grade
@@ -56,17 +57,6 @@ open import Once.TypeCheck.Classify using (emptyCtx)
 ------------------------------------------------------------------------
 -- Small helpers
 ------------------------------------------------------------------------
-
-isYes : ∀ {a} {P : Set a} → Relation.Nullary.Dec P → Bool
-isYes (yes _) = true
-isYes (no _)  = false
-
-eqQuantity : Quantity → Quantity → Bool
-eqQuantity Zero Zero = true
-eqQuantity One  One  = true
-eqQuantity Many Many = true
-{-# CATCHALL #-}
-eqQuantity _    _    = false
 
 map2P : (PolyType → PolyType → PolyType)
       → Maybe PolyType → Maybe PolyType → Maybe PolyType
@@ -184,7 +174,7 @@ mutual
   unify' n s (a P* b) (a' P* b') = unify2 n s a a' b b'
   unify' n s (a P+ b) (a' P+ b') = unify2 n s a a' b b'
   unify' n s (a P⇒[ q ] b) (a' P⇒[ q' ] b') =
-    if eqQuantity q q' then unify2 n s a a' b b' else nothing
+    if does (q ≟q q') then unify2 n s a a' b b' else nothing
   unify' n s (PEff a b) (PEff a' b') = unify2 n s a a' b b'
   unify' n s (Pμ-type F) (Pμ-type G) = unifyF n s F G
   unify' n s (Pν-type F π) (Pν-type G π′) =
@@ -374,11 +364,6 @@ Result = Maybe (PolyType × ℕ × PSubst)
 fuelD : ℕ
 fuelD = 500
 
-infixl 1 _>>=R_
-_>>=R_ : Result → (PolyType × ℕ × PSubst → Result) → Result
-just x  >>=R f = f x
-nothing >>=R _ = nothing
-
 retTy : PolyType → ℕ → Maybe PSubst → Result
 retTy t n (just s) = just (t , n , s)
 retTy _ _ nothing  = nothing
@@ -477,17 +462,17 @@ mutual
     liftName (lookupName imps sch (canonKey cn) n) s
   pInfer imps sch env (Raw.RApp f x) n s = pInferApp imps sch env f x n s
   pInfer imps sch env (Raw.RLam x body) n s =
-    pInfer imps sch ((x , PTVar (mv n)) ∷ env) body (suc n) s >>=R λ { (tb , n₁ , s₁) →
+    pInfer imps sch ((x , PTVar (mv n)) ∷ env) body (suc n) s >>= λ { (tb , n₁ , s₁) →
     just ((PTVar (mv n) P⇒[ Many ] tb) , n₁ , s₁) }
   pInfer imps sch env (Raw.RLet x e₁ e₂) n s =
-    pInfer imps sch env e₁ n s >>=R λ { (t₁ , n₁ , s₁) →
+    pInfer imps sch env e₁ n s >>= λ { (t₁ , n₁ , s₁) →
     pInfer imps sch ((x , t₁) ∷ env) e₂ n₁ s₁ }
   pInfer imps sch env (Raw.RPair a b) n s =
-    pInfer imps sch env a n s >>=R λ { (ta , n₁ , s₁) →
-    pInfer imps sch env b n₁ s₁ >>=R λ { (tb , n₂ , s₂) →
+    pInfer imps sch env a n s >>= λ { (ta , n₁ , s₁) →
+    pInfer imps sch env b n₁ s₁ >>= λ { (tb , n₂ , s₂) →
     just ((ta P* tb) , n₂ , s₂) } }
   pInfer imps sch env (Raw.RDestruct e x e₁ y e₂) n s =
-    pInfer imps sch env e n s >>=R λ { (te , n₁ , s₁) →
+    pInfer imps sch env e n s >>= λ { (te , n₁ , s₁) →
     destructFinish imps sch env x e₁ y e₂ te n₁ s₁ }
   pInfer imps sch env Raw.RUnit n s = just (PUnit , n , s)
   pInfer imps sch env (Raw.RInt _) n s = just (PInt , n , s)
@@ -495,16 +480,16 @@ mutual
   pInfer imps sch env (Raw.RAnnot e T) n s with typeToPoly T
   ... | nothing = nothing
   ... | just tT =
-        pInfer imps sch env e n s >>=R λ { (te , n₁ , s₁) →
+        pInfer imps sch env e n s >>= λ { (te , n₁ , s₁) →
         retTy tT n₁ (unify fuelD s₁ te tT) }
   pInfer imps sch env (Raw.RBinOp op a b) n s =
-    pInfer imps sch env a n s >>=R λ { (ta , n₁ , s₁) →
-    retTy PInt n₁ (unify fuelD s₁ ta PInt) >>=R λ { (_ , _ , s₂) →
-    pInfer imps sch env b n₁ s₂ >>=R λ { (tb , n₂ , s₃) →
+    pInfer imps sch env a n s >>= λ { (ta , n₁ , s₁) →
+    retTy PInt n₁ (unify fuelD s₁ ta PInt) >>= λ { (_ , _ , s₂) →
+    pInfer imps sch env b n₁ s₂ >>= λ { (tb , n₂ , s₃) →
     retTy (if isComparisonOp op then (PUnit P+ PUnit) else PInt) n₂
           (unify fuelD s₃ tb PInt) } } }
   pInfer imps sch env (Raw.RUnaryOp _ a) n s =
-    pInfer imps sch env a n s >>=R λ { (ta , n₁ , s₁) →
+    pInfer imps sch env a n s >>= λ { (ta , n₁ , s₁) →
     retTy PInt n₁ (unify fuelD s₁ ta PInt) }
   -- Not covered in v1 (signature required): qualified-unresolved refs,
   -- cata/In/ana (functor metavariables).
@@ -530,15 +515,15 @@ mutual
   pInferAppB : Imports → SchemaCtx → Env → RawExpr → RawExpr → RawExpr → ℕ → PSubst
              → Bool → Result
   pInferAppB imps sch env f f' g n s true =
-    pInfer imps sch env f' n s >>=R λ { (tf , n₁ , s₁) →
-    pInfer imps sch env g n₁ s₁ >>=R λ { (tg , n₂ , s₂) →
+    pInfer imps sch env f' n s >>= λ { (tf , n₁ , s₁) →
+    pInfer imps sch env g n₁ s₁ >>= λ { (tg , n₂ , s₂) →
     composeFinish tf tg n₂ s₂ } }
   pInferAppB imps sch env f f' g n s false = pAppGen imps sch env f g n s
 
   pAppGen : Imports → SchemaCtx → Env → RawExpr → RawExpr → ℕ → PSubst → Result
   pAppGen imps sch env f x n s =
-    pInfer imps sch env f n s >>=R λ { (tf , n₁ , s₁) →
-    pInfer imps sch env x n₁ s₁ >>=R λ { (tx , n₂ , s₂) →
+    pInfer imps sch env f n s >>= λ { (tf , n₁ , s₁) →
+    pInfer imps sch env x n₁ s₁ >>= λ { (tx , n₂ , s₂) →
     appFinish tf tx n₂ s₂ } }
 
   destructFinish : Imports → SchemaCtx → Env → String → RawExpr → String → RawExpr
@@ -547,9 +532,9 @@ mutual
     with unify fuelD s₁ te (PTVar (mv n₁) P+ PTVar (mv (suc n₁)))
   ... | nothing = nothing
   ... | just s₂ =
-        pInfer imps sch ((x , PTVar (mv n₁)) ∷ env) e₁ (suc (suc n₁)) s₂ >>=R
+        pInfer imps sch ((x , PTVar (mv n₁)) ∷ env) e₁ (suc (suc n₁)) s₂ >>=
           λ { (t₁ , n₂ , s₃) →
-        pInfer imps sch ((y , PTVar (mv (suc n₁))) ∷ env) e₂ n₂ s₃ >>=R
+        pInfer imps sch ((y , PTVar (mv (suc n₁))) ∷ env) e₂ n₂ s₃ >>=
           λ { (t₂ , n₃ , s₄) →
         retTy t₁ n₃ (unify fuelD s₄ t₁ t₂) } }
 

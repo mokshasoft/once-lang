@@ -15,7 +15,8 @@
 
 module Once.CCC.Target.RiscV64.Syntax where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ)
+import Data.Nat as ℕ
 open import Data.Integer using (ℤ)
 open import Data.List using (List; foldr)
 open import Data.String using (String)
@@ -179,7 +180,7 @@ slot-size = 8
 
 -- | Convert slots to bytes: n slots = n * 8 bytes
 slots : ℕ → ℕ
-slots n = n *ℕ slot-size
+slots n = n ℕ.* slot-size
 
 ------------------------------------------------------------------------
 -- Stack consumption analysis
@@ -217,5 +218,5 @@ instr-consumed-slots (label _)       = 0
 
 -- | Total stack slots consumed by a program
 program-consumed-slots : Program → ℕ
-program-consumed-slots prog = foldr _+ℕ_ 0 (Data.List.map instr-consumed-slots prog)
+program-consumed-slots prog = foldr ℕ._+_ 0 (Data.List.map instr-consumed-slots prog)
   where open import Data.List using ()

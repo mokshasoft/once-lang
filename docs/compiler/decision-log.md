@@ -18209,3 +18209,22 @@ The Spec was a set of re-export shells: `Spec.Type`, `Spec.Syntax`, `Spec.Typing
 ### Consequences
 - The type modules are the first `--safe` Spec modules.
 - Extraction: the MAlonzo modules move with the definitions (`Once.Adequacy` → `Once.Spec.Correct`; `Once.Type`'s datatypes → `Once.Spec.Type*`); `once.cabal` and the NameIds in `Bridge.hs` follow at the branch's extraction.
+
+## D307 — THE STRUCTURES ARE RECORD VALUES; THE MEANING'S EFFECTS ARE A FAMILY OF MONADS; THE FOLD'S UNIVERSAL PROPERTY IS A SPEC CLAIM (2026-10-12)
+
+**Relates**: plan 0.112 (X, F0, E, A–D), D304 (metatheory placement), D250 (`pure` = referential transparency), D037 (SPF), OCP-0003, D026/D032
+
+### Context
+Plan 0.112 names the algebraic structures the formalization already has. Three choices were the user's (X, F0, E), and its survey found three modules no proof had ever used.
+
+### Decision
+1. **X: explicit naming.** A structure is a record VALUE (`IsCommutativeSemiring`, `IsPartialOrder`, `LawfulMonad`, …) wired on the apex; no instance arguments. Instance search would cost check time and buys only a shared `_≟_`.
+2. **F0: no rename** of the type constructors `_+_`/`_*_` (`⊕`/`⊗` are the functor codes; `⊎`/`×` the `Set` formers the semantics uses). A module that needs both ℕ's and a type's operator imports one of them qualified (`ℕ.+`, `IRT.+`, `SpecTy.Unit`); the suffix renamings (`_+ℕ_`, `_+ᵀ_`, `UnitT`, …) go. The remaining renamings and `hiding`s go the same way last (plan 0.112 H).
+3. **E: a family of monads, not a graded monad.** A derivation has one grade and moves up by subeffecting (D250), so `M π` is a monad per grade and `subM`, `toT` are monad morphisms. `Spec.Metatheory.Effects` states it (with the observation `run` respecting return and bind, C4); `Metatheory.Effects` proves it.
+4. **The fold's universal property is the Spec's claim.** `Spec.Metatheory.Recursion`: the fold is the unique algebra morphism out of `μ` at every grade, and fusion holds, over `mapLayerᵛ` (one layer's functor action). The proofs are POSTULATED (`Metatheory.Recursion`, `Once.Postulates` P2/P3) until discharged; nothing uses them.
+5. **Stdlib before local helpers.** Bool equalities and memberships use `does`, `dec-true`/`dec-false`, `Reflects`, `_∈?_`, `allPairs?`, `Data.Maybe._>>=_`, `Data.Char._==_`; local copies are deleted.
+6. **Deleted, after the history check:** `Once.SPF` (D037: "standalone", integration deferred; its only importer ever was `Semantics.Coherence`; everything it proves exists in `Semantics.Functor`; two `TERMINATING`s and a copy of `bisimS-to-eq`), `Once.Semantics.Coherence` (never imported; its two unproved-elsewhere results, `sem-fmap`'s functor laws and `⟦F⟧F ≡ ⟦translateF F⟧SF`, are plan 0.112 D2's to re-prove), `Once.IR.Guarded` (last importer cut 2026-03-25 when `GuardedT` left the IR; its rationale `IR/Totality` was deleted in plan 0.98), and the unused half of `Surface.Thinning` with `_∘⊆_` (no consumer for category laws). The DT kernel on plan-ref uses none of them (indexed descriptions as object syntax).
+
+### Consequences
+- `Metatheory` has four fields: `term-model`, `type-system`, `effects`, `recursion`.
+- Open: C5's scope (functor vs full Freyd; "pure = central" is provable for the free `T`), F's object and equality. G moved to plan 0.114, with a new finding: effects vanish at quantity `Zero`.

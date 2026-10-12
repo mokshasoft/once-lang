@@ -5,11 +5,11 @@
 --
 -- This module provides a functor interpretation that takes Set directly
 -- in the K case, avoiding the circular dependency:
---   ⟦_⟧ → ⟦_⟧F → SPF.μ → ⟦μ⟧ → ⟦_⟧
+--   ⟦_⟧ → ⟦_⟧F → μ → ⟦μ⟧ → ⟦_⟧
 --
 -- By having K take a Set directly, we can define:
---   SPF.μ without depending on ⟦_⟧
---   Then Core can define ⟦μ⟧ = SPF.μ
+--   μS without depending on ⟦_⟧
+--   Then Semantics.Value defines ⟦μ⟧ = μS ∘ translateF
 --
 -- OCP-0003 Phase 6: Enables proving μ-coherence.
 ------------------------------------------------------------------------

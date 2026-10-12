@@ -43,7 +43,8 @@ open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
-open import Once.Spec.Type using (Type; isUnit?) renaming (Unit to UnitT)
+open import Once.Spec.Type using (Type; isUnit?)
+import Once.Spec.Type as SpecTy
 import Once.Type as Ty
 open import Once.Spec.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName; showCanonical; gen)
@@ -153,7 +154,7 @@ pure ι = pureI (impl ι)
 -- The RESERVED operation an unlinked call halts on: a call the world does not
 -- provide, or an internal call the table does not define (D244).
 unlinkedOp : HaltOp
-unlinkedOp = haltOp (gen "unlinked") UnitT base-Unit
+unlinkedOp = haltOp (gen "unlinked") SpecTy.Unit base-Unit
 
 -- Halting on it.
 unlinkedT : ∀ {X} → T X
@@ -189,7 +190,7 @@ appE es r = (es ++ proj₁ r) , proj₂ r
 -- answer, and the run halts on the reserved operation (unreachable for a
 -- program linked against the interpretation's signatures).
 callAnswer-at : (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧
-              → Dec (ccod o ≡ UnitT) → Dec (callKey o ∈ calls ι) → Maybe M.⟦ ccod o ⟧
+              → Dec (ccod o ≡ SpecTy.Unit) → Dec (callKey o ∈ calls ι) → Maybe M.⟦ ccod o ⟧
 callAnswer-at ι h o a (yes u) _       = just (subst M.⟦_⟧ (sym u) tt)
 callAnswer-at ι h o a (no _)  (yes p) = just (answer ι h o p a)
 callAnswer-at ι h o a (no _)  (no _)  = nothing

@@ -25,7 +25,8 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ; suc) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc)
+import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -57,7 +58,7 @@ open import Once.CCC.Machine.NoNested
 ------------------------------------------------------------------------
 
 slot-to-disp : Slot → ℕ
-slot-to-disp n = n *ℕ slot-size
+slot-to-disp n = n ℕ.* slot-size
 
 ------------------------------------------------------------------------
 -- AbstractInstr → x86-32 Program

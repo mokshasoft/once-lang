@@ -63,7 +63,7 @@ open import Once.Type
 open import Once.Res using (Res; stopped; returns; mapRes)
 
 
--- OCP-0003: ⟦Fix⟧ wrapper removed. Use μ/ν from SPF.agda.
+-- OCP-0003: ⟦Fix⟧ wrapper removed. μ/ν come from Once.Semantics.Functor.
 
 ------------------------------------------------------------------------
 -- Semantic Interpretation
@@ -80,7 +80,7 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 -- them using Once.Semantics.Functor's μS and νS via translation.
 --
 -- This breaks the circular dependency:
---   Old: ⟦_⟧ → ⟦_⟧F → SPF.μ → ⟦μ⟧ → ⟦_⟧ (circular!)
+--   Old: ⟦_⟧ → ⟦_⟧F → μ → ⟦μ⟧ → ⟦_⟧ (circular!)
 --   New: ⟦_⟧-base → translateF → μS (no cycle)
 --        Then: ⟦μ⟧ = μS ∘ translateF
 --
@@ -356,10 +356,9 @@ sem-case-inr f g b = refl
 -- OCP-0003: sem-fold-unfold and sem-unfold-fold laws removed
 
 ------------------------------------------------------------------------
--- Recursion Scheme Semantic Operations (Postulated)
+-- Recursion Scheme Semantic Operations
 --
 -- These operations parallel the IR constructors for recursion schemes.
--- They are postulated here but implemented properly in Once.SPF.
 --
 -- F is explicit where needed for Agda to resolve constraints.
 ------------------------------------------------------------------------
@@ -569,22 +568,22 @@ coerce-μ⁻¹-round-trip (wf-Prod wfF wfG) X (x , y) =
   cong₂ _,_ (coerce-μ⁻¹-round-trip wfF X x) (coerce-μ⁻¹-round-trip wfG X y)
 
 ------------------------------------------------------------------------
--- μ-type Operations (OCP-0003: Defined via SPF)
+-- μ-type Operations (OCP-0003: Defined via Once.Semantics.Functor)
 --
--- These use the SPF operations ⟨_⟩, outS, and cataS with structural
--- coercions to bridge between our ⟦_⟧F and SPF's ⟦_⟧SF.
+-- These use Semantics.Functor's ⟨_⟩, outS, and cataS with structural
+-- coercions to bridge between our ⟦_⟧F and its ⟦_⟧SF.
 ------------------------------------------------------------------------
 
 -- | In: F(μF) → μF (algebra)
 --
--- OCP-0003: Defined via SPF's ⟨_⟩ constructor with coercion.
+-- OCP-0003: Defined via Semantics.Functor's ⟨_⟩ constructor with coercion.
 --
 sem-In : ∀ (F : Functor) → ⟦ F ⟧F (⟦μ⟧ F) → ⟦μ⟧ F
 sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
 
 -- | Out: μF → F(μF) (destructor, inverse of In)
 --
--- OCP-0003: Defined via SPF's outS with coercion.
+-- OCP-0003: Defined via Semantics.Functor's outS with coercion.
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
 sem-Out : ∀ {F : Functor} → WellFormedF F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
@@ -592,7 +591,7 @@ sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep FloatR
 
 -- | Catamorphism: given algebra F(A) → A, fold μF → A
 --
--- OCP-0003: Defined via SPF's cataS with coercions.
+-- OCP-0003: Defined via Semantics.Functor's cataS with coercions.
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
 sem-cata : ∀ {F : Functor} → WellFormedF F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
@@ -630,12 +629,12 @@ coerce-ν-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRe
 coerce-ν-out = coerce-μ-out  -- Same structure
 
 ------------------------------------------------------------------------
--- ν-type Operations (OCP-0003: Defined via SPF)
+-- ν-type Operations (OCP-0003: Defined via Once.Semantics.Functor)
 ------------------------------------------------------------------------
 
 -- | CoOut: νF → F(νF) (observation)
 --
--- OCP-0003: Defined via SPF's unfoldS with coercion.
+-- OCP-0003: Defined via Semantics.Functor's unfoldS with coercion.
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
 -- plan 0.98: `Res`-valued — forcing a possibly-finite stream may find no
@@ -646,7 +645,7 @@ sem-CoOut {F} wf x = mapRes (coerce-ν-out wf (⟦ν⟧ F)) (unfoldS x)
 
 -- | CoIn: F(νF) → νF (coalgebra)
 --
--- OCP-0003: Defined via SPF's anaS with the identity coalgebra.
+-- OCP-0003: Defined via Semantics.Functor's anaS with the identity coalgebra.
 -- CoIn packages an F-layer observation as a ν-value.
 --
 sem-CoIn : ∀ (F : Functor) → ⟦ F ⟧F (⟦ν⟧ F) → ⟦ν⟧ F
@@ -863,7 +862,7 @@ fmap-coerce-μ-coherence′ (wf-Prod wfF wfG) f (x , y) = cong₂ _,_ (fmap-coer
 
 -- | Catamorphism computation law (PROVEN)
 --
--- OCP-0003: Proven using SPF's cataS-computation and coercion coherence.
+-- OCP-0003: Proven using Semantics.Functor's cataS-computation and coercion coherence.
 --
 -- Proof:
 --   sem-cata wf alg (sem-In F x)

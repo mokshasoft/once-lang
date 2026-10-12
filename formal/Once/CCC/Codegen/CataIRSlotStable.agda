@@ -28,7 +28,8 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.CataIRSlotStable (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc)
+import Data.Nat as ℕ
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Bool.Properties using (∧-assoc)
 open import Data.Unit using (tt)
@@ -262,8 +263,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   cata-trace-const-stable : ∀ bb n1 l1 at → AllSlotStable at
                           → AllSlotStable (proj₂ (proj₂ (cata-trace-const bb n1 l1 at)))
   cata-trace-const-stable bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 +ℕ 1) (n1 +ℕ 2) (n1 +ℕ 3) l1 ++ cata-call n1 (n1 +ℕ 1) (n1 +ℕ 3)) refl)
-        (cata-body-stable l1 (l1 +ℕ 1) bb at sat)
+    ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) l1 ++ cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 3)) refl)
+        (cata-body-stable l1 (l1 ℕ.+ 1) bb at sat)
 
   cata-trace-nat-stable : ∀ bb n1 l1 at → AllSlotStable at
                         → AllSlotStable (proj₂ (proj₂ (cata-trace-nat bb n1 l1 at)))
@@ -303,20 +304,20 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- association is not definitional (nat/linear get away with the flat split
   -- precisely because every block there IS concrete).
   cata-trace-branching-stable F bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound (cata-call-setup cl (cl +ℕ 1) (cl +ℕ 2) (cl +ℕ 3) bodyL) refl)
+    ++⁺ (all-stable?-sound (cata-call-setup cl (cl ℕ.+ 1) (cl ℕ.+ 2) (cl ℕ.+ 3) bodyL) refl)
         (++⁺ (all-stable?-sound (cata-br-I₁ F n1 l1) I₁-true)
-             (++⁺ (all-stable?-sound (cata-call cl (cl +ℕ 1) (cl +ℕ 3)) refl)
+             (++⁺ (all-stable?-sound (cata-call cl (cl ℕ.+ 1) (cl ℕ.+ 3)) refl)
                   (++⁺ (all-stable?-sound (cata-br-I₂ n1 l1) refl)
-                       (cata-body-stable bodyL (bodyL +ℕ 1) bb at sat))))
+                       (cata-body-stable bodyL (bodyL ℕ.+ 1) bb at sat))))
     where
-      bodyL = l1 +ℕ 4 +ℕ lsize F +ℕ lsize F
-      cl    = n1 +ℕ 7 +ℕ (4 *ℕ fsize F) +ℕ 4
+      bodyL = l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F
+      cl    = n1 ℕ.+ 7 ℕ.+ (4 ℕ.* fsize F) ℕ.+ 4
       I₁-true : all-stable? (cata-br-I₁ F n1 l1) ≡ true
       I₁-true =
-        trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4)) _)
-          (∧-intro (all-stable?-complete _ (visit-walk-stable n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4)))
-            (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)) _)
-              (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)))
+        trans (all-stable?-++ (visit-walk n1 (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4)) _)
+          (∧-intro (all-stable?-complete _ (visit-walk-stable n1 (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4)))
+            (trans (all-stable?-++ (rebuild-walk (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize F)) _)
+              (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize F)))
                        refl)))
 
   cata-dispatch-slot-stable : ∀ (strat : CataStrategy) (bb n l : ℕ) (at : AbstractTrace)

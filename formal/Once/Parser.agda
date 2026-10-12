@@ -20,6 +20,8 @@ open import Data.String using (String; _≟_; _++_; toList)
 open import Data.Char using (Char)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (Dec; yes; no; does)
+open import Relation.Nullary.Decidable using (¬?)
+open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type.Grade using (mk-kind; Many; eff)
@@ -380,15 +382,8 @@ extractFunctions-sigless aliases name body rest (no _) with siglessSchema body
 -- `extractFunctions` feeds BOTH `moduleToIR` (the compiler) and `ModuleTyped`
 -- (the typing predicate) — makes a duplicate a compile error AND makes any typed
 -- module IMPLY distinct names (the no-clash theorem's precondition, for free).
-nameElem : String → List String → Bool
-nameElem _ []       = false
-nameElem x (y ∷ ys) with x ≟ y
-... | yes _ = true
-... | no  _ = nameElem x ys
-
 namesDistinct : List String → Bool
-namesDistinct []       = true
-namesDistinct (x ∷ xs) = not (nameElem x xs) ∧ namesDistinct xs
+namesDistinct xs = does (allPairs? (λ x y → ¬? (x ≟ y)) xs)
 
 -- Plan 0.50 (clash-freedom, validity half): each top-level definition name must
 -- be a genuine lexer identifier — head `isIdentStart`, tail `isIdentContinue` —

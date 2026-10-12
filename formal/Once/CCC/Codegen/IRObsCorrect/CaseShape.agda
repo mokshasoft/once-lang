@@ -48,7 +48,8 @@ open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (Σ)
-open import Once.IRTy using (IRTy) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy)
+import Once.IRTy as IRT
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -333,7 +334,7 @@ module ShapeC {FS : FrameSemantics} where
 
   tag-inl : ∀ {A B} {a : ⟦ A ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
-          → ValidAtWF m alloc {A +ᵀ B} (inj₁ a) loc s
+          → ValidAtWF m alloc {A IRT.+ B} (inj₁ a) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-zf (flat-read-tag s) ≡ true
   tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ tg _ _ _ _) rd
@@ -343,7 +344,7 @@ module ShapeC {FS : FrameSemantics} where
 
   tag-inr : ∀ {A B} {b : ⟦ B ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
-          → ValidAtWF m alloc {A +ᵀ B} (inj₂ b) loc s
+          → ValidAtWF m alloc {A IRT.+ B} (inj₂ b) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-zf (flat-read-tag s) ≡ false
   tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ tg _ _ _ _) rd
@@ -356,9 +357,9 @@ module ShapeC {FS : FrameSemantics} where
   -- can be read. For a sum that IS the residence — the payload cell — so the
   -- witness is the validity's own `readLoc s (sucLoc sum-loc)` field, in all
   -- four shapes (pointer or inline payload, either tag).
-  unpack-wf : ∀ {A' B' : IRTy} {v : ⟦ A' +ᵀ B' ⟧} {m : AllocMode}
+  unpack-wf : ∀ {A' B' : IRTy} {v : ⟦ A' IRT.+ B' ⟧} {m : AllocMode}
                 {alloc : AllocState {FS}} {loc : ValueLocation FS} {s' : LocState FS}
-            → ValidAtWF m alloc {A' +ᵀ B'} v loc s'
+            → ValidAtWF m alloc {A' IRT.+ B'} v loc s'
             → readReg (regs s') Input1 ≡ SV-Ptr loc
             → InstrWF s' alloc load-indirect-suc
   unpack-wf {loc = loc} (valid-inl-wf _ _ r _ _ _)   rd = loc , cong sv-as-loc rd , (_ , r)
@@ -394,7 +395,7 @@ module ShapeC {FS : FrameSemantics} where
 
   arm-input-l : ∀ {A' B' : IRTy} {a : ⟦ A' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
                   {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
-              → ValidAtWF m alloc {A' +ᵀ B'} (inj₁ a) loc s'
+              → ValidAtWF m alloc {A' IRT.+ B'} (inj₁ a) loc s'
               → readReg (regs s') Input1 ≡ SV-Ptr loc
               → readReg (regs s'') Input1
                 ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output
@@ -413,7 +414,7 @@ module ShapeC {FS : FrameSemantics} where
 
   arm-input-r : ∀ {A' B' : IRTy} {b : ⟦ B' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
                   {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
-              → ValidAtWF m alloc {A' +ᵀ B'} (inj₂ b) loc s'
+              → ValidAtWF m alloc {A' IRT.+ B'} (inj₂ b) loc s'
               → readReg (regs s') Input1 ≡ SV-Ptr loc
               → readReg (regs s'') Input1
                 ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output

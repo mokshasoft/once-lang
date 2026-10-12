@@ -16,7 +16,8 @@
 
 module Once.CCC.Machine.Allocation where
 
-open import Data.Nat using (ℕ; suc; _<_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_)
+import Data.Nat as ℕ
 open import Data.List using (_∷_)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
@@ -49,7 +50,7 @@ module StackAllocation {FS : FrameSemantics} where
     ValueLocation FS × AllocState {FS}
   stack-alloc as n =
     AtStack (current-frame as) (next-slot as) ,
-    record as { next-slot = next-slot as +ℕ n }
+    record as { next-slot = next-slot as ℕ.+ n }
 
   -- The allocated location
   -- The allocated location
@@ -70,7 +71,7 @@ module StackAllocation {FS : FrameSemantics} where
     (k : ℕ) → k < n →
     ValueLocation FS
   stack-alloc-offset as n k k<n =
-    AtStack (current-frame as) (next-slot as +ℕ k)
+    AtStack (current-frame as) (next-slot as ℕ.+ k)
 
 ------------------------------------------------------------------------
 -- Heap Allocation
@@ -325,7 +326,7 @@ module FrontierInvariant {FS : FrameSemantics} where
   -- Allocation advances frontier
   stack-alloc-advances : ∀ (alloc : AllocState {FS}) n →
     ∀ loc → BeforeFrontier alloc loc →
-    BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ n }) loc
+    BeforeFrontier (record alloc { next-slot = next-slot alloc ℕ.+ n }) loc
   stack-alloc-advances alloc n (AtStack f k) (stack-before refl k<next) =
     stack-before refl (≤-trans k<next (m≤m+n (next-slot alloc) n))
   stack-alloc-advances alloc n (AtStack f k) (stack-ancestor cf≺f src) =
@@ -398,8 +399,8 @@ module FrontierInvariant {FS : FrameSemantics} where
   -- (D141: those modules are ISLANDS pending the plan-0.52 M2 port.)
   apply-bump : AllocBump → AllocState {FS} → AllocState {FS}
   apply-bump bump alloc = record alloc
-    { next-slot     = next-slot-delta bump     +ℕ next-slot alloc
-    ; next-heap-ref = next-heap-ref-delta bump +ℕ next-heap-ref alloc
+    { next-slot     = next-slot-delta bump     ℕ.+ next-slot alloc
+    ; next-heap-ref = next-heap-ref-delta bump ℕ.+ next-heap-ref alloc
     }
 
   -- Zero bump: pure data-flow IR with no allocation effect.
@@ -411,8 +412,8 @@ module FrontierInvariant {FS : FrameSemantics} where
   -- threading exec-trace state.
   bump-+ : AllocBump → AllocBump → AllocBump
   bump-+ b1 b2 = mkBump
-    (next-slot-delta b1 +ℕ next-slot-delta b2)
-    (next-heap-ref-delta b1 +ℕ next-heap-ref-delta b2)
+    (next-slot-delta b1 ℕ.+ next-slot-delta b2)
+    (next-heap-ref-delta b1 ℕ.+ next-heap-ref-delta b2)
 
   -- apply-bump preserves current-frame (record-update touches only
   -- next-slot / next-heap-ref).
@@ -435,10 +436,10 @@ module FrontierInvariant {FS : FrameSemantics} where
       open import Data.Nat.Properties using (+-assoc; +-comm)
       open import Relation.Binary.PropositionalEquality using (cong₂; cong)
       -- d2 + (d1 + x) ≡ (d1 + d2) + x.
-      compose-eq : ∀ d1 d2 x → d2 +ℕ (d1 +ℕ x) ≡ (d1 +ℕ d2) +ℕ x
+      compose-eq : ∀ d1 d2 x → d2 ℕ.+ (d1 ℕ.+ x) ≡ (d1 ℕ.+ d2) ℕ.+ x
       compose-eq d1 d2 x =
         trans (sym (+-assoc d2 d1 x))
-              (cong (_+ℕ x) (+-comm d2 d1))
+              (cong (λ y → y ℕ.+ x) (+-comm d2 d1))
 
   -- apply-bump bump-0 reduces to alloc definitionally:
   -- next-slot-delta bump-0 = 0 and 0 + n = n by Agda's left-recursive

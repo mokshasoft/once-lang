@@ -16,9 +16,9 @@
 -- constrained the name map at all (they said only that typing, typing
 -- backwards, or traces SURVIVED resolution).
 --
--- The work is entirely in the four decider bridges below — property to boolean
+-- The work is entirely in the decider bridges below — property to boolean
 -- and back. That is the shape D134 asks for, and it is why the relation had to
--- be written independently: if it named `elemStr`/`isBuiltinName`/`lookupUnaliased`
+-- be written independently: if it named `_∈?_`/`isBuiltinName`/`lookupUnaliased`
 -- directly, these lemmas would be `refl` and would prove nothing.
 ------------------------------------------------------------------------
 
@@ -33,15 +33,18 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_)
 open import Data.String using (String; _≟_)
 open import Data.Empty using (⊥-elim)
-open import Relation.Nullary using (yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
+open import Relation.Nullary using (yes; no; ¬_; does; proof)
+open import Relation.Nullary.Reflects using (Reflects; invert)
+open import Relation.Nullary.Decidable using (dec-true; dec-false)
+open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Name using (GenWord)
 open import Once.Spec.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature;
   DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
-  using (canonExpr; canonVar; canonDecl; elemStr; isBuiltinName; expandPath;
+  using (canonExpr; canonVar; canonDecl; isBuiltinName; expandPath;
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Spec.Resolution
@@ -54,33 +57,10 @@ open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDef
 import Once.Adequacy.CanonResolve as CR
 
 ------------------------------------------------------------------------
--- Decider bridge 1: binder scope. `elemStr` vs `_∈_`.
+-- Decider bridge 1: binder scope is stdlib's `_∈?_` (`dec-true`/`dec-false`
+-- one way, `Reflects` the other).
 ------------------------------------------------------------------------
 
-elemStr-complete : ∀ (x : String) (bound : List String) → x ∈ bound → elemStr x bound ≡ true
-elemStr-complete x (y ∷ ys) (here refl) with x ≟ y
-... | yes _ = refl
-... | no ¬p = ⊥-elim (¬p refl)
-elemStr-complete x (y ∷ ys) (there i) with x ≟ y
-... | yes _ = refl
-... | no  _ = elemStr-complete x ys i
-
-∉⇒elemStr-false : ∀ (x : String) (bound : List String) → ¬ (x ∈ bound) → elemStr x bound ≡ false
-∉⇒elemStr-false x []       ∉ = refl
-∉⇒elemStr-false x (y ∷ ys) ∉ with x ≟ y
-... | yes refl = ⊥-elim (∉ (here refl))
-... | no  _    = ∉⇒elemStr-false x ys (λ i → ∉ (there i))
-
-elemStr-sound : ∀ (x : String) (bound : List String) → elemStr x bound ≡ true → x ∈ bound
-elemStr-sound x (y ∷ ys) eq with x ≟ y
-... | yes refl = here refl
-... | no  _    = there (elemStr-sound x ys eq)
-
-elemStr-false⇒∉ : ∀ (x : String) (bound : List String) → elemStr x bound ≡ false → ¬ (x ∈ bound)
-elemStr-false⇒∉ x (y ∷ ys) eq i with x ≟ y
-elemStr-false⇒∉ x (y ∷ ys) () i | yes _
-elemStr-false⇒∉ x (y ∷ ys) eq (here refl) | no ¬p = ⊥-elim (¬p refl)
-elemStr-false⇒∉ x (y ∷ ys) eq (there i)   | no  _ = elemStr-false⇒∉ x ys eq i
 
 ------------------------------------------------------------------------
 -- Decider bridge 2: the unaliased-import table. `lookupUnaliased` compares
@@ -183,29 +163,29 @@ GenWord-isBuiltinName x gw with isBuiltinName x in eb
 
 resolvesVar-sound : ∀ (bound : List String) (um : UnaliasedMap) (x : String) (e : RawExpr)
                   → ResolvesVar bound um x e
-                  → canonVar (elemStr x bound) (isBuiltinName x) (lookupUnaliased um x) x ≡ e
+                  → canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x ≡ e
 resolvesVar-sound bound um x _ (rv-binder i)
-  rewrite elemStr-complete x bound i = refl
+  rewrite dec-true (x ∈? bound) i = refl
 resolvesVar-sound bound um x _ (rv-gen ∉ gw)
-  rewrite ∉⇒elemStr-false x bound ∉ | GenWord-isBuiltinName x gw = refl
+  rewrite dec-false (x ∈? bound) ∉ | GenWord-isBuiltinName x gw = refl
 resolvesVar-sound bound um x _ (rv-import ∉ ¬gw fa ex)
-  rewrite ∉⇒elemStr-false x bound ∉ | ¬GenWord-isBuiltinName x ¬gw
+  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
         | lookupUn-complete um x _ fa | expandPath-complete _ _ ex = refl
 resolvesVar-sound bound um x _ (rv-own ∉ ¬gw ab)
-  rewrite ∉⇒elemStr-false x bound ∉ | ¬GenWord-isBuiltinName x ¬gw
+  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
         | lookupUn-absent um x ab = refl
 
 resolvesVar-complete : ∀ (bound : List String) (um : UnaliasedMap) (x : String)
                      → ResolvesVar bound um x
-                         (canonVar (elemStr x bound) (isBuiltinName x) (lookupUnaliased um x) x)
-resolvesVar-complete bound um x with elemStr x bound in eb
-... | true  = rv-binder (elemStr-sound x bound eb)
+                         (canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x)
+resolvesVar-complete bound um x with does (x ∈? bound) in eb
+... | true  = rv-binder (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound))))
 ... | false with isBuiltinName x in eg
-...   | true  = rv-gen (elemStr-false⇒∉ x bound eb) (isBuiltinName-sound x eg)
+...   | true  = rv-gen (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-sound x eg)
 ...   | false with lookupUnaliased um x in eu
-...     | just p  = rv-import (elemStr-false⇒∉ x bound eb) (isBuiltinName-false x eg)
+...     | just p  = rv-import (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
                               (lookupUn-sound um x p eu) (expandPath-sound p)
-...     | nothing = rv-own (elemStr-false⇒∉ x bound eb) (isBuiltinName-false x eg)
+...     | nothing = rv-own (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
                            (lookupUn-nothing um x eu)
 
 ------------------------------------------------------------------------

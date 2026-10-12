@@ -802,7 +802,7 @@ The `coerce-functor` and `coerce-functor⁻¹` functions bridge between:
 - Type-level functor application: `⟦ F ⟧T A` (in IR types)
 - Set-level functor application: `⟦ F ⟧F ⟦ A ⟧` (in semantics)
 
-This coherence is proven in `Once.Semantics.Coherence`.
+This coherence is proven in `Once.Semantics.Value` (the `coerce-functor` round trips).
 
 ### Proof Status — An Honest Assessment
 

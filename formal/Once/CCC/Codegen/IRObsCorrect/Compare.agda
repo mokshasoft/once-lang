@@ -33,7 +33,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
-open import Once.Spec.Type using () renaming (Unit to Unitᵀ; Int to Intᵀ; _*_ to _*ᵀ_; _+_ to _+ᵀ_)
+import Once.Spec.Type as SpecTy
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Prod; base-Sum)
 open import Function using () renaming (id to idᶠ)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
@@ -77,10 +77,10 @@ module CompareC {FS : FrameSemantics} where
   -- A comparison's argument and result are each ONE base type, so the info's
   -- witnesses are the canonical ones — which is what lets the block's own
   -- info (`cmp-block-info`) decode the same argument.
-  bt-II : (b : IsBaseType (Intᵀ *ᵀ Intᵀ)) → b ≡ base-Prod base-Int base-Int
+  bt-II : (b : IsBaseType (SpecTy.Int SpecTy.* SpecTy.Int)) → b ≡ base-Prod base-Int base-Int
   bt-II (base-Prod base-Int base-Int) = refl
 
-  bt-UU : (b : IsBaseType (Unitᵀ +ᵀ Unitᵀ)) → b ≡ base-Sum base-Unit base-Unit
+  bt-UU : (b : IsBaseType (SpecTy.Unit SpecTy.+ SpecTy.Unit)) → b ≡ base-Sum base-Unit base-Unit
   bt-UU (base-Sum base-Unit base-Unit) = refl
 
   -- `out-nz` on a 0/1 word is that word as a tag.
@@ -88,7 +88,7 @@ module CompareC {FS : FrameSemantics} where
   nz-bit true  = refl
   nz-bit false = refl
 
-  cmp-obs : ∀ (si : SigOpInfo (Intᵀ *ᵀ Intᵀ) (Unitᵀ +ᵀ Unitᵀ)) (op : CmpOp)
+  cmp-obs : ∀ (si : SigOpInfo (SpecTy.Int SpecTy.* SpecTy.Int) (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (op : CmpOp)
           → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
   cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
@@ -124,7 +124,7 @@ module CompareC {FS : FrameSemantics} where
       span′ = subst (SpanAt prog base) em≡ span
 
       -- ── THE DENOTATION: a pure value, `bool` of the comparison.
-      a : EvV.⟦ Intᵀ *ᵀ Intᵀ ⟧
+      a : EvV.⟦ SpecTy.Int SpecTy.* SpecTy.Int ⟧
       a = argOf si x
 
       c : Bool
@@ -139,7 +139,7 @@ module CompareC {FS : FrameSemantics} where
       -- The block's info decodes the SAME argument: the two base witnesses
       -- are the one canonical witness.
       a≡ : argOf si′ x ≡ a
-      a≡ = cong (λ b → forgetᵇ b (subst idᶠ (cohᴰ (Intᵀ *ᵀ Intᵀ)) x)) (sym (bt-II (baseA si)))
+      a≡ = cong (λ b → forgetᵇ b (subst idᶠ (cohᴰ (SpecTy.Int SpecTy.* SpecTy.Int)) x)) (sym (bt-II (baseA si)))
 
       -- ── THE STATES. Two register-only steps, then the nine of the build.
       fs0 fs1 fs2 : FlatState

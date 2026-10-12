@@ -37,6 +37,7 @@ open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat.Properties
 open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary.Decidable using (isYes)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
 
 ------------------------------------------------------------------------
@@ -156,11 +157,6 @@ ir-head (Call _) = h-Call
 -- Helper: Check for Void types (enables dead code elimination)
 ------------------------------------------------------------------------
 
--- Decidable-to-Bool conversion (avoids importing Relation.Nullary.Decidable).
-dec-to-bool : ∀ {ℓ} {P : Set ℓ} → Dec P → Bool
-dec-to-bool (yes _) = true
-dec-to-bool (no _)  = false
-
 -- | Check if a type is Void
 is-Void : Type → Bool
 is-Void Unit         = false
@@ -217,13 +213,13 @@ isVoidType (rigid _ _)  = false
 -- IR predicates: use ir-head head-discriminator + decidable IRHead equality
 -- to avoid enumerating all 24 IR constructors per predicate.
 is-fst?      : ∀ {A B} → IR A B → Bool
-is-fst?      f = dec-to-bool (ir-head f ≟IRHead h-fst)
+is-fst?      f = isYes (ir-head f ≟IRHead h-fst)
 
 is-snd?      : ∀ {A B} → IR A B → Bool
-is-snd?      f = dec-to-bool (ir-head f ≟IRHead h-snd)
+is-snd?      f = isYes (ir-head f ≟IRHead h-snd)
 
 is-terminal? : ∀ {A B} → IR A B → Bool
-is-terminal? f = dec-to-bool (ir-head f ≟IRHead h-terminal)
+is-terminal? f = isYes (ir-head f ≟IRHead h-terminal)
 
 -- | Safe to distribute pairs: eta case OR terminal case
 --   f : IR C A, g : IR C B (components of a pair)
@@ -239,8 +235,8 @@ safe-pair-distrib f g =
 -- | Does f "want" a coproduct on its right? (i.e., can f ∘ inl/inr reduce?)
 wants-coprod : ∀ {A B} → IR A B → Bool
 wants-coprod f =
-  dec-to-bool (ir-head f ≟IRHead h-case) ∨
-  dec-to-bool (ir-head f ≟IRHead h-terminal)
+  isYes (ir-head f ≟IRHead h-case) ∨
+  isYes (ir-head f ≟IRHead h-terminal)
 
 -- OCP-0003: wants-unfold/wants-fold removed. Use Cata/Ana instead.
 

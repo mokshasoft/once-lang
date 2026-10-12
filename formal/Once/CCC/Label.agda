@@ -42,11 +42,12 @@ import Data.Nat as Nat
 open import Data.List using (List; []; _∷_)
 open import Data.List.Properties using (≡-dec)
 open import Data.String using (String) renaming (_==_ to _==ˢ_)
-open import Data.Bool using (Bool; true; false; _∧_)
+open import Data.Bool using (Bool; true; false; _∧_; T)
 open import Relation.Binary using (DecidableEquality)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Relation.Nullary using (yes; no; ¬_)
-open import Relation.Nullary.Decidable using (⌊_⌋; toWitness)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
+open import Relation.Nullary using (yes; no; ¬_; does)
+open import Relation.Nullary.Decidable using (toWitness; isYes≗does; dec-true; dec-false)
+open import Data.Unit using (tt)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CanonicalName using (_≟ᶜ_)
 -- Rendering only: the SAME mangling the function symbol uses, so a label and
@@ -105,7 +106,7 @@ pattern thunk n = callee (e-thunk n)
 --
 -- DERIVED from the components' DECIDABLE equalities rather than hand-rolled
 -- as a Bool recursion: `_≟ᶜ_` is the equality the rest of the compiler
--- already trusts for definition identity, and going through `⌊_⌋` means the
+-- already trusts for definition identity, and going through `does` means the
 -- soundness the scans need (`≡ᵇᴵ-true`) is `toWitness`, not fifteen lines of
 -- String/List boolean-equality reflection.
 ------------------------------------------------------------------------
@@ -121,27 +122,18 @@ mkLabelId o p i ≟ᴵ mkLabelId o' p' i' with o ≟ᶜ o'
 
 infix 4 _≡ᵇᴵ_
 _≡ᵇᴵ_ : LabelId → LabelId → Bool
-a ≡ᵇᴵ b = ⌊ a ≟ᴵ b ⌋
+a ≡ᵇᴵ b = does (a ≟ᴵ b)
 
 ≡ᵇᴵ-true : ∀ (a b : LabelId) → (a ≡ᵇᴵ b) ≡ true → a ≡ b
-≡ᵇᴵ-true a b eq = toWitness (subst-T eq)
-  where open import Data.Bool using (T)
-        subst-T : (a ≡ᵇᴵ b) ≡ true → T (a ≡ᵇᴵ b)
-        subst-T e rewrite e = _
+≡ᵇᴵ-true a b eq = toWitness {a? = a ≟ᴵ b} (subst T (sym (trans (isYes≗does (a ≟ᴵ b)) eq)) tt)
 
 ≡ᵇᴵ-refl : ∀ (a : LabelId) → (a ≡ᵇᴵ a) ≡ true
-≡ᵇᴵ-refl a with a ≟ᴵ a
-... | yes _ = refl
-... | no ¬q = ⊥-elim (¬q refl)
-  where open import Data.Empty using (⊥-elim)
+≡ᵇᴵ-refl a = dec-true (a ≟ᴵ a) refl
 
 -- The contrapositive the scan-skipping lemmas need: distinct ids compare
--- `false`. `fromWitnessFalse` — again free, because the equality is derived.
+-- `false`: stdlib's `dec-false`, again free, because the equality is derived.
 ≢⇒≡ᵇᴵfalse : ∀ (a b : LabelId) → ¬ (a ≡ b) → (a ≡ᵇᴵ b) ≡ false
-≢⇒≡ᵇᴵfalse a b ¬q with a ≟ᴵ b
-... | yes q = ⊥-elim (¬q q)
-  where open import Data.Empty using (⊥-elim)
-... | no  _ = refl
+≢⇒≡ᵇᴵfalse a b ¬q = dec-false (a ≟ᴵ b) ¬q
 
 ------------------------------------------------------------------------
 -- D245: CALLABLE ENTRIES. Code a call can land on is either a closure body
@@ -167,19 +159,13 @@ e-fn _    ≟ᴱ e-thunk _ = no λ ()
 
 infix 4 _≡ᵇᴱ_
 _≡ᵇᴱ_ : EntryId → EntryId → Bool
-a ≡ᵇᴱ b = ⌊ a ≟ᴱ b ⌋
+a ≡ᵇᴱ b = does (a ≟ᴱ b)
 
 ≡ᵇᴱ-true : ∀ (a b : EntryId) → (a ≡ᵇᴱ b) ≡ true → a ≡ b
-≡ᵇᴱ-true a b eq = toWitness (subst-T eq)
-  where open import Data.Bool using (T)
-        subst-T : (a ≡ᵇᴱ b) ≡ true → T (a ≡ᵇᴱ b)
-        subst-T e rewrite e = _
+≡ᵇᴱ-true a b eq = toWitness {a? = a ≟ᴱ b} (subst T (sym (trans (isYes≗does (a ≟ᴱ b)) eq)) tt)
 
 ≡ᵇᴱ-refl : ∀ (a : EntryId) → (a ≡ᵇᴱ a) ≡ true
-≡ᵇᴱ-refl a with a ≟ᴱ a
-... | yes _ = refl
-... | no ¬q = ⊥-elim (¬q refl)
-  where open import Data.Empty using (⊥-elim)
+≡ᵇᴱ-refl a = dec-true (a ≟ᴱ a) refl
 
 -- Cross-provenance is `false` by the catch-all (the definitional
 -- disjointness that makes collisions impossible between compiler, SigOp and

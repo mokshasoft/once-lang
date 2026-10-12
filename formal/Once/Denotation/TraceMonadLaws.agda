@@ -20,7 +20,8 @@ open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 open import Once.Postulates using (extensionality)
 open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
-open import Once.Spec.Type using (Type; isUnit?) renaming (Unit to UnitT)
+open import Once.Spec.Type using (Type; isUnit?)
+import Once.Spec.Type as SpecTy
 import Once.Type as Ty
 open import Once.Spec.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName; showCanonical; gen)

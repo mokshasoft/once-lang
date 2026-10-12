@@ -36,7 +36,7 @@ open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String; _==_) renaming ()
 open import Once.Spec.Name using (bare)
-open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Function using (case_of_)
@@ -255,7 +255,7 @@ bundle-find bnil = nothing
 bundle-find (bffi _ _ _ _ _ rest) = bundle-find rest
 bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) =
   findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
-    (bare (funName fi) ≟cn bare "main") (isEffUU? ty) (bundle-find rest)
+    (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty) (bundle-find rest)
 bundle-find (bpoly _ rest) = bundle-find rest
 
 find-agree : ∀ {sc es} (b : FunBundle sc es) → findMain (bundle→compiled b) ≡ bundle-find b
@@ -263,7 +263,7 @@ find-agree bnil = refl
 find-agree (bffi _ _ _ _ _ rest) = find-agree rest
 find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) =
   cong (findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
-          (bare (funName fi) ≟cn bare "main") (isEffUU? ty))
+          (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty))
        (find-agree rest)
 find-agree (bpoly _ rest) = find-agree rest
 
@@ -298,7 +298,7 @@ bundle-find-call (bffi _ _ _ _ _ rest) eq = bundle-find-call rest eq
 bundle-find-call (bpoly _ rest) eq = bundle-find-call rest eq
 bundle-find-call (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) eq =
   here-call (C.mkCompiledFun (bare (funName fi)) ty irFun)
-    (bare (funName fi) ≟cn bare "main") (isEffUU? ty) (bundle-find rest) (bundle-find-call rest) eq
+    (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty) (bundle-find rest) (bundle-find-call rest) eq
 
 bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
   → bundle-find b ≡ just ir → BMainExists b
@@ -306,7 +306,7 @@ bundle-find-exists bnil ()
 bundle-find-exists (bffi _ _ _ _ _ rest) eq = bundle-find-exists rest eq
 bundle-find-exists (bpoly _ rest) eq = bundle-find-exists rest eq
 bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf eg ce cf rest) eq =
-  here-exists fi {irFun = irFun} rest ep (bare (funName fi) ≟cn bare "main") (isEffUU? ty)
+  here-exists fi {irFun = irFun} rest ep (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty)
     (bundle-find-exists rest) eq
 
 ------------------------------------------------------------------------

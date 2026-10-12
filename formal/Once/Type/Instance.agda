@@ -10,7 +10,7 @@
 module Once.Type.Instance where
 
 open import Data.List using ([]; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing; _>>=_)
 open import Data.Product using (Σ; _×_; _,_; proj₂)
 open import Data.String using (String)
 import Data.String as Str
@@ -57,7 +57,7 @@ extend-ok θ s x c with lookupSubst x s in eq
 extend-ok θ s x c | nothing = ((x , θ x) ∷ s) , refl , consistent-∷ θ s x c
 
 bind-ok : ∀ θ (r : Maybe Subst) (k : Subst → Maybe Subst)
-  → Matches θ r → (∀ s′ → Consistent θ s′ → Matches θ (k s′)) → Matches θ (maybe-bind k r)
+  → Matches θ r → (∀ s′ → Consistent θ s′ → Matches θ (k s′)) → Matches θ (r >>= k)
 bind-ok θ .(just s′) k (s′ , refl , c′) f = f s′ c′
 
 mutual
@@ -137,7 +137,7 @@ bin-sound : ∀ {X Y Z : Set} (op : X → Y → Z) (fa : Subst → X) (fb : Subs
   (r : Maybe Subst) (k : Subst → Maybe Subst)
   → (∀ {s₁} → r ≡ just s₁ → Extends s₁ s × (∀ s″ → Extends s″ s₁ → fa s″ ≡ a))
   → (∀ s₁ {s₂} → k s₁ ≡ just s₂ → Extends s₂ s₁ × (∀ s″ → Extends s″ s₂ → fb s″ ≡ b))
-  → maybe-bind k r ≡ just s′
+  → (r >>= k) ≡ just s′
   → Extends s′ s × (∀ s″ → Extends s″ s′ → op (fa s″) (fb s″) ≡ op a b)
 bin-sound op fa fb s (just s₁) k hA hB eq with hA refl | hB s₁ eq
 ... | (e₁ , sa) | (e₂ , sb) =

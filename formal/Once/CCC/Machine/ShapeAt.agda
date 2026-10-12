@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using ()
 open import Once.IRTy using (IRTy; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; _+_; WellFormedFI; ⟦_⟧TI; μ-type; ν-type; Int; Float)
-open import Once.Spec.Type using () renaming (Int to Intˢ; Float to Floatˢ)
+import Once.Spec.Type as SpecTy
 open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰ to ⟦_⟧; ⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
@@ -223,7 +223,7 @@ data ShapeAt where
   shape-int : ∀ {m}
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
-    {n : ⟦ Intˢ ⟧} →
+    {n : ⟦ SpecTy.Int ⟧} →
     BeforeFrontier alloc loc →
     readLoc s loc ≡ just (SV-Lit fits-intˢ n) →
     ShapeAt m alloc Int loc s
@@ -231,7 +231,7 @@ data ShapeAt where
   shape-float : ∀ {m}
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
-    {x : ⟦ Floatˢ ⟧} →
+    {x : ⟦ SpecTy.Float ⟧} →
     BeforeFrontier alloc loc →
     readLoc s loc ≡ just (SV-Lit fits-floatˢ x) →
     ShapeAt m alloc Float loc s

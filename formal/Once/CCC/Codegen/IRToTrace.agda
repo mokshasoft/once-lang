@@ -74,7 +74,8 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.IRToTrace (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _⊔_; _*_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc; _⊔_; _*_)
+import Data.Nat as ℕ
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_; _++_)
@@ -133,7 +134,7 @@ rec-count : Functor → ℕ
 rec-count (K _)   = 0
 rec-count Id      = 1
 rec-count (F ⊕ G) = rec-count F ⊔ rec-count G
-rec-count (F ⊗ G) = rec-count F +ℕ rec-count G
+rec-count (F ⊗ G) = rec-count F ℕ.+ rec-count G
 
 data CataStrategy : Set where
   strat-const     : CataStrategy   -- 0 rec positions: cata = alg on the In-layer
@@ -440,8 +441,8 @@ cata-trace-linear bb n1 l1 at =
 fsize : Functor → ℕ
 fsize (K _)   = 1
 fsize Id      = 1
-fsize (F ⊕ G) = suc (fsize F +ℕ fsize G)
-fsize (F ⊗ G) = suc (fsize F +ℕ fsize G)
+fsize (F ⊕ G) = suc (fsize F ℕ.+ fsize G)
+fsize (F ⊗ G) = suc (fsize F ℕ.+ fsize G)
 
 -- push the value in Output onto a 2-cell linked stack at `topSlot`
 -- (`[value, prev]`), using scratch slots `tv` (value) and `tb` (block).
@@ -480,8 +481,8 @@ wrap-sum tag s =
 lsize : Functor → ℕ
 lsize (K _)   = 0
 lsize Id      = 0
-lsize (F ⊕ G) = suc (suc (lsize F +ℕ lsize G))
-lsize (F ⊗ G) = lsize F +ℕ lsize G
+lsize (F ⊕ G) = suc (suc (lsize F ℕ.+ lsize G))
+lsize (F ⊗ G) = lsize F ℕ.+ lsize G
 
 -- Plan 0.54 item 6 (2026-08-01): the ⊕ dispatch is FLAT CONTROL, not a nested
 -- `instr-case-on-tag` — same shape as `case f g` below and as the branching
@@ -492,16 +493,16 @@ visit-walk todoSlot tv tb (K _) s lb = []
 visit-walk todoSlot tv tb Id    s lb = mov-to-output ∷ push2 todoSlot tv tb
 visit-walk todoSlot tv tb (F ⊕ G) s lb =
   (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb G (s +ℕ 4) (suc (suc lb) +ℕ lsize F) ++
+  visit-walk todoSlot tv tb G (s ℕ.+ 4) (suc (suc lb) ℕ.+ lsize F) ++
   (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷
    load-indirect-suc ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++
+  visit-walk todoSlot tv tb F (s ℕ.+ 4) (suc (suc lb)) ++
   (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
 visit-walk todoSlot tv tb (F ⊗ G) s lb =
   (mov-to-output ∷ store-at-slot s ∷ load-indirect ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb F (s +ℕ 4) lb ++
+  visit-walk todoSlot tv tb F (s ℕ.+ 4) lb ++
   (restore-input s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F)
+  visit-walk todoSlot tv tb G (s ℕ.+ 4) (lb ℕ.+ lsize F)
 
 -- REBUILD walk: Input1 = repr(G) (the node sublayer); build the ⟦G⟧A layer
 -- in Output, popping one value-stack result per Id position, RIGHT-to-LEFT.
@@ -518,20 +519,20 @@ rebuild-walk valSlot tv tb (K _) s lb = mov-to-output ∷ []
 rebuild-walk valSlot tv tb Id    s lb = pop2 valSlot
 rebuild-walk valSlot tv tb (F ⊕ G) s lb =
   (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb G (s +ℕ 4) (suc (suc lb) +ℕ lsize F) ++ wrap-sum 1 s ++
+  rebuild-walk valSlot tv tb G (s ℕ.+ 4) (suc (suc lb) ℕ.+ lsize F) ++ wrap-sum 1 s ++
   (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷
    load-indirect-suc ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++ wrap-sum 0 s ++
+  rebuild-walk valSlot tv tb F (s ℕ.+ 4) (suc (suc lb)) ++ wrap-sum 0 s ++
   (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
 rebuild-walk valSlot tv tb (F ⊗ G) s lb =
   (mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F) ++
-  (store-at-slot (s +ℕ 2) ∷ restore-input s ∷ load-indirect ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb F (s +ℕ 4) lb ++
-  (store-at-slot (suc s) ∷ instr-alloc-heap 2 ∷ store-at-slot (s +ℕ 3) ∷ mov-to-input ∷
+  rebuild-walk valSlot tv tb G (s ℕ.+ 4) (lb ℕ.+ lsize F) ++
+  (store-at-slot (s ℕ.+ 2) ∷ restore-input s ∷ load-indirect ∷ mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb F (s ℕ.+ 4) lb ++
+  (store-at-slot (suc s) ∷ instr-alloc-heap 2 ∷ store-at-slot (s ℕ.+ 3) ∷ mov-to-input ∷
    load-from-slot (suc s) ∷ store-indirect ∷
-   load-from-slot (s +ℕ 2) ∷ store-indirect-suc ∷
-   load-from-slot (s +ℕ 3) ∷ [])
+   load-from-slot (s ℕ.+ 2) ∷ store-indirect-suc ∷
+   load-from-slot (s ℕ.+ 3) ∷ [])
 
 -- The branching codegen. Precondition: Input1 = root μ-value; `at` = alg
 -- trace (Input1 = ⟦F⟧A layer → Output = A). Output := root fold.
@@ -541,38 +542,38 @@ rebuild-walk valSlot tv tb (F ⊗ G) s lb =
 cata-br-I₁ : Functor → ℕ → ℕ → AbstractTrace
 cata-br-I₁ F n1 l1 =
   -- init
-  (mov-to-output ∷ store-at-slot (n1 +ℕ 3) ∷
-   instr-alloc-heap 2 ∷ store-at-slot (n1 +ℕ 6) ∷ mov-to-input ∷
+  (mov-to-output ∷ store-at-slot (n1 ℕ.+ 3) ∷
+   instr-alloc-heap 2 ∷ store-at-slot (n1 ℕ.+ 6) ∷ mov-to-input ∷
    instr-load-tag-lit 0 ∷ store-indirect ∷
-   load-from-slot (n1 +ℕ 6) ∷ store-at-slot (suc n1) ∷
-   load-from-slot (n1 +ℕ 6) ∷ store-at-slot (n1 +ℕ 2) ∷
-   load-from-slot (n1 +ℕ 6) ∷ store-at-slot n1 ∷
-   load-from-slot (n1 +ℕ 3) ∷ []) ++ push2 n1 (n1 +ℕ 4) (n1 +ℕ 5) ++
+   load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot (suc n1) ∷
+   load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot (n1 ℕ.+ 2) ∷
+   load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot n1 ∷
+   load-from-slot (n1 ℕ.+ 3) ∷ []) ++ push2 n1 (n1 ℕ.+ 4) (n1 ℕ.+ 5) ++
   -- flatten
   (instr-ctrl (c-label (ℓ o l1)) ∷
    load-from-slot n1 ∷ mov-to-input ∷
    instr-ctrl (c-branch-tag-zero (ℓ o (suc l1))) ∷
    load-indirect-suc ∷ store-at-slot n1 ∷
-   load-indirect ∷ mov-to-input ∷ store-at-slot (n1 +ℕ 3) ∷
-   load-from-slot (n1 +ℕ 3) ∷ []) ++ push2 (suc n1) (n1 +ℕ 4) (n1 +ℕ 5) ++
-  (load-from-slot (n1 +ℕ 3) ∷ mov-to-input ∷ []) ++
-  visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4) ++
+   load-indirect ∷ mov-to-input ∷ store-at-slot (n1 ℕ.+ 3) ∷
+   load-from-slot (n1 ℕ.+ 3) ∷ []) ++ push2 (suc n1) (n1 ℕ.+ 4) (n1 ℕ.+ 5) ++
+  (load-from-slot (n1 ℕ.+ 3) ∷ mov-to-input ∷ []) ++
+  visit-walk n1 (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4) ++
   (instr-ctrl (c-jmp (ℓ o l1)) ∷ instr-ctrl (c-label (ℓ o (suc l1))) ∷ []) ++
   -- the fold's prefix, up to the algebra splice
-  (instr-ctrl (c-label (ℓ o (l1 +ℕ 2))) ∷
+  (instr-ctrl (c-label (ℓ o (l1 ℕ.+ 2))) ∷
    load-from-slot (suc n1) ∷ mov-to-input ∷
-   instr-ctrl (c-branch-tag-zero (ℓ o (l1 +ℕ 3))) ∷
+   instr-ctrl (c-branch-tag-zero (ℓ o (l1 ℕ.+ 3))) ∷
    load-indirect-suc ∷ store-at-slot (suc n1) ∷
    load-indirect ∷ mov-to-input ∷ []) ++
-  rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F) ++
+  rebuild-walk (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize F) ++
   (mov-to-input ∷ [])
 
 cata-br-I₂ : ℕ → ℕ → AbstractTrace
 cata-br-I₂ n1 l1 =
-  push2 (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) ++
-  (instr-ctrl (c-jmp (ℓ o (l1 +ℕ 2))) ∷ instr-ctrl (c-label (ℓ o (l1 +ℕ 3))) ∷ []) ++
+  push2 (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) ++
+  (instr-ctrl (c-jmp (ℓ o (l1 ℕ.+ 2))) ∷ instr-ctrl (c-label (ℓ o (l1 ℕ.+ 3))) ∷ []) ++
   -- final-read
-  (load-from-slot (n1 +ℕ 2) ∷ mov-to-input ∷ load-indirect ∷ [])
+  (load-from-slot (n1 ℕ.+ 2) ∷ mov-to-input ∷ load-indirect ∷ [])
 
 -- Tier 2 splices the algebra ONCE, so C1 costs it one call site, not two.
 -- The body/join labels and the call's two slots go above the existing ranges.
@@ -580,19 +581,19 @@ cata-trace-branching : Functor → ℕ → ℕ → ℕ → AbstractTrace → ℕ
 cata-trace-branching F bb n1 l1 at =
   -- D131: two more slots above the existing range — `ev` for the fold's
   -- environment and `pr` for the `(env , layer)` argument pair.
-  (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 4 , (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 2 ,
-  (cata-call-setup (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
-                   ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1)
-                   ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 2)
-                   ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 3)
-                   (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) ++
+  (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 4 , (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ℕ.+ 2 ,
+  (cata-call-setup (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
+                   ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 1)
+                   ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 2)
+                   ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 3)
+                   (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ++
    (cata-br-I₁ F n1 l1 ++
-    (cata-call (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
-               ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1)
-               ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 3) ++
+    (cata-call (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
+               ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 1)
+               ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 3) ++
      (cata-br-I₂ n1 l1 ++
-      cata-body (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F)
-                ((l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 1) bb at))))
+      cata-body (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F)
+                ((l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ℕ.+ 1) bb at))))
 
 -- Dispatch the strategy. Nat / branching still route to the Nat codegen
 -- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
@@ -604,9 +605,9 @@ cata-trace-branching F bb n1 l1 at =
 -- i.e. two different generations of the same term.
 cata-trace-const : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-const bb n1 l1 at =
-  n1 +ℕ 4 , l1 +ℕ 2 ,
-  (cata-call-setup n1 (n1 +ℕ 1) (n1 +ℕ 2) (n1 +ℕ 3) l1 ++
-   (cata-call n1 (n1 +ℕ 1) (n1 +ℕ 3) ++ cata-body l1 (l1 +ℕ 1) bb at))
+  n1 ℕ.+ 4 , l1 ℕ.+ 2 ,
+  (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) l1 ++
+   (cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
 
 cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-dispatch strat-const         bb n1 l1 at = cata-trace-const bb n1 l1 at

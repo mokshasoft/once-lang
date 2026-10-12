@@ -33,7 +33,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; SV-Ptr; readReg; Input1; AbstractTrace; StoredValue; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output; module LocState)
 open LocState using (regs; halted)
-open import Once.Spec.Type using () renaming (Unit to Unitᵀ; Void to Voidᵀ; Float to Floatˢ)
+import Once.Spec.Type as SpecTy
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
@@ -220,7 +220,7 @@ module SigOpC {FS : FrameSemantics} where
   forget-reg : ∀ (bt : IsBaseType Intˢ) (x : EvV.⟦ Intˢ ⟧) → x ≡ forgetᵇ bt x
   forget-reg base-Int x = refl
 
-  forget-reg-float : ∀ (bt : IsBaseType Floatˢ) (x : EvV.⟦ Floatˢ ⟧) → x ≡ forgetᵇ bt x
+  forget-reg-float : ∀ (bt : IsBaseType SpecTy.Float) (x : EvV.⟦ SpecTy.Float ⟧) → x ≡ forgetᵇ bt x
   forget-reg-float base-Float x = refl
 
   -- THE INPUT A CALL-FREE CONTRACT READS is the denotation's argument, in
@@ -246,7 +246,7 @@ module SigOpC {FS : FrameSemantics} where
       pure-sigop-out-unit-any nothing  = refl
   pure-input-aux si fit r-float x s (in-reg fits-float eq) =
     trans (cong (λ sv → pure-sigop-out-aux si s (just fit) (sv-as-loc sv)) eq)
-          (trans (cong (λ sv → pure-sigop-out-val si fit (readReg-typed Floatˢ sv)) eq)
+          (trans (cong (λ sv → pure-sigop-out-val si fit (readReg-typed SpecTy.Float sv)) eq)
                  (cong (λ a → pure-sigop-out-val si fit (just a)) (forget-reg-float (baseA si) x)))
   pure-input-aux si fit r-unit       x s (in-reg () _)
   pure-input-aux si fit (r-sum _ _)  x s (in-reg () _)
@@ -319,7 +319,7 @@ module SigOpC {FS : FrameSemantics} where
                   (at-reg (fits-erase fit)
                     (trans (writeReg-same (regs s) Output (exec-sigop-output si s)) out≡))
 
-  emits-obs : ∀ {A} (si : SigOpInfo A Unitᵀ) → sem si ≡ emitsV refl → IRObsCorrectF (SigOp si)
+  emits-obs : ∀ {A} (si : SigOpInfo A SpecTy.Unit) → sem si ≡ emitsV refl → IRObsCorrectF (SigOp si)
   emits-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
     S.build ev-eq (λ _ → halts-at si (emitsV refl) e s)
                   (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
@@ -331,7 +331,7 @@ module SigOpC {FS : FrameSemantics} where
       ev-eq = trans (events-at si (emitsV refl) e s)
                 (trans (event-agree si x s inp) (sym (cong (eventsAt s) E≡)))
 
-  halts-obs : ∀ {A} (si : SigOpInfo A Voidᵀ) → sem si ≡ haltsV refl → IRObsCorrectF (SigOp si)
+  halts-obs : ∀ {A} (si : SigOpInfo A SpecTy.Void) → sem si ≡ haltsV refl → IRObsCorrectF (SigOp si)
   halts-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
     S.build ev-eq (λ lv → case trans (sym (cong (stopsAt s) E≡)) lv of λ ())
                   (λ _ → halts-at si (haltsV refl) e s)
@@ -347,7 +347,7 @@ module SigOpC {FS : FrameSemantics} where
   -- log (`call-sigop-val`); the denotation's call node, run from the same
   -- log, is answered by the same interpretation at the same history.
   -- A register-fitting value is never `Unit`.
-  fits-not-unit : ∀ {B} → FitsInReg B → B ≡ Unitᵀ → ⊥
+  fits-not-unit : ∀ {B} → FitsInReg B → B ≡ SpecTy.Unit → ⊥
   fits-not-unit fits-intˢ   ()
   fits-not-unit fits-floatˢ ()
 
@@ -373,7 +373,7 @@ module SigOpC {FS : FrameSemantics} where
           -- the implementation answers it, at the decided `yes`
           ans-eq : TM.callAnswer ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) ≡ just ans
           ans-eq = go (isUnit? B)
-            where go : (du : Dec (B ≡ Unitᵀ))
+            where go : (du : Dec (B ≡ SpecTy.Unit))
                      → TM.callAnswer-at ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) du (TM.callKey op ∈K? TM.calls ιᶠ) ≡ just ans
                   go (yes u) = ⊥-elim (fits-not-unit fit u)
                   go (no nu) = cong (TM.callAnswer-at ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (no nu)) (proj₂ y)

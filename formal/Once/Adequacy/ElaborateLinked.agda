@@ -51,7 +51,8 @@ open import Once.Spec.ContractLaws using (value-∈; answer-∈)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
 import Once.Spec.Type.Grade as Ty
-open import Once.Spec.Type using (Void; isVoid?; isUnit?) renaming (Unit to UnitT)
+open import Once.Spec.Type using (Void; isVoid?; isUnit?)
+import Once.Spec.Type as SpecTy
 open import Data.List.Membership.Propositional using (_∈_)
 
 private variable σ : ISig
@@ -322,7 +323,7 @@ runCoe-linked {σ = σ} {tbl = tbl} {Z = Z} p f l = go (voidFree? p)
 -- constant, `arrow-info` otherwise — and at an effectful arrow the same
 -- `isVoid?`/`isUnit?` split as `contract-eff`.
 private
-  eff-decl : ∀ {Dom Cod} (si : SigOpInfo Dom Cod) {T} (dv : Dec (Cod ≡ Void)) (du : Dec (Cod ≡ UnitT))
+  eff-decl : ∀ {Dom Cod} (si : SigOpInfo Dom Cod) {T} (dv : Dec (Cod ≡ Void)) (du : Dec (Cod ≡ SpecTy.Unit))
            → (showCanonical (SigOpInfo.name si) , T) ∈ σ
            → contractOf (showCanonical (SigOpInfo.name si)) T ≡ contract-eff (showCanonical (SigOpInfo.name si)) Dom Cod dv du
            → Declared-at σ si (arrow-sem-eff dv du)
