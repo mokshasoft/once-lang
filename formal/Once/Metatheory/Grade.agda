@@ -9,7 +9,7 @@
 --   * `⊔q` is a semilattice (the usage of a case), and the order relation
 --     `_≤q'_` is a decidable total order whose Boolean form is `_≤q_`;
 --   * effect `(Purity, ·p, pure)` is a commutative monoid ordered by `_⊑π_`
---     (sequencing, D311), and `⊔p` its join — a semilattice with top `prod`
+--     (sequencing, D311), and `⊔p` its join — a semilattice with top `eff`
 --     and no bottom (`pure` and the guard `eff⁺` meet nowhere).
 --
 -- The carriers are finite, so every law is proved by exhausting the cases.
@@ -28,9 +28,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; isEquivale
 open import Relation.Binary.Structures using (IsDecTotalOrder)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Type.Grade
-  using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; eff⁺; eff; prod; _⊔p_; _·p_)
+  using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; eff⁺; eff; _⊔p_; _·p_)
 open import Once.Spec.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-g; ⊑-ge)
 open import Once.Spec.Type.DecEq using (_≟q_)
 
 ------------------------------------------------------------------------
@@ -278,7 +278,7 @@ quantity-≤-isDecTotalOrder = record
 ≤q-complete m≤m = refl
 
 ------------------------------------------------------------------------
--- Effect: pure ≤ eff ≤ prod with the guard eff⁺ ≤ eff (D311). The carrier
+-- Effect: pure ≤ eff with the guard eff⁺ ≤ eff (D311, D312). The carrier
 -- is finite, so every law is by exhausting the cases.
 ------------------------------------------------------------------------
 
@@ -286,135 +286,75 @@ quantity-≤-isDecTotalOrder = record
 ⊔p-assoc pure pure pure = refl
 ⊔p-assoc pure pure eff⁺ = refl
 ⊔p-assoc pure pure eff = refl
-⊔p-assoc pure pure prod = refl
 ⊔p-assoc pure eff⁺ pure = refl
 ⊔p-assoc pure eff⁺ eff⁺ = refl
 ⊔p-assoc pure eff⁺ eff = refl
-⊔p-assoc pure eff⁺ prod = refl
 ⊔p-assoc pure eff pure = refl
 ⊔p-assoc pure eff eff⁺ = refl
 ⊔p-assoc pure eff eff = refl
-⊔p-assoc pure eff prod = refl
-⊔p-assoc pure prod pure = refl
-⊔p-assoc pure prod eff⁺ = refl
-⊔p-assoc pure prod eff = refl
-⊔p-assoc pure prod prod = refl
 ⊔p-assoc eff⁺ pure pure = refl
 ⊔p-assoc eff⁺ pure eff⁺ = refl
 ⊔p-assoc eff⁺ pure eff = refl
-⊔p-assoc eff⁺ pure prod = refl
 ⊔p-assoc eff⁺ eff⁺ pure = refl
 ⊔p-assoc eff⁺ eff⁺ eff⁺ = refl
 ⊔p-assoc eff⁺ eff⁺ eff = refl
-⊔p-assoc eff⁺ eff⁺ prod = refl
 ⊔p-assoc eff⁺ eff pure = refl
 ⊔p-assoc eff⁺ eff eff⁺ = refl
 ⊔p-assoc eff⁺ eff eff = refl
-⊔p-assoc eff⁺ eff prod = refl
-⊔p-assoc eff⁺ prod pure = refl
-⊔p-assoc eff⁺ prod eff⁺ = refl
-⊔p-assoc eff⁺ prod eff = refl
-⊔p-assoc eff⁺ prod prod = refl
 ⊔p-assoc eff pure pure = refl
 ⊔p-assoc eff pure eff⁺ = refl
 ⊔p-assoc eff pure eff = refl
-⊔p-assoc eff pure prod = refl
 ⊔p-assoc eff eff⁺ pure = refl
 ⊔p-assoc eff eff⁺ eff⁺ = refl
 ⊔p-assoc eff eff⁺ eff = refl
-⊔p-assoc eff eff⁺ prod = refl
 ⊔p-assoc eff eff pure = refl
 ⊔p-assoc eff eff eff⁺ = refl
 ⊔p-assoc eff eff eff = refl
-⊔p-assoc eff eff prod = refl
-⊔p-assoc eff prod pure = refl
-⊔p-assoc eff prod eff⁺ = refl
-⊔p-assoc eff prod eff = refl
-⊔p-assoc eff prod prod = refl
-⊔p-assoc prod pure pure = refl
-⊔p-assoc prod pure eff⁺ = refl
-⊔p-assoc prod pure eff = refl
-⊔p-assoc prod pure prod = refl
-⊔p-assoc prod eff⁺ pure = refl
-⊔p-assoc prod eff⁺ eff⁺ = refl
-⊔p-assoc prod eff⁺ eff = refl
-⊔p-assoc prod eff⁺ prod = refl
-⊔p-assoc prod eff pure = refl
-⊔p-assoc prod eff eff⁺ = refl
-⊔p-assoc prod eff eff = refl
-⊔p-assoc prod eff prod = refl
-⊔p-assoc prod prod pure = refl
-⊔p-assoc prod prod eff⁺ = refl
-⊔p-assoc prod prod eff = refl
-⊔p-assoc prod prod prod = refl
 
 ⊔p-comm : ∀ a b → a ⊔p b ≡ b ⊔p a
 ⊔p-comm pure pure = refl
 ⊔p-comm pure eff⁺ = refl
 ⊔p-comm pure eff = refl
-⊔p-comm pure prod = refl
 ⊔p-comm eff⁺ pure = refl
 ⊔p-comm eff⁺ eff⁺ = refl
 ⊔p-comm eff⁺ eff = refl
-⊔p-comm eff⁺ prod = refl
 ⊔p-comm eff pure = refl
 ⊔p-comm eff eff⁺ = refl
 ⊔p-comm eff eff = refl
-⊔p-comm eff prod = refl
-⊔p-comm prod pure = refl
-⊔p-comm prod eff⁺ = refl
-⊔p-comm prod eff = refl
-⊔p-comm prod prod = refl
 
 ⊔p-idem : ∀ a → a ⊔p a ≡ a
 ⊔p-idem pure = refl
 ⊔p-idem eff⁺ = refl
 ⊔p-idem eff = refl
-⊔p-idem prod = refl
 
--- `prod` absorbs.
-⊔p-zeroʳ : ∀ a → a ⊔p prod ≡ prod
+-- `eff` is the top of the order: every arm meets at it.
+⊔p-zeroʳ : ∀ a → a ⊔p eff ≡ eff
 ⊔p-zeroʳ pure = refl
 ⊔p-zeroʳ eff⁺ = refl
 ⊔p-zeroʳ eff = refl
-⊔p-zeroʳ prod = refl
 
 -- `⊔p` is the join of `_⊑π_`: an upper bound, and the least one.
 ⊔p-upperˡ : ∀ a b → a ⊑π (a ⊔p b)
 ⊔p-upperˡ pure pure = ⊑-pure
 ⊔p-upperˡ pure eff⁺ = ⊑-pe
 ⊔p-upperˡ pure eff = ⊑-pe
-⊔p-upperˡ pure prod = ⊑-pp
 ⊔p-upperˡ eff⁺ pure = ⊑-ge
 ⊔p-upperˡ eff⁺ eff⁺ = ⊑-g
 ⊔p-upperˡ eff⁺ eff = ⊑-ge
-⊔p-upperˡ eff⁺ prod = ⊑-gp
 ⊔p-upperˡ eff pure = ⊑-eff
 ⊔p-upperˡ eff eff⁺ = ⊑-eff
 ⊔p-upperˡ eff eff = ⊑-eff
-⊔p-upperˡ eff prod = ⊑-ep
-⊔p-upperˡ prod pure = ⊑-prod
-⊔p-upperˡ prod eff⁺ = ⊑-prod
-⊔p-upperˡ prod eff = ⊑-prod
-⊔p-upperˡ prod prod = ⊑-prod
 
 ⊔p-upperʳ : ∀ a b → b ⊑π (a ⊔p b)
 ⊔p-upperʳ pure pure = ⊑-pure
 ⊔p-upperʳ pure eff⁺ = ⊑-ge
 ⊔p-upperʳ pure eff = ⊑-eff
-⊔p-upperʳ pure prod = ⊑-prod
 ⊔p-upperʳ eff⁺ pure = ⊑-pe
 ⊔p-upperʳ eff⁺ eff⁺ = ⊑-g
 ⊔p-upperʳ eff⁺ eff = ⊑-eff
-⊔p-upperʳ eff⁺ prod = ⊑-prod
 ⊔p-upperʳ eff pure = ⊑-pe
 ⊔p-upperʳ eff eff⁺ = ⊑-ge
 ⊔p-upperʳ eff eff = ⊑-eff
-⊔p-upperʳ eff prod = ⊑-prod
-⊔p-upperʳ prod pure = ⊑-pp
-⊔p-upperʳ prod eff⁺ = ⊑-gp
-⊔p-upperʳ prod eff = ⊑-ep
-⊔p-upperʳ prod prod = ⊑-prod
 
 ⊔p-least : ∀ {a b c} → a ⊑π c → b ⊑π c → (a ⊔p b) ⊑π c
 ⊔p-least ⊑-pure ⊑-pure = ⊑-pure
@@ -424,201 +364,84 @@ quantity-≤-isDecTotalOrder = record
 ⊔p-least ⊑-pe ⊑-eff = ⊑-eff
 ⊔p-least ⊑-pe ⊑-pe = ⊑-pe
 ⊔p-least ⊑-pe ⊑-ge = ⊑-eff
-⊔p-least ⊑-prod ⊑-prod = ⊑-prod
-⊔p-least ⊑-prod ⊑-pp = ⊑-prod
-⊔p-least ⊑-prod ⊑-ep = ⊑-prod
-⊔p-least ⊑-prod ⊑-gp = ⊑-prod
-⊔p-least ⊑-pp ⊑-prod = ⊑-prod
-⊔p-least ⊑-pp ⊑-pp = ⊑-pp
-⊔p-least ⊑-pp ⊑-ep = ⊑-ep
-⊔p-least ⊑-pp ⊑-gp = ⊑-ep
-⊔p-least ⊑-ep ⊑-prod = ⊑-prod
-⊔p-least ⊑-ep ⊑-pp = ⊑-ep
-⊔p-least ⊑-ep ⊑-ep = ⊑-ep
-⊔p-least ⊑-ep ⊑-gp = ⊑-ep
 ⊔p-least ⊑-g ⊑-g = ⊑-g
 ⊔p-least ⊑-ge ⊑-eff = ⊑-eff
 ⊔p-least ⊑-ge ⊑-pe = ⊑-eff
 ⊔p-least ⊑-ge ⊑-ge = ⊑-ge
-⊔p-least ⊑-gp ⊑-prod = ⊑-prod
-⊔p-least ⊑-gp ⊑-pp = ⊑-ep
-⊔p-least ⊑-gp ⊑-ep = ⊑-ep
-⊔p-least ⊑-gp ⊑-gp = ⊑-gp
 
 -- The sequencing monoid (D311): `pure` the unit, associative.
 ·p-assoc : ∀ a b c → (a ·p b) ·p c ≡ a ·p (b ·p c)
 ·p-assoc pure pure pure = refl
 ·p-assoc pure pure eff⁺ = refl
 ·p-assoc pure pure eff = refl
-·p-assoc pure pure prod = refl
 ·p-assoc pure eff⁺ pure = refl
 ·p-assoc pure eff⁺ eff⁺ = refl
 ·p-assoc pure eff⁺ eff = refl
-·p-assoc pure eff⁺ prod = refl
 ·p-assoc pure eff pure = refl
 ·p-assoc pure eff eff⁺ = refl
 ·p-assoc pure eff eff = refl
-·p-assoc pure eff prod = refl
-·p-assoc pure prod pure = refl
-·p-assoc pure prod eff⁺ = refl
-·p-assoc pure prod eff = refl
-·p-assoc pure prod prod = refl
 ·p-assoc eff⁺ pure pure = refl
 ·p-assoc eff⁺ pure eff⁺ = refl
 ·p-assoc eff⁺ pure eff = refl
-·p-assoc eff⁺ pure prod = refl
 ·p-assoc eff⁺ eff⁺ pure = refl
 ·p-assoc eff⁺ eff⁺ eff⁺ = refl
 ·p-assoc eff⁺ eff⁺ eff = refl
-·p-assoc eff⁺ eff⁺ prod = refl
 ·p-assoc eff⁺ eff pure = refl
 ·p-assoc eff⁺ eff eff⁺ = refl
 ·p-assoc eff⁺ eff eff = refl
-·p-assoc eff⁺ eff prod = refl
-·p-assoc eff⁺ prod pure = refl
-·p-assoc eff⁺ prod eff⁺ = refl
-·p-assoc eff⁺ prod eff = refl
-·p-assoc eff⁺ prod prod = refl
 ·p-assoc eff pure pure = refl
 ·p-assoc eff pure eff⁺ = refl
 ·p-assoc eff pure eff = refl
-·p-assoc eff pure prod = refl
 ·p-assoc eff eff⁺ pure = refl
 ·p-assoc eff eff⁺ eff⁺ = refl
 ·p-assoc eff eff⁺ eff = refl
-·p-assoc eff eff⁺ prod = refl
 ·p-assoc eff eff pure = refl
 ·p-assoc eff eff eff⁺ = refl
 ·p-assoc eff eff eff = refl
-·p-assoc eff eff prod = refl
-·p-assoc eff prod pure = refl
-·p-assoc eff prod eff⁺ = refl
-·p-assoc eff prod eff = refl
-·p-assoc eff prod prod = refl
-·p-assoc prod pure pure = refl
-·p-assoc prod pure eff⁺ = refl
-·p-assoc prod pure eff = refl
-·p-assoc prod pure prod = refl
-·p-assoc prod eff⁺ pure = refl
-·p-assoc prod eff⁺ eff⁺ = refl
-·p-assoc prod eff⁺ eff = refl
-·p-assoc prod eff⁺ prod = refl
-·p-assoc prod eff pure = refl
-·p-assoc prod eff eff⁺ = refl
-·p-assoc prod eff eff = refl
-·p-assoc prod eff prod = refl
-·p-assoc prod prod pure = refl
-·p-assoc prod prod eff⁺ = refl
-·p-assoc prod prod eff = refl
-·p-assoc prod prod prod = refl
 
 ·p-identityʳ : ∀ a → a ·p pure ≡ a
 ·p-identityʳ pure = refl
 ·p-identityʳ eff⁺ = refl
 ·p-identityʳ eff = refl
-·p-identityʳ prod = refl
 
 -- …and monotone in both arguments: the order is compatible (an ordered monoid).
 ·p-mono : ∀ {a a′ b b′} → a ⊑π a′ → b ⊑π b′ → (a ·p b) ⊑π (a′ ·p b′)
 ·p-mono ⊑-pure ⊑-pure = ⊑-pure
 ·p-mono ⊑-pure ⊑-eff = ⊑-eff
 ·p-mono ⊑-pure ⊑-pe = ⊑-pe
-·p-mono ⊑-pure ⊑-prod = ⊑-prod
-·p-mono ⊑-pure ⊑-pp = ⊑-pp
-·p-mono ⊑-pure ⊑-ep = ⊑-ep
 ·p-mono ⊑-pure ⊑-g = ⊑-g
 ·p-mono ⊑-pure ⊑-ge = ⊑-ge
-·p-mono ⊑-pure ⊑-gp = ⊑-gp
 ·p-mono ⊑-eff ⊑-pure = ⊑-eff
 ·p-mono ⊑-eff ⊑-eff = ⊑-eff
 ·p-mono ⊑-eff ⊑-pe = ⊑-eff
-·p-mono ⊑-eff ⊑-prod = ⊑-prod
-·p-mono ⊑-eff ⊑-pp = ⊑-ep
-·p-mono ⊑-eff ⊑-ep = ⊑-ep
 ·p-mono ⊑-eff ⊑-g = ⊑-g
 ·p-mono ⊑-eff ⊑-ge = ⊑-ge
-·p-mono ⊑-eff ⊑-gp = ⊑-gp
 ·p-mono ⊑-pe ⊑-pure = ⊑-pe
 ·p-mono ⊑-pe ⊑-eff = ⊑-eff
 ·p-mono ⊑-pe ⊑-pe = ⊑-pe
-·p-mono ⊑-pe ⊑-prod = ⊑-prod
-·p-mono ⊑-pe ⊑-pp = ⊑-pp
-·p-mono ⊑-pe ⊑-ep = ⊑-ep
 ·p-mono ⊑-pe ⊑-g = ⊑-g
 ·p-mono ⊑-pe ⊑-ge = ⊑-ge
-·p-mono ⊑-pe ⊑-gp = ⊑-gp
-·p-mono ⊑-prod ⊑-pure = ⊑-prod
-·p-mono ⊑-prod ⊑-eff = ⊑-prod
-·p-mono ⊑-prod ⊑-pe = ⊑-prod
-·p-mono ⊑-prod ⊑-prod = ⊑-prod
-·p-mono ⊑-prod ⊑-pp = ⊑-prod
-·p-mono ⊑-prod ⊑-ep = ⊑-prod
-·p-mono ⊑-prod ⊑-g = ⊑-prod
-·p-mono ⊑-prod ⊑-ge = ⊑-prod
-·p-mono ⊑-prod ⊑-gp = ⊑-prod
-·p-mono ⊑-pp ⊑-pure = ⊑-pp
-·p-mono ⊑-pp ⊑-eff = ⊑-ep
-·p-mono ⊑-pp ⊑-pe = ⊑-pp
-·p-mono ⊑-pp ⊑-prod = ⊑-prod
-·p-mono ⊑-pp ⊑-pp = ⊑-pp
-·p-mono ⊑-pp ⊑-ep = ⊑-ep
-·p-mono ⊑-pp ⊑-g = ⊑-gp
-·p-mono ⊑-pp ⊑-ge = ⊑-gp
-·p-mono ⊑-pp ⊑-gp = ⊑-gp
-·p-mono ⊑-ep ⊑-pure = ⊑-ep
-·p-mono ⊑-ep ⊑-eff = ⊑-ep
-·p-mono ⊑-ep ⊑-pe = ⊑-ep
-·p-mono ⊑-ep ⊑-prod = ⊑-prod
-·p-mono ⊑-ep ⊑-pp = ⊑-ep
-·p-mono ⊑-ep ⊑-ep = ⊑-ep
-·p-mono ⊑-ep ⊑-g = ⊑-gp
-·p-mono ⊑-ep ⊑-ge = ⊑-gp
-·p-mono ⊑-ep ⊑-gp = ⊑-gp
 ·p-mono ⊑-g ⊑-pure = ⊑-g
 ·p-mono ⊑-g ⊑-eff = ⊑-g
 ·p-mono ⊑-g ⊑-pe = ⊑-g
-·p-mono ⊑-g ⊑-prod = ⊑-prod
-·p-mono ⊑-g ⊑-pp = ⊑-gp
-·p-mono ⊑-g ⊑-ep = ⊑-gp
 ·p-mono ⊑-g ⊑-g = ⊑-g
 ·p-mono ⊑-g ⊑-ge = ⊑-g
-·p-mono ⊑-g ⊑-gp = ⊑-gp
 ·p-mono ⊑-ge ⊑-pure = ⊑-ge
 ·p-mono ⊑-ge ⊑-eff = ⊑-ge
 ·p-mono ⊑-ge ⊑-pe = ⊑-ge
-·p-mono ⊑-ge ⊑-prod = ⊑-prod
-·p-mono ⊑-ge ⊑-pp = ⊑-gp
-·p-mono ⊑-ge ⊑-ep = ⊑-gp
 ·p-mono ⊑-ge ⊑-g = ⊑-g
 ·p-mono ⊑-ge ⊑-ge = ⊑-ge
-·p-mono ⊑-ge ⊑-gp = ⊑-gp
-·p-mono ⊑-gp ⊑-pure = ⊑-gp
-·p-mono ⊑-gp ⊑-eff = ⊑-gp
-·p-mono ⊑-gp ⊑-pe = ⊑-gp
-·p-mono ⊑-gp ⊑-prod = ⊑-prod
-·p-mono ⊑-gp ⊑-pp = ⊑-gp
-·p-mono ⊑-gp ⊑-ep = ⊑-gp
-·p-mono ⊑-gp ⊑-g = ⊑-gp
-·p-mono ⊑-gp ⊑-ge = ⊑-gp
-·p-mono ⊑-gp ⊑-gp = ⊑-gp
 
 ·p-comm : ∀ a b → a ·p b ≡ b ·p a
 ·p-comm pure pure = refl
 ·p-comm pure eff⁺ = refl
 ·p-comm pure eff = refl
-·p-comm pure prod = refl
 ·p-comm eff⁺ pure = refl
 ·p-comm eff⁺ eff⁺ = refl
 ·p-comm eff⁺ eff = refl
-·p-comm eff⁺ prod = refl
 ·p-comm eff pure = refl
 ·p-comm eff eff⁺ = refl
 ·p-comm eff eff = refl
-·p-comm eff prod = refl
-·p-comm prod pure = refl
-·p-comm prod eff⁺ = refl
-·p-comm prod eff = refl
-·p-comm prod prod = refl
 
 -- The grades under sequencing are a commutative monoid with unit `pure`
 -- (D311), ordered by `_⊑π_` (`·p-mono`).

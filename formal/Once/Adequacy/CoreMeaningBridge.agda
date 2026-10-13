@@ -143,7 +143,6 @@ diag-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y) → subM (·p-dia
 diag-bind Once.Spec.Type.Grade.pure m k = refl
 diag-bind Once.Spec.Type.Grade.eff  m k = refl
 diag-bind Once.Spec.Type.Grade.eff⁺ m k = refl
-diag-bind Once.Spec.Type.Grade.prod m k = refl
 
 module Comb {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)
@@ -301,7 +300,8 @@ module Comb {δ : GM.DefSem} where
     → GM.⟦ ⊢applyEffᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
   applyEff-sem {Γ = Γ} x =
     trans (RS.⟦⟧-substΨ {Γ = Γ} (z+qz Many)
-             (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var′ (suc zero) Once.Spec.Type.Sub.⊑-pe)) (⊢snd (⊢var′ (suc zero) Once.Spec.Type.Sub.⊑-pe))))) fmt δ x) refl
+             (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var (suc zero))) (⊢snd (⊢var (suc zero)))))) fmt δ x)
+          (extensionality λ fa → extensionality λ _ → trans (>>=ᵖ-β _ _) (>>=ᵖ-β _ _))
 
   effApp-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B : Type} {f t}
     (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many eff ] B ! pure) (dx : Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
@@ -311,8 +311,7 @@ module Comb {δ : GM.DefSem} where
                        GM.⟦ dx ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) x) >>=ᵖ λ vx → vf vx)
   effApp-sem {Γ = Γ} df dx x =
     extensionality λ _ →
-      trans (cong₂ (λ f a → f a) (RS.wk-sem _ df fmt δ _) (RS.wk-sem _ dx fmt δ _))
-            (sym (trans (>>=ᵖ-β _ _) (>>=ᵖ-β _ _)))
+      cong₂ (λ F X → F >>=ᵖ λ vf → X >>=ᵖ λ vx → vf vx) (RS.wk-sem _ df fmt δ _) (RS.wk-sem _ dx fmt δ _)
 
   cata-sem′ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π} {alg}
     (u : pure ⊑π π) (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
@@ -533,7 +532,7 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-snd-app d) dγ = app-comb _ (λ v → refl) (bridge-i V ag d _)
   bridge-i {ctx = ctx} V ag (t-terminal-app d) dγ = bindC (bridge-i V ag d (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)) (λ v → refl)
   bridge-i V ag (t-Out-app-infer wf refl d) dγ = app-comb _ (λ v → >>=ᵖ-β v _) (bridge-i V ag d _)
-  bridge-i V ag (t-Out-eff-app-infer wf refl d) dγ = app-comb _ (λ v → refl) (bridge-i V ag d _)
+  bridge-i V ag (t-Out-eff-app-infer wf refl d) dγ = app-comb _ (λ v → cong returnᵖ (extensionality λ _ → >>=ᵖ-β v _)) (bridge-i V ag d _)
   bridge-i {ctx = ctx} V ag (t-apply-app-infer {A = A} {B = B} d) dγ =
     trans (bindC (bridge-i V ag d _) (λ fa → refl))
           (sym (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})

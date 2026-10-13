@@ -102,24 +102,13 @@ mutual
   instantiateAcc (Pν-type F eff)  (ν-type f eff)  s = instantiateFunctor F f s
   instantiateAcc (Pν-type _ pure) (ν-type _ eff)  _ = nothing
   instantiateAcc (Pν-type _ eff)  (ν-type _ pure) _ = nothing
-  instantiateAcc (Pν-type F prod) (ν-type f prod) s = instantiateFunctor F f s
-  instantiateAcc (Pν-type _ pure) (ν-type _ prod) _ = nothing
-  instantiateAcc (Pν-type _ eff)  (ν-type _ prod) _ = nothing
-  instantiateAcc (Pν-type _ prod) (ν-type _ pure) _ = nothing
-  instantiateAcc (Pν-type _ prod) (ν-type _ eff)  _ = nothing
   instantiateAcc (Pν-type F eff⁺) (ν-type f eff⁺) s = instantiateFunctor F f s
   instantiateAcc (Pν-type _ pure) (ν-type _ eff⁺) _ = nothing
   instantiateAcc (Pν-type _ eff)  (ν-type _ eff⁺) _ = nothing
-  instantiateAcc (Pν-type _ prod) (ν-type _ eff⁺) _ = nothing
   instantiateAcc (Pν-type _ eff⁺) (ν-type _ pure) _ = nothing
   instantiateAcc (Pν-type _ eff⁺) (ν-type _ eff)  _ = nothing
-  instantiateAcc (Pν-type _ eff⁺) (ν-type _ prod) _ = nothing
   -- D311: no schema writes a `prod` arrow yet (plan 0.117 F).
-  instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ prod ] _) _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ eff⁺ ] _) _ = nothing
-  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero prod ] _) _ = nothing
-  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One prod ] _)  _ = nothing
-  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Many prod ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero eff⁺ ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff⁺ ] _)  _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Many eff⁺ ] _) _ = nothing

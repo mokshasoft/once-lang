@@ -34,7 +34,7 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Spec.Type as T
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff⁺; prod)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff⁺; eff)
 open import Once.Spec.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Spec.Type.Honest using (HonestFFI)
@@ -232,7 +232,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
   ⊢iter : ∀ {n} {Γ : PCtx m n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
         → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many eff⁺ ] (B + A) ! π₁
         → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
-        → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p prod)
+        → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p eff)
   ⊢out : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π₁ : Purity} {F : Fun m} {t}
        → WFFun Δ F
        → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁

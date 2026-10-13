@@ -559,8 +559,8 @@ module WithSG (sg : SigGround) where
              → ρ̂ᶜ (DT.⊢effAppᶜ a b) ≅ DT.⊢effAppᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
     c-effApp {f = f} {x} a b =
       ≅lam refl (cong₂ G.app (ρ̂ₜ-ren suc f) (ρ̂ₜ-ren suc x))
-        (≅2 _ _ GT.⊢app refl (ρ̂ₜ-ren suc f) (≅1 _ _ (GT.⊢sub-eff Once.Spec.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc f) (wk≅ T.Unit a))
-                        refl (ρ̂ₜ-ren suc x) (≅1 _ _ (GT.⊢sub-eff Once.Spec.Type.Sub.⊑-pe) refl (ρ̂ₜ-ren suc x) (wk≅ T.Unit b)))
+        (≅2 _ _ GT.⊢app refl (ρ̂ₜ-ren suc f) (wk≅ T.Unit a)
+                        refl (ρ̂ₜ-ren suc x) (wk≅ T.Unit b))
 
   -- The functor combinators: the substituted combinator sits at `⟦ ρ̂F F ⟧T`,
   -- the image of the original at `ρ̂ (⟦ F ⟧T _)`; one J on that equation.
@@ -580,7 +580,7 @@ module WithSG (sg : SigGround) where
       outEff-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf T.eff) ≡ X)
                  → GT.⊢lam {Γ = Δ₀} {q = Many} refl (GT.⊢lam {q = Many} refl
                      (subst (λ Y → ((Δ₀ C., ν-type Gf T.eff) C., T.Unit) ⊢[ T.Zero C.∷ C.singleUse zero T.One ] G.out (G.var (suc zero)) ∷ Y ! T.eff) e
-                            (GT.⊢out w (DT.⊢var′ (suc zero) Once.Spec.Type.Sub.⊑-pe))))
+                            (GT.⊢out w (GT.⊢var (suc zero)))))
                    ≅ DT.⊢outEffᶜ {Γ = Δ₀} w
       outEff-gen w refl = H.refl
 

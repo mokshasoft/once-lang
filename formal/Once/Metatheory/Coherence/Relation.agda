@@ -28,12 +28,13 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod; mk-kind; Zero; One; Many; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; mk-kind; Zero; One; Many; _·p_)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
-open import Once.Spec.Guarded using (T⁺; forget⁺; _>>=⁺_; _⁺=<<_; fmap⁺)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-g; ⊑-ge)
+open import Once.Spec.Guarded using (T⁺; forget⁺; _>>=⁺_; _⁺=<<_; fmap⁺; module ν⁺)
+open ν⁺ using (force⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺; forget-⁺bind)
-open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Obs; Same; TreeEqN; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; ν⁺-upto)
+open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Obs; Same; TreeEqN; LayerEq; νᵖ-upto; ν∞-upto; ν⁺-upto)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
@@ -103,9 +104,6 @@ private
   ≡→≈ : ∀ {X} {m m′ : T∞ X} → m ≡ m′ → TreeEq∞ _≡_ m m′
   ≡→≈ {m = m} refl = ≈refl m
 
-  ret-≈ : ∀ {X} (x : X) → TreeEq∞ _≡_ (embed (returnT x)) (return∞ x)
-  force≈ (ret-≈ x) = ret≈∞ refl
-
   retβ-≈ : ∀ {X Y} (m : X) (k : X → Y) → TreeEq∞ _≡_ (return∞ (m >>=ᵖ k)) (return∞ m >>=∞ λ x → return∞ (k x))
   force≈ (retβ-≈ m k) = ret≈∞ (>>=ᵖ-β m k)
 
@@ -116,53 +114,33 @@ private
 toT∞-bindM : ∀ π {X Y} (m : M π X) (k : X → M π Y)
            → TreeEq∞ _≡_ (toT∞ π (bindM π m k)) (toT∞ π m >>=∞ λ x → toT∞ π (k x))
 toT∞-bindM pure m k = retβ-≈ m k
-toT∞-bindM eff⁺ m k =
-  ≈∞-rewrite (≡→≈ (cong embed (forget-bind⁺ m (λ x → forget⁺ (k x))))) (≈refl _)
-             (embed-bind (forget⁺ m) (λ x → forget⁺ (k x)))
-toT∞-bindM eff  m k = embed-bind m k
-toT∞-bindM prod m k = ≈refl (m >>=∞ k)
+toT∞-bindM eff⁺ m k = forget-bind⁺ m (λ x → forget⁺ (k x))
+toT∞-bindM eff  m k = ≈refl (m >>=∞ k)
 
 -- The graded bind (D311) erases to `T∞`'s.
 toT∞-bindᵍ : ∀ π₁ π₂ {X Y} (m : M π₁ X) (k : X → M π₂ Y)
            → TreeEq∞ _≡_ (toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k)) (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
 toT∞-bindᵍ pure π₂ m k =
   ≈∞-rewrite (≡→≈ (cong (toT∞ π₂) (>>=ᵖ-β m k))) (≈∞-idˡ m (λ x → toT∞ π₂ (k x))) (≈refl (toT∞ π₂ (k m)))
-toT∞-bindᵍ eff⁺ pure m k =
-  ≈∞-rewrite (≡→≈ (cong embed (forget-bind⁺ m (λ x → returnT (k x))))) (≈refl _)
-             (≈∞-rewrite (embed-bind (forget⁺ m) (λ x → returnT (k x))) (≈refl _)
-                         (≈∞-bind {R = _≡_} (≈refl (embed (forget⁺ m))) λ { refl → ret-≈ _ }))
-toT∞-bindᵍ eff⁺ eff⁺ m k =
-  ≈∞-rewrite (≡→≈ (cong embed (forget-bind⁺ m (λ x → forget⁺ (k x))))) (≈refl _)
-             (embed-bind (forget⁺ m) (λ x → forget⁺ (k x)))
-toT∞-bindᵍ eff⁺ eff  m k =
-  ≈∞-rewrite (≡→≈ (cong embed (forget-bind⁺ m k))) (≈refl _) (embed-bind (forget⁺ m) k)
-toT∞-bindᵍ eff⁺ prod m k = ≈refl (embed (forget⁺ m) >>=∞ k)
-toT∞-bindᵍ eff eff⁺ m k =
-  ≈∞-rewrite (≡→≈ (cong embed (forget-⁺bind m k))) (≈refl _) (embed-bind m (λ x → forget⁺ (k x)))
-toT∞-bindᵍ eff pure m k =
-  ≈∞-rewrite (embed-bind m (λ x → returnT (k x))) (≈refl _)
-             (≈∞-bind {R = _≡_} (≈refl (embed m)) λ { refl → ret-≈ _ })
-toT∞-bindᵍ eff eff  m k = embed-bind m k
-toT∞-bindᵍ eff prod m k = ≈refl (embed m >>=∞ k)
-toT∞-bindᵍ prod π₂  m k = ≈refl (m >>=∞ λ x → toT∞ π₂ (k x))
+toT∞-bindᵍ eff⁺ pure m k = forget-bind⁺ m (λ x → return∞ (k x))
+toT∞-bindᵍ eff⁺ eff⁺ m k = forget-bind⁺ m (λ x → forget⁺ (k x))
+toT∞-bindᵍ eff⁺ eff  m k = forget-bind⁺ m k
+toT∞-bindᵍ eff  pure m k = ≈refl _
+toT∞-bindᵍ eff  eff⁺ m k = forget-⁺bind m k
+toT∞-bindᵍ eff  eff  m k = ≈refl (m >>=∞ k)
 
 toT∞-returnM : ∀ {π} (u : pure ⊑π π) {X} (x : X) → TreeEq∞ _≡_ (toT∞ π (returnM u x)) (return∞ x)
 toT∞-returnM ⊑-pure x = ≈refl (return∞ x)
-toT∞-returnM ⊑-pe   x = ret-≈ x
-toT∞-returnM ⊑-pp   x = ≈refl (return∞ x)
+toT∞-returnM ⊑-pe   x = ≈refl (return∞ x)
 
 -- `⊢sub-eff` is invisible as a tree: the unit embeds a value as a leaf, and a
--- finite tree is itself in `T∞`.
+-- guarded tree is itself in `T∞`.
 toT∞-subM : ∀ {π π′} (g : π ⊑π π′) {X} (m : M π X) → TreeEq∞ _≡_ (toT∞ π′ (subM g m)) (toT∞ π m)
 toT∞-subM ⊑-pure m = ≈refl (return∞ m)
-toT∞-subM ⊑-eff  m = ≈refl (embed m)
-toT∞-subM ⊑-pe   m = ret-≈ m
-toT∞-subM ⊑-prod m = ≈refl m
-toT∞-subM ⊑-pp   m = ≈refl (return∞ m)
-toT∞-subM ⊑-ep   m = ≈refl (embed m)
-toT∞-subM ⊑-g    m = ≈refl (embed (forget⁺ m))
-toT∞-subM ⊑-ge   m = ≈refl (embed (forget⁺ m))
-toT∞-subM ⊑-gp   m = ≈refl (embed (forget⁺ m))
+toT∞-subM ⊑-eff  m = ≈refl m
+toT∞-subM ⊑-pe   m = ≈refl (return∞ m)
+toT∞-subM ⊑-g    m = ≈refl (forget⁺ m)
+toT∞-subM ⊑-ge   m = ≈refl (forget⁺ m)
 
 ------------------------------------------------------------------------
 -- Depth: a relation to every finite depth is one at every node
@@ -289,13 +267,9 @@ LayerEq-map (G S⊗ H) f (r , r′) = LayerEq-map G f r , LayerEq-map H f r′
 νᵖ-mono H zero    h = tt
 νᵖ-mono H (suc n) h = LayerEq-map H (νᵖ-mono H n) h
 
-νᵈ-mono : ∀ (H : SFunctor) n {v w} → νᵈ-upto H (suc n) v w → νᵈ-upto H n v w
-νᵈ-mono H zero    h = tt
-νᵈ-mono H (suc n) h = TreeEq-map (LayerEq-map H (νᵈ-mono H n)) h
-
 ν⁺-mono : ∀ (H : SFunctor) n {v w} → ν⁺-upto H (suc n) v w → ν⁺-upto H n v w
 ν⁺-mono H zero    h = tt
-ν⁺-mono H (suc n) h = TreeEq-map (LayerEq-map H (ν⁺-mono H n)) h
+ν⁺-mono H (suc n) {v} {w} h = TreeEqN-mono (LayerEq-map H (ν⁺-mono H n)) (suc n) {forget⁺ (force⁺ v)} {forget⁺ (force⁺ w)} h
 
 ν∞-mono : ∀ (H : SFunctor) n {v w} → ν∞-upto H (suc n) v w → ν∞-upto H n v w
 ν∞-mono H zero    h = tt
@@ -317,8 +291,7 @@ Obs-mono n (A ⇒[ mk-kind Zero π ] B) h = TreeEqN-mono (Obs-mono n B) n h
 Obs-mono n (A ⇒[ mk-kind One  π ] B) h a a′ s = TreeEqN-mono (Obs-mono n B) n (h a a′ s)
 Obs-mono n (A ⇒[ mk-kind Many π ] B) h a a′ s = TreeEqN-mono (Obs-mono n B) n (h a a′ s)
 Obs-mono n (ν-type F pure) h = νᵖ-mono _ n h
-Obs-mono n (ν-type F eff)  h = νᵈ-mono _ n h
-Obs-mono n (ν-type F prod) h = ν∞-mono _ n h
+Obs-mono n (ν-type F eff)  h = ν∞-mono _ n h
 Obs-mono n (ν-type F eff⁺) h = ν⁺-mono _ n h
 
 ------------------------------------------------------------------------

@@ -24,7 +24,8 @@ open import Once.Spec.Context using (∅; [])
 open import Once.Spec.Totality using (tickDefs; tick; ticker)
 open import Once.Spec.Core.Typing tickDefs
 open import Once.Spec.Core.Meaning tickDefs
-open import Once.Spec.Trace using (call)
+open import Once.Spec.Iterative using (call∞; module T∞)
+open T∞ using (force)
 open import Once.Spec.Graded using (_>>=ᵖ_)
 
 stream-typed : ∅ ⊢[ [] ] ticker ∷ ν-type Id eff ! pure
@@ -35,5 +36,5 @@ stream-typed = ⊢unfold wf-Id (⊢sigop tick (con-fun base-Int base-Int) tt (rf
 opaque
   unfolding _>>=ᵖ_
   stream-emits : ∀ fmt (ds : DefSem)
-               → ∃[ o ] ∃[ a ] ∃[ k ] ⟦ ⊢out wf-Id (⊢sub-eff ⊑-pe stream-typed) ⟧ fmt ds tt ≡ call o a k
+               → ∃[ o ] ∃[ a ] ∃[ k ] force (⟦ ⊢out wf-Id (⊢sub-eff ⊑-pe stream-typed) ⟧ fmt ds tt) ≡ call∞ o a k
   stream-emits fmt ds = _ , _ , _ , refl

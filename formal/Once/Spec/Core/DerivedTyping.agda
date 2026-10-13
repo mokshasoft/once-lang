@@ -185,13 +185,13 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
            → Γ ⊢[ zeroUsage ] applyEffᶜ A B
                ∷ ((A ⇒[ mk-kind Many eff ] B) * A) ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many eff ] B) ! pure
 ⊢applyEffᶜ {Γ = Γ} = subst (λ U → Γ ⊢[ U ] applyEffᶜ _ _ ∷ _ ! pure) (z+qz Many)
-  (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var′ (suc zero) ⊑-pe)) (⊢snd (⊢var′ (suc zero) ⊑-pe)))))
+  (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var (suc zero))) (⊢snd (⊢var (suc zero))))))
 
 ⊢outEffᶜ : ∀ {n} {Γ : Ctx n} {F : Functor}
          → WellFormedF F
          → Γ ⊢[ zeroUsage ] outEffᶜ F
              ∷ ν-type F eff ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff)) ! pure
-⊢outEffᶜ wf = ⊢lam refl (⊢lam refl (⊢out wf (⊢var′ (suc zero) ⊑-pe)))
+⊢outEffᶜ wf = ⊢lam refl (⊢lam refl (⊢out wf (⊢var (suc zero))))
 
 -- Applying an effectful arrow builds its suspension: exactly the surface's
 -- `Ψ₁ +ᵘ Many *ᵘ Ψ₂`.
@@ -199,5 +199,5 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
          → Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many eff ] B ! pure
          → Γ ⊢[ Ψ₂ ] x ∷ A ! pure
          → Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] effAppᶜ f x ∷ Unit ⇒[ mk-kind Many eff ] B ! pure
-⊢effAppᶜ df dx = ⊢lam refl (⊢app (⊢sub-eff ⊑-pe (wk-⊢′ Unit df)) (⊢sub-eff ⊑-pe (wk-⊢′ Unit dx)))
+⊢effAppᶜ df dx = ⊢lam refl (⊢app (wk-⊢′ Unit df) (wk-⊢′ Unit dx))
 

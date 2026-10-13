@@ -68,24 +68,16 @@ NotSingleton (rigid _ _)  = ⊥
 DataCod : Purity → Type → Set
 DataCod pure B = NotEmpty B
 DataCod eff  B = NotEmpty B × NotSingleton B
-DataCod prod B = ⊥
 DataCod eff⁺ B = NotEmpty B × NotSingleton B
 
--- D311: a foreign operation is ONE call, which returns or halts; it is never
--- declared at `prod` (a computation that may run forever).
-OneCall : Purity → Set
-OneCall pure = ⊤
-OneCall eff  = ⊤
-OneCall prod = ⊥
-OneCall eff⁺ = ⊤
-
 -- An effectful grade of one call: the codomain may be `Unit` (it emits) or
--- `Void` (it halts). The guard `eff⁺` is exactly that (D311).
+-- `Void` (it halts). A foreign operation is ONE call at either effectful
+-- grade: at `eff` it is a one-node tree of `T∞` (D312), at the guard `eff⁺`
+-- the generic effect itself (D311).
 Effectful : Purity → Set
 Effectful eff  = ⊤
 Effectful eff⁺ = ⊤
 Effectful pure = ⊥
-Effectful prod = ⊥
 
 -- The codomain `B` of an arrow at grade `π`.
 HonestCod : Purity → Type → Set
@@ -96,8 +88,8 @@ HonestCod π (A * B)                    = DataCod π (A * B)
 HonestCod π (A + B)                    = DataCod π (A + B)
 HonestCod π (μ-type _)                 = ⊥   -- B2: not first-order data
 HonestCod π (ν-type _ _)               = ⊥
-HonestCod π Int                        = OneCall π
-HonestCod π Float                      = OneCall π
+HonestCod π Int                        = ⊤
+HonestCod π Float                      = ⊤
 HonestCod π (rigid _ _)                = ⊥   -- D243: an FFI signature is ground
 
 -- A constant is a pure value: it must be inhabited.
@@ -120,20 +112,12 @@ HonestFFI (rigid _ _)             = ⊥   -- D243: an FFI signature is ground
 isEff? : (π : Purity) → Maybe (π ≡ eff)
 isEff? pure = nothing
 isEff? eff  = just refl
-isEff? prod = nothing
 isEff? eff⁺ = nothing
-
-oneCall? : (π : Purity) → Maybe (OneCall π)
-oneCall? pure = just tt
-oneCall? eff  = just tt
-oneCall? prod = nothing
-oneCall? eff⁺ = just tt
 
 effectful? : (π : Purity) → Maybe (Effectful π)
 effectful? eff  = just tt
 effectful? eff⁺ = just tt
 effectful? pure = nothing
-effectful? prod = nothing
 
 -- Two witnesses, or the first that exists (no `with`: proofs follow by cases).
 both : ∀ {A B : Set} → Maybe A → Maybe B → Maybe (A × B)
@@ -173,7 +157,6 @@ notSingleton? (rigid _ _)  = nothing
 dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
 dataCod? pure B = notEmpty? B
 dataCod? eff  B = both (notEmpty? B) (notSingleton? B)
-dataCod? prod B = nothing
 dataCod? eff⁺ B = both (notEmpty? B) (notSingleton? B)
 
 honestCod? : (π : Purity) (B : Type) → Maybe (HonestCod π B)
@@ -184,8 +167,8 @@ honestCod? π (A * B)                  = dataCod? π (A * B)
 honestCod? π (A + B)                  = dataCod? π (A + B)
 honestCod? π (μ-type _)               = nothing
 honestCod? π (ν-type _ _)             = nothing
-honestCod? π Int                      = oneCall? π
-honestCod? π Float                    = oneCall? π
+honestCod? π Int                      = just tt
+honestCod? π Float                    = just tt
 honestCod? π (rigid _ _)              = nothing
 
 honest? : (T : Type) → Maybe (HonestFFI T)

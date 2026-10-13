@@ -9,7 +9,7 @@
 -- they differ in the carrier: `M π ⟦A⟧ᵛ` against `T ⟦A⟧ᴰ`. So the fold
 -- congruence `cataS-rel` applies at the carrier relation `RelGM π A`, and the
 -- algebra step is the only content. At `eff` the layer is sequenced on both
--- sides; at `pure` the Spec's layer is already a layer of values, and the
+-- sides (a tree of `T∞` against the IR's finite one, D312); at `pure` the Spec's layer is already a layer of values, and the
 -- Kleisli sequencing of it is silent (`seqF-relᵖ`).
 ------------------------------------------------------------------------
 
@@ -22,8 +22,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (refl; sym; subst)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Type.Grade using (Purity; pure; eff; prod)
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pp)
+open import Once.Spec.Type.Grade using (Purity; pure; eff)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.FunctorMeaning using (translateF)
@@ -117,14 +117,7 @@ alg-step ⊑-pure {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
           (seqF-relᵖ F (RelGV A) (out-relR wfF (RelGM pure A) rsf))
           (λ l₁ l₂ r → algR (z-relᵍ wfF r)))
 alg-step ⊑-pe {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
-  RelT′-bind (RelF F (RelGV A)) (RelGV A)
-    {m = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᵛ) y₁)} {m′ = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)}
-    {f = λ l → alg₁ (cf⁻¹ᵛ A wfF l)}
-    {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
-    (seqF-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf))
-    (λ l₁ l₂ r → algR (z-relᵍ wfF r))
-alg-step ⊑-pp {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
-  RelT∞′-bind (seqF∞-rel F (RelGV A) (out-relR wfF (RelGM prod A) rsf)) (λ r → algR (z-relᵍ wfF r))
+  RelT∞′-bind (seqF∞-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf)) (λ r → algR (z-relᵍ wfF r))
 
 cata-bridgeᵍ : ∀ {π : Purity} (u : pure ⊑π π) {F} {A : Type} {wfF : WellFormedF F}
                  (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)

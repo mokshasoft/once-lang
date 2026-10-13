@@ -50,7 +50,7 @@ open νᵈ using (forceᵈ)
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (lookupᴰUsed)
 open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Spec.Graded using (⟦_⟧ᵛ; returnM; bindM; _>>=ᵖ_)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M; returnM; bindM; _>>=ᵖ_)
 open import Once.Spec.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
@@ -168,8 +168,6 @@ sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.T
 -- with the erased slot `tt` (as `Elaborate` and `SourceDenote`).
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Type.Grade.eff} bDom bCod) =
   returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff) cn base-Unit bCod) tt))
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Type.Grade.prod} bDom bCod) =
-  returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.prod) cn base-Unit bCod) tt))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Type.Grade.eff⁺} bDom bCod) =
   returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff⁺) cn base-Unit bCod) tt))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
@@ -442,7 +440,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 ⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) fmt ρ dγ =
   (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx}
                   (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ v →
-  returnᵖ (λ _ → subst (λ Z → T ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Spec.Type.Grade.eff wfF v))
+  returnᵖ (λ _ → subst (λ Z → M Once.Spec.Type.Grade.eff ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Spec.Type.Grade.eff wfF v))
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ _ → returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ fa → proj₁ fa (proj₂ fa)
 -- D222 / plan 0.95 A′: the EFF closure's elimination is a SUSPENSION — but only

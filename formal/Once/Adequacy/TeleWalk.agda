@@ -74,7 +74,9 @@ open Once.Denotation.Program.IRFun using (fname)
 open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.Telescope using (Tele; runProgram; program; noKinds; noVars; noResp)
-open import Once.Denotation.TraceMonadInfLaws using (events∞-embed)
+open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; RelT∞′-events)
+open import Once.Spec.Iterative using (events∞; T∞)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Spec.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
 import Once.Spec.Core.Abstract as A
 import Once.Spec.Core.Translate as TR
@@ -96,7 +98,8 @@ open import Once.Spec.Trace using (FFIAnswers)
 φ : FFIAnswers
 φ = pureHalf ι
 
-open import Once.Adequacy.GradedRelation fmt using (RelGT-bind)
+open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV)
+open import Once.Spec.Trace using (returnT; rel-ret)
 open import Once.Spec.Trace using (projTrace)
 import Once.Adequacy.TeleEntry fmt ι as TE
 
@@ -165,6 +168,13 @@ from-sem {S = S} {sc} tl ss is ts sg d e (poly {pfi = pfi} {Ψ = Ψ} D rest) u n
 from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er g D rest) u n =
   from-sem (TR.monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D) ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest u n
 
+-- A pure value against a Kleisli computation, fed to effectful continuations:
+-- the computation returns at once, so the continuation's relation is the whole.
+ret-bind∞ : ∀ {A B : Type} {v : ⟦ A ⟧ᵛ} {t : Once.Spec.Trace.T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → T∞ ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → Once.Spec.Trace.T ⟦ B ⟧ᴰ}
+          → RelGT A (returnT v) t → (∀ {a b} → RelGV A a b → RelT∞′ (RelGV B) (k a) (g b))
+          → RelT∞′ (RelGV B) (k v) (t Once.Spec.Trace.>>=T g)
+ret-bind∞ (rel-ret r) h = h r
+
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} (g : RigidFree EffUU)
               (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ EffUU ⌋}
               (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
@@ -177,11 +187,10 @@ here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} 
                                     {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest refl u) Ip n
 here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {es} rest rest-b inv u hs n =
   -- Plan 0.105: related computations make the same calls under any
-  -- interpretation (`RelT′-events`), so their first `n` events agree.
-  trans ir-side (trans (sym (cong (take n) (RelT′-events ι [] (RelGT-bind {EffUU} {Once.Spec.Type.Unit} relM (λ rv → rv {tt} {tt} tt)))))
-                       (trans (cong (λ (v : ⟦ EffUU ⟧ᵛ) → projTrace ι (v tt) n) (sym core≡))
-                              (trans (sym (events∞-embed ι [] _ n))
-                                     (sym (from-sem tl′ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero refl rest u n)))))
+  -- interpretation (`RelT∞′-events`), so their first `n` events agree.
+  trans ir-side (trans (sym (RelT∞′-events ι [] (ret-bind∞ {EffUU} {Once.Spec.Type.Unit} {k = λ c → c tt} {g = λ c → c tt} relM (λ rv → rv {tt} {tt} tt)) n))
+                       (trans (cong (λ (v : ⟦ EffUU ⟧ᵛ) → events∞ ι [] (v tt) n) (sym core≡))
+                              (sym (from-sem tl′ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero refl rest u n))))
   where
     open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {Parser.mkFunInfo "main" ft bd false} {EffUU} g D {irFun} cf inv
     later = tableOf-go (FB.bundle→compiled rest-b) []

@@ -8,9 +8,8 @@
 -- An arrow `A ⇒[ k ] B` is graded twice, independently:
 --   * by a usage `Quantity` (quantitative type theory): how many times the
 --     argument is consumed — `Zero` (erased), `One` (linear), `Many`;
---   * by a `Purity`: whether running it has observable effects and whether
---     it may run forever — `pure ≤ eff ≤ prod` (D311); sequencing multiplies
---     grades (`_·p_`).
+--   * by a `Purity`: whether running it has observable effects —
+--     `pure ≤ eff⁺ ≤ eff` (D311, D312); sequencing multiplies grades (`_·p_`).
 -- All four combinations are arrows. One law couples the two where a
 -- computation sits in a position (plan 0.116): an ERASED position is never run
 -- — it has no resources at run time — so what sits there must be pure
@@ -85,23 +84,20 @@ Many  ≤q Many  = true
 ≤q-Many Many = refl
 
 ------------------------------------------------------------------------
--- Effect: the order pure ≤ eff ≤ prod, with eff⁺ ≤ eff
+-- Effect: the order pure ≤ eff⁺ ≤ eff
 --
--- Two axes laid out on a line (D311): whether a computation has effects,
--- and whether it may run forever. The pure-and-forever corner is empty — a
--- pure computation that never returns is divergence, which Once does not
--- have, and pure infinite DATA is a value of a `ν` type — so the three
--- inhabited corners are ordered. Below `eff` sits the GUARD `eff⁺`: an
--- effectful computation whose first node is an event; it is not above
--- `pure` (a value performs no event).
+-- `pure`: a value (TOTAL). `eff`: a computation of the free completely
+-- iterative monad (D312) — it reaches each next event, or its end, after
+-- finite work, and need not stop (PRODUCTIVE). Below `eff` sits the GUARD
+-- `eff⁺`: a computation whose first node is an event; it is not above `pure`
+-- (a value performs no event).
 ------------------------------------------------------------------------
 
 data Purity : Set where
   pure : Purity   -- no observable effects
-  eff⁺ : Purity   -- an event FIRST, then returns: the guard of iteration (D311)
-  eff  : Purity   -- may have observable effects, and returns
-  prod : Purity   -- may have observable effects, and may run forever: each
-                  -- next event after finite work (PRODUCTIVE)
+  eff⁺ : Purity   -- an event FIRST: the guard of iteration (D311)
+  eff  : Purity   -- may have observable effects, and may run forever: each
+                  -- next event after finite work (D312)
 
 -- Join: the least grade above both — the grade at which two arms meet, of
 -- which exactly one runs. `pure` and `eff⁺` meet at `eff` (one arm may
@@ -110,37 +106,26 @@ _⊔p_ : Purity → Purity → Purity
 pure ⊔p pure = pure
 pure ⊔p eff⁺ = eff
 pure ⊔p eff  = eff
-pure ⊔p prod = prod
 eff⁺ ⊔p pure = eff
 eff⁺ ⊔p eff⁺ = eff⁺
 eff⁺ ⊔p eff  = eff
-eff⁺ ⊔p prod = prod
-eff  ⊔p pure = eff
-eff  ⊔p eff⁺ = eff
-eff  ⊔p eff  = eff
-eff  ⊔p prod = prod
-prod ⊔p _    = prod
+eff  ⊔p _    = eff
 
 infixr 5 _⊔p_
 
 -- SEQUENCING (D311): running one computation and then another has the
 -- PRODUCT of their grades. Grades are an ordered monoid with unit `pure`;
--- `prod` absorbs, and `eff⁺` absorbs the finite grades — an event in either
--- part is an event first of the whole, since the part before it either has
--- one or returns at once. So the product is not the join: `pure ·p eff⁺` is
--- `eff⁺`, which is not above `pure`. A rule that runs premises in order
--- concludes at the product of their grades, left to right.
+-- `eff⁺` absorbs `eff` — an event in either part is an event first of the
+-- whole, since the part before it either begins with one or returns at once
+-- (a tree of `T∞` has no silent node, D312). So the product is not the join:
+-- `pure ·p eff⁺` is `eff⁺`, which is not above `pure`. A rule that runs
+-- premises in order concludes at the product of their grades, left to right.
 _·p_ : Purity → Purity → Purity
 pure ·p p    = p
-eff⁺ ·p pure = eff⁺
-eff⁺ ·p eff⁺ = eff⁺
-eff⁺ ·p eff  = eff⁺
-eff⁺ ·p prod = prod
+eff⁺ ·p _    = eff⁺
 eff  ·p pure = eff
 eff  ·p eff⁺ = eff⁺
 eff  ·p eff  = eff
-eff  ·p prod = prod
-prod ·p _    = prod
 
 infixr 6 _·p_
 

@@ -38,8 +38,8 @@ open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
-open import Once.Spec.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; eff⁺; eff; prod)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′-embed; RelT∞′; RelT∞′-bind; rel∞-ret)
+open import Once.Spec.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; eff⁺; eff)
+open import Once.Denotation.TraceMonadInfLaws using (RelT∞′-embed; RelT∞′; RelT∞′-bind; rel∞-ret; RelT∞′-≈; ≈∞-bind; ≈∞-refl)
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
 open import Once.Semantics.Machine using (sem-In; sem-cata)
@@ -106,7 +106,7 @@ open import Once.Spec.Name using (CanonicalName; bare; showCanonical)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; RelGM-fmap; prjB-rel; injB-rel; embν-∼; module _∼ᵖᵈ_; module _∼∞ᵈ_; module _∼⁺ᵈ_; embν∞ᵖ-∼; embν∞ᵈ-∼; embν⁺ᵈ-∼)
+  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; RelGM-fmap; prjB-rel; injB-rel; embν-∼; module _∼ᵖᵈ_; module _∼∞ᵈ_; module _∼⁺ᵈ_; embν⁺-∼)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼∞ᵈ_ using (force-∼∞ᵈ)
 open _∼⁺ᵈ_ using (force-∼⁺ᵈ)
@@ -123,6 +123,8 @@ open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
 open import Once.Spec.Guarded using (forget⁺; fmap⁺; module ν⁺)
 open ν⁺ using (force⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺)
+open import Once.Spec.Iterative using (TreeEq∞; ret≈∞; call≈∞; halt≈∞; return∞; embed)
+open Once.Spec.Iterative.TreeEq∞ using (force≈)
 open import Once.Spec.Type using (isVoid?; isUnit?)
 import Once.Semantics.Machine as Val
 open import Once.Arith.SigOp.Builders using (arrow-info)
@@ -312,10 +314,10 @@ cf-rel (wf-Prod wfF wfG) {a = _ , _} {_ , _} (ra , rb) = cong₂ _,_ (cf-rel wfF
 
 -- A first-order pointer's application: related arguments are the same machine
 -- argument, so the two applications are compared at one point.
-ptr-rel : ∀ {Dom Cod} (bDom : IsBaseType Dom)
-            (L : Val.⟦ Dom ⟧ → T ⟦ Cod ⟧ᵛ) (R : Val.⟦ Dom ⟧ → T ⟦ Cod ⟧ᴰ)
-        → (∀ x → RelGT Cod (L x) (R x))
-        → ∀ {a b} → RelGV Dom a b → RelGT Cod (L (prjB bDom a)) (R (forgetᵇ bDom b))
+ptr-rel : ∀ {Dom Cod} {X : Set} {P : X → T ⟦ Cod ⟧ᴰ → Set} (bDom : IsBaseType Dom)
+            (L : Val.⟦ Dom ⟧ → X) (R : Val.⟦ Dom ⟧ → T ⟦ Cod ⟧ᴰ)
+        → (∀ x → P (L x) (R x))
+        → ∀ {a b} → RelGV Dom a b → P (L (prjB bDom a)) (R (forgetᵇ bDom b))
 ptr-rel bDom L R h {a} {b} r rewrite prjB-rel bDom r = h (forgetᵇ bDom b)
 
 -- The same machine computation, read into the two domains, is related: at
@@ -338,25 +340,30 @@ val-rel : ∀ (ι : Interp) {D C} (s : String) (bC : IsBaseType C) (x : Val.⟦ 
 val-rel ι {D} {C} s bC x p (yes p₀) = rel-ret (injB-rel bC (TM.pure ι (key s D C) p₀ x))
 val-rel ι s bC x p (no ¬p)  = ⊥-elim (¬p p)
 
--- D311 C2: a foreign operation at the guard is the generic effect — its call,
--- forgotten, is the IR's call (the same decisions on the codomain).
+-- D311 C2: a foreign operation's call is the generic effect — its tree is the
+-- IR's call, embedded (the same decisions on the codomain).
+private
+  ret-emb : ∀ {X} (x : X) → TreeEq∞ _≡_ (return∞ x) (embed (TM.ret x))
+  force≈ (ret-emb x) = ret≈∞ refl
+
 opCall⁺-sem : ∀ {A B} (h : FFIAnswers) (cn : CanonicalName) (bA : IsBaseType A) (bB : IsBaseType B)
                 (dv : Dec (B ≡ Once.Spec.Type.Void)) (du : Dec (B ≡ Unit)) (x : Val.⟦ A ⟧)
-            → forget⁺ (opCall⁺ cn bA dv du x)
-              ≡ sigOpSemT fmt h (mk-info' cn (arrow-sem-eff dv du) bA bB) (arrow-sem-eff dv du) x
-opCall⁺-sem h cn bA bB (yes refl) du         x = refl
-opCall⁺-sem h cn bA bB (no _)     (yes refl) x = refl
-opCall⁺-sem h cn bA bB (no _)     (no _)     x = refl
+            → TreeEq∞ _≡_ (forget⁺ (opCall⁺ cn bA dv du x))
+                          (embed (sigOpSemT fmt h (mk-info' cn (arrow-sem-eff dv du) bA bB) (arrow-sem-eff dv du) x))
+force≈ (opCall⁺-sem h cn bA bB (yes refl) du         x) = halt≈∞
+force≈ (opCall⁺-sem h cn bA bB (no _)     (yes refl) x) = call≈∞ (λ b → ret-emb _)
+force≈ (opCall⁺-sem h cn bA bB (no _)     (no _)     x) = call≈∞ (λ b → ret-emb _)
 
 -- …and so, mapped into the two value domains, related to it.
 opCall⁺-rel : ∀ {A B} (ι : Interp) (q : Quantity) (cn : CanonicalName) (bA : IsBaseType A) (bB : IsBaseType B) (x : Val.⟦ A ⟧)
-            → RelGT B (forget⁺ (fmap⁺ (injB bB) (opCall⁺ cn bA (isVoid? B) (isUnit? B) x)))
+            → RelT∞′ (RelGV B) (forget⁺ (fmap⁺ (injB bB) (opCall⁺ cn bA (isVoid? B) (isUnit? B) x)))
                       (fmapT (injectᵇ bB) (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q eff⁺) cn bA bB) x))
 opCall⁺-rel {B = B} ι q cn bA bB x =
-  subst (λ t → RelGT B t (fmapT (injectᵇ bB) (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q eff⁺) cn bA bB) x)))
-        (sym (trans (forget-bind⁺ (opCall⁺ cn bA (isVoid? B) (isUnit? B) x) (λ y → TM.ret (injB bB y)))
-                    (cong (fmapT (injB bB)) (opCall⁺-sem (pureHalf ι) cn bA bB (isVoid? B) (isUnit? B) x))))
-        (same-tree bB (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q eff⁺) cn bA bB) x))
+  RelT∞′-≈ (forget-bind⁺ (opCall⁺ cn bA (isVoid? B) (isUnit? B) x) (λ y → return∞ (injB bB y)))
+    (RelT∞′-≈ (≈∞-bind {R = _≡_} (opCall⁺-sem (pureHalf ι) cn bA bB (isVoid? B) (isUnit? B) x)
+                       (λ { {y} refl → ≈∞-refl (λ _ → refl) (return∞ (injB bB y)) }))
+      (RelT∞′-bind (RelT∞′-embed (RelT′-refl (λ _ → refl) (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q eff⁺) cn bA bB) x)))
+                   (λ {y} {y′} e → rel∞-ret refl (subst (λ z → RelGV B (injB bB y) (injectᵇ bB z)) e (injB-rel bB y)))))
 
 sigOpRef-rel : ∀ {A} (ι : Interp) (cn : CanonicalName) (conc : IsConcrete A) (m : (showCanonical cn , A) ∈ sig ι)
              → RelGM pure A (sigOpRefᵛ fmt (sig ι) (impl ι) cn conc m) (sigOpRefᴰ fmt (pureHalf ι) cn conc)
@@ -369,50 +376,37 @@ sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m =
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) m =
   rel-ret (opCall⁺-rel ι Zero cn base-Unit bCod tt)
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} bDom
+  rel-ret (ptr-rel {Dom} {Cod} {P = RelGT Cod} bDom
     (λ x → returnT (injB bCod (valueOf-at (impl ι) k (value-∈ m refl) (k ∈K? pures ι) x)))
     (λ x → fmapT (injectᵇ bCod) (resT (pureHalf-at ι k (k ∈K? pures ι) x)))
     (λ x → val-rel ι (showCanonical cn) bCod x (value-∈ m refl) (k ∈K? pures ι)))
   where k = key (showCanonical cn) Dom Cod
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} bDom
+  rel-ret (ptr-rel {Dom} {Cod} {P = RelGT Cod} bDom
     (λ x → returnT (injB bCod (valueOf-at (impl ι) k (value-∈ m refl) (k ∈K? pures ι) x)))
     (λ x → fmapT (injectᵇ bCod) (resT (pureHalf-at ι k (k ∈K? pures ι) x)))
     (λ x → val-rel ι (showCanonical cn) bCod x (value-∈ m refl) (k ∈K? pures ι)))
   where k = key (showCanonical cn) Dom Cod
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) m =
-  rel-ret (λ {a} {b} r → ptr-rel {Dom} {Cod} bDom
+  rel-ret (λ {a} {b} r → ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
     (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff) cn bDom bCod) x))
     (opCall⁺-rel ι One cn bDom bCod) r)
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
-  rel-ret (λ {a} {b} r → ptr-rel {Dom} {Cod} bDom
+  rel-ret (λ {a} {b} r → ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
     (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff) cn bDom bCod) x))
     (opCall⁺-rel ι Many cn bDom bCod) r)
--- D311: an operation at `prod` is the same call, its tree embedded in `T∞`.
-sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero prod} bDom bCod) m =
-  rel-ret (RelT∞′-embed (opCall⁺-rel ι Zero cn base-Unit bCod tt))
-sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One prod} bDom bCod) m =
-  rel-ret (λ {a} {b} r → RelT∞′-embed (ptr-rel {Dom} {Cod} bDom
-    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
-    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One prod) cn bDom bCod) x))
-    (opCall⁺-rel ι One cn bDom bCod) r))
-sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many prod} bDom bCod) m =
-  rel-ret (λ {a} {b} r → RelT∞′-embed (ptr-rel {Dom} {Cod} bDom
-    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
-    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many prod) cn bDom bCod) x))
-    (opCall⁺-rel ι Many cn bDom bCod) r))
 -- D311 C2: at the guard, the generic effect.
 sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero eff⁺} bDom bCod) m =
   rel-ret (opCall⁺-rel ι Zero cn base-Unit bCod tt)
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} bDom
+  rel-ret (ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
     (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff⁺) cn bDom bCod) x))
     (opCall⁺-rel ι One cn bDom bCod))
 sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff⁺} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} bDom
+  rel-ret (ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
     (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff⁺) cn bDom bCod) x))
     (opCall⁺-rel ι Many cn bDom bCod))
@@ -460,9 +454,6 @@ sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero pure ] Cod} ι cn (con-fun bDom bCod
 sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero eff ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
   subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero eff ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero eff} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero eff} bDom bCod)))
         eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero eff} bDom bCod) m)
-sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero prod ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
-  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero prod ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero prod} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero prod} bDom bCod)))
-        eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero prod} bDom bCod) m)
 sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero eff⁺ ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
   subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero eff⁺ ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod)))
         eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod) m)
@@ -538,30 +529,16 @@ out-app-bridge {F} {pure} {wfF} {vᴸ} {vᴿ} rel =
           {g′ = λ layer → coerce-functor⁻¹-D wfF (ν-type F pure) (coerce-ν-out wfF _ layer)}
           (λ x y r → out-relᵍ {A = ν-type F pure} wfF r) (force-∼ᵖᵈ rel))
 out-app-bridge {F} {eff} {wfF} {vᴸ} {vᴿ} rel =
-  subst (RelGT (⟦ F ⟧T (ν-type F eff)) (out-semᵛ eff wfF vᴸ))
+  subst (RelT∞′ (RelGV (⟦ F ⟧T (ν-type F eff))) (out-semᵛ eff wfF vᴸ))
         (sym (liftFn-Out {π = eff} wfF vᴿ))
-        (RelT′-fmap (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV (ν-type F eff))) (RelGV (⟦ F ⟧T (ν-type F eff)))
-          {g = λ l → cf⁻¹ᵛ (ν-type F eff) wfF (coerce-ν-out wfF _ l)}
-          {g′ = λ layer → coerce-functor⁻¹-D wfF (ν-type F eff) (coerce-ν-out wfF _ layer)}
-          (λ x y r → out-relᵍ {A = ν-type F eff} wfF r) (force-∼ rel))
+        (RelT∞′-bind (force-∼∞ᵈ rel) (λ r → rel∞-ret refl (out-relᵍ {A = ν-type F eff} wfF r)))
 -- D311 C2: a stream whose layers begin with an event — the forgotten root
 -- against the Kleisli force, mapped by the `Out` coercions.
 out-app-bridge {F} {eff⁺} {wfF} {vᴸ} {vᴿ} rel =
-  subst (RelGT (⟦ F ⟧T (ν-type F eff⁺)) (forget⁺ (out-semᵛ eff⁺ wfF vᴸ)))
+  subst (RelT∞′ (RelGV (⟦ F ⟧T (ν-type F eff⁺))) (forget⁺ (out-semᵛ eff⁺ wfF vᴸ)))
         (sym (liftFn-Out {π = eff⁺} wfF vᴿ))
-        (subst (λ t → RelGT (⟦ F ⟧T (ν-type F eff⁺)) t
-                        (fmapT (λ layer → coerce-functor⁻¹-D wfF (ν-type F eff⁺) (coerce-ν-out wfF _ layer)) (Once.Spec.Stream.νᵈ.forceᵈ vᴿ)))
-               (sym (forget-bind⁺ (force⁺ vᴸ) (λ l → TM.ret (cf⁻¹ᵛ (ν-type F eff⁺) wfF (coerce-ν-out wfF _ l)))))
-          (RelT′-fmap (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV (ν-type F eff⁺))) (RelGV (⟦ F ⟧T (ν-type F eff⁺)))
-            {g = λ l → cf⁻¹ᵛ (ν-type F eff⁺) wfF (coerce-ν-out wfF _ l)}
-            {g′ = λ layer → coerce-functor⁻¹-D wfF (ν-type F eff⁺) (coerce-ν-out wfF _ layer)}
-            (λ x y r → out-relᵍ {A = ν-type F eff⁺} wfF r) (force-∼⁺ᵈ rel)))
--- D311: a stream whose layers may take forever — the layer's tree against the
--- Kleisli force, mapped by the `Out` coercions.
-out-app-bridge {F} {prod} {wfF} {vᴸ} {vᴿ} rel =
-  subst (RelT∞′ (RelGV (⟦ F ⟧T (ν-type F prod))) (out-semᵛ prod wfF vᴸ))
-        (sym (liftFn-Out {π = prod} wfF vᴿ))
-        (RelT∞′-bind (force-∼∞ᵈ rel) (λ r → rel∞-ret refl (out-relᵍ {A = ν-type F prod} wfF r)))
+        (RelT∞′-≈ (forget-bind⁺ (force⁺ vᴸ) (λ l → return∞ (cf⁻¹ᵛ (ν-type F eff⁺) wfF (coerce-ν-out wfF _ l))))
+          (RelT∞′-bind (force-∼⁺ᵈ rel) (λ r → rel∞-ret refl (out-relᵍ {A = ν-type F eff⁺} wfF r))))
 
 in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F}
                 {vᴸ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ} {vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
@@ -651,12 +628,8 @@ mutual
   RelGV-sub (sub-ν ⊑-pure) r = r
   RelGV-sub (sub-ν ⊑-eff)  r = r
   RelGV-sub (sub-ν ⊑-pe)   r = embν-∼ r
-  RelGV-sub (sub-ν ⊑-prod) r = r
-  RelGV-sub (sub-ν ⊑-pp)   r = embν∞ᵖ-∼ r
-  RelGV-sub (sub-ν ⊑-ep)   r = embν∞ᵈ-∼ r
   RelGV-sub (sub-ν ⊑-g)    r = r
-  RelGV-sub (sub-ν ⊑-ge)   r = embν⁺ᵈ-∼ r
-  RelGV-sub (sub-ν ⊑-gp)   r = embν∞ᵈ-∼ (embν⁺ᵈ-∼ r)
+  RelGV-sub (sub-ν ⊑-ge)   r = embν⁺-∼ r
   RelGV-sub (sub-arr {q = Zero} a b g) r = RelGM-sub g b r
   RelGV-sub (sub-arr {q = One}  a b g) r = λ ra → RelGM-sub g b (r (RelGV-sub a ra))
   RelGV-sub (sub-arr {q = Many} a b g) r = λ ra → RelGM-sub g b (r (RelGV-sub a ra))
@@ -673,14 +646,10 @@ mutual
   RelGM-sub : ∀ {π π′ B B′} (g : π ⊑π π′) (b : B <: B′) {m : M π ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ}
             → RelGM π B m t → RelGM π′ B′ (subM g (fmapM π ⟦ b ⟧<:ᵛ m)) (fmapT ⟦ b ⟧<: t)
   RelGM-sub ⊑-pure b r = RelGT-sub b r
-  RelGM-sub ⊑-eff  b r = RelGT-sub b r
-  RelGM-sub ⊑-pe   b r = RelGT-sub b r
-  RelGM-sub ⊑-prod b r = RelT∞′-bind r (λ rr → rel∞-ret refl (RelGV-sub b rr))
-  RelGM-sub ⊑-pp   b (rel-ret rr) = rel∞-ret refl (RelGV-sub b rr)
-  RelGM-sub ⊑-ep   b r = RelT∞′-embed (RelGT-sub b r)
+  RelGM-sub ⊑-eff  b r = RelT∞′-bind r (λ rr → rel∞-ret refl (RelGV-sub b rr))
+  RelGM-sub ⊑-pe   b (rel-ret rr) = rel∞-ret refl (RelGV-sub b rr)
   RelGM-sub {B = B} {B′} ⊑-g  b r = RelGM-fmap eff⁺ {B} {B′} r (RelGV-sub b)
   RelGM-sub {B = B} {B′} ⊑-ge b r = RelGM-fmap eff⁺ {B} {B′} r (RelGV-sub b)
-  RelGM-sub {B = B} {B′} ⊑-gp b r = RelT∞′-embed (RelGM-fmap eff⁺ {B} {B′} r (RelGV-sub b))
 
 ------------------------------------------------------------------------
 -- Plan 0.103 phase 1c: the two DEFINITIONS environments related, entry by

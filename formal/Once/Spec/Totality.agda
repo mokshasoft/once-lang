@@ -8,17 +8,11 @@
 --   * TOTAL — a pure computation is a value (`M pure X = X`), so it has
 --     nothing left to do;
 --   * PRODUCTIVE — an effectful computation reaches each next event, or its
---     end, after finite work.
--- For a computation that RETURNS (grade `eff`, the free monad `T`), finite
--- work means: every path through its tree ends — in a result or a halt —
--- after finitely many events, whatever the world answers. `FiniteT` says so.
--- The answers may be infinitely many (a call into `Int` branches on every
--- integer), so this is well-foundedness of the tree, not a bound on it.
---
--- For a computation that may RUN FOREVER (grade `prod`, the completely
--- iterative monad `T∞`, D311) finite work means: every node of its tree is
--- an event or the end — there is no silent step to wait on forever.
--- `ProductiveT∞` says so, coinductively; it is what a `Tau` would break.
+--     end, after finite work; it need not stop (D312).
+-- An effectful computation is a tree of the completely iterative monad `T∞`,
+-- so finite work means: every node of its tree is an event or the end — there
+-- is no silent step to wait on forever. `ProductiveT∞` says so,
+-- coinductively; it is what a `Tau` would break.
 --
 -- `Spec.Metatheory.Totality` claims it of every computation and of every
 -- layer of every stream.
@@ -27,19 +21,11 @@
 module Once.Spec.Totality where
 
 open import Data.Unit using (⊤)
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff)
 open import Once.Spec.Guarded using (forget⁺)
-open import Once.Spec.Meaning using (T; M)
-open import Once.Spec.Trace using (ret; call; halt)
+open import Once.Spec.Meaning using (M)
 open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
 open Once.Spec.Iterative.T∞ using (force)
-
--- Every path ends: in a result, in a halt, or in a call whose every
--- continuation is again finite.
-data FiniteT {X : Set} : T X → Set where
-  fin-ret  : ∀ {x} → FiniteT (ret x)
-  fin-call : ∀ {o a k} → (∀ b → FiniteT (k b)) → FiniteT (call o a k)
-  fin-halt : ∀ {o a} → FiniteT (halt o a)
 
 -- Every node is an event or the end, forever.
 data ProductiveNode {X R : Set} (P : R → Set) : T∞F X R → Set where
@@ -54,9 +40,8 @@ record ProductiveT∞ {X : Set} (m : T∞ X) : Set where
 -- At a grade: a pure computation is a value, so nothing is left to check.
 ProductiveM : ∀ π {X : Set} → M π X → Set
 ProductiveM pure _ = ⊤
-ProductiveM eff  m = FiniteT m
-ProductiveM prod m = ProductiveT∞ m
-ProductiveM eff⁺ m = FiniteT (forget⁺ m)
+ProductiveM eff  m = ProductiveT∞ m
+ProductiveM eff⁺ m = ProductiveT∞ (forget⁺ m)
 
 ------------------------------------------------------------------------
 -- What the claims are tested on (`Spec.Metatheory.Totality`).
@@ -108,9 +93,9 @@ ticker = unfold Id (sigop tick tickTy) (lit (lit-int (+ 0)))
 -- `read : Unit → Int` and `write : Int → Unit`, each a call (`eff⁺`: an event
 -- first). One round reads a value and writes it back, then loops; it never
 -- answers `inj₁` (`Void`), so the loop runs forever — `iter step () : Void`
--- at `prod`. Every round performs two events, so the run is never silent.
+-- at `eff`. Every round performs two events, so the run is never silent.
 open import Once.Spec.Type using (Unit; Void)
-open import Once.Spec.Type.Grade using (eff⁺; prod)
+open import Once.Spec.Type.Grade using (eff⁺)
 
 readTy writeTy : Type
 readTy  = Unit ⇒[ mk-kind Many eff⁺ ] Int

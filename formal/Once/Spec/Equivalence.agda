@@ -15,8 +15,8 @@
 --     DEPTH `n`: its first `n` nodes — the same call with the same argument,
 --     and equivalent continuations at every answer; or the same halt; or
 --     equivalent results. Every grade's computation is read as a tree of the
---     completely iterative monad (`toT∞`, D311), so a computation that runs
---     forever is observed as one that returns: by its finite prefixes;
+--     completely iterative monad (`toT∞`, D311, D312), so a computation that
+--     runs forever is observed as one that returns: by its finite prefixes;
 --   * a stream (`ν`) to every finite DEPTH `n`: its first `n` layers.
 -- A meaning at `ν` is codata, so `≡` cannot compare two streams that behave
 -- identically but are built differently; every finite observation can.
@@ -32,7 +32,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; mk-kind; Zero; One; Many)
 open import Once.Spec.Guarded using (ν⁺; forget⁺)
 open Once.Spec.Guarded.ν⁺ using (force⁺)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
@@ -42,10 +42,8 @@ open Once.Spec.Iterative.T∞ using (force)
 open Once.Spec.Iterative.ν∞ using (force∞)
 open import Once.Spec.Trace using (ret; call; halt)
 open import Once.Spec.Graded using (νᵖ; module νᵖ)
-open import Once.Spec.Stream using (νᵈ; module νᵈ)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open νᵖ using (forceᵖ)
-open νᵈ using (forceᵈ)
 
 ------------------------------------------------------------------------
 -- Computations: the same events in the same order, equivalent results.
@@ -80,13 +78,9 @@ LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′
 νᵖ-upto H zero    _ _ = ⊤
 νᵖ-upto H (suc n) v w = LayerEq H (νᵖ-upto H n) (forceᵖ v) (forceᵖ w)
 
-νᵈ-upto : ∀ (H : SFunctor) → ℕ → νᵈ H → νᵈ H → Set
-νᵈ-upto H zero    _ _ = ⊤
-νᵈ-upto H (suc n) v w = TreeEq (LayerEq H (νᵈ-upto H n)) (forceᵈ v) (forceᵈ w)
-
 ν⁺-upto : ∀ (H : SFunctor) → ℕ → ν⁺ H → ν⁺ H → Set
 ν⁺-upto H zero    _ _ = ⊤
-ν⁺-upto H (suc n) v w = TreeEq (LayerEq H (ν⁺-upto H n)) (forget⁺ (force⁺ v)) (forget⁺ (force⁺ w))
+ν⁺-upto H (suc n) v w = TreeEqN (suc n) (LayerEq H (ν⁺-upto H n)) (forget⁺ (force⁺ v)) (forget⁺ (force⁺ w))
 
 ν∞-upto : ∀ (H : SFunctor) → ℕ → ν∞ H → ν∞ H → Set
 ν∞-upto H zero    _ _ = ⊤
@@ -116,8 +110,7 @@ Obs n (A ⇒[ mk-kind Zero π ] B) f g = ObsM n π B (f tt) (g tt)
 Obs n (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a′) → ObsM n π B (f a) (g a′)
 Obs n (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a′) → ObsM n π B (f a) (g a′)
 Obs n (ν-type F pure) v w = νᵖ-upto _ n v w
-Obs n (ν-type F eff)  v w = νᵈ-upto _ n v w
-Obs n (ν-type F prod) v w = ν∞-upto _ n v w
+Obs n (ν-type F eff)  v w = ν∞-upto _ n v w
 Obs n (ν-type F eff⁺) v w = ν⁺-upto _ n v w
 
 ------------------------------------------------------------------------

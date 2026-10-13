@@ -27,25 +27,21 @@
 
 module Once.Spec.Type.Sub where
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod; mk-kind; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; mk-kind; _·p_)
 open import Once.Spec.Type
   using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 
 infix 4 _⊑π_ _<:_
 
--- The effect order: the line `pure ⊑ eff ⊑ prod`, and the guard
--- `eff⁺ ⊑ eff` (D311), one derivation per pair. `pure` and `eff⁺` are
+-- The effect order: `pure ⊑ eff` and the guard `eff⁺ ⊑ eff` (D311, D312),
+-- one derivation per pair. `pure` and `eff⁺` are
 -- incomparable.
 data _⊑π_ : Purity → Purity → Set where
   ⊑-pure : pure ⊑π pure
   ⊑-eff  : eff  ⊑π eff
   ⊑-pe   : pure ⊑π eff
-  ⊑-prod : prod ⊑π prod
-  ⊑-pp   : pure ⊑π prod
-  ⊑-ep   : eff  ⊑π prod
   ⊑-g    : eff⁺ ⊑π eff⁺
   ⊑-ge   : eff⁺ ⊑π eff
-  ⊑-gp   : eff⁺ ⊑π prod
 
 -- A grade with a UNIT: a value is a computation at it (`pure ⊑π π`). Every
 -- grade but the guard.
@@ -57,7 +53,6 @@ data _⊑π_ : Purity → Purity → Set where
 ·p-diag pure = ⊑-pure
 ·p-diag eff⁺ = ⊑-g
 ·p-diag eff  = ⊑-eff
-·p-diag prod = ⊑-prod
 
 data _<:_ : Type → Type → Set where
   sub-void   : ∀ {B} → Void <: B
@@ -78,7 +73,6 @@ data _<:_ : Type → Type → Set where
 ⊑π-refl pure = ⊑-pure
 ⊑π-refl eff⁺ = ⊑-g
 ⊑π-refl eff = ⊑-eff
-⊑π-refl prod = ⊑-prod
 
 <:-refl : ∀ A → A <: A
 <:-refl Unit   = sub-unit

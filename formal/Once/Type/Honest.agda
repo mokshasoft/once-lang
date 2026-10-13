@@ -69,18 +69,11 @@ notSingleton?-complete (rigid _ _)  ()
 dataCod?-complete : ∀ (π : Purity) (B : Type) → DataCod π B → ∃[ h ] dataCod? π B ≡ just h
 dataCod?-complete pure B h       = notEmpty?-complete B h
 dataCod?-complete eff  B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
-dataCod?-complete prod B ()
 dataCod?-complete eff⁺ B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
 
 effectful?-complete : ∀ (π : Purity) → Effectful π → ∃[ h ] effectful? π ≡ just h
 effectful?-complete eff  tt = tt , refl
 effectful?-complete eff⁺ tt = tt , refl
-
-oneCall?-complete : ∀ (π : Purity) → OneCall π → ∃[ h ] oneCall? π ≡ just h
-oneCall?-complete pure tt = tt , refl
-oneCall?-complete eff  tt = tt , refl
-oneCall?-complete prod ()
-oneCall?-complete eff⁺ tt = tt , refl
 
 honestCod?-complete : ∀ (π : Purity) (B : Type) → HonestCod π B → ∃[ h ] honestCod? π B ≡ just h
 honestCod?-complete π Unit                    h    = effectful?-complete π h
@@ -90,8 +83,8 @@ honestCod?-complete π (A * B)                 h    = dataCod?-complete π (A * 
 honestCod?-complete π (A + B)                 h    = dataCod?-complete π (A + B) h
 honestCod?-complete π (μ-type _)              ()
 honestCod?-complete π (ν-type _ _)            ()
-honestCod?-complete π Int                     h    = oneCall?-complete π h
-honestCod?-complete π Float                   h    = oneCall?-complete π h
+honestCod?-complete π Int                     tt   = tt , refl
+honestCod?-complete π Float                   tt   = tt , refl
 honestCod?-complete π (rigid _ _)             ()
 
 honest?-complete : ∀ {T : Type} → HonestFFI T → ∃[ h ] honest? T ≡ just h

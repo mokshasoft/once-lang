@@ -18468,3 +18468,10 @@ denotation and the adequacy chain follow (the observation is prefix-wise, so eac
 a finite statement). Everything D311 built for `prod` (`T∞`, `toT∞`, coherence over `TreeEq∞`,
 `events∞` and its prefix-family laws, `RelT∞′`) is the machinery `eff` now uses.
 
+### Landed
+* **R1 (2026-10-13)** — `prod` removed; `M eff = T∞`, `T⁺`'s continuation in `T∞`,
+  `EqM eff⁺/eff` bisimilarity, `⟦ ν-type F eff ⟧ᵛ = ν∞`; an FFI arrow at `eff` is honest (one
+  call). `Totality.finite` withdrawn (a run need not end); `productive∞`/`observable∞` remain.
+  The adequacy bridges relate a `T∞` tree to the IR's finite one (`RelGM eff = RelT∞′`,
+  `RelT∞′-≈`, `RelT∞′-events`); the IR stays finite `T` until plan 0.117 G.
+

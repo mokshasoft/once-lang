@@ -7,7 +7,7 @@
 --
 -- The Kleisli twins (`Denotation.Meaning`'s `cata-sem`, `ana-sem`, `out-sem`,
 -- `in-value`, `sigOpRefᴰ`, and `Denotation.Sub`'s coercion) run every grade in
--- `T`. These run grade `π` in `M π`: at `pure` a fold is a plain fold, a pure
+-- `T`. These run grade `π` in `M π` (`M eff` is `T∞`, D312): at `pure` a fold is a plain fold, a pure
 -- stream is plain codata, a subtyping coercion between pure arrows is a function
 -- between total functions, and a pure FFI reference is its contract's graded
 -- value (`semP`). `μ`/`ν` payloads are first-order, so the base-type
@@ -36,16 +36,13 @@ open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Contract using (ISig; Impl; key; valueOf)
 open import Once.Spec.ContractLaws using (value-∈; base-contract)
-open import Once.Spec.Trace using (ret; returnT; _>>=T_; fmapT)
-open import Once.Spec.Stream using (νᵈ; anaᵈ; seqF; module νᵈ)
 open import Once.Spec.Iterative
-  using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; embed; ν∞; ana∞)
+  using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; ν∞; ana∞)
 open Once.Spec.Iterative.T∞ using (force)
 open Once.Spec.Iterative.ν∞ using (force∞)
-open import Once.Spec.Trace using (T; call; halt; callOp; haltOp)
+open import Once.Spec.Trace using (callOp; haltOp)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open νᵈ using (forceᵈ)
 open import Once.Spec.Graded
 open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; fmap⁺; forget⁺; ν⁺; ana⁺)
 open Once.Spec.Guarded.ν⁺ using (force⁺)
@@ -58,8 +55,7 @@ open Once.Spec.Graded.νᵖ using (forceᵖ)
 fmapM : ∀ π {X Y} → (X → Y) → M π X → M π Y
 fmapM pure f m = f m
 fmapM eff⁺ f m = fmap⁺ f m
-fmapM eff  f m = fmapT f m
-fmapM prod f m = fmap∞ f m
+fmapM eff  f m = fmap∞ f m
 
 ------------------------------------------------------------------------
 -- Base types: the graded value IS the machine value, up to the products and
@@ -108,8 +104,7 @@ cf⁻¹ᵛ C (wf-Prod f g) (x , y)  = cf⁻¹ᵛ C f x , cf⁻¹ᵛ C g y
 -- at the guard `eff⁺`, D311).
 seqM : ∀ {π} → pure ⊑π π → (G : Functor) {X : Set} → ⟦ G ⟧F (M π X) → M π (⟦ G ⟧F X)
 seqM ⊑-pure G x = x
-seqM ⊑-pe   G x = seqF G x
-seqM ⊑-pp   G x = seqF∞ G x
+seqM ⊑-pe   G x = seqF∞ G x
 
 ------------------------------------------------------------------------
 -- μ: introduction and the fold.
@@ -150,17 +145,15 @@ mutual
   mapAnaᵖ H (G₁ S⊗ G₂) c (x , y)  = mapAnaᵖ H G₁ c x , mapAnaᵖ H G₂ c y
 
 -- `pure ⊑ eff` at ν: a pure stream is an effectful one whose layers emit
--- nothing and always arrive.
-mutual
-  embν : ∀ {H} → νᵖ H → νᵈ H
-  forceᵈ (embν {H} v) = ret (mapEmbν H H (forceᵖ v))
-
-  mapEmbν : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵖ H) → ⟦ G ⟧SF (νᵈ H)
-  mapEmbν H (SK B)     x        = x
-  mapEmbν H SId        x        = embν x
-  mapEmbν H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν H G₁ x)
-  mapEmbν H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν H G₂ y)
-  mapEmbν H (G₁ S⊗ G₂) (x , y)  = mapEmbν H G₁ x , mapEmbν H G₂ y
+-- nothing and always arrive. The maps are named and written by hand (D062).
+embν    : ∀ {H} → νᵖ H → ν∞ H
+mapEmbν : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵖ H) → ⟦ G ⟧SF (ν∞ H)
+force (force∞ (embν {H} v)) = ret∞ (mapEmbν H H (forceᵖ v))
+mapEmbν H (SK B)     x        = x
+mapEmbν H SId        x        = embν x
+mapEmbν H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν H G₁ x)
+mapEmbν H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν H G₂ y)
+mapEmbν H (G₁ S⊗ G₂) (x , y)  = mapEmbν H G₁ x , mapEmbν H G₂ y
 
 -- `unfold c s` at coalgebra grade `π` — the stream, a VALUE (building it runs
 -- nothing; the rule embeds it at the grade it is built at) — given the
@@ -176,58 +169,33 @@ ana-semᵛ {F} {A} pure wf clo a =
 ana-semᵛ {F} {A} eff⁺ wf clo a =
   ana⁺ (translateF Carrier Carrier F) (λ a′ → fmap⁺ (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 ana-semᵛ {F} {A} eff wf clo a =
-  anaᵈ (translateF Carrier Carrier F) (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
-ana-semᵛ {F} {A} prod wf clo a =
   ana∞ (translateF Carrier Carrier F) (λ a′ → fmap∞ (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 
 out-semᵛ : ∀ π {F} → WellFormedF F → ⟦ ν-type F π ⟧ᵛ → M π ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᵛ
 out-semᵛ pure {F} wf v = cf⁻¹ᵛ (ν-type F pure) wf (coerce-ν-out wf _ (forceᵖ v))
 out-semᵛ eff⁺ {F} wf v = fmap⁺ (λ layer → cf⁻¹ᵛ (ν-type F eff⁺) wf (coerce-ν-out wf _ layer)) (force⁺ v)
-out-semᵛ eff  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
-out-semᵛ prod {F} wf v = fmap∞ (λ layer → cf⁻¹ᵛ (ν-type F prod) wf (coerce-ν-out wf _ layer)) (force∞ v)
+out-semᵛ eff  {F} wf v = fmap∞ (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (coerce-ν-out wf _ layer)) (force∞ v)
 
 -- `eff⁺ ⊑ eff` at ν: a stream whose layers begin with an event is one whose
 -- layers are trees (D311).
-embν⁺ᵈ   : ∀ {H} → ν⁺ H → νᵈ H
-embRoot⁺ : ∀ (H : SFunctor) → T⁺ (⟦ H ⟧SF (ν⁺ H)) → T (⟦ H ⟧SF (νᵈ H))
-embTree⁺ : ∀ (H : SFunctor) → T (⟦ H ⟧SF (ν⁺ H)) → T (⟦ H ⟧SF (νᵈ H))
-mapEmbν⁺ᵈ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (ν⁺ H) → ⟦ G ⟧SF (νᵈ H)
-forceᵈ (embν⁺ᵈ {H} v) = embRoot⁺ H (force⁺ v)
-embRoot⁺ H (call⁺ o a k) = call o a (λ b → embTree⁺ H (k b))
-embRoot⁺ H (halt⁺ o a)   = halt o a
-embTree⁺ H (ret l)      = ret (mapEmbν⁺ᵈ H H l)
-embTree⁺ H (call o a k) = call o a (λ b → embTree⁺ H (k b))
-embTree⁺ H (halt o a)   = halt o a
-mapEmbν⁺ᵈ H (SK B)     x        = x
-mapEmbν⁺ᵈ H SId        x        = embν⁺ᵈ x
-mapEmbν⁺ᵈ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν⁺ᵈ H G₁ x)
-mapEmbν⁺ᵈ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν⁺ᵈ H G₂ y)
-mapEmbν⁺ᵈ H (G₁ S⊗ G₂) (x , y)  = mapEmbν⁺ᵈ H G₁ x , mapEmbν⁺ᵈ H G₂ y
-
--- `eff ⊑ prod` and `pure ⊑ prod` at ν: a stream whose layers are finite
--- trees, or always there, is one whose layers are trees of `T∞` (D311). The
--- maps are named and written by hand (D062).
-embν∞ᵈ  : ∀ {H} → νᵈ H → ν∞ H
-embLay∞ : ∀ (H : SFunctor) → T (⟦ H ⟧SF (νᵈ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
-mapEmbν∞ᵈ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵈ H) → ⟦ G ⟧SF (ν∞ H)
-force∞ (embν∞ᵈ {H} v) = embLay∞ H (forceᵈ v)
-force (embLay∞ H (ret l))      = ret∞ (mapEmbν∞ᵈ H H l)
-force (embLay∞ H (call o a k)) = call∞ o a (λ b → embLay∞ H (k b))
-force (embLay∞ H (halt o a))   = halt∞ o a
-mapEmbν∞ᵈ H (SK B)     x        = x
-mapEmbν∞ᵈ H SId        x        = embν∞ᵈ x
-mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν∞ᵈ H G₁ x)
-mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν∞ᵈ H G₂ y)
-mapEmbν∞ᵈ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵈ H G₁ x , mapEmbν∞ᵈ H G₂ y
-
-embν∞ᵖ    : ∀ {H} → νᵖ H → ν∞ H
-mapEmbν∞ᵖ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵖ H) → ⟦ G ⟧SF (ν∞ H)
-force (force∞ (embν∞ᵖ {H} v)) = ret∞ (mapEmbν∞ᵖ H H (forceᵖ v))
-mapEmbν∞ᵖ H (SK B)     x        = x
-mapEmbν∞ᵖ H SId        x        = embν∞ᵖ x
-mapEmbν∞ᵖ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν∞ᵖ H G₁ x)
-mapEmbν∞ᵖ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν∞ᵖ H G₂ y)
-mapEmbν∞ᵖ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵖ H G₁ x , mapEmbν∞ᵖ H G₂ y
+embν⁺     : ∀ {H} → ν⁺ H → ν∞ H
+embRoot⁺  : ∀ (H : SFunctor) → T⁺ (⟦ H ⟧SF (ν⁺ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
+embTree⁺  : ∀ (H : SFunctor) → T∞ (⟦ H ⟧SF (ν⁺ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
+embLayer⁺ : ∀ (H : SFunctor) → T∞F (⟦ H ⟧SF (ν⁺ H)) (T∞ (⟦ H ⟧SF (ν⁺ H)))
+          → T∞F (⟦ H ⟧SF (ν∞ H)) (T∞ (⟦ H ⟧SF (ν∞ H)))
+mapEmbν⁺  : ∀ (H G : SFunctor) → ⟦ G ⟧SF (ν⁺ H) → ⟦ G ⟧SF (ν∞ H)
+force∞ (embν⁺ {H} v) = embRoot⁺ H (force⁺ v)
+force (embRoot⁺ H (call⁺ o a k)) = call∞ o a (λ b → embTree⁺ H (k b))
+force (embRoot⁺ H (halt⁺ o a))   = halt∞ o a
+force (embTree⁺ H m) = embLayer⁺ H (force m)
+embLayer⁺ H (ret∞ l)      = ret∞ (mapEmbν⁺ H H l)
+embLayer⁺ H (call∞ o a k) = call∞ o a (λ b → embTree⁺ H (k b))
+embLayer⁺ H (halt∞ o a)   = halt∞ o a
+mapEmbν⁺ H (SK B)     x        = x
+mapEmbν⁺ H SId        x        = embν⁺ x
+mapEmbν⁺ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν⁺ H G₁ x)
+mapEmbν⁺ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν⁺ H G₂ y)
+mapEmbν⁺ H (G₁ S⊗ G₂) (x , y)  = mapEmbν⁺ H G₁ x , mapEmbν⁺ H G₂ y
 
 ------------------------------------------------------------------------
 -- Subtyping coercions (D226), graded.
@@ -248,12 +216,8 @@ mapEmbν∞ᵖ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵖ H G₁ x , mapEmbν�
 ⟦ sub-ν ⊑-pure ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-eff  ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-pe   ⟧<:ᵛ x = embν x
-⟦ sub-ν ⊑-prod ⟧<:ᵛ x = x
-⟦ sub-ν ⊑-pp   ⟧<:ᵛ x = embν∞ᵖ x
-⟦ sub-ν ⊑-ep   ⟧<:ᵛ x = embν∞ᵈ x
 ⟦ sub-ν ⊑-g    ⟧<:ᵛ x = x
-⟦ sub-ν ⊑-ge   ⟧<:ᵛ x = embν⁺ᵈ x
-⟦ sub-ν ⊑-gp   ⟧<:ᵛ x = embν∞ᵈ (embν⁺ᵈ x)
+⟦ sub-ν ⊑-ge   ⟧<:ᵛ x = embν⁺ x
 ⟦ sub-rigid ⟧<:ᵛ x = x
 
 ------------------------------------------------------------------------
@@ -261,8 +225,8 @@ mapEmbν∞ᵖ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵖ H G₁ x , mapEmbν�
 -- interpretation's pure half at its argument — a value, so a pure reference is
 -- referentially transparent by its type. An effectful arrow's application is
 -- the GENERIC EFFECT (`opCall⁺`): a call the interpretation answers, an
--- emitted event, or a halt — read at the arrow's grade (`forget⁺` at `eff`,
--- and as a tree of `T∞` at `prod`). Contracts are
+-- emitted event, or a halt — read at the arrow's grade (`forget⁺` at `eff`).
+-- Contracts are
 -- first-order (`IsConcrete`), so both sides cross by the base conversions.
 ------------------------------------------------------------------------
 
@@ -270,8 +234,8 @@ mapEmbν∞ᵖ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵖ H G₁ x , mapEmbν�
 -- the call (or the halt). The form `arrow-sem-eff` decides, read as `T⁺`.
 opCall⁺ : ∀ {A B} → CanonicalName → IsBaseType A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T⁺ Val.⟦ B ⟧
 opCall⁺ {A} cn bA (yes refl) _          x = halt⁺ (haltOp cn A bA) x
-opCall⁺ {A} cn bA (no _)     (yes refl) x = call⁺ (callOp cn A bA Unit) x (λ _ → ret tt)
-opCall⁺ {A} {B} cn bA (no _) (no _)     x = call⁺ (callOp cn A bA B) x ret
+opCall⁺ {A} cn bA (no _)     (yes refl) x = call⁺ (callOp cn A bA Unit) x (λ _ → return∞ tt)
+opCall⁺ {A} {B} cn bA (no _) (no _)     x = call⁺ (callOp cn A bA B) x return∞
 
 -- Plan 0.105 (D257 amendment 2): a reference to a SigOp the program is compiled
 -- against (`m`: its declaration in `Σ`). A VALUE contract reads the
@@ -300,11 +264,3 @@ sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bD
   λ a → fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff⁺} bDom bCod) m =
   λ a → fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
--- D311: a foreign operation declared at `prod` is still one call that returns
--- or halts, read as a tree of `T∞`.
-sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero prod} bDom bCod) m =
-  λ _ → embed (forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt)))
-sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One prod} bDom bCod) m =
-  λ a → embed (forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))))
-sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many prod} bDom bCod) m =
-  λ a → embed (forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))))

@@ -168,6 +168,48 @@ RelT∞′-bind {m = m} {k = k} (rel∞-call e h) c =
   rel∞-call (cong (λ l → bind∞F l k) e) (λ b → RelT∞′-bind (h b) c)
 RelT∞′-bind {m = m} {k = k} (rel∞-halt e) c = rel∞-halt (cong (λ l → bind∞F l k) e)
 
+-- Bisimilar trees are related to the same finite tree.
+open import Data.Product using (Σ-syntax; _×_; _,_)
+
+private
+  ret-node : ∀ {X} {Q : T∞ X → T∞ X → Set} {l l′ : T∞F X (T∞ X)} {x}
+           → NodeEq _≡_ Q l l′ → l′ ≡ ret∞ x → l ≡ ret∞ x
+  ret-node (ret≈∞ refl) refl = refl
+
+  call-node : ∀ {X} {Q : T∞ X → T∞ X → Set} {l l′ : T∞F X (T∞ X)} {o a} {k : _ → T∞ X}
+            → NodeEq _≡_ Q l l′ → l′ ≡ call∞ o a k → Σ[ k₀ ∈ (_ → T∞ X) ] (l ≡ call∞ o a k₀ × (∀ b → Q (k₀ b) (k b)))
+  call-node (call≈∞ f) refl = _ , refl , f
+
+  halt-node : ∀ {X} {Q : T∞ X → T∞ X → Set} {l l′ : T∞F X (T∞ X)} {o a}
+            → NodeEq _≡_ Q l l′ → l′ ≡ halt∞ o a → l ≡ halt∞ o a
+  halt-node halt≈∞ refl = refl
+
+RelT∞′-≈ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {t : T Y}
+         → TreeEq∞ _≡_ m m′ → RelT∞′ R m′ t → RelT∞′ R m t
+RelT∞′-≈call : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {o a} {k : _ → T∞ X} {k′ : _ → T Y}
+             → Σ[ k₀ ∈ (_ → T∞ X) ] (force m ≡ call∞ o a k₀ × (∀ b → TreeEq∞ _≡_ (k₀ b) (k b)))
+             → (∀ b → RelT∞′ R (k b) (k′ b)) → RelT∞′ R m (call o a k′)
+RelT∞′-≈ h (rel∞-ret e r)   = rel∞-ret (ret-node (force≈ h) e) r
+RelT∞′-≈ h (rel∞-call e hs) = RelT∞′-≈call (call-node (force≈ h) e) hs
+RelT∞′-≈ h (rel∞-halt e)    = rel∞-halt (halt-node (force≈ h) e)
+RelT∞′-≈call (k₀ , e , f) hs = rel∞-call e (λ b → RelT∞′-≈ (f b) (hs b))
+
+-- A tree of `T∞` related to a finite tree makes the same calls under any
+-- interpretation: its first `n` events are the finite run's.
+RelT∞′-events : ∀ {X Y} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T∞ X} {t : T Y}
+              → RelT∞′ R m t → ∀ n → events∞ ι h m n ≡ take n (proj₁ (run ι h t))
+RelT∞′-events-call : ∀ {X Y} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) o a
+                       {k : _ → T∞ X} {k′ : _ → T Y} → (∀ b → RelT∞′ R (k b) (k′ b)) → (r : Maybe _) → ∀ n
+                   → eventsC ι h o a k r n ≡ take (suc n) (proj₁ (run-call ι h o a k′ r))
+RelT∞′-events ι h r zero = refl
+RelT∞′-events ι h (rel∞-ret e _) (suc n) rewrite e = refl
+RelT∞′-events ι h (rel∞-halt e)  (suc zero) rewrite e = refl
+RelT∞′-events ι h (rel∞-halt e)  (suc (suc n)) rewrite e = refl
+RelT∞′-events ι h (rel∞-call {o = o} {a = a} e hk) (suc n) rewrite e = RelT∞′-events-call ι h o a hk (callAnswer ι h o a) n
+RelT∞′-events-call ι h o a hk (just b) n = cong (callEvent o a ∷_) (RelT∞′-events ι (h ++ [ callEvent o a ]) (hk b) n)
+RelT∞′-events-call ι h o a hk nothing  zero    = refl
+RelT∞′-events-call ι h o a hk nothing  (suc n) = refl
+
 -- A finite relation, embedded.
 RelT∞′-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelT∞′ R (embed m) t
 RelT∞′-embed (rel-ret r)  = rel∞-ret refl r

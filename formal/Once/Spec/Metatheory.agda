@@ -57,7 +57,7 @@ open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Core.PolyTy using (Sig)
 open import Once.Spec.Core.TermModel using (TermModel) public
 open import Once.Spec.Core.Coherence using (Coherence)
-open import Once.Spec.Type.Grade using (Purity; pure; prod; eff⁺; mk-kind; Many; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; mk-kind; Many; _·p_)
 open import Once.Spec.Iterative using (TreeEq∞; return∞; _>>=∞_)
 open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Spec.Guarded using (T⁺; iter∞)
@@ -69,7 +69,7 @@ open import Once.Spec.Totality using (echoDefs; echoSig; echoServer)
 open import Once.Spec.Type using (Void)
 open import Data.List using (length)
 open import Once.Spec.Trace using (interp)
-open import Once.Spec.Totality using (FiniteT; ProductiveM; ProductiveT∞; selfRef; forwardRef; defF; tickDefs; ticker)
+open import Once.Spec.Totality using (ProductiveM; ProductiveT∞; selfRef; forwardRef; defF; tickDefs; ticker)
 open import Once.Spec.Module using (ModTele; emptyScope)
 open import Once.Spec.Context using (∅)
 open import Once.Spec.Type.WellFormed using (wf-Id)
@@ -80,7 +80,8 @@ open import Data.List using (_∷_; [])
 open import Data.Unit using (tt)
 open import Data.Product using (∃-syntax)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Trace using (call)
+open import Once.Spec.Iterative using (call∞; module T∞)
+open T∞ using (force)
 import Once.Spec.Core.Typing
 import Once.Spec.Core.Meaning
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
@@ -223,12 +224,12 @@ record Freyd : Set₁ where
     pair-η  : ∀ {X Y Z : Set} (h : X → T (Y × Z)) → (∀ x → Central (h x))
             → ∀ x → pairK (λ x → h x >>=T λ p → returnT (proj₁ p)) (λ x → h x >>=T λ p → returnT (proj₂ p)) x ≡ h x
 
--- Once is TOTAL and PRODUCTIVE (D311, plan 0.117 A; `Spec.Totality`). An
--- effectful computation that returns ends, on every path, after finitely many
--- events; so does each layer of every stream, effectful or not. With an
--- inductive `T` these hold by construction, and that is their job here: a
--- silent step in `T`, or a coinductive `T` without a guard — what general
--- recursion would need (OCP-0003) — makes them false.
+-- Once is TOTAL and PRODUCTIVE (D311, D312, plan 0.117; `Spec.Totality`). An
+-- effectful computation reaches each next event, or its end, after finite
+-- work, and need not stop; so does each layer of every stream. With `T∞`'s
+-- nodes all events or ends these hold by construction, and that is their job
+-- here: a silent step in `T∞` — what general recursion would need (OCP-0003)
+-- — makes them false.
 --
 -- And what it does NOT give up (`Spec.Totality` names the programs): a
 -- definition cannot name itself or a later definition — there is no general
@@ -242,9 +243,8 @@ module EchoMeaning = Once.Spec.Core.Meaning echoDefs
 
 record Totality : Set₁ where
   field
-    finite     : ∀ {X : Set} (m : T X) → FiniteT m
     productive : ∀ π {F} (wf : WellFormedF F) (v : ⟦ ν-type F π ⟧ᵛ) → ProductiveM π (out-semᵛ π wf v)
-    -- a computation that may run forever (`prod`, a server's `iter`) reaches
+    -- every effectful computation (a server's `iter` among them) reaches
     -- each next event, or its end, after finite work
     productive∞ : ∀ {X : Set} (m : T∞ X) → ProductiveT∞ m
     -- … so its observation is defined at every depth: observing one event
@@ -257,10 +257,10 @@ record Totality : Set₁ where
     stream-typed : TickTyping._⊢[_]_∷_!_ ∅ Surface.[] ticker (ν-type Id eff) pure
     stream-emits : ∀ fmt (ds : TickMeaning.DefSem)
                  → ∃[ o ] ∃[ a ] ∃[ k ]
-                   TickMeaning.⟦ TickTyping.⊢out wf-Id (TickTyping.⊢sub-eff ⊑-pe stream-typed) ⟧ fmt ds tt
-                   ≡ call o a k
-    -- and a SERVER (D311): `iter step ()`, an echo loop, is typed at `prod` …
-    server-typed : EchoTyping._⊢[_]_∷_!_ ∅ Surface.[] echoServer Void prod
+                   force (TickMeaning.⟦ TickTyping.⊢out wf-Id (TickTyping.⊢sub-eff ⊑-pe stream-typed) ⟧ fmt ds tt)
+                   ≡ call∞ o a k
+    -- and a SERVER (D311): `iter step ()`, an echo loop, is typed at `eff` …
+    server-typed : EchoTyping._⊢[_]_∷_!_ ∅ Surface.[] echoServer Void eff
     -- … and runs forever: under every implementation, its observation at
     -- depth `n` has exactly `n` events
     server-runs  : ∀ fmt (ds : EchoMeaning.DefSem) n

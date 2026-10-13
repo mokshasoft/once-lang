@@ -5,30 +5,25 @@
 -- Once.Metatheory.Totality — Once is total and productive
 -- (`Spec.Metatheory.Totality`, D311, plan 0.117 A).
 --
--- `T` is an inductive type, so every tree is finite by induction on it; a
--- stream's layer is a value (pure) or such a tree (effectful).
+-- Every node of a `T∞` tree is an event or the end (D312), so every tree is
+-- productive by the shape of its nodes; a stream's layer is a value (pure) or
+-- such a tree (effectful).
 ------------------------------------------------------------------------
 
 module Once.Metatheory.Totality where
 
-open import Once.Spec.Type.Grade using (pure; eff⁺; eff; prod)
+open import Once.Spec.Type.Grade using (pure; eff⁺; eff)
 open import Once.Spec.Guarded using (forget⁺)
-open import Once.Spec.Totality using (FiniteT; fin-ret; fin-call; fin-halt; ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
+open import Once.Spec.Totality using (ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
 open Once.Spec.Totality.ProductiveT∞ using (node)
 open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
 open Once.Spec.Iterative.T∞ using (force)
 open import Once.Spec.Metatheory using (Totality)
-open import Once.Spec.Trace using (T; ret; call; halt)
 open import Once.Spec.GradedOps using (out-semᵛ)
 open import Once.Denotation.TraceMonadInfLaws using (events∞-pf)
 open import Once.Metatheory.Witness.NoSelfRef using (no-self-reference; no-forward-reference)
 open import Once.Metatheory.Witness.Server using (stream-typed; stream-emits)
 import Once.Metatheory.Witness.Echo as Echo
-
-finite : ∀ {X : Set} (m : T X) → FiniteT m
-finite (ret x)      = fin-ret
-finite (call o a k) = fin-call (λ b → finite (k b))
-finite (halt o a)   = fin-halt
 
 -- Every tree of `T∞` is productive: by the shape of its nodes.
 productive∞ : ∀ {X : Set} (m : T∞ X) → ProductiveT∞ m
@@ -40,8 +35,7 @@ productiveN (halt∞ o a)   = prod-halt
 
 totality : Totality
 totality = record
-  { finite     = finite
-  ; productive = λ { pure wf v → _ ; eff wf v → finite (out-semᵛ eff wf v) ; prod wf v → productive∞ (out-semᵛ prod wf v) ; eff⁺ wf v → finite (forget⁺ (out-semᵛ eff⁺ wf v)) }
+  { productive = λ { pure wf v → _ ; eff wf v → productive∞ (out-semᵛ eff wf v) ; eff⁺ wf v → productive∞ (forget⁺ (out-semᵛ eff⁺ wf v)) }
   ; productive∞ = productive∞
   ; observable∞ = events∞-pf
   ; no-self-reference    = no-self-reference

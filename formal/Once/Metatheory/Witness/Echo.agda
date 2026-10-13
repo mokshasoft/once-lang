@@ -17,7 +17,7 @@ module Once.Metatheory.Witness.Echo where
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Type.Grade using (pure; eff⁺; prod; Zero; Many)
+open import Once.Spec.Type.Grade using (pure; eff⁺; eff; Zero; Many)
 open import Once.Spec.Type using (Unit; Void; _⇒[_]_; _+_)
 open import Once.Spec.Type.Grade using (mk-kind)
 open import Once.Spec.Type.WellFormed using (con-fun; base-Int; base-Unit; rf-Int; rf-Unit; rf-⇒)
@@ -31,7 +31,7 @@ step-typed =
     (⊢inr (⊢app (⊢sigop writeN (con-fun base-Int base-Unit) tt (rf-⇒ rf-Int rf-Unit) (there (here refl)))
                 (⊢app (⊢sigop readN (con-fun base-Unit base-Int) tt (rf-⇒ rf-Unit rf-Int) (here refl)) ⊢unit)))
 
-server-typed : ∅ ⊢[ [] ] echoServer ∷ Void ! prod
+server-typed : ∅ ⊢[ [] ] echoServer ∷ Void ! eff
 server-typed = ⊢iter step-typed ⊢unit
 
 ------------------------------------------------------------------------
@@ -48,9 +48,9 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (cong; trans)
 open import Once.Spec.Event using (SigOpEvent)
-open import Once.Spec.Trace using (T; ret; call; halt; Interp; CallOp; callAnswer; callEvent)
-open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; iter∞; iterRoot∞; iterTree∞)
-open import Once.Spec.Iterative using (T∞; events∞; eventsF; eventsC; call∞; module T∞)
+open import Once.Spec.Trace using (Interp; CallOp; callAnswer; callEvent)
+open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; iter∞; iterRoot∞; iterTree∞; iterLayer∞)
+open import Once.Spec.Iterative using (T∞; T∞F; ret∞; events∞; eventsF; eventsC; call∞; module T∞)
 open T∞ using (force)
 
 module Forever (ι : Interp) where
@@ -58,14 +58,14 @@ module Forever (ι : Interp) where
   Answered : (o : CallOp) → _ → Set
   Answered o x = ∀ (h : List SigOpEvent) → ∃[ b ] (callAnswer ι h o x ≡ just b)
 
-  -- The rest of a round: answered calls, then a loop.
-  data Loops {A : Set} : T (⊥ ⊎ A) → Set where
-    loops : ∀ a → Loops (ret (inj₂ a))
-    calls : ∀ {o x k} → Answered o x → (∀ b → Loops (k b)) → Loops (call o x k)
+  -- The rest of a round, node by node: answered calls, then a loop.
+  data Loops {A : Set} : T∞F (⊥ ⊎ A) (T∞ (⊥ ⊎ A)) → Set where
+    loops : ∀ a → Loops (ret∞ (inj₂ a))
+    calls : ∀ {o x k} → Answered o x → (∀ b → Loops (force (k b))) → Loops (call∞ o x k)
 
   -- A round: an answered call first (the guard), then the rest.
   Round : ∀ {A : Set} → T⁺ (⊥ ⊎ A) → Set
-  Round (call⁺ o x k) = Answered o x × (∀ b → Loops (k b))
+  Round (call⁺ o x k) = Answered o x × (∀ b → Loops (force (k b)))
   Round (halt⁺ o x)   = ⊥
 
   module _ {A : Set} (f : A → T⁺ (⊥ ⊎ A)) (rf : ∀ a → Round (f a)) where
@@ -73,14 +73,16 @@ module Forever (ι : Interp) where
                  → length (eventsC ι h o x k r n) ≡ suc (length (events∞ ι (h ++ [ callEvent o x ]) (k b) n))
     eventsC-just h o x k .(just b) b refl n = refl
 
-    runs-root : ∀ (m : T⁺ (⊥ ⊎ A)) → Round m → ∀ h n → length (eventsF ι h (iterRoot∞ f m) n) ≡ suc n
-    runs-tree : ∀ (t : T (⊥ ⊎ A)) → Loops t → ∀ h n → length (events∞ ι h (iterTree∞ f t) n) ≡ n
+    runs-root  : ∀ (m : T⁺ (⊥ ⊎ A)) → Round m → ∀ h n → length (eventsF ι h (iterRoot∞ f m) n) ≡ suc n
+    runs-tree  : ∀ (t : T∞ (⊥ ⊎ A)) → Loops (force t) → ∀ h n → length (events∞ ι h (iterTree∞ f t) n) ≡ n
+    runs-layer : ∀ (l : T∞F (⊥ ⊎ A) (T∞ (⊥ ⊎ A))) → Loops l → ∀ h n → length (eventsF ι h (iterLayer∞ f l) n) ≡ suc n
     runs-root (call⁺ o x k) (ans , lk) h n =
       trans (eventsC-just h o x _ (callAnswer ι h o x) (proj₁ (ans h)) (proj₂ (ans h)) n)
             (cong suc (runs-tree (k (proj₁ (ans h))) (lk _) _ n))
-    runs-tree t           l             h zero    = refl
-    runs-tree (ret (inj₂ a)) (loops .a) h (suc n) = runs-root (f a) (rf a) h n
-    runs-tree (call o x k) (calls ans lk) h (suc n) =
+    runs-tree t l h zero    = refl
+    runs-tree t l h (suc n) = runs-layer (force t) l h n
+    runs-layer (ret∞ (inj₂ a)) (loops .a) h n = runs-root (f a) (rf a) h n
+    runs-layer (call∞ o x k) (calls ans lk) h n =
       trans (eventsC-just h o x _ (callAnswer ι h o x) (proj₁ (ans h)) (proj₂ (ans h)) n)
             (cong suc (runs-tree (k (proj₁ (ans h))) (lk _) _ n))
 

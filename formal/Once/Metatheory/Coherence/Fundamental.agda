@@ -33,7 +33,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; prod; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
 open import Once.Spec.Type using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Int; base-Float; base-Unit; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun; WellFormedF)
@@ -47,7 +47,7 @@ open import Once.Spec.Core.PolyTy using (_!!_; _⟪_⟫; module Schema)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
 open import Once.Spec.Iterative using (TreeEq∞)
-open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; embed-≈)
+open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; ≈∞-refl)
 open import Once.Spec.Trace using (T; ret; fmapT)
 open import Once.Spec.Environment using (bindᵛ)
 open import Once.Spec.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ)
@@ -159,27 +159,21 @@ sigop-S fmt I c (con-base ib) m m′ =
 sigop-S fmt I c (con-fun {k = mk-kind Zero pure} bA bB) m m′ =
   retT≈ (S-base bB (cong (λ f → injB bB (f tt)) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind Zero eff} bA bB) m m′ =
-  embed-≈ (TreeEq-refl (S-refl-base bB) _)
-sigop-S fmt I c (con-fun {k = mk-kind Zero prod} bA bB) m m′ =
-  embed-≈ (TreeEq-refl (S-refl-base bB) _)
+  ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind Zero eff⁺} bA bB) m m′ =
-  embed-≈ (TreeEq-refl (S-refl-base bB) _)
+  ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind One pure} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = retT≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind Many pure} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = retT≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind One eff} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+  rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind Many eff} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
-sigop-S fmt I c (con-fun {k = mk-kind One prod} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
-sigop-S fmt I c (con-fun {k = mk-kind Many prod} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+  rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind One eff⁺} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+  rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind Many eff⁺} bA bB) m m′ a a′ s
-  rewrite S-base-≡ bA s = embed-≈ (TreeEq-refl (S-refl-base bB) _)
+  rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 
 ------------------------------------------------------------------------
 -- THE LEMMA
@@ -317,7 +311,7 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
             → TreeEq∞ (S B) (toT∞ _ (⟦ ⊢iter df ds ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢iter df′ ds′ ⟧ fmt δ x′))
     iterS {π₁ = π₁} {π₂} {π₁′} {π₂′} refl df ds df′ ds′ h =
       bind≈ᵍ π₁ _ π₁′ _ (FL df df′ (restrict₂ _ _ h)) λ {step} {step′} sf →
-      bind≈ᵍ π₂ prod π₂′ prod (FL ds ds′ (restrict₂ _ _ h)) λ {a} {a′} sa → Iter.iter-S step step′ sf a a′ sa
+      bind≈ᵍ π₂ eff π₂′ eff (FL ds ds′ (restrict₂ _ _ h)) λ {a} {a′} sa → Iter.iter-S step step′ sf a a′ sa
 
     outS : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {F F′ π π′ π₁ π₁′ t}
              (eq : ν-type F π ≡ ν-type F′ π′) (wf : WellFormedF F) (wf′ : WellFormedF F′)

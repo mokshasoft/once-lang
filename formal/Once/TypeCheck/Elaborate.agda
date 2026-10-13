@@ -608,7 +608,6 @@ asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Typ
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B))
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B))
 -- D311: no surface application of a `prod` arrow yet (plan 0.117 F).
-asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B))
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B))
 asFun (success Unit Ψ _ _ _)                             = notFun (NotFunction Unit)
 asFun (success Void Ψ _ _ _)                             = notFun (NotFunction Void)
@@ -982,7 +981,6 @@ inferOutGo ctx arg F Once.Spec.Type.Grade.eff Ψ argE d fr w (just wfF) eqW =
     (suc d) fr
   , t-Out-eff-app-infer wfF refl w
 -- D311: no surface `Out` of a `prod` stream yet (plan 0.117 F).
-inferOutGo ctx arg F Once.Spec.Type.Grade.prod Ψ argE d fr w (just wfF) eqW = failure (BuiltinTypeMismatch "Out") , tt
 inferOutGo ctx arg F Once.Spec.Type.Grade.eff⁺ Ψ argE d fr w (just wfF) eqW = failure (BuiltinTypeMismatch "Out") , tt
 
 inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
@@ -1038,7 +1036,6 @@ inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.eff B A') w
   , t-apply-eff-app-infer w
 ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
 -- D311: no surface application of a `prod` closure yet (plan 0.117 F).
-inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.prod B A') = failure (BuiltinTypeMismatch "apply") , tt
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.eff⁺ B A') = failure (BuiltinTypeMismatch "apply") , tt
 inferApplyAt ctx arg Ψ argE d fr w apply-other = failure (BuiltinTypeMismatch "apply") , tt
 
@@ -1330,9 +1327,6 @@ ext-resolved-sem eff  (yes refl) _          = haltsV refl
 ext-resolved-sem eff  (no _)     (yes refl) = emitsV refl
 ext-resolved-sem eff  (no _)     (no _)     = callsV
 -- D311: a foreign operation at `prod` is one call, as at `eff` (`arrow-sem`).
-ext-resolved-sem prod (yes refl) _          = haltsV refl
-ext-resolved-sem prod (no _)     (yes refl) = emitsV refl
-ext-resolved-sem prod (no _)     (no _)     = callsV
 ext-resolved-sem eff⁺ (yes refl) _          = haltsV refl
 ext-resolved-sem eff⁺ (no _)     (yes refl) = emitsV refl
 ext-resolved-sem eff⁺ (no _)     (no _)     = callsV
@@ -2620,7 +2614,6 @@ mutual
           success (Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx , t-effApp eqAH wF wX
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B)) , tt
-  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.prod ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B)) , tt
 
   -- ahv-id : argument can have any type, result has the same type.
@@ -2808,11 +2801,8 @@ checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-k
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.pure ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 {-# CATCHALL #-}
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind _ Once.Spec.Type.Grade.eff ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.prod ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff⁺ ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.prod ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff⁺ ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.prod ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff⁺ ] _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Spec.Type.μ-type _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Spec.Type.ν-type _ _) Once.Spec.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt

@@ -18,8 +18,7 @@ module Once.Metatheory.Iteration where
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
-open import Once.Spec.Trace using (T; ret; call; halt)
-open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; forget⁺; iter∞; iterRoot∞; iterTree∞)
+open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; root⁺; forget⁺; iter∞; iterRoot∞; iterTree∞; iterLayer∞)
 open import Once.Spec.Iterative
 open T∞ using (force)
 open TreeEq∞ using (force≈)
@@ -54,39 +53,39 @@ module _ {A B : Set} (f : A → T⁺ (B ⊎ A)) where
   K x = [ return∞ , x ]′
 
   -- `iter∞ f` solves it.
-  iter-unfold : ∀ a → TreeEq∞ _≡_ (iter∞ f a) (embed (forget⁺ (f a)) >>=∞ K (iter∞ f))
+  iter-unfold : ∀ a → TreeEq∞ _≡_ (iter∞ f a) (forget⁺ (f a) >>=∞ K (iter∞ f))
   unfold-root : ∀ (m : T⁺ (B ⊎ A))
-              → NodeEq _≡_ (TreeEq∞ _≡_) (iterRoot∞ f m) (bind∞F (force (embed (forget⁺ m))) (K (iter∞ f)))
-  unfold-tree : ∀ (t : T (B ⊎ A)) → TreeEq∞ _≡_ (iterTree∞ f t) (embed t >>=∞ K (iter∞ f))
-  unfold-treeN : ∀ (t : T (B ⊎ A))
-               → NodeEq _≡_ (TreeEq∞ _≡_) (force (iterTree∞ f t)) (force (embed t >>=∞ K (iter∞ f)))
+              → NodeEq _≡_ (TreeEq∞ _≡_) (iterRoot∞ f m) (bind∞F (root⁺ m) (K (iter∞ f)))
+  unfold-tree : ∀ (t : T∞ (B ⊎ A)) → TreeEq∞ _≡_ (iterTree∞ f t) (t >>=∞ K (iter∞ f))
+  unfold-layer : ∀ (l : T∞F (B ⊎ A) (T∞ (B ⊎ A)))
+               → NodeEq _≡_ (TreeEq∞ _≡_) (iterLayer∞ f l) (bind∞F l (K (iter∞ f)))
 
   force≈ (iter-unfold a) = unfold-root (f a)
   unfold-root (call⁺ o x k) = call≈∞ (λ b → unfold-tree (k b))
   unfold-root (halt⁺ o x)   = halt≈∞
-  force≈ (unfold-tree t) = unfold-treeN t
-  unfold-treeN (ret (inj₁ b)) = ret≈∞ refl
-  unfold-treeN (ret (inj₂ a)) = ≈reflN (iterRoot∞ f (f a))
-  unfold-treeN (call o x k)   = call≈∞ (λ b → unfold-tree (k b))
-  unfold-treeN (halt o x)     = halt≈∞
+  force≈ (unfold-tree t) = unfold-layer (force t)
+  unfold-layer (ret∞ (inj₁ b)) = ret≈∞ refl
+  unfold-layer (ret∞ (inj₂ a)) = ≈reflN (iterRoot∞ f (f a))
+  unfold-layer (call∞ o x k)   = call≈∞ (λ b → unfold-tree (k b))
+  unfold-layer (halt∞ o x)     = halt≈∞
 
   -- Every solution is `iter∞ f`.
-  module _ (g : A → T∞ B) (hg : ∀ a → TreeEq∞ _≡_ (g a) (embed (forget⁺ (f a)) >>=∞ K g)) where
+  module _ (g : A → T∞ B) (hg : ∀ a → TreeEq∞ _≡_ (g a) (forget⁺ (f a) >>=∞ K g)) where
     -- A tree bisimilar to a round's rest, continued by `g`, is bisimilar to the
     -- iteration's rest.
-    uniq-tree : ∀ (y : T∞ B) (t : T (B ⊎ A)) → TreeEq∞ _≡_ y (embed t >>=∞ K g) → TreeEq∞ _≡_ y (iterTree∞ f t)
-    uniq-treeN : ∀ (l : T∞F B (T∞ B)) (t : T (B ⊎ A))
-               → NodeEq _≡_ (TreeEq∞ _≡_) l (force (embed t >>=∞ K g))
-               → NodeEq _≡_ (TreeEq∞ _≡_) l (force (iterTree∞ f t))
+    uniq-tree : ∀ (y : T∞ B) (t : T∞ (B ⊎ A)) → TreeEq∞ _≡_ y (t >>=∞ K g) → TreeEq∞ _≡_ y (iterTree∞ f t)
+    uniq-layer : ∀ (l : T∞F B (T∞ B)) (lt : T∞F (B ⊎ A) (T∞ (B ⊎ A)))
+               → NodeEq _≡_ (TreeEq∞ _≡_) l (bind∞F lt (K g))
+               → NodeEq _≡_ (TreeEq∞ _≡_) l (iterLayer∞ f lt)
     uniq-root : ∀ (l : T∞F B (T∞ B)) (m : T⁺ (B ⊎ A))
-              → NodeEq _≡_ (TreeEq∞ _≡_) l (bind∞F (force (embed (forget⁺ m))) (K g))
+              → NodeEq _≡_ (TreeEq∞ _≡_) l (bind∞F (root⁺ m) (K g))
               → NodeEq _≡_ (TreeEq∞ _≡_) l (iterRoot∞ f m)
 
-    force≈ (uniq-tree y t h) = uniq-treeN (force y) t (force≈ h)
-    uniq-treeN l (ret (inj₁ b)) n          = n
-    uniq-treeN l (ret (inj₂ a)) n          = uniq-root l (f a) (≈transN n (force≈ (hg a)))
-    uniq-treeN _ (call o x k)   (call≈∞ h) = call≈∞ (λ b → uniq-tree _ (k b) (h b))
-    uniq-treeN _ (halt o x)     halt≈∞     = halt≈∞
+    force≈ (uniq-tree y t h) = uniq-layer (force y) (force t) (force≈ h)
+    uniq-layer l (ret∞ (inj₁ b)) n          = n
+    uniq-layer l (ret∞ (inj₂ a)) n          = uniq-root l (f a) (≈transN n (force≈ (hg a)))
+    uniq-layer _ (call∞ o x k)   (call≈∞ h) = call≈∞ (λ b → uniq-tree _ (k b) (h b))
+    uniq-layer _ (halt∞ o x)     halt≈∞     = halt≈∞
     uniq-root _ (call⁺ o x k) (call≈∞ h) = call≈∞ (λ b → uniq-tree _ (k b) (h b))
     uniq-root _ (halt⁺ o x)   halt≈∞     = halt≈∞
 

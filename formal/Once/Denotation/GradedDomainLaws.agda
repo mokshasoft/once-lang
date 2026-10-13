@@ -17,13 +17,11 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pp)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
 import Once.Semantics.Machine as Val
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Spec.FunctorMeaning using (translateF)
-open import Once.Spec.Trace using (T; returnT; _>>=T_)
-open import Once.Spec.Stream using (νᵈ)
 open import Once.Spec.Graded
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-idˡ)
 
@@ -41,12 +39,10 @@ opaque
   >>=ᵖ-idʳ : ∀ {X : Set} (m : X) → (m >>=ᵖ λ x → x) ≡ m
   >>=ᵖ-idʳ m = refl
 
--- Left identity at every grade with a unit: definitional at `eff` (T's bind on
--- a unit), the β-law of the opaque bind at `pure`, bisimilarity at `prod`.
+-- Left identity at every grade with a unit: the β-law of the opaque bind at
+-- `pure`, bisimilarity at `eff`.
 bindM-idˡ : ∀ {π} (u : pure ⊑π π) {X Y} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM u x) k) (k x)
 
 bindM-idˡ ⊑-pure x k = >>=ᵖ-β x k
 
-bindM-idˡ ⊑-pe   x k = refl
-
-bindM-idˡ ⊑-pp   x k = ≈∞-idˡ x k
+bindM-idˡ ⊑-pe   x k = ≈∞-idˡ x k
