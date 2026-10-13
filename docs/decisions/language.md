@@ -131,14 +131,22 @@ entry updates the rule it changes here, in the same commit.
   effectful computation reaches each next event after finite work, and NEED
   NOT STOP — `Eff A B` is `A → T∞ B`, the free completely iterative monad, so
   `main : Eff Unit Unit` is a server as well as a program that ends; `main` is
-  an ordinary function, specified only as the entry. An infinite run is built
-  by GUARDED ITERATION, a core former beside `fold` and `unfold` (`T∞`'s
-  universal property: a guarded equation has a unique solution); a step ends
-  at once with a value or performs an event before it answers
-  (`A → B + T⁺ (B + A)`). (D312 ← D311)
-- **Grades**: `pure ⊑ eff⁺ ⊑ eff`; `eff⁺`, the guard, is a computation whose
-  first node is an event. Grades are an ordered monoid and a sequencing rule
-  concludes at the product of its premises' grades. (D312 ← D311)
+  an ordinary function, specified only as the entry. A computation that
+  RETURNS has the finer type `Act A B` (the free monad `T`). An infinite run is
+  built by GUARDED ITERATION — at the surface `ana` into `Eff`, in the core its
+  own former `iter` (finality of `T∞`: a guarded equation has a unique
+  solution); a step ends at once with a value or performs an event before it
+  answers (`A → B + T⁺ (B + A)`). (D313 ← D312 ← D311)
+- **Grades**: `pure ⊑ act ⊑ eff` and `eff⁺ ⊑ eff`. `act` is a computation
+  that RETURNS (the free monad `T`, finite trees; surface `Act A B`); `eff`
+  may run forever (`T∞`; surface `Eff A B`); `eff⁺`, the guard, is one whose
+  first node is an event (never written; inferred). Grades are an ordered
+  monoid and a sequencing rule concludes at the product of its premises'
+  grades. (D313 ← D312 ← D311)
+- **The server loop is `ana` into `Eff`**: the surface unfold, checked against
+  `Eff A B` with a step `A -> B + Eff Unit (B + A)` whose round must begin
+  with an event, is guarded iteration (core `iter`); against `ν F` it builds a
+  stream. One construction: the unique map into a final coalgebra. (D313)
 - **The guard has no unit**: a value performs no event, so whatever returns a
   value at its arrow's grade — the combinators, λ, `curry`'s outer arrow,
   `ana`'s construction, a fold's algebra — needs a grade above `pure`

@@ -18484,3 +18484,36 @@ a finite statement). Everything D311 built for `prod` (`T∞`, `toT∞`, coheren
   `iter-unfold`/`iter-unique` with the pure exit; coherence (`Iter.iter-S`) and the echo witness.
   Phase R complete.
 
+## D313 — `Act`: THE TERMINATING EFFECT GRADE; THE SERVER LOOP IS `ana` INTO `Eff` (2026-10-13)
+
+**Relates**: D312 (amends: the grade order; O1's framing), D311, D062/D233 (`ana`), D241,
+OCP-0009 (the plan-ref POC: pure, inductive kernel; `Fin n` taken), plan 0.117.
+
+### Context
+D312 made `Eff A B = A → T∞ B`, so the old guarantee — an effectful function that RETURNS — was no
+longer expressible: induction vs coinduction became implicit in `Eff`. For data the choice is
+explicit (`μ`/`ν`). The two effect monads are themselves a `μ` and a `ν` of one functor
+`Y ↦ B + Σ Y` (return, or a call and its continuation): the free monad `T` (finite trees) and the
+free completely iterative monad `T∞` (possibly infinite trees, no silent node). Complete
+iterativity is a CONSEQUENCE of finality (Aczel–Adámek–Milius–Velebil), not a third universal
+property — D312 O1's "three structures, three universal properties" overstated it.
+
+### Decision
+1. **A terminating effect grade `act`**: `pure ⊑ act ⊑ eff`, `eff⁺ ⊑ eff` (`act` and `eff⁺`
+   incomparable). `M act = T`, the finite trees; `act ⊑ eff` is the embedding `T ↪ T∞`. Only the
+   loop concludes at `eff`; every other rule keeps a finite premise finite.
+2. **Surface types**: `A -> B` (pure), `Act A B` (effectful, returns), `Eff A B` (effectful, may
+   run forever; `main : Eff Unit Unit`). No graded-arrow syntax; `eff⁺` is never written — the
+   checker infers it. (`Fin` rejected: `Fin n` is the finite sets, and the POC has it, D076.)
+3. **The server loop is `ana` into `Eff`**: one surface unfold, its rule chosen by the expected
+   type — against `ν F` a stream value (core `unfold`), against `Eff A B` a loop (core `iter`).
+   The step is written with ordinary types, `A -> B + Eff Unit (B + A)`; the rule requires the
+   round's derivation at `eff⁺` (an event first), found by principal grade synthesis. Both are
+   the unique map into a final coalgebra; the whole-round step is the guarded-equation corollary
+   of finality (`iter-unique`). The core keeps `iter`: `Eff`'s codomain is not a surface `ν-type`
+   (Σ's continuations depend on each call's answer type), so its introduction is its own term.
+
+### Consequences
+Plan 0.117 gains phase A′ (the `act` grade, top-down from the Spec); F becomes the surface
+`Act` type and the `ana`-into-`Eff` rule with principal grade synthesis; G and H as planned.
+
