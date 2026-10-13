@@ -26,7 +26,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (tt)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Semantics.Value Carrier Carrier as V
+import Once.Spec.Value Carrier Carrier as V
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad
   using (T; ret; call; halt; CallOp; HaltOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp)

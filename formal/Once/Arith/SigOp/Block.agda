@@ -52,7 +52,7 @@ open import Once.Spec.Float.Decimal using (Decimal; round)
 open Once.Spec.Float.Decimal.Decimal using (exp10; sig)
 import Once.Spec.Float.Arith as FA
 open import Once.Arith.Type using (NumType; NInt; NFloat)
-import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
+import Once.Spec.Value OnceWord.Carrier OnceWord.Carrier as M
 -- (Core ℤ as I removed: block-info's semI deleted — block-semM is the meaning.)
 
 ------------------------------------------------------------------------

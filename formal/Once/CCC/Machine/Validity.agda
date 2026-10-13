@@ -22,7 +22,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open LocState using (stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
-open import Once.Semantics.Machine
+open import Once.Spec.Word using (Carrier)
+open import Once.Semantics.Value Carrier Carrier
   using (sem-pair)
 -- The IRTy value-domain rename is LOCAL to Validity (not re-exported), so it
 -- does not collide with downstream modules' own surface `⟦_⟧` imports.

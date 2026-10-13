@@ -20,7 +20,7 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.Type.Honest using (NotEmpty)
-open import Once.Semantics.Value IntRep FloatRep using (⟦_⟧)
+open import Once.Spec.Value IntRep FloatRep using (⟦_⟧)
 
 inhabited : (T : Type) → NotEmpty T → ⟦ T ⟧
 inhabited Unit    _          = tt

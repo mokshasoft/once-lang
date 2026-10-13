@@ -38,7 +38,7 @@ open import Once.Arith.CmpOp using (cmp-bit)
 
 import Once.Spec.Word as OnceWord
 import Once.Word as OnceWordL
-import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
+import Once.Spec.Value OnceWord.Carrier OnceWord.Carrier as M
 open import Once.Arith.SigOp.Block using (block-semM; projectM; readLeafM)
 
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)

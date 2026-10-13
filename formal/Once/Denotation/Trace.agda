@@ -29,7 +29,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; baseA)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
-import Once.Semantics.Value Carrier Carrier as M
+import Once.Spec.Value Carrier Carrier as M
 
 ------------------------------------------------------------------------
 -- Observable events.

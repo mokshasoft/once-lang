@@ -32,7 +32,7 @@ open import Once.IR
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 import Once.IRTy as II
 open import Once.Spec.Word using (Carrier)
-import Once.Semantics.Value Carrier Carrier as M
+import Once.Spec.Value Carrier Carrier as M
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ; ⟦_⟧ᴰᴵ)
 -- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
 open import Once.Spec.Type.WellFormed using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)

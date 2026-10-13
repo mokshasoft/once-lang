@@ -26,6 +26,7 @@ open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_�
 open import Once.Semantics.Functor using (cataS-In-id)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq; unfoldS-∼)
+open import Once.Spec.Value IntRep FloatRep
 open import Once.Semantics.Value IntRep FloatRep
 
 -- | Function extensionality (used only by `sem-cata-In-id`). A valid axiom

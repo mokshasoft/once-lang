@@ -116,7 +116,6 @@ import Once.Parser.TypeRelation
 import Once.Postulates
 import Once.Semantics.Functor
 import Once.Semantics.Machine
-import Once.Semantics.Value
 import Once.Semantics.ValueIR
 import Once.SigOp.Info
 import Once.Surface.CoerceIR
@@ -158,7 +157,6 @@ reexport-impl Once.CCC.Target.X86-32.Syntax Once.Target.X86-32.PhysReg
 reexport-impl Once.CCC.Target.X86-64.Syntax Once.Target.X86-64.PhysReg
 reexport-impl Once.Parser.Expr Once.Parser.ExprRelation
 reexport-impl Once.Parser.PolyType Once.Parser.CharClass
-reexport-impl Once.Semantics.Machine Once.Semantics.Value
 reexport-impl Once.Semantics.Machine Once.Semantics.ValueIR
 reexport-impl Once.Spec.Meaning Once.Denotation.Admissible
 reexport-impl Once.Spec.Meaning Once.Denotation.Behavior
@@ -167,7 +165,6 @@ reexport-impl Once.Spec.Meaning Once.Denotation.GradedOps
 reexport-impl Once.Spec.Meaning Once.Denotation.Trace
 reexport-impl Once.Spec.Meaning Once.Denotation.TraceMonad
 reexport-impl Once.Spec.Program Once.Denotation.Behavior
-reexport-wholesale Once.Semantics.Machine Once.Semantics.Value
 reexport-wholesale Once.Semantics.Machine Once.Semantics.ValueIR
 spec-public Once.Spec.Contract
 spec-public Once.Spec.Core.Meaning
@@ -184,3 +181,4 @@ spec-renaming Once.Spec.Core.Translate
 spec-renaming Once.Spec.Core.Typing
 spec-renaming Once.Spec.Elaboration
 spec-renaming Once.Spec.Grammar.OpDecl
+reexport-wholesale Once.Semantics.Machine Once.Spec.Value

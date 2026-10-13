@@ -308,6 +308,7 @@ eval-bicase-id m (inj₂ b) = refl
 -- Note: We import from IR (not Machine) to match the ℤ interpretation
 -- used by eval. Machine uses ℕ which would cause type mismatches.
 open import Once.Semantics.Machine
+open import Once.Semantics.Value Carrier Carrier
   using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana;
          sem-fmap;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
@@ -421,6 +422,7 @@ fmap-Type (F ⊗ G) f (x , y) = (fmap-Type F f x , fmap-Type G f y)
 --
 -- Import coherence lemmas from Core (coerce-struct = coerce-functor now)
 open import Once.Semantics.Machine
+open import Once.Semantics.Value Carrier Carrier
   using (fmap-struct-coherence; fmap-struct-coherence′; sem-fmap-Type)
 
 -- | fmap-Type equals sem-fmap-Type (both defined identically)
