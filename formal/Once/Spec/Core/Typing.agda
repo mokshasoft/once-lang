@@ -147,12 +147,13 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁
        → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F π) ! π₁ ·p π
 
-  -- D311: GUARDED ITERATION. The step performs an event before it answers
-  -- (`eff⁺`), so the loop is productive however long it runs; it may run
-  -- forever (`eff`, D312). As `fold`'s algebra, the step is evaluated once and
-  -- applied per round.
+  -- D311, D312: GUARDED ITERATION with the standard guard. The step is a
+  -- pure choice: end at once with a `B`, or a suspended computation that
+  -- performs an event before it answers (`eff⁺`) — so the loop is productive
+  -- however long it runs, and may run forever (`eff`). As `fold`'s algebra,
+  -- the step is evaluated once and applied per round.
   ⊢iter : ∀ {n} {Γ : Ctx n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
-        → Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many eff⁺ ] (B + A) ! π₁
+        → Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))) ! π₁
         → Γ ⊢[ Ψs ] s ∷ A ! π₂
         → Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p eff)
 

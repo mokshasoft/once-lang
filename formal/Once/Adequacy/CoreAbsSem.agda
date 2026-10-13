@@ -125,9 +125,9 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
 
   tr-iter : ∀ {Ψf Ψs π₁ π₂ A' A B' B} {f' f s' s : G.Tm n}
               {eΓ : Γ' ≡ Γ} {et : G.iter f' s' ≡ G.iter f s} {eB : B' ≡ B}
-              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A')) ≡ (A T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B T.+ A)))
+              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind T.Many T.pure ] (B' T.+ (T.Unit T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A')))) ≡ (A T.⇒[ T.mk-kind T.Many T.pure ] (B T.+ (T.Unit T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B T.+ A)))))
               (es : s' ≡ s) (eA : A' ≡ A)
-              (df : Γ' ⊢[ Ψf ] f' ∷ A' T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A') ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
+              (df : Γ' ⊢[ Ψf ] f' ∷ A' T.⇒[ T.mk-kind T.Many T.pure ] (B' T.+ (T.Unit T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A'))) ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
           → tr eΓ et eB (GT.⊢iter df ds) ≡ GT.⊢iter (tr eΓ ef eF df) (tr eΓ es eA ds)
   tr-iter {eΓ = refl} {refl} {refl} refl refl refl refl df ds = refl
 

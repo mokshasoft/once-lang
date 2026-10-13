@@ -183,14 +183,16 @@ record Recursion : Set₁ where
     unfold-out  : ∀ {π} (u : pure ⊑π π) {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
                 → EqM π (out-semᵛ π wf (ana-semᵛ π wf clo a))
                     (bindM π (clo a) (mapLayerᵛ u wf (λ a′ → returnM u (ana-semᵛ π wf clo a′))))
-    -- guarded iteration (D311): `iter f` runs a round of `f`, then stops with
-    -- its answer or runs the next round from the new seed …
-    iter-unfold : ∀ {A B : Set} (f : A → T⁺ (B ⊎ A)) (a : A)
-                → TreeEq∞ _≡_ (iter∞ f a) (toT∞ eff⁺ (f a) >>=∞ [ return∞ , iter∞ f ]′)
-    -- … and it is the ONLY function that does: a round begins with an event
-    -- (`eff⁺`), so the equation fixes the tree one event at a time
-    iter-unique : ∀ {A B : Set} (f : A → T⁺ (B ⊎ A)) (g : A → T∞ B)
-                → (∀ a → TreeEq∞ _≡_ (g a) (toT∞ eff⁺ (f a) >>=∞ [ return∞ , g ]′))
+    -- guarded iteration (D311, D312 O2): `iter f` takes a step of `f` — it
+    -- ends at once with a value, or runs a round that begins with an event,
+    -- then stops with its answer or runs the next round from the new seed …
+    iter-unfold : ∀ {A B : Set} (f : A → B ⊎ T⁺ (B ⊎ A)) (a : A)
+                → TreeEq∞ _≡_ (iter∞ f a) ([ return∞ , (λ m → toT∞ eff⁺ m >>=∞ [ return∞ , iter∞ f ]′) ]′ (f a))
+    -- … and it is the ONLY function that does: a round that does not end
+    -- begins with an event (`eff⁺`), so the equation fixes the tree one event
+    -- at a time
+    iter-unique : ∀ {A B : Set} (f : A → B ⊎ T⁺ (B ⊎ A)) (g : A → T∞ B)
+                → (∀ a → TreeEq∞ _≡_ (g a) ([ return∞ , (λ m → toT∞ eff⁺ m >>=∞ [ return∞ , g ]′) ]′ (f a)))
                 → ∀ a → TreeEq∞ _≡_ (g a) (iter∞ f a)
 
 -- Effects form a Freyd category (plan 0.116). Values and pure maps are the

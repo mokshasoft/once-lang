@@ -230,7 +230,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
           → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
           → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F π ! π₁ ·p π₂
   ⊢iter : ∀ {n} {Γ : PCtx m n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
-        → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many eff⁺ ] (B + A) ! π₁
+        → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))) ! π₁
         → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
         → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p eff)
   ⊢out : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π₁ : Purity} {F : Fun m} {t}

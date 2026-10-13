@@ -64,7 +64,7 @@ private
   out-u : ∀ {F F′ π π′} → ν-type F π ≡ ν-type F′ π′ → ⟦ F ⟧T (ν-type F π) ≡ ⟦ F′ ⟧T (ν-type F′ π′)
   out-u refl = refl
 
-  iter-u : ∀ {A A′ B B′ k k′} → (A ⇒[ k ] (B + A)) ≡ (A′ ⇒[ k′ ] (B′ + A′)) → B ≡ B′
+  iter-u : ∀ {A A′ B B′ C C′ k k′} → (A ⇒[ k ] (B + C)) ≡ (A′ ⇒[ k′ ] (B′ + C′)) → B ≡ B′
   iter-u refl = refl
 
   -- `let` and `case`: the bound variable's type is the premise's, so the body

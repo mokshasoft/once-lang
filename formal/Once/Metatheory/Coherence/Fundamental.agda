@@ -34,7 +34,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
-open import Once.Spec.Type using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Type; Unit; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Int; base-Float; base-Unit; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun; WellFormedF)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
@@ -304,9 +304,10 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
     -- D311: the step, then the seed, then the loop — related steps iterate to
     -- bisimilar trees (`Iter.iter-S`).
     iterS : ∀ {n} {Γ : Ctx n} {Ψf Ψs Ψf′ Ψs′ : Usage n} {A A′ B π₁ π₂ π₁′ π₂′ f sd}
-              (eq : (A ⇒[ mk-kind Many eff⁺ ] (B + A)) ≡ (A′ ⇒[ mk-kind Many eff⁺ ] (B + A′)))
-            → (df : Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many eff⁺ ] (B + A) ! π₁) (ds : Γ ⊢[ Ψs ] sd ∷ A ! π₂)
-              (df′ : Γ ⊢[ Ψf′ ] f ∷ A′ ⇒[ mk-kind Many eff⁺ ] (B + A′) ! π₁′) (ds′ : Γ ⊢[ Ψs′ ] sd ∷ A′ ! π₂′)
+              (eq : (A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))))
+                    ≡ (A′ ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A′)))))
+            → (df : Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))) ! π₁) (ds : Γ ⊢[ Ψs ] sd ∷ A ! π₂)
+              (df′ : Γ ⊢[ Ψf′ ] f ∷ A′ ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A′))) ! π₁′) (ds′ : Γ ⊢[ Ψs′ ] sd ∷ A′ ! π₂′)
             → ∀ {x x′} → Agree Γ _ _ x x′
             → TreeEq∞ (S B) (toT∞ _ (⟦ ⊢iter df ds ⟧ fmt δ x)) (toT∞ _ (⟦ ⊢iter df′ ds′ ⟧ fmt δ x′))
     iterS {π₁ = π₁} {π₂} {π₁′} {π₂′} refl df ds df′ ds′ h =

@@ -32,7 +32,7 @@ open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-flo
   _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-g; ⊑-ge)
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; LayerEq; νᵖ-upto; ν∞-upto; ν⁺-upto; Same; TreeEqN)
 open import Once.Spec.Guarded using (T⁺; root⁺; forget⁺; fmap⁺; ν⁺; ana⁺; anaRoot⁺; anaTree⁺; anaLayer⁺; mapAna⁺; call⁺; halt⁺;
-  iter∞; iterRoot∞; iterTree∞; iterLayer∞)
+  iter∞; iterStart∞; iterRoot∞; iterTree∞; iterLayer∞)
 import Data.Sum
 open Once.Spec.Guarded.ν⁺ using (force⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺)
@@ -492,26 +492,41 @@ coerce-S (sub-ν {F = F} ⊑-ge) s n = Emb⁺.emb-upto (translateF Carrier Carri
 coerce-S sub-rigid s = s
 
 ------------------------------------------------------------------------
--- D311: GUARDED ITERATION. Related steps, iterated from related seeds, give
--- bisimilar trees: each round's tree is related node by node, and a looping
--- answer starts the next round from related seeds — under the event the
--- step performed first, so the bisimulation is guarded.
+-- D311, D312 O2: GUARDED ITERATION. Related steps, iterated from related
+-- seeds, give bisimilar trees: a step ends at once with related values, or
+-- runs related rounds, each related node by node; a looping answer starts the
+-- next step from related seeds — under the event the round performed first,
+-- so the bisimulation is guarded.
 ------------------------------------------------------------------------
 
-module Iter {A B : Type} (step step′ : ⟦ A ⟧ᵛ → T⁺ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
-            (sf : ∀ a a′ → S A a a′ → TreeEq∞ (S (B + A)) (forget⁺ (step a)) (forget⁺ (step′ a′)))
+module Iter {A B : Type} (step step′ : ⟦ A ⟧ᵛ → ⟦ B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A)) ⟧ᵛ)
+            (sf : ∀ a a′ → S A a a′ → TreeEq∞ (S (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A)))) (return∞ (step a)) (return∞ (step′ a′)))
             where
-  iter-S : ∀ a a′ → S A a a′ → TreeEq∞ (S B) (iter∞ step a) (iter∞ step′ a′)
-  root-S : ∀ (m m′ : T⁺ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
-         → NodeEq (S (B + A)) (TreeEq∞ (S (B + A))) (root⁺ m) (root⁺ m′)
-         → NodeEq (S B) (TreeEq∞ (S B)) (iterRoot∞ step m) (iterRoot∞ step′ m′)
-  tree-S : ∀ (t t′ : T∞ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
-         → TreeEq∞ (S (B + A)) t t′ → TreeEq∞ (S B) (iterTree∞ step t) (iterTree∞ step′ t′)
+  private
+    run : ⟦ B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A)) ⟧ᵛ → ⟦ B ⟧ᵛ Data.Sum.⊎ T⁺ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ)
+    run = Data.Sum.map₂ (λ th → th tt)
+    f f′ : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ Data.Sum.⊎ T⁺ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ)
+    f  a = run (step a)
+    f′ a = run (step′ a)
+
+  iter-S  : ∀ a a′ → S A a a′ → TreeEq∞ (S B) (iter∞ f a) (iter∞ f′ a′)
+  start-S : ∀ x x′ → S (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))) x x′
+          → NodeEq (S B) (TreeEq∞ (S B)) (iterStart∞ f (run x)) (iterStart∞ f′ (run x′))
+  root-S  : ∀ (m m′ : T⁺ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
+          → NodeEq (S (B + A)) (TreeEq∞ (S (B + A))) (root⁺ m) (root⁺ m′)
+          → NodeEq (S B) (TreeEq∞ (S B)) (iterRoot∞ f m) (iterRoot∞ f′ m′)
+  tree-S  : ∀ (t t′ : T∞ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))
+          → TreeEq∞ (S (B + A)) t t′ → TreeEq∞ (S B) (iterTree∞ f t) (iterTree∞ f′ t′)
   layer-S : ∀ {l l′ : T∞F (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ) (T∞ (⟦ B ⟧ᵛ Data.Sum.⊎ ⟦ A ⟧ᵛ))}
           → NodeEq (S (B + A)) (TreeEq∞ (S (B + A))) l l′
-          → NodeEq (S B) (TreeEq∞ (S B)) (iterLayer∞ step l) (iterLayer∞ step′ l′)
+          → NodeEq (S B) (TreeEq∞ (S B)) (iterLayer∞ f l) (iterLayer∞ f′ l′)
 
-  force≈ (iter-S a a′ s) = root-S (step a) (step′ a′) (force≈ (sf a a′ s))
+  force≈ (iter-S a a′ s) = start-S (step a) (step′ a′) (un-ret∞ (sf a a′ s))
+
+  start-S (inj₁ b)  (inj₁ b′)  r = ret≈∞ r
+  start-S (inj₂ th) (inj₂ th′) r = root-S (th tt) (th′ tt) (force≈ (r tt tt tt))
+  start-S (inj₁ _)  (inj₂ _)   ()
+  start-S (inj₂ _)  (inj₁ _)   ()
 
   root-S (call⁺ o x k) (call⁺ .o .x k′) (call≈∞ hk) = call≈∞ (λ b → tree-S (k b) (k′ b) (hk b))
   root-S (halt⁺ o x)   (halt⁺ .o .x)    halt≈∞      = halt≈∞
@@ -521,7 +536,7 @@ module Iter {A B : Type} (step step′ : ⟦ A ⟧ᵛ → T⁺ (⟦ B ⟧ᵛ Dat
   force≈ (tree-S t t′ h) = layer-S (force≈ h)
 
   layer-S (ret≈∞ {inj₁ b} {inj₁ b′} r) = ret≈∞ r
-  layer-S (ret≈∞ {inj₂ a} {inj₂ a′} r) = root-S (step a) (step′ a′) (force≈ (sf a a′ r))
+  layer-S (ret≈∞ {inj₂ a} {inj₂ a′} r) = start-S (step a) (step′ a′) (un-ret∞ (sf a a′ r))
   layer-S (ret≈∞ {inj₁ _} {inj₂ _} ())
   layer-S (ret≈∞ {inj₂ _} {inj₁ _} ())
   layer-S (call≈∞ {k = k} {k′} hk) = call≈∞ (λ b → tree-S (k b) (k′ b) (hk b))

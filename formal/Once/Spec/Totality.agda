@@ -114,11 +114,14 @@ writeN = canonical ("write" ∷ [])
 import Once.Spec.Core.Syntax
 module EchoSyntax = Once.Spec.Core.Syntax echoDefs
 
--- step = λ _ → inr (write (read ()))
+-- step = λ _ → inr (λ _ → inr (write (read ()))) — never the pure exit; each
+-- round reads, writes and loops
 echoStep : EchoSyntax.Tm 0
-echoStep = EchoSyntax.lam Unit Many eff⁺
-             (EchoSyntax.inr Void (EchoSyntax.app (EchoSyntax.sigop writeN writeTy)
-                                                   (EchoSyntax.app (EchoSyntax.sigop readN readTy) EchoSyntax.unit)))
+echoStep = EchoSyntax.lam Unit Many pure
+             (EchoSyntax.inr Void
+               (EchoSyntax.lam Unit Many eff⁺
+                 (EchoSyntax.inr Void (EchoSyntax.app (EchoSyntax.sigop writeN writeTy)
+                                                       (EchoSyntax.app (EchoSyntax.sigop readN readTy) EchoSyntax.unit)))))
 
 -- the server = iter step ()
 echoServer : EchoSyntax.Tm 0

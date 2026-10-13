@@ -18479,4 +18479,8 @@ a finite statement). Everything D311 built for `prod` (`T∞`, `toT∞`, coheren
   `obs-≈` (bisimilar computations make the same events at every depth) and `obs-return`.
 * **R4 (2026-10-13)** — `Program.grade` removed: `main : IOUnit` (`Unit ⇒[eff] Unit`) and
   `runProgram` reads `events∞` of its run directly.
+* **R6 (2026-10-13)** — the standard guard (O2): `⊢iter`'s step is
+  `A ⇒[pure] (B + (Unit ⇒[eff⁺] (B + A)))`; `iter∞ : (A → B ⊎ T⁺ (B ⊎ A)) → A → T∞ B`;
+  `iter-unfold`/`iter-unique` with the pure exit; coherence (`Iter.iter-S`) and the echo witness.
+  Phase R complete.
 

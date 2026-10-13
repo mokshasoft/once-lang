@@ -27,7 +27,7 @@ module Once.Spec.Core.Meaning {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 import Data.Fin
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Data.Sum using (inj₁; inj₂; [_,_]′; map₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -166,10 +166,11 @@ primSem p-i2f  fmt a       = FA.i2f (float-format fmt) (OnceWord.Width.toℤ (in
   bindᵍ π₁ π₂ (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) λ clo →
   fmapM π₂ (ana-semᵛ π wf clo) (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ))
 ⟦ ⊢out {π = π} {π₁ = π₁} wf d ⟧ fmt ρ dγ = bindᵍ π₁ π (⟦ d ⟧ fmt ρ dγ) (out-semᵛ π wf)
--- D311: the step, then the seed, then the loop (`iter∞`, guarded corecursion).
+-- D311: the step, then the seed, then the loop (`iter∞`, guarded corecursion);
+-- a round that does not end at once runs its suspended computation (D312 O2).
 ⟦ ⊢iter {Γ = Γ} {Ψf = Ψf} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} df ds ⟧ fmt ρ dγ =
   bindᵍ π₁ _ (⟦ df ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) dγ)) λ step →
-  bindᵍ π₂ eff (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) dγ)) λ a → iter∞ step a
+  bindᵍ π₂ eff (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) dγ)) λ a → iter∞ (λ a′ → map₂ (λ th → th tt) (step a′)) a
 
 ⟦ ⊢coerce {π = π} p d ⟧ fmt ρ dγ = fmapM π ⟦ p ⟧<:ᵛ (⟦ d ⟧ fmt ρ dγ)
 
