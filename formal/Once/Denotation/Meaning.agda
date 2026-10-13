@@ -49,9 +49,9 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ;
 open νᵈ using (forceᵈ)
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (lookupᴰUsed)
-open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; returnM; bindM; _>>=ᵖ_)
-open import Once.Denotation.GradedOps
+open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; returnM; bindM; _>>=ᵖ_)
+open import Once.Spec.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)

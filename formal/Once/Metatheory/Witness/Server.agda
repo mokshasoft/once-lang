@@ -25,7 +25,7 @@ open import Once.Spec.Totality using (tickDefs; tick; ticker)
 open import Once.Spec.Core.Typing tickDefs
 open import Once.Spec.Core.Meaning tickDefs
 open import Once.Spec.Trace using (call)
-open import Once.Denotation.GradedDomain using (_>>=ᵖ_)
+open import Once.Spec.Graded using (_>>=ᵖ_)
 
 stream-typed : ∅ ⊢[ [] ] ticker ∷ ν-type Id eff ! pure
 stream-typed = ⊢unfold wf-Id (⊢sigop tick (con-fun base-Int base-Int) tt (rf-⇒ rf-Int rf-Int) (here refl)) ⊢lit-int

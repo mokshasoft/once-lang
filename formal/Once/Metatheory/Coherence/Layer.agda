@@ -40,9 +40,9 @@ open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Machine as Val
 open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_; fmapT)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; νᵖ; module νᵖ)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; νᵖ; module νᵖ)
 open import Once.Spec.Stream using (νᵈ; module νᵈ; anaᵈ; anaTree; mapAnaᵈ; seqF)
-open import Once.Denotation.GradedOps using (fmapM; injB; prjB; cfᵛ; cf⁻¹ᵛ; seqM; cata-semᵛ; anaᵖ; mapAnaᵖ;
+open import Once.Spec.GradedOps using (fmapM; injB; prjB; cfᵛ; cf⁻¹ᵛ; seqM; cata-semᵛ; anaᵖ; mapAnaᵖ;
   embν; mapEmbν; ana-semᵛ; out-semᵛ; ⟦_⟧<:ᵛ; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; embν∞ᵖ; mapEmbν∞ᵖ;
   embν⁺ᵈ; embRoot⁺; embTree⁺; mapEmbν⁺ᵈ)
 open import Once.Spec.Iterative

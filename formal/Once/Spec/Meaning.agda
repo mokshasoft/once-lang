@@ -75,9 +75,9 @@ open import Once.Denotation.Behavior public
 -- over it are implementation (the IR side's), no longer exported as the Spec's.
 open import Once.Spec.Trace public
   using ( T ; returnT ; _>>=T_ ; Interp ; Run ; run ; then ; projTrace )
-open import Once.Denotation.GradedDomain public
+open import Once.Spec.Graded public
   using ( M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT∞ ; bindᵍ ; EqM )
-open import Once.Denotation.GradedOps public
+open import Once.Spec.GradedOps public
   using ( fmapM ; seqM ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ ; sigOpRefᵛ )
 open import Once.Spec.Core.Meaning public
   using ( ⟦_⟧ )

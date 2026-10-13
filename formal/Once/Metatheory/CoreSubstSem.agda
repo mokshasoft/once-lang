@@ -40,8 +40,8 @@ open import Once.Spec.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Context using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Surface.GradeMatrix using (Grades; _⋆_; ⋆-mono; extΦ; ⋆-ext)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
-open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Spec.Graded using (⟦_⟧ᵛ)
+open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-irr; restrict-refl; restrict-∘; restrict-≡; restrict-bind)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
@@ -49,8 +49,8 @@ open import Once.Spec.Core.Subst S using (SubTy; tailᴿ; ext-ty; retype)
 open SubTy using (row)
 import Once.Spec.Core.Meaning S as GM
 open import Once.Metatheory.CoreRenameSem S using (wk-sem; bindC; bindCᵍ)
-open import Once.Denotation.GradedDomain using (bindM; subM)
-open import Once.Denotation.GradedOps using (fmapM; ana-semᵛ)
+open import Once.Spec.Graded using (bindM; subM)
+open import Once.Spec.GradedOps using (fmapM; ana-semᵛ)
 open import Once.Spec.Core.Subst S using (sub-⊢)
 open import Once.Surface.GradeMatrix using (⋆-zero; ⋆-+; ⋆-*; ⋆-single)
 

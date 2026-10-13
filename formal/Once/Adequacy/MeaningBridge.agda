@@ -90,8 +90,8 @@ open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-initial-app-check; t-app-spine; t-var-poly-instantiate;
   t-var-poly-instantiate-infer; d-poly)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Denotation.PhaseV using (lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0) renaming (env0 to env0ᵛ)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; _>>=ᵖ_; returnM; bindM; subM)
+open import Once.Spec.Environment using (lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0) renaming (env0 to env0ᵛ)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M; _>>=ᵖ_; returnM; bindM; subM)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; DefMeanings; ImpMeanings; MeaningsOf; EnvRun; sigOpValᴰ; sigOpRefᴰ)
 open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
@@ -110,7 +110,7 @@ open import Once.Adequacy.GradedRelation fmt
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼∞ᵈ_ using (force-∼∞ᵈ)
 open _∼⁺ᵈ_ using (force-∼⁺ᵈ)
-open import Once.Denotation.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCall⁺)
+open import Once.Spec.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCall⁺)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Spec.FunctorMeaning using (translateF)

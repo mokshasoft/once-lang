@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.GradedOps — the semantic operations of the GRADED Spec
+-- Once.Spec.GradedOps — the semantic operations of the GRADED Spec
 -- meaning (D250, plan 0.104 A.3).
 --
 -- The Kleisli twins (`Denotation.Meaning`'s `cata-sem`, `ana-sem`, `out-sem`,
@@ -14,7 +14,7 @@
 -- conversions `injB`/`prjB` are all the functor layers need.
 ------------------------------------------------------------------------
 
-module Once.Denotation.GradedOps where
+module Once.Spec.GradedOps where
 
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)
@@ -24,14 +24,12 @@ open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
-open import Once.Type
 open import Once.Spec.Type.Sub
-open import Once.Type.Sub
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun)
 open import Once.Spec.FunctorMeaning using (translateF)
-import Once.Semantics.Machine as Val
-open import Once.Semantics.Machine using (⟦_⟧F; sem-fmap; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
 open import Once.Spec.Word using (Carrier)
+import Once.Spec.Value Carrier Carrier as Val
+open import Once.Spec.Value Carrier Carrier using (⟦_⟧F; sem-fmap; sem-cata; sem-In; coerce-ν-in; coerce-ν-out)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Name using (CanonicalName; showCanonical)
@@ -48,10 +46,10 @@ open import Once.Spec.Trace using (T; call; halt; callOp; haltOp)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open νᵈ using (forceᵈ)
-open import Once.Denotation.GradedDomain
+open import Once.Spec.Graded
 open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; fmap⁺; forget⁺; ν⁺; ana⁺)
 open Once.Spec.Guarded.ν⁺ using (force⁺)
-open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
+open Once.Spec.Graded.νᵖ using (forceᵖ)
 
 ------------------------------------------------------------------------
 -- The grade's functor action.

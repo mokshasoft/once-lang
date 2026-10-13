@@ -95,7 +95,7 @@ module Forever (ι : Interp) where
 open import Once.Spec.Core.Meaning echoDefs
 open import Once.Spec.Totality using (echoSig)
 open import Once.Spec.Trace using (interp)
-open import Once.Denotation.GradedDomain using (_>>=ᵖ_)
+open import Once.Spec.Graded using (_>>=ᵖ_)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 module _ fmt (ds : DefSem) where

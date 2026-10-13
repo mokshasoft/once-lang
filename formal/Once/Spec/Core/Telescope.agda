@@ -34,7 +34,7 @@ open import Once.Spec.Core.PolyTy
 open Schema using (arity; kinds; type)
 import Once.Spec.Core.PolyTyping as PT
 import Once.Spec.Core.Meaning as GM
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞)
 open import Once.Spec.Iterative using (events∞)
 
 ------------------------------------------------------------------------

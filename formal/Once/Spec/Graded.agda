@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.GradedDomain — the SPEC's value domain (D250, plan 0.104 A.1).
+-- Once.Spec.Graded — the SPEC's value domain (D250, plan 0.104 A.1).
 --
 -- `pure` is referential transparency. A derivation at grade `π` denotes a
 -- function into `M π`, where `M pure` is the identity and `M eff` is the trace
@@ -21,7 +21,7 @@
 -- (`νᵖ`, the final coalgebra in Set).
 ------------------------------------------------------------------------
 
-module Once.Denotation.GradedDomain where
+module Once.Spec.Graded where
 
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
@@ -32,10 +32,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
-open import Once.Type
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
-import Once.Semantics.Machine as Val
 open import Once.Spec.Word using (Carrier)
+import Once.Spec.Value Carrier Carrier as Val
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Spec.Trace using (T; returnT; _>>=T_)

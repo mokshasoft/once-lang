@@ -45,12 +45,12 @@ open import Once.Spec.Contract using (Impl; Key; valueKeys; valueOf; valueOf-at;
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Same)
 open import Once.Spec.Core.PolyTy using (_!!_; _⟪_⟫; module Schema)
 open Schema using (arity; kinds; type)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
 open import Once.Spec.Iterative using (TreeEq∞)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; embed-≈)
 open import Once.Spec.Trace using (T; ret; fmapT)
-open import Once.Denotation.PhaseV using (bindᵛ)
-open import Once.Denotation.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ)
+open import Once.Spec.Environment using (bindᵛ)
+open import Once.Spec.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ)
 import Once.Semantics.Machine as Val
 open import Once.Spec.Core.Syntax Sg
 open import Once.Spec.Core.Typing Sg

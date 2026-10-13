@@ -35,7 +35,7 @@ open import Once.Spec.Guarded using (T⁺; forget⁺; _>>=⁺_; _⁺=<<_; fmap�
 open import Once.Denotation.GuardedLaws using (forget-bind⁺; forget-⁺bind)
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Obs; Same; TreeEqN; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; ν⁺-upto)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_; fmapT; returnT)
 open import Once.Spec.Iterative
@@ -44,7 +44,7 @@ open Once.Spec.Iterative.T∞ using (force)
 open Once.Spec.Iterative.TreeEq∞ using (force≈)
 open Once.Spec.Iterative.ν∞ using (force∞)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-refl; ≈∞-reflF; ≈∞-rewrite; ≈∞-map; ≈∞-mapF; ≈∞-bind; embed-bind; ≈∞-idˡ)
-open import Once.Denotation.GradedDomain using (_>>=ᵖ_)
+open import Once.Spec.Graded using (_>>=ᵖ_)
 
 ------------------------------------------------------------------------
 -- Trees

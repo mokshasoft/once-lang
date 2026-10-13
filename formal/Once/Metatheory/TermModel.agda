@@ -26,9 +26,9 @@ open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
-open import Once.Denotation.GradedDomain using ()
+open import Once.Spec.Graded using ()
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
-open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-≡)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S

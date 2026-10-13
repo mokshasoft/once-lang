@@ -38,7 +38,7 @@ import Once.Type as T
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M)
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M)
 import Once.Spec.Context as C
 import Once.Surface.Context as C
 open import Once.Spec.Context using ([]; _∷_)

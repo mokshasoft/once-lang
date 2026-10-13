@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.GradedDomainLaws — the lemmas about `Once.Denotation.GradedDomain`, moved out so that module
+-- Once.Denotation.GradedDomainLaws — the lemmas about `Once.Spec.Graded`, moved out so that module
 -- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
 ------------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Spec.Trace using (T; returnT; _>>=T_)
 open import Once.Spec.Stream using (νᵈ)
-open import Once.Denotation.GradedDomain
+open import Once.Spec.Graded
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-idˡ)
 
 opaque

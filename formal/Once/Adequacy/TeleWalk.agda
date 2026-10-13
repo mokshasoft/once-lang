@@ -111,7 +111,7 @@ open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; u
 open import Once.Spec.Event using (SigOpEvent)
 import Data.Fin
 import Relation.Nullary
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
+open import Once.Spec.Graded using (⟦_⟧ᵛ)
 open import Once.Adequacy.TelePosition
 open import Once.Spec.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (RelT′-events)

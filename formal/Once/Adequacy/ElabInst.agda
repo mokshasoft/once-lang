@@ -38,7 +38,7 @@ open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
 open import Once.Spec.Typing.Scope using (Imports; PolyCtx; NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
 open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
+open import Once.Spec.Graded using (⟦_⟧ᵛ)
 import Once.TypeCheck.RigidSubst as RS
 import Once.TypeCheck.Instance as Inst
 import Once.Adequacy.CoreInst as CI

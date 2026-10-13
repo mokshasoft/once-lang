@@ -25,8 +25,8 @@ open import Once.Spec.Type using (Type)
 open import Once.Spec.Context using (Ctx; ∅; _,_^_; lookup; Usage; []; _∷_; _↾_; ⟦_⟧ᶜ; singleUse; zeroUsage;
   _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Spec.Equivalence using (Same)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
-open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Spec.Graded using (⟦_⟧ᵛ)
+open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Metatheory.Coherence.Relation using (S; Same→S)
 
 Env : ∀ {n} → Ctx n → Usage n → Set

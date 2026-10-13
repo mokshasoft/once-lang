@@ -38,9 +38,9 @@ open TargetNum using (int-bits; float-format)
 open import Once.Spec.Type.Grade using (Zero; One; Many; prod)
 open import Once.Spec.Guarded using (iter∞)
 open import Once.Spec.Context using (Ctx; Usage; _↾_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
-open import Once.Denotation.PhaseV using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Denotation.GradedOps
+open import Once.Spec.Graded using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
+open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Spec.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Float.Arith as FA
 open import Once.Spec.Bool using (truth)
