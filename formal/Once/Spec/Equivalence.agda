@@ -43,7 +43,7 @@ open Once.Spec.Iterative.ν∞ using (force∞)
 open import Once.Denotation.TraceMonad using (ret; call; halt)
 open import Once.Denotation.GradedDomain using (νᵖ; module νᵖ)
 open import Once.Denotation.ValueDomain using (νᵈ; module νᵈ)
-open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open νᵖ using (forceᵖ)
 open νᵈ using (forceᵈ)
 

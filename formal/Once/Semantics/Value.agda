@@ -91,9 +91,9 @@ open import Once.Spec.Res using (Res; stopped; returns; mapRes)
 open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Semantics.Functor
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; ⟨_⟩; outS; sfmap; cataS; cataS-cong; fuseNatS; fuseNatW; cataS-computation)
-open Once.Semantics.Functor.νS using (unfoldS)
+open import Once.Spec.Polynomial
+open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)
+open Once.Spec.Polynomial.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /
 -- `Once.Semantics.Value.Laws`, so this module holds definitions only.

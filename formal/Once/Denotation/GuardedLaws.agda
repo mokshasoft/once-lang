@@ -23,7 +23,7 @@ forget-⁺bind (halt o a)   f = refl
 
 -- A guarded stream's forced layer, forgotten, is its tree.
 open import Once.Spec.Guarded using (anaRoot⁺; anaTree⁺)
-open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 
 forget-anaRoot : ∀ (H : SFunctor) {A : Set} (c : A → T⁺ (⟦ H ⟧SF A)) (m : T⁺ (⟦ H ⟧SF A))
                → forget⁺ (anaRoot⁺ H c m) ≡ anaTree⁺ H c (forget⁺ m)

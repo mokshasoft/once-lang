@@ -36,7 +36,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
-open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
 open import Once.Denotation.TraceMonad using (T; fmapT; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.Denotation.TraceMonadLaws using (fmapT-id; RelT′-bind; RelT′-fmap; RelT′-≡; ≡-RelT′)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)

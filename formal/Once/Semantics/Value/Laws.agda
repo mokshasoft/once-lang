@@ -21,9 +21,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Once.Spec.Type using (Functor)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Functor.Translate using (translateF)
-open import Once.Semantics.Functor
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS;
-         cataS; cataS-In-id)
+open import Once.Spec.Polynomial
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS; cataS)
+open import Once.Semantics.Functor using (cataS-In-id)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq; unfoldS-∼)
 open import Once.Semantics.Value IntRep FloatRep

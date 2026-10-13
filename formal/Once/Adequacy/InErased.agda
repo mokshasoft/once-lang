@@ -35,7 +35,8 @@ open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Semantics.Functor using (μS; ⟨_⟩; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (μS; ⟨_⟩; ⟦_⟧SF)
+import Once.Spec.Polynomial
 open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
 open import Once.Denotation.TraceMonad using (T; returnT)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
@@ -53,7 +54,7 @@ coerce-μ-in-subst : ∀ (G : Functor) {X X' : Set} (p : X ≡ X') (x : ⟦ G �
 coerce-μ-in-subst G refl x = refl
 
 -- Split a diagonal subst `⟦H⟧SF(μS H)` into carrier-subst then functor-subst.
-subst-diag : ∀ {H₁ H₂ : Once.Semantics.Functor.SFunctor} (eq : H₁ ≡ H₂)
+subst-diag : ∀ {H₁ H₂ : Once.Spec.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
                (z : ⟦ H₁ ⟧SF (μS H₁))
   → subst (λ H → ⟦ H ⟧SF (μS H)) eq z
     ≡ subst (λ H → ⟦ H ⟧SF (μS H₂)) eq (subst (λ C → ⟦ H₁ ⟧SF C) (cong μS eq) z)
@@ -67,13 +68,13 @@ In-ir {F} wfF = subst (λ o → IR.IR o ⌊ μ-type F ⌋)
 
 -- `⟨_⟩` (the μS "in" constructor) commutes with a subst over the functor eq.
 -- Match-to-refl.
-⟨⟩-subst-nat : ∀ {H₁ H₂ : Once.Semantics.Functor.SFunctor} (eq : H₁ ≡ H₂)
+⟨⟩-subst-nat : ∀ {H₁ H₂ : Once.Spec.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
                  (z : ⟦ H₁ ⟧SF (μS H₁))
   → subst μS eq ⟨ z ⟩ ≡ ⟨ subst (λ H → ⟦ H ⟧SF (μS H)) eq z ⟩
 ⟨⟩-subst-nat refl z = refl
 
 -- `subst id (cong μS p) = subst μS p`.  Match-to-refl.
-subst-id-μS : ∀ {H₁ H₂ : Once.Semantics.Functor.SFunctor} (p : H₁ ≡ H₂) (z : μS H₁)
+subst-id-μS : ∀ {H₁ H₂ : Once.Spec.Polynomial.SFunctor} (p : H₁ ≡ H₂) (z : μS H₁)
   → subst id (cong μS p) z ≡ subst μS p z
 subst-id-μS refl z = refl
 

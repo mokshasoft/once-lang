@@ -35,7 +35,7 @@ open import Once.Spec.Guarded using (T⁺; forget⁺; fmap⁺; ν⁺; ana⁺; an
 import Data.Sum
 open Once.Spec.Guarded.ν⁺ using (force⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺; forget-anaRoot)
-open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; sfmapCata)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; sfmapCata)
 open import Once.Functor.Translate using (translateF)
 open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Machine as Val

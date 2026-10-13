@@ -196,7 +196,7 @@ open import Once.IRTy using (Void; Int; Float; _⇛_;
 -- only because Sigma's `_,_` is not in scope there; here it is, so the comma
 -- inside the closed mixfix is genuinely ambiguous. A plain prefix name avoids it.
 open import Once.Functor.Translate using (translateF) renaming (⟦_,_⟧-base to BaseVal)
-open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-ret)
 

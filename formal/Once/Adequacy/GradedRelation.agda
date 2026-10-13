@@ -33,7 +33,7 @@ open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
 open import Once.Denotation.GradedOps using (fmapM; embν⁺ᵈ; embRoot⁺; embTree⁺; mapEmbν⁺ᵈ; prjB; injB; embν; mapEmbν; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; embν∞ᵖ; mapEmbν∞ᵖ)
-open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)

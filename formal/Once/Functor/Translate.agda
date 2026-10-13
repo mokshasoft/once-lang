@@ -5,7 +5,7 @@
 --
 -- This module provides the bridge between:
 --   - Once.Spec.Type.Functor (K takes Type)
---   - Once.Semantics.Functor.SFunctor (K takes Set)
+--   - Once.Spec.Polynomial.SFunctor (K takes Set)
 --
 -- The translation uses a base type interpretation that handles only
 -- base types (Unit, Int, etc.), avoiding dependency on ⟦μ⟧.
@@ -25,6 +25,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
+open import Once.Spec.Polynomial
 open import Once.Semantics.Functor
 open import Once.Spec.Type.WellFormed
 

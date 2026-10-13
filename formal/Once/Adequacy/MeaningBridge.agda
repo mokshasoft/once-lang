@@ -115,7 +115,7 @@ open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-fun
 open import Once.Functor.Translate using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Semantics.Functor using (⟦_⟧SF)
+open import Once.Spec.Polynomial using (⟦_⟧SF)
 open import Once.SigOp.Info using (semP; int-prim; mk-info'; FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
 open import Once.Spec.Guarded using (forget⁺; fmap⁺; module ν⁺)

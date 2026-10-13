@@ -19,8 +19,9 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 
+open import Once.Spec.Polynomial
 open import Once.Semantics.Functor
-open Once.Semantics.Functor.νS using (unfoldS)
+open Once.Spec.Polynomial.νS using (unfoldS)
 
 -- | Relational interpretation of semantic functors
 --

@@ -34,7 +34,7 @@ open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pr
 open import Once.Spec.Guarded using (T⁺; forget⁺; _>>=⁺_; _⁺=<<_; fmap⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺; forget-⁺bind)
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Obs; Same; TreeEqN; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; ν⁺-upto)
-open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; fmapT; returnT)

@@ -43,7 +43,7 @@ open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘)
 open import Once.Adequacy.AnaErased fmt ρ using (VE0ᴰ; coerce-νin-erase-D)
 open import Once.Semantics.Machine using
   (coerce-ν-in; tF-coh; ⟦_⟧F)
-open import Once.Semantics.Functor using (⟦_⟧SF; SFunctor)
+open import Once.Spec.Polynomial using (⟦_⟧SF; SFunctor)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; anaFᵈ; coerce-functor-D; subst-νᵈ-cong; anaᵈ-erase-full)
 open import Once.Spec.Context using (Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr)

@@ -57,7 +57,7 @@ fmap⁺ g m = m >>=⁺ λ x → ret (g x)
 
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 
 record ν⁺ (H : SFunctor) : Set where
   coinductive
