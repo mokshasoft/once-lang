@@ -11,7 +11,8 @@
 -- silent return of that function — so each Kleisli layer is silent and returns
 -- the layer the pure coalgebra gives (`anaᵖ-∼`, the heterogeneous
 -- bisimulation's coinduction). An EFFECTFUL ν is `ana∞` (layers in `T∞`,
--- D312) against SD's `anaᵈ`, over seeds of the two domains.
+-- D312) against SD's `anaᵈ`, over seeds of the two domains; at `act` (layers in
+-- `T`, D313) `anaᵈ` on both sides (`anaᵈ-∼`, heterogeneous in its seeds).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Numerics using (TargetNum)
@@ -23,7 +24,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Type.Grade using (mk-kind; Many; Purity; pure; eff⁺; eff)
+open import Once.Spec.Type.Grade using (mk-kind; Many; Purity; pure; act; eff⁺; eff)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; ν-type; _⇒[_]_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.FunctorMeaning using (translateF)
@@ -203,6 +204,16 @@ ana-bridgeᵍ pure {A} {F} wfF c₁ cT rc {a} {b} rab = anaᵖ-∼ H cr rab
     cr {x} {y} r = in-relᵍ-T wfF (λ l → refl) kr
       where
         kr = RelGT-bind {A = A ⇒[ mk-kind Many pure ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A} {t₁ = returnT c₁} {t₂ = cT} {f = λ clo → returnT (clo x)} {g = λ clo → clo y}
+                        rc (λ rfg → rfg r)
+ana-bridgeᵍ act {A} {F} wfF c₁ cT rc {a} {b} rab = anaᵈ-∼ H cr rab
+  where
+    H = translateF Carrier Carrier F
+    cr : CoalgRel H (RelGV A)
+           (λ x → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wfF l)) (c₁ x))
+           (λ y → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (fmapT (coerce-functor-D wfF A) (cT >>=T λ clo → clo y)))
+    cr {x} {y} r = in-relᵍ-T wfF (λ l → refl) kr
+      where
+        kr = RelGT-bind {A = A ⇒[ mk-kind Many act ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A} {t₁ = returnT c₁} {t₂ = cT} {f = λ clo → clo x} {g = λ clo → clo y}
                         rc (λ rfg → rfg r)
 ana-bridgeᵍ eff⁺ {A} {F} wfF c₁ (ret c₂) (rel-ret rfg) {a} {b} rab = ana⁺-∼ H cr rab
   where

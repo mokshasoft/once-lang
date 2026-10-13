@@ -36,6 +36,9 @@ open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Contract using (ISig; Impl; key; valueOf)
 open import Once.Spec.ContractLaws using (value-∈; base-contract)
+open import Once.Spec.Trace using (T; ret; call; halt; returnT; fmapT)
+open import Once.Spec.Stream using (νᵈ; anaᵈ; seqF; module νᵈ)
+open νᵈ using (forceᵈ)
 open import Once.Spec.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; ν∞; ana∞)
 open Once.Spec.Iterative.T∞ using (force)
@@ -54,6 +57,7 @@ open Once.Spec.Graded.νᵖ using (forceᵖ)
 
 fmapM : ∀ π {X Y} → (X → Y) → M π X → M π Y
 fmapM pure f m = f m
+fmapM act  f m = fmapT f m
 fmapM eff⁺ f m = fmap⁺ f m
 fmapM eff  f m = fmap∞ f m
 
@@ -104,6 +108,7 @@ cf⁻¹ᵛ C (wf-Prod f g) (x , y)  = cf⁻¹ᵛ C f x , cf⁻¹ᵛ C g y
 -- at the guard `eff⁺`, D311).
 seqM : ∀ {π} → pure ⊑π π → (G : Functor) {X : Set} → ⟦ G ⟧F (M π X) → M π (⟦ G ⟧F X)
 seqM ⊑-pure G x = x
+seqM ⊑-pa   G x = seqF G x
 seqM ⊑-pe   G x = seqF∞ G x
 
 ------------------------------------------------------------------------
@@ -155,6 +160,32 @@ mapEmbν H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν H G₁ x)
 mapEmbν H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν H G₂ y)
 mapEmbν H (G₁ S⊗ G₂) (x , y)  = mapEmbν H G₁ x , mapEmbν H G₂ y
 
+-- `pure ⊑ act` at ν: a pure stream is one whose layers are finite trees that
+-- emit nothing and always arrive (D313).
+embνᵃ    : ∀ {H} → νᵖ H → νᵈ H
+mapEmbνᵃ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵖ H) → ⟦ G ⟧SF (νᵈ H)
+forceᵈ (embνᵃ {H} v) = ret (mapEmbνᵃ H H (forceᵖ v))
+mapEmbνᵃ H (SK B)     x        = x
+mapEmbνᵃ H SId        x        = embνᵃ x
+mapEmbνᵃ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbνᵃ H G₁ x)
+mapEmbνᵃ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbνᵃ H G₂ y)
+mapEmbνᵃ H (G₁ S⊗ G₂) (x , y)  = mapEmbνᵃ H G₁ x , mapEmbνᵃ H G₂ y
+
+-- `act ⊑ eff` at ν: a stream whose layers are finite trees is one whose layers
+-- are trees of `T∞` (D313). The maps are named and written by hand (D062).
+embν∞ᵈ    : ∀ {H} → νᵈ H → ν∞ H
+embLay∞   : ∀ (H : SFunctor) → T (⟦ H ⟧SF (νᵈ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
+mapEmbν∞ᵈ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵈ H) → ⟦ G ⟧SF (ν∞ H)
+force∞ (embν∞ᵈ {H} v) = embLay∞ H (forceᵈ v)
+force (embLay∞ H (ret l))      = ret∞ (mapEmbν∞ᵈ H H l)
+force (embLay∞ H (call o a k)) = call∞ o a (λ b → embLay∞ H (k b))
+force (embLay∞ H (halt o a))   = halt∞ o a
+mapEmbν∞ᵈ H (SK B)     x        = x
+mapEmbν∞ᵈ H SId        x        = embν∞ᵈ x
+mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν∞ᵈ H G₁ x)
+mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν∞ᵈ H G₂ y)
+mapEmbν∞ᵈ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵈ H G₁ x , mapEmbν∞ᵈ H G₂ y
+
 -- `unfold c s` at coalgebra grade `π` — the stream, a VALUE (building it runs
 -- nothing; the rule embeds it at the grade it is built at) — given the
 -- coalgebra's FUNCTION `clo` (its term was evaluated once, when the stream was
@@ -166,6 +197,8 @@ ana-semᵛ : ∀ {F A} (π : Purity) → WellFormedF F
          → (⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → ⟦ ν-type F π ⟧ᵛ
 ana-semᵛ {F} {A} pure wf clo a =
   anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a
+ana-semᵛ {F} {A} act wf clo a =
+  anaᵈ (translateF Carrier Carrier F) (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 ana-semᵛ {F} {A} eff⁺ wf clo a =
   ana⁺ (translateF Carrier Carrier F) (λ a′ → fmap⁺ (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 ana-semᵛ {F} {A} eff wf clo a =
@@ -173,6 +206,7 @@ ana-semᵛ {F} {A} eff wf clo a =
 
 out-semᵛ : ∀ π {F} → WellFormedF F → ⟦ ν-type F π ⟧ᵛ → M π ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᵛ
 out-semᵛ pure {F} wf v = cf⁻¹ᵛ (ν-type F pure) wf (coerce-ν-out wf _ (forceᵖ v))
+out-semᵛ act  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F act) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
 out-semᵛ eff⁺ {F} wf v = fmap⁺ (λ layer → cf⁻¹ᵛ (ν-type F eff⁺) wf (coerce-ν-out wf _ layer)) (force⁺ v)
 out-semᵛ eff  {F} wf v = fmap∞ (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (coerce-ν-out wf _ layer)) (force∞ v)
 
@@ -216,6 +250,9 @@ mapEmbν⁺ H (G₁ S⊗ G₂) (x , y)  = mapEmbν⁺ H G₁ x , mapEmbν⁺ H G
 ⟦ sub-ν ⊑-pure ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-eff  ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-pe   ⟧<:ᵛ x = embν x
+⟦ sub-ν ⊑-act  ⟧<:ᵛ x = x
+⟦ sub-ν ⊑-pa   ⟧<:ᵛ x = embνᵃ x
+⟦ sub-ν ⊑-ae   ⟧<:ᵛ x = embν∞ᵈ x
 ⟦ sub-ν ⊑-g    ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-ge   ⟧<:ᵛ x = embν⁺ x
 ⟦ sub-rigid ⟧<:ᵛ x = x
@@ -236,6 +273,12 @@ opCall⁺ : ∀ {A B} → CanonicalName → IsBaseType A → Dec (B ≡ Void) �
 opCall⁺ {A} cn bA (yes refl) _          x = halt⁺ (haltOp cn A bA) x
 opCall⁺ {A} cn bA (no _)     (yes refl) x = call⁺ (callOp cn A bA Unit) x (λ _ → return∞ tt)
 opCall⁺ {A} {B} cn bA (no _) (no _)     x = call⁺ (callOp cn A bA B) x return∞
+
+-- …and as a finite tree (`act`, D313): the same call, which returns or halts.
+opCallᵀ : ∀ {A B} → CanonicalName → IsBaseType A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T Val.⟦ B ⟧
+opCallᵀ {A} cn bA (yes refl) _          x = halt (haltOp cn A bA) x
+opCallᵀ {A} cn bA (no _)     (yes refl) x = call (callOp cn A bA Unit) x (λ _ → ret tt)
+opCallᵀ {A} {B} cn bA (no _) (no _)     x = call (callOp cn A bA B) x ret
 
 -- Plan 0.105 (D257 amendment 2): a reference to a SigOp the program is compiled
 -- against (`m`: its declaration in `Σ`). A VALUE contract reads the
@@ -258,6 +301,12 @@ sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom 
   λ a → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
   λ a → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
+sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero act} bDom bCod) m =
+  λ _ → fmapT (injB bCod) (opCallᵀ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt)
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One act} bDom bCod) m =
+  λ a → fmapT (injB bCod) (opCallᵀ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
+sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many act} bDom bCod) m =
+  λ a → fmapT (injB bCod) (opCallᵀ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero eff⁺} bDom bCod) m =
   λ _ → fmap⁺ (injB bCod) (opCall⁺ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt)
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bDom bCod) m =

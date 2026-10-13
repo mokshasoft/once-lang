@@ -71,7 +71,7 @@ open import Once.Spec.Totality using (echoDefs; echoSig; echoServer)
 open import Once.Spec.Type using (Void)
 open import Data.List using (length)
 open import Once.Spec.Trace using (interp)
-open import Once.Spec.Totality using (ProductiveM; ProductiveT∞; selfRef; forwardRef; defF; tickDefs; ticker)
+open import Once.Spec.Totality using (FiniteT; ProductiveM; ProductiveT∞; selfRef; forwardRef; defF; tickDefs; ticker)
 open import Once.Spec.Module using (ModTele; emptyScope)
 open import Once.Spec.Context using (∅)
 open import Once.Spec.Type.WellFormed using (wf-Id)
@@ -89,7 +89,7 @@ import Once.Spec.Core.Meaning
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Meaning
-  using ( Interp ; SigOpEvent
+  using ( T ; Interp ; SigOpEvent
         ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT∞ ; bindᵍ ; EqM
         ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ )
 open import Once.Spec.Syntax using (RawExpr)
@@ -253,6 +253,8 @@ module EchoMeaning = Once.Spec.Core.Meaning echoDefs
 
 record Totality : Set₁ where
   field
+    -- a computation that returns (`act`, D313) is a finite tree
+    finite     : ∀ {X : Set} (m : T X) → FiniteT m
     productive : ∀ π {F} (wf : WellFormedF F) (v : ⟦ ν-type F π ⟧ᵛ) → ProductiveM π (out-semᵛ π wf v)
     -- every effectful computation (a server's `iter` among them) reaches
     -- each next event, or its end, after finite work

@@ -18,7 +18,7 @@ open import Relation.Binary.Structures using (IsPartialOrder)
 open import Once.Spec.Type.Grade using (Purity; pure; eff; mk-kind; eff⁺)
 open import Once.Spec.Type using (Type; _*_; _+_)
 open import Once.Spec.Type.Sub
-  using ( _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-g; ⊑-ge
+  using ( _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge
         ; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid )
 open import Once.Spec.Context
   using (Usage; []; _∷_; _⊑ᵘ_; ⊑[]; _⊑∷_; ⊑ᵘ-refl; ⊑ᵘ-trans)
@@ -33,6 +33,7 @@ open import Once.Metatheory.Grade using (≤q'-antisym)
 ⊑π-antisym : ∀ {π π′} → π ⊑π π′ → π′ ⊑π π → π ≡ π′
 ⊑π-antisym ⊑-pure _ = refl
 ⊑π-antisym ⊑-eff _ = refl
+⊑π-antisym ⊑-act _ = refl
 ⊑π-antisym ⊑-g _ = refl
 
 purity-⊑-isPartialOrder : IsPartialOrder _≡_ _⊑π_

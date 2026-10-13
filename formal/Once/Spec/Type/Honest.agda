@@ -69,14 +69,16 @@ DataCod : Purity → Type → Set
 DataCod pure B = NotEmpty B
 DataCod eff  B = NotEmpty B × NotSingleton B
 DataCod eff⁺ B = NotEmpty B × NotSingleton B
+DataCod act  B = NotEmpty B × NotSingleton B
 
 -- An effectful grade of one call: the codomain may be `Unit` (it emits) or
--- `Void` (it halts). A foreign operation is ONE call at either effectful
--- grade: at `eff` it is a one-node tree of `T∞` (D312), at the guard `eff⁺`
--- the generic effect itself (D311).
+-- `Void` (it halts). A foreign operation is ONE call at every effectful
+-- grade: at `act` a one-node tree of `T` (D313), at `eff` of `T∞` (D312), at
+-- the guard `eff⁺` the generic effect itself (D311).
 Effectful : Purity → Set
 Effectful eff  = ⊤
 Effectful eff⁺ = ⊤
+Effectful act  = ⊤
 Effectful pure = ⊥
 
 -- The codomain `B` of an arrow at grade `π`.
@@ -113,10 +115,12 @@ isEff? : (π : Purity) → Maybe (π ≡ eff)
 isEff? pure = nothing
 isEff? eff  = just refl
 isEff? eff⁺ = nothing
+isEff? act  = nothing
 
 effectful? : (π : Purity) → Maybe (Effectful π)
 effectful? eff  = just tt
 effectful? eff⁺ = just tt
+effectful? act  = just tt
 effectful? pure = nothing
 
 -- Two witnesses, or the first that exists (no `with`: proofs follow by cases).
@@ -158,6 +162,7 @@ dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
 dataCod? pure B = notEmpty? B
 dataCod? eff  B = both (notEmpty? B) (notSingleton? B)
 dataCod? eff⁺ B = both (notEmpty? B) (notSingleton? B)
+dataCod? act  B = both (notEmpty? B) (notSingleton? B)
 
 honestCod? : (π : Purity) (B : Type) → Maybe (HonestCod π B)
 honestCod? π Unit                     = effectful? π

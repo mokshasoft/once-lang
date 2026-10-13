@@ -19,7 +19,7 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Spec.Type.DecEq using (_≟T_)
-open import Once.Spec.Type.Sub using (_<:_; sub-int; sub-float; _⊑π_; ⊑-pure; ⊑-pe)
+open import Once.Spec.Type.Sub using (_<:_; sub-int; sub-float; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Type.Sub using (_<:?_)
 open import Once.Spec.Type.Sub using (<:-refl)
 open import Data.Integer using (+_)
@@ -479,6 +479,7 @@ withUnit-elim : ∀ {R : Set} (r : R) {π : Purity} (u : pure ⊑π π) (k : pur
               → (∀ u′ → P (k u′)) → P (withUnit r π k)
 withUnit-elim r ⊑-pure k P h = h ⊑-pure
 withUnit-elim r ⊑-pe   k P h = h ⊑-pe
+withUnit-elim r ⊑-pa   k P h = h ⊑-pa
 
 -- Plan 0.4 T2 Phase 5: bbc-X RVar fallbacks. The aux extraction
 -- (Phase 3) plus the lookup-view refactor (Phase 4) plus the
@@ -536,6 +537,7 @@ checkElab-fallback-RVar-terminalV :
           ≡ (success Surface.zeroUsage eE d f , w)))))
 checkElab-fallback-RVar-terminalV {ctx} A ⊑-pure = _ , _ , _ , _ , refl
 checkElab-fallback-RVar-terminalV {ctx} A ⊑-pe   = _ , _ , _ , _ , refl
+checkElab-fallback-RVar-terminalV {ctx} A ⊑-pa   = _ , _ , _ , _ , refl
 
 checkElab-fallback-RVar-initial :
   ∀ {ctx : NamedCtx} {π : Once.Spec.Type.Grade.Purity} (A : Type) (u : pure ⊑π π)
@@ -1306,6 +1308,10 @@ checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV ⊑-pe
   with checkElabV ctx
                   alg (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A) | eqAlgV
 ... | (success _ _ _ _ , w) | refl = refl
+checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV ⊑-pa
+  with checkElabV ctx
+                  alg (Once.Spec.Type.⟦ F ⟧T A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] A) | eqAlgV
+... | (success _ _ _ _ , w) | refl = refl
 
 -- D192: the ANA bridges. `checkAna` has no eff/pure split — it is grade-
 -- generic in one clause, because the coalgebra's grade IS the unfold's and
@@ -1349,6 +1355,10 @@ checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pure
                   coalg (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
 checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pe
+  with checkElabV ctx
+                  coalg (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A) | eqCoalgV
+... | (success _ _ _ _ , w) | refl = refl
+checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pa
   with checkElabV ctx
                   coalg (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Once.Spec.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl

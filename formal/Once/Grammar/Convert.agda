@@ -147,7 +147,10 @@ mutual
   typeToGType (T.ν-type F T.eff) with functorToGFunctor F
   ... | just gf = just (G.GNuEff gf)
   ... | nothing = nothing
-  -- D311: `prod` has no surface syntax yet (plan 0.117 F).
+  -- D311: the guard `eff⁺` is never written; D313: `act` has no surface syntax
+  -- yet (plan 0.117 F1).
+  typeToGType (_ T.⇒[ T.mk-kind _ T.act ] _) = nothing
+  typeToGType (T.ν-type F T.act) = nothing
   typeToGType (_ T.⇒[ T.mk-kind _ T.eff⁺ ] _) = nothing
   typeToGType (T.ν-type F T.eff⁺) = nothing
 
@@ -212,6 +215,8 @@ typeToGType-gtypeToType (T.ν-type F T.eff) .(G.GNuEff gf) refl | just gf
 typeToGType-gtypeToType (T.ν-type F T.pure) g eq with functorToGFunctor F in eqF
 typeToGType-gtypeToType (T.ν-type F T.pure) .(G.GNu gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
+typeToGType-gtypeToType (_ T.⇒[ T.mk-kind _ T.act ] _) _ ()
+typeToGType-gtypeToType (T.ν-type F T.act) _ ()
 typeToGType-gtypeToType (_ T.⇒[ T.mk-kind _ T.eff⁺ ] _) _ ()
 typeToGType-gtypeToType (T.ν-type F T.eff⁺) _ ()
 

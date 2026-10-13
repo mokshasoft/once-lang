@@ -65,7 +65,7 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Spec.Type using (Functor; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; ⊑-pe; sub-int; sub-float; sub-unit; sub-prod)
+open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pa; sub-int; sub-float; sub-unit; sub-prod)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Spec.Type.Sub using (<:-refl)
 open import Once.Spec.Type.DecEq using (_≟T_)
@@ -993,6 +993,11 @@ mutual
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
         with caseGo-success eqf eqg
   ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
+  check-complete (t-case-copair-check {π = T.act} df dg)
+    with check-completeV df | check-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        with caseGo-success eqf eqg
+  ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
   check-complete (t-case-copair-check {π = T.eff⁺} df dg)
     with check-completeV df | check-completeV dg
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
@@ -1032,6 +1037,17 @@ mutual
         with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA ⊑-pe
   ...     | eqGo
             rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
+            _ , _ , _ , refl
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.act} {u = ⊑-pa} wfF dalg)
+    -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
+    -- dispatches on the decider, so recover its equation here.
+    with wellFormedF?-complete-at wfF
+  ... | eqW
+    with check-completeV dalg
+  ... | (_ , _ , _ , W , eqA)
+        with checkCataGo-just-success ctx alg F A T.act wfF eqW eqA ⊑-pa
+  ...     | eqGo
+            rewrite trans (checkCataGo-J ctx alg F A T.act (just wfF) eqW) eqGo =
             _ , _ , _ , refl
   -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
   -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.

@@ -93,6 +93,10 @@ contractOf c (A ⇒[ mk-kind One  Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind Many Ty.pure ] B) = value (key c A B)
 contractOf c (A ⇒[ mk-kind One  Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
 contractOf c (A ⇒[ mk-kind Many Ty.eff ]  B) = contract-eff c A B (isVoid? B) (isUnit? B)
+-- D313: an operation at `act` is one call that returns or halts.
+contractOf c (A ⇒[ mk-kind Zero Ty.act ] B) = contract-eff c UnitT B (isVoid? B) (isUnit? B)
+contractOf c (A ⇒[ mk-kind One  Ty.act ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
+contractOf c (A ⇒[ mk-kind Many Ty.act ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
 -- D311: an operation at the guard `eff⁺` is the generic effect — one call.
 contractOf c (A ⇒[ mk-kind Zero Ty.eff⁺ ] B) = contract-eff c UnitT B (isVoid? B) (isUnit? B)
 contractOf c (A ⇒[ mk-kind One  Ty.eff⁺ ] B) = contract-eff c A B (isVoid? B) (isUnit? B)

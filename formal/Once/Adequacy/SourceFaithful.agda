@@ -44,7 +44,7 @@ open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym; subst-sym-subst)
 
-open import Once.Spec.Type.Grade using (mk-kind; pure; eff; Quantity; Zero; One; Many; eff⁺)
+open import Once.Spec.Type.Grade using (mk-kind; pure; eff; Quantity; Zero; One; Many; eff⁺; act)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Spec.Type.WellFormed using (con-base; con-fun; base-Unit)
 open import Once.Spec.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; _∷_)
@@ -1566,6 +1566,13 @@ faithful (sigOp {A = (Dom ⇒[ mk-kind Zero eff⁺ ] Cod)} name (con-fun bDom cC
              (trans (subst-arrow₀ᴰ (cohᴰ Cod)
                        (λ u → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind Zero eff⁺) name base-Unit cCod)) u))
                     (liftFn-SigOp (arrow-info (mk-kind Zero eff⁺) name base-Unit cCod)))))
+faithful (sigOp {A = (Dom ⇒[ mk-kind Zero act ] Cod)} name (con-fun bDom cCod)) dγ =
+    (trans (subst-T-returnT (cong (λ y → ⟦ Unit ⟧ᴰ → T y) (cohᴰ Cod))
+                            (λ u → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind Zero act) name base-Unit cCod)) u))
+           (cong returnT
+             (trans (subst-arrow₀ᴰ (cohᴰ Cod)
+                       (λ u → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind Zero act) name base-Unit cCod)) u))
+                    (liftFn-SigOp (arrow-info (mk-kind Zero act) name base-Unit cCod)))))
 faithful (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod)) dγ =
     (trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ Dom) (cohᴰ Cod))
                             (λ a → evalᴰ fmt ρ (SigOp (arrow-info (mk-kind One π) name bDom cCod)) a))

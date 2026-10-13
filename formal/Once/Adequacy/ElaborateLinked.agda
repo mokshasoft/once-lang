@@ -345,10 +345,16 @@ sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff} bDom 
   eff-decl (arrow-info (mk-kind Many Ty.eff) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {B = Cod} {k = mk-kind Zero Ty.eff⁺} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Zero Ty.eff⁺) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
+sigOp-linked m name (con-fun {B = Cod} {k = mk-kind Zero Ty.act} bDom cCod) d =
+  eff-decl (arrow-info (mk-kind Zero Ty.act) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff⁺} bDom cCod) d =
   eff-decl (arrow-info (mk-kind One Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
+sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.act} bDom cCod) d =
+  eff-decl (arrow-info (mk-kind One Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff⁺} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Many Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
+sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.act} bDom cCod) d =
+  eff-decl (arrow-info (mk-kind Many Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-base base-Unit) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-Void) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-Int) d = value-∈ d refl , tt

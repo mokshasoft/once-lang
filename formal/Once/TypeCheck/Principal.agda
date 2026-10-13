@@ -223,6 +223,7 @@ mutual
   {-# CATCHALL #-}
   typeToPoly (a ⇒[ mk-kind _ eff ] b) = nothing
   typeToPoly (a ⇒[ mk-kind _ eff⁺ ] b) = nothing
+  typeToPoly (a ⇒[ mk-kind _ act ] b) = nothing   -- D313: no PolyType image yet (plan 0.117 F1)
   typeToPoly (μ-type F) with functorToPoly F
   ... | just G  = just (Pμ-type G)
   ... | nothing = nothing

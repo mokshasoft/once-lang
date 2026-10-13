@@ -5,8 +5,9 @@
 -- Once.Spec.Graded — the SPEC's value domain (D250, plan 0.104 A.1).
 --
 -- `pure` is referential transparency. A derivation at grade `π` denotes a
--- function into `M π`, where `M pure` is the identity and `M eff` is the free
--- completely iterative monad `T∞` (D312). So a pure term denotes a VALUE, and a pure arrow is a TOTAL
+-- function into `M π`, where `M pure` is the identity, `M act` the free monad
+-- `T` (finite trees: it returns, D313) and `M eff` the free completely
+-- iterative monad `T∞` (it need not stop, D312). So a pure term denotes a VALUE, and a pure arrow is a TOTAL
 -- function: `⟦ Int ⇒[ pure ] Int ⟧ᵛ = ℤ → ℤ`. This is a model because the pure
 -- fragment is total (D241: no general recursion, only `fold`/`unfold`; every
 -- pure primitive's contract returns).
@@ -32,12 +33,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-g; ⊑-ge)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as Val
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Spec.FunctorMeaning using (translateF)
-open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; fmap∞; ν∞; TreeEq∞)
+open import Once.Spec.Trace using (T; returnT; _>>=T_; fmapT)
+open import Once.Spec.Stream using (νᵈ)
+open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; ν∞; TreeEq∞)
 open import Once.Spec.Guarded using (T⁺; forget⁺; _>>=⁺_; _⁺=<<_; fmap⁺; ν⁺)
 
 ------------------------------------------------------------------------
@@ -46,6 +49,7 @@ open import Once.Spec.Guarded using (T⁺; forget⁺; _>>=⁺_; _⁺=<<_; fmap�
 
 M : Purity → Set → Set
 M pure X = X
+M act  X = T X
 M eff⁺ X = T⁺ X
 M eff  X = T∞ X
 
@@ -64,15 +68,20 @@ opaque
 infixl 1 bindM
 bindM : ∀ π {X Y} → M π X → (X → M π Y) → M π Y
 bindM pure m k = m >>=ᵖ k
+bindM act  m k = m >>=T k
 bindM eff⁺ m k = m >>=⁺ λ x → forget⁺ (k x)
 bindM eff  m k = m >>=∞ k
 
 -- Subeffecting is the monad morphism `M π → M π′`: the unit into a grade with
--- effects, and the embedding of the guarded trees into the trees (D311).
+-- effects, the embedding of the finite trees into the possibly infinite ones
+-- (D313), and of the guarded trees into the trees (D311).
 subM : ∀ {π π′} → π ⊑π π′ → ∀ {X} → M π X → M π′ X
 subM ⊑-pure m = m
 subM ⊑-eff  m = m
 subM ⊑-pe   m = return∞ m
+subM ⊑-act  m = m
+subM ⊑-pa   m = returnT m
+subM ⊑-ae   m = embed m
 subM ⊑-g    m = m
 subM ⊑-ge   m = forget⁺ m
 
@@ -83,10 +92,11 @@ returnM : ∀ {π} → pure ⊑π π → ∀ {X} → X → M π X
 returnM u x = subM u x
 
 
--- Two computations at a grade are EQUAL: as values, `≡`; as trees, which may
--- be infinite, bisimilar (D201, D312).
+-- Two computations at a grade are EQUAL: as values or finite trees, `≡`; as
+-- trees that may be infinite, bisimilar (D201, D312).
 EqM : ∀ π {X : Set} → M π X → M π X → Set
 EqM pure m m′ = m ≡ m′
+EqM act  m m′ = m ≡ m′
 EqM eff⁺ m m′ = TreeEq∞ _≡_ (forget⁺ m) (forget⁺ m′)
 EqM eff  m m′ = TreeEq∞ _≡_ m m′
 
@@ -94,6 +104,7 @@ EqM eff  m m′ = TreeEq∞ _≡_ m m′
 -- a grade (D311), what coherence and the observation read a computation as.
 toT∞ : ∀ π {X} → M π X → T∞ X
 toT∞ pure m = return∞ m
+toT∞ act  m = embed m
 toT∞ eff⁺ m = forget⁺ m
 toT∞ eff  m = m
 
@@ -103,10 +114,16 @@ toT∞ eff  m = m
 infixl 1 bindᵍ
 bindᵍ : ∀ π₁ π₂ {X Y} → M π₁ X → (X → M π₂ Y) → M (π₁ ·p π₂) Y
 bindᵍ pure π₂   m k = m >>=ᵖ k
+bindᵍ act  pure m k = fmapT k m
+bindᵍ act  act  m k = m >>=T k
+bindᵍ act  eff⁺ m k = embed m ⁺=<< k
+bindᵍ act  eff  m k = embed m >>=∞ k
 bindᵍ eff⁺ pure m k = fmap⁺ k m
+bindᵍ eff⁺ act  m k = m >>=⁺ λ x → embed (k x)
 bindᵍ eff⁺ eff⁺ m k = m >>=⁺ λ x → forget⁺ (k x)
 bindᵍ eff⁺ eff  m k = m >>=⁺ k
 bindᵍ eff  pure m k = fmap∞ k m
+bindᵍ eff  act  m k = m >>=∞ λ x → embed (k x)
 bindᵍ eff  eff⁺ m k = m ⁺=<< k
 bindᵍ eff  eff  m k = m >>=∞ k
 
@@ -136,6 +153,7 @@ record νᵖ (F : SFunctor) : Set where
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ
 ⟦ μ-type F ⟧ᵛ   = Val.⟦ μ-type F ⟧
 ⟦ ν-type F pure ⟧ᵛ = νᵖ (translateF Carrier Carrier F)
+⟦ ν-type F act ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
 ⟦ ν-type F eff⁺ ⟧ᵛ = ν⁺ (translateF Carrier Carrier F)
 ⟦ ν-type F eff ⟧ᵛ  = ν∞ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᵛ        = Val.⟦ Int ⟧

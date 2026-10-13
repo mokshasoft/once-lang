@@ -33,7 +33,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
 open import Once.Spec.Type using (Type; Unit; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Int; base-Float; base-Unit; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun; WellFormedF)
@@ -160,6 +160,8 @@ sigop-S fmt I c (con-fun {k = mk-kind Zero pure} bA bB) m m′ =
   retT≈ (S-base bB (cong (λ f → injB bB (f tt)) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind Zero eff} bA bB) m m′ =
   ≈∞-refl (S-refl-base bB) _
+sigop-S fmt I c (con-fun {k = mk-kind Zero act} bA bB) m m′ =
+  ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind Zero eff⁺} bA bB) m m′ =
   ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind One pure} bA bB) m m′ a a′ s
@@ -168,7 +170,11 @@ sigop-S fmt I c (con-fun {k = mk-kind Many pure} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = retT≈ (S-base bB (cong (λ f → injB bB (f (prjB bA a′))) (valueOf-irr I _ _ _)))
 sigop-S fmt I c (con-fun {k = mk-kind One eff} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
+sigop-S fmt I c (con-fun {k = mk-kind One act} bA bB) m m′ a a′ s
+  rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind Many eff} bA bB) m m′ a a′ s
+  rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
+sigop-S fmt I c (con-fun {k = mk-kind Many act} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind One eff⁺} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _

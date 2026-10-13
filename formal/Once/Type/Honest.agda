@@ -70,10 +70,12 @@ dataCod?-complete : ∀ (π : Purity) (B : Type) → DataCod π B → ∃[ h ] d
 dataCod?-complete pure B h       = notEmpty?-complete B h
 dataCod?-complete eff  B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
 dataCod?-complete eff⁺ B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
+dataCod?-complete act  B (a , b) = both-c (notEmpty?-complete B a) (notSingleton?-complete B b)
 
 effectful?-complete : ∀ (π : Purity) → Effectful π → ∃[ h ] effectful? π ≡ just h
 effectful?-complete eff  tt = tt , refl
 effectful?-complete eff⁺ tt = tt , refl
+effectful?-complete act  tt = tt , refl
 
 honestCod?-complete : ∀ (π : Purity) (B : Type) → HonestCod π B → ∃[ h ] honestCod? π B ≡ just h
 honestCod?-complete π Unit                    h    = effectful?-complete π h

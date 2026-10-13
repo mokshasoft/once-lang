@@ -18517,3 +18517,9 @@ property — D312 O1's "three structures, three universal properties" overstated
 Plan 0.117 gains phase A′ (the `act` grade, top-down from the Spec); F becomes the surface
 `Act` type and the `ana`-into-`Eff` rule with principal grade synthesis; G and H as planned.
 
+### Landed
+* **A′ (2026-10-13)** — `act` through the Spec (`M act = T`, `ν`'s `act` layers `νᵈ`, FFI at `act`
+  one call as a finite tree `opCallᵀ`, `ProductiveM act = FiniteT`), the claims and proofs
+  (`T`'s monad laws, coherence, `finite` restored for `act`), and the bridges (`RelGM act = RelGT`).
+  No surface syntax yet: the checker treats `act` as having no surface form (plan 0.117 F1).
+

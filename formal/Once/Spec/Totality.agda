@@ -12,7 +12,11 @@
 -- An effectful computation is a tree of the completely iterative monad `T∞`,
 -- so finite work means: every node of its tree is an event or the end — there
 -- is no silent step to wait on forever. `ProductiveT∞` says so,
--- coinductively; it is what a `Tau` would break.
+-- coinductively; it is what a `Tau` would break. A computation that RETURNS
+-- (grade `act`, the free monad `T`, D313) is moreover finite: every path
+-- through its tree ends — in a result or a halt — after finitely many events,
+-- whatever the world answers (`FiniteT`; the answers may be infinitely many,
+-- so this is well-foundedness of the tree, not a bound on it).
 --
 -- `Spec.Metatheory.Totality` claims it of every computation and of every
 -- layer of every stream.
@@ -21,11 +25,19 @@
 module Once.Spec.Totality where
 
 open import Data.Unit using (⊤)
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff)
+open import Once.Spec.Type.Grade using (Purity; pure; act; eff⁺; eff)
 open import Once.Spec.Guarded using (forget⁺)
-open import Once.Spec.Meaning using (M)
+open import Once.Spec.Meaning using (T; M)
+open import Once.Spec.Trace using (ret; call; halt)
 open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
 open Once.Spec.Iterative.T∞ using (force)
+
+-- Every path ends: in a result, in a halt, or in a call whose every
+-- continuation is again finite.
+data FiniteT {X : Set} : T X → Set where
+  fin-ret  : ∀ {x} → FiniteT (ret x)
+  fin-call : ∀ {o a k} → (∀ b → FiniteT (k b)) → FiniteT (call o a k)
+  fin-halt : ∀ {o a} → FiniteT (halt o a)
 
 -- Every node is an event or the end, forever.
 data ProductiveNode {X R : Set} (P : R → Set) : T∞F X R → Set where
@@ -40,6 +52,7 @@ record ProductiveT∞ {X : Set} (m : T∞ X) : Set where
 -- At a grade: a pure computation is a value, so nothing is left to check.
 ProductiveM : ∀ π {X : Set} → M π X → Set
 ProductiveM pure _ = ⊤
+ProductiveM act  m = FiniteT m
 ProductiveM eff  m = ProductiveT∞ m
 ProductiveM eff⁺ m = ProductiveT∞ (forget⁺ m)
 

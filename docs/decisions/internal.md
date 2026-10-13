@@ -139,11 +139,12 @@ decision-log entry updates the rule it changes here, in the same commit.
   stated over values, residence-generically. (D076, D077, D075)
 - **Observation at codata is bisimilarity**, never `≡`; no
   bisimulation-to-equality axiom. (D201)
-- **The Spec's effectful meaning is a `T∞` tree; the IR's is still a finite
-  `T` tree** (until plan 0.117 G): the adequacy bridges relate the two by
+- **The Spec's effectful meaning is a tree of its grade's monad; the IR's is
+  still a finite `T` tree** (until plan 0.117 G). At `act` both are finite and
+  related by `RelT′`; at `eff`/`eff⁺` the Spec's is a `T∞` tree, related by
   `RelT∞′` (the same nodes, read off the finite side), which respects
   bisimilarity on the `T∞` side (`RelT∞′-≈`) and gives the same events at
-  every depth (`RelT∞′-events`). (D312)
+  every depth (`RelT∞′-events`). (D313, D312)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering

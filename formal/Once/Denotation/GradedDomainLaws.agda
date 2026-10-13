@@ -17,7 +17,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pa)
 import Once.Semantics.Machine as Val
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
@@ -40,9 +40,10 @@ opaque
   >>=ᵖ-idʳ m = refl
 
 -- Left identity at every grade with a unit: the β-law of the opaque bind at
--- `pure`, bisimilarity at `eff`.
+-- `pure`, definitional at `act` (T's bind on a unit), bisimilarity at `eff`.
 bindM-idˡ : ∀ {π} (u : pure ⊑π π) {X Y} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM u x) k) (k x)
 
 bindM-idˡ ⊑-pure x k = >>=ᵖ-β x k
 
+bindM-idˡ ⊑-pa   x k = refl
 bindM-idˡ ⊑-pe   x k = ≈∞-idˡ x k

@@ -15,7 +15,7 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff⁺; eff; ArrowKind; mk-kind)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff; ArrowKind; mk-kind)
 import Data.Nat as ℕ
 
 -- Quantities, purities, kinds.
@@ -34,12 +34,19 @@ Many ≟q Many = yes refl
 -- | Decidable equality on Purity (plan 0.5.1)
 _≟p_ : DecidableEquality Purity
 pure ≟p pure = yes refl
+pure ≟p act = no (λ ())
 pure ≟p eff⁺ = no (λ ())
 pure ≟p eff = no (λ ())
+act ≟p pure = no (λ ())
+act ≟p act = yes refl
+act ≟p eff⁺ = no (λ ())
+act ≟p eff = no (λ ())
 eff⁺ ≟p pure = no (λ ())
+eff⁺ ≟p act = no (λ ())
 eff⁺ ≟p eff⁺ = yes refl
 eff⁺ ≟p eff = no (λ ())
 eff ≟p pure = no (λ ())
+eff ≟p act = no (λ ())
 eff ≟p eff⁺ = no (λ ())
 eff ≟p eff = yes refl
 

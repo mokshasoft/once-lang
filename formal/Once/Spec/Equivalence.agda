@@ -32,7 +32,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; mk-kind; Zero; One; Many)
+open import Once.Spec.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind; Zero; One; Many)
 open import Once.Spec.Guarded using (ν⁺; forget⁺)
 open Once.Spec.Guarded.ν⁺ using (force⁺)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
@@ -42,6 +42,8 @@ open Once.Spec.Iterative.T∞ using (force)
 open Once.Spec.Iterative.ν∞ using (force∞)
 open import Once.Spec.Trace using (ret; call; halt)
 open import Once.Spec.Graded using (νᵖ; module νᵖ)
+open import Once.Spec.Stream using (νᵈ; module νᵈ)
+open νᵈ using (forceᵈ)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open νᵖ using (forceᵖ)
 
@@ -78,6 +80,10 @@ LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′
 νᵖ-upto H zero    _ _ = ⊤
 νᵖ-upto H (suc n) v w = LayerEq H (νᵖ-upto H n) (forceᵖ v) (forceᵖ w)
 
+νᵈ-upto : ∀ (H : SFunctor) → ℕ → νᵈ H → νᵈ H → Set
+νᵈ-upto H zero    _ _ = ⊤
+νᵈ-upto H (suc n) v w = TreeEq (LayerEq H (νᵈ-upto H n)) (forceᵈ v) (forceᵈ w)
+
 ν⁺-upto : ∀ (H : SFunctor) → ℕ → ν⁺ H → ν⁺ H → Set
 ν⁺-upto H zero    _ _ = ⊤
 ν⁺-upto H (suc n) v w = TreeEqN (suc n) (LayerEq H (ν⁺-upto H n)) (forget⁺ (force⁺ v)) (forget⁺ (force⁺ w))
@@ -110,6 +116,7 @@ Obs n (A ⇒[ mk-kind Zero π ] B) f g = ObsM n π B (f tt) (g tt)
 Obs n (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a′) → ObsM n π B (f a) (g a′)
 Obs n (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a′) → ObsM n π B (f a) (g a′)
 Obs n (ν-type F pure) v w = νᵖ-upto _ n v w
+Obs n (ν-type F act)  v w = νᵈ-upto _ n v w
 Obs n (ν-type F eff)  v w = ν∞-upto _ n v w
 Obs n (ν-type F eff⁺) v w = ν⁺-upto _ n v w
 

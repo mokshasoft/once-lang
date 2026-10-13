@@ -112,6 +112,17 @@ mutual
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero eff⁺ ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff⁺ ] _)  _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Many eff⁺ ] _) _ = nothing
+  instantiateAcc (Pν-type F act) (ν-type f act) s = instantiateFunctor F f s
+  instantiateAcc (Pν-type _ pure) (ν-type _ act) _ = nothing
+  instantiateAcc (Pν-type _ eff)  (ν-type _ act) _ = nothing
+  instantiateAcc (Pν-type _ act) (ν-type _ pure) _ = nothing
+  instantiateAcc (Pν-type _ act) (ν-type _ eff)  _ = nothing
+  instantiateAcc (Pν-type _ act) (ν-type _ eff⁺) _ = nothing
+  instantiateAcc (Pν-type _ eff⁺) (ν-type _ act) _ = nothing
+  instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ act ] _) _ = nothing
+  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero act ] _) _ = nothing
+  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One act ] _)  _ = nothing
+  instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Many act ] _) _ = nothing
   -- Shape mismatch on each PolyType constructor (no catch-all).
   instantiateAcc PUnit           Void            _ = nothing
   instantiateAcc PUnit           (_ * _)         _ = nothing

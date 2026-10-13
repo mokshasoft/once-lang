@@ -143,6 +143,7 @@ diag-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y) → subM (·p-dia
 diag-bind Once.Spec.Type.Grade.pure m k = refl
 diag-bind Once.Spec.Type.Grade.eff  m k = refl
 diag-bind Once.Spec.Type.Grade.eff⁺ m k = refl
+diag-bind Once.Spec.Type.Grade.act  m k = refl
 
 module Comb {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)

@@ -12,9 +12,10 @@
 
 module Once.Metatheory.Totality where
 
-open import Once.Spec.Type.Grade using (pure; eff⁺; eff)
+open import Once.Spec.Type.Grade using (pure; act; eff⁺; eff)
+open import Once.Spec.Trace using (T; ret; call; halt)
 open import Once.Spec.Guarded using (forget⁺)
-open import Once.Spec.Totality using (ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
+open import Once.Spec.Totality using (FiniteT; fin-ret; fin-call; fin-halt; ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
 open Once.Spec.Totality.ProductiveT∞ using (node)
 open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
 open Once.Spec.Iterative.T∞ using (force)
@@ -26,6 +27,12 @@ open import Once.Metatheory.Witness.Server using (stream-typed; stream-emits)
 import Once.Metatheory.Witness.Echo as Echo
 
 -- Every tree of `T∞` is productive: by the shape of its nodes.
+-- `T` is an inductive type, so every tree of it is finite by induction.
+finite : ∀ {X : Set} (m : T X) → FiniteT m
+finite (ret x)      = fin-ret
+finite (call o a k) = fin-call (λ b → finite (k b))
+finite (halt o a)   = fin-halt
+
 productive∞ : ∀ {X : Set} (m : T∞ X) → ProductiveT∞ m
 productiveN : ∀ {X : Set} (l : T∞F X (T∞ X)) → ProductiveNode ProductiveT∞ l
 node (productive∞ m) = productiveN (force m)
@@ -35,7 +42,8 @@ productiveN (halt∞ o a)   = prod-halt
 
 totality : Totality
 totality = record
-  { productive = λ { pure wf v → _ ; eff wf v → productive∞ (out-semᵛ eff wf v) ; eff⁺ wf v → productive∞ (forget⁺ (out-semᵛ eff⁺ wf v)) }
+  { finite     = finite
+  ; productive = λ { pure wf v → _ ; act wf v → finite (out-semᵛ act wf v) ; eff wf v → productive∞ (out-semᵛ eff wf v) ; eff⁺ wf v → productive∞ (forget⁺ (out-semᵛ eff⁺ wf v)) }
   ; productive∞ = productive∞
   ; observable∞ = events∞-pf
   ; no-self-reference    = no-self-reference

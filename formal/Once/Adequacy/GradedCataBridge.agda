@@ -22,8 +22,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (refl; sym; subst)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Type.Grade using (Purity; pure; eff)
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe)
+open import Once.Spec.Type.Grade using (Purity; pure; act; eff)
+open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.FunctorMeaning using (translateF)
@@ -116,6 +116,13 @@ alg-step ⊑-pure {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
           {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
           (seqF-relᵖ F (RelGV A) (out-relR wfF (RelGM pure A) rsf))
           (λ l₁ l₂ r → algR (z-relᵍ wfF r)))
+alg-step ⊑-pa {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
+  RelT′-bind (RelF F (RelGV A)) (RelGV A)
+    {m = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᵛ) y₁)} {m′ = seqF F (coerce-μ-out wfF (T ⟦ A ⟧ᴰ) y₂)}
+    {f = λ l → alg₁ (cf⁻¹ᵛ A wfF l)}
+    {f′ = λ l → alg₂ (coerce-functor⁻¹-D wfF A l)}
+    (seqF-rel F (RelGV A) (out-relR wfF (RelGM act A) rsf))
+    (λ l₁ l₂ r → algR (z-relᵍ wfF r))
 alg-step ⊑-pe {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
   RelT∞′-bind (seqF∞-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf)) (λ r → algR (z-relᵍ wfF r))
 

@@ -27,19 +27,22 @@
 
 module Once.Spec.Type.Sub where
 
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; mk-kind; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind; _·p_)
 open import Once.Spec.Type
   using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 
 infix 4 _⊑π_ _<:_
 
--- The effect order: `pure ⊑ eff` and the guard `eff⁺ ⊑ eff` (D311, D312),
--- one derivation per pair. `pure` and `eff⁺` are
+-- The effect order: the line `pure ⊑ act ⊑ eff` and the guard `eff⁺ ⊑ eff`
+-- (D311–D313), one derivation per pair. `pure` and `eff⁺` are
 -- incomparable.
 data _⊑π_ : Purity → Purity → Set where
   ⊑-pure : pure ⊑π pure
   ⊑-eff  : eff  ⊑π eff
   ⊑-pe   : pure ⊑π eff
+  ⊑-act  : act  ⊑π act
+  ⊑-pa   : pure ⊑π act
+  ⊑-ae   : act  ⊑π eff
   ⊑-g    : eff⁺ ⊑π eff⁺
   ⊑-ge   : eff⁺ ⊑π eff
 
@@ -51,6 +54,7 @@ data _⊑π_ : Purity → Purity → Set where
 -- reads its product as.
 ·p-diag : ∀ π → (π ·p π) ⊑π π
 ·p-diag pure = ⊑-pure
+·p-diag act  = ⊑-act
 ·p-diag eff⁺ = ⊑-g
 ·p-diag eff  = ⊑-eff
 
@@ -71,6 +75,7 @@ data _<:_ : Type → Type → Set where
 -- The identities of the order and of the thin category of types.
 ⊑π-refl : ∀ π → π ⊑π π
 ⊑π-refl pure = ⊑-pure
+⊑π-refl act = ⊑-act
 ⊑π-refl eff⁺ = ⊑-g
 ⊑π-refl eff = ⊑-eff
 
