@@ -27,7 +27,7 @@ open import Data.Unit using (tt)
 
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as V
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Denotation.TraceMonad
   using (T; ret; call; halt; CallOp; HaltOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp)
 open CallOp using (cdom; ccod)

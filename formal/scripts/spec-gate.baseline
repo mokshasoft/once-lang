@@ -56,7 +56,6 @@ import Once.Denotation.GradedOps
 import Once.Denotation.PhaseV
 import Once.Denotation.Program
 import Once.Denotation.Realize
-import Once.Denotation.Trace
 import Once.Denotation.TraceMonad
 import Once.Denotation.ValueDomain
 import Once.Functor.Decide
@@ -162,7 +161,6 @@ reexport-impl Once.Spec.Meaning Once.Denotation.Admissible
 reexport-impl Once.Spec.Meaning Once.Denotation.Behavior
 reexport-impl Once.Spec.Meaning Once.Denotation.GradedDomain
 reexport-impl Once.Spec.Meaning Once.Denotation.GradedOps
-reexport-impl Once.Spec.Meaning Once.Denotation.Trace
 reexport-impl Once.Spec.Meaning Once.Denotation.TraceMonad
 reexport-impl Once.Spec.Program Once.Denotation.Behavior
 reexport-wholesale Once.Semantics.Machine Once.Semantics.ValueIR

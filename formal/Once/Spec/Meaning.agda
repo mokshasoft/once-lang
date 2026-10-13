@@ -12,7 +12,7 @@
 --     OWES AN ANSWER FOR. `Typed` is target-free; this is the target-relative
 --     half, and it is what makes rejecting an out-of-range `Int` literal legal
 --     without making "reject everything" legal.
---   * `Once.Denotation.Trace` — `SigOpEvent` and `mkEvent`: WHAT AN
+--   * `Once.Spec.Event` — `SigOpEvent`: WHAT AN
 --     OBSERVATION IS. Which part of a SigOp invocation the outside world can
 --     see, and therefore which two programs count as behaviourally equal.
 --     This is a CHOICE, not a consequence — the same status `Behavior`'s own
@@ -49,11 +49,7 @@
 
 module Once.Spec.Meaning where
 
--- D114: the observation vocabulary. `emit-D` (in `ValueDomain`, spec) calls
--- `mkEvent`, and `Behavior` names `SigOpEvent`, so this module was ALREADY
--- load-bearing spec behaviour — it was just not declared, and so not reviewed.
--- Re-exported, not moved: the module is 75 lines and contains nothing but the
--- event vocabulary, so declaring it is the whole fix.
+-- The observation vocabulary: an event (`Spec.Event`).
 -- D115/D116: which programs a target owes an answer for. In the spec for the
 -- same reason the observable is: without it, a compiler that rejects every
 -- program satisfies soundness vacuously.
@@ -64,8 +60,8 @@ open import Once.Denotation.Admissible public
   using ( AdmissibleM
         ; rawIntLits ; negLits ; declIntLits ; moduleIntLits )
 
-open import Once.Denotation.Trace public
-  using ( SigOpEvent ; mkEvent )
+open import Once.Spec.Event public
+  using ( SigOpEvent )
 
 open import Once.Denotation.Behavior public
   using (Behavior; Source)

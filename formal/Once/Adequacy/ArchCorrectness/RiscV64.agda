@@ -58,7 +58,7 @@ open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-
 import Once.CCC.Target.RiscV64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)

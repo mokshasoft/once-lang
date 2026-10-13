@@ -29,7 +29,7 @@ open import Data.Empty using (⊥-elim)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as M
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 
 -- A CONTRACT KEY: a SigOp as an interpretation declares it — its RENDERED
 -- canonical path (the import table's key, the symbol the linker matches) with

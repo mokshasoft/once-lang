@@ -14,7 +14,7 @@ open import Data.List using (List; []; _∷_; _++_; length; take)
 open import Data.Product using (∃-syntax; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 import Once.Grammar as G
 open import Data.String using (String)
 open import Once.Parser.Module.Resolve using (ModuleMap)

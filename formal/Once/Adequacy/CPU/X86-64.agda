@@ -34,7 +34,7 @@ import Data.Nat as ℕ
 open import Data.Product using (_×_)
 
 open import Once.Denotation.Behavior      using (Behavior)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Denotation.TraceMonad using (Interp)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)

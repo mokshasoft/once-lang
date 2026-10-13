@@ -35,7 +35,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (Σ; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
 
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Denotation.Behavior using (Behavior; mkBehavior)
 
 ------------------------------------------------------------------------

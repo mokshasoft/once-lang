@@ -37,7 +37,7 @@ import Once.Spec.Type as SpecTy
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
-open import Once.Denotation.Trace using (mk-event)
+open import Once.Spec.Event using (mk-event)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives

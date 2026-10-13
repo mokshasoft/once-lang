@@ -48,7 +48,7 @@ open import Once.CCC.Machine.SMCore
 open LocState using (halted)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.CCC.Machine.FlatLog using (LogFree)
 import Once.CCC.Machine.FlatLog
 import Once.CCC.Machine.SMCore as SMC

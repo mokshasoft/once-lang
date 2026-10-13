@@ -15,7 +15,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Denotation.TraceMonad
   using (T; ret; call; halt; _>>=T_; Interp; run; run-call; callAnswer; callEvent)
 open import Once.Spec.Equivalence using (TreeEq)

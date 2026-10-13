@@ -38,7 +38,7 @@ open import Data.String using (String)
 open import Once.Spec.Type using (Type; Int; Float)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as M
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Denotation.TraceMonad using (Interp; CallOp; callKey; calls; pures; answer; pure)
 open Once.Denotation.TraceMonad.CallOp using (ccod; cdom)
 open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_)

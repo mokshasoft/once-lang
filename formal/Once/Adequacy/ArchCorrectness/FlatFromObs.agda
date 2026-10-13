@@ -91,7 +91,7 @@ open import Once.IRTy using (Unit)
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Denotation.BehaviorLaws using (behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next; top-done)
 import Once.CCC.Codegen.CataIRSlotStable as CIS

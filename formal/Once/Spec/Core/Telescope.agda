@@ -28,7 +28,7 @@ import Once.Spec.Type.Grade as T
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Denotation.TraceMonad using (interp)
 open import Once.Spec.Contract using (ISig; Impl)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Once.Spec.Context using (Usage)
 open import Once.Spec.Core.PolyTy
 open Schema using (arity; kinds; type)

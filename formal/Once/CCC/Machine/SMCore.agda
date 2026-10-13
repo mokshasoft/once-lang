@@ -40,7 +40,7 @@ open import Relation.Nullary using (Dec; yes; no)
 -- Import FrameSemantics for Frame type
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; module FrameSemantics)
 open FrameSemantics using (fs-interp)
-open import Once.Denotation.Trace using (SigOpEvent; mk-event)
+open import Once.Spec.Event using (SigOpEvent; mk-event)
 open import Once.Denotation.TraceMonad using (callOp; answer; callKey; calls)
 open import Once.Spec.Contract using (_∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)

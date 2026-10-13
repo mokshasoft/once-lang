@@ -54,7 +54,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Type.WellFormed using (base-Unit)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as M
-open import Once.Denotation.Trace using (SigOpEvent; mk-event)
+open import Once.Spec.Event using (SigOpEvent; mk-event)
 open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
 

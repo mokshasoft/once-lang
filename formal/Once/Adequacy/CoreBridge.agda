@@ -64,7 +64,7 @@ import Once.Adequacy.TeleWalk.Invariant as TWI
 import Once.Adequacy.TelePosition as TP
 import Once.Spec.Core.Translate as TR
 open import Once.Denotation.Program using (tableEnv; IRFun)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 open import Data.List using (List; []; map)
 open import Data.List.Relation.Unary.All using ([])
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)

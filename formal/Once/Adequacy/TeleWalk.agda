@@ -108,7 +108,7 @@ import Once.TypeCheck.Elaborate
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; uncurry-app)
-open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Spec.Event using (SigOpEvent)
 import Data.Fin
 import Relation.Nullary
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
