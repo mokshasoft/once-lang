@@ -34,7 +34,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; subst)
 
-open import Once.Spec.Type.Poly using (PolyType; PolyFunctor; Ground; GroundF; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Type.Poly using (PolyType; PolyFunctor; Ground; GroundF; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type using (isGround; isGroundF)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Translate using (WellFormedF-irrelevant)
@@ -100,6 +100,9 @@ mutual
   isGround-complete (PEff A B) (gA , gB)
     with isGround-complete A gA | isGround-complete B gB
   ... | (a , eqA) | (b , eqB) rewrite eqA | eqB = (a , b) , refl
+  isGround-complete (PAct A B) (gA , gB)
+    with isGround-complete A gA | isGround-complete B gB
+  ... | (a , eqA) | (b , eqB) rewrite eqA | eqB = (a , b) , refl
   isGround-complete (Pμ-type F) gF = isGroundF-complete F gF
   isGround-complete (Pν-type F _) gF = isGroundF-complete F gF
   -- The ONE non-ground shape: `Ground (PTVar _) = ⊥`, so the witness refutes.
@@ -154,6 +157,8 @@ mutual
   Ground-irrelevant (A P⇒[ q ] B) (a₁ , b₁) (a₂ , b₂) =
     cong₂ _,_ (Ground-irrelevant A a₁ a₂) (Ground-irrelevant B b₁ b₂)
   Ground-irrelevant (PEff A B) (a₁ , b₁) (a₂ , b₂) =
+    cong₂ _,_ (Ground-irrelevant A a₁ a₂) (Ground-irrelevant B b₁ b₂)
+  Ground-irrelevant (PAct A B) (a₁ , b₁) (a₂ , b₂) =
     cong₂ _,_ (Ground-irrelevant A a₁ a₂) (Ground-irrelevant B b₁ b₂)
   Ground-irrelevant (Pμ-type F) g₁ g₂ = GroundF-irrelevant F g₁ g₂
   Ground-irrelevant (Pν-type F _) g₁ g₂ = GroundF-irrelevant F g₁ g₂

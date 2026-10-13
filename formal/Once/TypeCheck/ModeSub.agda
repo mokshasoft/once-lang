@@ -52,6 +52,7 @@ arrow-at : ∀ {s sd sc : T.PolyType} {π′ π : T.Purity} {A B : Type} (θ : _
          → T.ArrowSchema s sd sc π
 arrow-at θ T.as-pure refl = T.as-pure
 arrow-at θ T.as-eff  refl = T.as-eff
+arrow-at θ T.as-act  refl = T.as-act
 
 -- The codomain half of an arrow conversion.
 sub-cod : ∀ {A A′ B B′ : Type} {k k′} → (A ⇒[ k ] B) <: (A′ ⇒[ k′ ] B′) → B <: B′

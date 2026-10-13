@@ -18522,4 +18522,7 @@ Plan 0.117 gains phase A′ (the `act` grade, top-down from the Spec); F becomes
   one call as a finite tree `opCallᵀ`, `ProductiveM act = FiniteT`), the claims and proofs
   (`T`'s monad laws, coherence, `finite` restored for `act`), and the bridges (`RelGM act = RelGT`).
   No surface syntax yet: the checker treats `act` as having no surface form (plan 0.117 F1).
+* **F1 part 1 (2026-10-13)** — the surface type `Act A B` and the stream `Nu (Act F)`: grammar
+  (`TAct`, `GNuAct`), both type parsers with soundness/completeness, printer and round trip, the
+  schema former `PAct`, the oracle. Applying an `Act` function at the surface is next.
 

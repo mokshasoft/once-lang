@@ -32,6 +32,14 @@ effHead? (TLParen ∷ TWord w ∷ r) with w Str.≟ "Eff"
 {-# CATCHALL #-}
 effHead? _ = nothing
 
+-- D313: and `( Act`.
+actHead? : (rest : List Token) → Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Act" ∷ r)
+actHead? (TLParen ∷ TWord w ∷ r) with w Str.≟ "Act"
+... | yes refl = just (r , refl)
+... | no _     = nothing
+{-# CATCHALL #-}
+actHead? _ = nothing
+
 module Make (alg : TyAlg) where
   open TyAlg alg
 
@@ -48,6 +56,9 @@ module Make (alg : TyAlg) where
   nuCloseP : Maybe (RF × List Token) → Maybe (R × List Token)
   nuEffWith : (rest : List Token) → Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Eff" ∷ r)
             → Maybe (R × List Token)
+  nuActWith : (rest : List Token) → Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Act" ∷ r)
+            → Maybe (R × List Token)
+  nuCloseActP : Maybe (RF × List Token) → Maybe (R × List Token)
 
   atomP toks with extraP toks
   ... | just (a , rest , _) = just (a , rest)
@@ -67,20 +78,27 @@ module Make (alg : TyAlg) where
   ...             | nothing = nothing
   ...             | just (B , r2) = just (aEff A B , r2)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
+    | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Act"
+  ... | yes refl with atomP rest
+  ...   | nothing = nothing
+  ...   | just (A , r1) with atomP r1
+  ...     | nothing = nothing
+  ...     | just (B , r2) = just (aAct A B , r2)
+  atomKw (TWord name ∷ rest)
+    | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
   ... | yes refl with atomP rest
   ...   | nothing = nothing
   ...   | just (A , r1) = just (aEff aUnit A , r1)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
   ... | yes refl with fSumP rest
   ...   | nothing = nothing
   ...   | just (F , r1) = just (aMu F , r1)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
   ... | yes refl = nuP rest
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
   atomKw (TLParen ∷ rest) with typeP rest
   ... | just (T , TRParen ∷ rest2) = just (T , rest2)
   {-# CATCHALL #-}
@@ -98,8 +116,14 @@ module Make (alg : TyAlg) where
   nuCloseP (just (F , _))            = nothing
   nuCloseP nothing                   = nothing
 
-  nuEffWith rest nothing = nothing
+  nuEffWith rest nothing = nuActWith rest (actHead? rest)
   nuEffWith .(TLParen ∷ TWord "Eff" ∷ r) (just (r , refl)) = nuCloseP (fSumP r)
+  nuActWith rest nothing = nothing
+  nuActWith .(TLParen ∷ TWord "Act" ∷ r) (just (r , refl)) = nuCloseActP (fSumP r)
+  nuCloseActP (just (F , TRParen ∷ r2)) = just (aNuAct F , r2)
+  {-# CATCHALL #-}
+  nuCloseActP (just (F , _))            = nothing
+  nuCloseActP nothing                   = nothing
 
   prodP toks with atomP toks
   ... | nothing = nothing

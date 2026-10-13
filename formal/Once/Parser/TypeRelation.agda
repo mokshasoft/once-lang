@@ -26,7 +26,7 @@ open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
                                         n≤1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; mk-kind; pure; eff)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; eff)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 
@@ -93,7 +93,7 @@ quantityTokenOf Many = TCaretW
 mutual
 
   -- atom ::= 'Unit' | 'Void' | 'Int' | 'Float' | 'Buffer' | 'String'
-  --        | 'Eff' atom atom | 'IO' atom | '(' type ')'
+  --        | 'Eff' atom atom | 'Act' atom atom | 'IO' atom | '(' type ')'
   data ParsesAtom : List Token → Type → List Token → Set where
 
     pa-unit    : ∀ rest → ParsesAtom (TWord "Unit"   ∷ rest) Unit   rest
@@ -105,6 +105,12 @@ mutual
            → ParsesAtom toks1 A toks2
            → ParsesAtom toks2 B rest
            → ParsesAtom (TWord "Eff" ∷ toks1) (A ⇒[ mk-kind Many eff ] B) rest
+
+    -- D313: 'Act' atom atom — an effectful function that RETURNS.
+    pa-act : ∀ {toks1 toks2 rest} {A B : Type}
+           → ParsesAtom toks1 A toks2
+           → ParsesAtom toks2 B rest
+           → ParsesAtom (TWord "Act" ∷ toks1) (A ⇒[ mk-kind Many act ] B) rest
 
     pa-io : ∀ {toks1 rest} {A : Type}
           → ParsesAtom toks1 A rest
@@ -131,6 +137,12 @@ mutual
     pa-nu-eff : ∀ {toks rest} {F : Functor}
               → ParsesFunctorSum toks F (TRParen ∷ rest)
               → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ toks) (ν-type F eff) rest
+
+    -- D313: 'Nu (Act F)' — the stream whose layers RETURN, ν(T ∘ F) over the
+    -- finite trees. `Act` is not a functor keyword either.
+    pa-nu-act : ∀ {toks rest} {F : Functor}
+              → ParsesFunctorSum toks F (TRParen ∷ rest)
+              → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ toks) (ν-type F act) rest
 
   -- prod ::= atom ('*' atom)*
   data ParsesProd : List Token → Type → List Token → Set where
@@ -245,6 +257,9 @@ mutual
   ParsesAtom-shrinks (pa-eff dA dB) =
     <-trans (ParsesAtom-shrinks dB)
             (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl))
+  ParsesAtom-shrinks (pa-act dA dB) =
+    <-trans (ParsesAtom-shrinks dB)
+            (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl))
   ParsesAtom-shrinks (pa-io dA) =
     <-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)
   ParsesAtom-shrinks (pa-paren dT refl) =
@@ -253,6 +268,11 @@ mutual
   ParsesAtom-shrinks (pa-nu dF) =
     <-trans (ParsesFunctorSum-shrinks dF) (s≤s ≤-refl)
   ParsesAtom-shrinks (pa-nu-eff dF) =
+    <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (ParsesFunctorSum-shrinks dF))
+                              (s≤s ≤-refl))
+                     (s≤s ≤-refl))
+            (s≤s ≤-refl)
+  ParsesAtom-shrinks (pa-nu-act dF) =
     <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (ParsesFunctorSum-shrinks dF))
                               (s≤s ≤-refl))
                      (s≤s ≤-refl))

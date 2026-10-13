@@ -15,14 +15,14 @@
 
 module Once.Grammar.ParserRelation where
 
-open import Once.Spec.Type.Grade using (Many; mk-kind; pure; eff)
+open import Once.Spec.Type.Grade using (Many; mk-kind; pure; act; eff)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 
 import Once.Grammar as G
 open G using (GType)
 open import Once.Grammar.Printer using (Concrete;
                                         c-unit; c-void; c-int; c-float; c-prod; c-sum;
-                                        c-fun; c-eff)
+                                        c-fun; c-eff; c-act)
 
 -- Re-export the parser-layer relations, predicates, and shrinks.
 
@@ -36,3 +36,4 @@ toType (c-prod cA cB) = toType cA * toType cB
 toType (c-sum  cA cB) = toType cA + toType cB
 toType (c-fun {q = q} cA cB) = toType cA ⇒[ mk-kind q pure ] toType cB
 toType (c-eff  cA cB) = toType cA ⇒[ mk-kind Many eff ] toType cB
+toType (c-act  cA cB) = toType cA ⇒[ mk-kind Many act ] toType cB

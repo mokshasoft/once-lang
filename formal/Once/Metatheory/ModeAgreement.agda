@@ -33,7 +33,7 @@ open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.Spec.Type as T using (Type; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 import Once.Spec.Type.Grade as T
-open import Once.Spec.Type.Poly as T using (PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PInt; PFloat; PTVar; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Type.Poly as T using (PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PInt; PFloat; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure)
 open import Once.Type.Determined using (cod-determined)
 open import Data.String using (String)
@@ -88,6 +88,8 @@ mutual
     cong₂ (λ X Y → X ⇒[ T.mk-kind q T.pure ] Y) (extractGround-irr A gA gA′) (extractGround-irr B gB gB′)
   extractGround-irr (PEff A B) (gA , gB) (gA′ , gB′) =
     cong₂ (λ X Y → X ⇒[ T.mk-kind T.Many T.eff ] Y) (extractGround-irr A gA gA′) (extractGround-irr B gB gB′)
+  extractGround-irr (PAct A B) (gA , gB) (gA′ , gB′) =
+    cong₂ (λ X Y → X ⇒[ T.mk-kind T.Many T.act ] Y) (extractGround-irr A gA gA′) (extractGround-irr B gB gB′)
   extractGround-irr (Pμ-type F) g g′ = cong μ-type (extractGroundF-irr F g g′)
   extractGround-irr (Pν-type F π) g g′ = cong (λ G → ν-type G π) (extractGroundF-irr F g g′)
   extractGround-irr PInt _ _ = refl
@@ -189,6 +191,8 @@ dpoly-det : ∀ {s sd sc sd′ sc′ : T.PolyType} {π′ π″ : T.Purity} {A B
 dpoly-det {sd = sd} {sc = sc} T.as-pure T.as-pure inc θ θ′ refl e′ with ⇒-parts e′
 ... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
 dpoly-det {sd = sd} {sc = sc} T.as-eff T.as-eff inc θ θ′ refl e′ with ⇒-parts e′
+... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
+dpoly-det {sd = sd} {sc = sc} T.as-act T.as-act inc θ θ′ refl e′ with ⇒-parts e′
 ... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
 
 mutual

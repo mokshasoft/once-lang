@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Parser.Token
 open import Once.Parser.Generic.Relation
 import Once.Parser.Generic.Parser as P
-open P using (effHead?)
+open P using (effHead?; actHead?)
 
 module Make (alg : TyAlg) where
   open TyAlg alg
@@ -45,7 +45,11 @@ module Make (alg : TyAlg) where
     sound-nuEff : ∀ (rest : List Token) (e : Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Eff" ∷ r))
       → effHead? rest ≡ e → (a : Acc _<_ (length (TWord "Nu" ∷ rest))) {T : R} {r2 : List Token} →
       nuEffWith rest e ≡ just (T , r2) → ParsesAtomG (TWord "Nu" ∷ rest) T r2
-    sound-nuEff rest nothing _ a ()
+    -- D313: … else `Nu ( Act F )`, which `actHead?` decides.
+    sound-nuEff rest nothing _ (acc rec) h with actHead? rest
+    ... | just (r , refl) with fSumP r in eq2
+    ...   | just (F , TRParen ∷ r2) with sound-fSum r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))) eq2
+    ...     | dF with refl ← just-injective h = pa-nu-act dF
     sound-nuEff .(TLParen ∷ TWord "Eff" ∷ r) (just (r , refl)) _ (acc rec) h with fSumP r in eq2
     ... | just (F , TRParen ∷ r2) with sound-fSum r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))) eq2
     ...   | dF with refl ← just-injective h = pa-nu-eff dF
@@ -68,22 +72,29 @@ module Make (alg : TyAlg) where
     ...               | just (B , r2) with sound-atom r1 (rec (<-trans (atomShrink dA) (s≤s ≤-refl))) eq2
     ...                 | dB with refl ← just-injective h = pa-eff dA dB
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
+      | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Act"
+    ... | yes refl with atomP rest in eq1
+    ...   | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
+    ...     | dA with atomP r1 in eq2
+    ...       | just (B , r2) with sound-atom r1 (rec (<-trans (atomShrink dA) (s≤s ≤-refl))) eq2
+    ...         | dB with refl ← just-injective h = pa-act dA dB
+    sound-kw (TWord name ∷ rest) (acc rec) h
+      | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
     ... | yes refl with atomP rest in eq1
     ...   | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
     ...     | dA with refl ← just-injective h = pa-io dA
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-mu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-nu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | yes refl | nothing
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | yes refl | nothing
       = sound-nuEff rest (effHead? rest) refl (acc rec) h
     sound-kw (TLParen ∷ rest) (acc rec) h with typeP rest in eq1
     ... | just (T , TRParen ∷ rest2) with sound-type rest (rec (s≤s ≤-refl)) eq1

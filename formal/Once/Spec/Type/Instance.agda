@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
 open import Once.Spec.Type using (Type; rigid; TKind; k-base; k-any)
 open import Once.Spec.Type.Poly
-  using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff;
+  using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; ftv; substPoly)
 open import Once.Spec.Type.WellFormed using (IsBaseType)
 
@@ -49,6 +49,7 @@ mutual
   ftvK (A P+ B)      = ftvK A ++ ftvK B
   ftvK (A P⇒[ _ ] B) = ftvK A ++ ftvK B
   ftvK (PEff A B)    = ftvK A ++ ftvK B
+  ftvK (PAct A B)    = ftvK A ++ ftvK B
   ftvK (Pμ-type F)   = ftvKF F
   ftvK (Pν-type F _) = ftvKF F
 

@@ -28,6 +28,10 @@ module Make (alg : TyAlg) where
   fSum-parenEff : ∀ toks → fSumP (TLParen ∷ TWord "Eff" ∷ toks) ≡ nothing
   fSum-parenEff toks = refl
 
+  -- D313: and `( Act …`; the effectful-stream head rejects it too.
+  fSum-parenAct : ∀ toks → fSumP (TLParen ∷ TWord "Act" ∷ toks) ≡ nothing
+  fSum-parenAct toks = refl
+
   mutual
     complete-atom : ∀ {toks T rest} → ParsesAtomG toks T rest → atomP toks ≡ just (T , rest)
     complete-atom (pa-unit rest)   rewrite extraMiss-Unit rest   = refl
@@ -36,6 +40,8 @@ module Make (alg : TyAlg) where
     complete-atom (pa-float rest)  rewrite extraMiss-Float rest  = refl
     complete-atom (pa-eff {toks1} dA dB)
       rewrite extraMiss-Eff toks1 | complete-atom dA | complete-atom dB = refl
+    complete-atom (pa-act {toks1} dA dB)
+      rewrite extraMiss-Act toks1 | complete-atom dA | complete-atom dB = refl
     complete-atom (pa-io {toks1} dA)
       rewrite extraMiss-IO toks1 | complete-atom dA = refl
     complete-atom (pa-mu {toks} dF)
@@ -45,6 +51,8 @@ module Make (alg : TyAlg) where
     -- D233: the pure attempt fails on `( Eff` (`Eff` is no functor keyword).
     complete-atom (pa-nu-eff {toks} dF)
       rewrite extraMiss-Nu (TLParen ∷ TWord "Eff" ∷ toks) | fSum-parenEff toks | complete-fSum dF = refl
+    complete-atom (pa-nu-act {toks} dF)
+      rewrite extraMiss-Nu (TLParen ∷ TWord "Act" ∷ toks) | fSum-parenAct toks | complete-fSum dF = refl
     complete-atom (pa-extra ex) rewrite extraComplete ex = refl
     complete-atom (pa-paren {toks} dT refl)
       rewrite extraMiss-LParen toks | complete-type dT = refl

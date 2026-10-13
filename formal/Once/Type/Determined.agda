@@ -50,6 +50,9 @@ mutual
   agree-on θ θ′ (PEff A B) h =
     cong₂ (λ a b → a ⇒[ mk-kind Many eff ] b)
       (agree-on θ θ′ A (λ m → h (∈-++⁺ˡ m))) (agree-on θ θ′ B (λ m → h (∈-++⁺ʳ (ftv A) m)))
+  agree-on θ θ′ (PAct A B) h =
+    cong₂ (λ a b → a ⇒[ mk-kind Many act ] b)
+      (agree-on θ θ′ A (λ m → h (∈-++⁺ˡ m))) (agree-on θ θ′ B (λ m → h (∈-++⁺ʳ (ftv A) m)))
   agree-on θ θ′ (Pμ-type F) h = cong μ-type (agreeF-on θ θ′ F h)
   agree-on θ θ′ (Pν-type F π) h = cong (λ f → ν-type f π) (agreeF-on θ θ′ F h)
 
@@ -90,6 +93,7 @@ mutual
   agree-from θ θ′ (A P+ B) e m = pair-from θ θ′ A B (+-inj e) m
   agree-from θ θ′ (A P⇒[ q ] B) e m = pair-from θ θ′ A B (⇒-inj e) m
   agree-from θ θ′ (PEff A B) e m = pair-from θ θ′ A B (⇒-inj e) m
+  agree-from θ θ′ (PAct A B) e m = pair-from θ θ′ A B (⇒-inj e) m
   agree-from θ θ′ (Pμ-type F) e m = agreeF-from θ θ′ F (μ-inj e) m
   agree-from θ θ′ (Pν-type F π) e m = agreeF-from θ θ′ F (ν-inj e) m
 
@@ -132,6 +136,7 @@ ArrowView s = Σ-syntax PolyType (λ sd → Σ-syntax PolyType (λ sc → Σ-syn
 arrowSchema? : (s : PolyType) → Maybe (ArrowView s)
 arrowSchema? (sd P⇒[ Many ] sc) = just (sd , sc , pure , as-pure)
 arrowSchema? (PEff sd sc)       = just (sd , sc , eff , as-eff)
+arrowSchema? (PAct sd sc)       = just (sd , sc , act , as-act)
 arrowSchema? (_ P⇒[ Zero ] _)   = nothing
 arrowSchema? (_ P⇒[ One ] _)    = nothing
 arrowSchema? (PTVar _)          = nothing

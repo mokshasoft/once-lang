@@ -21,7 +21,7 @@ open import Data.Product using (Σ; _×_; _,_)
 open import Data.String using (String)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Quantity; Many; Purity; pure; eff; mk-kind)
+open import Once.Spec.Type.Grade using (Quantity; Many; Purity; pure; act; eff; mk-kind)
 open import Once.Spec.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; K; Id; _⊕_; _⊗_)
 
@@ -38,7 +38,8 @@ mutual
     _P*_    : PolyType → PolyType → PolyType
     _P+_    : PolyType → PolyType → PolyType
     _P⇒[_]_ : PolyType → Quantity → PolyType → PolyType   -- a pure arrow
-    PEff    : PolyType → PolyType → PolyType               -- an effectful arrow
+    PEff    : PolyType → PolyType → PolyType               -- an effectful arrow (`Eff A B`)
+    PAct    : PolyType → PolyType → PolyType               -- one that returns (`Act A B`, D313)
     Pμ-type : PolyFunctor → PolyType
     Pν-type : PolyFunctor → Purity → PolyType
     PInt    : PolyType
@@ -69,6 +70,7 @@ mutual
   Ground (A P+ B)        = Ground A × Ground B
   Ground (A P⇒[ _ ] B)   = Ground A × Ground B
   Ground (PEff A B)      = Ground A × Ground B
+  Ground (PAct A B)      = Ground A × Ground B
   Ground (Pμ-type F)     = GroundF F
   Ground (Pν-type F _)   = GroundF F
   Ground PInt            = ⊤
@@ -89,6 +91,7 @@ mutual
   extractGround (A P+ B)         (gA , gB) = extractGround A gA + extractGround B gB
   extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ mk-kind q pure ] extractGround B gB
   extractGround (PEff A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many eff ] extractGround B gB
+  extractGround (PAct A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many act ] extractGround B gB
   extractGround (Pμ-type F)      g        = μ-type (extractGroundF F g)
   extractGround (Pν-type F π)    g        = ν-type (extractGroundF F g) π
   extractGround PInt             _        = Int
@@ -110,6 +113,7 @@ mutual
   substPoly θ (A P+ B)      = substPoly θ A + substPoly θ B
   substPoly θ (A P⇒[ q ] B) = substPoly θ A ⇒[ mk-kind q pure ] substPoly θ B
   substPoly θ (PEff A B)    = substPoly θ A ⇒[ mk-kind Many eff ] substPoly θ B
+  substPoly θ (PAct A B)    = substPoly θ A ⇒[ mk-kind Many act ] substPoly θ B
   substPoly θ (Pμ-type F)   = μ-type (substPolyF θ F)
   substPoly θ (Pν-type F π) = ν-type (substPolyF θ F) π
 
@@ -135,6 +139,7 @@ mutual
   ftv (A P+ B)      = ftv A ++ ftv B
   ftv (A P⇒[ _ ] B) = ftv A ++ ftv B
   ftv (PEff A B)    = ftv A ++ ftv B
+  ftv (PAct A B)    = ftv A ++ ftv B
   ftv (Pμ-type F)   = ftvF F
   ftv (Pν-type F _) = ftvF F
 
@@ -149,10 +154,12 @@ mutual
 ------------------------------------------------------------------------
 
 -- An arrow schema split into its domain, codomain and grade (`A -> B` is the
--- pure unrestricted arrow, `Eff A B` the effectful one).
+-- pure unrestricted arrow, `Act A B` the effectful one that returns, `Eff A B`
+-- the effectful one that need not).
 data ArrowSchema : PolyType → PolyType → PolyType → Purity → Set where
   as-pure : ∀ {sd sc} → ArrowSchema (sd P⇒[ Many ] sc) sd sc pure
   as-eff  : ∀ {sd sc} → ArrowSchema (PEff sd sc) sd sc eff
+  as-act  : ∀ {sd sc} → ArrowSchema (PAct sd sc) sd sc act
 
 -- The codomain's variables occur in the domain, so an instance's domain
 -- determines its codomain.

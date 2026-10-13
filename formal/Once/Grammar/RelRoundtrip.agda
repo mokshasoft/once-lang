@@ -33,9 +33,9 @@ import Once.Grammar as G
 open G using (GType)
 open import Once.Grammar.Printer using (printGType; quantityToken; Concrete;
                                         c-unit; c-void; c-int; c-float; c-prod; c-sum;
-                                        c-fun; c-eff)
+                                        c-fun; c-eff; c-act)
 open import Once.Grammar.ParserRelation
-open import Once.Parser.TypeRelation using (NotArrowOrGrade; NotCont; NotStar; NotStarPlus; ParsesAtom; ParsesType; pa-eff; pa-float; pa-int; pa-paren; pa-unit; pa-void; pat-arrow-g; pat-done; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk; quantityTokenOf)
+open import Once.Parser.TypeRelation using (NotArrowOrGrade; NotCont; NotStar; NotStarPlus; ParsesAtom; ParsesType; pa-eff; pa-act; pa-float; pa-int; pa-paren; pa-unit; pa-void; pat-arrow-g; pat-done; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk; quantityTokenOf)
 
 ------------------------------------------------------------------------
 -- quantityToken from Printer matches quantityTokenOf in the relation
@@ -223,6 +223,20 @@ mutual
         (pt-mk
           (ps-mk
             (pp-mk (pa-eff (rt-atom cA (printGType B ++ TRParen ∷ rest))
+                           (rt-atom cB (TRParen ∷ rest)))
+                   (ppt-done tt))
+            (pst-done tt))
+          (pat-done tt))
+        refl
+
+  -- D313: Act A B, as Eff A B.
+  rt-atom (c-act {A = A} {B = B} cA cB) rest
+    rewrite ++-assoc (printGType A) (printGType B ++ TRParen ∷ []) rest
+          | ++-assoc (printGType B) (TRParen ∷ []) rest
+    = pa-paren
+        (pt-mk
+          (ps-mk
+            (pp-mk (pa-act (rt-atom cA (printGType B ++ TRParen ∷ rest))
                            (rt-atom cB (TRParen ∷ rest)))
                    (ppt-done tt))
             (pst-done tt))

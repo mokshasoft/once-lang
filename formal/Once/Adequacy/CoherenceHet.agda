@@ -68,6 +68,7 @@ private
            → T.ArrowSchema s sd sc π → T.ArrowSchema s sd′ sc′ π′ → π ≡ π′
   as-grade T.as-pure T.as-pure = refl
   as-grade T.as-eff  T.as-eff  = refl
+  as-grade T.as-act  T.as-act  = refl
 
   cod-≡ : ∀ {A A′ B B′ : Type} {k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → B ≡ B′
   cod-≡ refl = refl

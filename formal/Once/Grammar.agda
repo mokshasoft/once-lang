@@ -58,7 +58,8 @@ mutual
   _⇒[_]_  : GType → Quantity → GType → GType  -- Graded function: A -q> B (A^q -> B)
   _⊗_     : GType → GType → GType              -- Product: A * B
   _⊕_     : GType → GType → GType              -- Sum: A + B
-  TEff    : GType → GType → GType              -- Effect: Eff A B
+  TEff    : GType → GType → GType              -- Effect: Eff A B (may run forever)
+  TAct    : GType → GType → GType              -- D313: Act A B (returns)
 
   -- Initial algebra of a polynomial functor: Mu F.
   GMu     : GFunctor → GType
@@ -71,6 +72,9 @@ mutual
 
   -- D233: the EFFECTFUL stream `Nu (Eff F)` = ν(T ∘ F).
   GNuEff  : GFunctor → GType
+
+  -- D313: the stream whose layers RETURN, `Nu (Act F)`.
+  GNuAct  : GFunctor → GType
 
   -- Type variable (for polymorphism and aliases)
   TVar    : UpperIdent → GType

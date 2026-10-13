@@ -109,6 +109,7 @@ mutual
   zonk (suc n) s (a P+ b)      = zonk n s a P+ zonk n s b
   zonk (suc n) s (a P⇒[ q ] b) = zonk n s a P⇒[ q ] zonk n s b
   zonk (suc n) s (PEff a b)    = PEff (zonk n s a) (zonk n s b)
+  zonk (suc n) s (PAct a b)    = PAct (zonk n s a) (zonk n s b)
   zonk (suc n) s (Pμ-type F)   = Pμ-type (zonkF n s F)
   zonk (suc n) s (Pν-type F π)   = Pν-type (zonkF n s F) π
   {-# CATCHALL #-}
@@ -131,6 +132,7 @@ mutual
   occurs x (a P+ b)      = occurs x a ∨ occurs x b
   occurs x (a P⇒[ _ ] b) = occurs x a ∨ occurs x b
   occurs x (PEff a b)    = occurs x a ∨ occurs x b
+  occurs x (PAct a b)    = occurs x a ∨ occurs x b
   occurs x (Pμ-type F)   = occursF x F
   occurs x (Pν-type F _) = occursF x F
   {-# CATCHALL #-}
@@ -177,6 +179,7 @@ mutual
   unify' n s (a P⇒[ q ] b) (a' P⇒[ q' ] b') =
     if does (q ≟q q') then unify2 n s a a' b b' else nothing
   unify' n s (PEff a b) (PEff a' b') = unify2 n s a a' b b'
+  unify' n s (PAct a b) (PAct a' b') = unify2 n s a a' b b'
   unify' n s (Pμ-type F) (Pμ-type G) = unifyF n s F G
   unify' n s (Pν-type F π) (Pν-type G π′) =
     if purityEqBool π π′ then unifyF n s F G else nothing
@@ -220,10 +223,13 @@ mutual
     map2P (λ x y → x P⇒[ q ] y) (typeToPoly a) (typeToPoly b)
   typeToPoly (a ⇒[ mk-kind Many eff ] b) =
     map2P PEff (typeToPoly a) (typeToPoly b)
+  typeToPoly (a ⇒[ mk-kind Many act ] b) =
+    map2P PAct (typeToPoly a) (typeToPoly b)
   {-# CATCHALL #-}
   typeToPoly (a ⇒[ mk-kind _ eff ] b) = nothing
+  typeToPoly (a ⇒[ mk-kind Zero act ] b) = nothing
+  typeToPoly (a ⇒[ mk-kind One act ] b) = nothing
   typeToPoly (a ⇒[ mk-kind _ eff⁺ ] b) = nothing
-  typeToPoly (a ⇒[ mk-kind _ act ] b) = nothing   -- D313: no PolyType image yet (plan 0.117 F1)
   typeToPoly (μ-type F) with functorToPoly F
   ... | just G  = just (Pμ-type G)
   ... | nothing = nothing
@@ -324,6 +330,10 @@ mutual
     let (a' , n₁ , acc₁) = freshen a n acc
         (b' , n₂ , acc₂) = freshen b n₁ acc₁
     in PEff a' b' , n₂ , acc₂
+  freshen (PAct a b) n acc =
+    let (a' , n₁ , acc₁) = freshen a n acc
+        (b' , n₂ , acc₂) = freshen b n₁ acc₁
+    in PAct a' b' , n₂ , acc₂
   freshen (Pμ-type F) n acc =
     let (F' , n₁ , acc₁) = freshenF F n acc in Pμ-type F' , n₁ , acc₁
   freshen (Pν-type F π) n acc =
@@ -574,6 +584,10 @@ renameVars t = proj₁ (freshen' t 0 [])
       let (a' , k₁ , acc₁) = freshen' a k acc
           (b' , k₂ , acc₂) = freshen' b k₁ acc₁
       in PEff a' b' , k₂ , acc₂
+    freshen' (PAct a b) k acc =
+      let (a' , k₁ , acc₁) = freshen' a k acc
+          (b' , k₂ , acc₂) = freshen' b k₁ acc₁
+      in PAct a' b' , k₂ , acc₂
     freshen' (Pμ-type F) k acc =
       let (F' , k₁ , acc₁) = freshenF' F k acc in Pμ-type F' , k₁ , acc₁
     freshen' (Pν-type F π) k acc =

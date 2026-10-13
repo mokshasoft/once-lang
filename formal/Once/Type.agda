@@ -31,7 +31,7 @@ open import Once.Spec.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any;
          Functor; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type.Poly
-  using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff;
+  using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
 
 
@@ -173,6 +173,7 @@ mutual
   isGround (A P+ B)       = both-ground (isGround A) (isGround B)
   isGround (A P⇒[ _ ] B)  = both-ground (isGround A) (isGround B)
   isGround (PEff A B)     = both-ground (isGround A) (isGround B)
+  isGround (PAct A B)     = both-ground (isGround A) (isGround B)
   isGround (Pμ-type F)    = isGroundF F     -- Ground (Pμ-type F) = GroundF F
   isGround (Pν-type F _)  = isGroundF F     -- Ground (Pν-type F) = GroundF F
   isGround PInt         = inj₁ tt
@@ -192,6 +193,7 @@ mutual
   showPolyType (A P+ B)         = "(" ++ showPolyType A ++ " + " ++ showPolyType B ++ ")"
   showPolyType (A P⇒[ q ] B)    = "(" ++ showPolyType A ++ " " ++ showQuantity q ++ "→ " ++ showPolyType B ++ ")"
   showPolyType (PEff A B)       = "Eff " ++ showPolyType A ++ " " ++ showPolyType B
+  showPolyType (PAct A B)       = "Act " ++ showPolyType A ++ " " ++ showPolyType B
   showPolyType (Pμ-type F)      = "μ " ++ showPolyFunctor F
   showPolyType (Pν-type F pure) = "ν " ++ showPolyFunctor F
   showPolyType (Pν-type F eff)  = "ν (Eff " ++ showPolyFunctor F ++ ")"

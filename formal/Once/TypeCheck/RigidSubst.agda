@@ -103,6 +103,7 @@ mutual
   substPoly-ρ̂ θ (A P+ B)      = cong₂ _+_ (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
   substPoly-ρ̂ θ (A P⇒[ q ] B) = cong₂ (λ a b → a ⇒[ mk-kind q pure ] b) (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
   substPoly-ρ̂ θ (PEff A B)    = cong₂ (λ a b → a ⇒[ mk-kind Many eff ] b) (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
+  substPoly-ρ̂ θ (PAct A B)    = cong₂ (λ a b → a ⇒[ mk-kind Many act ] b) (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
   substPoly-ρ̂ θ (Pμ-type F)   = cong μ-type (substPolyF-ρ̂ θ F)
   substPoly-ρ̂ θ (Pν-type F π) = cong (λ G → ν-type G π) (substPolyF-ρ̂ θ F)
 

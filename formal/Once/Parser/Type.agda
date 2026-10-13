@@ -44,7 +44,7 @@ open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind; pure; eff)
+open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind; pure; act; eff)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 open import Once.Parser.Core
@@ -211,15 +211,24 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
                                      (rec (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)))
 ...     | nothing = nothing
 ...     | just (B , rest2 , dB) = just (A ⇒[ mk-kind Many eff ] B , rest2 , pa-eff dA dB)
+-- D313: Act A B — as Eff, at the terminating grade.
+parseTypeAtomWF (TWord name ∷ rest) (acc rec)
+  | no _ | no _ | no _ | no _ | no _ with name ≟ "Act"
+... | yes refl with parseTypeAtomWF rest (rec (s≤s ≤-refl))
+...   | nothing = nothing
+...   | just (A , rest1 , dA) with parseTypeAtomWF rest1
+                                     (rec (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)))
+...     | nothing = nothing
+...     | just (B , rest2 , dB) = just (A ⇒[ mk-kind Many act ] B , rest2 , pa-act dA dB)
 -- IO A desugars to Eff Unit A.
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
-  | no _ | no _ | no _ | no _ | no _ with name ≟ "IO"
+  | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "IO"
 ... | yes refl with parseTypeAtomWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
 ...   | just (A , rest1 , dA) = just (Unit ⇒[ mk-kind Many eff ] A , rest1 , pa-io dA)
 -- Mu F: parse the functor body (initial algebra).
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
-  | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Mu"
+  | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Mu"
 ... | yes refl with parseFunctorSumWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
 ...   | just (F , rest1 , dF) = just (μ-type F , rest1 , pa-mu dF)
@@ -227,11 +236,11 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
 -- of the language had no surface type, so an `ana` could not be annotated
 -- and the ν codegen path was unreachable from source (D189).
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
-  | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Nu"
+  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Nu"
 ... | yes refl = parseNuWF rest rec
 -- Non-keyword TWord: no derivation exists.
 parseTypeAtomWF (TWord name ∷ rest) _
-  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
 
 -- TLParen: delegate to the named helper.
 parseTypeAtomWF (TLParen ∷ rest) (acc rec) = parseTypeAtomWF-TLParen rest (rec (s≤s ≤-refl))
@@ -282,15 +291,24 @@ nuEff (just (F , TRParen ∷ r2 , dF))   = just (ν-type F eff , r2 , pa-nu-eff 
 {-# CATCHALL #-}
 nuEff (just (F , _ , dF))              = nothing
 
-parseNuWord : (w : String) (r : List Token) → Dec (w ≡ "Eff")
+-- D313: `Nu (Act F)`, likewise.
+nuAct : ∀ {r} → ParseFunctorSumD r → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ r)
+nuAct nothing                          = nothing
+nuAct (just (F , TRParen ∷ r2 , dF))   = just (ν-type F act , r2 , pa-nu-act dF)
+{-# CATCHALL #-}
+nuAct (just (F , _ , dF))              = nothing
+
+parseNuWord : (w : String) (r : List Token) → Dec (w ≡ "Eff") → Dec (w ≡ "Act")
             → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ TLParen ∷ TWord w ∷ r))
             → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord w ∷ r)
-parseNuWord .("Eff") r (yes refl) rec =
+parseNuWord .("Eff") r (yes refl) _ rec =
   nuEff (parseFunctorSumWF r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))))
-parseNuWord w r (no _) rec = nothing
+parseNuWord .("Act") r (no _) (yes refl) rec =
+  nuAct (parseFunctorSumWF r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))))
+parseNuWord w r (no _) (no _) rec = nothing
 
 parseNuEffWF : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest)) → ParseAtomD (TWord "Nu" ∷ rest)
-parseNuEffWF (TLParen ∷ TWord w ∷ r) rec = parseNuWord w r (w ≟ "Eff") rec
+parseNuEffWF (TLParen ∷ TWord w ∷ r) rec = parseNuWord w r (w ≟ "Eff") (w ≟ "Act") rec
 {-# CATCHALL #-}
 parseNuEffWF _ _ = nothing
 

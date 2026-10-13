@@ -86,6 +86,8 @@ record TyAlg : Set₁ where
     R RF : Set
     aUnit aVoid aInt aFloat : R
     aProd aSum aEff : R → R → R
+    -- D313: `Act A B`, the effectful function that returns.
+    aAct : R → R → R
     aArrow : Quantity → R → R → R
     aMu : RF → R
     -- D191 follow-on: the ν introduction, `aMu`'s mirror. Needed because DEF
@@ -94,6 +96,8 @@ record TyAlg : Set₁ where
     aNu : RF → R
     -- D233: the effectful stream `Nu (Eff F)` = ν(T ∘ F).
     aNuEff : RF → R
+    -- D313: `Nu (Act F)`, the stream whose layers return.
+    aNuAct : RF → R
     fK : R → RF
     fId : RF
     fSum fProd : RF → RF → RF
@@ -107,6 +111,7 @@ record TyAlg : Set₁ where
     extraMiss-Int    : (rest : List Token) → extraP (TWord "Int"    ∷ rest) ≡ nothing
     extraMiss-Float  : (rest : List Token) → extraP (TWord "Float"  ∷ rest) ≡ nothing
     extraMiss-Eff    : (rest : List Token) → extraP (TWord "Eff"    ∷ rest) ≡ nothing
+    extraMiss-Act    : (rest : List Token) → extraP (TWord "Act"    ∷ rest) ≡ nothing
     extraMiss-IO     : (rest : List Token) → extraP (TWord "IO"     ∷ rest) ≡ nothing
     extraMiss-Mu     : (rest : List Token) → extraP (TWord "Mu"     ∷ rest) ≡ nothing
     extraMiss-Nu     : (rest : List Token) → extraP (TWord "Nu"     ∷ rest) ≡ nothing
@@ -477,6 +482,9 @@ module Gen (alg : TyAlg) where
       pa-eff : ∀ {toks1 toks2 rest} {A B : R}
              → ParsesAtomG toks1 A toks2 → ParsesAtomG toks2 B rest
              → ParsesAtomG (TWord "Eff" ∷ toks1) (aEff A B) rest
+      pa-act : ∀ {toks1 toks2 rest} {A B : R}
+             → ParsesAtomG toks1 A toks2 → ParsesAtomG toks2 B rest
+             → ParsesAtomG (TWord "Act" ∷ toks1) (aAct A B) rest
       pa-io : ∀ {toks1 rest} {A : R}
             → ParsesAtomG toks1 A rest → ParsesAtomG (TWord "IO" ∷ toks1) (aEff aUnit A) rest
       pa-mu : ∀ {toks rest} {F : RF}
@@ -487,6 +495,10 @@ module Gen (alg : TyAlg) where
       pa-nu-eff : ∀ {toks rest} {F : RF}
                 → ParsesFuncSumG toks F (TRParen ∷ rest)
                 → ParsesAtomG (TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ toks) (aNuEff F) rest
+      -- D313: `Nu ( Act F )`, likewise.
+      pa-nu-act : ∀ {toks rest} {F : RF}
+                → ParsesFuncSumG toks F (TRParen ∷ rest)
+                → ParsesAtomG (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ toks) (aNuAct F) rest
       pa-extra : ∀ {toks a rest} → Extra toks a rest → ParsesAtomG toks a rest
       pa-paren : ∀ {toks rest1 rest2} {T : R}
                → ParsesTypeG toks T rest1 → rest1 ≡ TRParen ∷ rest2
@@ -561,10 +573,13 @@ module Gen (alg : TyAlg) where
     atomShrink (pa-int rest)    = s≤s ≤-refl
     atomShrink (pa-float rest)  = s≤s ≤-refl
     atomShrink (pa-eff dA dB) = <-trans (atomShrink dB) (<-trans (atomShrink dA) (s≤s ≤-refl))
+    atomShrink (pa-act dA dB) = <-trans (atomShrink dB) (<-trans (atomShrink dA) (s≤s ≤-refl))
     atomShrink (pa-io dA) = <-trans (atomShrink dA) (s≤s ≤-refl)
     atomShrink (pa-mu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
     atomShrink (pa-nu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
     atomShrink (pa-nu-eff dF) =
+      <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (funcSumShrink dF)) (s≤s ≤-refl)) (s≤s ≤-refl)) (s≤s ≤-refl)
+    atomShrink (pa-nu-act dF) =
       <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (funcSumShrink dF)) (s≤s ≤-refl)) (s≤s ≤-refl)) (s≤s ≤-refl)
     atomShrink (pa-extra ex) = extraShrink ex
     atomShrink (pa-paren dT refl) = <-trans (s≤s ≤-refl) (<-trans (typeShrink dT) (s≤s ≤-refl))

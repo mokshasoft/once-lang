@@ -40,7 +40,7 @@ open import Once.Spec.Type using (Type)
 open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)
-open import Once.Parser.TypeRelation using (ParsesArrowTail; ParsesAtom; ParsesAtom-shrinks; ParsesFunctorAtom; ParsesFunctorAtom-shrinks; ParsesFunctorProd; ParsesFunctorProd-shrinks; ParsesFunctorProdTail; ParsesFunctorSum; ParsesFunctorSumTail; ParsesProd; ParsesProd-shrinks; ParsesProdTail; ParsesSum; ParsesSum-shrinks; ParsesSumTail; ParsesType; pa-eff; pa-float; pa-int; pa-io; pa-mu; pa-nu; pa-nu-eff; pa-paren; pa-unit; pa-void; pat-arrow; pat-arrow-g; pat-done; pfa-id; pfa-k; pfa-paren; pfp-mk; pfpt-done; pfpt-star; pfs-mk; pfst-done; pfst-plus; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk)
+open import Once.Parser.TypeRelation using (ParsesArrowTail; ParsesAtom; ParsesAtom-shrinks; ParsesFunctorAtom; ParsesFunctorAtom-shrinks; ParsesFunctorProd; ParsesFunctorProd-shrinks; ParsesFunctorProdTail; ParsesFunctorSum; ParsesFunctorSumTail; ParsesProd; ParsesProd-shrinks; ParsesProdTail; ParsesSum; ParsesSum-shrinks; ParsesSumTail; ParsesType; pa-eff; pa-act; pa-nu-act; pa-float; pa-int; pa-io; pa-mu; pa-nu; pa-nu-eff; pa-paren; pa-unit; pa-void; pat-arrow; pat-arrow-g; pat-done; pfa-id; pfa-k; pfa-paren; pfp-mk; pfpt-done; pfpt-star; pfs-mk; pfst-done; pfst-plus; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk)
 
 ------------------------------------------------------------------------
 -- Irrelevance of Acc for each WF parser
@@ -183,6 +183,28 @@ fSumParenEff : ∀ toks (a : Acc _<_ (length (TLParen ∷ TWord "Eff" ∷ toks))
              → parseFunctorSumWF (TLParen ∷ TWord "Eff" ∷ toks) a ≡ nothing
 fSumParenEff toks (acc rec) rewrite fProdParenEff toks (acc rec) = refl
 
+-- D313: and `Act` likewise.
+fAtomAct : ∀ toks (a : Acc _<_ (length (TWord "Act" ∷ toks))) → parseFunctorAtomWF (TWord "Act" ∷ toks) a ≡ nothing
+fAtomAct toks (acc rec) = refl
+
+fProdAct : ∀ toks (a : Acc _<_ (length (TWord "Act" ∷ toks))) → parseFunctorProdWF (TWord "Act" ∷ toks) a ≡ nothing
+fProdAct toks (acc rec) rewrite fAtomAct toks (acc rec) = refl
+
+fSumAct : ∀ toks (a : Acc _<_ (length (TWord "Act" ∷ toks))) → parseFunctorSumWF (TWord "Act" ∷ toks) a ≡ nothing
+fSumAct toks (acc rec) rewrite fProdAct toks (acc rec) = refl
+
+fAtomParenAct : ∀ toks (a : Acc _<_ (length (TLParen ∷ TWord "Act" ∷ toks)))
+              → parseFunctorAtomWF (TLParen ∷ TWord "Act" ∷ toks) a ≡ nothing
+fAtomParenAct toks (acc rec) rewrite fSumAct toks (rec (s≤s ≤-refl)) = refl
+
+fProdParenAct : ∀ toks (a : Acc _<_ (length (TLParen ∷ TWord "Act" ∷ toks)))
+              → parseFunctorProdWF (TLParen ∷ TWord "Act" ∷ toks) a ≡ nothing
+fProdParenAct toks (acc rec) rewrite fAtomParenAct toks (acc rec) = refl
+
+fSumParenAct : ∀ toks (a : Acc _<_ (length (TLParen ∷ TWord "Act" ∷ toks)))
+             → parseFunctorSumWF (TLParen ∷ TWord "Act" ∷ toks) a ≡ nothing
+fSumParenAct toks (acc rec) rewrite fProdParenAct toks (acc rec) = refl
+
 mutual
 
   complete-atomWFraw :
@@ -267,6 +289,17 @@ mutual
     rewrite eqB
     = _ , refl
 
+  -- D313: Act A B, as Eff A B.
+  complete-atomWFraw (pa-act {toks1 = toks1} {toks2 = toks2} {rest}
+                             dA dB) (acc rec)
+    with complete-atomWFraw dA (rec (s≤s ≤-refl))
+  ... | dA' , eqA
+    rewrite eqA
+    with complete-atomWFraw dB (rec (<-trans (ParsesAtom-shrinks dA') (s≤s ≤-refl)))
+  ... | dB' , eqB
+    rewrite eqB
+    = _ , refl
+
   -- IO A: single recursive atom parse, desugar to Eff Unit A.
   complete-atomWFraw (pa-io {toks1 = toks1} {rest} dA) (acc rec)
     with complete-atomWFraw dA (rec (s≤s ≤-refl))
@@ -300,6 +333,14 @@ mutual
   -- functor sum is parsed and closed by `)`.
   complete-atomWFraw (pa-nu-eff {toks = toks} dF) (acc rec)
     rewrite fSumParenEff toks (rec (s≤s ≤-refl))
+    with complete-functorSumWFraw dF (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl)))
+  ... | dF' , eqF
+    rewrite eqF
+    = _ , refl
+
+  -- D313: Nu (Act F), as Nu (Eff F).
+  complete-atomWFraw (pa-nu-act {toks = toks} dF) (acc rec)
+    rewrite fSumParenAct toks (rec (s≤s ≤-refl))
     with complete-functorSumWFraw dF (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl)))
   ... | dF' , eqF
     rewrite eqF

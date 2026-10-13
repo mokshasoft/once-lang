@@ -95,8 +95,12 @@ mutual
   -- the decider agrees with `substPoly`).
   instantiateAcc (PEff A B)      (a ⇒[ mk-kind Many eff ] b)  s =
     (instantiateAcc A a s >>= instantiateAcc B b)
+  instantiateAcc (PAct A B)      (a ⇒[ mk-kind Many act ] b)  s =
+    (instantiateAcc A a s >>= instantiateAcc B b)
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero eff ] _)  _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero act ] _)  _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff ] _)   _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind One act ] _)   _ = nothing
   instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
   instantiateAcc (Pν-type F pure) (ν-type f pure) s = instantiateFunctor F f s
   instantiateAcc (Pν-type F eff)  (ν-type f eff)  s = instantiateFunctor F f s
@@ -110,8 +114,11 @@ mutual
   -- D311: no schema writes a `prod` arrow yet (plan 0.117 F).
   instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ eff⁺ ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero eff⁺ ] _) _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero eff⁺ ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff⁺ ] _)  _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind One eff⁺ ] _)  _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Many eff⁺ ] _) _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Many eff⁺ ] _) _ = nothing
   instantiateAcc (Pν-type F act) (ν-type f act) s = instantiateFunctor F f s
   instantiateAcc (Pν-type _ pure) (ν-type _ act) _ = nothing
   instantiateAcc (Pν-type _ eff)  (ν-type _ act) _ = nothing
@@ -121,8 +128,11 @@ mutual
   instantiateAcc (Pν-type _ eff⁺) (ν-type _ act) _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ act ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero act ] _) _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero eff ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One act ] _)  _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind One eff ] _)  _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Many act ] _) _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Many eff ] _) _ = nothing
   -- Shape mismatch on each PolyType constructor (no catch-all).
   instantiateAcc PUnit           Void            _ = nothing
   instantiateAcc PUnit           (_ * _)         _ = nothing
@@ -166,15 +176,26 @@ mutual
   instantiateAcc (_ P⇒[ _ ] _)   Int             _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Float           _ = nothing
   instantiateAcc (PEff _ _)      Unit            _ = nothing
+  instantiateAcc (PAct _ _)      Unit            _ = nothing
   instantiateAcc (PEff _ _)      Void            _ = nothing
+  instantiateAcc (PAct _ _)      Void            _ = nothing
   instantiateAcc (PEff _ _)      (_ * _)         _ = nothing
+  instantiateAcc (PAct _ _)      (_ * _)         _ = nothing
   instantiateAcc (PEff _ _)      (_ + _)         _ = nothing
+  instantiateAcc (PAct _ _)      (_ + _)         _ = nothing
   {-# CATCHALL #-}
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind _ pure ] _) _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero pure ] _) _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind One pure ] _) _ = nothing
+  instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Many pure ] _) _ = nothing
   instantiateAcc (PEff _ _)      (μ-type _)      _ = nothing
+  instantiateAcc (PAct _ _)      (μ-type _)      _ = nothing
   instantiateAcc (PEff _ _)      (ν-type _ _)      _ = nothing
+  instantiateAcc (PAct _ _)      (ν-type _ _)      _ = nothing
   instantiateAcc (PEff _ _)      Int             _ = nothing
+  instantiateAcc (PAct _ _)      Int             _ = nothing
   instantiateAcc (PEff _ _)      Float           _ = nothing
+  instantiateAcc (PAct _ _)      Float           _ = nothing
   instantiateAcc (Pμ-type _)     Unit            _ = nothing
   instantiateAcc (Pμ-type _)     Void            _ = nothing
   instantiateAcc (Pμ-type _)     (_ * _)         _ = nothing
@@ -222,6 +243,7 @@ mutual
   instantiateAcc (_ P+ _)        (rigid _ _)     _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (rigid _ _)     _ = nothing
   instantiateAcc (PEff _ _)      (rigid _ _)     _ = nothing
+  instantiateAcc (PAct _ _)      (rigid _ _)     _ = nothing
   instantiateAcc (Pμ-type _)     (rigid _ _)     _ = nothing
   {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)   (rigid _ _)     _ = nothing
@@ -265,6 +287,8 @@ mutual
     maybe-pair (λ a b → a ⇒[ mk-kind q pure ] b) (applySubst s A) (applySubst s B)
   applySubst s (PEff A B)      =
     maybe-pair (λ a b → a ⇒[ mk-kind Many eff ] b) (applySubst s A) (applySubst s B)
+  applySubst s (PAct A B)      =
+    maybe-pair (λ a b → a ⇒[ mk-kind Many act ] b) (applySubst s A) (applySubst s B)
   applySubst s (Pμ-type F)     = applySubstFunctor s F >>= λ f → just (μ-type f)
   applySubst s (Pν-type F π)   = applySubstFunctor s F >>= λ f → just (ν-type f π)
 
@@ -297,6 +321,7 @@ schemaArrowCodomain PVoid        _ = nothing
 schemaArrowCodomain (_ P* _)     _ = nothing
 schemaArrowCodomain (_ P+ _)     _ = nothing
 schemaArrowCodomain (PEff _ _)   _ = nothing
+schemaArrowCodomain (PAct _ _)   _ = nothing
 schemaArrowCodomain (Pμ-type _)  _ = nothing
 schemaArrowCodomain (Pν-type _ _)  _ = nothing
 schemaArrowCodomain PInt         _ = nothing

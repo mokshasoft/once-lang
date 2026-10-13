@@ -149,6 +149,7 @@ module DPoly where
     → (T.substPoly θ sd ≡ A) × (T.substPoly θ sc ≡ B)
   arrow-parts θ T.as-pure e = ⇒-parts e
   arrow-parts θ T.as-eff  e = ⇒-parts e
+  arrow-parts θ T.as-act  e = ⇒-parts e
 
   gp-eq : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err ll eL li eI lp eP
     → given-poly ctx x A π err (lookupLocal ctx x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
@@ -211,6 +212,9 @@ module DPoly where
   ... | no ¬inc = ⊥-elim (¬inc inc)
   from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-eff inc θ eθ g ki with codVarsInDom? sd sc
   ... | yes inc′ = at-m ctx x A π err eL eI eP ¬g T.as-eff inc′ θ eθ g ki
+  ... | no ¬inc = ⊥-elim (¬inc inc)
+  from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-act inc θ eθ g ki with codVarsInDom? sd sc
+  ... | yes inc′ = at-m ctx x A π err eL eI eP ¬g T.as-act inc′ θ eθ g ki
   ... | no ¬inc = ⊥-elim (¬inc inc)
 
   -- The whole chain, from the lookups (the head's inference has failed).

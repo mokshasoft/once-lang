@@ -25,10 +25,10 @@ open import Once.Grammar as G
   using ( GExpr; GType
         ; EUnit; EInt; EString; EVar; EQualified; ELam; EApp; EPair
         ; EAnnot; EBinOp; EUnaryOp; ECompose; ELet; EDestruct
-        ; TUnit; TVoid; TInt; TFloat; TEff; TVar; GMu; GNu; GNuEff
+        ; TUnit; TVoid; TInt; TFloat; TEff; TAct; TVar; GMu; GNu; GNuEff; GNuAct
         ; _⊗_; _⊕_; _⇒[_]_ )
 open import Once.Grammar.Printer using
-  ( Concrete; c-unit; c-void; c-int; c-float; c-prod; c-sum; c-fun; c-eff )
+  ( Concrete; c-unit; c-void; c-int; c-float; c-prod; c-sum; c-fun; c-eff; c-act )
 open import Once.Grammar.ExprPrinter using
   ( ConcreteExpr; c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual
   ; c-e-lam; c-e-app; c-e-pair; c-e-annot; c-e-binop; c-e-unary
@@ -60,6 +60,10 @@ concreteType? (TEff a b) with concreteType? a | concreteType? b
 ... | just ca | just cb = just (c-eff ca cb)
 {-# CATCHALL #-}
 ... | _       | _       = nothing
+concreteType? (TAct a b) with concreteType? a | concreteType? b
+... | just ca | just cb = just (c-act ca cb)
+{-# CATCHALL #-}
+... | _       | _       = nothing
 concreteType? (TVar _) = nothing
 -- `GMu`/`GNu` are outside the round-trip `Concrete` domain (no c-mu/c-nu
 -- constructor):
@@ -68,6 +72,7 @@ concreteType? (TVar _) = nothing
 concreteType? (GMu _) = nothing
 concreteType? (GNu _) = nothing
 concreteType? (GNuEff _) = nothing
+concreteType? (GNuAct _) = nothing
 
 ------------------------------------------------------------------------
 -- Expression concreteness (no `TVar` in annotations, no reserved-word

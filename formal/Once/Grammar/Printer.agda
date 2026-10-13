@@ -60,12 +60,16 @@ printGType (A G.⇒[ q ] B) =
   TLParen ∷ printGType A ++ quantityToken q ∷ TArrow ∷ printGType B ++ TRParen ∷ []
 printGType (G.TEff A B) =
   TLParen ∷ TWord "Eff" ∷ printGType A ++ printGType B ++ TRParen ∷ []
+printGType (G.TAct A B) =
+  TLParen ∷ TWord "Act" ∷ printGType A ++ printGType B ++ TRParen ∷ []
 printGType (G.GMu gf) =
   TWord "Mu" ∷ TLParen ∷ printGFunctor gf ++ TRParen ∷ []
 printGType (G.GNu gf) =
   TWord "Nu" ∷ TLParen ∷ printGFunctor gf ++ TRParen ∷ []
 printGType (G.GNuEff gf) =
   TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ printGFunctor gf ++ TRParen ∷ []
+printGType (G.GNuAct gf) =
+  TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ printGFunctor gf ++ TRParen ∷ []
 
 -- | Print a grammar-level functor (canonical, fully parenthesised).
 printGFunctor (G.GFK g) =
@@ -173,6 +177,7 @@ data Concrete : GType → Set where
   c-sum    : ∀ {A B} → Concrete A → Concrete B → Concrete (A G.⊕ B)
   c-fun    : ∀ {A B q} → Concrete A → Concrete B → Concrete (A G.⇒[ q ] B)
   c-eff    : ∀ {A B} → Concrete A → Concrete B → Concrete (G.TEff A B)
+  c-act    : ∀ {A B} → Concrete A → Concrete B → Concrete (G.TAct A B)
   -- no c-var: TVar is excluded from the round-trip domain
 
 ------------------------------------------------------------------------

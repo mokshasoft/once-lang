@@ -31,9 +31,9 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 import Once.Spec.Type as T
-open import Once.Spec.Type.Grade using (mk-kind; Many; eff; pure)
+open import Once.Spec.Type.Grade using (mk-kind; Many; act; eff; pure)
 open import Once.Spec.Type using (k-base; k-any)
-open import Once.Spec.Type.Poly using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF)
+open import Once.Spec.Type.Poly using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF)
 open import Once.Spec.Type.DecEq using (_≟tk_)
 open import Once.Spec.Type.Instance using (params; nubFrom; arityOf; kindOf; indexOf; memberB; rigidSubst; rigidOf; ftvK; KindedInstance; RespectsKinds)
 open import Once.Spec.Core.PolyTy
@@ -167,6 +167,7 @@ mutual
   part-cf sc (A P+ B) h = cf-+ (part-cf sc A (λ m → h (∈-++⁺ˡ m))) (part-cf sc B (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-cf sc (A P⇒[ q ] B) h = cf-⇒ (part-cf sc A (λ m → h (∈-++⁺ˡ m))) (part-cf sc B (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-cf sc (PEff A B) h = cf-⇒ (part-cf sc A (λ m → h (∈-++⁺ˡ m))) (part-cf sc B (λ m → h (∈-++⁺ʳ (ftv A) m)))
+  part-cf sc (PAct A B) h = cf-⇒ (part-cf sc A (λ m → h (∈-++⁺ˡ m))) (part-cf sc B (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-cf sc (Pμ-type F) h = cf-μ (partF-cf sc F h)
   part-cf sc (Pν-type F π) h = cf-ν (partF-cf sc F h)
 
@@ -196,6 +197,9 @@ mutual
       (part-inst sc A θ (λ m → h (∈-++⁺ˡ m))) (part-inst sc B θ (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-inst sc (PEff A B) θ h =
     cong₂ (λ a b → a T.⇒[ mk-kind Many eff ] b)
+      (part-inst sc A θ (λ m → h (∈-++⁺ˡ m))) (part-inst sc B θ (λ m → h (∈-++⁺ʳ (ftv A) m)))
+  part-inst sc (PAct A B) θ h =
+    cong₂ (λ a b → a T.⇒[ mk-kind Many act ] b)
       (part-inst sc A θ (λ m → h (∈-++⁺ˡ m))) (part-inst sc B θ (λ m → h (∈-++⁺ʳ (ftv A) m)))
   part-inst sc (Pμ-type F) θ h = cong T.μ-type (partF-inst sc F θ h)
   part-inst sc (Pν-type F π) θ h = cong (λ G → T.ν-type G π) (partF-inst sc F θ h)

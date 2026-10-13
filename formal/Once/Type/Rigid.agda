@@ -50,6 +50,8 @@ mutual
     cong₂ (λ a b → a ⇒[ mk-kind q pure ] b) (subst-ground θ A gA) (subst-ground θ B gB)
   subst-ground θ (PEff A B) (gA , gB) =
     cong₂ (λ a b → a ⇒[ mk-kind Many eff ] b) (subst-ground θ A gA) (subst-ground θ B gB)
+  subst-ground θ (PAct A B) (gA , gB) =
+    cong₂ (λ a b → a ⇒[ mk-kind Many act ] b) (subst-ground θ A gA) (subst-ground θ B gB)
   subst-ground θ (Pμ-type F) g = cong μ-type (subst-groundF θ F g)
   subst-ground θ (Pν-type F π) g = cong (λ G → ν-type G π) (subst-groundF θ F g)
 
@@ -76,6 +78,7 @@ mutual
   ftv-ground (A P+ B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
   ftv-ground (A P⇒[ _ ] B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
   ftv-ground (PEff A B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
+  ftv-ground (PAct A B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
   ftv-ground (Pμ-type F) g = ftvF-ground F g
   ftv-ground (Pν-type F _) g = ftvF-ground F g
 
@@ -96,6 +99,7 @@ mutual
   ftvK-ground (A P+ B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
   ftvK-ground (A P⇒[ _ ] B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
   ftvK-ground (PEff A B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
+  ftvK-ground (PAct A B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
   ftvK-ground (Pμ-type F) g = ftvKF-ground F g
   ftvK-ground (Pν-type F _) g = ftvKF-ground F g
 
@@ -134,6 +138,7 @@ mutual
   ftvK⊆ftv (A P+ B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
   ftvK⊆ftv (A P⇒[ _ ] B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
   ftvK⊆ftv (PEff A B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
+  ftvK⊆ftv (PAct A B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
   ftvK⊆ftv (Pμ-type F) m = ftvKF⊆ftvF F m
   ftvK⊆ftv (Pν-type F _) m = ftvKF⊆ftvF F m
 
@@ -235,6 +240,7 @@ mutual
   extractGround-rf (A P+ B)      (gA , gB) = rf-+ (extractGround-rf A gA) (extractGround-rf B gB)
   extractGround-rf (A P⇒[ q ] B) (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
   extractGround-rf (PEff A B)    (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
+  extractGround-rf (PAct A B)    (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
   extractGround-rf (Pμ-type F)   g         = rf-μ (extractGroundF-rf F g)
   extractGround-rf (Pν-type F π) g         = rf-ν (extractGroundF-rf F g)
 
