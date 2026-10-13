@@ -10,7 +10,7 @@
 -- (`EqM`: `≡`, or bisimilarity), and a
 -- graded monad through `bindᵍ` (D311). The monad morphisms between them are
 -- `subM` (subeffecting) and `toT∞` (every grade read as a tree of `T∞`); the
--- observation `run` respects `T`'s return and bind.
+-- observation `events∞` respects bisimilarity and sees no event in a unit.
 ------------------------------------------------------------------------
 
 module Once.Metatheory.Effects where
@@ -27,11 +27,10 @@ open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-g;
 open import Once.Spec.Metatheory using (Effects)
 open import Once.Spec.Event using (SigOpEvent)
 open import Once.Spec.Trace using (T; returnT; _>>=T_; Interp; run; then)
-open import Once.Denotation.TraceMonadLaws using (>>=T-identityʳ; >>=T-assoc; run-bind)
 open import Once.Spec.Graded using (M; returnM; bindM; subM; toT∞; bindᵍ; EqM; _>>=ᵖ_)
-open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; embed; TreeEq∞; ret≈∞)
+open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; TreeEq∞; ret≈∞; events∞)
 open Once.Spec.Iterative.TreeEq∞ using (force≈)
-open import Once.Denotation.TraceMonadInfLaws using (≈∞-refl; ≈∞-bind; ≈∞-rewrite; ≈∞-idˡ; ≈∞-idʳ; ≈∞-assoc; embed-bind)
+open import Once.Denotation.TraceMonadInfLaws using (≈∞-refl; ≈∞-bind; ≈∞-rewrite; ≈∞-idˡ; ≈∞-idʳ; ≈∞-assoc; events∞-≈)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
 
 M-identityʳ : ∀ {π} (u : pure ⊑π π) {X : Set} (m : M π X) → EqM π (bindM π m (returnM u)) m
@@ -62,9 +61,11 @@ subM-bind ⊑-pe   m k = retβ-≈ m k
 subM-bind ⊑-g    m k = ≈∞-refl (λ _ → refl) _
 subM-bind ⊑-ge   m k = forget-bind⁺ m (λ x → forget⁺ (k x))
 
-run-return : ∀ (ι : Interp) (h : List SigOpEvent) {X Y : Set} (x : X) (f : X → T Y)
-           → then ι h (run ι h (returnT x)) f ≡ run ι h (f x)
-run-return ι h x f = cong (λ hh → run ι hh (f x)) (++-identityʳ h)
+open import Data.Nat using (zero; suc)
+
+obs-return : ∀ (ι : Interp) (h : List SigOpEvent) {X : Set} (x : X) n → events∞ ι h (return∞ x) n ≡ []
+obs-return ι h x zero    = refl
+obs-return ι h x (suc n) = refl
 
 effects : Effects
 effects = record
@@ -76,6 +77,6 @@ effects = record
   ; toT∞-return = toT∞-returnM
   ; toT∞-bind   = toT∞-bindM
   ; toT∞-bindᵍ  = toT∞-bindᵍ
-  ; run-return  = run-return
-  ; run-bind    = λ ι h m f → run-bind ι h m f
+  ; obs-≈       = λ ι h e n → events∞-≈ ι h e n
+  ; obs-return  = obs-return
   }

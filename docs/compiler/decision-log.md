@@ -18474,4 +18474,7 @@ a finite statement). Everything D311 built for `prod` (`T∞`, `toT∞`, coheren
   call). `Totality.finite` withdrawn (a run need not end); `productive∞`/`observable∞` remain.
   The adequacy bridges relate a `T∞` tree to the IR's finite one (`RelGM eff = RelT∞′`,
   `RelT∞′-≈`, `RelT∞′-events`); the IR stays finite `T` until plan 0.117 G.
+* **R2/R3 (2026-10-13)** — the claims over `T∞` and proved: `Freyd` (central ⇔ pure, discard ⇒
+  pure, pairing a product on central arms) up to bisimilarity; the observation laws are
+  `obs-≈` (bisimilar computations make the same events at every depth) and `obs-return`.
 

@@ -210,6 +210,20 @@ RelT∞′-events-call ι h o a hk (just b) n = cong (callEvent o a ∷_) (RelT�
 RelT∞′-events-call ι h o a hk nothing  zero    = refl
 RelT∞′-events-call ι h o a hk nothing  (suc n) = refl
 
+-- The observation is well-defined on bisimilarity classes (D201): bisimilar
+-- trees make the same events at every depth.
+events∞-≈  : ∀ {X} (ι : Interp) (h : List SigOpEvent) {m m′ : T∞ X} → TreeEq∞ _≡_ m m′ → ∀ n → events∞ ι h m n ≡ events∞ ι h m′ n
+events∞-≈F : ∀ {X} (ι : Interp) (h : List SigOpEvent) {l l′ : T∞F X (T∞ X)} → NodeEq _≡_ (TreeEq∞ _≡_) l l′ → ∀ n → eventsF ι h l n ≡ eventsF ι h l′ n
+events∞-≈C : ∀ {X} (ι : Interp) (h : List SigOpEvent) o a {k k′ : _ → T∞ X} → (∀ b → TreeEq∞ _≡_ (k b) (k′ b))
+           → (r : Maybe _) → ∀ n → eventsC ι h o a k r n ≡ eventsC ι h o a k′ r n
+events∞-≈ ι h e zero    = refl
+events∞-≈ ι h e (suc n) = events∞-≈F ι h (force≈ e) n
+events∞-≈F ι h (ret≈∞ refl) n = refl
+events∞-≈F ι h halt≈∞ n = refl
+events∞-≈F ι h (call≈∞ {o = o} {a = a} f) n = events∞-≈C ι h o a f (callAnswer ι h o a) n
+events∞-≈C ι h o a f (just b) n = cong (callEvent o a ∷_) (events∞-≈ ι (h ++ [ callEvent o a ]) (f b) n)
+events∞-≈C ι h o a f nothing  n = refl
+
 -- A finite relation, embedded.
 RelT∞′-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelT∞′ R (embed m) t
 RelT∞′-embed (rel-ret r)  = rel∞-ret refl r

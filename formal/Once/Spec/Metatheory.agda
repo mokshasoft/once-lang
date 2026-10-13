@@ -24,23 +24,25 @@
 --     not of the mode that typed it — synthesis is unique, checking agrees
 --     with it, the domain-given mode is exact.
 --   * `effects` — the meaning's effect structure (plan 0.112 E, C4): each
---     grade's `M π` is a monad, subeffecting `subM` and the erasure `toT` to
---     the interaction tree are monad morphisms, the graded bind erases to
---     `T`'s (D311), and the observation `run`
---     respects return and bind (`then` threads the history).
+--     grade's `M π` is a monad (effectful ones up to bisimilarity, D312),
+--     subeffecting `subM` and the erasure `toT∞` to the completely iterative
+--     monad are monad morphisms, the graded bind erases to `T∞`'s (D311), and
+--     the observation `events∞` respects bisimilarity.
 --   * `coherence` — the core meaning is a function of the JUDGMENT, not of the
 --     derivation chosen for it (plan 0.116; `Spec.Core.Coherence`).
 --   * `freyd` — effects form a Freyd category (plan 0.116): a computation is
---     central (commutes with every other) exactly when it is pure, and only a
+--     central (commutes with every other, up to bisimilarity) exactly when it
+--     is pure, and only a
 --     pure computation may be skipped. So `pure` (D250: referential
 --     transparency) is the categorical notion, and a meaning that drops or
 --     moves an effectful computation is unsound.
 --   * `recursion` — the fold is the unique algebra morphism out of `μ`, and
 --     fusion holds (plan 0.112 D3). STATED, NOT YET PROVED: `Once.Metatheory`
 --     postulates both (`Once.Metatheory.Recursion`).
---   * `totality` — Once is total and productive (D311): an effectful
---     computation that returns is a finite tree, and every layer of every
---     stream comes after finite work (`Spec.Totality`).
+--   * `totality` — Once is total and productive (D311, D312): an effectful
+--     computation reaches each next event after finite work and need not
+--     stop, and every layer of every stream comes after finite work
+--     (`Spec.Totality`).
 --
 -- No type-safety theorem is needed in this setting: the meaning is a TOTAL
 -- function on derivations, so every well-typed program means something by
@@ -87,7 +89,7 @@ import Once.Spec.Core.Meaning
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Meaning
-  using ( T ; returnT ; _>>=T_ ; Interp ; run ; then ; SigOpEvent
+  using ( Interp ; SigOpEvent
         ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT∞ ; bindᵍ ; EqM
         ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ )
 open import Once.Spec.Syntax using (RawExpr)
@@ -150,11 +152,12 @@ record Effects : Set₁ where
     -- ordered monoid, and erasing it gives `T∞`'s bind
     toT∞-bindᵍ  : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
                 → TreeEq∞ _≡_ (toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k)) (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
-    -- the observation respects return and bind
-    run-return  : ∀ (ι : Interp) (h : List SigOpEvent) {X Y : Set} (x : X) (f : X → T Y)
-                → then ι h (run ι h (returnT x)) f ≡ run ι h (f x)
-    run-bind    : ∀ (ι : Interp) (h : List SigOpEvent) {X Y : Set} (m : T X) (f : X → T Y)
-                → run ι h (m >>=T f) ≡ then ι h (run ι h m) f
+    -- the observation (`events∞`, D312) is well-defined on effectful equality:
+    -- bisimilar computations make the same events at every depth …
+    obs-≈       : ∀ (ι : Interp) (h : List SigOpEvent) {X : Set} {m m′ : T∞ X}
+                → TreeEq∞ _≡_ m m′ → ∀ n → events∞ ι h m n ≡ events∞ ι h m′ n
+    -- … and the unit makes none
+    obs-return  : ∀ (ι : Interp) (h : List SigOpEvent) {X : Set} (x : X) n → events∞ ι h (return∞ x) n ≡ []
 
 -- The fold's universal property (plan 0.112 D3) and unfold's computation law
 -- (plan 0.116 E).
@@ -191,38 +194,43 @@ record Recursion : Set₁ where
                 → ∀ a → TreeEq∞ _≡_ (g a) (iter∞ f a)
 
 -- Effects form a Freyd category (plan 0.116). Values and pure maps are the
--- category C, computations `X → T Y` the premonoidal category K = Kleisli(T),
--- and subeffecting `returnT` (D250, `subM ⊑-pe`) the embedding J : C → K.
--- A computation is CENTRAL when it commutes with every computation: running it
--- before or after another gives the same tree.
-Central : ∀ {Y : Set} → T Y → Set₁
-Central {Y} m = ∀ {W : Set} (n : T W)
-              → (m >>=T λ y → n >>=T λ w → returnT (y , w)) ≡ (n >>=T λ w → m >>=T λ y → returnT (y , w))
+-- category C, computations `X → T∞ Y` the premonoidal category K = Kleisli(T∞)
+-- (D312), and subeffecting `return∞` (D250, `subM ⊑-pe`) the embedding
+-- J : C → K. Effectful equality is bisimilarity (`_≈_`, D201). A computation
+-- is CENTRAL when it commutes with every computation: running it before or
+-- after another gives the same tree.
+infix 4 _≈_
+_≈_ : ∀ {Y : Set} → T∞ Y → T∞ Y → Set
+m ≈ m′ = TreeEq∞ _≡_ m m′
+
+Central : ∀ {Y : Set} → T∞ Y → Set₁
+Central {Y} m = ∀ {W : Set} (n : T∞ W)
+              → (m >>=∞ λ y → n >>=∞ λ w → return∞ (y , w)) ≈ (n >>=∞ λ w → m >>=∞ λ y → return∞ (y , w))
 
 -- The premonoidal pairing of two Kleisli maps: the first arm runs first.
-pairK : ∀ {X Y Z : Set} → (X → T Y) → (X → T Z) → X → T (Y × Z)
-pairK f g x = f x >>=T λ y → g x >>=T λ z → returnT (y , z)
+pairK : ∀ {X Y Z : Set} → (X → T∞ Y) → (X → T∞ Z) → X → T∞ (Y × Z)
+pairK f g x = f x >>=∞ λ y → g x >>=∞ λ z → return∞ (y , z)
 
 record Freyd : Set₁ where
   field
     -- J's image is central: a pure computation commutes with every computation
-    pure-central : ∀ {Y : Set} (y : Y) → Central (returnT y)
-    -- and only it: a central computation is pure (`T` is free over call/halt)
-    central-pure : ∀ {Y : Set} (m : T Y) → Central m → Σ[ y ∈ Y ] m ≡ returnT y
+    pure-central : ∀ {Y : Set} (y : Y) → Central (return∞ y)
+    -- and only it: a central computation is pure (`T∞` is free over call/halt)
+    central-pure : ∀ {Y : Set} (m : T∞ Y) → Central m → Σ[ y ∈ Y ] m ≈ return∞ y
     -- only a pure computation may be skipped: one whose run can be dropped
     -- before every continuation is a value
-    discard-pure : ∀ {Y : Set} (m : T Y) → (∀ {W : Set} (k : T W) → (m >>=T λ _ → k) ≡ k)
-                 → Σ[ y ∈ Y ] m ≡ returnT y
+    discard-pure : ∀ {Y : Set} (m : T∞ Y) → (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≈ k)
+                 → Σ[ y ∈ Y ] m ≈ return∞ y
     -- the pairing is a PRODUCT on central arms (plan 0.112 G7): projecting
     -- gives an arm back when the other is central (β) — its events are not
     -- dropped — and pairing the projections of a central map is the map (η)
     -- — its events are not doubled. On other arms it is only premonoidal.
-    pair-β₁ : ∀ {X Y Z : Set} (f : X → T Y) (g : X → T Z) → (∀ x → Central (g x))
-            → ∀ x → (pairK f g x >>=T λ p → returnT (proj₁ p)) ≡ f x
-    pair-β₂ : ∀ {X Y Z : Set} (f : X → T Y) (g : X → T Z) → (∀ x → Central (f x))
-            → ∀ x → (pairK f g x >>=T λ p → returnT (proj₂ p)) ≡ g x
-    pair-η  : ∀ {X Y Z : Set} (h : X → T (Y × Z)) → (∀ x → Central (h x))
-            → ∀ x → pairK (λ x → h x >>=T λ p → returnT (proj₁ p)) (λ x → h x >>=T λ p → returnT (proj₂ p)) x ≡ h x
+    pair-β₁ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (g x))
+            → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₁ p)) ≈ f x
+    pair-β₂ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (f x))
+            → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₂ p)) ≈ g x
+    pair-η  : ∀ {X Y Z : Set} (h : X → T∞ (Y × Z)) → (∀ x → Central (h x))
+            → ∀ x → pairK (λ x → h x >>=∞ λ p → return∞ (proj₁ p)) (λ x → h x >>=∞ λ p → return∞ (proj₂ p)) x ≈ h x
 
 -- Once is TOTAL and PRODUCTIVE (D311, D312, plan 0.117; `Spec.Totality`). An
 -- effectful computation reaches each next event, or its end, after finite
