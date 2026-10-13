@@ -42,6 +42,7 @@ open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Semantics.Machine
+open import Once.Spec.Stream
 open import Once.Denotation.ValueDomain
 import Once.Denotation.DenotTrace
 open import Once.IRTy.WF using (wf-⌈⌉)

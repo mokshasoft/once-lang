@@ -39,7 +39,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Contract using (ISig; Impl; key; valueOf)
 open import Once.Spec.ContractLaws using (value-∈; base-contract)
 open import Once.Spec.Trace using (ret; returnT; _>>=T_; fmapT)
-open import Once.Denotation.ValueDomain using (νᵈ; anaᵈ; seqF; module νᵈ)
+open import Once.Spec.Stream using (νᵈ; anaᵈ; seqF; module νᵈ)
 open import Once.Spec.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; embed; ν∞; ana∞)
 open Once.Spec.Iterative.T∞ using (force)

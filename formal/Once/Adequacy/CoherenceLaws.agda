@@ -49,7 +49,8 @@ open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Data.Empty using (⊥)
-open import Once.Denotation.ValueDomain using (seqF; coerce-functor⁻¹-D; cohᴰ; anaFᵈ; coerce-functor-D; ⟦_⟧ᴰ)
+open import Once.Spec.Stream using (seqF; anaFᵈ)
+open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; cohᴰ; coerce-functor-D; ⟦_⟧ᴰ)
 open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)

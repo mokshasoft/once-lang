@@ -69,6 +69,7 @@ open import Once.Spec.Trace using (T; ret; call; halt; callOp; haltOp; returnT; 
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
 -- (consumers unchanged), so the reference meaning `⟦_⟧ᵈ` can land in `⟦_⟧ᴰ`
 -- without `Once.IR` (IR enters only at `evalᴰ` below).
+open import Once.Spec.Stream
 open import Once.Denotation.ValueDomain
 open νᵈ using (forceᵈ)
 

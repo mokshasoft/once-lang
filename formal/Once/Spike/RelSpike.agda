@@ -197,7 +197,7 @@ open import Once.IRTy using (Void; Int; Float; _⇛_;
 -- inside the closed mixfix is genuinely ambiguous. A plain prefix name avoids it.
 open import Once.Spec.FunctorMeaning using (translateF) renaming (⟦_,_⟧-base to BaseVal)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
-open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ)
+open import Once.Spec.Stream using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-ret)
 
 ------------------------------------------------------------------------

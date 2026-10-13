@@ -45,8 +45,8 @@ open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-∘; fmapT-con
 open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Data.Empty using (⊥-elim)
-open import Once.Denotation.ValueDomain
-  using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; νᵈ; cohᴰ; coerce-functor⁻¹-D; module νᵈ)
+open import Once.Spec.Stream using (νᵈ; module νᵈ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor⁻¹-D)
 open νᵈ using (forceᵈ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (out-sem)

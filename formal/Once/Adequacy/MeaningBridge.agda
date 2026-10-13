@@ -51,6 +51,7 @@ open import Once.Spec.Context using (Usage)
 open import Once.Surface.Syntax using (sigOp)
 import Once.Surface.Syntax as Surface
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
+import Once.Spec.Stream
 open import Once.Spec.Trace using (T; returnT; _>>=T_; fmapT; rel-ret; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
 open import Once.Denotation.TraceMonadLaws using (>>=T-identityʳ; RelT′-fmap; RelT′-refl)
 open Interp using (impl; sig)
@@ -549,7 +550,7 @@ out-app-bridge {F} {eff⁺} {wfF} {vᴸ} {vᴿ} rel =
   subst (RelGT (⟦ F ⟧T (ν-type F eff⁺)) (forget⁺ (out-semᵛ eff⁺ wfF vᴸ)))
         (sym (liftFn-Out {π = eff⁺} wfF vᴿ))
         (subst (λ t → RelGT (⟦ F ⟧T (ν-type F eff⁺)) t
-                        (fmapT (λ layer → coerce-functor⁻¹-D wfF (ν-type F eff⁺) (coerce-ν-out wfF _ layer)) (Once.Denotation.ValueDomain.νᵈ.forceᵈ vᴿ)))
+                        (fmapT (λ layer → coerce-functor⁻¹-D wfF (ν-type F eff⁺) (coerce-ν-out wfF _ layer)) (Once.Spec.Stream.νᵈ.forceᵈ vᴿ)))
                (sym (forget-bind⁺ (force⁺ vᴸ) (λ l → TM.ret (cf⁻¹ᵛ (ν-type F eff⁺) wfF (coerce-ν-out wfF _ l)))))
           (RelT′-fmap (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV (ν-type F eff⁺))) (RelGV (⟦ F ⟧T (ν-type F eff⁺)))
             {g = λ l → cf⁻¹ᵛ (ν-type F eff⁺) wfF (coerce-ν-out wfF _ l)}

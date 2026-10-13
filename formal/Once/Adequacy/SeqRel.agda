@@ -27,7 +27,7 @@ open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Spec.Trace
   using (T; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
-open import Once.Denotation.ValueDomain using (seqF)
+open import Once.Spec.Stream using (seqF)
 
 ------------------------------------------------------------------------
 -- A relation lifted over a functor layer. `K` holds data neither side
