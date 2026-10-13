@@ -65,16 +65,13 @@ teleDefs fmt φ (def tl sc body D) (suc d) τ r = teleDefs fmt φ tl d τ r
 teleSem fmt φ tl = GM.defSem (teleDefs fmt φ tl) φ
 
 ------------------------------------------------------------------------
--- Programs: a telescope and a `main : Unit ⇒[ π ] Unit` over it
+-- Programs: a telescope and a `main : Unit ⇒[ eff ] Unit` over it
 ------------------------------------------------------------------------
 
--- D311: `main` is an ordinary function, at any grade — `eff` for a program
--- that returns, `prod` for a server.
-Entry : T.Purity → Ty 0
-Entry π = Unit ⇒[ T.mk-kind T.Many π ] Unit
-
+-- D312: `main` is an ordinary function at `eff` — a program that ends and a
+-- server alike (an effectful computation need not stop).
 IOUnit : Ty 0
-IOUnit = Entry T.eff
+IOUnit = Unit ⇒[ T.mk-kind T.Many T.eff ] Unit
 
 noVars : GSub 0
 noVars ()
@@ -89,28 +86,26 @@ record Program (Fs : ISig) : Set where
   field
     {size} : ℕ
     {sig}  : Sig Fs size
-    {grade} : T.Purity
     defs   : Tele sig
     main   : Fin size
-    mainTy : sig !! main ≡ schema 0 noKinds (Entry grade)
+    mainTy : sig !! main ≡ schema 0 noKinds IOUnit
 
--- Run an entry at `Unit ⇒[ π ] Unit`: its only instance, applied to the unit input.
+-- Run an entry at `Unit ⇒[ eff ] Unit`: its only instance, applied to the unit input.
 EntrySem : Schema → Set
 EntrySem sc = (τ : GSub (arity sc)) → Respects (kinds sc) τ → ⟦ type sc ⟪ τ ⟫ ⟧ᵛ
 
 noResp : Respects noKinds noVars
 noResp ()
 
-runEntry : (sc : Schema) {π : T.Purity} → sc ≡ schema 0 noKinds (Entry π) → EntrySem sc → M π ⊤
+runEntry : (sc : Schema) → sc ≡ schema 0 noKinds IOUnit → EntrySem sc → M T.eff ⊤
 runEntry sc e f = subst EntrySem e f noVars noResp tt
 
 -- THE CORE MEANING OF A PROGRAM: run its `main` entry (D250: an entry denotes a
 -- VALUE, here the suspension `Unit ⇒[eff] Unit`) in the telescope's
 -- environment, RELATIVE TO AN IMPLEMENTATION `I` of the signatures it is
 -- compiled against (plan 0.105, D061's three times: its author discharges `I`
--- off-line), and read the first `n` events of that run — at the top grade
--- (D311: `toT∞`), where every grade's computation is a tree of `T∞` and a
--- server's run is as observable as one that returns.
+-- off-line), and read the first `n` events of that run — a tree of `T∞`
+-- (D312), so a server's run is as observable as one that returns.
 runProgram : ∀ {Fs} → TargetNum → Program Fs → Impl Fs → ℕ → Data.List.List SigOpEvent
-runProgram {Fs} fmt (program {sig = S} {grade = π} defs d e) I n =
-  events∞ (interp Fs I) [] (toT∞ π (runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d))) n
+runProgram {Fs} fmt (program {sig = S} defs d e) I n =
+  events∞ (interp Fs I) [] (runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d)) n

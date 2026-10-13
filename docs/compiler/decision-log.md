@@ -18477,4 +18477,6 @@ a finite statement). Everything D311 built for `prod` (`T∞`, `toT∞`, coheren
 * **R2/R3 (2026-10-13)** — the claims over `T∞` and proved: `Freyd` (central ⇔ pure, discard ⇒
   pure, pairing a product on central arms) up to bisimilarity; the observation laws are
   `obs-≈` (bisimilar computations make the same events at every depth) and `obs-return`.
+* **R4 (2026-10-13)** — `Program.grade` removed: `main : IOUnit` (`Unit ⇒[eff] Unit`) and
+  `runProgram` reads `events∞` of its run directly.
 
