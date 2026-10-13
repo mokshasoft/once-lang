@@ -38,7 +38,7 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type as TT using (Functor; _*_; _+_)
-open import Once.Functor.Translate using (translateF)
+open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
 open import Once.Spec.Polynomial

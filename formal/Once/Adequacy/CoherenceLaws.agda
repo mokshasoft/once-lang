@@ -45,7 +45,7 @@ open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-cong; fmapT-�
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type.WellFormed using (wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Functor.Translate using (translateF)
+open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Data.Empty using (⊥)

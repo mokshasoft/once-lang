@@ -33,7 +33,7 @@ open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Functor.Translate using (translateF)
+open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
 
 ------------------------------------------------------------------------

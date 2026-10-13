@@ -34,7 +34,7 @@ open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type.Grade using (Purity)
 open import Once.Spec.Type using (Type; Functor; ν-type; ⟦_⟧T)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
-open import Once.Functor.Translate using (translateF)
+open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
 import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)

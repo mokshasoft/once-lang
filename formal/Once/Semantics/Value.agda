@@ -89,7 +89,7 @@ open import Once.Spec.Res using (Res; stopped; returns; mapRes)
 ------------------------------------------------------------------------
 
 open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF)
-open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
+open import Once.Spec.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Polynomial
 open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)

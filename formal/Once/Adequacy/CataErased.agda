@@ -48,7 +48,7 @@ open import Once.Semantics.Machine
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
-open import Once.Functor.Translate using (translateF; ⟦_,_⟧-base)
+open import Once.Spec.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor⁻¹-D; seqF)

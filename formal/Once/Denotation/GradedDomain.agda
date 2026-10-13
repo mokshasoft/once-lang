@@ -37,7 +37,7 @@ open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pr
 import Once.Semantics.Machine as Val
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
-open import Once.Functor.Translate using (translateF)
+open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.ValueDomain using (νᵈ)
 open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; embed; ν∞; TreeEq∞)
