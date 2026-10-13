@@ -1790,6 +1790,50 @@ inferElabV-RResolved-dispatch ctx cn gv-inl      = failure (UnboundVariable "inl
 inferElabV-RResolved-dispatch ctx cn gv-inr      = failure (UnboundVariable "inr") , tt
 inferElabV-RResolved-dispatch ctx cn (gv-other ng) = inferElabV-RResolved-aux ctx cn ng _ refl
 
+-- D313 (plan 0.117 F3a): a generator of Σ declared at an effectful arrow also
+-- checks at its GUARD (`t-var-resolved-guard`). Tried only after subsumption
+-- fails — the declared arrow is never below its guard, so the two never
+-- overlap — and failing with subsumption's own error.
+guardConc : ∀ {A B : Type} {k k′ : Once.Spec.Type.Grade.ArrowKind}
+          → IsConcrete (A Once.Spec.Type.⇒[ k ] B) → IsConcrete (A Once.Spec.Type.⇒[ k′ ] B)
+guardConc (con-fun bA bB) = con-fun bA bB
+
+guardRef-eq : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (T T′ : Type)
+              {A B : Type} {q : Once.Spec.Type.Grade.Quantity} {π : Once.Spec.Type.Grade.Purity} → Once.Spec.Type.Grade.EffGrade π
+            → lookupImport (NamedCtx.sig ctx) (showCanonical cn)
+                ≡ just (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q π ] B)
+            → Dec (T ≡ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B))
+            → (mc : Maybe (IsConcrete (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q π ] B)))
+            → VerifiedCheckResult ctx (Raw.RResolved cn) T
+guardRef-eq ctx cn ng _ T′ g eq (yes refl) (just k) =
+  success _ (Surface.sigOp cn (guardConc k)) 0 0 , t-var-resolved-guard ng eq g k
+guardRef-eq ctx cn ng T T′ g eq (yes refl) nothing = failure (TypeMismatch T T′) , tt
+guardRef-eq ctx cn ng T T′ g eq (no _) _ = failure (TypeMismatch T T′) , tt
+
+guardRefV : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (T T′ : Type)
+          → (lhs : Maybe Type) → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ lhs
+          → VerifiedCheckResult ctx (Raw.RResolved cn) T
+guardRefV ctx cn ng T T′ (just (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.act ] B)) eq =
+  guardRef-eq ctx cn ng T T′ Once.Spec.Type.Grade.eg-act eq (T ≟T (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B))
+    (isConcrete? (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.act ] B))
+guardRefV ctx cn ng T T′ (just (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff ] B)) eq =
+  guardRef-eq ctx cn ng T T′ Once.Spec.Type.Grade.eg-eff eq (T ≟T (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B))
+    (isConcrete? (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff ] B))
+{-# CATCHALL #-}
+guardRefV ctx cn ng T T′ _ _ = failure (TypeMismatch T T′) , tt
+
+guardOrSubsume-dec : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn
+                     → ∀ {Ψ : Surface.Usage (NamedCtx.size ctx)} (T T′ : Type)
+                   → SExpr (NamedCtx.debruijn ctx) Ψ T′ → (depth fresh : ℕ)
+                   → ctx ⊢ᵢ Raw.RResolved cn ∶ T′ ⨾ Ψ → Dec (T′ <: T) → VerifiedCheckResult ctx (Raw.RResolved cn) T
+guardOrSubsume-dec ctx cn ng T T′ eE depth fresh w (yes p) = success _ (Surface.coerce p eE) depth fresh , t-sub w p
+guardOrSubsume-dec ctx cn ng T T′ eE depth fresh w (no _)  = guardRefV ctx cn ng T T′ _ refl
+
+guardOrSubsume : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (T : Type)
+               → VerifiedInferResult ctx (Raw.RResolved cn) → VerifiedCheckResult ctx (Raw.RResolved cn) T
+guardOrSubsume ctx cn ng T (failure err , _) = failure err , tt
+guardOrSubsume ctx cn ng T (success T′ Ψ eE d fr , w) = guardOrSubsume-dec ctx cn ng T T′ eE d fr w (T′ <:? T)
+
 checkElabV-RResolved-dispatch :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) (T : Type) → GenView cn
   → VerifiedInferResult ctx (Raw.RResolved cn)
@@ -1809,7 +1853,7 @@ checkElabV-RResolved-dispatch ctx _ T gv-inl rInfV =
 checkElabV-RResolved-dispatch ctx _ T gv-inr rInfV =
   checkElabV-RVar-bbc-inr-aux ctx T rInfV
 checkElabV-RResolved-dispatch ctx cn T gv-unit  rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
-checkElabV-RResolved-dispatch ctx cn T (gv-other _) rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
+checkElabV-RResolved-dispatch ctx cn T (gv-other ng) rInfV = guardOrSubsume ctx cn ng T rInfV
 
 checkElabV-RVar-bbc-other-aux :
   ∀ (ctx : NamedCtx) (x : String) (T : Type)

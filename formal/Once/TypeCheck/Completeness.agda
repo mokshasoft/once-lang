@@ -28,10 +28,10 @@ module Once.TypeCheck.Completeness where
 import Once.Surface.Syntax as Srf
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Data.String.Properties as StrProp using ()
 open import Once.Spec.Type as T using (Type; Unit; _*_)
@@ -39,7 +39,7 @@ import Once.Type as T
 import Once.Spec.Type.Poly as T
 import Once.Spec.Type.Grade as T
 open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RResolved)
-open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
+open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; showCanonical)
 open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.TypeCheck.Elaborate
   using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo)
@@ -48,7 +48,8 @@ import Once.TypeCheck.Error as Error
 open import Once.Spec.Typing
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
-open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
+open import Once.Functor.Decide using (isConcrete?; isConcrete?-complete)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
@@ -65,12 +66,12 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Spec.Type using (Functor; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pa; sub-int; sub-float; sub-unit; sub-prod)
+open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pa; sub-int; sub-float; sub-unit; sub-prod; sub-arr)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Spec.Type.Sub using (<:-refl)
 open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Spec.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport)
-open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; classifyAppHead-nothing⇒view-other)
+open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.Metatheory.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; withUnit-elim)
@@ -523,6 +524,87 @@ checkElabV-RResolved-J :
                  ctx cn T gv (inferElabV ctx (RResolved cn)))
 checkElabV-RResolved-J ctx cn T .(classifyGen cn) refl = refl
 
+-- D313 (plan 0.117 F3a): a generator at its guard. The elaborator tries
+-- subsumption first; the declared arrow is never below its guard, so it falls
+-- through to the guard lookup, which succeeds on the rule's own premises.
+private
+  ¬decl<:guard : ∀ {A B : Type} {q : T.Quantity} {π : T.Purity} → T.EffGrade π
+               → ¬ ((A T.⇒[ T.mk-kind q π ] B) <: (A T.⇒[ T.mk-kind q T.eff⁺ ] B))
+  ¬decl<:guard T.eg-act (sub-arr _ _ ())
+  ¬decl<:guard T.eg-eff (sub-arr _ _ ())
+
+  gos-dec : ∀ {ctx : NamedCtx} {cn : CanonicalName} (ng : NotGenerator cn) {Ψ} (G D : Type)
+              {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ D} {d f : ℕ} {w : ctx ⊢ᵢ RResolved cn ∶ D ⨾ Ψ}
+          → (dec : Dec (D <: G)) → ¬ (D <: G)
+          → proj₁ (E.guardOrSubsume-dec ctx cn ng G D eE d f w dec)
+            ≡ proj₁ (E.guardRefV ctx cn ng G D _ refl)
+  gos-dec ng G D (yes p) ¬p = ⊥-elim (¬p p)
+  gos-dec ng G D (no _) _ = refl
+
+  gos : ∀ {ctx : NamedCtx} {cn : CanonicalName} (ng : NotGenerator cn) (G D : Type)
+          {Ψ} {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ D} {d f : ℕ}
+      → (r : VerifiedInferResult ctx (RResolved cn)) → proj₁ r ≡ success D Ψ eE d f → ¬ (D <: G)
+      → proj₁ (E.guardOrSubsume ctx cn ng G r) ≡ proj₁ (E.guardRefV ctx cn ng G D _ refl)
+  gos ng G D (success _ _ _ _ _ , w) refl ¬s = gos-dec ng G D (D <:? G) ¬s
+
+  grv-J : ∀ {ctx : NamedCtx} {cn : CanonicalName} (ng : NotGenerator cn) (G D : Type) (lhs : Maybe Type)
+            (eq : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ lhs)
+        → E.guardRefV ctx cn ng G D _ refl ≡ E.guardRefV ctx cn ng G D lhs eq
+  grv-J ng G D _ refl = refl
+
+  gre : ∀ {ctx : NamedCtx} {cn : CanonicalName} (ng : NotGenerator cn) {A B : Type} {q : T.Quantity} {π : T.Purity}
+          (g : T.EffGrade π) (li : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just (A T.⇒[ T.mk-kind q π ] B))
+          {T₀ : Type} (D : Type) {k : IsConcrete (A T.⇒[ T.mk-kind q π ] B)}
+      → (p : T₀ ≡ (A T.⇒[ T.mk-kind q T.eff⁺ ] B)) (mc : Maybe (IsConcrete (A T.⇒[ T.mk-kind q π ] B))) → mc ≡ just k
+      → ∃[ eE ] proj₁ (E.guardRef-eq ctx cn ng T₀ D g li (yes p) mc) ≡ success zeroUsage eE 0 0
+  gre ng g li D refl _ refl = _ , refl
+
+  gdec : ∀ {ctx : NamedCtx} {cn : CanonicalName} (ng : NotGenerator cn) {A B : Type} {q : T.Quantity} {π : T.Purity}
+           (g : T.EffGrade π) (li : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just (A T.⇒[ T.mk-kind q π ] B))
+           (D : Type) {k : IsConcrete (A T.⇒[ T.mk-kind q π ] B)}
+       → (dec : Dec ((A T.⇒[ T.mk-kind q T.eff⁺ ] B) ≡ (A T.⇒[ T.mk-kind q T.eff⁺ ] B)))
+       → isConcrete? (A T.⇒[ T.mk-kind q π ] B) ≡ just k
+       → ∃[ eE ] proj₁ (E.guardRef-eq ctx cn ng _ D g li dec (isConcrete? (A T.⇒[ T.mk-kind q π ] B)))
+                    ≡ success zeroUsage eE 0 0
+  gdec ng g li D (yes p) ec = gre ng g li D p _ ec
+  gdec ng g li D (no ¬p) _ = ⊥-elim (¬p refl)
+
+  guard-view : ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type} {q : T.Quantity} {π : T.Purity}
+             → (gv : GenView cn) → classifyGen cn ≡ gv → NotGenerator cn
+             → (li : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just (A T.⇒[ T.mk-kind q π ] B))
+             → T.EffGrade π → IsConcrete (A T.⇒[ T.mk-kind q π ] B)
+             → ∃[ eE ] ∃[ d ] ∃[ f ] checkElab ctx (RResolved cn) (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ≡ success zeroUsage eE d f
+  guard-view gv-id       _ (e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view gv-fst      _ (_ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view gv-snd      _ (_ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view gv-terminal _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view gv-initial  _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view gv-inl      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view gv-inr      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view gv-unit     _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+  guard-view {ctx} {cn} {A} {B} {q} {π} (gv-other ng′) eqv ng li g k =
+    let (_ , _ , _ , eqI) = infer-complete-RResolved {ctx} {cn} ng li k
+        D = A T.⇒[ T.mk-kind q π ] B
+        G = A T.⇒[ T.mk-kind q T.eff⁺ ] B
+        (_ , eqB) = body g
+    in _ , _ , _ ,
+       trans (checkElabV-RResolved-J ctx cn G _ eqv)
+         (trans (gos ng′ G D (inferElabV ctx (RResolved cn)) eqI (¬decl<:guard g))
+           (trans (cong proj₁ (grv-J ng′ G D _ li)) eqB))
+    where
+      body : (g′ : T.EffGrade π) → ∃[ eE ] proj₁ (E.guardRefV ctx cn ng′ (A T.⇒[ T.mk-kind q T.eff⁺ ] B) (A T.⇒[ T.mk-kind q π ] B) _ li)
+                                   ≡ success zeroUsage eE 0 0
+      body T.eg-act = gdec ng′ T.eg-act li _ (_ ≟T _) (proj₂ (isConcrete?-complete k))
+      body T.eg-eff = gdec ng′ T.eg-eff li _ (_ ≟T _) (proj₂ (isConcrete?-complete k))
+
+check-complete-RResolved-guard :
+  ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type} {q : T.Quantity} {π : T.Purity}
+  → NotGenerator cn
+  → lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just (A T.⇒[ T.mk-kind q π ] B)
+  → T.EffGrade π → IsConcrete (A T.⇒[ T.mk-kind q π ] B)
+  → ∃[ eE ] ∃[ d ] ∃[ f ] checkElab ctx (RResolved cn) (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ≡ success zeroUsage eE d f
+check-complete-RResolved-guard {cn = cn} ng li g k = guard-view (classifyGen cn) refl ng li g k
+
 private
   -- The `case` twin. No `mid` argument, so no `-J` bridge is needed.
   caseGo-success : ∀ {ctx f g A B C} {π : T.Purity}
@@ -971,6 +1053,7 @@ mutual
   -- moved there). Discharges the old `pair-lit` re-wrap: the pair's components are
   -- reached via `iFromInfer`'s genuine sub-derivations, not a re-embedded grandchild.
   check-complete (t-sub d sb) = iFromInferSub d sb
+  check-complete (t-var-resolved-guard ng li g k) = check-complete-RResolved-guard ng li g k
   -- D127: the seven POINT-FREE LEAVES. Each is the elaborator's own
   -- `RVar`-fallback lemma, which never depended on the purity — generalising
   -- those to any `π` is what lets these rules stay grade-poly.

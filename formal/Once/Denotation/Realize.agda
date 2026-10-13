@@ -36,6 +36,7 @@ open import Data.String using (_++_)
 open import Once.Spec.Type.Grade using (Many; Purity; mk-kind; ≤q-Many)
 open import Once.Spec.Type using (Type; μ-type; ν-type; _⇒[_]_)
 open import Once.Spec.Type.Sub using (sub-arr)
+open import Once.Spec.Type.WellFormed using (con-fun)
 open import Once.Spec.Type.Sub using (<:-refl)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
@@ -48,7 +49,7 @@ open import Once.Spec.Typing
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
          t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float;
          t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-own;
-         t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
+         t-var-import; t-var-resolved-guard; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp; t-sub; t-lam;
@@ -119,6 +120,8 @@ realize (t-cata-check wfF dalg) = cata wfF (realize dalg)
 realize (t-ana-check wfF dcoalg) = ana wfF (realize dcoalg)
 -- D226: the mode switch realises as the conversion it carries.
 realize (t-sub d p)             = coerce p (realize-infer d)
+-- D313: a generator at its guard is the same SigOp, at the `eff⁺` arrow.
+realize (t-var-resolved-guard {cn = cn} _ _ _ (con-fun bA bB)) = sigOp cn (con-fun bA bB)
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)
 realize (t-In-app-check {F = F} wfF d) =

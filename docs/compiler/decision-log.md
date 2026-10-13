@@ -18532,4 +18532,14 @@ Plan 0.117 gains phase A′ (the `act` grade, top-down from the Spec); F becomes
   (`t-effApp`, `t-apply-eff-app-infer`, `t-Out-eff-app-infer`) are one rule each over an effectful
   grade `π` with evidence `EffGrade π` (`act` or `eff`) — plan 0.114 G6's single graded result
   former for these; the checker, its completeness and mode agreement, and the bridges follow.
+* **F3a (2026-10-13)** — an FFI reference at the GUARD: core `⊢sigop⁺` (the same `sigop` term at
+  the declared arrow's `eff⁺` instance, meaning the generic effect `sigOpGuardᵛ`) and the surface
+  check rule `t-var-resolved-guard`. Inference still reports the declared type; the guard is
+  INCOMPARABLE with `act`, so it is a rule of its own, tried by the checker only after
+  subsumption fails. Consequence for the metatheory: "checking accepts only supertypes of what is
+  inferred" (`ModeSub`) becomes a relation `_≼_` (subtyping, the guard step, closed under pair
+  literals); every coherence route meets it at an arrow whose grade evidence rules the guard out,
+  and the spine/compose routes read their domain conversion from the domain-given derivation
+  (`di-dom`). Linking: a reference links against its declaration at the declared type or its
+  guard (`AtDecl`) — one contract (`contractOf`) for `act`, `eff` and `eff⁺`.
 

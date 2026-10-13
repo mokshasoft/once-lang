@@ -26,6 +26,10 @@ open import Once.Spec.Numerics using (TargetNum)
 module Once.Adequacy.Coherence (fmt : TargetNum) where
 
 open import Data.Product using (_,_)
+open import Data.Maybe using (just)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Once.Spec.Type.WellFormed using (con-fun)
+open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong-app)
 
 open import Once.Spec.Type as T using (Type; _⇒[_]_)
@@ -53,6 +57,15 @@ private
   RI = realize-infer
   RC = realize
   RD = realize-d
+
+
+-- D313: a generator's declared arrow is never below its guard.
+private
+  guard-absurd : ∀ {D A B : Type} {q : T.Quantity} {π : T.Purity}
+               → just D ≡ just (A ⇒[ T.mk-kind q π ] B) → T.EffGrade π
+               → D <: (A ⇒[ T.mk-kind q T.eff⁺ ] B) → ⊥
+  guard-absurd refl T.eg-act (sub-arr _ _ ())
+  guard-absurd refl T.eg-eff (sub-arr _ _ ())
 
 mutual
   coh-ii : ∀ {ctx e A A′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → RI d ≅ RI d′
@@ -88,10 +101,10 @@ mutual
   coh-ii (ii-Out-eff {w = w} {w′ = w′} {g = g} {g′ = g′} {d = d} {d′ = d′} r) = outeff-h {g = g} {g′ = g′} w w′ {d = d} {d′ = d′} (coh-ii r)
   coh-ii (ii-app r₁ r₂) = app-h (coh-ii r₁) (coh-cc r₂)
   coh-ii (ii-effApp r₁ r₂) = effApp-h (coh-ii r₁) (coh-cc r₂)
-  coh-ii (ii-app-spine {dX = dX} {dX′ = dX′} rx rd) =
-    spine-h (MS.ic-sub dX′ dX) (coh-ic rx (MS.ic-sub dX′ dX)) (coh-di rd (MS.ic-sub dX′ dX) ⊑-pure)
-  coh-ii (ii-spine-app {dX = dX} {dX′ = dX′} rx rd) =
-    ≅-sym (spine-h (MS.ic-sub dX′ dX) (coh-ic rx (MS.ic-sub dX′ dX)) (coh-di rd (MS.ic-sub dX′ dX) ⊑-pure))
+  coh-ii (ii-app-spine {wF = wF} {dF′ = dF′} rx rd) =
+    spine-h (MS.di-dom dF′ wF) (coh-ic rx (MS.di-dom dF′ wF)) (coh-di rd (MS.di-dom dF′ wF) ⊑-pure)
+  coh-ii (ii-spine-app {wF = wF} {dF′ = dF′} rx rd) =
+    ≅-sym (spine-h (MS.di-dom dF′ wF) (coh-ic rx (MS.di-dom dF′ wF)) (coh-di rd (MS.di-dom dF′ wF) ⊑-pure))
   coh-ii (ii-spine r₁ r₂) = app-h (coh-dd r₂) (coh-ii r₁)
 
   coh-cc : ∀ {ctx e A Ψ Ψ′} {c : ctx ⊢ᶜ e ∶ A ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′} → Rcc c c′ → RC c ≅ RC c′
@@ -105,10 +118,14 @@ mutual
   coh-cc cc-inl = ≅-refl
   coh-cc cc-inr = ≅-refl
   coh-cc (cc-gg r₁ r₂) = comp-h (coh-cc r₂) (coh-dd r₁)
-  coh-cc (cc-gf {s = s} {dg = dg} {df = df} {wf = wf} {dg′ = dg′} rdc ric) =
-    gf-h (MS.dc-sub dg dg′) s (MS.ic-sub wf df) (coh-ic ric (MS.ic-sub wf df)) (coh-dc rdc (MS.dc-sub dg dg′))
-  coh-cc (cc-fg {s = s} {dg = dg} {df = df} {wf = wf} {dg′ = dg′} rdc ric) =
-    ≅-sym (gf-h (MS.dc-sub dg dg′) s (MS.ic-sub wf df) (coh-ic ric (MS.ic-sub wf df)) (coh-dc rdc (MS.dc-sub dg dg′)))
+  -- D313: the middle conversion is the domain half of `f`'s (whose grade
+  -- evidence `s` rules out the guard), not read off `g`'s codomain.
+  coh-cc (cc-gf {s = s} {df = df} {wf = wf} rdc ric) =
+    gf-h (MS.sub-dom s₁) s s₁ (coh-ic ric s₁) (coh-dc rdc (MS.sub-dom s₁))
+    where s₁ = MS.≼-s (MS.ic-sub wf df) s
+  coh-cc (cc-fg {s = s} {df = df} {wf = wf} rdc ric) =
+    ≅-sym (gf-h (MS.sub-dom s₁) s s₁ (coh-ic ric s₁) (coh-dc rdc (MS.sub-dom s₁)))
+    where s₁ = MS.≼-s (MS.ic-sub wf df) s
   coh-cc (cc-ff {s = s} {s′ = s′} r₁ r₂) = comp-h (coerce-h s s′ (coh-ii r₁)) (coh-cc r₂)
   coh-cc (cc-copair r₁ r₂) = copair-h (coh-cc r₁) (coh-cc r₂)
   coh-cc (cc-fork r₁ r₂) = fork-h (coh-cc r₁) (coh-cc r₂)
@@ -123,6 +140,8 @@ mutual
   coh-cc (cc-inr-app {d = d} {d′ = d′} r) = inrapp-h {d = d} {d′ = d′} (coh-cc r)
   coh-cc (cc-initial-app {d = d} {d′ = d′} r) = initapp-h {d = d} {d′ = d′} (coh-cc r)
   coh-cc cc-poly = ≅-refl
+  coh-cc (cc-guard {c = con-fun bA bB} {c′ = con-fun bA′ bB′})
+    rewrite IsBaseType-irrelevant bA bA′ | IsBaseType-irrelevant bB bB′ = ≅-refl
 
   -- A checked term means its inferred meaning, converted.
   coh-ic : ∀ {ctx e A B Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ B ⨾ Ψ′} → Ric d c → (p : A <: B)
@@ -130,18 +149,19 @@ mutual
   coh-ic (ic-sub {p = p′} r) p = coerce-h p p′ (coh-ii r)
   coh-ic (ic-pair r₁ r₂) (sub-prod pa pb) = pairc-h pa pb (coh-ic r₁ pa) (coh-ic r₂ pb)
   coh-ic (ic-apply {d = d} {d′ = d′} r) p = applyic-h {d = d} {d′ = d′} p refl (coh-ii r)
+  coh-ic (ic-guard {g = g} {l = l} {l′ = l′}) p = ⊥-elim (guard-absurd (trans (sym l) l′) g p)
 
   -- A term checked at an arrow from its given domain means its domain-given
   -- meaning, its codomain converted.
   coh-dc : ∀ {ctx e A B B′ π Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′}
          → Rdc dd c → (p : B <: B′) → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (RD dd) ≅ RC c
   coh-dc (dc-infer {a = a} {g = g} {w = w} {c = c} r) p =
-    twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (MS.ic-sub w c) (coh-ic r (MS.ic-sub w c))
+    twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (MS.≼-g (MS.ic-sub w c) g) (coh-ic r (MS.≼-g (MS.ic-sub w c) g))
   coh-dc (dc-sub {p = sub-arr a₀ b₀ g₀} r) p = dcsub-h p a₀ b₀ g₀ (coh-di r a₀ g₀)
   coh-dc (dc-lam {q₁ = q₁} {≤p′ = ≤p′} r) p = lamc-h (T.≤q-Many q₁) ≤p′ p (coh-ic r p)
   coh-dc (dc-cg r₁ r₂) p = cg-h p (coh-dc r₂ p) (coh-dd r₁)
-  coh-dc (dc-cf {s = s@(sub-arr _ _ g′)} {dg = dg} {dg′ = dg′} rdi rdc) p =
-    cf-h (MS.dc-sub dg dg′) p g′ s (coh-di rdi (MS.dc-sub dg dg′) g′) (coh-dc rdc (MS.dc-sub dg dg′))
+  coh-dc (dc-cf {s = s@(sub-arr _ _ g′)} {df = df} {wf = wf} rdi rdc) p =
+    cf-h (MS.di-dom df wf) p g′ s (coh-di rdi (MS.di-dom df wf) g′) (coh-dc rdc (MS.di-dom df wf))
   coh-dc dc-id p = ≅-of (≈-trans (coerce-uniq _ (<:-refl _) _) (coerce-refl _))
   coh-dc dc-fst p = ≅-of (≈-trans (coerce-uniq _ (<:-refl _) _) (coerce-refl _))
   coh-dc dc-snd p = ≅-of (≈-trans (coerce-uniq _ (<:-refl _) _) (coerce-refl _))
@@ -149,7 +169,7 @@ mutual
   coh-dc dc-initial p = ≅-of (≈-trans (coerce-uniq _ (sub-arr sub-void sub-void (⊑π-refl _)) _) (initial-coerce _))
   coh-dc (dc-case r₁ r₂) p = casec-h p (coh-dc r₁ p) (coh-dc r₂ p)
   coh-dc (dc-pair r₁ r₂) (sub-prod pb pc) = forkc-h pb pc (coh-dc r₁ pb) (coh-dc r₂ pc)
-  coh-dc (dc-cata {w = w} {w′ = w′} {a = a} {a′ = a′} r) p = catac-h w w′ p (MS.ic-sub a a′) (coh-ic r (MS.ic-sub a a′))
+  coh-dc (dc-cata {w = w} {w′ = w′} {a = a} {a′ = a′} r) p = catac-h w w′ p (MS.≼-same (MS.ic-sub a a′)) (coh-ic r (MS.≼-same (MS.ic-sub a a′)))
   coh-dc {ctx = ctx} (dc-poly {x = x} {p = q₀} {p′ = q₀′} {as = as} {ki = θ , e , _} {ki′ = θ′ , e′ , _} {gr = gr} {inc = inc}) p =
     polydc-h {ctx = ctx} {x = x} (trans (sym q₀) q₀′) as inc θ e θ′ e′ gr p
 

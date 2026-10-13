@@ -82,7 +82,7 @@ open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check;
   t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
-  t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
+  t-var-resolved; t-var-own; t-var-import; t-var-resolved-guard; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp;
   t-sub; t-lam; t-pair-lit-check;
@@ -110,7 +110,7 @@ open import Once.Adequacy.GradedRelation fmt
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼∞ᵈ_ using (force-∼∞ᵈ)
 open _∼⁺ᵈ_ using (force-∼⁺ᵈ)
-open import Once.Spec.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCall⁺; opCallᵀ)
+open import Once.Spec.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; sigOpGuardᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCall⁺; opCallᵀ)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Spec.FunctorMeaning using (translateF)
@@ -382,6 +382,24 @@ opCallᵀ-rel {B = B} ι q cn bA bB x =
         (sym (opCallᵀ-sem (pureHalf ι) cn bA bB (isVoid? B) (isUnit? B) x))
         (same-tree bB (sigOpT fmt (pureHalf ι) (arrow-info (mk-kind q act) cn bA bB) x))
 
+-- D313: an operation at the guard is the generic effect on both sides; no
+-- declaration is read (`sigOpGuardᵛ`).
+sigOpGuard-rel : ∀ {Dom Cod} (ι : Interp) (cn : CanonicalName) (bDom : IsBaseType Dom) (bCod : IsBaseType Cod) (q : Quantity)
+               → RelGM pure (Dom ⇒[ mk-kind q eff⁺ ] Cod) (sigOpGuardᵛ cn bDom bCod q)
+                   (sigOpRefᴰ fmt (pureHalf ι) cn (con-fun {k = mk-kind q eff⁺} bDom bCod))
+sigOpGuard-rel {Cod = Cod} ι cn bDom bCod Zero =
+  rel-ret (opCall⁺-rel ι Zero cn base-Unit bCod tt)
+sigOpGuard-rel {Dom} {Cod} ι cn bDom bCod One =
+  rel-ret (ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
+    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff⁺) cn bDom bCod) x))
+    (opCall⁺-rel ι One cn bDom bCod))
+sigOpGuard-rel {Dom} {Cod} ι cn bDom bCod Many =
+  rel-ret (ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
+    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
+    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff⁺) cn bDom bCod) x))
+    (opCall⁺-rel ι Many cn bDom bCod))
+
 sigOpRef-rel : ∀ {A} (ι : Interp) (cn : CanonicalName) (conc : IsConcrete A) (m : (showCanonical cn , A) ∈ sig ι)
              → RelGM pure A (sigOpRefᵛ fmt (sig ι) (impl ι) cn conc m) (sigOpRefᴰ fmt (pureHalf ι) cn conc)
 sigOpRef-rel {A} ι cn (con-base ib) m =
@@ -427,19 +445,10 @@ sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many act} bDom bCod
     (λ x → fmapT (injB bCod) (opCallᵀ cn bDom (isVoid? Cod) (isUnit? Cod) x))
     (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many act) cn bDom bCod) x))
     (opCallᵀ-rel ι Many cn bDom bCod))
--- D311 C2: at the guard, the generic effect.
-sigOpRef-rel ι cn (con-fun {B = Cod} {k = mk-kind Zero eff⁺} bDom bCod) m =
-  rel-ret (opCall⁺-rel ι Zero cn base-Unit bCod tt)
-sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
-    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
-    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind One eff⁺) cn bDom bCod) x))
-    (opCall⁺-rel ι One cn bDom bCod))
-sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff⁺} bDom bCod) m =
-  rel-ret (ptr-rel {Dom} {Cod} {P = RelT∞′ (RelGV Cod)} bDom
-    (λ x → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) x)))
-    (λ x → fmapT (injectᵇ bCod) (sigOpT fmt (pureHalf ι) (arrow-info {Dom} {Cod} (mk-kind Many eff⁺) cn bDom bCod) x))
-    (opCall⁺-rel ι Many cn bDom bCod))
+-- D311 C2: at the guard, the generic effect — which reads no declaration.
+sigOpRef-rel ι cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod) m = sigOpGuard-rel ι cn bDom bCod Zero
+sigOpRef-rel ι cn (con-fun {k = mk-kind One eff⁺} bDom bCod) m = sigOpGuard-rel ι cn bDom bCod One
+sigOpRef-rel ι cn (con-fun {k = mk-kind Many eff⁺} bDom bCod) m = sigOpGuard-rel ι cn bDom bCod Many
 
 -- Value-position named reference. SD's `sigOp` dispatches on `A`'s shape: at a
 -- base (`con-base`) type the arrow clause can't fire, so SD's catch-all IS the
@@ -496,6 +505,22 @@ sigop-ref-bridge {A = Dom ⇒[ mk-kind One π ] Cod} ι cn (con-fun bDom bCod) m
 sigop-ref-bridge {A = Dom ⇒[ mk-kind Many π ] Cod} ι cn (con-fun bDom bCod) m dγ eq =
   subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Many π ] Cod) (sigOpRefᵛ fmt (sig ι) (impl ι) cn (con-fun {k = mk-kind Many π} bDom bCod) m) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Many π} bDom bCod)))
         eq (sigOpRef-rel ι cn (con-fun {k = mk-kind Many π} bDom bCod) m)
+
+-- D313: a generator at its guard, against the realized `sigOp` at `eff⁺`.
+sigop-guard-bridge : ∀ {n} {Γ : Ctx n} {Dom Cod : Type} (ι : Interp) (cn : CanonicalName)
+                       (bDom : IsBaseType Dom) (bCod : IsBaseType Cod) (q : Quantity) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜᵗ ⟧ᴰ)
+                   → pureHalf ι ≡ ffiE (calls σ)
+                   → RelGM pure (Dom ⇒[ mk-kind q eff⁺ ] Cod) (sigOpGuardᵛ cn bDom bCod q)
+                       ((SD.⟦ sigOp {Γ = Γ} {A = Dom ⇒[ mk-kind q eff⁺ ] Cod} cn (con-fun bDom bCod) ⟧ˢ fmt σ) dγ)
+sigop-guard-bridge {Dom = Dom} {Cod} ι cn bDom bCod Zero dγ eq =
+  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Zero eff⁺ ] Cod) (sigOpGuardᵛ cn bDom bCod Zero) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Zero eff⁺} bDom bCod)))
+        eq (sigOpGuard-rel ι cn bDom bCod Zero)
+sigop-guard-bridge {Dom = Dom} {Cod} ι cn bDom bCod One dγ eq =
+  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind One eff⁺ ] Cod) (sigOpGuardᵛ cn bDom bCod One) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind One eff⁺} bDom bCod)))
+        eq (sigOpGuard-rel ι cn bDom bCod One)
+sigop-guard-bridge {Dom = Dom} {Cod} ι cn bDom bCod Many dγ eq =
+  subst (λ φ′ → RelGM pure (Dom ⇒[ mk-kind Many eff⁺ ] Cod) (sigOpGuardᵛ cn bDom bCod Many) (sigOpRefᴰ fmt φ′ cn (con-fun {k = mk-kind Many eff⁺} bDom bCod)))
+        eq (sigOpGuard-rel ι cn bDom bCod Many)
 
 -- Plan 0.58 / D071: `poly-ref-bridge` DELETED. The surface `poly` node is no
 -- longer a concrete `value-info` leaf (it is an internal `internal-info`
@@ -1145,6 +1170,9 @@ bridge-c (t-terminal-morph-check {A = A} {π = π} {u = u}) re er =
   rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM u tt))
                (sym (liftFn-terminal {A})) (λ _ → RelGM-return u {Once.Spec.Type.Unit} tt))
 bridge-c (t-initial-morph-check) re er = rel-ret (λ { {a = ()} })
+-- D313: a generator at its guard — the generic effect on both sides.
+bridge-c (t-var-resolved-guard {cn = cn} {q = q} _ _ _ (con-fun bA bB)) {ρ = ρ} {dγ₂ = dγ₂} re er =
+  sigop-guard-bridge (world ρ) cn bA bB q dγ₂ (proj₂ (proj₂ er))
 bridge-c (t-inl-morph-check {A = A} {B = B} {π = π} {u = u}) re er =
   rel-ret (subst (RelGV (A ⇒[ mk-kind Many π ] (A + B)) (λ a → returnM u (inj₁ a)))
                (sym (liftFn-inl {A} {B})) (λ rv → RelGM-return u {A + B} rv))

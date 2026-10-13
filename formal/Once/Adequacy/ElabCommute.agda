@@ -30,6 +30,8 @@ module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} 
 
 import Once.Spec.Name
 import Data.String
+import Data.Maybe
+import Once.Spec.Typing.Scope
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -39,7 +41,9 @@ open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
 import Once.Spec.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; positionGrade)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; eff⁺; positionGrade; EffGrade; Purity)
+open import Once.Spec.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
+open import Once.Spec.Name using (NotGenerator)
 open import Once.Spec.Type using (μ-type; ν-type)
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
@@ -56,8 +60,8 @@ open import Once.Spec.Core.PolyTy using (_!!_; module Schema)
 open Schema using (arity)
 import Once.Spec.Core.Rename S as RN
 import Once.Spec.Core.DerivedTyping S as DT
-open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; def; importE; sigE; refE; InstanceOf)
-open RSm Δ τ r using (ρ̂; ρ̂F; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
+open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; declared; def; importE; sigE; sigE⁺; refE; InstanceOf)
+open RSm Δ τ r using (ρ̂; ρ̂F; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; guard-rf; _⇝ᵢ_; _⇝ᶜ_)
 import Once.Adequacy.CoreInst S Δ τ r as CI
 open CI using (ρ̂ₜ)
 open CI.WithSG sg
@@ -105,6 +109,12 @@ private
   sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Spec.Name.showCanonical cn) T)
          → proj₂ (sigE {Γ = ρ̂S Γ} cn k dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k dc))
   sig-dr cn k dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
+
+  -- D313: a generator at its guard — the guarded arrow is ground too.
+  sig⁺-dr : ∀ {n} {Γ : C.Ctx n} {A B q π} (cn : Once.Spec.Name.CanonicalName) k (e : EffGrade π)
+              (dc : Declared (Once.Spec.Name.showCanonical cn) (A T.⇒[ mk-kind q π ] B))
+          → proj₂ (sigE⁺ {Γ = ρ̂S Γ} cn k e dc) ≅ ρ̂ᶜ (proj₂ (sigE⁺ {Γ = Γ} cn k e dc))
+  sig⁺-dr cn k e (declared h (rf-⇒ ga gb) m) = H.sym (rmA (λ X → X) (sym (ρ̂-rf (rf-⇒ ga gb))))
 
   -- A definition's reference, at its ground instance, is fixed.
   imp-tm : ∀ {n} {Γ : C.Ctx n} {x T} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
@@ -158,6 +168,23 @@ private
 ------------------------------------------------------------------------
 -- THE INDUCTION.
 ------------------------------------------------------------------------
+
+-- D313: the guard's case, at its rigid-free evidence in constructor form (so
+-- the core substitution of `⊢sigop⁺` reduces).
+guard-tm : ∀ {n Γ D cn A B q π} (rf : RigidFree (A T.⇒[ mk-kind q π ] B)) (ng : NotGenerator cn)
+             (li : Once.Spec.Typing.Scope.lookupImport sigs (Once.Spec.Name.showCanonical cn) ≡ Data.Maybe.just (A T.⇒[ mk-kind q π ] B))
+             (e : EffGrade π) (c : IsConcrete (A T.⇒[ mk-kind q π ] B))
+         → proj₁ (elabᶜ V (guard-rf {n = n} {Γ = Γ} {D = D} {polys = polys} rf ng li e c))
+           ≡ ρ̂ₜ (proj₁ (elabᶜ V (t-var-resolved-guard {ctx = mkCtx n Γ D imps polys sigs} ng li e c)))
+guard-tm (rf-⇒ ga gb) ng li e c = ⇝ᶜ-tm (sym (ρ̂-rf (rf-⇒ ga gb))) _
+
+guard-dr : ∀ {n Γ D cn A B q π} (rf : RigidFree (A T.⇒[ mk-kind q π ] B)) (ng : NotGenerator cn)
+             (li : Once.Spec.Typing.Scope.lookupImport sigs (Once.Spec.Name.showCanonical cn) ≡ Data.Maybe.just (A T.⇒[ mk-kind q π ] B))
+             (e : EffGrade π) (c : IsConcrete (A T.⇒[ mk-kind q π ] B))
+         → proj₂ (elabᶜ V (guard-rf {n = n} {Γ = Γ} {D = D} {polys = polys} rf ng li e c))
+           ≅ ρ̂ᶜ (proj₂ (elabᶜ V (t-var-resolved-guard {ctx = mkCtx n Γ D imps polys sigs} ng li e c)))
+guard-dr {D = D} {cn = cn} (rf-⇒ ga gb) ng li e c =
+  H.trans (⇝ᶜ-dr (sym (ρ̂-rf (rf-⇒ ga gb))) _) (sig⁺-dr {Γ = D} cn c e (declares li))
 
 mutual
   tm-i : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
@@ -271,6 +298,7 @@ mutual
          (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
                 (sym (ρ̂ₜ-ren suc _)))
   tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
+  tm-c (t-var-resolved-guard ng li e c) = guard-tm (proj₂ ir li) ng li e c
   tm-c (t-lam le d)         = cong (G.lam _ _ _) (tm-c d)
   tm-c (t-pair-lit-check a b) = cong₂ G.pair (tm-c a) (tm-c b)
   tm-c (t-In-app-check {F = F} wf d) = cong₂ (λ X u → G.app (G.lam X Many pure (G.roll (ρ̂F F) (G.var zero))) u) (sym (ρ̂-⟦⟧ F (μ-type F))) (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d))
@@ -466,6 +494,7 @@ mutual
       q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c dc)
   dr-c (t-sub d p)           = ≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) refl (tm-i d) (dr-i d)
+  dr-c (t-var-resolved-guard ng li e c) = guard-dr (proj₂ ir li) ng li e c
   dr-c (t-lam {u = u} le d)  =
     ≅lam refl (tm-c d) (≅1 _ _ (GT.⊢sub-eff u) refl (tm-c d) (dr-c d))
   dr-c (t-pair-lit-check a b) = ≅2 _ _ GT.⊢pair refl (tm-c a) (dr-c a) refl (tm-c b) (dr-c b)
@@ -519,3 +548,4 @@ private
 elab-ρ̂ᶜ : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
         → elabᶜ V (subst-c′ ir d) ≡ (ρ̂ₜ (proj₁ (elabᶜ V d)) , ρ̂ᶜ (proj₂ (elabᶜ V d)))
 elab-ρ̂ᶜ d = Σ≅ (tm-c d) (dr-c d)
+

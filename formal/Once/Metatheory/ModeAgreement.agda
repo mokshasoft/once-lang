@@ -470,6 +470,7 @@ mutual
   agree-cc (t-inr-app-check d) (t-inr-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
   agree-cc (t-initial-app-check d) (t-initial-app-check d′) = cong (λ Ψ → zeroUsage +ᵘ (T.Many *ᵘ Ψ)) (agree-cc d d′)
   agree-cc (t-var-poly-instantiate _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = refl
+  agree-cc (t-var-resolved-guard _ _ _ _) (t-var-resolved-guard _ _ _ _) = refl
 
   ----------------------------------------------------------------------
   -- agree-ic
@@ -503,6 +504,9 @@ mutual
   agree-ic d (t-inl-app-check _) = ⊥-elim (noinf-inl-app d)
   agree-ic d (t-inr-app-check _) = ⊥-elim (noinf-inr-app d)
   agree-ic d (t-initial-app-check _) = ⊥-elim (noinf-initial-app d)
+  agree-ic (t-var-resolved _ _ _) (t-var-resolved-guard _ _ _ _) = refl
+  agree-ic t-unit-var (t-var-resolved-guard _ _ _ _) = refl
+  agree-ic (t-var-own _ _ _) (t-var-resolved-guard _ _ _ _) = refl
 
   ----------------------------------------------------------------------
   -- agree-dc

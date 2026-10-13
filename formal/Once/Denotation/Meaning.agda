@@ -52,7 +52,7 @@ open import Once.Denotation.Phase using (lookupᴰUsed)
 open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Spec.Graded using (⟦_⟧ᵛ; M; returnM; bindM; _>>=ᵖ_)
 open import Once.Spec.GradedOps
-  using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
+  using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; sigOpGuardᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 import Data.List as L
@@ -85,7 +85,7 @@ open import Once.Spec.Typing
          t-var-poly-instantiate;
          t-var-poly-instantiate-infer; d-poly;
          t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
-         t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
+         t-var-resolved; t-var-own; t-var-import; t-var-resolved-guard; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp)
 
@@ -256,6 +256,8 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 ⟦_⟧ᶜ {ctx = ctx} (t-initial-morph-check  ) fmt ρ dγ = λ v  → ⊥-elim v
 ⟦_⟧ᶜ {ctx = ctx} (t-inl-morph-check {u = u}) fmt ρ dγ = λ a  → returnM u (inj₁ a)
 ⟦_⟧ᶜ {ctx = ctx} (t-inr-morph-check {u = u}) fmt ρ dγ = λ b  → returnM u (inj₂ b)
+-- D313: a generator at its guard is the generic effect (`sigOpGuardᵛ`).
+⟦_⟧ᶜ (t-var-resolved-guard {cn = cn} {q = q} _ _ _ (con-fun bA bB)) fmt ρ dγ = sigOpGuardᵛ cn bA bB q
 ⟦_⟧ᶜ {ctx = ctx} (t-compose-check-g {π = π} dg df) fmt ρ dγ =
   (⟦ df ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ (Many *ᵘ _)) dγ) >>=ᵖ λ vf → (⟦ dg ⟧ᵈ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ (Many *ᵘ _))) dγ) >>=ᵖ λ vg →
   λ a → bindM π (vg a) vf

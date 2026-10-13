@@ -100,7 +100,7 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
 open import Once.Spec.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
 open import Once.Spec.Type.Grade using (Quantity; Zero; One)
 open import Once.Spec.Type using (_*_; Functor; ⟦_⟧T)
-open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Spec.Type.WellFormed using (WellFormedF; con-fun)
 open import Once.Spec.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Spec.Environment using (bindᵛ)
@@ -396,6 +396,7 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-initial-morph-check {π = π}) dγ = extensionality λ ()
   bridge-c V ag (t-inl-morph-check {u = u}) dγ = refl
   bridge-c V ag (t-inr-morph-check {u = u}) dγ = refl
+  bridge-c V ag (t-var-resolved-guard _ _ _ (con-fun _ _)) dγ = refl
   bridge-c V ag (t-compose-check-g dg df) dγ =
     trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)) dγ))

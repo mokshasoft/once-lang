@@ -308,9 +308,13 @@ mutual
   route-cc (t-inr-app-check d) (t-inr-app-check d′) = cc-inr-app (route-cc d d′)
   route-cc (t-initial-app-check d) (t-initial-app-check d′) = cc-initial-app (route-cc d d′)
   route-cc (t-var-poly-instantiate _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = cc-poly
+  route-cc (t-var-resolved-guard _ _ _ _) (t-var-resolved-guard _ _ _ _) = cc-guard
   route-ic d (t-sub d′ _) = ic-sub (route-ii d d′)
   route-ic (t-pair a b) (t-pair-lit-check a′ b′) = ic-pair (route-ic a a′) (route-ic b b′)
   route-ic (t-apply-app-infer d) (t-apply-check d′) = ic-apply (route-ii d d′)
+  route-ic (t-var-resolved _ _ _) (t-var-resolved-guard _ _ _ _) = ic-guard
+  route-ic t-unit-var (t-var-resolved-guard (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _ _) = ⊥-elim (¬u refl)
+  route-ic (t-var-own n _ _) (t-var-resolved-guard _ l _ _) = ⊥-elim (just≢nothing (trans (sym l) n))
   route-ic (t-apply-eff-app-infer {g = T.eg-act} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   route-ic (t-apply-eff-app-infer {g = T.eg-eff} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   route-ic (t-app () _ _) (t-apply-check _)
