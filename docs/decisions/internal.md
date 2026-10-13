@@ -145,6 +145,11 @@ decision-log entry updates the rule it changes here, in the same commit.
   `RelT∞′` (the same nodes, read off the finite side), which respects
   bisimilarity on the `T∞` side (`RelT∞′-≈`) and gives the same events at
   every depth (`RelT∞′-events`). (D313, D312)
+- **Checking accepts the inferred type's supertypes, or its guard**: an FFI
+  reference also checks at its declared arrow's `eff⁺` instance, which is
+  incomparable with `act`; mode agreement concludes `_≼_` (subtyping, the
+  guard step, through pair literals), and every coherence route rules the
+  guard out from the grade evidence it holds. (D313)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering
