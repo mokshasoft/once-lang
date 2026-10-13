@@ -67,7 +67,7 @@ import Data.String.Properties
 open import Once.Spec.Type using (Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pp; sub-int; sub-float; sub-unit; sub-prod)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
-open import Once.Metatheory.SubLaws using (<:-refl)
+open import Once.Spec.Type.Sub using (<:-refl)
 open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Spec.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; classifyAppHead-nothing⇒view-other)

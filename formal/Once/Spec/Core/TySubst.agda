@@ -26,7 +26,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
 open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One)
-open import Once.Metatheory.SubLaws using (⊑π-refl)
+open import Once.Spec.Type.Sub using (⊑π-refl)
 open import Once.Spec.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)

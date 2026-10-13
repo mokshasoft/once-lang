@@ -22,7 +22,8 @@ open import Once.Spec.Type.Sub
         ; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid )
 open import Once.Spec.Context
   using (Usage; []; _∷_; _⊑ᵘ_; ⊑[]; _⊑∷_; ⊑ᵘ-refl; ⊑ᵘ-trans)
-open import Once.Metatheory.SubLaws using (⊑π-refl; ⊑π-trans; <:-refl; <:-trans)
+open import Once.Metatheory.SubLaws using (⊑π-trans; <:-trans)
+open import Once.Spec.Type.Sub using (⊑π-refl; <:-refl)
 open import Once.Metatheory.Grade using (≤q'-antisym)
 
 ------------------------------------------------------------------------

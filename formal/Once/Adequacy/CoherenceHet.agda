@@ -32,7 +32,7 @@ open import Once.Spec.Type.Grade as T using (mk-kind; Many; Purity; Quantity; _�
 import Once.Spec.Type.Poly as T
 open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
-open import Once.Metatheory.SubLaws using (<:-refl; ⊑π-refl)
+open import Once.Spec.Type.Sub using (<:-refl; ⊑π-refl)
 open import Once.Spec.Syntax as Raw using (RawExpr)
 open import Once.Spec.Name using (NotGenerator; showCanonical)
 open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)

@@ -75,7 +75,7 @@ open import Once.Spec.Float.Decimal using (decimalOf)
 import Once.Spec.Float.Decimal as Decimal
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_; sub-arr)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
-open import Once.Metatheory.SubLaws using (<:-refl)
+open import Once.Spec.Type.Sub using (<:-refl)
 open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)

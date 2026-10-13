@@ -20,7 +20,7 @@
 -- derivation — the meaning of `∀` as the family `Π(σ). ⟦T[σ]⟧` (phase 4).
 ------------------------------------------------------------------------
 
-import Once.Metatheory.SubLaws
+import Once.Spec.Type.Sub
 open import Data.Nat using (ℕ)
 import Once.Spec.Type
 open import Once.Spec.Core.PolyTy using (Sig)
@@ -152,7 +152,7 @@ data _<:ₚ_ {m} : Ty m → Ty m → Set where
   sub-ν      : ∀ {F π π′} → π ⊑π π′ → ν-type F π <:ₚ ν-type F π′
 
 <:ₚ-⟪⟫ : ∀ {m} {A B : Ty m} (σ : GSub m) → A <:ₚ B → A ⟪ σ ⟫ <: B ⟪ σ ⟫
-<:ₚ-⟪⟫ {A = var i} σ sub-var = Once.Metatheory.SubLaws.<:-refl (σ i)
+<:ₚ-⟪⟫ {A = var i} σ sub-var = Once.Spec.Type.Sub.<:-refl (σ i)
 <:ₚ-⟪⟫ σ sub-void   = sub-void
 <:ₚ-⟪⟫ σ sub-unit   = sub-unit
 <:ₚ-⟪⟫ σ sub-int    = sub-int

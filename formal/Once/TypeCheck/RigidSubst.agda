@@ -38,7 +38,7 @@ open import Once.Spec.Type.Poly
 open import Once.Type
 open ArrowKind using (quantity)
 open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
-open import Once.Metatheory.SubLaws using (<:-refl)
+open import Once.Spec.Type.Sub using (<:-refl)
 open import Once.Spec.Type.Instance using (KindedInstance)
 open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (extractGround-rf)

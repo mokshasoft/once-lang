@@ -110,7 +110,7 @@ open import Once.Spec.Type using (_⇒[_]_)
 open import Once.Spec.Environment using (restrictᵛ)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Type.Sub using (_⊑π_; sub-arr)
-open import Once.Metatheory.SubLaws using (<:-refl)
+open import Once.Spec.Type.Sub using (<:-refl)
 open import Once.Spec.Core.Typing S
 open import Once.Spec.Core.DerivedTyping S
 import Once.Metatheory.CoreRenameSem S as RS

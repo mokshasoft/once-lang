@@ -29,12 +29,6 @@ open import Once.Type.Sub
 ⊑π-unique ⊑-ge ⊑-ge = refl
 ⊑π-unique ⊑-gp ⊑-gp = refl
 
-⊑π-refl : ∀ π → π ⊑π π
-⊑π-refl pure = ⊑-pure
-⊑π-refl eff⁺ = ⊑-g
-⊑π-refl eff = ⊑-eff
-⊑π-refl prod = ⊑-prod
-
 ⊑π-trans : ∀ {π₁ π₂ π₃} → π₁ ⊑π π₂ → π₂ ⊑π π₃ → π₁ ⊑π π₃
 ⊑π-trans ⊑-pure ⊑-pure = ⊑-pure
 ⊑π-trans ⊑-pure ⊑-pe = ⊑-pe
@@ -75,28 +69,6 @@ open import Once.Type.Sub
 <:-unique (sub-ν g) (sub-ν h) = cong sub-ν (⊑π-unique g h)
 
 <:-unique sub-rigid sub-rigid = refl
-
-<:-refl : ∀ A → A <: A
-
-<:-refl Unit   = sub-unit
-
-<:-refl Void   = sub-void
-
-<:-refl Int    = sub-int
-
-<:-refl Float  = sub-float
-
-<:-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:-refl A) (<:-refl B) (⊑π-refl π)
-
-<:-refl (A * B) = sub-prod (<:-refl A) (<:-refl B)
-
-<:-refl (A + B) = sub-sum (<:-refl A) (<:-refl B)
-
-<:-refl (μ-type F) = sub-μ
-
-<:-refl (ν-type F π) = sub-ν (⊑π-refl π)
-
-<:-refl (rigid _ _) = sub-rigid
 
 <:-trans : ∀ {A B C} → A <: B → B <: C → A <: C
 

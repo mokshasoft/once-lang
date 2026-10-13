@@ -21,7 +21,7 @@ open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Spec.Type.Sub using (_<:_; sub-int; sub-float; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pp)
 open import Once.Type.Sub using (_<:?_)
-open import Once.Metatheory.SubLaws using (<:-refl)
+open import Once.Spec.Type.Sub using (<:-refl)
 open import Data.Integer using (+_)
 
 open import Data.String using (String)

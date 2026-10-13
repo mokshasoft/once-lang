@@ -72,3 +72,23 @@ data _<:_ : Type → Type → Set where
   sub-μ      : ∀ {F} → μ-type F <: μ-type F
   sub-ν      : ∀ {F π π′} → π ⊑π π′ → ν-type F π <: ν-type F π′
   sub-rigid  : ∀ {k i} → rigid k i <: rigid k i
+
+-- The identities of the order and of the thin category of types.
+⊑π-refl : ∀ π → π ⊑π π
+⊑π-refl pure = ⊑-pure
+⊑π-refl eff⁺ = ⊑-g
+⊑π-refl eff = ⊑-eff
+⊑π-refl prod = ⊑-prod
+
+<:-refl : ∀ A → A <: A
+<:-refl Unit   = sub-unit
+<:-refl Void   = sub-void
+<:-refl Int    = sub-int
+<:-refl Float  = sub-float
+<:-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:-refl A) (<:-refl B) (⊑π-refl π)
+<:-refl (A * B) = sub-prod (<:-refl A) (<:-refl B)
+<:-refl (A + B) = sub-sum (<:-refl A) (<:-refl B)
+<:-refl (μ-type F) = sub-μ
+<:-refl (ν-type F π) = sub-ν (⊑π-refl π)
+<:-refl (rigid _ _) = sub-rigid
+
