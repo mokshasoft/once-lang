@@ -18450,14 +18450,17 @@ productive. GOAL.md asks TERMINATION only of pure computations; of effects it as
 4. **Equality of effectful computations is bisimilarity** (D201), observed through finite
    prefixes; every effectful law holds up to it. Pure computations stay values, compared by `≡`.
 
-### Open (to decide inside plan 0.117)
-* **O1 — how an infinite run is built.** Total code can only build one by corecursion on
-  computations. The monad's own operation is guarded iteration: the unique `x` with
-  `x = f >=> [ret, x]` for a guarded `f` (the final coalgebra's unfold, as `ana` is `ν`'s). Its
-  form — a core former beside `fold`/`unfold`, or `unfold`/`ana` generalised to computations — and
-  its surface spelling are open.
-* **O2 — the guard's form.** The step `A → T⁺ (B + A)` (every round an event, D311's simple form)
-  or the standard ideal-monad form `A → B + T⁺ (B + A)` (a pure exit allowed).
+### Decided inside plan 0.117 (the user, 2026-10-13)
+* **O1 — guarded iteration is its own core former**, beside `fold` and `unfold`: the three
+  universal properties of the three structures — `μ` initial (fold), `ν` final (unfold), `T∞`
+  completely iterative (iteration: every guarded equation `x = f >=> [ret, x]` has a unique
+  solution `f‡`). Not `unfold` generalised to computations: that would conflate a final
+  coalgebra of values with an iteration in the Kleisli category. The Elgot laws follow from
+  uniqueness. (Today's core `iter` is kept, reshaped by O2.)
+* **O2 — the standard guard** (ideal monads, Milius): a step is `A → B + T⁺ (B + A)` — it ends
+  at once with a value, or performs an event before it answers. D311's simple form (every round
+  an event, also the exiting one) is the special case that never takes the pure exit.
+  `iter : (A → B + T⁺ (B + A)) → (A → T∞ B)`.
 
 ### Consequences
 `M eff = T∞` throughout the Spec meaning; the monad laws of `Eff` up to bisimilarity; the IR's

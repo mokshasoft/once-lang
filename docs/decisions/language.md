@@ -131,9 +131,11 @@ entry updates the rule it changes here, in the same commit.
   effectful computation reaches each next event after finite work, and NEED
   NOT STOP — `Eff A B` is `A → T∞ B`, the free completely iterative monad, so
   `main : Eff Unit Unit` is a server as well as a program that ends; `main` is
-  an ordinary function, specified only as the entry. How an infinite run is
-  built (guarded iteration, the monad's own unfold) and the guard's exact
-  form are open in plan 0.117. (D312 ← D311)
+  an ordinary function, specified only as the entry. An infinite run is built
+  by GUARDED ITERATION, a core former beside `fold` and `unfold` (`T∞`'s
+  universal property: a guarded equation has a unique solution); a step ends
+  at once with a value or performs an event before it answers
+  (`A → B + T⁺ (B + A)`). (D312 ← D311)
 - **Grades**: `pure ⊑ eff⁺ ⊑ eff`; `eff⁺`, the guard, is a computation whose
   first node is an event. Grades are an ordered monoid and a sequencing rule
   concludes at the product of its premises' grades. (D312 ← D311)
