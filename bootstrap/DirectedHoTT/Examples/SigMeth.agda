@@ -44,50 +44,10 @@ open import DirectedHoTT.Algorithm.Surface
 open import DirectedHoTT.Algorithm.SigBuild using ( module SigExtend )
 import DirectedHoTT.Examples.SigCore as Base
 
-private
-  pattern v₀ = var vz
-  wk : {Γ : Cx} → STm Γ → STm (Γ ∙)
-  wk = renTmˢ vs
-  V : {Γ : Cx} → ℕ → STm Γ
-  V {ε}    _       = unit
-  V {Γ ∙}  zero    = var vz
-  V {Γ ∙}  (suc k) = wk (V {Γ} k)
-  lenC : Cx → ℕ
-  lenC ε     = 0
-  lenC (Γ ∙) = suc (lenC Γ)
-  L : {Γ : Cx} → ℕ → STm Γ
-  L {Γ} ℓ = V {Γ} (lenC Γ - suc ℓ)
-  T TT : Set
-  T  = {Γ : Cx} → STm Γ
-  TT = {Γ : Cx} → STy Γ
-  app² : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ
-  app² f a b = app (app f a) b
-  app³ : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
-  app³ f a b c = app (app² f a b) c
-  app⁴ : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
-  app⁴ f a b c d = app (app³ f a b c) d
-  _·_ : {Γ : Cx} → STm Γ → List (STm Γ) → STm Γ
-  f · []       = f
-  f · (x ∷ xs) = app f x · xs
-  infixl 9 _·_
-  _++_ : {A : Set} → List A → List A → List A
-  []       ++ ys = ys
-  (x ∷ xs) ++ ys = x ∷ (xs ++ ys)
-  infixr 5 _++_
-  λ⁺ : {Γ : Cx} → ℕ → T → STm Γ
-  λ⁺ zero    b = b
-  λ⁺ (suc k) b = lam □ᵀ (λ⁺ k b)
-  Πˢ : List TT → TT → TT
-  Πˢ []       B = B
-  Πˢ (A ∷ As) B = Π A (Πˢ As B)
+open import DirectedHoTT.Algorithm.Surface.Notation
 
-private
-  -- the base's entries (Examples/SigCore)
-  pattern #lamΣ = 20
-  pattern #KΣ   = 21
-  pattern #tel  = 13
-  pattern #tabD = 14
-  pattern #SD   = 15
+-- the base's entries
+open import DirectedHoTT.Examples.SigCore using ( #lamΣ; #KΣ; #telV; #telFs; #tel; #tabD; #SD; #rnFs )
 private
   SIc : {Γ : Cx} → STm Γ → STm Γ
   SIc n = app (ref 0) n
@@ -213,10 +173,6 @@ module Casc (ab : ℕ) (MG : List TT) (gs : List T) (R : T → TT) where
 -- ★ The traversal on the cascades: its motive as a CODE over the index,
 --   its leaves SigCore's `FCONS` with the builder `λ q. con (k , q)`
 ------------------------------------------------------------------------
-private
-  pattern #telV  = 7
-  pattern #telFs = 12
-  pattern #rnFs  = 19
 
 -- ★ this segment's entries
 pattern #tabMD = 22     -- the Desc-valued cascades (fibres) …
@@ -370,9 +326,6 @@ module CU = Casc #tabMU (Π (El (SIc N)) U ∷ []) (L 3 ∷ []) (λ i → El (ap
 ------------------------------------------------------------------------
 -- The kits (moved from SigCore with the traversal).
 ------------------------------------------------------------------------
-n₁ n₂ : T
-n₁ = nsuc nzero
-n₂ = nsuc n₁
 NODEp : (n v sg vf : T) → TT
 NODEp n v sg vf = Π Nat (Π (El (app vf v₀)) (IMu (SIc n) (app³ (ref #SD) n v sg) (pair □ᵀ □ᵀ v (var (vs vz)))))
 WKp V0p : T → TT
@@ -414,11 +367,6 @@ tm-sN = λ⁺ 5 (L 4)
 ------------------------------------------------------------------------
 -- The table, in entry order (relative to the base's 22).
 ------------------------------------------------------------------------
-private
-  at : {A : Set} → A → List A → ℕ → A
-  at d []       _       = d
-  at d (x ∷ xs) zero    = x
-  at d (x ∷ xs) (suc k) = at d xs k
 
 tys : ℕ → STy ε
 tys = at Unit (CD.ty-tabM ∷ CD.ty-tabS ∷ CD.ty-meth ∷ CU.ty-tabM ∷ CU.ty-tabS ∷ CU.ty-meth

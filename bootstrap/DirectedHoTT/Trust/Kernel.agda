@@ -49,6 +49,7 @@ import DirectedHoTT.Algorithm.NbETable
 import DirectedHoTT.Algorithm.Result
 import DirectedHoTT.Algorithm.SigBuild
 import DirectedHoTT.Algorithm.Surface
+import DirectedHoTT.Algorithm.Surface.Notation
 import DirectedHoTT.Metatheory.Canonicity
 import DirectedHoTT.Metatheory.Confluence
 import DirectedHoTT.Metatheory.Entries

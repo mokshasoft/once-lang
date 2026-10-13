@@ -13,8 +13,10 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
-module DirectedHoTT.Examples.Knot.PredsCon (𝒮 : Defs) (wf : WfK 𝒮) where
+module DirectedHoTT.Examples.Knot.PredsCon (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl; cong )
@@ -31,7 +33,7 @@ open import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf)
 open import DirectedHoTT.Examples.Knot.Ctors 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Sig 𝒮 wf
 open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( ⊢payK )
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core
 
 private
   variable

@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 module DirectedHoTT.Examples.Knot.TypingAgree (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) (𝓃 : ℕ) where
@@ -60,10 +60,10 @@ open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( El-⌜≅ᵀ⌝
 open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; tN; ⊢tN; ⊢belowT; typesQ-at )
 open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf using ( quoteℕ-num )
 open import DirectedHoTT.Lib.NatNum 𝒮 (Defs.size 𝒮) using ( num )
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( El-⌜NNC⌝; El-⌜Flat⌝ )
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( El-⌜NNC⌝; El-⌜Flat⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConGen 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
-open import DirectedHoTT.Examples.Knot.PredsAgree 𝒮 wf using ( ⊢nncC; ⊢flatC )
+open import DirectedHoTT.Examples.Knot.PredsAgree 𝒮 wf core using ( ⊢nncC; ⊢flatC )
 open import DirectedHoTT.Examples.Knot.LookupAgree 𝒮 wf using ( enLk )
 open import DirectedHoTT.Examples.Knot.JudgeConv 𝒮 wf core using ( El-⌜∋⌝ )
 open import DirectedHoTT.Examples.Knot.ConvAgree 𝒮 wf core using ( enConvT )

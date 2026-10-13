@@ -18,11 +18,13 @@ the generators (`gen-knot.py`, `gen-judge.py`) must emit it:
 
 A module that imports nothing parameterised is left alone.
 
-★ A module that cites the CORE's entries (`Knot/PwCore`), or imports one
-that does, is over a signature CONTAINING the core: its header gains
-`(core : Core₀.Kc ⊑ᴰ 𝒮)` (`Spec/SigExtend`), class `C` — a reference is a
-projection from the ambient signature, so a use of a name is a
-hypothesis on it.  Already-converted modules are UPGRADED in place.
+★ A module that cites the CORE's entries (`Knot/PwCore`, `Knot/CoreRef`),
+or imports one that does, is over a signature CONTAINING the core: its
+header gains `(core : Core₀.Kc ⊑ᴰ 𝒮)` (`Spec/SigExtend`), class `C` — a
+reference is a projection from the ambient signature, so a use of a name
+is a hypothesis on it.  `Core₀` is the TOP core segment (each segment
+extends the one below, `SigExtend.base⊑`).  Already-converted modules are
+UPGRADED in place.
 
 ★ A `C` module that reads or writes a judgement AT A BOUND (PLAN-REF K4:
 the K5 layer, `Knot/TypingAgree`, `Knot/JudgeDecode…`) — its text uses the
@@ -53,7 +55,7 @@ ARGS = {'R': '𝒮', 'T': '𝒮 ' + N_, 'O': '𝒮 %s %s' % (N_, OK_), 'F': '�
 ATOM = r'(?:𝒮|wf|core|𝓃|\(Defs\.size 𝒮\)|\(Entries\.okᵂ 𝒮 wf\)|\(Entries\.refsᵂ 𝒮 wf\))'
 ARGRE = ATOM + r'(?: ' + ATOM + r')*'
 CORE_PRE = ('open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )\n'
-            'import DirectedHoTT.Examples.PwCore as Core₀\n')
+            'import DirectedHoTT.Examples.PredsCore as Core₀\n')
 CORE_HDR = '(𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮)'
 BOUND_PRE = 'open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )\n'
 BOUND_HDR = CORE_HDR + ' (𝓃 : ℕ)'

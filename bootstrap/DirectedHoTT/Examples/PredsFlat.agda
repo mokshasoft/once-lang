@@ -1,0 +1,52 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- OCP-0009 · EXAMPLES — ★ THE SIDE CONDITIONS IN THE CORE (PLAN-BIDI §3g,
+-- P6): the flat? segment, a `SigExtend` segment over the one before.
+--
+-- The Knot's side conditions (`Knot/Preds`: predicates on codes, D077's
+-- lower stratum) are fibred families with a TRIVIAL convoy, all over one
+-- index `#PJ` (`Examples/PredsStkA`); a family is its non-empty rows (each
+-- `Knot/Preds`' row table, transcribed) and its description
+-- (`Examples/KnotFrame`).  One segment per family: a segment's check
+-- covers its own entries only.
+--
+-- `--safe`, ZERO axioms.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.PredsFlat where
+open import normalizer.Syntax.Types using ( _×_; _,_ )
+open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
+open import Agda.Builtin.List using ( List; []; _∷_ )
+open import DirectedHoTT.Spec.Syntax using ( Defs; Cx; ε )
+open import DirectedHoTT.Metatheory.Signature using ( WfSig; wf→K )
+open import DirectedHoTT.Spec.Signature using ( kernel )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+open import DirectedHoTT.Algorithm.Surface
+open import DirectedHoTT.Algorithm.SigBuild using ( module SigExtend )
+open import DirectedHoTT.Algorithm.Surface.Notation
+open import DirectedHoTT.Examples.KnotFrame
+import DirectedHoTT.Examples.PredsStkC as Base
+open Base using ( #PJ; Cₚ; #StkAL; #StkAD; #StkCL; #StkCD ) public
+
+#FlatL #FlatD : ℕ
+#FlatL = 52 ; #FlatD = 53
+
+private
+  open Family (ref #PJ) Cₚ
+
+  -- ★ flat? c ≡ true — ⌜base⌝, or ⌜Hom⌝ at a J-able ambient
+  Rows : List (ℕ × (ℕ → T))
+  Rows = (#kcbase , unconditional) ∷ (#kcHom , one (holds #StkCD fst)) ∷ []
+
+tys : ℕ → STy ε
+tys = at Unit (ty-rows ∷ ty-desc ∷ [])
+tms : ℕ → STm ε
+tms = at unit (tm-rows [] Rows ∷ tm-desc #FlatL ∷ [])
+
+open SigExtend Base.S Base.abody Base.wf 2 tys tms 1000 public
+
+wf : WfSig S
+wf = fromJust wfSig _

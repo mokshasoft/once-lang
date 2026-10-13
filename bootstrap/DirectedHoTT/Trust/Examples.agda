@@ -68,6 +68,7 @@ import DirectedHoTT.Examples.Gcd.StepExtLs
 import DirectedHoTT.Examples.IHCallAgree
 import DirectedHoTT.Examples.Id
 import DirectedHoTT.Examples.IrrProbe
+import DirectedHoTT.Examples.KnotFrame
 import DirectedHoTT.Examples.KripkeIx
 import DirectedHoTT.Examples.KripkeSub
 import DirectedHoTT.Examples.Lib0
@@ -77,6 +78,7 @@ import DirectedHoTT.Examples.Mutual
 import DirectedHoTT.Examples.Nat
 import DirectedHoTT.Examples.NbEAgree
 import DirectedHoTT.Examples.NbEKDTest
+import DirectedHoTT.Examples.NbEPredsAgree
 import DirectedHoTT.Examples.NbEPwAgree
 import DirectedHoTT.Examples.NbESigCoreTest
 import DirectedHoTT.Examples.NbESigSubKnotTest
@@ -88,6 +90,10 @@ import DirectedHoTT.Examples.Overview
 import DirectedHoTT.Examples.PairC
 import DirectedHoTT.Examples.PairIx
 import DirectedHoTT.Examples.PairLib
+import DirectedHoTT.Examples.PredsCore
+import DirectedHoTT.Examples.PredsFlat
+import DirectedHoTT.Examples.PredsStkA
+import DirectedHoTT.Examples.PredsStkC
 import DirectedHoTT.Examples.PwCore
 import DirectedHoTT.Examples.Scoped
 import DirectedHoTT.Examples.ScopedDepth

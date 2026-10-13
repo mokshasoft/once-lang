@@ -14,7 +14,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.PwConGen (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
@@ -44,12 +44,12 @@ import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf as ᴵJudgeIx
 open ᴵJudgeIx using ( ⌜Tm⌝; ⊢⌜Tm⌝; ⌜Ty⌝; ⊢⌜Ty⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1; w2; w3; hereTm; toTm; wkN; wkK; wkG )
 open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝; ⊢u₀ )
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( ⌜StkA⌝; ⊢⌜StkA⌝; ⌜StkC⌝; ⊢⌜StkC⌝; ⊢u₀ )
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.NestIx 𝒮 wf
 open ᴵJudgeIx using ( ⊢payK )
 open import DirectedHoTT.Examples.Knot.QSig 𝒮 wf using ( ⌜QSig⌝; ⌜TSig⌝; wkQ; wkT )
-open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf core using ( El-⌜Pw⌝ )
 
 conPwcPi : {Ξ : Ctx} {j f0 f1 : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ f0 ∷ K 1 j → Ξ ⊢ f1 ∷ K 1 (nsuc j) → 

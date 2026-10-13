@@ -13,14 +13,19 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
-module DirectedHoTT.Examples.Knot.Preds (𝒮 : Defs) (wf : WfK 𝒮) where
+module DirectedHoTT.Examples.Knot.Preds (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; tt )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
+open import DirectedHoTT.Algorithm.ConvLazy 𝒮 using ( cong≅ᵗ )
+import DirectedHoTT.Examples.PredsCore as PC
+open import DirectedHoTT.Examples.Knot.CoreRef 𝒮 wf core using ( _≅ᶜ_; byNbE; lift≅; below; ⊢core )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( Cons; []; _∷_; tag; lt-z; lt-s; []ᵈ; _∷ᵈ_; _,ₚ_ )
 open import DirectedHoTT.Lib.SynView 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( PayV; ⊢recFst; ⊢recSnd; ⊢atDepthSK )
 open import DirectedHoTT.Lib.NatCode 𝒮 (Defs.size 𝒮) using ( ⊢isuc )
@@ -39,6 +44,10 @@ private
 -- the side conditions are over NO parameter: their families are at `unit`
 ⊢u₀ : {Ξ : Ctx} → Ξ ⊢ unit ∷ El ⌜Unit⌝
 ⊢u₀ = ⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝))
+
+private
+  ≡→≅ : {Γ : Cx} {t u : RTm Γ} → t ≡ u → t ≅ u
+  ≡→≅ refl = crfl
 
 ------------------------------------------------------------------------
 -- ★ NoNatC c — no ⌜Nat⌝ along the Π-codomain / Hom-ambient spine (Spec/Variance)
@@ -216,19 +225,41 @@ module NNCF = NNCₘ.FamilyT rowsNNC
 KNNC : RTm Δ → RTm Δ → RTy Δ
 KNNC d c = NNCF.KF unit (ixNNC d c)
 
--- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+-- ★ …and as a CODE: a REFERENCE to the core's entries (`Examples/PredsCore`:
+--   the shared index `#PJ`, the description `#NNCD`), OPAQUE.  The core's
+--   index and description ARE the Knot's: decided ONCE, closed, by NbE.
+opaque
+  unfolding NNCF.FIBMₒ SK SD
+
+  cJ₀NNC : ref PC.#PJ ≅ᶜ NNCₘ.J {ε}
+  cJ₀NNC = byNbE _ _ tt
+
+  cD₀NNC : ref PC.#NNCD ≅ᶜ NNCF.DF {ε} unit
+  cD₀NNC = byNbE _ _ tt
+
+private
+  -- …in every context, at every signature containing the core
+  cJNNC : ref PC.#PJ ≅ NNCₘ.J {Δ}
+  cJNNC = ctrn (lift≅ cJ₀NNC) (≡→≅ (NNCₘ.J-sub εsub))
+
+  cDNNC : ref PC.#NNCD ≅ NNCF.DF {Δ} unit
+  cDNNC = ctrn (lift≅ cD₀NNC) (≡→≅ (NNCF.DF-sub εsub unit))
+
 opaque
   ⌜NNC⌝ : RTm Δ → RTm Δ → RTm Δ
-  ⌜NNC⌝ d c = ⌜IMu⌝ NNCₘ.J (NNCF.DF unit) (ixNNC d c)
+  ⌜NNC⌝ d c = ⌜IMu⌝ (ref PC.#PJ) (ref PC.#NNCD) (ixNNC d c)
 
   ⊢⌜NNC⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜NNC⌝ d c ∷ U
-  ⊢⌜NNC⌝ dd dc = ⊢⌜IMu⌝ NNCₘ.⊢J (NNCF.⊢DF ⊢u₀) (⊢ixNNC dd dc)
+  ⊢⌜NNC⌝ dd dc = ⊢⌜IMu⌝ (⊢core (below PC.#PJ tt)) (⊢core (below PC.#NNCD tt)) (⊢conv (⊢ixNNC dd dc) (cong≅ᵗ El ξ-El (csym cJNNC)))
 
   ⌜NNC⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜NNC⌝ d c) ≡ ⌜NNC⌝ (subTm σ d) (subTm σ c)
-  ⌜NNC⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixNNC (subTm σ d) (subTm σ c))) (NNCₘ.J-sub σ) (NNCF.DF-sub σ unit)
+  ⌜NNC⌝-sub σ d c = refl
 
   El-⌜NNC⌝ : {d c : RTm Δ} → El (⌜NNC⌝ d c) ≅ᵀ KNNC d c
-  El-⌜NNC⌝ = credᵀ El-⌜IMu⌝
+  El-⌜NNC⌝ {d = d} {c} =
+    ctrnᵀ (credᵀ El-⌜IMu⌝)
+          (ctrnᵀ (cong≅ᵗ (λ x → IMu x (ref PC.#NNCD) (ixNNC d c)) ξ-IMuᴵ cJNNC)
+                 (cong≅ᵗ (λ x → IMu NNCₘ.J x (ixNNC d c)) ξ-IMuᴰ cDNNC))
 
 ------------------------------------------------------------------------
 -- ★ stkA? c ≡ true — a stable ambient (Spec/Variance)
@@ -418,19 +449,41 @@ module StkAF = StkAₘ.FamilyT rowsStkA
 KStkA : RTm Δ → RTm Δ → RTy Δ
 KStkA d c = StkAF.KF unit (ixStkA d c)
 
--- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+-- ★ …and as a CODE: a REFERENCE to the core's entries (`Examples/PredsCore`:
+--   the shared index `#PJ`, the description `#StkAD`), OPAQUE.  The core's
+--   index and description ARE the Knot's: decided ONCE, closed, by NbE.
+opaque
+  unfolding StkAF.FIBMₒ SK SD
+
+  cJ₀StkA : ref PC.#PJ ≅ᶜ StkAₘ.J {ε}
+  cJ₀StkA = byNbE _ _ tt
+
+  cD₀StkA : ref PC.#StkAD ≅ᶜ StkAF.DF {ε} unit
+  cD₀StkA = byNbE _ _ tt
+
+private
+  -- …in every context, at every signature containing the core
+  cJStkA : ref PC.#PJ ≅ StkAₘ.J {Δ}
+  cJStkA = ctrn (lift≅ cJ₀StkA) (≡→≅ (StkAₘ.J-sub εsub))
+
+  cDStkA : ref PC.#StkAD ≅ StkAF.DF {Δ} unit
+  cDStkA = ctrn (lift≅ cD₀StkA) (≡→≅ (StkAF.DF-sub εsub unit))
+
 opaque
   ⌜StkA⌝ : RTm Δ → RTm Δ → RTm Δ
-  ⌜StkA⌝ d c = ⌜IMu⌝ StkAₘ.J (StkAF.DF unit) (ixStkA d c)
+  ⌜StkA⌝ d c = ⌜IMu⌝ (ref PC.#PJ) (ref PC.#StkAD) (ixStkA d c)
 
   ⊢⌜StkA⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜StkA⌝ d c ∷ U
-  ⊢⌜StkA⌝ dd dc = ⊢⌜IMu⌝ StkAₘ.⊢J (StkAF.⊢DF ⊢u₀) (⊢ixStkA dd dc)
+  ⊢⌜StkA⌝ dd dc = ⊢⌜IMu⌝ (⊢core (below PC.#PJ tt)) (⊢core (below PC.#StkAD tt)) (⊢conv (⊢ixStkA dd dc) (cong≅ᵗ El ξ-El (csym cJStkA)))
 
   ⌜StkA⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜StkA⌝ d c) ≡ ⌜StkA⌝ (subTm σ d) (subTm σ c)
-  ⌜StkA⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixStkA (subTm σ d) (subTm σ c))) (StkAₘ.J-sub σ) (StkAF.DF-sub σ unit)
+  ⌜StkA⌝-sub σ d c = refl
 
   El-⌜StkA⌝ : {d c : RTm Δ} → El (⌜StkA⌝ d c) ≅ᵀ KStkA d c
-  El-⌜StkA⌝ = credᵀ El-⌜IMu⌝
+  El-⌜StkA⌝ {d = d} {c} =
+    ctrnᵀ (credᵀ El-⌜IMu⌝)
+          (ctrnᵀ (cong≅ᵗ (λ x → IMu x (ref PC.#StkAD) (ixStkA d c)) ξ-IMuᴵ cJStkA)
+                 (cong≅ᵗ (λ x → IMu StkAₘ.J x (ixStkA d c)) ξ-IMuᴰ cDStkA))
 
 ------------------------------------------------------------------------
 -- ★ stkC? c ≡ true — J-able: stkA? minus the literal ⌜Nat⌝; at ⌜Hom⌝ it is stkA? of the ambient
@@ -608,19 +661,41 @@ module StkCF = StkCₘ.FamilyT rowsStkC
 KStkC : RTm Δ → RTm Δ → RTy Δ
 KStkC d c = StkCF.KF unit (ixStkC d c)
 
--- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+-- ★ …and as a CODE: a REFERENCE to the core's entries (`Examples/PredsCore`:
+--   the shared index `#PJ`, the description `#StkCD`), OPAQUE.  The core's
+--   index and description ARE the Knot's: decided ONCE, closed, by NbE.
+opaque
+  unfolding StkCF.FIBMₒ SK SD ⌜StkA⌝
+
+  cJ₀StkC : ref PC.#PJ ≅ᶜ StkCₘ.J {ε}
+  cJ₀StkC = byNbE _ _ tt
+
+  cD₀StkC : ref PC.#StkCD ≅ᶜ StkCF.DF {ε} unit
+  cD₀StkC = byNbE _ _ tt
+
+private
+  -- …in every context, at every signature containing the core
+  cJStkC : ref PC.#PJ ≅ StkCₘ.J {Δ}
+  cJStkC = ctrn (lift≅ cJ₀StkC) (≡→≅ (StkCₘ.J-sub εsub))
+
+  cDStkC : ref PC.#StkCD ≅ StkCF.DF {Δ} unit
+  cDStkC = ctrn (lift≅ cD₀StkC) (≡→≅ (StkCF.DF-sub εsub unit))
+
 opaque
   ⌜StkC⌝ : RTm Δ → RTm Δ → RTm Δ
-  ⌜StkC⌝ d c = ⌜IMu⌝ StkCₘ.J (StkCF.DF unit) (ixStkC d c)
+  ⌜StkC⌝ d c = ⌜IMu⌝ (ref PC.#PJ) (ref PC.#StkCD) (ixStkC d c)
 
   ⊢⌜StkC⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜StkC⌝ d c ∷ U
-  ⊢⌜StkC⌝ dd dc = ⊢⌜IMu⌝ StkCₘ.⊢J (StkCF.⊢DF ⊢u₀) (⊢ixStkC dd dc)
+  ⊢⌜StkC⌝ dd dc = ⊢⌜IMu⌝ (⊢core (below PC.#PJ tt)) (⊢core (below PC.#StkCD tt)) (⊢conv (⊢ixStkC dd dc) (cong≅ᵗ El ξ-El (csym cJStkC)))
 
   ⌜StkC⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜StkC⌝ d c) ≡ ⌜StkC⌝ (subTm σ d) (subTm σ c)
-  ⌜StkC⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixStkC (subTm σ d) (subTm σ c))) (StkCₘ.J-sub σ) (StkCF.DF-sub σ unit)
+  ⌜StkC⌝-sub σ d c = refl
 
   El-⌜StkC⌝ : {d c : RTm Δ} → El (⌜StkC⌝ d c) ≅ᵀ KStkC d c
-  El-⌜StkC⌝ = credᵀ El-⌜IMu⌝
+  El-⌜StkC⌝ {d = d} {c} =
+    ctrnᵀ (credᵀ El-⌜IMu⌝)
+          (ctrnᵀ (cong≅ᵗ (λ x → IMu x (ref PC.#StkCD) (ixStkC d c)) ξ-IMuᴵ cJStkC)
+                 (cong≅ᵗ (λ x → IMu StkCₘ.J x (ixStkC d c)) ξ-IMuᴰ cDStkC))
 
 ------------------------------------------------------------------------
 -- ★ flat? c ≡ true — ⌜base⌝, or ⌜Hom⌝ at a J-able ambient (Spec/Variance)
@@ -738,17 +813,39 @@ module FlatF = Flatₘ.FamilyT rowsFlat
 KFlat : RTm Δ → RTm Δ → RTy Δ
 KFlat d c = FlatF.KF unit (ixFlat d c)
 
--- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE
+-- ★ …and as a CODE: a REFERENCE to the core's entries (`Examples/PredsCore`:
+--   the shared index `#PJ`, the description `#FlatD`), OPAQUE.  The core's
+--   index and description ARE the Knot's: decided ONCE, closed, by NbE.
+opaque
+  unfolding FlatF.FIBMₒ SK SD ⌜StkC⌝
+
+  cJ₀Flat : ref PC.#PJ ≅ᶜ Flatₘ.J {ε}
+  cJ₀Flat = byNbE _ _ tt
+
+  cD₀Flat : ref PC.#FlatD ≅ᶜ FlatF.DF {ε} unit
+  cD₀Flat = byNbE _ _ tt
+
+private
+  -- …in every context, at every signature containing the core
+  cJFlat : ref PC.#PJ ≅ Flatₘ.J {Δ}
+  cJFlat = ctrn (lift≅ cJ₀Flat) (≡→≅ (Flatₘ.J-sub εsub))
+
+  cDFlat : ref PC.#FlatD ≅ FlatF.DF {Δ} unit
+  cDFlat = ctrn (lift≅ cD₀Flat) (≡→≅ (FlatF.DF-sub εsub unit))
+
 opaque
   ⌜Flat⌝ : RTm Δ → RTm Δ → RTm Δ
-  ⌜Flat⌝ d c = ⌜IMu⌝ Flatₘ.J (FlatF.DF unit) (ixFlat d c)
+  ⌜Flat⌝ d c = ⌜IMu⌝ (ref PC.#PJ) (ref PC.#FlatD) (ixFlat d c)
 
   ⊢⌜Flat⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜Flat⌝ d c ∷ U
-  ⊢⌜Flat⌝ dd dc = ⊢⌜IMu⌝ Flatₘ.⊢J (FlatF.⊢DF ⊢u₀) (⊢ixFlat dd dc)
+  ⊢⌜Flat⌝ dd dc = ⊢⌜IMu⌝ (⊢core (below PC.#PJ tt)) (⊢core (below PC.#FlatD tt)) (⊢conv (⊢ixFlat dd dc) (cong≅ᵗ El ξ-El (csym cJFlat)))
 
   ⌜Flat⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜Flat⌝ d c) ≡ ⌜Flat⌝ (subTm σ d) (subTm σ c)
-  ⌜Flat⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixFlat (subTm σ d) (subTm σ c))) (Flatₘ.J-sub σ) (FlatF.DF-sub σ unit)
+  ⌜Flat⌝-sub σ d c = refl
 
   El-⌜Flat⌝ : {d c : RTm Δ} → El (⌜Flat⌝ d c) ≅ᵀ KFlat d c
-  El-⌜Flat⌝ = credᵀ El-⌜IMu⌝
+  El-⌜Flat⌝ {d = d} {c} =
+    ctrnᵀ (credᵀ El-⌜IMu⌝)
+          (ctrnᵀ (cong≅ᵗ (λ x → IMu x (ref PC.#FlatD) (ixFlat d c)) ξ-IMuᴵ cJFlat)
+                 (cong≅ᵗ (λ x → IMu Flatₘ.J x (ixFlat d c)) ξ-IMuᴰ cDFlat))
 

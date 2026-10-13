@@ -15,8 +15,10 @@
 open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
-module DirectedHoTT.Examples.Knot.PredsAgree (𝒮 : Defs) (wf : WfK 𝒮) where
+module DirectedHoTT.Examples.Knot.PredsAgree (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
 
 open import normalizer.Syntax.Types using ( _≡_; refl )
@@ -26,8 +28,8 @@ open import DirectedHoTT.Spec.Typing 𝒮 (Defs.size 𝒮)
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; NoNatC; nnc-base; nnc-Unit; nnc-Fin; nnc-Σ; nnc-Id; nnc-Π; nnc-Hom; stkA?; stkC?; flat? )
 open import DirectedHoTT.Lib.Sugar 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) using ( conₗ; _,ₚ_ )
 open import DirectedHoTT.Examples.Knot.Terms 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( KNNC; KStkA; KStkC; KFlat; El-⌜StkA⌝; El-⌜StkC⌝ )
-open import DirectedHoTT.Examples.Knot.PredsCon 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( KNNC; KStkA; KStkC; KFlat; El-⌜StkA⌝; El-⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.PredsCon 𝒮 wf core
 
 
 nncC : {Γ : Cx} {c : RTm Γ} → NoNatC c → {Θ : Cx} → RTm Θ

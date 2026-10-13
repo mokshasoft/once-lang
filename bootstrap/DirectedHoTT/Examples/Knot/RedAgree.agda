@@ -16,7 +16,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.RedAgree (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
@@ -34,9 +34,9 @@ open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( ⊢⌜Tm⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( toTm )
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core using ( K⟶ )
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( El-⌜StkA⌝; El-⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( El-⌜StkA⌝; El-⌜StkC⌝ )
 open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf core using ( El-⌜Pw⌝ )
-open import DirectedHoTT.Examples.Knot.PredsAgree 𝒮 wf using ( ⊢stkAC; ⊢stkCC )
+open import DirectedHoTT.Examples.Knot.PredsAgree 𝒮 wf core using ( ⊢stkAC; ⊢stkCC )
 open import DirectedHoTT.Examples.Knot.PwAgree 𝒮 wf core using ( ⊢pwC )
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
 open import DirectedHoTT.Examples.Knot.RedXiConGen 𝒮 wf core

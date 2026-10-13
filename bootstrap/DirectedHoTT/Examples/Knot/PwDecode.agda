@@ -21,7 +21,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.PwDecode (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
@@ -47,7 +47,7 @@ open import DirectedHoTT.Examples.Knot.Unquote 𝒮 wf using ( unqTm; quoteTm-in
 open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf using ( ⌜Tm⌝; El-⌜Tm⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf using ( w1 )
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.PwAgree 𝒮 wf core using ( Xh; Xh-agree )
 
 private

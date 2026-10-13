@@ -37,6 +37,7 @@ open import DirectedHoTT.Spec.Syntax using ( ε; RTm; nzero )
 open import DirectedHoTT.Spec.Annotated
 open import DirectedHoTT.Spec.Signature using ( Sig; Entry; ⟨_∣_⟩; eBody; len; _▸ˢ_; ∅ˢ; kernel )
 open import DirectedHoTT.Metatheory.Signature using ( EntryWf; WfSig; wf→K )
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_; ⊑ᴰ-refl; ⊑ᴰ-trans; ⊑ᴰ-▸ )
 open import DirectedHoTT.Algorithm.NbE.Value using ( Tbl )
 import DirectedHoTT.Algorithm.NbE.TblOK as TO
 import DirectedHoTT.Algorithm.NbETable as NT
@@ -103,6 +104,16 @@ module SigExtend (base : Sig) (abase : ℕ → ATm ε) (wbase : WfSig base)
 
   S : Sig
   S = sigAt size
+
+  -- ★ a segment extends its base: the kernel of every prefix contains it
+  --   (a development citing the base's names is over any signature with
+  --   `kernel base ⊑ᴰ` it, so it holds over the segment too)
+  base⊑At : (i : ℕ) → kernel base ⊑ᴰ kernel (sigAt i)
+  base⊑At zero    = ⊑ᴰ-refl
+  base⊑At (suc i) = ⊑ᴰ-trans (base⊑At i) ⊑ᴰ-▸
+
+  base⊑ : kernel base ⊑ᴰ kernel S
+  base⊑ = base⊑At size
 
   -- the annotated bodies (base entries from `abase`)
   abody : ℕ → ATm ε
