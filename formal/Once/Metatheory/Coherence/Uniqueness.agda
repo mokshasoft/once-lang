@@ -105,4 +105,7 @@ uniq ⊢lit-int ⊢lit-int = refl
 uniq ⊢lit-float ⊢lit-float = refl
 uniq (⊢prim p _) (⊢prim .p _) = refl
 uniq (⊢sigop _ _ _ _ _) (⊢sigop _ _ _ _ _) = refl
+uniq (⊢sigop _ _ _ _ _) (⊢sigop⁺ _ _ _ _ _ _) = refl
+uniq (⊢sigop⁺ _ _ _ _ _ _) (⊢sigop _ _ _ _ _) = refl
+uniq (⊢sigop⁺ _ _ _ _ _ _) (⊢sigop⁺ _ _ _ _ _ _) = refl
 uniq (⊢ref _ _ _) (⊢ref _ _ _) = refl

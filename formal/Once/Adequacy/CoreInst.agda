@@ -30,6 +30,7 @@ import Once.Spec.Type.Grade as T
 import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Spec.Type.Grade using (mk-kind; Many; pure)
+open import Once.Spec.Type.WellFormed using (rf-⇒)
 open import Once.Spec.Type using (Type; μ-type; ν-type; ⟦_⟧T)
 import Once.Spec.Context as C
 import Once.Surface.Context as C
@@ -51,7 +52,7 @@ open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; 
 import Once.TypeCheck.RigidSubst Δ τ r as RS
 open RS using (ρ̂; ρ̂F; ρ̂S; ρ̂-⟦⟧; ρ̂-wf; ρ̂-<:; ρ̂-rf; ρ̂-base; lookup-ρ̂)
 open import Once.Adequacy.CoreAbsSem S using (tr; tr-subst; tr-lam; tr-app; tr-let; tr-unit; tr-pair; tr-fst; tr-snd;
-  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-iter; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sub-eff; tr-sub-use; tr-ref)
+  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-iter; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sigop⁺; tr-sub-eff; tr-sub-use; tr-ref)
 open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 
 ρ̂ₜ : ∀ {n} → G.Tm n → G.Tm n
@@ -105,6 +106,8 @@ module WithSG (sg : SigGround) where
       (GT.⊢prim p (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ t ∷ X ! π) (ρ̂-dom p) (ρ̂ᶜ d)))
   ρ̂ᶜ {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
     subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.sigop c A ∷ X ! pure) (sym (ρ̂-rf g)) (GT.⊢sigop c k h g m)
+  ρ̂ᶜ {Γ = Γ} (GT.⊢sigop⁺ {A = A} {B} {q} c k e h g@(rf-⇒ ga gb) m) =
+    subst (λ X → ρ̂S Γ ⊢[ C.zeroUsage ] G.sigop c (A T.⇒[ mk-kind q T.eff⁺ ] B) ∷ X ! pure) (sym (ρ̂-rf (rf-⇒ ga gb))) (GT.⊢sigop⁺ c k e h g m)
   ρ̂ᶜ (GT.⊢sub-eff g d) = GT.⊢sub-eff g (ρ̂ᶜ d)
   ρ̂ᶜ (GT.⊢sub-use p d) = GT.⊢sub-use p (ρ̂ᶜ d)
   ρ̂ᶜ {Γ = Γ} (GT.⊢ref d τ′ k) =
@@ -227,6 +230,9 @@ module WithSG (sg : SigGround) where
   inst-abs {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
     trans (tr-isubst′ (sym (absTy-ground Δ g)) _)
       (trans (tr-subst (sym (⌈⌉-⟪⟫ A τ)) _) (close (ρ̂S-abs Γ) _ (sym (ρ̂-rf g)) tr-sigop))
+  inst-abs {Γ = Γ} (GT.⊢sigop⁺ {A = A} {B} {q} c k e h g@(rf-⇒ ga gb) m) =
+    trans (tr-isubst′ (sym (absTy-ground Δ (rf-⇒ ga gb))) _)
+      (trans (tr-subst (sym (⌈⌉-⟪⟫ (A T.⇒[ mk-kind q T.eff⁺ ] B) τ)) _) (close (ρ̂S-abs Γ) _ (sym (ρ̂-rf (rf-⇒ ga gb))) tr-sigop⁺))
   inst-abs (GT.⊢sub-eff g d) = trans (tr-sub-eff (IA d)) (cong (GT.⊢sub-eff g) (inst-abs d))
   inst-abs (GT.⊢sub-use p d) = trans (tr-sub-use (IA d)) (cong (GT.⊢sub-use p) (inst-abs d))
   inst-abs {Γ = Γ} (GT.⊢ref d τ′ k) =
@@ -467,6 +473,10 @@ module WithSG (sg : SigGround) where
     H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ)))
       (H.trans (rmA (λ X → X) (sym (ρ̂-rf g)))
         (H.sym (H.trans (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-rf g))) (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))))
+  ρ̂ᶜ-ren θ (GT.⊢sigop⁺ c k e h g@(rf-⇒ ga gb) m) =
+    H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ)))
+      (H.trans (rmA (λ X → X) (sym (ρ̂-rf (rf-⇒ ga gb))))
+        (H.sym (H.trans (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-rf (rf-⇒ ga gb)))) (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))))
   ρ̂ᶜ-ren θ (GT.⊢sub-eff {Ψ = Ψ} {t = t} g d) = ≅1 _ _ (GT.⊢sub-eff g) (U≡ θ Ψ) (T≡ θ t) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ (GT.⊢sub-use {Ψ = Ψ} {Ψ′ = Ψ′} {t = t} p d) = ≅sub-use (U≡ θ Ψ) (U≡ θ Ψ′) (T≡ θ t) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ (GT.⊢ref d τ′ k) =

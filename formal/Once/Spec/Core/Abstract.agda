@@ -29,6 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Type.Grade as T
 import Once.Spec.Type as T
+open import Once.Spec.Type.WellFormed using (rf-⇒)
 open import Once.Spec.Type.Grade using (mk-kind; Many)
 open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Spec.Context as C using (Ctx; Usage)
@@ -186,6 +187,9 @@ abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢prim {t = t} p d) =
     (⊢prim p (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] absTm Δ t ∷ X ! π) (primDom-abs Δ p) (abs-⊢ Δ sg d)))
 abs-⊢ Δ sg {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] sigop c A ∷ X ! T.pure) (sym (absTy-ground Δ g)) (⊢sigop c k h g m)
+abs-⊢ Δ sg {Γ = Γ} (GT.⊢sigop⁺ {A = A} {B} {q} c k e h g@(rf-⇒ ga gb) m) =
+  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] sigop c (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ∷ X ! T.pure)
+        (sym (absTy-ground Δ (rf-⇒ ga gb))) (⊢sigop⁺ c k e h g m)
 abs-⊢ Δ sg (GT.⊢sub-eff g d) = ⊢sub-eff g (abs-⊢ Δ sg d)
 abs-⊢ Δ sg (GT.⊢sub-use p d) = ⊢sub-use p (abs-⊢ Δ sg d)
 abs-⊢ Δ sg {Γ = Γ} (GT.⊢ref d τ r) =

@@ -43,7 +43,7 @@ module Once.Spec.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff⁺; eff)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff⁺; eff; EffGrade)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
@@ -179,6 +179,16 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A → RigidFree A
          → (showCanonical c ,ᵈ A) ∈ sigOf S
          → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! pure
+
+  -- D313 (plan 0.117 F3a): an effectful FFI operation is ONE call, so it is
+  -- also a GUARDED arrow — referenced at its declared arrow's guard (`eff⁺`);
+  -- `eff⁺ ⊑ act/eff` recovers the declared type. Its meaning is the generic
+  -- effect, which is what the declared reference means too.
+  ⊢sigop⁺ : ∀ {n} {Γ : Ctx n} {A B : Type} {q : Quantity} {π : Purity} (c : CanonicalName)
+          → IsConcrete (A ⇒[ mk-kind q π ] B) → EffGrade π
+          → HonestFFI (A ⇒[ mk-kind q π ] B) → RigidFree (A ⇒[ mk-kind q π ] B)
+          → (showCanonical c ,ᵈ (A ⇒[ mk-kind q π ] B)) ∈ sigOf S
+          → Γ ⊢[ zeroUsage ] sigop c (A ⇒[ mk-kind q eff⁺ ] B) ∷ (A ⇒[ mk-kind q eff⁺ ] B) ! pure
 
   -- Plan 0.103 phase 4: a definition at a kind-respecting ground instance of
   -- its schema. Closed and pure (a definition is a value of its type).

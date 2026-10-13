@@ -108,6 +108,7 @@ sub-⊢ {Φ = Φ} ⊢lit-int h = retype (sym (⋆-zero Φ)) ⊢lit-int
 sub-⊢ {Φ = Φ} ⊢lit-float h = retype (sym (⋆-zero Φ)) ⊢lit-float
 sub-⊢ (⊢prim p d) h = ⊢prim p (sub-⊢ d h)
 sub-⊢ {Φ = Φ} (⊢sigop c k hf rf m) h = retype (sym (⋆-zero Φ)) (⊢sigop c k hf rf m)
+sub-⊢ {Φ = Φ} (⊢sigop⁺ c k e hf rf m) h = retype (sym (⋆-zero Φ)) (⊢sigop⁺ c k e hf rf m)
 sub-⊢ {Φ = Φ} (⊢ref d τ r) h = retype (sym (⋆-zero Φ)) (⊢ref d τ r)
 sub-⊢ (⊢sub-eff g d) h = ⊢sub-eff g (sub-⊢ d h)
 sub-⊢ {Φ = Φ} (⊢sub-use p d) h = ⊢sub-use (⋆-mono Φ p) (sub-⊢ d h)

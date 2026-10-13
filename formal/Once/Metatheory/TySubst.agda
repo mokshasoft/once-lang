@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One; _·p_)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One; _·p_; eff⁺)
 open import Once.Spec.Context using (Usage; zeroUsage; singleUse)
 open import Once.Spec.Core.PolyTy
 open Schema using (type)
@@ -144,6 +144,9 @@ tsubst {Δ′ = Δ′} {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) 
     (⊢prim p (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟨ σ ⟩ₜ ∷ X ! π) (⌈⌉-⟨⟩ (primDom p) σ) (tsubst σ r d)))
 tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢sigop {A = A} c k h g m) =
   subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ zeroUsage ] sigop c A ∷ X ! pure) (sym (⌈⌉-⟨⟩ A σ)) (⊢sigop c k h g m)
+tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢sigop⁺ {A = A} {B} {q} c k e h g m) =
+  subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ zeroUsage ] sigop c (A T.⇒[ mk-kind q eff⁺ ] B) ∷ X ! pure)
+        (sym (⌈⌉-⟨⟩ (A T.⇒[ mk-kind q eff⁺ ] B) σ)) (⊢sigop⁺ c k e h g m)
 tsubst σ r (⊢sub-eff g d) = ⊢sub-eff g (tsubst σ r d)
 tsubst σ r (⊢sub-use p d) = ⊢sub-use p (tsubst σ r d)
 tsubst {Δ′ = Δ′} {Γ = Γ} σ r (⊢ref d τ k) =

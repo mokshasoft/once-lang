@@ -45,6 +45,7 @@ open import Once.Spec.Environment using (restrictᵛ; bindᵛ; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 open import Once.Spec.GradedOps using (ana-semᵛ; fmapM)
 open import Once.Spec.Core.Typing S
+open import Once.Spec.Type.WellFormed using (con-fun)
 import Once.Spec.Core.Meaning S as GM
 
 Env : ∀ {n} → Ctx n → Usage n → Set
@@ -331,6 +332,7 @@ ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-u
 ren-sem {Δ = Δ} θ ⊢lit-float fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-float fmt δ x
 ren-sem θ (⊢prim {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ (⊢sigop c k h g m) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g m) fmt δ x
+ren-sem {Δ = Δ} θ (⊢sigop⁺ c (con-fun bA bB) e h g m) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢sigop⁺ c (con-fun bA bB) e h g m) fmt δ x
 ren-sem θ (⊢sub-eff g d) fmt δ x = cong (subM g) (ren-sem θ d fmt δ x)
 -- D276: sub-usaging is a restriction, and restriction commutes with thinning.
 ren-sem θ (⊢sub-use p d) fmt δ x =

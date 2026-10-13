@@ -39,9 +39,10 @@ open import Once.Spec.Type.Grade using (Zero; One; Many; eff)
 open import Once.Spec.Guarded using (iter∞)
 open import Once.Spec.Context using (Ctx; Usage; _↾_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Spec.Graded using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
+open import Once.Spec.Type.WellFormed using (con-fun)
 open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Spec.GradedOps
-  using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
+  using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; sigOpGuardᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Float.Arith as FA
 open import Once.Spec.Bool using (truth)
 open import Data.Bool using (not)
@@ -180,6 +181,7 @@ primSem p-i2f  fmt a       = FA.i2f (float-format fmt) (OnceWord.Width.toℤ (in
 ⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = fmapM π (primSem p fmt) (⟦ d ⟧ fmt ρ dγ)
 
 ⟦ ⊢sigop {A = A} c k _ _ m ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt (sigOf S) (impl ρ) c k m
+⟦ ⊢sigop⁺ {q = q} c (con-fun bA bB) _ _ _ _ ⟧ fmt ρ dγ = sigOpGuardᵛ c bA bB q
 
 ⟦ ⊢sub-eff g d ⟧ fmt ρ dγ = subM g (⟦ d ⟧ fmt ρ dγ)
 

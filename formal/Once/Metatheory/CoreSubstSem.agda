@@ -45,6 +45,7 @@ open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookup�
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-irr; restrict-refl; restrict-∘; restrict-≡; restrict-bind)
 open import Once.Spec.Core.Syntax S
 open import Once.Spec.Core.Typing S
+open import Once.Spec.Type.WellFormed using (con-fun)
 open import Once.Spec.Core.Subst S using (SubTy; tailᴿ; ext-ty; retype)
 open SubTy using (row)
 import Once.Spec.Core.Meaning S as GM
@@ -357,6 +358,7 @@ module Rows (fmt : TargetNum) (δ : GM.DefSem) where
     sub-sem {Δ = Δ} {Φ = Φ} ⊢lit-float h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) ⊢lit-float fmt δ x
     sub-sem (⊢prim {π = π} p d) h x = cong (fmapM π _) (sub-sem d h x)
     sub-sem {Δ = Δ} {Φ = Φ} (⊢sigop c k hf rf m) h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) (⊢sigop c k hf rf m) fmt δ x
+    sub-sem {Δ = Δ} {Φ = Φ} (⊢sigop⁺ c (con-fun bA bB) e hf rf m) h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) (⊢sigop⁺ c (con-fun bA bB) e hf rf m) fmt δ x
     sub-sem {Δ = Δ} {Φ = Φ} (⊢ref d τ r) h x = ⟦retype⟧ {Γ = Δ} (sym (⋆-zero Φ)) (⊢ref d τ r) fmt δ x
     sub-sem (⊢sub-eff g d) h x = cong (subM g) (sub-sem d h x)
     sub-sem {Γ = Γ} {Φ = Φ} (⊢sub-use p d) h x =

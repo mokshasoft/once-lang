@@ -121,6 +121,7 @@ ren-⊢ {Δ = Δ} θ ⊢lit-int   = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sy
 ren-⊢ {Δ = Δ} θ ⊢lit-float = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) ⊢lit-float
 ren-⊢ θ (⊢prim p d) = ⊢prim p (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢sigop c k h g m) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g m)
+ren-⊢ {Δ = Δ} θ (⊢sigop⁺ c k e h g m) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢sigop⁺ c k e h g m)
 ren-⊢ θ (⊢sub-eff g d) = ⊢sub-eff g (ren-⊢ θ d)
 ren-⊢ θ (⊢sub-use p d) = ⊢sub-use (thin-usage-⊑ᵘ θ p) (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢ref d τ r) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢ref d τ r)

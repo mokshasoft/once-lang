@@ -313,3 +313,12 @@ sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bD
   λ a → fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff⁺} bDom bCod) m =
   λ a → fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
+
+-- D313 (plan 0.117 F3a): an effectful FFI operation referenced at its GUARD —
+-- the generic effect, a call (or a halt) first; what `sigOpRefᵛ` gives it at
+-- `eff⁺`, without the declaration (an effectful contract reads none).
+sigOpGuardᵛ : ∀ {A B} (cn : CanonicalName) → IsBaseType A → IsBaseType B → (q : Quantity)
+            → ⟦ A ⇒[ mk-kind q eff⁺ ] B ⟧ᵛ
+sigOpGuardᵛ {B = B} cn bA bB Zero = λ _ → fmap⁺ (injB bB) (opCall⁺ cn base-Unit (isVoid? B) (isUnit? B) tt)
+sigOpGuardᵛ {B = B} cn bA bB One  = λ a → fmap⁺ (injB bB) (opCall⁺ cn bA (isVoid? B) (isUnit? B) (prjB bA a))
+sigOpGuardᵛ {B = B} cn bA bB Many = λ a → fmap⁺ (injB bB) (opCall⁺ cn bA (isVoid? B) (isUnit? B) (prjB bA a))

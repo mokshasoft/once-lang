@@ -34,7 +34,7 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Spec.Type as T
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff⁺; eff)
+open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff⁺; eff; EffGrade)
 open import Once.Spec.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Spec.Type.Honest using (HonestFFI)
@@ -255,6 +255,12 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
   ⊢sigop : ∀ {n} {Γ : PCtx m n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A → RigidFree A
          → (showCanonical c ,ᵈ A) ∈ sigOf S
          → Δ ⊩ Γ ⊢[ zeroUsage ] sigop c A ∷ ⌈ A ⌉ ! pure
+  -- D313: and at its declared arrow's guard (`Spec.Core.Typing.⊢sigop⁺`).
+  ⊢sigop⁺ : ∀ {n} {Γ : PCtx m n} {A B : T.Type} {q : Quantity} {π : Purity} (c : CanonicalName)
+          → IsConcrete (A T.⇒[ mk-kind q π ] B) → EffGrade π
+          → HonestFFI (A T.⇒[ mk-kind q π ] B) → RigidFree (A T.⇒[ mk-kind q π ] B)
+          → (showCanonical c ,ᵈ (A T.⇒[ mk-kind q π ] B)) ∈ sigOf S
+          → Δ ⊩ Γ ⊢[ zeroUsage ] sigop c (A T.⇒[ mk-kind q eff⁺ ] B) ∷ ⌈ A T.⇒[ mk-kind q eff⁺ ] B ⌉ ! pure
 
   ⊢sub-eff : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π′ : Purity} {A t}
            → π ⊑π π′ → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π′
@@ -316,6 +322,9 @@ instantiate {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) =
     (GT.⊢prim p (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ X ! π) (⌈⌉-⟪⟫ (primDom p) σ) (instantiate σ r d)))
 instantiate {Γ = Γ} σ r (⊢sigop {A = A} c k h g m) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.sigop c A ∷ X ! pure) (sym (⌈⌉-⟪⟫ A σ)) (GT.⊢sigop c k h g m)
+instantiate {Γ = Γ} σ r (⊢sigop⁺ {A = A} {B} {q} c k e h g m) =
+  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.sigop c (A T.⇒[ mk-kind q eff⁺ ] B) ∷ X ! pure)
+        (sym (⌈⌉-⟪⟫ (A T.⇒[ mk-kind q eff⁺ ] B) σ)) (GT.⊢sigop⁺ c k e h g m)
 instantiate σ r (⊢sub-eff g d) = GT.⊢sub-eff g (instantiate σ r d)
 instantiate σ r (⊢sub-use p d) = GT.⊢sub-use p (instantiate σ r d)
 instantiate {Γ = Γ} σ r (⊢ref d τ k) =

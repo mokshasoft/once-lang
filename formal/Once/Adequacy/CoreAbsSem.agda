@@ -34,6 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Postulates using (extensionality)
 import Once.Spec.Type.Grade as T
 import Once.Spec.Type as T
+open import Once.Spec.Type.WellFormed using (rf-⇒)
 import Once.Type as T
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
@@ -231,6 +232,12 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
            → tr eΓ et eA (GT.⊢sigop c k h g m) ≡ GT.⊢sigop c k h g m
   tr-sigop {eΓ = refl} {refl} {refl} = refl
 
+  tr-sigop⁺ : ∀ {A B q π c k e h g m} {eΓ : Γ' ≡ Γ}
+                {et : G.sigop c (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ≡ G.sigop c (A T.⇒[ T.mk-kind q T.eff⁺ ] B)}
+                {eA : (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ≡ (A T.⇒[ T.mk-kind q T.eff⁺ ] B)}
+            → tr eΓ et eA (GT.⊢sigop⁺ {π = π} c k e h g m) ≡ GT.⊢sigop⁺ c k e h g m
+  tr-sigop⁺ {eΓ = refl} {refl} {refl} = refl
+
   tr-sub-eff : ∀ {Ψ π π′ A' A} {t' t : G.Tm n} {g}
                  {eΓ : Γ' ≡ Γ} {et : t' ≡ t} {eA : A' ≡ A} (d : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
              → tr eΓ et eA (GT.⊢sub-eff {π′ = π′} g d) ≡ GT.⊢sub-eff g (tr eΓ et eA d)
@@ -377,6 +384,9 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
                                     (trans (tr-isubst {r = r} (primDom-abs Δ p) _) (irr (RT d) (RT-id d)))))))
   RT-id (GT.⊢sigop {A = A} c k h g m) =
     trans (tr-isubst {r = r} (sym (absTy-ground Δ g)) _) (trans (tr-subst (sym (⌈⌉-⟪⟫ A σ)) _) tr-sigop)
+  RT-id (GT.⊢sigop⁺ {A = A} {B} {q} c k e h g@(rf-⇒ ga gb) m) =
+    trans (tr-isubst {r = r} (sym (absTy-ground Δ (rf-⇒ ga gb))) _)
+          (trans (tr-subst (sym (⌈⌉-⟪⟫ (A T.⇒[ T.mk-kind q T.eff⁺ ] B) σ)) _) tr-sigop⁺)
   RT-id (GT.⊢sub-eff g d) = trans (tr-sub-eff (RT d)) (cong (GT.⊢sub-eff g) (RT-id d))
   RT-id (GT.⊢sub-use p d) = trans (tr-sub-use (RT d)) (cong (GT.⊢sub-use p) (RT-id d))
   RT-id (GT.⊢ref d τ k) =

@@ -39,7 +39,7 @@ open import Once.Spec.Type.WellFormed using (IsBaseType; base-Int; base-Float; b
   IsConcrete; con-base; con-fun; WellFormedF)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Metatheory.SubLaws using (<:-unique; ⊑π-unique)
-open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)
+open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant; IsBaseType-irrelevant)
 open import Once.Spec.Context using (Ctx; Usage; _∷_) renaming (_,_ to _,ᶜ_)
 open import Once.Spec.Contract using (Impl; Key; valueKeys; valueOf; valueOf-at; _∈K?_)
 open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Same)
@@ -50,7 +50,7 @@ open import Once.Spec.Iterative using (TreeEq∞)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; ≈∞-refl)
 open import Once.Spec.Trace using (T; ret; fmapT)
 open import Once.Spec.Environment using (bindᵛ)
-open import Once.Spec.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ)
+open import Once.Spec.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ; sigOpGuardᵛ)
 import Once.Semantics.Machine as Val
 open import Once.Spec.Core.Syntax Sg
 open import Once.Spec.Core.Typing Sg
@@ -180,6 +180,14 @@ sigop-S fmt I c (con-fun {k = mk-kind One eff⁺} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 sigop-S fmt I c (con-fun {k = mk-kind Many eff⁺} bA bB) m m′ a a′ s
   rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
+
+-- D313: an FFI reference at its guard is related to itself (the generic
+-- effect; the declaration is not read).
+guard-S : ∀ c {A B} (bA : IsBaseType A) (bB : IsBaseType B) (q : Quantity)
+        → S (A ⇒[ mk-kind q eff⁺ ] B) (sigOpGuardᵛ c bA bB q) (sigOpGuardᵛ c bA bB q)
+guard-S c bA bB Zero = ≈∞-refl (S-refl-base bB) _
+guard-S c bA bB One  a a′ s rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
+guard-S c bA bB Many a a′ s rewrite S-base-≡ bA s = ≈∞-refl (S-refl-base bB) _
 
 ------------------------------------------------------------------------
 -- THE LEMMA
@@ -383,4 +391,18 @@ module _ (fmt : TargetNum) (δ : DefSem) (sd : SameDefs δ) where
     fmap≈ π π′ (FL d d′ h) λ s → (S-base (cod-base p) (cong (primSem p fmt) (S-base-≡ (dom-base p) s)))
   FL (⊢sigop c k _ _ m) (⊢sigop .c k′ _ _ m′) h
     rewrite IsConcrete-irrelevant k′ k = retT≈ (sigop-S fmt (impl δ) c k m m′)
+  FL (⊢sigop⁺ {q = q} c (con-fun bA bB) _ _ _ _) (⊢sigop⁺ .c (con-fun bA′ bB′) _ _ _ _) h
+    rewrite IsBaseType-irrelevant bA′ bA | IsBaseType-irrelevant bB′ bB = retT≈ (guard-S c bA bB q)
+  FL (⊢sigop c (con-fun bA bB) _ _ _) (⊢sigop⁺ {q = Zero} .c (con-fun bA′ bB′) _ _ _ _) h
+    rewrite IsBaseType-irrelevant bB′ bB = retT≈ (guard-S c bA bB Zero)
+  FL (⊢sigop c (con-fun bA bB) _ _ _) (⊢sigop⁺ {q = One} .c (con-fun bA′ bB′) _ _ _ _) h
+    rewrite IsBaseType-irrelevant bA′ bA | IsBaseType-irrelevant bB′ bB = retT≈ (guard-S c bA bB One)
+  FL (⊢sigop c (con-fun bA bB) _ _ _) (⊢sigop⁺ {q = Many} .c (con-fun bA′ bB′) _ _ _ _) h
+    rewrite IsBaseType-irrelevant bA′ bA | IsBaseType-irrelevant bB′ bB = retT≈ (guard-S c bA bB Many)
+  FL (⊢sigop⁺ {q = Zero} c (con-fun bA bB) _ _ _ _) (⊢sigop .c (con-fun bA′ bB′) _ _ _) h
+    rewrite IsBaseType-irrelevant bB′ bB = retT≈ (guard-S c bA bB Zero)
+  FL (⊢sigop⁺ {q = One} c (con-fun bA bB) _ _ _ _) (⊢sigop .c (con-fun bA′ bB′) _ _ _) h
+    rewrite IsBaseType-irrelevant bA′ bA | IsBaseType-irrelevant bB′ bB = retT≈ (guard-S c bA bB One)
+  FL (⊢sigop⁺ {q = Many} c (con-fun bA bB) _ _ _ _) (⊢sigop .c (con-fun bA′ bB′) _ _ _) h
+    rewrite IsBaseType-irrelevant bA′ bA | IsBaseType-irrelevant bB′ bB = retT≈ (guard-S c bA bB Many)
   FL (⊢ref d τ r) (⊢ref .d .τ r′) h = retT≈ (Same→S (type (Sg !! d) ⟪ τ ⟫) (sd d τ r r′))
