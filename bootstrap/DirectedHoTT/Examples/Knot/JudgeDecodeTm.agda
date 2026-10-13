@@ -6,7 +6,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.JudgeDecodeTm (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) (𝓃 : ℕ) where
@@ -60,9 +60,9 @@ open import DirectedHoTT.Examples.Knot.Ren 𝒮 wf using ( wk )
 open import DirectedHoTT.Examples.Knot.SubEnv 𝒮 wf
 open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
 open import DirectedHoTT.Examples.Knot.JudgeRowsGen 𝒮 wf core
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
-open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf
+open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.LookupDecode 𝒮 wf using ( decLk )
 open import DirectedHoTT.Examples.Knot.JudgeDecodeBase 𝒮 wf core 𝓃
 open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( tN )

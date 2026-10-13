@@ -6,7 +6,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.RedTDecodeXi (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
@@ -52,14 +52,14 @@ open import DirectedHoTT.Examples.Knot.SubEnv 𝒮 wf
 open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf
 open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.NestIx 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.PwCore 𝒮 wf core using ( El-⌜Pw⌝ )
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.OpAgree 𝒮 wf
 open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf core using ( decPw )
-open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf
+open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.RedCompDecode 𝒮 wf core
 open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf core using ( decRed )
 open import DirectedHoTT.Examples.Knot.Ref 𝒮 wf using ( Tδ; TδT; TδT-sub )

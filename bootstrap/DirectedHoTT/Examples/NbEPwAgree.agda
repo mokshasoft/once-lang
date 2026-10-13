@@ -15,7 +15,11 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.NbEPwAgree where
+open import DirectedHoTT.Spec.Syntax using ( Defs )
+open import DirectedHoTT.Spec.SigWf using ( WfK )
+open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
+import DirectedHoTT.Examples.PredsCore as Core₀
+module DirectedHoTT.Examples.NbEPwAgree (𝒮 : Defs) (wf : WfK 𝒮) (inCore : Core₀.Kc ⊑ᴰ 𝒮) where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import Agda.Builtin.Bool using ( Bool; true; false )
@@ -23,17 +27,18 @@ open import DirectedHoTT.Spec.Syntax using ( ε; _∙; vz; vs; unit )
 import DirectedHoTT.Spec.Syntax as R
 open import DirectedHoTT.Algorithm.DecEq using ( Dec; _≟Tm_; yes; no )
 import DirectedHoTT.Examples.PwCore as P
--- evaluated at the core's table (the core's term refers into it); the
---   Knot's description carries no references: read at the empty signature
+-- evaluated at the core's table (the core's term refers into it)
 open import DirectedHoTT.Algorithm.NbETable using ( mkTbl )
 open import DirectedHoTT.Algorithm.NbE (mkTbl P.Kc) using ( nbe )
-open import DirectedHoTT.Spec.Syntax using ( ∅ᴷ )
-open import DirectedHoTT.Examples.Sig0 using ( wf₀; ok₀ )
-open import DirectedHoTT.Examples.Knot.RedIx ∅ᴷ wf₀ using ( CP )
-open import DirectedHoTT.Examples.Knot.Pw ∅ᴷ wf₀ using ( module PwF )
-import DirectedHoTT.Examples.Knot.Ren ∅ᴷ wf₀ as KR
-import DirectedHoTT.Examples.Knot.JudgeIx ∅ᴷ wf₀ as JI
-import DirectedHoTT.Lib.Syn ∅ᴷ 0 ok₀ as LS
+-- ★ the Knot read over ANY signature containing the core (a parameter: at
+--   the concrete `Core₀.Kc`, applying the Knot's modules alone took 81 s /
+--   ~5 GB against 8 s here; its codes are syntax, so they reduce alike)
+import DirectedHoTT.Metatheory.Entries as Entries
+open import DirectedHoTT.Examples.Knot.RedIx 𝒮 wf using ( CP )
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf inCore using ( module PwF )
+import DirectedHoTT.Examples.Knot.Ren 𝒮 wf as KR
+import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf as JI
+import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) as LS
 
 private
   ⟪_⟫ : {Γ : R.Cx} → ℕ → R.RTm Γ

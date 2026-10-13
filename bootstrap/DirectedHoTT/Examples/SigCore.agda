@@ -55,57 +55,7 @@ open import DirectedHoTT.Examples.Knot.Sig ∅ᴷ wf₀ using ( KSig )
 -- Writing terms: levels, numerals.
 ------------------------------------------------------------------------
 
-private
-  pattern v₀ = var vz
-  pattern v₁ = var (vs vz)
-  pattern v₂ = var (vs (vs vz))
-  pattern v₃ = var (vs (vs (vs vz)))
-  pattern v₄ = var (vs (vs (vs (vs vz))))
-
-  wk : {Γ : Cx} → STm Γ → STm (Γ ∙)
-  wk = renTmˢ vs
-
-  -- a variable by its de Bruijn index (contexts are concrete in the entries)
-  V : {Γ : Cx} → ℕ → STm Γ
-  V {ε}    _       = unit
-  V {Γ ∙}  zero    = var vz
-  V {Γ ∙}  (suc k) = wk (V {Γ} k)
-
-  lenC : Cx → ℕ
-  lenC ε       = 0
-  lenC (Γ ∙)   = suc (lenC Γ)
-
-  -- ★ a variable by its LEVEL
-  L : {Γ : Cx} → ℕ → STm Γ
-  L {Γ} ℓ = V {Γ} (lenC Γ - suc ℓ)
-
-  -- context-polymorphic terms and types (generators' arguments)
-  T : Set
-  T = {Γ : Cx} → STm Γ
-  TT : Set
-  TT = {Γ : Cx} → STy Γ
-
-  n₁ n₂ n₃ : T
-  n₁ = nsuc nzero
-  n₂ = nsuc n₁
-  n₃ = nsuc n₂
-
-  app² : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ
-  app² f a b = app (app f a) b
-  app³ : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
-  app³ f a b c = app (app² f a b) c
-  app⁴ : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
-  app⁴ f a b c d = app (app³ f a b c) d
-  -- application to a list of arguments
-  _·_ : {Γ : Cx} → STm Γ → List (STm Γ) → STm Γ
-  f · []       = f
-  f · (x ∷ xs) = app f x · xs
-  infixl 9 _·_
-
-  -- k λs with holes for their domains
-  λ⁺ : {Γ : Cx} → ℕ → T → STm Γ
-  λ⁺ zero    b = b
-  λ⁺ (suc k) b = lam □ᵀ (λ⁺ k b)
+open import DirectedHoTT.Algorithm.Surface.Notation
 
 ------------------------------------------------------------------------
 -- The entries.
@@ -209,16 +159,6 @@ private
                        (lam □ᵀ (app⁴ (app (ref #tel) n) v v₁ (app (snd (app sg v₁)) v₀) i))))
   TFs : {Γ : Cx} → STm Γ → STm Γ → STm Γ → STm Γ → STm Γ
   TFs n i len fs = app⁴ (ref #telFs) n i len fs
-
-  -- a telescope of Π's
-  Πˢ : List TT → TT → TT
-  Πˢ []       B = B
-  Πˢ (A ∷ As) B = Π A (Πˢ As B)
-
-  _++_ : {A : Set} → List A → List A → List A
-  []       ++ ys = ys
-  (x ∷ xs) ++ ys = x ∷ (xs ++ ys)
-  infixr 5 _++_
 
   -- ★ the traversal's globals, by level
   N VS SG VF WK V0 : T
@@ -469,11 +409,6 @@ tm-KΣ = ⌜ KSig ⌝Σ 1
 -- The table, in entry order.
 ------------------------------------------------------------------------
 
-private
-  at : {A : Set} → A → List A → ℕ → A
-  at d []       _       = d
-  at d (x ∷ xs) zero    = x
-  at d (x ∷ xs) (suc k) = at d xs k
 
 tys : ℕ → STy ε
 tys = at Unit (ty-SI ∷ ty-add ∷ ty-FlC ∷ ty-Fld ∷ ty-ShC ∷ ty-Shape ∷ ty-Sig ∷ ty-telV ∷ ty-dRec ∷ ty-dNat ∷ ty-dCls

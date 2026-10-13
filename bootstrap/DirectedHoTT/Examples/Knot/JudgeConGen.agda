@@ -16,7 +16,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 module DirectedHoTT.Examples.Knot.JudgeConGen (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) where
 
@@ -45,7 +45,7 @@ open import DirectedHoTT.Examples.Knot.SubEnv 𝒮 wf using ( nrsK; ⊢nrsK; pai
 open import DirectedHoTT.Examples.Knot.JudgeIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.JudgeTmIx 𝒮 wf
 open import DirectedHoTT.Examples.Knot.JudgeCase 𝒮 wf
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜NNC⌝; ⊢⌜NNC⌝ )
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( ⌜Flat⌝; ⊢⌜Flat⌝; ⌜NNC⌝; ⊢⌜NNC⌝ )
 open import DirectedHoTT.Examples.Knot.JudgeConv 𝒮 wf core using ( TCVat; ⌜∋⌝; ⊢⌜∋⌝; ⊢payTCVat )
 open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( ⌜≅ᵀ⌝ )
 open import DirectedHoTT.Examples.Knot.GenHelpers 𝒮 wf

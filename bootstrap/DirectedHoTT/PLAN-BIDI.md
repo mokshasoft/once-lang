@@ -790,6 +790,57 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
         (~38%). Every conversion re-evaluates the bodies it unfolds:
         PLAN-EVAL E4's trigger, now measured.
 
+- ✅ **P6 — the second family: the SIDE CONDITIONS (2026-10-12 → 10-13,
+  after PLAN-REF closed).** `Knot/Preds`' four families (StkA, StkC, Flat,
+  NNC) have Pw's interface (`⌜F⌝`, `⊢⌜F⌝`, `⌜F⌝-sub`, `El-⌜F⌝`) and Pw's
+  shape (lower stratum, no parameter), and all four are ONE `SynFam`
+  instance (convoy `⌜Unit⌝`): in the core they share one index and one
+  convoy entry, and a family is its rows, its description, its code.
+  Four customers at once is what separates the generic frame from Pw.
+  1. ✅ the surface NOTATION shared (`Algorithm/Surface/Notation`: levels,
+     spines, λ-telescopes, tags, `fcases`, list helpers) — it was copied
+     in SigCore, SigMeth and PwCore; PwCore and SigMeth take the base's
+     entry numbers from the base (they had hand copies).
+  2. ✅ the core is the TOP segment: `⊑ᴰ-trans` (Spec) and `SigExtend.base⊑`
+     (a segment extends its base); `Core₀` is now `Examples/PredsCore` in
+     `tools/planref.py` and every hand-written / generated Knot module.
+  3. ✅ the KNOT FRAME (`Examples/KnotFrame`: the Knot signature closed, its
+     syntax and constructor numbers, `WK`, side-condition premises
+     `ixAt`/`recAt`, and per family `R`/`none`/`one`/`unconditional`/
+     `PS`/`PK`/`holds`/SPARSE row tables/the description), and the shared
+     Knot side (`Knot/CoreRef`: `⊢core`, `byNbE`, `lift≅`, `below`).
+     PwCore and the new segments use it.
+  4. ✅ the four side conditions in the core, ONE SEGMENT PER FAMILY:
+     `Examples/PredsStkA` (the shared index `#PJ`, convoy `Cₚ`, StkA),
+     `PredsStkC`, `PredsFlat`, `PredsCore` (NNC; the TOP: `Kc`, `wfKc`).
+     `gen-judge` emits each family's CODE as a reference to its core entry
+     (`PCORE`): `⌜P⌝ = ⌜IMu⌝ (ref #PJ) (ref <D>) …`, typed by `⊢core`, and
+     `El-⌜P⌝` through the Knot family's description by one NbE-decided
+     conversion at the core (`cJ₀P`/`cD₀P = byNbE _ _ tt`).
+     `Examples/NbEPredsAgree` checks index and all four descriptions against
+     the Knot's, normal form for normal form, each with a ✗ control.
+     - ⚠ one 9-entry segment did NOT check: >1529 s and an OOM at 5.6 GB in
+       `wf` (alone, twice). Split per family it is 120 + 46 + 53 + 159 s
+       (peaks 3.4 / 2.3 / 2.3 / 4.8 GB; the last includes `Kc`/`wfKc`).
+       A segment's check covers its own entries only, so a family is a
+       segment.
+     - ⚠ ★ NEVER read the Knot at the CONCRETE core. `CoreRef.⊢core`,
+       whose cast mentions `Defs.type Core₀.Kc d`, went from 6 s to an OOM
+       when the core grew. It is now proved over an abstract `K ⊑ᴰ 𝒮`
+       (`⊢refAt`) and instantiated: 7 s. Applying `Knot.Preds`/`Lib.Syn`
+       at `Core₀.Kc` costs 81 s / ~5 GB for the IMPORTS ALONE, against
+       8 s at a parameter. So the NbE tests (`NbEPredsAgree`,
+       `NbEPwAgree`) are parameterised by `(𝒮 wf) (core : Core₀.Kc ⊑ᴰ 𝒮)`
+       (20 s and 13 s; before: OOM). NbE at the concrete core TABLE is
+       cheap (7 s at every chain depth). Reading `Kc` re-runs the
+       elaborating SigExtend chain, and Agda memoises nothing.
+  5. ✅ measured. What a human writes per family is its rows: 1–3 lines
+     (the PREDS table in `gen-judge` was 2–3 lines per family). Each
+     segment has ~28 non-comment lines of frame (imports, `tys`/`tms`,
+     the SigExtend line), the same for every family. ⬜ A segment
+     generator would remove that frame. The Knot family itself stays: it
+     is the target of `El-⌜F⌝` (851 generated lines in `Knot/Preds`).
+
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
   `app (ref d) args`;

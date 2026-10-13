@@ -30,7 +30,7 @@ open import DirectedHoTT.Spec.Syntax using ( Defs )
 open import DirectedHoTT.Spec.SigWf using ( WfK )
 import DirectedHoTT.Metatheory.Entries as Entries
 open import DirectedHoTT.Spec.SigExtend using ( _⊑ᴰ_ )
-import DirectedHoTT.Examples.PwCore as Core₀
+import DirectedHoTT.Examples.PredsCore as Core₀
 open import DirectedHoTT.Spec.Base hiding ( _,,_; _×_ )
 open import Agda.Builtin.Nat using () renaming ( Nat to ℕ )
 module DirectedHoTT.Examples.Knot.Exact (𝒮 : Defs) (wf : WfK 𝒮) (core : Core₀.Kc ⊑ᴰ 𝒮) (𝓃 : ℕ) where
@@ -56,8 +56,8 @@ open import DirectedHoTT.Examples.Knot.Lookup 𝒮 wf using ( K∋; ix∋ )
 open import DirectedHoTT.Examples.Knot.Red 𝒮 wf core using ( K⟶ )
 open import DirectedHoTT.Examples.Knot.RedT 𝒮 wf core using ( K⟶ᵀ )
 open import DirectedHoTT.Examples.Knot.Conv 𝒮 wf core using ( K≅; K≅ᵀ )
-open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf using ( KPw )
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf using ( KNNC; KStkA; KStkC; KFlat )
+open import DirectedHoTT.Examples.Knot.Pw 𝒮 wf core using ( KPw )
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( KNNC; KStkA; KStkC; KFlat )
 open import DirectedHoTT.Examples.Knot.JudgeDecode 𝒮 wf core 𝓃 using ( decTy; decTm )
 open import DirectedHoTT.Examples.Knot.RedDecode 𝒮 wf core using ( decRed )
 open import DirectedHoTT.Examples.Knot.RedTDecode 𝒮 wf core using ( decRedT )
@@ -65,7 +65,7 @@ open import DirectedHoTT.Examples.Knot.ConvDecode 𝒮 wf core using ( decConv; 
 open import DirectedHoTT.Examples.Knot.QuoteSig 𝒮 wf using ( q𝒮; tN )
 open import DirectedHoTT.Examples.Knot.LookupDecode 𝒮 wf using ( decLk )
 open import DirectedHoTT.Examples.Knot.PwDecode 𝒮 wf core using ( decPw )
-open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf using ( decNNC; decStkA; decStkC; decFlat )
+open import DirectedHoTT.Examples.Knot.PredsDecode 𝒮 wf core using ( decNNC; decStkA; decStkC; decFlat )
 
 -- a closed typed term has a closed normal form at the same type
 private

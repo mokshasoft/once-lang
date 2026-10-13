@@ -19,7 +19,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.SigExtend where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax using ( Defs; Def; kType; kBody; _▸ᴷ_; _<ˢ_; <-there; lookupK-▸ )
 
 infix 4 _⊑ᴰ_
@@ -37,3 +37,9 @@ record _⊑ᴰ_ (𝒮 𝒮' : Defs) : Set where
 ⊑ᴰ-▸ = record { inc   = <-there
               ; type≡ = λ p → cong kType (sym (lookupK-▸ p))
               ; body≡ = λ p → cong kBody (sym (lookupK-▸ p)) }
+
+-- extension composes
+⊑ᴰ-trans : {𝒮₁ 𝒮₂ 𝒮₃ : Defs} → 𝒮₁ ⊑ᴰ 𝒮₂ → 𝒮₂ ⊑ᴰ 𝒮₃ → 𝒮₁ ⊑ᴰ 𝒮₃
+⊑ᴰ-trans a b = record { inc   = λ p → _⊑ᴰ_.inc b (_⊑ᴰ_.inc a p)
+                      ; type≡ = λ p → trans (_⊑ᴰ_.type≡ a p) (_⊑ᴰ_.type≡ b (_⊑ᴰ_.inc a p))
+                      ; body≡ = λ p → trans (_⊑ᴰ_.body≡ a p) (_⊑ᴰ_.body≡ b (_⊑ᴰ_.inc a p)) }
