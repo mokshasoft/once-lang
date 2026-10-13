@@ -18527,5 +18527,9 @@ Plan 0.117 gains phase A′ (the `act` grade, top-down from the Spec); F becomes
   type is the loop; what is new is how that case is compiled (a back-edge) and its machine proof.
 * **F1 part 1 (2026-10-13)** — the surface type `Act A B` and the stream `Nu (Act F)`: grammar
   (`TAct`, `GNuAct`), both type parsers with soundness/completeness, printer and round trip, the
-  schema former `PAct`, the oracle. Applying an `Act` function at the surface is next.
+  schema former `PAct`, the oracle.
+* **F1 part 2 (2026-10-13)** — applying an `Act` function: the three effectful-application rules
+  (`t-effApp`, `t-apply-eff-app-infer`, `t-Out-eff-app-infer`) are one rule each over an effectful
+  grade `π` with evidence `EffGrade π` (`act` or `eff`) — plan 0.114 G6's single graded result
+  former for these; the checker, its completeness and mode agreement, and the bridges follow.
 

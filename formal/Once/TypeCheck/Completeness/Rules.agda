@@ -43,7 +43,7 @@ open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved;
 open import Once.Spec.Name using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
-  using (via; apply-pure; apply-eff; withUnit-elim)
+  using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
 open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQualified-aux; inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
 import Once.Spec.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
@@ -486,6 +486,17 @@ infer-complete-RApp-Out-eff :
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] T.⟦ F ⟧T (T.ν-type F T.eff)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+
+infer-complete-RApp-Out-act :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.act)}
+    {d' f' : ℕ}
+    (wfF : WellFormedF F)
+  → inferElab ctx arg ≡ success (T.ν-type F T.act) Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧T (T.ν-type F T.act)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 -- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
@@ -494,6 +505,12 @@ infer-complete-RApp-Out-eff {ctx} arg {F} wfF eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ Ψ' argE' d' fr' , w' | refl
       rewrite inferOutGo-J ctx arg F T.eff Ψ' argE' d' fr' w'
+                (just wfF) (wellFormedF?-complete-at wfF)
+      = _ , _ , _ , refl
+infer-complete-RApp-Out-act {ctx} arg {F} wfF eqArg
+  with inferElabV ctx arg | eqArg
+... | success _ Ψ' argE' d' fr' , w' | refl
+      rewrite inferOutGo-J ctx arg F T.act Ψ' argE' d' fr' w'
                 (just wfF) (wellFormedF?-complete-at wfF)
       = _ , _ , _ , refl
 
@@ -548,6 +565,18 @@ infer-complete-RApp-apply-eff :
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 infer-complete-RApp-apply-eff {ctx} arg A {B} {Ψ} {argE} {d'} {f'} eqArg =
   via (E.inferApplyOn ctx arg) (inferElabV ctx arg) eqArg (apply-eff A B Ψ argE d' f')
+
+infer-complete-RApp-apply-act :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
+    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.act ] B) T.* A)}
+    {d' f' : ℕ}
+  → inferElab ctx arg ≡ success ((A T.⇒[ T.mk-kind T.Many T.act ] B) T.* A) Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+infer-complete-RApp-apply-act {ctx} arg A {B} {Ψ} {argE} {d'} {f'} eqArg =
+  via (E.inferApplyOn ctx arg) (inferElabV ctx arg) eqArg (apply-act A B Ψ argE d' f')
 
 ------------------------------------------------------------------------
 -- Variable lookup (local / import)
@@ -901,6 +930,28 @@ infer-complete-RApp-eff :
       inferElab ctx (Raw.RApp f x)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
 infer-complete-RApp-eff {ctx} f x A {B} eqAH eqF eqX
+  rewrite cong proj₁ (viewBridge {ctx} {f} {x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | cong proj₁ (otherBridge {ctx} {f} {x} nothing eqAH)
+  with inferElabV ctx f | eqF
+... | success _ _ _ _ _ , _ | refl
+    with checkElabV ctx x A | eqX
+...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+infer-complete-RApp-act :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
+    {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.act ] B)}
+    {df ff : ℕ}
+    {Ψx : Surface.Usage (Classify.NamedCtx.size ctx)}
+    {xE : SExpr (Classify.NamedCtx.debruijn ctx) Ψx A}
+    {dx fx : ℕ}
+  → Classify.classifyAppHead f ≡ nothing
+  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.act ] B) Ψf fE df ff
+  → checkElab ctx x A ≡ success Ψx xE dx fx
+  → ∃[ eE ] ∃[ d ] ∃[ f' ]
+      inferElab ctx (Raw.RApp f x)
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] B) (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
+infer-complete-RApp-act {ctx} f x A {B} eqAH eqF eqX
   rewrite cong proj₁ (viewBridge {ctx} {f} {x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
         | cong proj₁ (otherBridge {ctx} {f} {x} nothing eqAH)
   with inferElabV ctx f | eqF

@@ -552,10 +552,10 @@ module WithSG (sg : SigGround) where
     c-apply : ∀ {A B} → ρ̂ᶜ (DT.⊢applyᶜ {Γ = Γ} {A = A} {B = B}) ≅ DT.⊢applyᶜ {Γ = ρ̂S Γ} {A = ρ̂ A} {B = ρ̂ B}
     c-apply = H.trans (ρ̂ᶜ-sU (DT.z+qz Many)) (H.sym (rmU (DT.z+qz Many)))
 
-    c-applyEff : ∀ {A B} → ρ̂ᶜ (DT.⊢applyEffᶜ {Γ = Γ} {A = A} {B = B}) ≅ DT.⊢applyEffᶜ {Γ = ρ̂S Γ} {A = ρ̂ A} {B = ρ̂ B}
+    c-applyEff : ∀ {π A B} → ρ̂ᶜ (DT.⊢applyEffᶜ {Γ = Γ} {π = π} {A = A} {B = B}) ≅ DT.⊢applyEffᶜ {Γ = ρ̂S Γ} {π = π} {A = ρ̂ A} {B = ρ̂ B}
     c-applyEff = H.trans (ρ̂ᶜ-sU (DT.z+qz Many)) (H.sym (rmU (DT.z+qz Many)))
 
-    c-effApp : ∀ {Ψ₁ Ψ₂ A B f x} (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many T.eff ] B ! pure) (b : Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
+    c-effApp : ∀ {Ψ₁ Ψ₂ π A B f x} (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π ] B ! pure) (b : Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
              → ρ̂ᶜ (DT.⊢effAppᶜ a b) ≅ DT.⊢effAppᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
     c-effApp {f = f} {x} a b =
       ≅lam refl (cong₂ G.app (ρ̂ₜ-ren suc f) (ρ̂ₜ-ren suc x))
@@ -577,11 +577,11 @@ module WithSG (sg : SigGround) where
                 ≅ DT.⊢outᶜ {Γ = Δ₀} w
       out-gen w refl = H.refl
 
-      outEff-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf T.eff) ≡ X)
+      outEff-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {π} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf π) ≡ X)
                  → GT.⊢lam {Γ = Δ₀} {q = Many} refl (GT.⊢lam {q = Many} refl
-                     (subst (λ Y → ((Δ₀ C., ν-type Gf T.eff) C., T.Unit) ⊢[ T.Zero C.∷ C.singleUse zero T.One ] G.out (G.var (suc zero)) ∷ Y ! T.eff) e
+                     (subst (λ Y → ((Δ₀ C., ν-type Gf π) C., T.Unit) ⊢[ T.Zero C.∷ C.singleUse zero T.One ] G.out (G.var (suc zero)) ∷ Y ! π) e
                             (GT.⊢out w (GT.⊢var (suc zero)))))
-                   ≅ DT.⊢outEffᶜ {Γ = Δ₀} w
+                   ≅ DT.⊢outEffᶜ {Γ = Δ₀} {π = π} w
       outEff-gen w refl = H.refl
 
     c-in : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢inᶜ {Γ = Γ} wf) ≅ DT.⊢inᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
@@ -590,8 +590,8 @@ module WithSG (sg : SigGround) where
     c-out : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outᶜ {Γ = Γ} wf) ≅ DT.⊢outᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
     c-out {F} wf = out-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F pure)))
 
-    c-outEff : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outEffᶜ {Γ = Γ} wf) ≅ DT.⊢outEffᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
-    c-outEff {F} wf = outEff-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F T.eff)))
+    c-outEff : ∀ {π F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outEffᶜ {Γ = Γ} {π = π} wf) ≅ DT.⊢outEffᶜ {Γ = ρ̂S Γ} {π = π} (ρ̂-wf wf)
+    c-outEff {π} {F} wf = outEff-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F π)))
 
     private
       cata-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ t π} (u : Once.Spec.Type.Sub._⊑π_ T.pure π) (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)

@@ -99,14 +99,14 @@ anaᶜ F A π₀ c = lam A Many π₀ (unfold F (wk c) v0)
 -- Applying an effectful arrow at the surface builds a SUSPENSION
 -- `Unit ⇒[eff] B`; head and argument are evaluated when it runs
 -- (`⟦ t-effApp ⟧ᵢ`).
-effAppᶜ : ∀ {n} → Tm n → Tm n → Tm n
-effAppᶜ f x = lam Unit Many eff (app (wk f) (wk x))
+effAppᶜ : ∀ {n} → Purity → Tm n → Tm n → Tm n
+effAppᶜ π f x = lam Unit Many π (app (wk f) (wk x))
 
 -- The SUSPENDED forms of the surface's effectful applied builtins: the
 -- argument is evaluated now, the effect when the suspension runs
 -- (`t-apply-eff-app-infer`, `t-Out-eff-app-infer`).
-applyEffᶜ : ∀ {n} → Type → Type → Tm n
-applyEffᶜ A B = lam ((A ⇒[ mk-kind Many eff ] B) * A) Many pure (lam Unit Many eff (app (fst v1) (snd v1)))
+applyEffᶜ : ∀ {n} → Purity → Type → Type → Tm n
+applyEffᶜ π A B = lam ((A ⇒[ mk-kind Many π ] B) * A) Many pure (lam Unit Many π (app (fst v1) (snd v1)))
 
-outEffᶜ : ∀ {n} → Functor → Tm n
-outEffᶜ F = lam (ν-type F eff) Many pure (lam Unit Many eff (out v1))
+outEffᶜ : ∀ {n} → Purity → Functor → Tm n
+outEffᶜ π F = lam (ν-type F π) Many pure (lam Unit Many π (out v1))

@@ -597,19 +597,21 @@ matchInferResult (success T' Ψ eE d f) T with T ≟T T'
 data FunProjection {n : ℕ} (Δ : SCtx n) : Set where
   isFun  : (A : Type) (q : Quantity) (B : Type) (Ψ : Surface.Usage n)
          → SExpr Δ Ψ (A ⇒[ mk-kind q pure ] B) → ℕ → ℕ → FunProjection Δ
-  isEff  : (A B : Type) (Ψ : Surface.Usage n)
-         → SExpr Δ Ψ (A ⇒[ mk-kind Many eff ] B) → ℕ → ℕ → FunProjection Δ
+  isEff  : (π : Purity) (g : EffGrade π) (A B : Type) (Ψ : Surface.Usage n)
+         → SExpr Δ Ψ (A ⇒[ mk-kind Many π ] B) → ℕ → ℕ → FunProjection Δ
   notFun : TypeError → FunProjection Δ
 
 asFun : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → FunProjection Δ
 asFun (failure err)                                      = notFun err
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.pure ] B) Ψ se d f) = isFun A q B Ψ se d f
-asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) Ψ se d f)                       = isEff A B Ψ se d f
+asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) Ψ se d f)                       = isEff Once.Spec.Type.Grade.eff Once.Spec.Type.Grade.eg-eff A B Ψ se d f
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B))
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B))
 -- D311: no surface application of a `prod` arrow yet (plan 0.117 F).
 asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B))
-asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.act ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.act ] B))
+asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) Ψ se d f)                       = isEff Once.Spec.Type.Grade.act Once.Spec.Type.Grade.eg-act A B Ψ se d f
+asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.act ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.act ] B))
+asFun (success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.act ] B) _ _ _ _) = notFun (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.act ] B))
 asFun (success Unit Ψ _ _ _)                             = notFun (NotFunction Unit)
 asFun (success Void Ψ _ _ _)                             = notFun (NotFunction Void)
 asFun (success Int Ψ _ _ _)                              = notFun (NotFunction Int)
@@ -980,10 +982,15 @@ inferOutGo ctx arg F Once.Spec.Type.Grade.eff Ψ argE d fr w (just wfF) eqW =
              ⟦ F ⟧T (Once.Spec.Type.ν-type F Once.Spec.Type.Grade.eff)) _
     (Surface.morph-app (IR.curry (outIR F Once.Spec.Type.Grade.eff wfF IR.∘ IR.fst)) argE)
     (suc d) fr
-  , t-Out-eff-app-infer wfF refl w
+  , t-Out-eff-app-infer {g = Once.Spec.Type.Grade.eg-eff} wfF refl w
+inferOutGo ctx arg F Once.Spec.Type.Grade.act Ψ argE d fr w (just wfF) eqW =
+  success (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ]
+             ⟦ F ⟧T (Once.Spec.Type.ν-type F Once.Spec.Type.Grade.act)) _
+    (Surface.morph-app (IR.curry (outIR F Once.Spec.Type.Grade.act wfF IR.∘ IR.fst)) argE)
+    (suc d) fr
+  , t-Out-eff-app-infer {g = Once.Spec.Type.Grade.eg-act} wfF refl w
 -- D311: no surface `Out` of a `prod` stream yet (plan 0.117 F).
 inferOutGo ctx arg F Once.Spec.Type.Grade.eff⁺ Ψ argE d fr w (just wfF) eqW = failure (BuiltinTypeMismatch "Out") , tt
-inferOutGo ctx arg F Once.Spec.Type.Grade.act Ψ argE d fr w (just wfF) eqW = failure (BuiltinTypeMismatch "Out") , tt
 
 inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → NuView T
@@ -1035,11 +1042,16 @@ inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.eff B A') w
 ... | yes refl =
   success (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) _
           (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
-  , t-apply-eff-app-infer w
+  , t-apply-eff-app-infer {g = Once.Spec.Type.Grade.eg-eff} w
+... | no _ = failure (BuiltinTypeMismatch "apply") , tt
+inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.act B A') with A ≟T A'
+... | yes refl =
+  success (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) _
+          (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
+  , t-apply-eff-app-infer {g = Once.Spec.Type.Grade.eg-act} w
 ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
 -- D311: no surface application of a `prod` closure yet (plan 0.117 F).
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.eff⁺ B A') = failure (BuiltinTypeMismatch "apply") , tt
-inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.act B A') = failure (BuiltinTypeMismatch "apply") , tt
 inferApplyAt ctx arg Ψ argE d fr w apply-other = failure (BuiltinTypeMismatch "apply") , tt
 
 inferApplyOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
@@ -2617,11 +2629,16 @@ mutual
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) Ψ₁ fE df ff , wF with checkElabV ctx x A
   ...   | failure err , _ = failure err , tt
   ...   | success Ψ₂ xE dx fx , wX =
-          success (Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx , t-effApp eqAH wF wX
+          success (Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) _ (Surface.effApp {g = Once.Spec.Type.Grade.eg-eff} fE xE) (df ⊔ dx) fx , t-effApp {g = Once.Spec.Type.Grade.eg-eff} eqAH wF wX
+  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) Ψ₁ fE df ff , wF with checkElabV ctx x A
+  ...   | failure err , _ = failure err , tt
+  ...   | success Ψ₂ xE dx fx , wX =
+          success (Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) _ (Surface.effApp {g = Once.Spec.Type.Grade.eg-act} fE xE) (df ⊔ dx) fx , t-effApp {g = Once.Spec.Type.Grade.eg-act} eqAH wF wX
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.eff ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.eff ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.eff⁺ ] B)) , tt
-  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.act ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind q Once.Spec.Type.Grade.act ] B)) , tt
+  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.act ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Zero Once.Spec.Type.Grade.act ] B)) , tt
+  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.act ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.One Once.Spec.Type.Grade.act ] B)) , tt
 
   -- ahv-id : argument can have any type, result has the same type.
   inferElabV-RApp-dispatch ctx f arg ahv-id _ with inferElabV ctx arg
@@ -2834,6 +2851,6 @@ inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
 ... | isFun A q B Ψ₁ fE df ff with checkElab ctx x A
 ...   | failure err = failure err
 ...   | success Ψ₂ xE dx fx = success B _ (Surface.app fE xE) (df ⊔ dx) fx
-inferElab-RApp-other ctx f x | isEff A B Ψ₁ fE df ff with checkElab ctx x A
+inferElab-RApp-other ctx f x | isEff π g A B Ψ₁ fE df ff with checkElab ctx x A
 ...   | failure err = failure err
-...   | success Ψ₂ xE dx fx = success (Unit ⇒[ mk-kind Many eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
+...   | success Ψ₂ xE dx fx = success (Unit ⇒[ mk-kind Many π ] B) _ (Surface.effApp {g = g} fE xE) (df ⊔ dx) fx

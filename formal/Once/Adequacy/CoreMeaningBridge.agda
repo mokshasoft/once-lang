@@ -297,15 +297,15 @@ module Comb {δ : GM.DefSem} where
                          (cong (GM.⟦ dc ⟧ fmt δ)
                                (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x))))))
 
-  applyEff-sem : ∀ {n} {Γ : Ctx n} {A B : Type} (x : RS.Env Γ zeroUsage)
-    → GM.⟦ ⊢applyEffᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
+  applyEff-sem : ∀ {n} {Γ : Ctx n} {π} {A B : Type} (x : RS.Env Γ zeroUsage)
+    → GM.⟦ ⊢applyEffᶜ {Γ = Γ} {π = π} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
   applyEff-sem {Γ = Γ} x =
     trans (RS.⟦⟧-substΨ {Γ = Γ} (z+qz Many)
              (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var (suc zero))) (⊢snd (⊢var (suc zero)))))) fmt δ x)
           (extensionality λ fa → extensionality λ _ → trans (>>=ᵖ-β _ _) (>>=ᵖ-β _ _))
 
-  effApp-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B : Type} {f t}
-    (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many eff ] B ! pure) (dx : Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
+  effApp-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {π} {A B : Type} {f t}
+    (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure) (dx : Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
     (x : RS.Env Γ (Ψ₁ +ᵘ Many *ᵘ Ψ₂))
     → GM.⟦ ⊢effAppᶜ df dx ⟧ fmt δ x
       ≡ returnᵖ (λ _ → GM.⟦ df ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) x) >>=ᵖ λ vf →
@@ -538,11 +538,11 @@ module _ {δ : GM.DefSem} where
     trans (bindC (bridge-i V ag d _) (λ fa → refl))
           (sym (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})
                  (λ y → Comb.apply-sem {δ = δ} {Γ = NamedCtx.debruijn ctx} {A = A} {B = B} y) (proj₂ (elabᵢ V d)) dγ))
-  bridge-i {ctx = ctx} V ag (t-apply-eff-app-infer {A = A} {B = B} d) dγ =
+  bridge-i {ctx = ctx} V ag (t-apply-eff-app-infer {A = A} {B = B} {π = π} d) dγ =
     trans (bindC (bridge-i V ag d _) (λ fa → refl))
           (sym (Comb.appC-sem {δ = δ} (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
-                 (⊢applyEffᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})
-                 (λ y → Comb.applyEff-sem {δ = δ} {Γ = NamedCtx.debruijn ctx} {A = A} {B = B} y) (proj₂ (elabᵢ V d)) dγ))
+                 (⊢applyEffᶜ {Γ = NamedCtx.debruijn ctx} {π = π} {A = A} {B = B})
+                 (λ y → Comb.applyEff-sem {δ = δ} {Γ = NamedCtx.debruijn ctx} {π = π} {A = A} {B = B} y) (proj₂ (elabᵢ V d)) dγ))
   bridge-i V ag (t-app {q = Zero} _ df dx) dγ = bindC (bridge-i V ag df _) (λ vf → refl)
   bridge-i V ag (t-app {q = One} _ df dx) dγ = bindC (bridge-i V ag df _) (λ vf → bindC (bridge-c V ag dx _) (λ vx → refl))
   bridge-i V ag (t-app {q = Many} _ df dx) dγ = bindC (bridge-i V ag df _) (λ vf → bindC (bridge-c V ag dx _) (λ vx → refl))

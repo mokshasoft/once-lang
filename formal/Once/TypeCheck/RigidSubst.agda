@@ -228,14 +228,14 @@ mutual
   subst-i′ ir (t-snd-app d)          = t-snd-app (subst-i′ ir d)
   subst-i′ ir (t-terminal-app d)     = t-terminal-app (subst-i′ ir d)
   subst-i′ ir (t-apply-app-infer d)  = t-apply-app-infer (subst-i′ ir d)
-  subst-i′ ir (t-apply-eff-app-infer d) = t-apply-eff-app-infer (subst-i′ ir d)
+  subst-i′ ir (t-apply-eff-app-infer {g = g} d) = t-apply-eff-app-infer {g = g} (subst-i′ ir d)
   subst-i′ ir (t-Out-app-infer {F = F} wf refl d) =
     sym (ρ̂-⟦⟧ F (ν-type F pure)) ⇝ᵢ t-Out-app-infer (ρ̂-wf wf) refl (subst-i′ ir d)
-  subst-i′ ir (t-Out-eff-app-infer {F = F} wf refl d) =
-    cong (λ X → Unit ⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))
-      ⇝ᵢ t-Out-eff-app-infer (ρ̂-wf wf) refl (subst-i′ ir d)
+  subst-i′ ir (t-Out-eff-app-infer {F = F} {π = π} {g = g} wf refl d) =
+    cong (λ X → Unit ⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π)))
+      ⇝ᵢ t-Out-eff-app-infer {g = g} (ρ̂-wf wf) refl (subst-i′ ir d)
   subst-i′ ir (t-app h df dx)        = t-app h (subst-i′ ir df) (subst-c′ ir dx)
-  subst-i′ ir (t-effApp h df dx)     = t-effApp h (subst-i′ ir df) (subst-c′ ir dx)
+  subst-i′ ir (t-effApp {g = g} h df dx) = t-effApp {g = g} h (subst-i′ ir df) (subst-c′ ir dx)
   subst-i′ ir (t-app-spine h da df)  = t-app-spine h (subst-i′ ir da) (subst-d′ ir df)
 
   subst-c′ : ∀ {n Γ D imps polys sg e A Ψ} → TopRF imps sg

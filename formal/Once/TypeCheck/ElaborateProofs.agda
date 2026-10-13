@@ -648,6 +648,15 @@ apply-eff A _ _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
 
+apply-act : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
+              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
+          → ∃[ eE ] ∃[ d' ] ∃[ f' ]
+              proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Type.Grade.act B A))
+                ≡ success (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
+apply-act A _ _ _ _ _ _ with A ≟T A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq = ⊥-elim (¬eq refl)
+
 checkElab-fallback-RApp-apply :
   ∀ {ctx : NamedCtx} {τ : Type} (p : RawExpr) (A B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -680,6 +689,21 @@ checkElab-fallback-RApp-apply-effclosure {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqI
   with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-eff A B Ψ eE d fr)
 ... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p _ eqApp sb
 
+checkElab-fallback-RApp-apply-actclosure :
+  ∀ {ctx : NamedCtx} {τ : Type} (p : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) Once.Spec.Type.* A)}
+    {d fr : ℕ}
+  → inferElab ctx p ≡ success ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) Once.Spec.Type.* A) Ψ eE d fr
+  → (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.act ] B) <: τ
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p)
+                τ
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Type.Grade.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-apply-actclosure {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
+  with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-act A B Ψ eE d fr)
+... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p _ eqApp sb
+
 -- Plan 0.103 phase 1c: LINKING. A definition reference `poly x A` is replaced
 -- by the definition's body elaborated in ITS DECLARATION CONTEXT — its
 -- telescope tail (`lookupPolyPrefix`) and the monomorphic defs declared before
@@ -709,8 +733,8 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.lam q prf b) =
   Surface.lam q prf (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.app f a) =
   Surface.app (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh a)
-resolveExprWF polys pAcc imps userFns fresh (Surface.effApp f a) =
-  Surface.effApp (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh a)
+resolveExprWF polys pAcc imps userFns fresh (Surface.effApp {g = g} f a) =
+  Surface.effApp {g = g} (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh a)
 resolveExprWF polys pAcc imps userFns fresh (Surface.pair a b) =
   Surface.pair (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 -- D127: the combinators resolve componentwise, like `pair`.
@@ -878,11 +902,11 @@ resolveExpr-pair _ _ _ _ _ _ = refl
 
 -- Resolution commutes with effApp.
 resolveExpr-effApp :
-  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B}
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B} {π} {g : Once.Spec.Type.Grade.EffGrade π}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (f : Surface.Expr Γ Ψ₁ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B)) (a : Surface.Expr Γ Ψ₂ A)
-  → resolveExpr polys imps userFns fresh (Surface.effApp f a)
-      ≡ Surface.effApp (resolveExpr polys imps userFns fresh f) (resolveExpr polys imps userFns fresh a)
+    (f : Surface.Expr Γ Ψ₁ (A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B)) (a : Surface.Expr Γ Ψ₂ A)
+  → resolveExpr polys imps userFns fresh (Surface.effApp {g = g} f a)
+      ≡ Surface.effApp {g = g} (resolveExpr polys imps userFns fresh f) (resolveExpr polys imps userFns fresh a)
 resolveExpr-effApp _ _ _ _ _ _ = refl
 
 -- Resolution commutes with fst'.

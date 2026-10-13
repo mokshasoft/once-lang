@@ -256,9 +256,9 @@ realize-refs-i (t-Out-app-infer {F = F} wfF ceq d) =
   Refs-substA ceq _
     ( Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.pure))) (IR.Out (wf-⌊⌋ wfF)) tt
     , realize-refs-i d)
-realize-refs-i (t-Out-eff-app-infer {F = F} wfF ceq d) =
-  Refs-substF (λ Z → Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] Z) ceq _
-    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.eff))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
+realize-refs-i (t-Out-eff-app-infer {F = F} {π = π} wfF ceq d) =
+  Refs-substF (λ Z → Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] Z) ceq _
+    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
     , realize-refs-i d)
 realize-refs-i (t-terminal-app d) = tt , realize-refs-i d
 realize-refs-i (t-apply-app-infer d) = tt , realize-refs-i d

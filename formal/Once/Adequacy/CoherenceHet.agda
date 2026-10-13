@@ -138,9 +138,9 @@ module _ {Γ : Ctx n} where
         → f ≅ f′ → x ≅ x′ → app f x ≅ app f′ x′
   app-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (app-cong h k)
 
-  effApp-h : {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many T.eff ] B)} {f′ : Expr Γ Ψ₁′ (A′ ⇒[ mk-kind Many T.eff ] B′)}
+  effApp-h : ∀ {π} {g : T.EffGrade π} {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {f′ : Expr Γ Ψ₁′ (A′ ⇒[ mk-kind Many π ] B′)}
              {x : Expr Γ Ψ₂ A} {x′ : Expr Γ Ψ₂′ A′}
-           → f ≅ f′ → x ≅ x′ → effApp f x ≅ effApp f′ x′
+           → f ≅ f′ → x ≅ x′ → effApp {g = g} f x ≅ effApp {g = g} f′ x′
   effApp-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (effApp-cong h k)
 
   comp-h : {f : Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)} {f′ : Expr Γ Ψ₁′ (B′ ⇒[ mk-kind Many π′ ] C′)}
@@ -482,9 +482,10 @@ module _ {ctx : NamedCtx} where
           → RI d ≅ RI d′ → RI (t-apply-app-infer d) ≅ RI (t-apply-app-infer d′)
   apply-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.apply h)
 
-  applyeff-h : ∀ {A A′ B B′} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.eff ] B) * A) ⨾ Ψ}
-                 {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.eff ] B′) * A′) ⨾ Ψ′}
-             → RI d ≅ RI d′ → RI (t-apply-eff-app-infer d) ≅ RI (t-apply-eff-app-infer d′)
+  applyeff-h : ∀ {A A′ B B′} {Ψ Ψ′ : U} {π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
+                 {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many π ] B) * A) ⨾ Ψ}
+                 {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many π′ ] B′) * A′) ⨾ Ψ′}
+             → RI d ≅ RI d′ → RI (t-apply-eff-app-infer {g = g} d) ≅ RI (t-apply-eff-app-infer {g = g′} d′)
   applyeff-h (≅i refl refl h) = ≅i refl refl (morph-app-cong (IR.curry (IR.apply IR.∘ IR.fst)) h)
 
   out-h : ∀ {F F′} {Ψ Ψ′ : U} (w : WellFormedF F) (w′ : WellFormedF F′)
@@ -493,11 +494,11 @@ module _ {ctx : NamedCtx} where
   out-h w w′ {d′ = d′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-app-infer v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
 
-  outeff-h : ∀ {F F′} {Ψ Ψ′ : U} (w : WellFormedF F) (w′ : WellFormedF F′)
-               {d : ctx ⊢ᵢ e ∶ ν-type F T.eff ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.eff ⨾ Ψ′}
-           → RI d ≅ RI d′ → RI (t-Out-eff-app-infer w refl d) ≅ RI (t-Out-eff-app-infer w′ refl d′)
-  outeff-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-eff-app-infer v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+  outeff-h : ∀ {F F′} {Ψ Ψ′ : U} {π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′} (w : WellFormedF F) (w′ : WellFormedF F′)
+               {d : ctx ⊢ᵢ e ∶ ν-type F π ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ π′ ⨾ Ψ′}
+           → RI d ≅ RI d′ → RI (t-Out-eff-app-infer {g = g} w refl d) ≅ RI (t-Out-eff-app-infer {g = g′} w′ refl d′)
+  outeff-h {g′ = g′} w w′ {d′ = d′} (≅i refl refl h) =
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-eff-app-infer {g = g′} v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
 
   applychk-h : ∀ {A A′ B} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
                  {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B) * A′) ⨾ Ψ′}

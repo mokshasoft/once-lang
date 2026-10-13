@@ -95,11 +95,12 @@ mutual
         → (A ⇒[ T.mk-kind q T.pure ] B) ≡ (A′ ⇒[ T.mk-kind q′ T.pure ] B′) → Rii (t-app h f x) (t-app h′ f′ x′)
   app-r h f x h′ f′ x′ refl = ii-app (route-ii f f′) (route-cc x x′)
 
-  effApp-r : ∀ {ctx e₁ e₂ A A′ B B′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
-             (h : classifyAppHead e₁ ≡ nothing) (f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ₁) (x : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂)
-             (h′ : classifyAppHead e₁ ≡ nothing) (f′ : ctx ⊢ᵢ e₁ ∶ (A′ ⇒[ T.mk-kind T.Many T.eff ] B′) ⨾ Ψ₁′) (x′ : ctx ⊢ᶜ e₂ ∶ A′ ⨾ Ψ₂′)
-           → (A ⇒[ T.mk-kind T.Many T.eff ] B) ≡ (A′ ⇒[ T.mk-kind T.Many T.eff ] B′) → Rii (t-effApp h f x) (t-effApp h′ f′ x′)
-  effApp-r h f x h′ f′ x′ refl = ii-effApp (route-ii f f′) (route-cc x x′)
+  effApp-r : ∀ {ctx e₁ e₂ A A′ B B′ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+             (h : classifyAppHead e₁ ≡ nothing) (f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B) ⨾ Ψ₁) (x : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂)
+             (h′ : classifyAppHead e₁ ≡ nothing) (f′ : ctx ⊢ᵢ e₁ ∶ (A′ ⇒[ T.mk-kind T.Many π′ ] B′) ⨾ Ψ₁′) (x′ : ctx ⊢ᶜ e₂ ∶ A′ ⨾ Ψ₂′)
+           → (A ⇒[ T.mk-kind T.Many π ] B) ≡ (A′ ⇒[ T.mk-kind T.Many π′ ] B′) → Rii (t-effApp {g = g} h f x) (t-effApp {g = g′} h′ f′ x′)
+  effApp-r {g = T.eg-act} {T.eg-act} h f x h′ f′ x′ refl = ii-effApp (route-ii f f′) (route-cc x x′)
+  effApp-r {g = T.eg-eff} {T.eg-eff} h f x h′ f′ x′ refl = ii-effApp (route-ii f f′) (route-cc x x′)
 
   spine-r : ∀ {ctx e₁ e₂ X X′ T T′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
             (h : classifyAppHead e₁ ≡ nothing) (dX : ctx ⊢ᵢ e₂ ∶ X ⨾ Ψ₂) (dF : ctx ⊢ᵈ e₁ ∶ X ⇒[ T.pure ]↦ T ⨾ Ψ₁)
@@ -203,15 +204,22 @@ mutual
   route-ii (t-snd-app d) (t-snd-app d′) = ii-snd-app (route-ii d d′)
   route-ii (t-terminal-app d) (t-terminal-app d′) = ii-terminal-app (route-ii d d′)
   route-ii (t-apply-app-infer d) (t-apply-app-infer d′) = ii-apply (route-ii d d′)
-  route-ii (t-apply-app-infer d) (t-apply-eff-app-infer d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
-  route-ii (t-apply-eff-app-infer d) (t-apply-app-infer d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-apply-app-infer d) (t-apply-eff-app-infer {g = T.eg-act} d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-apply-app-infer d) (t-apply-eff-app-infer {g = T.eg-eff} d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-apply-eff-app-infer {g = T.eg-act} d) (t-apply-app-infer d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-apply-eff-app-infer {g = T.eg-eff} d) (t-apply-app-infer d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  {-# CATCHALL #-}
   route-ii (t-apply-eff-app-infer d) (t-apply-eff-app-infer d′) = ii-apply-eff (route-ii d d′)
   route-ii (t-Out-app-infer _ refl d) (t-Out-app-infer _ refl d′) = ii-Out (route-ii d d′)
   route-ii (t-Out-eff-app-infer _ refl d) (t-Out-eff-app-infer _ refl d′) = ii-Out-eff (route-ii d d′)
   {-# CATCHALL #-}
-  route-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-Out-eff-app-infer {g = T.eg-act} _ _ d) (t-Out-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   {-# CATCHALL #-}
-  route-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-Out-eff-app-infer {g = T.eg-eff} _ _ d) (t-Out-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  {-# CATCHALL #-}
+  route-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-act} _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  {-# CATCHALL #-}
+  route-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-eff} _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   route-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
   route-ii (t-app () _ _) (t-Out-eff-app-infer _ _ _)
   route-ii (t-Out-eff-app-infer _ _ _) (t-effApp () _ _)
@@ -261,13 +269,17 @@ mutual
   route-ii (t-Out-app-infer _ _ _) (t-app-spine () _ _)
   route-ii (t-app-spine () _ _) (t-Out-app-infer _ _ _)
   route-ii (t-app h wF dX) (t-app h′ wF′ dX′) = app-r h wF dX h′ wF′ dX′ (proj₁ (agree-ii wF wF′))
-  route-ii (t-app _ wF _) (t-effApp _ wF′ _) = ⊥-elim (ex (agree-ii wF wF′) λ { (() , _) })
-  route-ii (t-effApp _ wF _) (t-app _ wF′ _) = ⊥-elim (ex (agree-ii wF wF′) λ { (() , _) })
+  route-ii (t-app _ wF _) (t-effApp {g = T.eg-act} _ wF′ _) = ⊥-elim (ex (agree-ii wF wF′) λ { (() , _) })
+  route-ii (t-app _ wF _) (t-effApp {g = T.eg-eff} _ wF′ _) = ⊥-elim (ex (agree-ii wF wF′) λ { (() , _) })
+  route-ii (t-effApp {g = T.eg-act} _ wF _) (t-app _ wF′ _) = ⊥-elim (ex (agree-ii wF wF′) λ { (() , _) })
+  route-ii (t-effApp {g = T.eg-eff} _ wF _) (t-app _ wF′ _) = ⊥-elim (ex (agree-ii wF wF′) λ { (() , _) })
   route-ii (t-effApp h wF dX) (t-effApp h′ wF′ dX′) = effApp-r h wF dX h′ wF′ dX′ (proj₁ (agree-ii wF wF′))
   route-ii (t-app _ wF dX) (t-app-spine _ dX′ dF′) = ii-app-spine (route-ic dX′ dX) (route-di dF′ wF)
   route-ii (t-app-spine _ dX dF) (t-app _ wF′ dX′) = ii-spine-app (route-ic dX dX′) (route-di dF wF′)
-  route-ii (t-effApp _ wF _) (t-app-spine _ _ dF′) = ⊥-elim (ex (agree-di dF′ wF) λ { (_ , _ , refl , () , _) })
-  route-ii (t-app-spine _ _ dF) (t-effApp _ wF′ _) = ⊥-elim (ex (agree-di dF wF′) λ { (_ , _ , refl , () , _) })
+  route-ii (t-effApp {g = T.eg-act} _ wF _) (t-app-spine _ _ dF′) = ⊥-elim (ex (agree-di dF′ wF) λ { (_ , _ , refl , () , _) })
+  route-ii (t-effApp {g = T.eg-eff} _ wF _) (t-app-spine _ _ dF′) = ⊥-elim (ex (agree-di dF′ wF) λ { (_ , _ , refl , () , _) })
+  route-ii (t-app-spine _ _ dF) (t-effApp {g = T.eg-act} _ wF′ _) = ⊥-elim (ex (agree-di dF wF′) λ { (_ , _ , refl , () , _) })
+  route-ii (t-app-spine _ _ dF) (t-effApp {g = T.eg-eff} _ wF′ _) = ⊥-elim (ex (agree-di dF wF′) λ { (_ , _ , refl , () , _) })
   route-ii (t-app-spine h dX dF) (t-app-spine h′ dX′ dF′) = spine-r h dX dF h′ dX′ dF′ (proj₁ (agree-ii dX dX′))
   route-cc (t-sub d _) c = cc-sub-l (route-ic d c)
   {-# CATCHALL #-}
@@ -299,7 +311,8 @@ mutual
   route-ic d (t-sub d′ _) = ic-sub (route-ii d d′)
   route-ic (t-pair a b) (t-pair-lit-check a′ b′) = ic-pair (route-ic a a′) (route-ic b b′)
   route-ic (t-apply-app-infer d) (t-apply-check d′) = ic-apply (route-ii d d′)
-  route-ic (t-apply-eff-app-infer d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ic (t-apply-eff-app-infer {g = T.eg-act} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ic (t-apply-eff-app-infer {g = T.eg-eff} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   route-ic (t-app () _ _) (t-apply-check _)
   route-ic (t-effApp () _ _) (t-apply-check _)
   route-ic (t-app-spine () _ _) (t-apply-check _)

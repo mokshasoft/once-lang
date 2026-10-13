@@ -90,21 +90,24 @@ mutual
     ii-terminal-app : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → Rii (t-terminal-app d) (t-terminal-app d′)
     ii-apply : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many T.pure ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many T.pure ] B′) * A′) ⨾ Ψ′}
              → Rii d d′ → Rii (t-apply-app-infer d) (t-apply-app-infer d′)
-    ii-apply-eff : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many T.eff ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many T.eff ] B′) * A′) ⨾ Ψ′}
-                 → Rii d d′ → Rii (t-apply-eff-app-infer d) (t-apply-eff-app-infer d′)
+    ii-apply-eff : ∀ {Ψ Ψ′ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
+                     {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many π ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many π′ ] B′) * A′) ⨾ Ψ′}
+                 → Rii d d′ → Rii (t-apply-eff-app-infer {g = g} d) (t-apply-eff-app-infer {g = g′} d′)
     ii-Out : ∀ {F F′ w w′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ν-type F T.pure ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pure ⨾ Ψ′}
            → Rii d d′ → Rii (t-Out-app-infer w refl d) (t-Out-app-infer w′ refl d′)
-    ii-Out-eff : ∀ {F F′ w w′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ν-type F T.eff ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.eff ⨾ Ψ′}
-               → Rii d d′ → Rii (t-Out-eff-app-infer w refl d) (t-Out-eff-app-infer w′ refl d′)
+    ii-Out-eff : ∀ {F F′ w w′ Ψ Ψ′ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
+                   {d : ctx ⊢ᵢ e ∶ ν-type F π ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ π′ ⨾ Ψ′}
+               → Rii d d′ → Rii (t-Out-eff-app-infer {g = g} w refl d) (t-Out-eff-app-infer {g = g′} w′ refl d′)
     -- `t-app` / `t-effApp`: the argument is CHECKED at the head's domain, so the
     -- two heads' types are aligned (the argument's context does not depend on it,
     -- but the check type does).
     ii-app : ∀ {h h′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ₁} {f′ : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ₁′}
                {x : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂} {x′ : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂′}
            → Rii f f′ → Rcc x x′ → Rii (t-app h f x) (t-app h′ f′ x′)
-    ii-effApp : ∀ {h h′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ₁} {f′ : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ₁′}
+    ii-effApp : ∀ {h h′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ π} {g : T.EffGrade π}
+                  {f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B) ⨾ Ψ₁} {f′ : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B) ⨾ Ψ₁′}
                   {x : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂} {x′ : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂′}
-              → Rii f f′ → Rcc x x′ → Rii (t-effApp h f x) (t-effApp h′ f′ x′)
+              → Rii f f′ → Rcc x x′ → Rii (t-effApp {g = g} h f x) (t-effApp {g = g} h′ f′ x′)
     ii-app-spine : ∀ {h h′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {wF : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ₁} {dX : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂}
                      {dX′ : ctx ⊢ᵢ e₂ ∶ X ⨾ Ψ₂′} {dF′ : ctx ⊢ᵈ e₁ ∶ X ⇒[ T.pure ]↦ T ⨾ Ψ₁′}
                  → Ric dX′ dX → Rdi dF′ wF → Rii (t-app h wF dX) (t-app-spine h′ dX′ dF′)

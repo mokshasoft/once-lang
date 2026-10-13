@@ -82,8 +82,9 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- Elaboration: `arr ∘ curry ((applyEff ∘ ⟨f,x⟩ Heap) ∘ fst) Heap`
   -- — see `Once.Surface.Elaborate` for the structural translation and
   -- `Once.Surface.Correct` for the correctness proof.
-  effApp : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
-         → Expr Γ Ψ₁ (A ⇒[ mk-kind Many eff ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) (Unit ⇒[ mk-kind Many eff ] B)
+  -- D313: at either effectful grade a program writes (`act`, `eff`).
+  effApp : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} {π} {g : EffGrade π}
+         → Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) (Unit ⇒[ mk-kind Many π ] B)
 
   -- Pair introduction — both components consumed.
   pair  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}

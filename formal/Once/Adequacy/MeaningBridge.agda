@@ -1071,15 +1071,15 @@ bridge-i (t-Out-app-infer {F = F} wfF refl d) re er =
             (bridge-i d (reᵐ re) er) (λ rv → out-app-bridge {π = pure} {wfF = wfF} rv)
 -- D233: at an EFFECTFUL stream both sides evaluate the stream, then return the
 -- suspension of the force — `liftFn-curry-fst` is the IR side's reduction.
-bridge-i {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF refl d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-  subst (RelGT (Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff))
-              (returnT ((⟦ t-Out-eff-app-infer wfF refl d ⟧ᵢ fmt _) dγ₁)))
+bridge-i {ctx = ctx} (t-Out-eff-app-infer {F = F} {π = π} {g = g} wfF refl d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
+  subst (RelGT (Unit ⇒[ mk-kind Many π ] ⟦ F ⟧T (ν-type F π))
+              (returnT ((⟦ t-Out-eff-app-infer {g = g} wfF refl d ⟧ᵢ fmt _) dγ₁)))
         (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt σ) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_)
-                   (liftFn-curry-fst {A = ν-type F eff} {C = ⟦ F ⟧T (ν-type F eff)} (Out-ir {π = eff} wfF))))
-        (RelGᵖ-bind {A = ν-type F eff} {B = Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff)}
+                   (liftFn-curry-fst {A = ν-type F π} {C = ⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF))))
+        (RelGᵖ-bind {A = ν-type F π} {B = Unit ⇒[ mk-kind Many π ] ⟦ F ⟧T (ν-type F π)}
                    (bridge-i d (reᵐ re) er)
-                   (λ rv → RelGT-return {A = Unit ⇒[ mk-kind Many eff ] ⟦ F ⟧T (ν-type F eff)}
-                             (λ _ → out-app-bridge {F = F} {π = eff} {wfF = wfF} rv)))
+                   (λ rv → RelGT-return {A = Unit ⇒[ mk-kind Many π ] ⟦ F ⟧T (ν-type F π)}
+                             (λ _ → out-app-bridge {F = F} {π = π} {wfF = wfF} rv)))
 bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {ρ = ρ} {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
   subst (RelGT Unit (returnT ((⟦ t-terminal-app d ⟧ᵢ fmt ρ) dγ₁))) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt σ) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-terminal {T})))
         (RelGᵖ-bind {A = T} {B = Unit} (bridge-i d {ρ = ρ} (reᵐ re) er)
@@ -1096,12 +1096,12 @@ bridge-i {ctx = ctx} (t-apply-app-infer {A = A} {B = B} d) {dγ₁ = dγ₁} {d�
 -- application's result. The pair is still evaluated EAGERLY — `RelGᵖ-bind`
 -- sequences it before the `returnT` — which is why `⟦_⟧ᵢ`'s clause binds the
 -- pair outside the `returnT` too.
-bridge-i {ctx = ctx} (t-apply-eff-app-infer {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-  subst (RelGT (Unit ⇒[ mk-kind Many eff ] B) (returnT ((⟦ t-apply-eff-app-infer d ⟧ᵢ fmt _) dγ₁)))
+bridge-i {ctx = ctx} (t-apply-eff-app-infer {A = A} {B = B} {π = π} {g = g} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
+  subst (RelGT (Unit ⇒[ mk-kind Many π ] B) (returnT ((⟦ t-apply-eff-app-infer {g = g} d ⟧ᵢ fmt _) dγ₁)))
         (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt σ) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-eff-apply {A} {B})))
-        (RelGᵖ-bind {A = (A ⇒[ mk-kind Many eff ] B) * A} {B = Unit ⇒[ mk-kind Many eff ] B}
+        (RelGᵖ-bind {A = (A ⇒[ mk-kind Many π ] B) * A} {B = Unit ⇒[ mk-kind Many π ] B}
                    (bridge-i d (reᵐ re) er)
-                   (λ rv → RelGT-return {A = Unit ⇒[ mk-kind Many eff ] B} (λ _ → proj₁ rv (proj₂ rv))))
+                   (λ rv → RelGT-return {A = Unit ⇒[ mk-kind Many π ] B} (λ _ → proj₁ rv (proj₂ rv))))
 
 -- Application — infer the head, check the argument, apply the related closures.
 -- D143: at an ERASED arrow the argument derivation is not run at all, and the
@@ -1119,9 +1119,9 @@ bridge-i (t-app {A = A} {B = B} {q = Many} _ df dx) re er =
 
 -- Effectful application — a suspended thunk; the value is the (arg-ignoring)
 -- closure, related pointwise via the same application reasoning.
-bridge-i (t-effApp {A = A} {B = B} _ df dx) re er = rel-ret λ {a} {b} _ →
-  RelGᵖᵉ-bind {A = A ⇒[ mk-kind Many eff ] B} {B = B} (bridge-i df (reˡ re) er)
-            (λ rf → RelGᵖᵉ-bind {A = A} {B = B} (bridge-c dx (reᵐ re) er) (λ rx → rf rx))
+bridge-i (t-effApp {A = A} {B = B} {π = π} _ df dx) re er = rel-ret λ {a} {b} _ →
+  RelGᵖᵉ-bind {A = A ⇒[ mk-kind Many π ] B} {B = B} {P = RelGM π B} (bridge-i df (reˡ re) er)
+            (λ rf → RelGᵖᵉ-bind {A = A} {B = B} {P = RelGM π B} (bridge-c dx (reᵐ re) er) (λ rx → rf rx))
 -- D230: the spine — the head's domain-given meaning, applied to the argument's.
 bridge-i (t-app-spine {X = X} {T = T} _ darg df) re er =
   RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}

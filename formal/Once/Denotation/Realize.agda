@@ -242,11 +242,11 @@ realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
                (realize-infer d))
 -- D233: at an EFFECTFUL stream the force is suspended (`curry (Out ∘ fst)`),
 -- as `t-apply-eff-app-infer` suspends `apply` — the elaborator's term exactly.
-realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) =
+realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} {π = π} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _
-                 (Once.Spec.Type.Unit ⇒[ mk-kind Many Once.Spec.Type.Grade.eff ] Z)) ceq
-    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F Once.Spec.Type.Grade.eff ⌋ o)
-                                (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.eff)))
+                 (Once.Spec.Type.Unit ⇒[ mk-kind Many π ] Z)) ceq
+    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F π ⌋ o)
+                                (sym (⌊⟧T-commute F (ν-type F π)))
                                 (IR.Out (wf-⌊⌋ wfF))
                           IR.∘ IR.fst))
                (realize-infer d))
@@ -262,7 +262,7 @@ realize-infer (t-apply-app-infer d) = morph-app IR.apply (realize-infer d)
 -- `morph-app` already accepts an arbitrary IR morphism.
 realize-infer (t-apply-eff-app-infer d) = morph-app (IR.curry (IR.apply IR.∘ IR.fst)) (realize-infer d)
 realize-infer (t-app _ df dx)    = app    (realize-infer df) (realize dx)
-realize-infer (t-effApp _ df dx) = effApp (realize-infer df) (realize dx)
+realize-infer (t-effApp {g = g} _ df dx) = effApp {g = g} (realize-infer df) (realize dx)
 realize-infer (t-app-spine _ dx df) = app (realize-d df) (realize-infer dx)
 
 realize-d (d-infer {B = B} w a g) = coerce (sub-arr a (<:-refl B) g) (realize-infer w)

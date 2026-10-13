@@ -145,6 +145,13 @@ eff  ·p eff  = eff
 
 infixr 6 _·p_
 
+-- The grades at which applying an arrow at the SURFACE builds a suspension
+-- (`Unit ⇒[ π ] B`, D232): the effectful grades a program writes, `act` and
+-- `eff` (D313). The guard `eff⁺` is never written.
+data EffGrade : Purity → Set where
+  eg-act : EffGrade act
+  eg-eff : EffGrade eff
+
 -- The grade a computation may have in a position used `q` times, inside a
 -- term of grade `π`: an erased position (`Zero`) is never evaluated, so only a
 -- pure computation may sit there (dropping an effectful one would lose its

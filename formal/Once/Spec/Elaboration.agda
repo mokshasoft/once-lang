@@ -280,7 +280,7 @@ elabᵢ V (t-apply-eff-app-infer d) = appC ⊢applyEffᶜ (elabᵢ V d)
 elabᵢ V (t-Out-app-infer wf refl d)     = appC (⊢outᶜ wf) (elabᵢ V d)
 elabᵢ V (t-Out-eff-app-infer wf refl d) = appC (⊢outEffᶜ wf) (elabᵢ V d)
 elabᵢ V (t-app _ df dx)    = lift2 app (⊢app-pure _) (elabᵢ V df) (elabᶜ V dx)
-elabᵢ V (t-effApp _ df dx) = lift2 effAppᶜ ⊢effAppᶜ (elabᵢ V df) (elabᶜ V dx)
+elabᵢ V (t-effApp {π = π} _ df dx) = lift2 (effAppᶜ π) ⊢effAppᶜ (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-app-spine _ dx df) = lift2 app ⊢app (elabᵈ V df) (elabᵢ V dx)
 
 elabᵈ V (d-infer {B = B} w a g) = coerceE (sub-arr a (<:-refl B) g) (elabᵢ V w)

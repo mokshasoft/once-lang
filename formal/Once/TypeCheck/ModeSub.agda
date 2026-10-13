@@ -88,7 +88,8 @@ mutual
   ic-sub d (t-sub d′ p) = sub-along (agree-ii d d′) p
   ic-sub (t-pair a b) (t-pair-lit-check a′ b′) = sub-prod (ic-sub a a′) (ic-sub b b′)
   ic-sub (t-apply-app-infer d) (t-apply-check d′) = apply-sub (agree-ii d d′)
-  ic-sub (t-apply-eff-app-infer d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  ic-sub (t-apply-eff-app-infer {g = T.eg-act} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  ic-sub (t-apply-eff-app-infer {g = T.eg-eff} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   ic-sub (t-app () _ _) (t-apply-check _)
   ic-sub (t-effApp () _ _) (t-apply-check _)
   ic-sub (t-app-spine () _ _) (t-apply-check _)

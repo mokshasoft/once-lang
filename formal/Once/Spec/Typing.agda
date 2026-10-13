@@ -431,9 +431,10 @@ mutual
     -- ELIMINATED, which is a dead end rather than a feature.
     t-apply-eff-app-infer : ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
                             {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                          → ctx ⊢ᵢ p ∶ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B) Once.Spec.Type.* A) ⨾ Ψ
+                            {π : Once.Spec.Type.Grade.Purity} {g : Once.Spec.Type.Grade.EffGrade π}
+                          → ctx ⊢ᵢ p ∶ ((A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B) Once.Spec.Type.* A) ⨾ Ψ
                           → ctx ⊢ᵢ RApp (RResolved (gen "apply")) p
-                                 ∶ (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B)
+                                 ∶ (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B)
                                  ⨾ (zeroUsage +ᵘ (Once.Spec.Type.Grade.Many *ᵘ Ψ))
 
     -- | D194: `Out v` — force one layer of a ν. INFER, not check, and that
@@ -472,11 +473,12 @@ mutual
     -- the suspension is applied.
     t-Out-eff-app-infer : ∀ {ctx : NamedCtx} {v : RawExpr} {F : Functor} {C : Type}
                           {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                          {π : Once.Spec.Type.Grade.Purity} {g : Once.Spec.Type.Grade.EffGrade π}
                         → WellFormedF F
-                        → ⟦ F ⟧T (ν-type F Once.Spec.Type.Grade.eff) ≡ C
-                        → ctx ⊢ᵢ v ∶ ν-type F Once.Spec.Type.Grade.eff ⨾ Ψ
+                        → ⟦ F ⟧T (ν-type F π) ≡ C
+                        → ctx ⊢ᵢ v ∶ ν-type F π ⨾ Ψ
                         → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
-                                ∶ (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] C)
+                                ∶ (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] C)
                                 ⨾ (zeroUsage +ᵘ (Once.Spec.Type.Grade.Many *ᵘ Ψ))
 
     ----------------------------------------------------------------
@@ -515,10 +517,11 @@ mutual
     t-effApp : ∀ {ctx : NamedCtx} {f x : RawExpr}
                {A B : Type}
                {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+               {π : Once.Spec.Type.Grade.Purity} {g : Once.Spec.Type.Grade.EffGrade π}
              → classifyAppHead f ≡ nothing
-             → ctx ⊢ᵢ f ∶ A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B ⨾ Ψ₁
+             → ctx ⊢ᵢ f ∶ A Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B ⨾ Ψ₁
              → ctx ⊢ᶜ x ∶ A ⨾ Ψ₂
-             → ctx ⊢ᵢ RApp f x ∶ Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many Once.Spec.Type.Grade.eff ] B ⨾ (Ψ₁ +ᵘ (Once.Spec.Type.Grade.Many *ᵘ Ψ₂))
+             → ctx ⊢ᵢ RApp f x ∶ Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Type.Grade.mk-kind Once.Spec.Type.Grade.Many π ] B ⨾ (Ψ₁ +ᵘ (Once.Spec.Type.Grade.Many *ᵘ Ψ₂))
 
     -- | D230: THE SPINE. An application whose head does not synthesize: the
     -- argument's type is inferred and given to the head, whose output the

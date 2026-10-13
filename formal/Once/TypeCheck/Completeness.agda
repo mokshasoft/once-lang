@@ -423,7 +423,7 @@ infer-complete-RApp-spine {ctx} f x {X} {B} eqAH eqF eqX eqG
 ------------------------------------------------------------------------
 
 open Once.TypeCheck.ElaborateProofs
-  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer; checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic)
+  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer; checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -697,21 +697,24 @@ mutual
   iFromInferSub (t-Out-app-infer {v = v} {F = F} wfF refl d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-Out-app-infer wfF refl d)
     in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F T.pure)) eqI sb
-  iFromInferSub (t-Out-eff-app-infer {v = v} {F = F} wfF refl d) sb =
-    let (_ , _ , _ , eqI) = infer-complete (t-Out-eff-app-infer wfF refl d)
-    in checkElab-fallback-RApp-Out v (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] T.⟦ F ⟧T (T.ν-type F T.eff)) eqI sb
+  iFromInferSub (t-Out-eff-app-infer {v = v} {F = F} {π = π} {g = g} wfF refl d) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-Out-eff-app-infer {g = g} wfF refl d)
+    in checkElab-fallback-RApp-Out v (T.Unit T.⇒[ T.mk-kind T.Many π ] T.⟦ F ⟧T (T.ν-type F π)) eqI sb
   iFromInferSub (t-apply-app-infer {p = p} {A = A} {B = B} d) sb =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eqI sb
-  iFromInferSub (t-apply-eff-app-infer {p = p} {A = A} {B = B} d) sb =
+  iFromInferSub (t-apply-eff-app-infer {p = p} {A = A} {B = B} {g = T.eg-eff} d) sb =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply-effclosure p A B eqI sb
+  iFromInferSub (t-apply-eff-app-infer {p = p} {A = A} {B = B} {g = T.eg-act} d) sb =
+    let (_ , _ , _ , eqI) = infer-complete d
+    in checkElab-fallback-RApp-apply-actclosure p A B eqI sb
   iFromInferSub (t-app {f = f} {x = x} {B = B} notPoly dF dX) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
     in checkElab-fallback-RApp-generic f x B notPoly eqI sb
-  iFromInferSub (t-effApp {f = f} {x = x} {B = B} notPoly dF dX) sb =
-    let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
-    in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI sb
+  iFromInferSub (t-effApp {f = f} {x = x} {B = B} {π = π} {g = g} notPoly dF dX) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-effApp {g = g} notPoly dF dX)
+    in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many π ] B) notPoly eqI sb
   iFromInferSub (t-app-spine {f = f} {arg = x} {T = B} notPoly dX dF) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-app-spine notPoly dX dF)
     in checkElab-fallback-RApp-generic f x B notPoly eqI sb
@@ -812,15 +815,21 @@ mutual
   infer-complete (t-Out-app-infer {v = v} {F = F} wfF refl d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-Out v wfF eqSub
-  infer-complete (t-Out-eff-app-infer {v = v} {F = F} wfF refl d) =
+  infer-complete (t-Out-eff-app-infer {v = v} {F = F} {g = T.eg-eff} wfF refl d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-Out-eff v wfF eqSub
+  infer-complete (t-Out-eff-app-infer {v = v} {F = F} {g = T.eg-act} wfF refl d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-Out-act v wfF eqSub
   infer-complete (t-apply-app-infer {p = p} {A = A} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-apply p A eqSub
-  infer-complete (t-apply-eff-app-infer {p = p} {A = A} d) =
+  infer-complete (t-apply-eff-app-infer {p = p} {A = A} {g = T.eg-eff} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-apply-eff p A eqSub
+  infer-complete (t-apply-eff-app-infer {p = p} {A = A} {g = T.eg-act} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-apply-act p A eqSub
   -- Plan 0.4 T1, change 1: dX is now a check-mode derivation
   -- (per the t-app/t-effApp signature changes in Judgment).
   -- check-complete gives us the checkElab evidence directly.
@@ -828,10 +837,14 @@ mutual
     let (_ , _ , _ , eqF) = infer-complete dF
         (_ , _ , _ , eqX) = check-complete dX
     in infer-complete-RApp-generic f x A notPoly eqF eqX
-  infer-complete (t-effApp {f = f} {x = x} {A = A} notPoly dF dX) =
+  infer-complete (t-effApp {f = f} {x = x} {A = A} {g = T.eg-eff} notPoly dF dX) =
     let (_ , _ , _ , eqF) = infer-complete dF
         (_ , _ , _ , eqX) = check-complete dX
     in infer-complete-RApp-eff f x A notPoly eqF eqX
+  infer-complete (t-effApp {f = f} {x = x} {A = A} {g = T.eg-act} notPoly dF dX) =
+    let (_ , _ , _ , eqF) = infer-complete dF
+        (_ , _ , _ , eqX) = check-complete dX
+    in infer-complete-RApp-act f x A notPoly eqF eqX
   -- D230: the spine.
   infer-complete (t-app-spine {f = f} {arg = x} eqAH dX dF) = spine-complete f x eqAH dX dF
 

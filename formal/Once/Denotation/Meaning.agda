@@ -439,10 +439,10 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
        >>=ᵖ out-semᵛ Once.Spec.Type.Grade.pure wfF)
 -- D233: forcing an EFFECTFUL stream at the surface — the stream is evaluated
 -- now, the force runs when the suspension is applied (as `t-apply-eff-app-infer`).
-⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) fmt ρ dγ =
+⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} {π = π} wfF ceq d) fmt ρ dγ =
   (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx}
                   (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ v →
-  returnᵖ (λ _ → subst (λ Z → M Once.Spec.Type.Grade.eff ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Spec.Type.Grade.eff wfF v))
+  returnᵖ (λ _ → subst (λ Z → M π ⟦ Z ⟧ᵛ) ceq (out-semᵛ π wfF v))
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ _ → returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ fa → proj₁ fa (proj₂ fa)
 -- D222 / plan 0.95 A′: the EFF closure's elimination is a SUSPENSION — but only

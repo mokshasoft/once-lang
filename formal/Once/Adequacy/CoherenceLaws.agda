@@ -202,8 +202,8 @@ module _ {n} {Γ : Ctx n} where
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
     Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx)
 
-  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many Once.Spec.Type.Grade.eff ] B)} {x x′ : Expr Γ Ψ₂ A}
-              → f ≈ˢ f′ → x ≈ˢ x′ → effApp f x ≈ˢ effApp f′ x′
+  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Spec.Type.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
+              → f ≈ˢ f′ → x ≈ˢ x′ → effApp {g = g} f x ≈ˢ effApp {g = g} f′ x′
   effApp-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ → returnT (λ _ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
     Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx))

@@ -326,10 +326,15 @@ mutual
   ... | refl , refl = refl , refl
   agree-ii (t-apply-app-infer d) (t-apply-app-infer d′) with agree-ii d d′
   ... | refl , refl = refl , refl
-  agree-ii (t-apply-app-infer d) (t-apply-eff-app-infer d′) with agree-ii d d′
+  agree-ii (t-apply-app-infer d) (t-apply-eff-app-infer {g = T.eg-act} d′) with agree-ii d d′
   ... | () , _
-  agree-ii (t-apply-eff-app-infer d) (t-apply-app-infer d′) with agree-ii d d′
+  agree-ii (t-apply-app-infer d) (t-apply-eff-app-infer {g = T.eg-eff} d′) with agree-ii d d′
   ... | () , _
+  agree-ii (t-apply-eff-app-infer {g = T.eg-act} d) (t-apply-app-infer d′) with agree-ii d d′
+  ... | () , _
+  agree-ii (t-apply-eff-app-infer {g = T.eg-eff} d) (t-apply-app-infer d′) with agree-ii d d′
+  ... | () , _
+  {-# CATCHALL #-}
   agree-ii (t-apply-eff-app-infer d) (t-apply-eff-app-infer d′) with agree-ii d d′
   ... | refl , refl = refl , refl
   agree-ii (t-Out-app-infer _ refl d) (t-Out-app-infer _ refl d′) with agree-ii d d′
@@ -339,10 +344,16 @@ mutual
   agree-ii (t-Out-eff-app-infer _ refl d) (t-Out-eff-app-infer _ refl d′) with agree-ii d d′
   ... | refl , refl = refl , refl
   {-# CATCHALL #-}
-  agree-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
+  agree-ii (t-Out-eff-app-infer {g = T.eg-act} _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
   ... | () , _
   {-# CATCHALL #-}
-  agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) with agree-ii d d′
+  agree-ii (t-Out-eff-app-infer {g = T.eg-eff} _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
+  ... | () , _
+  {-# CATCHALL #-}
+  agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-act} _ _ d′) with agree-ii d d′
+  ... | () , _
+  {-# CATCHALL #-}
+  agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-eff} _ _ d′) with agree-ii d d′
   ... | () , _
   agree-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
   agree-ii (t-app () _ _) (t-Out-eff-app-infer _ _ _)
@@ -395,9 +406,13 @@ mutual
   agree-ii (t-app _ wF dX) (t-app _ wF′ dX′) with agree-ii wF wF′
   ... | refl , refl with agree-cc dX dX′
   ...   | refl = refl , refl
-  agree-ii (t-app _ wF _) (t-effApp _ wF′ _) with agree-ii wF wF′
+  agree-ii (t-app _ wF _) (t-effApp {g = T.eg-act} _ wF′ _) with agree-ii wF wF′
   ... | () , _
-  agree-ii (t-effApp _ wF _) (t-app _ wF′ _) with agree-ii wF wF′
+  agree-ii (t-app _ wF _) (t-effApp {g = T.eg-eff} _ wF′ _) with agree-ii wF wF′
+  ... | () , _
+  agree-ii (t-effApp {g = T.eg-act} _ wF _) (t-app _ wF′ _) with agree-ii wF wF′
+  ... | () , _
+  agree-ii (t-effApp {g = T.eg-eff} _ wF _) (t-app _ wF′ _) with agree-ii wF wF′
   ... | () , _
   agree-ii (t-effApp _ wF dX) (t-effApp _ wF′ dX′) with agree-ii wF wF′
   ... | refl , refl with agree-cc dX dX′
@@ -408,9 +423,13 @@ mutual
   agree-ii (t-app-spine _ dX dF) (t-app _ wF′ dX′) with agree-di dF wF′
   ... | _ , _ , refl , ⊑-pure , refl with agree-ic dX dX′
   ...   | refl = refl , refl
-  agree-ii (t-effApp _ wF _) (t-app-spine _ _ dF′) with agree-di dF′ wF
+  agree-ii (t-effApp {g = T.eg-act} _ wF _) (t-app-spine _ _ dF′) with agree-di dF′ wF
   ... | _ , _ , refl , () , _
-  agree-ii (t-app-spine _ _ dF) (t-effApp _ wF′ _) with agree-di dF wF′
+  agree-ii (t-effApp {g = T.eg-eff} _ wF _) (t-app-spine _ _ dF′) with agree-di dF′ wF
+  ... | _ , _ , refl , () , _
+  agree-ii (t-app-spine _ _ dF) (t-effApp {g = T.eg-act} _ wF′ _) with agree-di dF wF′
+  ... | _ , _ , refl , () , _
+  agree-ii (t-app-spine _ _ dF) (t-effApp {g = T.eg-eff} _ wF′ _) with agree-di dF wF′
   ... | _ , _ , refl , () , _
   agree-ii (t-app-spine _ dX dF) (t-app-spine _ dX′ dF′) with agree-ii dX dX′
   ... | refl , refl with agree-dd dF dF′

@@ -241,8 +241,8 @@ mutual
   tm-i (t-apply-app-infer d) = cong (G.app _) (tm-i d)
   tm-i (t-apply-eff-app-infer d) = cong (G.app _) (tm-i d)
   tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pure))) _) (cong (G.app _) (tm-i d))
-  tm-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))) _) (cong (G.app _) (tm-i d))
+  tm-i (t-Out-eff-app-infer {F = F} {π = π} wf refl d) =
+    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π)))) _) (cong (G.app _) (tm-i d))
   tm-i (t-app h df dx)       = cong₂ G.app (tm-i df) (tm-c dx)
   tm-i (t-effApp h df dx) =
     cong₂ (λ a b → G.lam _ _ _ (G.app a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
@@ -415,9 +415,9 @@ mutual
   dr-i (t-Out-app-infer {F = F} wf refl d) =
     H.trans (⇝ᵢ-dr (sym (ρ̂-⟦⟧ F (ν-type F pure))) _)
             (≅app refl (sym (ρ̂-⟦⟧ F (ν-type F pure))) refl (H.sym (c-out wf)) (tm-i d) (dr-i d))
-  dr-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff)))) _)
-            (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many eff ] X) (sym (ρ̂-⟦⟧ F (ν-type F eff))))
+  dr-i (t-Out-eff-app-infer {F = F} {π = π} wf refl d) =
+    H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π)))) _)
+            (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π))))
                   refl (H.sym (c-outEff wf)) (tm-i d) (dr-i d))
   dr-i (t-app h df dx)       =
     H.trans (≅app-pure refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.≡-to-≅ (sym (ρ̂ᶜ-app-pure _ _ _)))

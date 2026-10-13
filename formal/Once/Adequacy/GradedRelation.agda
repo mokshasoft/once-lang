@@ -150,12 +150,12 @@ RelGᵖ-bind {A} {B} {m} {t₂} {k} {g} rt rk =
 -- A pure bind feeding an EFFECTFUL continuation (a suspension's body: its
 -- pieces are values, its last step runs): a tree of `T∞` (D312) against the
 -- Kleisli one.
-RelGᵖᵉ-bind : ∀ {A B} {m : ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → T∞ ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
+RelGᵖᵉ-bind : ∀ {A B} {X : Set} {P : X → T ⟦ B ⟧ᴰ → Set} {m : ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → X} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
             → RelGT A (returnT m) t₂
-            → (∀ {a b} → RelGV A a b → RelT∞′ (RelGV B) (k a) (g b))
-            → RelT∞′ (RelGV B) (m >>=ᵖ k) (t₂ >>=T g)
-RelGᵖᵉ-bind {A} {B} {m} {ret y} {k} {g} (rel-ret r) rk =
-  subst (λ t → RelT∞′ (RelGV B) t (g y)) (sym (>>=ᵖ-β m k)) (rk r)
+            → (∀ {a b} → RelGV A a b → P (k a) (g b))
+            → P (m >>=ᵖ k) (t₂ >>=T g)
+RelGᵖᵉ-bind {A} {B} {P = P} {m} {ret y} {k} {g} (rel-ret r) rk =
+  subst (λ t → P t (g y)) (sym (>>=ᵖ-β m k)) (rk r)
 
 -- The two, at any grade.
 RelGM-bind : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
