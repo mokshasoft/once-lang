@@ -49,7 +49,7 @@ open Once.Semantics.Functor.Laws._∼S_ using (unfoldS-∼)
 open import Once.Semantics.Machine
   using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; tF-coh; coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
-open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
+open import Once.Spec.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
 open import Once.Denotation.TraceMonad using (T; returnT)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)

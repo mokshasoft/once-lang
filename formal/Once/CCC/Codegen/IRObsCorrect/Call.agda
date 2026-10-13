@@ -30,7 +30,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn; module LocStat
 open LocState using (halted)
 import Once.IRTy
 import Once.IR
-open import Once.Res using (is-stopped)
+open import Once.Spec.Res using (is-stopped)
 open import Once.Denotation.Program using (tableCalls)
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM

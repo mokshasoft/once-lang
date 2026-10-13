@@ -62,7 +62,7 @@ import Once.Spec.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
 open SigOpInfo using (name; baseA)
-open import Once.Res using (Res; stopped; returns)
+open import Once.Spec.Res using (Res; stopped; returns)
 
 private
   -- Helper: just is injective (private to avoid name clashes)

@@ -71,7 +71,7 @@ import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Denotation.TraceMonad as TM
 import Once.Denotation.TraceMonadLaws as TML
-open import Once.Res using (Res; returns; is-stopped)
+open import Once.Spec.Res using (Res; returns; is-stopped)
 
 module PairProofC {FS : FrameSemantics} where
 

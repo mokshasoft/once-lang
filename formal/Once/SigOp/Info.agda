@@ -41,7 +41,7 @@ open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Spec.Type using (Type; Unit; Void)
-open import Once.Res using (Res; stopped; returns)
+open import Once.Spec.Res using (Res; stopped; returns)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is

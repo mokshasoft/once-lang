@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
-open import Once.Res using (Res)
+open import Once.Spec.Res using (Res)
 open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly

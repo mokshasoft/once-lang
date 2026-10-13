@@ -114,7 +114,6 @@ import Once.Parser.Type
 import Once.Parser.TypeAlias
 import Once.Parser.TypeRelation
 import Once.Postulates
-import Once.Res
 import Once.Semantics.Functor
 import Once.Semantics.Machine
 import Once.Semantics.Value

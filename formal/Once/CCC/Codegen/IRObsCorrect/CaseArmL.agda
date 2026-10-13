@@ -54,7 +54,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 open import Data.Bool using (Bool)
-open import Once.Res using (is-stopped)
+open import Once.Spec.Res using (is-stopped)
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.CaseRun o tbl

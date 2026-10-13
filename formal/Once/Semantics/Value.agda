@@ -60,7 +60,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Res using (Res; stopped; returns; mapRes)
+open import Once.Spec.Res using (Res; stopped; returns; mapRes)
 
 
 -- OCP-0003: ⟦Fix⟧ wrapper removed. μ/ν come from Once.Semantics.Functor.

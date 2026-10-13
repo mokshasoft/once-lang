@@ -47,7 +47,8 @@ import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
-open import Once.Res using (returns; returns-inj)
+open import Once.Spec.Res using (returns)
+open import Once.Res using (returns-inj)
 open import Data.Product using (Σ)
 open import Once.Spec.Contract using (key; _∈K?_)
 open import Once.Spec.ContractLaws using (yes-of)
@@ -55,7 +56,7 @@ open import Relation.Nullary using (Dec)
 open import Once.Spec.Type using (isUnit?)
 open import Once.Denotation.Program using (Declared; Declared-at)
 open import Once.Spec.Name using (showCanonical)
-open import Once.Res using (is-stopped)
+open import Once.Spec.Res using (is-stopped)
 open import Once.SigOp.Info using (SigOpSem; effect-of; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo; Pure)
 open SigOpInfo using (baseA; conB; sem; name)
 open import Once.Arith.SigOp.Compare using (cmp-of)
