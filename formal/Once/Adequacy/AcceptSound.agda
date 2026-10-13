@@ -49,7 +49,7 @@ open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Type.Honest using (HonestFFI; honest?)
+open import Once.Spec.Type.Honest using (HonestFFI; honest?)
 open import Once.Spec.Context using (zeroUsage)
 import Once.Surface.Context
 open import Data.Maybe using (Maybe; nothing)

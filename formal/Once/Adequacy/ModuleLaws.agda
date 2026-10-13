@@ -23,7 +23,7 @@ open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Spec.Type.Instance using (rigidOf)
 open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
-open import Once.Type.Honest using (HonestFFI)
+open import Once.Spec.Type.Honest using (HonestFFI)
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P

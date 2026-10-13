@@ -60,7 +60,7 @@ import Once.TypeCheck.Classify as Classify
 open import Once.Spec.Type.Instance using (rigidOf)
 open import Once.Type.Rigid using (rigidFree?)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Type.Honest using (honest?)
+open import Once.Spec.Type.Honest using (honest?)
 
 ------------------------------------------------------------------------
 -- Boolean elimination helpers.

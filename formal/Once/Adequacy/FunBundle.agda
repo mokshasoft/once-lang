@@ -53,7 +53,7 @@ open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Type.Honest using (HonestFFI; honest?)
+open import Once.Spec.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
 open import Once.Spec.Context using (Usage)
 open import Once.Surface.Syntax using (Expr)

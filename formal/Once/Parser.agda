@@ -10,7 +10,7 @@
 
 module Once.Parser where
 
-open import Once.Type.Honest using (HonestFFI; honest?)
+open import Once.Spec.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)

@@ -47,7 +47,7 @@ open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purit
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
 open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
-open import Once.Type.Honest using (HonestFFI)
+open import Once.Spec.Type.Honest using (HonestFFI)
 open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (CanonicalName; showCanonical)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
