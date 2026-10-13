@@ -35,7 +35,7 @@ import Once.Semantics.Machine as Val
 open import Once.Denotation.GradedOps using (fmapM; embν⁺ᵈ; embRoot⁺; embTree⁺; mapEmbν⁺ᵈ; prjB; injB; embν; mapEmbν; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; embν∞ᵖ; mapEmbν∞ᵖ)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
+open import Once.Spec.Trace using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; forgetᵇ; injectᵇ; module νᵈ)
 open νᵈ using (forceᵈ)
@@ -45,7 +45,7 @@ open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; νᵖ; bindM; ret
 open import Once.Spec.Iterative using (ν∞)
 open Once.Spec.Iterative.ν∞ using (force∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; rel∞-call; rel∞-halt; RelT∞′-bind)
-open import Once.Denotation.TraceMonad using (call; halt; rel-call; rel-halt)
+open import Once.Spec.Trace using (call; halt; rel-call; rel-halt)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open Once.Denotation.GradedDomain.νᵖ using (forceᵖ)
 

@@ -31,7 +31,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Denotation.TraceMonad using (Interp; module Interp)
+open import Once.Spec.Trace using (Interp; module Interp)
 open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.

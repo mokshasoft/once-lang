@@ -28,7 +28,7 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Denotation.TraceMonad using (Interp; module Interp)
+open import Once.Spec.Trace using (Interp; module Interp)
 open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.X86-32
   (o : CanonicalName) (tbl : List IRFun)

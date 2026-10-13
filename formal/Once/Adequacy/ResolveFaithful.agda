@@ -59,7 +59,7 @@ open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders
-open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; fmapT)
+open import Once.Spec.Trace using (T; _>>=T_; returnT; fmapT)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice)

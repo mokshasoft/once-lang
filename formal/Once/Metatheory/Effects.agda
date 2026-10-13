@@ -26,7 +26,7 @@ open import Once.Metatheory.Coherence.Relation using (toT∞-returnM; toT∞-bin
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
 open import Once.Spec.Metatheory using (Effects)
 open import Once.Spec.Event using (SigOpEvent)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; Interp; run; then)
+open import Once.Spec.Trace using (T; returnT; _>>=T_; Interp; run; then)
 open import Once.Denotation.TraceMonadLaws using (>>=T-identityʳ; >>=T-assoc; run-bind)
 open import Once.Denotation.GradedDomain using (M; returnM; bindM; subM; toT∞; bindᵍ; EqM; _>>=ᵖ_)
 open import Once.Spec.Iterative using (T∞; return∞; _>>=∞_; embed; TreeEq∞; ret≈∞)

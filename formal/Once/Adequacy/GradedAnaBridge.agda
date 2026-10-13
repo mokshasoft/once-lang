@@ -32,7 +32,7 @@ open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_�
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ; coerce-functor-D)
 open import Once.Denotation.ValueDomainLaws using (CoalgRel; anaᵈ-∼)
-open import Once.Denotation.TraceMonad using (T; ret; returnT; fmapT; _>>=T_; RelT′; rel-ret)
+open import Once.Spec.Trace using (T; ret; returnT; fmapT; _>>=T_; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (fmapT-∘; RelT′-fmap)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; returnM)
 open import Once.Denotation.GradedDomainLaws using (bindM-idˡ)
@@ -44,11 +44,11 @@ open _∼∞ᵈ_ using (force-∼∞ᵈ)
 open _∼⁺ᵈ_ using (force-∼⁺ᵈ)
 open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; forget⁺; fmap⁺; ana⁺; anaRoot⁺; anaTree⁺; mapAna⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺)
-open import Once.Denotation.TraceMonad using (rel-call; rel-halt)
+open import Once.Spec.Trace using (rel-call; rel-halt)
 open import Once.Spec.Iterative using (T∞; fmap∞; ana∞; anaTree∞; anaLayer∞; mapAna∞)
 open Once.Spec.Iterative.T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; rel∞-call; rel∞-halt; RelT∞′-bind)
-open import Once.Denotation.TraceMonad using (call; halt)
+open import Once.Spec.Trace using (call; halt)
 
 ------------------------------------------------------------------------
 -- Pure codata against effectful codata, by coinduction.

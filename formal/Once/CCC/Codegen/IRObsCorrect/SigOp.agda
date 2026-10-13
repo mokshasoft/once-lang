@@ -45,7 +45,7 @@ import Once.IRTy
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
-import Once.Denotation.TraceMonad as TM
+import Once.Spec.Trace as TM
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
 open import Once.Spec.Res using (returns)
 open import Once.Res using (returns-inj)

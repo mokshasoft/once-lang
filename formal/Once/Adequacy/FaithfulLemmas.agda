@@ -51,7 +51,7 @@ open import Once.Denotation.Phase using (restrictᴰ)
 open import Once.Surface.Elaborate using (elaborate; cataM; anaM; restrictEnv)
 import Once.Compile as C
 import Once.IR as IR
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
+open import Once.Spec.Trace using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; fmapT-∘; fmapT-cong)
 open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)

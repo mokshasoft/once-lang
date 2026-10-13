@@ -28,7 +28,7 @@ open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; returnT; fmapT; _>>=T_)
+open import Once.Spec.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)

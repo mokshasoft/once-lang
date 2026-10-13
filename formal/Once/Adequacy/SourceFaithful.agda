@@ -54,7 +54,7 @@ import Once.Spec.Context as SrfS
 open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull; projUsed; distribute; compIR; copairIR; forkIR; curryIR; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; returnT; _>>=T_; fmapT)
+open import Once.Spec.Trace using (T; ret; call; halt; returnT; _>>=T_; fmapT)
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityʳ)
 open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial) renaming ()
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info;

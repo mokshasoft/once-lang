@@ -22,7 +22,7 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 
 
-open import Once.Denotation.TraceMonad using (interp)
+open import Once.Spec.Trace using (interp)
 open import Once.Spec.Contract using (ISig; Impl)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr

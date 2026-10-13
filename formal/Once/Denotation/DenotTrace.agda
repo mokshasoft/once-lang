@@ -6,7 +6,7 @@
 --
 -- Plan 0.46. `⟦_⟧ᴰ` is the SOURCE OBSERVABLE: a compositional,
 -- effect-graded, monadic interpretation of the CCC IR into the trace
--- monad `T` (Once.Denotation.TraceMonad). It is fuel-free (totality is
+-- monad `T` (Once.Spec.Trace). It is fuel-free (totality is
 -- structural recursion on the IR), event-indexed (the `ℕ` of `T` is the
 -- observation depth, consumed only by `Ana`), and HIGHER-ORDER-CORRECT:
 --
@@ -54,8 +54,8 @@ import Once.Semantics.Machine as Val
 -- a parameterised module stops reducing downstream at a variable instance.
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
-open import Once.SigOp.Info
-  using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; FFIAnswers; module SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo)
+open import Once.Spec.Trace using (FFIAnswers)
 open SigOpInfo using (name; baseA; sem; conB)
 open import Once.Arith.Prim using (primSem)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -63,7 +63,7 @@ open import Once.Semantics.Machine
   using (sem-cata; sem-In; sem-Out; ⟦_⟧F; coerce-ν-out; coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
+open import Once.Spec.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here

@@ -29,7 +29,7 @@ open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; w
 open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-μ-out; ⟦_⟧F)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF; coerce-functor⁻¹-D)
-open import Once.Denotation.TraceMonad using (T; returnT; RelT′; rel-ret)
+open import Once.Spec.Trace using (T; returnT; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
 open import Once.Denotation.GradedDomain using (M; ⟦_⟧ᵛ; bindM)

@@ -20,7 +20,7 @@ open import Data.Unit using (tt)
 
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as V
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; CallOp; HaltOp)
+open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_; CallOp; HaltOp)
 open CallOp using (cdom; ccod)
 open HaltOp using (hdom)
 

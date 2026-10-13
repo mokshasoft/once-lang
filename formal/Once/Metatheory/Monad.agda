@@ -19,7 +19,7 @@ module Once.Metatheory.Monad where
 
 open import Effect.Monad using (RawMonad; mkRawMonad)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Spec.Trace using (T; returnT; _>>=T_)
 open import Once.Denotation.TraceMonadLaws using (>>=T-identityˡ; >>=T-identityʳ; >>=T-assoc)
 
 record LawfulMonad (M : Set → Set) : Set₁ where

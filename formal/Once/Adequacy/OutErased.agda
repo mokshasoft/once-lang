@@ -40,7 +40,7 @@ import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Machine using (tF-coh; base-coh; coerce-ν-out)
-open import Once.Denotation.TraceMonad using (T; fmapT)
+open import Once.Spec.Trace using (T; fmapT)
 open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-∘; fmapT-cong; RelT′-refl)
 open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)

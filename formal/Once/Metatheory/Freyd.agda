@@ -23,7 +23,7 @@ open import Once.Spec.Name using (gen)
 open import Once.Spec.Type using (Unit)
 open import Once.Spec.Type.WellFormed using (base-Unit)
 open import Once.Spec.Metatheory using (Freyd; Central)
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; callOp; unlinkedOp; returnT; _>>=T_)
+open import Once.Spec.Trace using (T; ret; call; halt; callOp; unlinkedOp; returnT; _>>=T_)
 
 -- A call that is answered and then returns: an event no value has.
 probe : T Data.Unit.⊤

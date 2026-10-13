@@ -48,7 +48,7 @@ open Schema using (arity; kinds; type)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
 open import Once.Spec.Iterative using (TreeEq∞)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; embed-≈)
-open import Once.Denotation.TraceMonad using (T; ret; fmapT)
+open import Once.Spec.Trace using (T; ret; fmapT)
 open import Once.Denotation.PhaseV using (bindᵛ)
 open import Once.Denotation.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ)
 import Once.Semantics.Machine as Val

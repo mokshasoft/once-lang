@@ -39,7 +39,7 @@ open import Once.Spec.Type.Poly using (extractGround)
 open import Once.Spec.Name using (CanonicalName; showCanonical; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Data.Maybe using (just)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT; Interp; module Interp)
+open import Once.Spec.Trace using (T; returnT; _>>=T_; fmapT; Interp; module Interp)
 open Interp using (sig; impl)
 open import Data.List.Membership.Propositional using (_∈_)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
@@ -64,7 +64,8 @@ open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpL
 open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Spec.Type.Sub using (sub-arr)
 open import Once.Metatheory.SubLaws using (<:-refl)
-open import Once.SigOp.Info using (SigOpInfo; FFIAnswers; module SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open import Once.Spec.Trace using (FFIAnswers)
 open SigOpInfo using (conB)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info;

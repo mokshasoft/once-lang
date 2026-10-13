@@ -47,7 +47,7 @@ open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedProgram)
 open Once.Denotation.Program.IRFun using (fbody; fname)
 open import Once.Spec.Contract using (ISig)
-import Once.Denotation.TraceMonad as TM
+import Once.Spec.Trace as TM
 import Once.CCC.FrameSemantics
 module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List IRFun)
   (arch          : Arch)

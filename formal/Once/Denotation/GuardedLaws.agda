@@ -9,7 +9,7 @@
 module Once.Denotation.GuardedLaws where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_)
+open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_)
 open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; forget⁺; _>>=⁺_; _⁺=<<_)
 
 forget-bind⁺ : ∀ {X Y} (m : T⁺ X) (f : X → T Y) → forget⁺ (m >>=⁺ f) ≡ (forget⁺ m >>=T f)

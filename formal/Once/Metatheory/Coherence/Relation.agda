@@ -37,7 +37,7 @@ open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Obs; 
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; fmapT; returnT)
+open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_; fmapT; returnT)
 open import Once.Spec.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; return∞; _>>=∞_; embed; TreeEq∞; NodeEq; ret≈∞; call≈∞; halt≈∞)
 open Once.Spec.Iterative.T∞ using (force)

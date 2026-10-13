@@ -18,7 +18,7 @@ module Once.Metatheory.Iteration where
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
-open import Once.Denotation.TraceMonad using (T; ret; call; halt)
+open import Once.Spec.Trace using (T; ret; call; halt)
 open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; forget⁺; iter∞; iterRoot∞; iterTree∞)
 open import Once.Spec.Iterative
 open T∞ using (force)

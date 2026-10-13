@@ -48,7 +48,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (cong; trans)
 open import Once.Spec.Event using (SigOpEvent)
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; Interp; CallOp; callAnswer; callEvent)
+open import Once.Spec.Trace using (T; ret; call; halt; Interp; CallOp; callAnswer; callEvent)
 open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; iter∞; iterRoot∞; iterTree∞)
 open import Once.Spec.Iterative using (T∞; events∞; eventsF; eventsC; call∞; module T∞)
 open T∞ using (force)
@@ -94,7 +94,7 @@ module Forever (ι : Interp) where
 
 open import Once.Spec.Core.Meaning echoDefs
 open import Once.Spec.Totality using (echoSig)
-open import Once.Denotation.TraceMonad using (interp)
+open import Once.Spec.Trace using (interp)
 open import Once.Denotation.GradedDomain using (_>>=ᵖ_)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 

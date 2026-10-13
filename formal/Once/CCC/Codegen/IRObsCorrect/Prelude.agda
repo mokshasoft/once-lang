@@ -91,7 +91,7 @@ open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable) 
 open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef) public
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
-open import Once.Denotation.TraceMonad using ()
-import Once.Denotation.TraceMonad as TM
+open import Once.Spec.Trace using ()
+import Once.Spec.Trace as TM
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace) public
 

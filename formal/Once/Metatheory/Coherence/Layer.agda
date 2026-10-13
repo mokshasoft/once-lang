@@ -39,7 +39,7 @@ open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_�
 open import Once.Spec.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Machine as Val
-open import Once.Denotation.TraceMonad using (T; ret; call; halt; _>>=T_; fmapT)
+open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_; fmapT)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; νᵖ; module νᵖ)
 open import Once.Denotation.ValueDomain using (νᵈ; module νᵈ; anaᵈ; anaTree; mapAnaᵈ; seqF)
 open import Once.Denotation.GradedOps using (fmapM; injB; prjB; cfᵛ; cf⁻¹ᵛ; seqM; cata-semᵛ; anaᵖ; mapAnaᵖ;

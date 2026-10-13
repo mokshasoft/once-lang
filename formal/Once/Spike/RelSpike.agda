@@ -164,7 +164,7 @@ module Once.Spike.RelSpike (o : CanonicalName) where
 open import Once.CCC.Codegen.IRObsCorrect.Interface o
 
 import Once.CCC.FrameSemantics
-import Once.Denotation.TraceMonad as TM
+import Once.Spec.Trace as TM
 import Once.Denotation.TraceMonadLaws as TML
 import Data.List.Relation.Unary.All as All
 

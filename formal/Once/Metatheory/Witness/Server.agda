@@ -24,7 +24,7 @@ open import Once.Spec.Context using (∅; [])
 open import Once.Spec.Totality using (tickDefs; tick; ticker)
 open import Once.Spec.Core.Typing tickDefs
 open import Once.Spec.Core.Meaning tickDefs
-open import Once.Denotation.TraceMonad using (call)
+open import Once.Spec.Trace using (call)
 open import Once.Denotation.GradedDomain using (_>>=ᵖ_)
 
 stream-typed : ∅ ⊢[ [] ] ticker ∷ ν-type Id eff ! pure

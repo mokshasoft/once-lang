@@ -16,8 +16,8 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.SigOp.Info using (FFIAnswers)
-open import Once.Denotation.TraceMonad using (Interp; pureHalf)
+open import Once.Spec.Trace using (FFIAnswers)
+open import Once.Spec.Trace using (Interp; pureHalf)
 
 -- Plan 0.105 (D257 amendment 2): in a world `ι` — its signatures and their
 -- implementation; the IR reads its pure half.
@@ -36,7 +36,7 @@ open import Once.IRTy using (⌊_⌋)
 import Once.Surface.Syntax as Srf
 import Once.Compile as C
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.TraceMonad using (T; ret; returnT; _>>=T_; rel-ret)
+open import Once.Spec.Trace using (T; ret; returnT; _>>=T_; rel-ret)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.Denotation.DenotTrace using ()
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)

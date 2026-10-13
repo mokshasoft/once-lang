@@ -11,7 +11,7 @@
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Denotation.TraceMonad using (Interp; pureHalf; interp)
+open import Once.Spec.Trace using (Interp; pureHalf; interp)
 open import Once.Spec.Contract using (ISig; Impl)
 
 -- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
@@ -82,14 +82,14 @@ import Once.Spec.Elaboration as ElabM
 import Once.Spec.Core.Meaning as GM
 import Once.Spec.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
-open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Spec.Trace using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
 φ = pureHalf ι
 
 open import Once.Adequacy.GradedRelation fmt using (RelGM)
-open import Once.Denotation.TraceMonad using (T)
+open import Once.Spec.Trace using (T)
 open import Once.Adequacy.TeleEnvLemmas fmt φ using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)
 import Once.Adequacy.TeleEntry fmt ι as TE

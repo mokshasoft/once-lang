@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Spec.Type.Grade using (mk-kind; Many)
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Spec.Trace using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.IR as IR
 import Once.IRTy as IRTy

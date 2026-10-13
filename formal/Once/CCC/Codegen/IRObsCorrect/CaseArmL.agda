@@ -52,7 +52,7 @@ import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
-import Once.Denotation.TraceMonad as TM
+import Once.Spec.Trace as TM
 open import Data.Bool using (Bool)
 open import Once.Spec.Res using (is-stopped)
 

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.TraceMonadLaws — the lemmas about `Once.Denotation.TraceMonad`, moved out so that module
+-- Once.Denotation.TraceMonadLaws — the lemmas about `Once.Spec.Trace`, moved out so that module
 -- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
 ------------------------------------------------------------------------
 
@@ -32,9 +32,9 @@ open import Once.Spec.Type.WellFormed using (base-Unit)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as M
 open import Once.Spec.Event using (SigOpEvent; mk-event)
-open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Spec.Trace using (FFIAnswers)
 open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
-open import Once.Denotation.TraceMonad
+open import Once.Spec.Trace
 open CallOp
 open HaltOp
 open Interp

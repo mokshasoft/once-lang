@@ -31,10 +31,11 @@ open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift; bare-at)
-open import Once.Denotation.TraceMonad using ()
+open import Once.Spec.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (>>=T-identityˡ)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
-open import Once.SigOp.Info using (FFIAnswers; SigOpInfo)
+open import Once.Spec.Trace using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
+open import Once.SigOp.Info using (SigOpInfo)
+open import Once.Spec.Trace using (FFIAnswers)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
 import Once.Denotation.ValueDomain as ValueDomain
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at)
@@ -44,7 +45,7 @@ open import Once.Semantics.Machine
 open import Once.Denotation.ValueDomain
 import Once.Denotation.DenotTrace
 open import Once.IRTy.WF using (wf-⌈⌉)
-open import Once.Denotation.TraceMonad using (fmapT)
+open import Once.Spec.Trace using (fmapT)
 import Once.Denotation.Behavior
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)

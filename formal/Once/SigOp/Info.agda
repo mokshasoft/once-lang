@@ -42,6 +42,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Spec.Type using (Type; Unit; Void)
 open import Once.Spec.Res using (Res; stopped; returns)
+open import Once.Spec.Trace using (FFIAnswers)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
@@ -212,15 +213,7 @@ open SigOpInfo
 -- LEMMA relating them (`semM-stops` below). A `where`-bound dispatch cannot
 -- carry one: neither reduces on `sem si` for a variable `si`, so there is
 -- nothing to case-split. As top-level functions of `SigOpSem` there is.
--- plan 0.105: what an FFI contract returns is not the compiler's to compute.
--- `FFIAnswers` is that value, supplied by whoever has the interpretation (the
--- machine builds it from the interpretation and its event log); internal
--- operations ignore it.
--- It is PARTIAL (D257 (A)): a world provides some contracts, not every
--- conceivable one (some codomains are empty), so an unprovided one is
--- `stopped` — unreachable for a program linked against that world.
-FFIAnswers : Set
-FFIAnswers = CanonicalName → (A B : Type) → M.⟦ A ⟧ → Res M.⟦ B ⟧
+-- `FFIAnswers` is the interpretation's answer to a contract (`Spec.Trace`).
 
 semM-of : ∀ {A B} → FFIAnswers → CanonicalName → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
 semM-of ans n (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))

@@ -43,7 +43,7 @@ open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (try-lift; shape-of; has-op; block-as-ir)
 open import Once.Postulates using (extensionality)
 open import Data.Maybe using () renaming (map to mapᴹ)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Spec.Trace using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Arith.Machine.Shape using (InputShape; shape-int; shape-float; shape-pair; Fst; Snd; InputPath; Path; here-int; here-flt; go-fst; go-snd; typePath?)
 open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-through; rp-at; rp-comp; pair-path;
@@ -60,7 +60,7 @@ open TargetNum using (int-bits; float-format)
 import Once.Spec.Word as OnceWord
 import Once.Spec.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-open import Once.Denotation.TraceMonad using ()
+open import Once.Spec.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityˡ)
 
 ------------------------------------------------------------------------

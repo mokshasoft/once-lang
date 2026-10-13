@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 import Once.Spec.Type.Grade as T
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Denotation.TraceMonad using (interp)
+open import Once.Spec.Trace using (interp)
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Spec.Event using (SigOpEvent)
 open import Once.Spec.Context using (Usage)

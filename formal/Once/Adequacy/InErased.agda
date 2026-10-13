@@ -38,7 +38,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Spec.Polynomial using (μS; ⟨_⟩; ⟦_⟧SF)
 import Once.Spec.Polynomial
 open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
-open import Once.Denotation.TraceMonad using (T; returnT)
+open import Once.Spec.Trace using (T; returnT)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)

@@ -46,8 +46,8 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
 
 open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
-open import Once.Denotation.TraceMonad using (PrefixFamily)
-open Once.Denotation.TraceMonad.PrefixFamily using (bnd; sat; coh)
+open import Once.Spec.Trace using (PrefixFamily)
+open Once.Spec.Trace.PrefixFamily using (bnd; sat; coh)
 open import Once.Denotation.TraceMonadInfLaws using (events∞-pf)
 
 open Once.Denotation.Behavior.Behavior using (at)
@@ -66,7 +66,7 @@ open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 -- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
 -- `check-complete` (the proven typechecker-completeness witness).
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.TraceMonad using (Interp; interp; module Interp)
+open import Once.Spec.Trace using (Interp; interp; module Interp)
 open Interp using (sig)
 open import Once.Spec.Contract using (ISig; Impl)
 open import Once.Spec.Event using (SigOpEvent)

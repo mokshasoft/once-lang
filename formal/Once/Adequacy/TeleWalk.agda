@@ -25,7 +25,7 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Denotation.TraceMonad using (Interp; pureHalf; interp)
+open import Once.Spec.Trace using (Interp; pureHalf; interp)
 open import Once.Spec.Contract using (ISig; Impl)
 
 -- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
@@ -90,14 +90,14 @@ import Once.Spec.Elaboration as ElabM
 import Once.Spec.Core.Meaning as GM
 import Once.Spec.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
-open import Once.SigOp.Info using (FFIAnswers)
+open import Once.Spec.Trace using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
 φ = pureHalf ι
 
 open import Once.Adequacy.GradedRelation fmt using (RelGT-bind)
-open import Once.Denotation.TraceMonad using (projTrace)
+open import Once.Spec.Trace using (projTrace)
 import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
@@ -113,7 +113,7 @@ import Data.Fin
 import Relation.Nullary
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ)
 open import Once.Adequacy.TelePosition
-open import Once.Denotation.TraceMonad using ()
+open import Once.Spec.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (RelT′-events)
 open import Once.Denotation.Program using (tableCalls)
 open import Data.List using (take)
@@ -186,7 +186,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {e
     open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {Parser.mkFunInfo "main" ft bd false} {EffUU} g D {irFun} cf inv
     later = tableOf-go (FB.bundle→compiled rest-b) []
 
-    ir-side : RunAt (tableOf-go (FB.bundle→compiled rest-b) (e ∷ pre)) n ≡ projTrace ι (M Once.Denotation.TraceMonad.>>=T λ c → c tt) n
+    ir-side : RunAt (tableOf-go (FB.bundle→compiled rest-b) (e ∷ pre)) n ≡ projTrace ι (M Once.Spec.Trace.>>=T λ c → c tt) n
     ir-side =
       trans (cong (λ tbl → RunAt tbl n) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))
         (cong (λ t → projTrace ι t n)

@@ -43,7 +43,7 @@ open import Once.Postulates using (extensionality)
 open import Once.Denotation.GradedDomain using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; bindᵍ)
 open import Once.Spec.Type.Sub using (·p-diag)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ)
-open import Once.Denotation.TraceMonad using (T; interp; module Interp)
+open import Once.Spec.Trace using (T; interp; module Interp)
 open Interp using (sig; impl)
 open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
 open import Data.String using (String)
@@ -333,7 +333,7 @@ open import Once.Denotation.Meaning using (EnvRun)
 open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 
 -- The monad laws are equalities of trees (plan 0.105).
-open import Once.Denotation.TraceMonad using (returnT; _>>=T_)
+open import Once.Spec.Trace using (returnT; _>>=T_)
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityʳ)
 
 assocT : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z) → ((m >>=T f) >>=T g) ≡ (m >>=T (λ x → f x >>=T g))

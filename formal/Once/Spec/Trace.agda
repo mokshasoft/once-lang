@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.TraceMonad — the computation monad `T`: INTERACTION TREES
+-- Once.Spec.Trace — SPEC. The computation monad `T`: INTERACTION TREES
 -- (plan 0.105, D-entry "Eff means an interaction tree").
 --
 -- An effectful arrow `A ⇒[ eff ] B` denotes the Kleisli arrow `⟦A⟧ᴰ → T ⟦B⟧ᴰ`.
@@ -29,7 +29,7 @@
 -- what a computation emits but let nothing flow back in.
 ------------------------------------------------------------------------
 
-module Once.Denotation.TraceMonad where
+module Once.Spec.Trace where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using (0∸n≡0)
@@ -45,7 +45,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.Spec.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
 open import Once.Spec.Type using (Type; isUnit?)
 import Once.Spec.Type as SpecTy
-import Once.Type as Ty
 open import Once.Spec.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName; showCanonical; gen)
 open import Relation.Nullary using (Dec; yes; no)
@@ -55,7 +54,6 @@ open import Once.Spec.Type.WellFormed using (base-Unit)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Value Carrier Carrier as M
 open import Once.Spec.Event using (SigOpEvent; mk-event)
-open import Once.SigOp.Info using (FFIAnswers)
 open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
 
 ------------------------------------------------------------------------
@@ -171,6 +169,12 @@ pureHalf-at : ∀ (ι : Interp) (k : Key) → Dec (k ∈ pures ι) → M.⟦ kdo
 pureHalf-at ι k (yes p) x = returns (pure ι k p x)
 pureHalf-at ι k (no _)  x = stopped
 
+-- What an interpretation answers for a generator's contract: a function of
+-- the argument that may stop. Partial: a world provides some contracts, and an
+-- unprovided one stops.
+FFIAnswers : Set
+FFIAnswers = CanonicalName → (A B : Type) → M.⟦ A ⟧ → Res M.⟦ B ⟧
+
 pureHalf : Interp → FFIAnswers
 pureHalf ι n A B = pureHalf-at ι (key (showCanonical n) A B) (key (showCanonical n) A B ∈K? pures ι)
 
@@ -283,8 +287,4 @@ data RelT′ {X Y : Set} (R : X → Y → Set) : T X → T Y → Set where
   rel-call : ∀ {o a} {k : M.⟦ ccod o ⟧ → T X} {k′ : M.⟦ ccod o ⟧ → T Y}
            → (∀ b → RelT′ R (k b) (k′ b)) → RelT′ R (call o a k) (call o a k′)
   rel-halt : ∀ {o a} → RelT′ R (halt o a) (halt o a)
-
-------------------------------------------------------------------------
--- List arithmetic the observable proofs use
-------------------------------------------------------------------------
 

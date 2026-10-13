@@ -30,7 +30,7 @@ open import Data.Unit using (⊤)
 open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; eff; prod)
 open import Once.Spec.Guarded using (forget⁺)
 open import Once.Spec.Meaning using (T; M)
-open import Once.Denotation.TraceMonad using (ret; call; halt)
+open import Once.Spec.Trace using (ret; call; halt)
 open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
 open Once.Spec.Iterative.T∞ using (force)
 

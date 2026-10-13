@@ -33,7 +33,7 @@ import Once.IR
 open import Once.Spec.Res using (is-stopped)
 open import Once.Denotation.Program using (tableCalls)
 import Once.Denotation.DenotTrace as DT
-import Once.Denotation.TraceMonad as TM
+import Once.Spec.Trace as TM
 
 module CallC {FS : FrameSemantics} where
 

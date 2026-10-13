@@ -19,7 +19,7 @@
 open import Once.Spec.Numerics using (TargetNum)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Core.PolyTy using (Sig; sigOf)
-open import Once.Denotation.TraceMonad using (interp)
+open import Once.Spec.Trace using (interp)
 
 open import Once.Spec.Contract using (ISig)
 module Once.Adequacy.CoreEnv (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where

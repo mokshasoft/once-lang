@@ -42,7 +42,7 @@ import Once.Parser.Module.Core as P
 open import Once.Spec.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Spec.Contract using (ISig; Impl)
-open import Once.Denotation.TraceMonad using (Interp; interp; pureHalf)
+open import Once.Spec.Trace using (Interp; interp; pureHalf)
 open import Once.Spec.Program using (Typed)
 open import Once.Spec.Core.Telescope using (Program; runProgram)
 import Once.Spec.Core.Translate as TR
@@ -57,7 +57,7 @@ import Once.Denotation.Behavior
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Denotation.DenotTrace using (evalᴰ)
-open import Once.Denotation.TraceMonad using (projTrace)
+open import Once.Spec.Trace using (projTrace)
 open import Data.Maybe using (just)
 import Once.Adequacy.TeleWalk as TW
 import Once.Adequacy.TeleWalk.Invariant as TWI

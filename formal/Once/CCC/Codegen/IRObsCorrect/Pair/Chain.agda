@@ -51,7 +51,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.Denotation.TraceMonad as TM
+import Once.Spec.Trace as TM
 
 module PairC {FS : FrameSemantics} where
 
