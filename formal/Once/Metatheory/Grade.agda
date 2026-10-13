@@ -31,6 +31,7 @@ open import Once.Spec.Type.Grade
   using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; eff⁺; eff; prod; _⊔p_; _·p_)
 open import Once.Spec.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-prod; ⊑-pp; ⊑-ep; ⊑-g; ⊑-ge; ⊑-gp)
+open import Once.Spec.Type.DecEq using (_≟q_)
 
 ------------------------------------------------------------------------
 -- Usage: a commutative semiring
@@ -231,17 +232,6 @@ quantity-⊔-isCommutativeBand = record
 ≤q'-total Many Zero = inj₂ z≤m
 ≤q'-total Many One = inj₂ o≤m
 ≤q'-total Many Many = inj₁ m≤m
-
-_≟q_ : DecidableEquality Quantity
-Zero ≟q Zero = yes refl
-Zero ≟q One = no λ ()
-Zero ≟q Many = no λ ()
-One ≟q Zero = no λ ()
-One ≟q One = yes refl
-One ≟q Many = no λ ()
-Many ≟q Zero = no λ ()
-Many ≟q One = no λ ()
-Many ≟q Many = yes refl
 
 _≤q'?_ : ∀ a b → Dec (a ≤q' b)
 Zero ≤q'? Zero = yes z≤z

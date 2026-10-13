@@ -40,7 +40,7 @@ open import Once.Spec.Type as T using (Type)
 open import Once.Spec.Name using (gen)
 open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
 import Data.String.Properties
-import Once.Type.DecEq
+import Once.Spec.Type.DecEq
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; success; failure)
 open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
@@ -453,10 +453,10 @@ caseBranchBundle ctx x T branch = inferElab (extendNamedCtx ctx x T) branch , re
 
 -- Bundle for the type-equality decision.
 TyEqBundle : (A B : Type) → Set
-TyEqBundle A B = ∃[ r ] Once.Type.DecEq._≟T_ A B ≡ r
+TyEqBundle A B = ∃[ r ] Once.Spec.Type.DecEq._≟T_ A B ≡ r
 
 tyEqBundle : (A B : Type) → TyEqBundle A B
-tyEqBundle A B = Once.Type.DecEq._≟T_ A B , refl
+tyEqBundle A B = Once.Spec.Type.DecEq._≟T_ A B , refl
 
 sound-RDestruct :
   ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : _) (eL : RawExpr)

@@ -41,7 +41,7 @@ import Once.Spec.Type as T
 import Once.Spec.Type.Poly as T
 import Once.Type as T
 open import Once.Spec.Syntax as Raw using (RawExpr; RLam; RQualified)
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Spec.Type.Sub using (sub-int; sub-unit)
 open import Once.Type.Sub using (_<:?_)
 open import Once.TypeCheck.Elaborate

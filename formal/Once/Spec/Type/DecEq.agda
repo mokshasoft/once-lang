@@ -2,26 +2,70 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Type.DecEq — decidable equality of `Functor` and `Type`.
+-- Once.Spec.Type.DecEq — decidable equality of the grades, kinds, functors
+-- and types.
 --
--- Plan 0.99: the CANONICAL home. Deciding type equality is a fact about the
--- types, not about elaboration, and the Spec's subtyping decider (`Once.Type.Sub`)
--- needs functor equality at `μ`/`ν` without importing the elaborator. This is the
--- block `TypeCheck/Elaborate` has carried (and `Optimize` a second copy of, as
--- `_≟Type_`); plan 0.99 phase B deletes both copies and re-points their clients
--- here. Content moved verbatim.
+-- SPEC (decision procedures).
 ------------------------------------------------------------------------
 
-module Once.Type.DecEq where
+module Once.Spec.Type.DecEq where
 
 open import Relation.Binary.Definitions using (DecidableEquality)
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-import Once.Type
 open import Once.Spec.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any)
-open import Once.Type using (_≟k_; _≟p_)
+open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; eff⁺; eff; prod; ArrowKind; mk-kind)
 import Data.Nat as ℕ
+
+-- Quantities, purities, kinds.
+
+_≟q_ : DecidableEquality Quantity
+Zero ≟q Zero = yes refl
+Zero ≟q One = no λ ()
+Zero ≟q Many = no λ ()
+One ≟q Zero = no λ ()
+One ≟q One = yes refl
+One ≟q Many = no λ ()
+Many ≟q Zero = no λ ()
+Many ≟q One = no λ ()
+Many ≟q Many = yes refl
+
+-- | Decidable equality on Purity (plan 0.5.1)
+_≟p_ : DecidableEquality Purity
+pure ≟p pure = yes refl
+pure ≟p eff⁺ = no (λ ())
+pure ≟p eff = no (λ ())
+pure ≟p prod = no (λ ())
+eff⁺ ≟p pure = no (λ ())
+eff⁺ ≟p eff⁺ = yes refl
+eff⁺ ≟p eff = no (λ ())
+eff⁺ ≟p prod = no (λ ())
+eff ≟p pure = no (λ ())
+eff ≟p eff⁺ = no (λ ())
+eff ≟p eff = yes refl
+eff ≟p prod = no (λ ())
+prod ≟p pure = no (λ ())
+prod ≟p eff⁺ = no (λ ())
+prod ≟p eff = no (λ ())
+prod ≟p prod = yes refl
+
+-- | Decidable equality on ArrowKind (plan 0.5.1)
+≟k-aux : ∀ {q₁ q₂ p₁ p₂}
+       → Dec (q₁ ≡ q₂) → Dec (p₁ ≡ p₂)
+       → Dec (mk-kind q₁ p₁ ≡ mk-kind q₂ p₂)
+-- `no` in EITHER column decides, without splitting the other. See the note on
+-- `≟T-⇒-aux`: a decider that insists on both columns goes stuck on variables and
+-- hides the decisions underneath it from a proof's `with`.
+≟k-aux (no ¬q)    _          = no λ { refl → ¬q refl }
+{-# CATCHALL #-}
+≟k-aux _          (no ¬p)    = no λ { refl → ¬p refl }
+≟k-aux (yes refl) (yes refl) = yes refl
+
+_≟k_ : DecidableEquality ArrowKind
+mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p p₂)
+
+
 
 -- Helpers for ≟T / ≟F matching-constructor cases (avoid `with`-blocks).
 

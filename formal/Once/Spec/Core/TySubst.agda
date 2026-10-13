@@ -16,7 +16,6 @@
 
 open import Data.Nat using (ℕ)
 import Once.Spec.Type
-import Once.Type
 open import Once.Spec.Core.PolyTy using (Sig)
 
 open import Once.Spec.Contract using (ISig)
@@ -26,7 +25,6 @@ open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-import Once.Type as T
 open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One)
 open import Once.Metatheory.SubLaws using (⊑π-refl)
 open import Once.Spec.Context using (Usage; zeroUsage; singleUse)

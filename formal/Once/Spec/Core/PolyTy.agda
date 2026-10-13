@@ -26,7 +26,6 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 import Once.Spec.Type as T
-import Once.Type as T
 open import Once.Spec.Contract using (ISig)
 open import Once.Spec.Type.Grade using (Purity; ArrowKind)
 open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)

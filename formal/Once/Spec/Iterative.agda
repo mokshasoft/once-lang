@@ -142,7 +142,7 @@ mapAna∞ H (G₁ S⊗ G₂) c (x , y)  = mapAna∞ H G₁ c x , mapAna∞ H G�
 ------------------------------------------------------------------------
 
 open import Once.Spec.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.Semantics.Machine using (⟦_⟧F)
+open import Once.Spec.Value Carrier Carrier using (⟦_⟧F)
 
 fmap∞ : ∀ {X Y} → (X → Y) → T∞ X → T∞ Y
 fmap∞ f m = m >>=∞ λ x → return∞ (f x)

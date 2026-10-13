@@ -127,7 +127,6 @@ import Once.Target.Symbol
 import Once.Target.X86-32.PhysReg
 import Once.Target.X86-64.PhysReg
 import Once.Type
-import Once.Type.DecEq
 import Once.Type.Determined
 import Once.Type.Honest
 import Once.Type.Instance

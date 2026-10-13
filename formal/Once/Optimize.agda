@@ -49,8 +49,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 -- that used it collapsed to the functor/well-formedness comparison alone.
 ------------------------------------------------------------------------
 
--- Plan 0.99: Functor/Type equality is `Once.Type.DecEq`'s — the one copy.
-open import Once.Type.DecEq using (_≟T_)
+-- Plan 0.99: Functor/Type equality is `Once.Spec.Type.DecEq`'s — the one copy.
+open import Once.Spec.Type.DecEq using (_≟T_)
 
 ------------------------------------------------------------------------
 -- IR heads (the eta rules below dispatch on them)

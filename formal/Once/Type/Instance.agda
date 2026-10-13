@@ -22,7 +22,8 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Type.Match
 
 lookup-head : ∀ x t s → lookupSubst x ((x , t) ∷ s) ≡ just t

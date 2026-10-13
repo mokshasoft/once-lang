@@ -15,9 +15,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 import Once.Spec.Type as T
-import Once.Type as T
 open import Once.Spec.Type using (TKind; k-base)
-open import Once.Type.DecEq using (_≟tk_)
+open import Once.Spec.Type.DecEq using (_≟tk_)
 open import Once.Spec.Type.WellFormed using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Spec.Type.WellFormed as Tr

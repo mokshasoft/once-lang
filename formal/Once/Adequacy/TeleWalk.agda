@@ -55,7 +55,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Type using (Type)
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Spec.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C

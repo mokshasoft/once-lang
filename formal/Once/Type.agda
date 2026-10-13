@@ -12,7 +12,6 @@
 
 module Once.Type where
 
-import Once.Metatheory.Grade as Grade
 
 open import Relation.Binary.Definitions using (DecidableEquality)
 
@@ -36,11 +35,6 @@ open import Once.Spec.Type.Poly
          Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
 
 
--- | Decidable equality for quantities
-_≟q_ : DecidableEquality Quantity
-_≟q_ = Grade._≟q_
-
-
 -- | Show function for Quantity (for error messages)
 showQuantity : Quantity → String
 showQuantity Zero = "0"
@@ -61,40 +55,7 @@ showArrowKind : ArrowKind → String
 showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
 
 
--- | Decidable equality on Purity (plan 0.5.1)
-_≟p_ : DecidableEquality Purity
-pure ≟p pure = yes refl
-pure ≟p eff⁺ = no (λ ())
-pure ≟p eff = no (λ ())
-pure ≟p prod = no (λ ())
-eff⁺ ≟p pure = no (λ ())
-eff⁺ ≟p eff⁺ = yes refl
-eff⁺ ≟p eff = no (λ ())
-eff⁺ ≟p prod = no (λ ())
-eff ≟p pure = no (λ ())
-eff ≟p eff⁺ = no (λ ())
-eff ≟p eff = yes refl
-eff ≟p prod = no (λ ())
-prod ≟p pure = no (λ ())
-prod ≟p eff⁺ = no (λ ())
-prod ≟p eff = no (λ ())
-prod ≟p prod = yes refl
-
--- | Decidable equality on ArrowKind (plan 0.5.1)
-≟k-aux : ∀ {q₁ q₂ p₁ p₂}
-       → Dec (q₁ ≡ q₂) → Dec (p₁ ≡ p₂)
-       → Dec (mk-kind q₁ p₁ ≡ mk-kind q₂ p₂)
--- `no` in EITHER column decides, without splitting the other. See the note on
--- `≟T-⇒-aux`: a decider that insists on both columns goes stuck on variables and
--- hides the decisions underneath it from a proof's `with`.
-≟k-aux (no ¬q)    _          = no λ { refl → ¬q refl }
-{-# CATCHALL #-}
-≟k-aux _          (no ¬p)    = no λ { refl → ¬p refl }
-≟k-aux (yes refl) (yes refl) = yes refl
-
-_≟k_ : DecidableEquality ArrowKind
-mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p p₂)
-
+-- The deciders on quantities, purities and kinds are `Once.Spec.Type.DecEq`'s.
 
 ------------------------------------------------------------------------
 -- Common Functor Patterns

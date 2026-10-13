@@ -23,7 +23,6 @@
 import Once.Metatheory.SubLaws
 open import Data.Nat using (ℕ)
 import Once.Spec.Type
-import Once.Type
 open import Once.Spec.Core.PolyTy using (Sig)
 
 open import Once.Spec.Contract using (ISig)
@@ -35,7 +34,6 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Spec.Type as T
-import Once.Type as T
 open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff⁺; prod)
 open import Once.Spec.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Spec.Type.WellFormed using (IsConcrete)

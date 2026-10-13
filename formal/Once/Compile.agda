@@ -122,7 +122,7 @@ open import Once.Type.Rigid using (rigidFree?)
 open import Once.Spec.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type.DecEq using (_≟T_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
 import Once.TypeCheck.Principal as Principal

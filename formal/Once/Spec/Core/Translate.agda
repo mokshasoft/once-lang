@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 import Once.Spec.Type.Grade as T
 import Once.Spec.Type as T
 import Once.Spec.Type.Poly as T
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Spec.Type.Instance using (KindedInstance; rigidOf)
 open import Once.Spec.Type.WellFormed using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)

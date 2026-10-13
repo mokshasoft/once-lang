@@ -17,7 +17,7 @@ open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
 open import Once.IR
-open import Once.Type.DecEq using () renaming (_≟T_ to _≟Type_)
+open import Once.Spec.Type.DecEq using () renaming (_≟T_ to _≟Type_)
 open import Once.Optimize using (_≟IR_)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)

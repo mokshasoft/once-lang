@@ -47,6 +47,7 @@ open import Once.Spec.Type.Grade
 open import Once.Spec.Type
 open import Once.Spec.Type.Poly
 open import Once.Type
+open import Once.Spec.Type.DecEq using (_≟q_; _≟p_; _≟k_)
 open import Once.Spec.Name using (CanonicalName; canonical; showCanonical; gen)
 open import Once.Spec.Name using (generatorNS)
 open import Once.CanonicalName using (_≟ᶜ_)

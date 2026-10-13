@@ -24,7 +24,7 @@ import Data.List.Membership.DecPropositional as DecMem
 open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; _⇒[_]_; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
 import Once.Spec.Type.Grade as Ty
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
 open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Spec.Word using (Carrier)

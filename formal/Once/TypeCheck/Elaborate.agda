@@ -76,7 +76,7 @@ import Once.Spec.Float.Decimal as Decimal
 open import Once.Spec.Type.Sub using (_<:_; _⊑π_; sub-arr)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Metatheory.SubLaws using (<:-refl)
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type.DecEq using (_≟T_)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
 open import Once.Spec.Type.Instance using (KindedInstance)
@@ -91,7 +91,7 @@ open import Once.TypeCheck.TargetView
 -- Type Equality (Decidable with proof)
 ------------------------------------------------------------------------
 
--- Plan 0.99: decidable Functor/Type equality lives in `Once.Type.DecEq`.
+-- Plan 0.99: decidable Functor/Type equality lives in `Once.Spec.Type.DecEq`.
 
 -- | Decide whether `T` is a pure-arrow-to-`Int` — the value-lift target for
 -- an integer literal (Plan 0.41 / D018). Returning the equality witness as a
