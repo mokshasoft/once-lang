@@ -18296,6 +18296,8 @@ The meaning is defined on DERIVATIONS, so D308's coherence ("two derivations of 
 
 ## D311 — ONCE IS TOTAL + PRODUCTIVE; A SERVER IS GUARDED ITERATION OF AN EFFECT, AND `main` IS AN ORDINARY FUNCTION (2026-10-12)
 
+**Status**: Superseded in part by D312 (2026-10-13): `Eff` itself is the completely iterative monad, so G1's split of `eff` (returns) from `prod` (may run forever) and §3's "a server is `iter`" are withdrawn; T+P, the guard `eff⁺` and "`main` is an ordinary function" stand.
+
 **Relates**: GOAL.md ("A server, a REPL, any long-running interactive program"; "Structured
 recursion only"), OCP-0003, D058/D179 (`Behavior`: the first `n` events, for total+productive
 systems), D233/D309 (effectful `unfold`), D241 (no self-reference), D250 (`pure` = referential
@@ -18422,3 +18424,44 @@ as the program's entry (the user, 2026-10-12).
 `Once/IR/Guarded.agda` (deleted in c59c6c661) marked the recursive positions of a coalgebra's
 LAYER (`GRec`); it was deprecated under OCP-0003 because layer productivity follows from
 totality. The guard here is on EVENTS, one level up, and has no counterpart there.
+
+## D312 — `Eff` IS THE FREE COMPLETELY ITERATIVE MONAD: AN EFFECTFUL PROGRAM NEED NOT STOP (2026-10-13)
+
+**Relates**: D311 (supersedes G1 and §3 in part), GOAL.md ("Every pure computation terminates;
+every layer of a stream is produced in finite time"), D058/D179 (`Behavior`), D201 (no
+bisimulation-to-equality axiom), D232/D032 (effects are arrows), plan 0.117.
+
+### Context
+D311 kept `Eff A B = A → T B` with `T` the INDUCTIVE free monad, so every effectful run ends, and
+added a second grade (`prod`, the completely iterative monad `T∞`) plus a construct (`iter`) to
+reach it. That was reasoning from the code: `T` was inductive because it had been written so.
+The user: Once programs should not have to stop; a program that must stop cannot truly be
+productive. GOAL.md asks TERMINATION only of pure computations; of effects it asks PRODUCTIVITY
+(each next event after finite work).
+
+### Decision
+1. **`Eff A B` means `A → T∞ B`**, `T∞` the free completely iterative monad on the call/halt
+   signature: the FINAL coalgebra of `Y ↦ X + Σ Y`, no silent node. An effectful run may make
+   infinitely many calls, never infinitely many silent steps; it may also end (return or halt).
+2. **Grades**: `pure ⊑ eff⁺ ⊑ eff` (`eff⁺`, the guard, D311 G2, stays: a computation whose first
+   node is an event). `prod` is withdrawn — `eff` already may run forever.
+3. **`main : Eff Unit Unit`, unchanged**, is a server as well as a program that ends; there is one
+   `main` and one observation (`Behavior` = the first `n` events of the `T∞` run).
+4. **Equality of effectful computations is bisimilarity** (D201), observed through finite
+   prefixes; every effectful law holds up to it. Pure computations stay values, compared by `≡`.
+
+### Open (to decide inside plan 0.117)
+* **O1 — how an infinite run is built.** Total code can only build one by corecursion on
+  computations. The monad's own operation is guarded iteration: the unique `x` with
+  `x = f >=> [ret, x]` for a guarded `f` (the final coalgebra's unfold, as `ana` is `ν`'s). Its
+  form — a core former beside `fold`/`unfold`, or `unfold`/`ana` generalised to computations — and
+  its surface spelling are open.
+* **O2 — the guard's form.** The step `A → T⁺ (B + A)` (every round an event, D311's simple form)
+  or the standard ideal-monad form `A → B + T⁺ (B + A)` (a pure exit allowed).
+
+### Consequences
+`M eff = T∞` throughout the Spec meaning; the monad laws of `Eff` up to bisimilarity; the IR's
+denotation and the adequacy chain follow (the observation is prefix-wise, so each depth `n` stays
+a finite statement). Everything D311 built for `prod` (`T∞`, `toT∞`, coherence over `TreeEq∞`,
+`events∞` and its prefix-family laws, `RelT∞′`) is the machinery `eff` now uses.
+

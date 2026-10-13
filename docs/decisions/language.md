@@ -128,27 +128,24 @@ entry updates the rule it changes here, in the same commit.
   before it — never itself, never a later one; a module is one
   declaration-ordered telescope. The core has no `fix`. (D241, D234)
 - **Once is total and productive** (T+P): a pure computation is a value; an
-  effectful computation reaches each next event after finite work. A server
-  — any program that runs forever — is GUARDED ITERATION over the completely
-  iterative monad (an event before every loop), not general recursion and
-  not `ana`; `main` is an ordinary function, specified only as the entry.
-  Being implemented (plan 0.117: the core's `iter` and its uniqueness are
-  in; the surface and the compiler are not). (D311)
-- **Grades are two axes, laid out on a line**: effects and finiteness;
-  `pure ⊑ eff ⊑ prod` (`prod` may run forever), because the pure-and-forever
-  corner is empty (pure infinite data is a `ν` TYPE). The guard is the grade
-  `eff⁺` (an event first), `eff⁺ ⊑ eff`; grades are an ordered monoid and a
-  sequencing rule concludes at the product of its premises' grades. An
-  `iter` body is `eff⁺` as a whole: every round performs an event. (D311)
+  effectful computation reaches each next event after finite work, and NEED
+  NOT STOP — `Eff A B` is `A → T∞ B`, the free completely iterative monad, so
+  `main : Eff Unit Unit` is a server as well as a program that ends; `main` is
+  an ordinary function, specified only as the entry. How an infinite run is
+  built (guarded iteration, the monad's own unfold) and the guard's exact
+  form are open in plan 0.117. (D312 ← D311)
+- **Grades**: `pure ⊑ eff⁺ ⊑ eff`; `eff⁺`, the guard, is a computation whose
+  first node is an event. Grades are an ordered monoid and a sequencing rule
+  concludes at the product of its premises' grades. (D312 ← D311)
 - **The guard has no unit**: a value performs no event, so whatever returns a
   value at its arrow's grade — the combinators, λ, `curry`'s outer arrow,
   `ana`'s construction, a fold's algebra — needs a grade above `pure`
   (evidence `pure ⊑ π`); the meaning maps over a premise instead of binding
   and returning. (D311)
-- **A computation that may run forever means a tree of the completely
-  iterative monad** (`T∞`, no silent node), and every grade is read as one
-  (`toT∞`): equal computations are bisimilar trees, observed by their finite
-  prefixes; laws at `prod` hold up to bisimilarity, never `≡`. (D311, D201)
+- **An effectful computation means a tree of the completely iterative monad**
+  (`T∞`, no silent node): equal computations are bisimilar trees, observed by
+  their finite prefixes; effectful laws hold up to bisimilarity, never `≡`.
+  (D312, D201)
 - **Recursion is correct by construction**, and `make pragma-gate` keeps it
   so: no termination/positivity/coverage pragma may be added to the apex or
   compiler closure. (D242)
