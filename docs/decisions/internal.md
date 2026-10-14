@@ -14,7 +14,8 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **Two stages**: binding and naming live in the surface; the core IR is pure
   categorical (`let` becomes `e₂ ∘ ⟨id, e₁⟩`). (D035)
 - **The compiler compiles the realization of its typing derivation**: one
-  elaboration on the apex path. (D254)
+  elaboration on the apex path — a derivation of the Spec's one elaboration
+  relation. (D316, D254)
 - **The IR has 20 constructors**: the 12 CCC generators, `μ`/`ν` symmetric
   (`In`, `out-μ`, `Cata` | `in-ν`, `Out`, `Ana`), `const`, `SigOp`, and the
   call node. `Para`/`Hylo`/`Fuse`/`NatTr` are removed; fusion returns only as
@@ -27,6 +28,9 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **The IR is grade-erased**; its objects are ungraded. (D046)
 - **Ana is parameterized by its environment**: the coalgebra is read at a
   fixed environment per layer. (D273)
+- **The server loop needs no new IR construct**: an effectful IR arrow means
+  `T∞`, and the existing `Ana` against the effect type is the loop; what is
+  new is its compilation (a back-edge) and its machine proof. (D313)
 
 ## 2. SigOps inside the compiler
 
@@ -148,6 +152,10 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **Checking a definition against its signature is equality with the
   synthesized principal type**; subsumption only at a use. Mode agreement is
   plain "inferred ⊑ checked". (D314; F3a's `_≼_` and guard rules withdrawn)
+- **The checker is the implementation's algorithmic judgment**, proved SOUND
+  and COMPLETE against the Spec's declarative elaboration relation; mode
+  agreement and the bidirectional judgment's coherence are implementation
+  lemmas, not Spec claims. (D316 ← D305, D256)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering
@@ -161,12 +169,12 @@ decision-log entry updates the rule it changes here, in the same commit.
   ledger counts it — and, by `language.md` §12, a debt. (D175)
 - **Islands are judged by reachability from the apex**, not by imports; dead
   code is deleted. Progress is measured against the live interface, not green
-  islands. (D212, D151, D141 → D176)
+  islands. (D176 ← D141, D212, D151)
 - **When deleting a realm, find which premises it silently discharged.** (D133)
 - **The Haskell bridge mirrors no Agda shapes**; predicates it needs are total
   Agda; `make check-extraction-sync` reports drift. (D162)
 - **Re-exports**: only to share a parameterized module's instantiation; the
-  public surface only shrinks; the Spec re-exports nothing. (D277 → D306)
+  public surface only shrinks; the Spec re-exports nothing. (D306 ← D277)
 
 ## 8. Process and tooling
 
@@ -179,8 +187,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   (D220, D221, D199)
 - **Measuring Agda**: `touch` does not force a recheck; confirm a `Checking`
   line. (D200)
-- **The Spec borrows compiler functions in four places** until plan 0.114
-  removes them; review treats those functions as Spec. (D300)
+- **The Spec imports no implementation module.** Until plan 0.118's new
+  Spec lands, the Spec on disk still borrows compiler functions (D300's
+  places and the parser relations); review treats those functions as Spec.
+  (D316 ← D300)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`
   override. (D008)
 - **Nix flakes** configure projects; **fourmolu defaults** format Haskell;

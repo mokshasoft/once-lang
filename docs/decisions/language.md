@@ -27,10 +27,12 @@ entry updates the rule it changes here, in the same commit.
   is no `IO`: the sugar is gone from the language (a library alias is plan
   0.96). (D315 ← D253, D227, D239)
 - **Its meaning is its trace of observable effects**: an effectful computation
-  means an inductive interaction tree over the operations its grade permits
-  (a value; an answering call with its continuation; a halting call at a
-  `Void` codomain), run against an Interpretation. The world always answers;
-  stopping happens exactly at `Void`. (D257 ← D058)
+  means a tree of its grade's monad — finite (`T`) at `act`, possibly infinite
+  (`T∞`) at `eff` — whose nodes are a value, an answering call with its
+  continuation, or a halting call at a `Void` codomain; it is run against an
+  Interpretation and observed by its finite prefixes. The world always
+  answers; a run ends by returning or by halting at `Void`, or never ends (a
+  server). (D312, D313 ← D257 ← D058)
 - **One meaning.** A program has exactly one denotational meaning, presented on
   the surface and on the IR and proved equal; conflicting semantics are
   deleted, not bridged. (D060 ← D059 ← D057)
@@ -43,10 +45,16 @@ entry updates the rule it changes here, in the same commit.
 ## 2. The core calculus (the Spec)
 
 - **The Spec is a declarative graded core** `Γ ⊢[ Ψ ] t ∷ A ! π` over
-  well-scoped de Bruijn terms: usage `Ψ` (QTT), effect grade `π`. The
-  bidirectional surface checker is an implementation proved against it; the
-  surface combinators (`compose`, `pair`, `case`, `curry`, `cata`, `ana`, …)
-  are λ-term definitions of the core. (D231)
+  well-scoped de Bruijn terms: usage `Ψ` (QTT), effect grade `π`; the surface
+  combinators (`compose`, `pair`, `case`, `curry`, `cata`, `ana`, …) are
+  λ-term definitions of the core. (D231)
+- **The surface is ONE declarative elaboration relation** from surface terms
+  to core terms, whose side conditions are core typing; the Spec's grammar is
+  over the Spec's own syntax tree, so `correct` is about source text and the
+  parser is not trusted. The Spec says WHICH programs are well-typed, not how
+  to decide it: the bidirectional checker and the D072 oracle are the
+  implementation, proved SOUND and COMPLETE against that relation.
+  (D316 ← D231, D137)
 - **A core term determines its type** (Church-style): `lam A q π`, `let′ q`,
   `inl B`, `inr A`, `case qℓ qr`, `absurd A`, `roll F`, `fold F`, `unfold F`;
   the grade is determined up to `⊢sub-eff`, which changes no type. The surface
@@ -58,24 +66,30 @@ entry updates the rule it changes here, in the same commit.
   core judgment mean the same (up to observation, `Spec.Equivalence`). Proved,
   without an axiom. (D310, D308)
 - **The meaning is graded**: a derivation at grade `π` means
-  `⟦ Γ ↾ Ψ ⟧ → M π ⟦ A ⟧`, `M pure X = X`, `M eff X = T X` (the interaction
-  tree). `pure` is referential transparency: a pure arrow is a total function,
-  a pure ν is plain codata. (D250 ← D143)
+  `⟦ Γ ↾ Ψ ⟧ → M π ⟦ A ⟧`, `M pure X = X`, `M act X = T X` (finite trees, the
+  free monad), `M eff X = T∞ X` (the free completely iterative monad: possibly
+  infinite, no silent node); `T = μY. X + H_Σ Y` and `T∞ = νY. X + H_Σ Y`
+  over ONE signature functor `H_Σ`. `pure` is referential transparency: a pure
+  arrow is a total function, a pure ν is plain codata.
+  (D316 ← D314 ← D313 ← D312, D250 ← D143)
 - **Effects are a family of monads** `M π` with monad morphisms (`subM`,
   `toT`), not a graded monad; algebraic structures are explicit record values.
   (D307)
-- **The Spec is the directory `Once/Spec`**: definitions and decision
-  procedures only, no proofs, importing only itself and the standard library,
-  no re-exports. (D306 ← D298 ← D140, D137)
-- **A typing rule states a property**, never "a decider returned X"; decider
-  soundness and completeness are proved separately. (D134)
+- **The Spec is the directory `Once/Spec`**: definitions only — no proofs,
+  no deciders, no encodings — importing only itself and the standard library,
+  no re-exports. One object language, one signature functor, one core
+  judgment, one meaning. (D316 ← D306 ← D298 ← D140)
+- **A typing rule states a property**, never "a decider returned X"; deciders
+  are implementation, outside the Spec, proved sound and complete against it.
+  (D316, D134)
 - **Metatheorems are Spec claims** (`Once.Spec.Metatheory`): their proofs
   (`Once.Metatheory`) use only the Spec side. When one fails, the language is
   wrong. Included: type substitution, the term model (a graded category;
-  `⟦_⟧` preserves composition), the laws of `<:` and `⊑π`, usage
-  mode-independence, coherence, Freyd, the fold's universal property and
-  unfold's computation law, and totality: T+P, no self-reference, an
-  effectful stream that emits. (D304 ← D303, D305, D285, D240, D307, D309, D311)
+  `⟦_⟧` preserves composition), the laws of `<:` and `⊑π`, coherence, Freyd,
+  the fold's universal property and unfold's (the server's included), and
+  totality: T+P, no self-reference, an effectful stream that emits. The
+  checker's mode agreement is not a Spec claim (D316). (D316 ← D305, D304 ←
+  D303, D285, D240, D307, D309, D311)
 - **The extension path is dependent types with QTT grades** (OCP-0009); a
   refinement `{x : A | P x}` is a Σ-type with an erased proof, not a separate
   type system. (OCP-0009 ← D017)
@@ -83,16 +97,17 @@ entry updates the rule it changes here, in the same commit.
 ## 3. Effects
 
 - **Effects are arrows, not built-in monads**: one arrow type
-  `A ⇒[ q , π ] B` with quantity and purity independent; `Eff A B` is
-  `A ⇒[ Many , eff ] B`. The monad `T` exists only in the semantics.
-  (D046 ← D032 ← D026)
+  `A ⇒[ q , π ] B` with quantity and purity independent; `Act A B` is
+  `A ⇒[ Many , act ] B`, `Eff A B` is `A ⇒[ Many , eff ] B`. The monads `T`
+  and `T∞` exist only in the semantics. (D313, D312, D046 ← D032 ← D026)
 - **The grade is a checked, erased refinement.** `pure ⊑ act ⊑ eff` is
   subsumption with no term; its meaning is the monad morphism between the
   grades' monads. Eff → pure is forbidden. There is no `arr`. (D314, D068,
   D226, D250)
 - **A composite's type is computed from its parts.** The meaning of `g ∘ f` is
   determined by `g` and `f` alone, and so is its type: its grade is computed
-  from the arms' grades (the graded monad's bind), never chosen by context.
+  from the arms' grades — on the chain, their join, with the bind taken in
+  that grade's monad (D307) — never chosen by context.
   Every term has a principal type, and every principal type is writable.
   (D314)
 - **Effects form a Freyd category**: a computation is central (commutes with
@@ -112,7 +127,7 @@ entry updates the rule it changes here, in the same commit.
 - **Effects follow data flow, and reading order where there is none**: an
   effectful fold runs a product layer left first. (D286 ← D221)
 - **Applying an effectful closure with `apply`** gives the suspension
-  `Unit ⇒[eff] B`. (D294)
+  `Unit ⇒[π] B` at the closure's grade `π` (`act` or `eff`). (D313, D294)
 - **No exceptions.** Failure is a value (a sum) or an effect (a halt).
   (D023)
 
@@ -147,20 +162,20 @@ entry updates the rule it changes here, in the same commit.
   a `main` used at `Eff Unit Unit` may be a server; `main` is an ordinary
   function, specified only as the entry (D315). A computation that
   RETURNS has the finer type `Act A B` (the free monad `T`). An infinite run is
-  an unfold of an effectful coalgebra `A → T (F A)` (GOAL.md) — at the surface
-  `ana` into `Eff`, in the core its own former `iter`. (D314 ← D313 ← D312 ← D311)
+  the anamorphism into `Eff` (D316 ← D314 ← D313 ← D312 ← D311).
 - **Grades**: the chain `pure ⊑ act ⊑ eff`. `act` is a computation that
   RETURNS (the free monad `T`, finite trees; surface `Act A B`); `eff` may run
   forever (`T∞`; surface `Eff A B`). Sequencing's product is the join, and
   every grade has a unit. (D314 ← D313 ← D312 ← D311)
-- **The server loop is `ana` into `Eff` over requests**: a round is a
-  terminating computation that finishes or returns the NEXT CALL AS DATA,
-  `step : Act A (B + Req A)` with `Req A = Σ_op Arg_op × (Ans_op → A)` over the
-  program's signature (provisional names). Its meaning is the unique map into
-  the final coalgebra `νY. T (B + Req Y)`, flattened into `T∞ B`.
-  **Guardedness is the functor's shape, not a grade**: every round that
-  continues has a call at its root, so no type needs to say "guarded".
-  Against `ν F` the same `ana` builds a stream. (D314 ← D313)
+- **A server is the anamorphism into `Eff`**: `T∞ B` is the final coalgebra
+  of `B + H_Σ(−)`, so a server is unfold, not a separate iteration. A round is
+  a terminating computation that finishes or returns the NEXT CALL AS DATA,
+  `step : Act A (B + Req A)` with `Req A = H_Σ A = Σ_op Arg_op × (Ans_op → A)`
+  over the program's signature (provisional names); the loop's meaning is
+  stated by unfold's universal property. **Guardedness is the functor's
+  shape, not a grade**: every round that continues ends at a call, so no type
+  says "guarded". Against `ν F` the same `ana` builds a stream.
+  (D316 ← D314 ← D313)
 - **An effectful computation means a tree of the completely iterative monad**
   (`T∞`, no silent node): equal computations are bisimilar trees, observed by
   their finite prefixes; effectful laws hold up to bisimilarity, never `≡`.
@@ -176,10 +191,11 @@ entry updates the rule it changes here, in the same commit.
   (D131, D265, D295, D228)
 - **The fold is the unique algebra morphism out of `μ`**, and fusion holds —
   Spec claims (postulated P2/P3 until proved). (D307)
-- **Only codata carries an effect grade**: arrows and `ν`. `ν F pure <: ν F eff`;
-  the surface writes `Nu F` / `Nu (Eff F)`; `Mu (Eff F)` is ill-formed. An
-  effectful stream is the final `T ∘ F`-coalgebra — a **server** is one.
-  (D233, GOAL.md)
+- **Only codata carries an effect grade**: arrows and `ν`.
+  `ν F pure <: ν F act <: ν F eff`; the surface writes `Nu F` / `Nu (Act F)` /
+  `Nu (Eff F)`; `Mu (Eff F)` is ill-formed. An effectful stream is the final
+  `T ∘ F`-coalgebra; a server is not a stream value but the anamorphism into
+  `Eff` (above). (D316, D314, D313, D233)
 - **`unfold` binds its coalgebra term once, then the seed**; the coalgebra
   FUNCTION, which may be effectful (`A → T (F A)`), runs in each forced layer.
   The computation law `unfold-out` is a Spec claim (P5). (D309 ← D247; D273)
@@ -212,8 +228,6 @@ entry updates the rule it changes here, in the same commit.
   D126, D063, D056, D018)
 - **The spine mode**: argument-driven application is an inference; a head
   whose output its input does not determine needs an annotation. (D230)
-- **The bidirectional judgment is coherent**: any two surface derivations of
-  one judgment realize to terms with the same meaning (proved). (D256)
 - **`let` and a top-level definition are interderivable**; a defined name
   unfolds to its definiens and folds back. (D284)
 - **Signatures are optional assertions that confirm the principal type**: a
@@ -228,9 +242,10 @@ entry updates the rule it changes here, in the same commit.
 - **Rank-1 polymorphism with kinded type variables** (`base` or `any`; a
   variable under a functor constant is `base`); `∀` means the family of its
   instances. (D238)
-- **A polymorphic definition is typed once**, at its schema with rigid
-  parameters; a use is `ref d τ` at a kind-respecting instance. Instances come
-  for free by the (proved) type-substitution lemma. (D243 ← D236, D240)
+- **One polymorphic core**: types over de Bruijn type variables, ground
+  types the closed case, one typing judgment, no `rigid` former. A polymorphic
+  definition is typed once; a use is `ref d τ` at a kind-respecting instance.
+  (D316 ← D243 ← D236, D240)
 - **Annotations are concrete types**: they mention no schema parameter. (D252)
 - **Argument-driven instantiation** of a polymorphic head: local type
   inference (`d-poly`). (D237)
@@ -264,8 +279,10 @@ entry updates the rule it changes here, in the same commit.
   `! emits` annotation; `exit : Eff Int Void`. (D227, D225)
 - **FFI signatures are honest**: an empty codomain is written `Void`, a
   singleton `Unit`; an arrow into `Unit`/`Void` must be effectful; a base
-  `Unit`/`Void` constant is rejected; μ/ν/rigid codomains are not honest.
-  So referencing an FFI constant is pure. (D297, D231)
+  `Unit`/`Void` constant is rejected; μ/ν codomains are not honest. So
+  referencing an FFI constant is pure. In the Spec this is a short
+  well-formedness condition on signatures; its deciders are implementation.
+  (D316, D297, D231)
 
 ## 10. Numbers
 
@@ -328,10 +345,14 @@ with the code:
 
 1. **D281** (`in-ν`'s own denotation) is stated over the IR denotation
    `evalᴰ`; how it reads against the current Spec meaning is not recorded.
-2. **D314**: the surface names for `Req` and `request`. (`main` settled by
-   D315.)
-3. **D072**: the oracle's completeness is an open obligation.
+2. **D314**: the surface names for `Req` (= `H_Σ`, D316) and `request`.
+   (`main` settled by D315.)
+3. **D072/D316**: the checker's and the oracle's completeness against the
+   Spec's elaboration relation (what `correct`'s completeness half needs) is
+   an open obligation.
 4. **Postulated Spec claims**: the fold's universal property and fusion
    (P2/P3), unfold's computation law (P5).
 5. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical
    names").
+6. **D316 in flight**: the new Spec (plan 0.118) lands as one approved patch;
+   until then the Spec on disk does not match §2 and §8 above.

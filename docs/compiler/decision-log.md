@@ -15356,7 +15356,7 @@ were never going to be the theorem).
 
 ## D222 — READ THE GRADE OFF THE DENOTATION: `pair` SHARES ONE π, `curry` HAS TWO (2026-09-20)
 
-**Status**: Superseded in part by D311 (2026-10-12): the shared π gives way to a grade per premise and their product (a guarded grade is not above `pure`, so sequencing is not the join); `curry`'s two grades stand.
+**Status**: Superseded in part by D311 (2026-10-12): the shared π gives way to a grade per premise and their product (a guarded grade is not above `pure`, so sequencing is not the join); `curry`'s two grades stand. **Restored by D314 (2026-10-14)**: with the grades a chain, sequencing's product IS the join, so the shared π is the graded bind again.
 
 The design call plan 0.95 A owed, made from what the terms MEAN rather than from
 what the elaborator happens to accept.
@@ -18303,7 +18303,7 @@ The meaning is defined on DERIVATIONS, so D308's coherence ("two derivations of 
 
 ## D311 — ONCE IS TOTAL + PRODUCTIVE; A SERVER IS GUARDED ITERATION OF AN EFFECT, AND `main` IS AN ORDINARY FUNCTION (2026-10-12)
 
-**Status**: Superseded in part by D312 (2026-10-13): `Eff` itself is the completely iterative monad, so G1's split of `eff` (returns) from `prod` (may run forever) and §3's "a server is `iter`" are withdrawn; T+P, the guard `eff⁺` and "`main` is an ordinary function" stand.
+**Status**: Superseded in part by D312 (2026-10-13): `Eff` itself is the completely iterative monad, so G1's split of `eff` (returns) from `prod` (may run forever) and §3's "a server is `iter`" are withdrawn; T+P and "`main` is an ordinary function" stand; the guard `eff⁺` was withdrawn by D314 (and the server is the anamorphism into `Eff`, D316).
 
 **Relates**: GOAL.md ("A server, a REPL, any long-running interactive program"; "Structured
 recursion only"), OCP-0003, D058/D179 (`Behavior`: the first `n` events, for total+productive
@@ -18671,3 +18671,53 @@ program at all.
 * Compiler: the entry coerces `main`'s meaning to `T∞` (`subM`), as any use does.
 * Programs and tests: `main : IO Unit` becomes `main : Act Unit Unit` or
   `main : Eff Unit Unit`, whichever is the body's principal type.
+
+
+---
+
+## D316 — THE SIMPLEST SPEC: ONE OBJECT LANGUAGE, ONE SIGNATURE FUNCTOR, ONE CORE, ONE MEANING; THE CHECKER IS NOT IN THE SPEC (2026-10-14)
+
+**Approved by the user, 2026-10-14** (in conversation, on plan 0.118's proposal and its four decisions).
+**Replaces**: plan 0.114's remaining phases (its rules R1–R10 and target order stand). **Amends**: D137 (the
+Spec's front end is a grammar over its own AST, not the parser's relations), D243 (one polymorphic core;
+no `rigid` type former), D305 (the mode-agreement claims leave `Spec.Metatheory`), D298's "decision
+procedures" allowance (no deciders in the Spec). **Relates**: GOAL.md, D306, D307, D312–D315.
+
+### Context
+Starting plan 0.117 F3′1 (D314) touched ~25 Spec modules for one grade change. A review (plan 0.118 §1)
+found the Spec presents its content several times and carries the compiler's machinery: ~60 imports of
+implementation modules, two type systems (3-mode surface judgment and core), two cores (ground and
+polymorphic), three value domains, two to three copies of the signature functor, five codata carriers,
+six equalities, and ~3 000 lines of proof helpers, deciders and encodings.
+
+### Decision
+1. **`correct` keeps talking about source TEXT.** Text → typed program is in the Spec and on the apex's
+   proof path, so "this program is correct" is about the program as written and the parser is not
+   trusted. The Spec's grammar is written over the Spec's OWN syntax tree; the Spec imports no
+   implementation module.
+2. **The Spec says WHICH programs are well-typed and what they mean, not how to decide it.** The
+   surface is given by ONE declarative relation from surface terms to core terms, whose side conditions
+   are core typing; a definition's signature equals its principal type (D314). The bidirectional checker
+   (and the D072 oracle) stays in the implementation, specified by its own algorithmic judgment, and is
+   proved SOUND and COMPLETE against the Spec's relation (completeness is what `correct`'s completeness
+   half needs; principal types make it provable).
+3. **One polymorphic core**: types over de Bruijn type variables, ground types the closed case; one
+   typing judgment; `∀` means the family of its closed instances. No ground duplicate, no `rigid`.
+4. **One of each in the semantics**: the signature functor `H_Σ` defined once; `T = μY. X + H_Σ Y`,
+   `T∞ = νY. X + H_Σ Y`; `M` on the chain `pure ⊑ act ⊑ eff` with the monad morphisms along it (D307's
+   family); one value domain; one graded ν; bisimilarity the one equality of `T∞`. The server is the
+   anamorphism into `Eff` (`T∞ B` is the final coalgebra of `B + H_Σ(−)`), stated by unfold's universal
+   property — not a separate "iteration".
+5. **Out of the Spec** (into the implementation, never deleted while used): proof helpers (renaming,
+   substitution, abstraction, admissible-rule proofs), deciders, encodings (`Res`, functor re-encodings,
+   float bit layouts, contract keys), and the FFI honesty deciders; FFI honesty itself is a short
+   well-formedness condition on signatures. Obsolete under D314/D315 and deleted: the guard (`eff⁺`,
+   `T⁺`, `ν⁺`), the F3a rules, `IOUnit`.
+6. **Made in one go**: the whole new Spec is written as ONE patch, reviewed and approved by the user as
+   one chunk, recorded with `make spec-approve` in one red commit; then the red is followed top-down.
+
+### Consequences
+* Plan 0.118 is the vehicle for D314/D315: their Spec content lands in the new Spec.
+* `Spec.Metatheory.TypeSystem` loses the mode-agreement fields; the implementation gains the proof that
+  the algorithmic judgment equals the Spec's relation.
+* Most of the implementation's proofs go red at once; the branch stays unmergeable until they are green.
