@@ -48,13 +48,13 @@ entry updates the rule it changes here, in the same commit.
   well-scoped de Bruijn terms: usage `Ψ` (QTT), effect grade `π`; the surface
   combinators (`compose`, `pair`, `case`, `curry`, `cata`, `ana`, …) are
   λ-term definitions of the core. (D231)
-- **The surface is ONE declarative elaboration relation** from surface terms
-  to core terms, whose side conditions are core typing; the Spec's grammar is
-  over the Spec's own syntax tree, so `correct` is about source text and the
-  parser is not trusted. The Spec says WHICH programs are well-typed, not how
-  to decide it: the bidirectional checker and the D072 oracle are the
-  implementation, proved SOUND and COMPLETE against that relation.
-  (D316 ← D231, D137)
+- **The surface is a bidirectional judgment that elaborates**: each rule
+  produces the core term it means, so there is no separate elaboration
+  function; it accepts exactly today's texts (a mode-free relation would
+  accept more texts, needing complete inference, for no added expressive
+  power: every such text has an annotated spelling). No decider premises. The
+  Spec's grammar is over the Spec's own syntax tree, so `correct` is about
+  source text and the parser is not trusted. (D316 amended ← D231, D137)
 - **A core term determines its type** (Church-style): `lam A q π`, `let′ q`,
   `inl B`, `inr A`, `case qℓ qr`, `absurd A`, `roll F`, `fold F`, `unfold F`;
   the grade is determined up to `⊢sub-eff`, which changes no type. The surface
@@ -87,9 +87,9 @@ entry updates the rule it changes here, in the same commit.
   wrong. Included: type substitution, the term model (a graded category;
   `⟦_⟧` preserves composition), the laws of `<:` and `⊑π`, coherence, Freyd,
   the fold's universal property and unfold's (the server's included), and
-  totality: T+P, no self-reference, an effectful stream that emits. The
-  checker's mode agreement is not a Spec claim (D316). (D316 ← D305, D304 ←
-  D303, D285, D240, D307, D309, D311)
+  totality: T+P, no self-reference, an effectful stream that emits; and the
+  surface judgment's mode agreement. (D316, D305, D304 ← D303, D285, D240,
+  D307, D309, D311)
 - **The extension path is dependent types with QTT grades** (OCP-0009); a
   refinement `{x : A | P x}` is a Σ-type with an erased proof, not a separate
   type system. (OCP-0009 ← D017)
@@ -347,9 +347,7 @@ with the code:
    `evalᴰ`; how it reads against the current Spec meaning is not recorded.
 2. **D314**: the surface names for `Req` (= `H_Σ`, D316) and `request`.
    (`main` settled by D315.)
-3. **D072/D316**: the checker's and the oracle's completeness against the
-   Spec's elaboration relation (what `correct`'s completeness half needs) is
-   an open obligation.
+3. **D072**: the oracle's completeness is an open obligation.
 4. **Postulated Spec claims**: the fold's universal property and fusion
    (P2/P3), unfold's computation law (P5).
 5. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical

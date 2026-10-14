@@ -18716,8 +18716,22 @@ six equalities, and ~3 000 lines of proof helpers, deciders and encodings.
 6. **Made in one go**: the whole new Spec is written as ONE patch, reviewed and approved by the user as
    one chunk, recorded with `make spec-approve` in one red commit; then the red is followed top-down.
 
+### Amendment (2026-10-14, approved by the user): item 2 — the surface stays BIDIRECTIONAL
+Writing the surface showed that a mode-free declarative relation accepts MORE TEXTS than today's
+judgment (`let f = \x -> x + 1 in f 3`: a `let` right-hand side must synthesize, and a bare lambda only
+checks), so `correct`'s completeness half would demand complete type inference with subtyping and grades
+in the checker — a language change and a new implementation project, not a simplification. It adds no
+expressive power: every such text has an annotated spelling (`(\x -> x + 1 : Int -> Int)`) that
+elaborates to the same core term. So item 2 is amended:
+* the Spec's surface is a BIDIRECTIONAL judgment (synthesis, checking, the domain-given mode) accepting
+  exactly the texts it accepts today, except the decided changes (D314/D315);
+* each rule produces its CORE TERM (the judgment is the elaboration — no separate elaboration function);
+* cleaned: no decider premises (`classifyAppHead`, `Maybe`-valued lookups become relations), no
+  String-keyed duplicate context, generic rules where the per-generator ones only repeat them;
+* the mode-agreement claims stay in `Spec.Metatheory` (they are laws of this judgment).
+
 ### Consequences
 * Plan 0.118 is the vehicle for D314/D315: their Spec content lands in the new Spec.
-* `Spec.Metatheory.TypeSystem` loses the mode-agreement fields; the implementation gains the proof that
-  the algorithmic judgment equals the Spec's relation.
+* (Superseded by the amendment above:) ~~`Spec.Metatheory.TypeSystem` loses the mode-agreement fields; the
+  implementation gains the proof that the algorithmic judgment equals the Spec's relation.~~
 * Most of the implementation's proofs go red at once; the branch stays unmergeable until they are green.

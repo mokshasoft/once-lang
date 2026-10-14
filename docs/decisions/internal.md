@@ -152,10 +152,10 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **Checking a definition against its signature is equality with the
   synthesized principal type**; subsumption only at a use. Mode agreement is
   plain "inferred ⊑ checked". (D314; F3a's `_≼_` and guard rules withdrawn)
-- **The checker is the implementation's algorithmic judgment**, proved SOUND
-  and COMPLETE against the Spec's declarative elaboration relation; mode
-  agreement and the bidirectional judgment's coherence are implementation
-  lemmas, not Spec claims. (D316 ← D305, D256)
+- **The checker decides the Spec's bidirectional judgment**: proved SOUND and
+  COMPLETE against it; the judgment's elaboration is its own (each rule
+  produces its core term), so the checker's output is a derivation of it.
+  (D316 amended, D305, D256)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering
