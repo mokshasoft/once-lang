@@ -78,9 +78,15 @@ entry updates the rule it changes here, in the same commit.
   `A ⇒[ q , π ] B` with quantity and purity independent; `Eff A B` is
   `A ⇒[ Many , eff ] B`. The monad `T` exists only in the semantics.
   (D046 ← D032 ← D026)
-- **The grade is a checked, erased refinement.** `pure ⊑ eff` is subsumption
-  with no term; its meaning is the monad unit. Eff → pure is forbidden. There
-  is no `arr`. (D068, D226, D250)
+- **The grade is a checked, erased refinement.** `pure ⊑ act ⊑ eff` is
+  subsumption with no term; its meaning is the monad morphism between the
+  grades' monads. Eff → pure is forbidden. There is no `arr`. (D314, D068,
+  D226, D250)
+- **A composite's type is computed from its parts.** The meaning of `g ∘ f` is
+  determined by `g` and `f` alone, and so is its type: its grade is computed
+  from the arms' grades (the graded monad's bind), never chosen by context.
+  Every term has a principal type, and every principal type is writable.
+  (D314)
 - **Effects form a Freyd category**: a computation is central (commutes with
   every computation) iff it is pure, and only a pure computation may be
   skipped. (D308)
@@ -91,10 +97,10 @@ entry updates the rule it changes here, in the same commit.
 - **Effect-free value introductions are grade-polymorphic**; λ is pure, its
   body's grade rides the arrow. (D069, D231)
 - **Read the grade off the denotation**: `pair` runs its arms left first, and
-  its grade is the PRODUCT of theirs — every rule that sequences premises
-  takes a grade per premise (in the core; the surface `compose`/`pair` still
-  share one grade, plan 0.117 C2b); `curry`'s outer arrow is effect-free and its inner arrow
-  carries the body's grade. (D311 ← D222 ← D219, D066)
+  its grade is the PRODUCT of theirs. The grades are a chain, so the product
+  is the join and one grade shared by the arms IS the graded bind; `curry`'s
+  outer arrow is effect-free and its inner arrow carries the body's grade.
+  (D314 ← D311 ← D222 ← D219, D066)
 - **Effects follow data flow, and reading order where there is none**: an
   effectful fold runs a product layer left first. (D286 ← D221)
 - **Applying an effectful closure with `apply`** gives the suspension
@@ -133,25 +139,20 @@ entry updates the rule it changes here, in the same commit.
   `main : Eff Unit Unit` is a server as well as a program that ends; `main` is
   an ordinary function, specified only as the entry. A computation that
   RETURNS has the finer type `Act A B` (the free monad `T`). An infinite run is
-  built by GUARDED ITERATION — at the surface `ana` into `Eff`, in the core its
-  own former `iter` (finality of `T∞`: a guarded equation has a unique
-  solution); a step ends at once with a value or performs an event before it
-  answers (`A → B + T⁺ (B + A)`). (D313 ← D312 ← D311)
-- **Grades**: `pure ⊑ act ⊑ eff` and `eff⁺ ⊑ eff`. `act` is a computation
-  that RETURNS (the free monad `T`, finite trees; surface `Act A B`); `eff`
-  may run forever (`T∞`; surface `Eff A B`); `eff⁺`, the guard, is one whose
-  first node is an event (never written; inferred). Grades are an ordered
-  monoid and a sequencing rule concludes at the product of its premises'
-  grades. (D313 ← D312 ← D311)
-- **The server loop is `ana` into `Eff`**: the surface unfold, checked against
-  `Eff A B` with a step `A -> B + Eff Unit (B + A)` whose round must begin
-  with an event, is guarded iteration (core `iter`); against `ν F` it builds a
-  stream. One construction: the unique map into a final coalgebra. (D313)
-- **The guard has no unit**: a value performs no event, so whatever returns a
-  value at its arrow's grade — the combinators, λ, `curry`'s outer arrow,
-  `ana`'s construction, a fold's algebra — needs a grade above `pure`
-  (evidence `pure ⊑ π`); the meaning maps over a premise instead of binding
-  and returning. (D311)
+  an unfold of an effectful coalgebra `A → T (F A)` (GOAL.md) — at the surface
+  `ana` into `Eff`, in the core its own former `iter`. (D314 ← D313 ← D312 ← D311)
+- **Grades**: the chain `pure ⊑ act ⊑ eff`. `act` is a computation that
+  RETURNS (the free monad `T`, finite trees; surface `Act A B`); `eff` may run
+  forever (`T∞`; surface `Eff A B`). Sequencing's product is the join, and
+  every grade has a unit. (D314 ← D313 ← D312 ← D311)
+- **The server loop is `ana` into `Eff` over requests**: a round is a
+  terminating computation that finishes or returns the NEXT CALL AS DATA,
+  `step : Act A (B + Req A)` with `Req A = Σ_op Arg_op × (Ans_op → A)` over the
+  program's signature (provisional names). Its meaning is the unique map into
+  the final coalgebra `νY. T (B + Req Y)`, flattened into `T∞ B`.
+  **Guardedness is the functor's shape, not a grade**: every round that
+  continues has a call at its root, so no type needs to say "guarded".
+  Against `ν F` the same `ana` builds a stream. (D314 ← D313)
 - **An effectful computation means a tree of the completely iterative monad**
   (`T∞`, no silent node): equal computations are bisimilar trees, observed by
   their finite prefixes; effectful laws hold up to bisimilarity, never `≡`.
@@ -185,10 +186,11 @@ entry updates the rule it changes here, in the same commit.
 ## 6. Subtyping
 
 - **One subtyping judgment** `A <: B`, generated by `Void <: B` and
-  `pure ⊑ eff`, closed under the type formers (arrows contravariant in the
+  `pure ⊑ act ⊑ eff`, closed under the type formers (arrows contravariant in the
   domain). Syntax-directed, unique derivations. Its one conversion, `t-sub`,
-  sits at the switch from inference to checking; in the core it is the term
-  `coerce A B t`. `A <: Unit` and `Int <: Float` are not subtyping. (D226)
+  sits where a value is USED (an argument, a branch at a join, `main`'s
+  entry) — never between a definition and its signature; in the core it is the
+  term `coerce A B t`. `A <: Unit` and `Int <: Float` are not subtyping. (D226)
 - **Eliminators consume their principal argument up to `<:`**; grades are
   never narrowed. (D229, its Void rules withdrawn by D251)
 - **Int widens to Float** only in mixed binary operations (two local rules);
@@ -206,10 +208,12 @@ entry updates the rule it changes here, in the same commit.
   one judgment realize to terms with the same meaning (proved). (D256)
 - **`let` and a top-level definition are interderivable**; a defined name
   unfolds to its definiens and folds back. (D284)
-- **Signatures are optional assertions**: a signature never changes a
-  program's meaning; a sig-less definition gets its principal type from an
-  untrusted oracle and is then checked by the unification-free kernel.
-  (D072, D007)
+- **Signatures are optional assertions that confirm the principal type**: a
+  definition's type IS its body's principal type, and a signature must equal
+  it — never a supertype (two signatures on one body would make two
+  functions: `Act` is a finite tree, `Eff` a `T∞` tree). A sig-less definition
+  gets its principal type from an untrusted oracle and is then checked by the
+  unification-free kernel. (D314, D072, D007)
 
 ## 8. Polymorphism and modules
 
@@ -316,8 +320,9 @@ with the code:
 
 1. **D281** (`in-ν`'s own denotation) is stated over the IR denotation
    `evalᴰ`; how it reads against the current Spec meaning is not recorded.
-2. **D007**'s "exact match, no specialisation" clause for signatures vs
-   bidirectional checking of bodies against signatures.
+2. **D314**: `main` declared at its principal type (`Act Unit Unit` for a
+   program that ends), used at `Eff Unit Unit` by the entry — to confirm; and
+   the surface names for `Req` and `request`.
 3. **D072**: the oracle's completeness is an open obligation.
 4. **Postulated Spec claims**: the fold's universal property and fusion
    (P2/P3), unfold's computation law (P5).

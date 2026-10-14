@@ -18491,6 +18491,9 @@ a finite statement). Everything D311 built for `prod` (`T∞`, `toT∞`, coheren
 
 ## D313 — `Act`: THE TERMINATING EFFECT GRADE; THE SERVER LOOP IS `ana` INTO `Eff` (2026-10-13)
 
+**Status**: item 1's `eff⁺`, item 3's guarded step and the F3a rules SUPERSEDED by D314
+(2026-10-14); `act`, the surface types and "the loop is `ana` into `Eff`" stand.
+
 **Relates**: D312 (amends: the grade order; O1's framing), D311, D062/D233 (`ana`), D241,
 OCP-0009 (the plan-ref POC: pure, inductive kernel; `Fin n` taken), plan 0.117.
 
@@ -18548,3 +18551,79 @@ Plan 0.117 gains phase A′ (the `act` grade, top-down from the Spec); F becomes
   (`di-dom`). Linking: a reference links against its declaration at the declared type or its
   guard (`AtDecl`) — one contract (`contractOf`) for `act`, `eff` and `eff⁺`.
 
+
+## D314 — A COMPOSITE'S TYPE IS COMPUTED FROM ITS PARTS; A SIGNATURE ONLY CONFIRMS IT; GUARDEDNESS IS IN THE LOOP'S FUNCTOR, NOT A GRADE (2026-10-14)
+
+**Approved by the user, 2026-10-14** (in conversation, after comparing options A/B/C/D below).
+**Supersedes**: D313 item 1's `eff⁺` and item 3's guarded step; D312's standard guard (plan 0.117
+R6, O2); the F3a rules (`⊢sigop⁺`, `t-var-resolved-guard`, `_≼_`, `AtDecl`'s guard case).
+**Restores**: D007 (signatures exactly match the principal type) — closes language.md "Open" item 2.
+**Relates**: D072 (principal types by an oracle), D226 (subtyping), D253 (`main`), GOAL.md
+("the final coalgebra of `T ∘ F`; its unfold takes an effectful coalgebra `A → T (F A)`").
+
+### The principle
+A Once program is a composition of natural transformations and structured-recursion morphisms,
+and the composition is what it is. So:
+1. **The meaning of `g ∘ f` is determined by `g` and `f` alone, and so is its type**: the
+   composite's grade is COMPUTED from its arms' grades — the graded monad's bind
+   `M π₁ A × (A → M π₂ B) → M (π₁·π₂) B` — never chosen by the context it sits in. Every term
+   has a principal (least) type, computed compositionally.
+2. **A signature only confirms that result** (D007's reasons stand: a signature is an assertion,
+   not a coercion; two signatures on one body must not make two functions — with grades they
+   would: `Act` is a finite tree in `T`, `Eff` a tree of `T∞`). A definition's type IS its
+   body's principal type; a signature that differs from it is a type error. **Checking a body
+   against a signature with subsumption goes** — it is what lets a signature change the type.
+   Subsumption stays where a value is USED (an argument, a branch at a join, `main`'s entry), and
+   is coherent there because subeffecting is a monad morphism.
+3. **Hence the surface type language must be able to write every principal type**; otherwise a
+   subterm cannot be named or abstracted over (substitution — inlining — still holds; naming,
+   the converse, fails).
+
+### Context
+F3 (plan 0.117) had to type a guarded round point-free (`inr ∘ (writeLine ∘ readLine)` at `eff⁺`).
+The first design (F3a committed, the F3b "CompGrades" draft, withdrawn to branch
+`attic/f3b-compgrades`) gave an FFI reference two incomparable types (declared `act`, guard
+`eff⁺`) and let a composite's arm grades be picked from hand-listed shapes — both violate 1.
+Options weighed:
+* **A** finish the draft — violates 1 (no principal grade; context-chosen shapes). Rejected.
+* **B** complete the grade poset: grades as intervals of a run's call count `[lo, hi]`,
+  `lo ∈ {0,1}`, `hi ∈ {0, fin, ω}` (adds `act⁺ = [1, fin]`), order = containment, product =
+  saturating sum, per-arm graded bind. Principled and textbook (guarded morphisms as the ideal
+  `T⁺`), but by 2–3 guardedness becomes part of every effectful ARROW's type: an ordinary
+  one-call helper `echoOnce = writeLine ∘ readLine` would have the principal type
+  `Act⁺ Unit Unit`, and `echoOnce : Act Unit Unit` would be rejected. Rejected.
+* **C** a guard only in `ana`'s premise via a dedicated round former — special-purpose. Rejected.
+* **D** guardedness in the FUNCTOR of the loop (GOAL.md's `A → T (F A)` taken literally).
+  **Accepted.**
+
+### Decision
+1. **Grades are the chain `pure ⊑ act ⊑ eff`** (`M pure = Id`, `M act = T`, `M eff = T∞`).
+   `eff⁺`, `T⁺` as a grade, and the guard rules are removed. Sequencing's product is the join,
+   so the uniform `compose`/`pair` rule (arms at the composite's grade) IS the graded bind, and
+   every grade has a unit (`pure ⊑ π` always holds). Every principal grade is writable:
+   `A -> B`, `Act A B`, `Eff A B`.
+2. **The server loop is `ana` into `Eff` over a request functor.** A round is an ordinary
+   terminating computation that either finishes or returns the NEXT CALL AS DATA:
+   `step : Act A (B + Req A)`, `Req A = Σ_op Arg_op × (Ans_op → A)` over the program's
+   signature — the functor `H_Σ` that already defines `T` and `T∞`, so no new mathematics.
+   Its meaning: the unique map into the final coalgebra `νY. T (B + Req Y)`, flattened into
+   `T∞ B` by the canonical coalgebra morphism. Guardedness is the functor's shape: every round
+   that continues has a call at its root. Core `iter` takes this step.
+3. **An FFI reference has its declared type** (one call, its declared grade); its meaning is the
+   generic effect (`opCall` read at that grade). No second type.
+4. **Strict D007**: a definition's signature equals its principal type. `main`'s entry uses
+   `main` at `Eff Unit Unit` by subsumption at the use site, so `main` may be declared at its
+   principal type (`Act Unit Unit` for a program that ends — TO CONFIRM with the user; D253's
+   wording follows).
+
+### Consequences
+* Surface: names for `Req` and its former (provisional `Req A`, `request op arg k`) are the
+  user's (plan 0.117 F0′). The echo server carries the line to write as its state:
+  `step = \s -> (maybe skip writeLine s) ; inr (request readLine () just)` (a sketch).
+* Spec: `Spec.Type.Grade` (three grades), `Spec.Graded`/`GradedOps` (no `T⁺` grade), core `⊢iter`
+  (the request step), `Spec.Type.Honest`, `Spec.Metatheory` (claims at three grades; mode
+  agreement is plain "inferred ⊑ checked"), the canonical flattening map and its uniqueness.
+* Implementation: F3a's rules and `_≼_` are deleted, not generalised; the checker checks a
+  definition against its signature by EQUALITY with the synthesized principal type.
+* Plan 0.117: F3 replaced by F3′ (this decision, top-down from the Spec); F2 becomes `ana`
+  into `Eff` over `Req`; G/H as planned.

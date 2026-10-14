@@ -141,15 +141,13 @@ decision-log entry updates the rule it changes here, in the same commit.
   bisimulation-to-equality axiom. (D201)
 - **The Spec's effectful meaning is a tree of its grade's monad; the IR's is
   still a finite `T` tree** (until plan 0.117 G). At `act` both are finite and
-  related by `RelT′`; at `eff`/`eff⁺` the Spec's is a `T∞` tree, related by
+  related by `RelT′`; at `eff` the Spec's is a `T∞` tree, related by
   `RelT∞′` (the same nodes, read off the finite side), which respects
   bisimilarity on the `T∞` side (`RelT∞′-≈`) and gives the same events at
   every depth (`RelT∞′-events`). (D313, D312)
-- **Checking accepts the inferred type's supertypes, or its guard**: an FFI
-  reference also checks at its declared arrow's `eff⁺` instance, which is
-  incomparable with `act`; mode agreement concludes `_≼_` (subtyping, the
-  guard step, through pair literals), and every coherence route rules the
-  guard out from the grade evidence it holds. (D313)
+- **Checking a definition against its signature is equality with the
+  synthesized principal type**; subsumption only at a use. Mode agreement is
+  plain "inferred ⊑ checked". (D314; F3a's `_≼_` and guard rules withdrawn)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering
