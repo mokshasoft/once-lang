@@ -5,6 +5,11 @@ entries supersede earlier ones. The current state of every rule is `docs/decisio
 and `docs/decisions/internal.md`, read with `GOAL.md`; an entry that sets or changes a rule updates
 them in the same commit.
 
+**A Spec-changing entry is decided only when it records the user's approval** (who, when). A plan
+or design section written by the implementer is not approval. The Spec (`formal/Once/Spec.agda`,
+`formal/Once/Spec/**`) is frozen at the hashes in `formal/scripts/spec.sha256`: `make spec-gate`
+fails on any unapproved edit, and `make spec-approve` records an approved change.
+
 ---
 
 ## D001: Generators as Reserved Words

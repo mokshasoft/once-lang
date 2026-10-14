@@ -224,9 +224,17 @@ public-gate:
 	@scripts/public-gate.sh
 
 .PHONY: spec-gate
-# The Spec imports only the Spec (plan 0.114): a ratchet on its full import closure.
+# The Spec imports only the Spec (plan 0.114): a ratchet on its full import closure;
+# and the Spec is frozen at its approved hashes (scripts/spec.sha256).
 spec-gate:
 	@python3 scripts/spec-import-closure.py --gate
+	@scripts/spec-freeze.sh --gate
+
+.PHONY: spec-approve
+# The Spec freeze: record the current Spec as approved. Only after the user
+# approved the change (scripts/spec-freeze.sh).
+spec-approve:
+	@scripts/spec-freeze.sh --approve
 
 .PHONY: metatheory-gate
 # D304: the language's metatheory (Once/Metatheory) imports only the Spec side.
