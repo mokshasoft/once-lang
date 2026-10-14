@@ -16689,6 +16689,8 @@ annotation at the instance and is a separate decision.
 
 ## D253 — `main` IS AN ORDINARY ENTRY; THE PROGRAM RUNS A REFERENCE TO IT (PLAN 0.103 6a‴) (2026-10-01)
 
+**Amended by D315 (2026-10-14)**: the entry is the `main` whose type is `<: Eff Unit Unit`, declared at its principal type; `IO` is gone.
+
 **Relates**: D241 (the module is a telescope), D245 (direct-call ABI), D246/D248 (a module
 reference is a call), D249 (distinct entry names).
 
@@ -18627,3 +18629,45 @@ Options weighed:
   definition against its signature by EQUALITY with the synthesized principal type.
 * Plan 0.117: F3 replaced by F3′ (this decision, top-down from the Spec); F2 becomes `ana`
   into `Eff` over `Req`; G/H as planned.
+
+---
+
+## D315 — `main` IS USED AT `Eff Unit Unit`, NOT DECLARED THERE; `IO` LEAVES THE LANGUAGE (2026-10-14)
+
+**Approved by the user, 2026-10-14** (in conversation, while starting plan 0.117 F3′1).
+**Settles**: D314 item 4's "TO CONFIRM" and language.md "Open" item 2's `main` half.
+**Amends**: D253 (the entry is selected as `main : IO Unit`). **Relates**: D007, D226,
+D314, plan 0.96 (`IO` is not a language construct), D032 (introduced `IO`).
+
+### Context
+Under strict D007 (D314 item 2) a definition's signature equals its body's principal type.
+The Spec selected the entry as the definition `main` whose type IS `Eff Unit Unit`
+(`Spec.Module.MainsEffUU`/`MainIn`, `ty ≡ EffUU`). A program that ends has the principal
+type `Act Unit Unit`, so it could not declare `main : Eff Unit Unit` — and could not be a
+program at all.
+
+### Decision
+1. **`main` is an ordinary definition, and the entry is an ordinary USE of it.** The
+   entry runs `main` at `Eff Unit Unit`; like every use site (an argument, a branch at a
+   join), it takes `main` up to subtyping: a module's entry is the definition `main` whose
+   type `ty` satisfies `ty <: Eff Unit Unit`. Nothing about `main` is special: wherever an
+   `Eff A B` is required, an `Act A B` or an `A -> B` may stand (`sub-arr` with
+   `pure ⊑ act ⊑ eff`), and the entry is one such place.
+2. **`main` is declared at its principal type**, as every definition is (D007):
+   * `main : Eff Unit Unit` — a program that may run forever (a server);
+   * `main : Act Unit Unit` — a program that ends;
+   * `main : Unit -> Unit` — a program with no events. Accepted: it is a correct
+     program whose trace is empty, and rejecting it would be a special case for `main`.
+   A signature wider than the body's principal type is an error here as everywhere.
+3. **`IO` leaves the language.** `IO A` was parser sugar for `Eff Unit A` (D032, plan
+   0.96 §0). Under 2 it would reject every program that ends. The sugar is deleted from
+   the grammar and its parsers on this branch (plan 0.96's six parser sites, option B), and
+   programs write their principal type. An `IO` defined in a library, which the compiler does
+   not know of, is the rest of plan 0.96 (its D027 import question), not part of this decision.
+
+### Consequences
+* Spec: `Spec.Module`'s entry predicates read `ty <: EffUU` (one predicate, "the entry's
+  type is usable at `Eff Unit Unit`"); the grammar loses `IO`.
+* Compiler: the entry coerces `main`'s meaning to `T∞` (`subM`), as any use does.
+* Programs and tests: `main : IO Unit` becomes `main : Act Unit Unit` or
+  `main : Eff Unit Unit`, whichever is the body's principal type.

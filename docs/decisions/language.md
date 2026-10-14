@@ -15,9 +15,17 @@ entry updates the rule it changes here, in the same commit.
 
 ## 1. What a program is
 
-- **A program is `main : Eff Unit Unit`** (`IO Unit` is sugar for it). It takes
-  nothing and returns nothing; `main` is an ordinary entry of the module
-  telescope, and the program runs a reference to it. (D253, D227, D239)
+- **A program is a `main` usable at `Eff Unit Unit`.** `main` is an ordinary
+  definition, declared at its principal type like every other: `Eff Unit Unit`
+  (it may run forever — a server), `Act Unit Unit` (it ends), or `Unit -> Unit`
+  (no events). The entry is an ordinary USE of `main` at `Eff Unit Unit`, up to
+  subtyping (`ty <: Eff Unit Unit`), exactly as an `Act A B` or `A -> B` may be
+  passed where an `Eff A B` is required; nothing about `main` is special.
+  `main : Eff Unit Unit` on a body that ends is rejected (D007: a signature
+  never widens). It takes nothing and returns nothing; `main` is an ordinary
+  entry of the module telescope, and the program runs a reference to it. There
+  is no `IO`: the sugar is gone from the language (a library alias is plan
+  0.96). (D315 ← D253, D227, D239)
 - **Its meaning is its trace of observable effects**: an effectful computation
   means an inductive interaction tree over the operations its grade permits
   (a value; an answering call with its continuation; a halting call at a
@@ -136,8 +144,8 @@ entry updates the rule it changes here, in the same commit.
 - **Once is total and productive** (T+P): a pure computation is a value; an
   effectful computation reaches each next event after finite work, and NEED
   NOT STOP — `Eff A B` is `A → T∞ B`, the free completely iterative monad, so
-  `main : Eff Unit Unit` is a server as well as a program that ends; `main` is
-  an ordinary function, specified only as the entry. A computation that
+  a `main` used at `Eff Unit Unit` may be a server; `main` is an ordinary
+  function, specified only as the entry (D315). A computation that
   RETURNS has the finer type `Act A B` (the free monad `T`). An infinite run is
   an unfold of an effectful coalgebra `A → T (F A)` (GOAL.md) — at the surface
   `ana` into `Eff`, in the core its own former `iter`. (D314 ← D313 ← D312 ← D311)
@@ -189,7 +197,7 @@ entry updates the rule it changes here, in the same commit.
   `pure ⊑ act ⊑ eff`, closed under the type formers (arrows contravariant in the
   domain). Syntax-directed, unique derivations. Its one conversion, `t-sub`,
   sits where a value is USED (an argument, a branch at a join, `main`'s
-  entry) — never between a definition and its signature; in the core it is the
+  entry, D315) — never between a definition and its signature; in the core it is the
   term `coerce A B t`. `A <: Unit` and `Int <: Float` are not subtyping. (D226)
 - **Eliminators consume their principal argument up to `<:`**; grades are
   never narrowed. (D229, its Void rules withdrawn by D251)
@@ -320,9 +328,8 @@ with the code:
 
 1. **D281** (`in-ν`'s own denotation) is stated over the IR denotation
    `evalᴰ`; how it reads against the current Spec meaning is not recorded.
-2. **D314**: `main` declared at its principal type (`Act Unit Unit` for a
-   program that ends), used at `Eff Unit Unit` by the entry — to confirm; and
-   the surface names for `Req` and `request`.
+2. **D314**: the surface names for `Req` and `request`. (`main` settled by
+   D315.)
 3. **D072**: the oracle's completeness is an open obligation.
 4. **Postulated Spec claims**: the fold's universal property and fusion
    (P2/P3), unfold's computation law (P5).
