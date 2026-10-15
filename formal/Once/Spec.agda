@@ -1,45 +1,62 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
 -- Once.Spec — the definition of the Once language.
 --
--- The Spec is the modules under `Once/Spec`. This module is their index, in
--- reading order. It defines nothing and re-exports nothing: a name is
--- imported from the module that defines it.
+-- The Spec is the modules under `Once/Spec`; this is their index, in reading
+-- order. It defines nothing and re-exports nothing. Everything else (the
+-- parser, the checker, the compiler, the machine models, every proof) is the
+-- implementation, checked against the Spec and never trusted in its place.
 --
--- Everything else (the parser, the elaborator, the IR, code generation, the
--- machine models and every soundness or completeness proof) is the
--- implementation. It is checked against the Spec and never trusted in its
--- place.
---
--- A program is a morphism of the free cartesian closed category on a
--- signature Σ. Its `signature` declarations are the generators of Σ, and its
--- definitions are built from them. That gives three separate times:
---   * building the compiler: `correct` is proved once, for every
---     implementation of every signature (`CorrectCompiler`);
---   * compiling a program: Σ is a function of the program;
---   * implementing an interpretation: an `Impl` of the program's signature,
---     provided by its author without the compiler (`Once.Spec.Contract`).
+-- A program is a composition of morphisms: a telescope of definitions over a
+-- signature Σ of operations, built from a cartesian closed core with initial
+-- algebras and final coalgebras, whose effects are the free (completely
+-- iterative) monads on Σ. What it means is the sequence of operations it
+-- performs against an Interpretation of Σ.
 ------------------------------------------------------------------------
 
 module Once.Spec where
 
--- What you may write.
-import Once.Spec.Type         -- types
-import Once.Spec.Syntax       -- terms, as written and as resolved
-import Once.Spec.Lexing       -- text to tokens
-import Once.Spec.Parsing      -- tokens to a module
-import Once.Spec.Resolution   -- what each written reference denotes
-import Once.Spec.Typing       -- the typing judgment
+-- The objects.
+import Once.Spec.Grade           -- usage and effect grades
+import Once.Spec.Type            -- the types, over type variables
+import Once.Spec.Sub             -- subtyping
+import Once.Spec.Name            -- canonical names
+import Once.Spec.Word            -- `Int`: the target's machine word
+import Once.Spec.Float.Dyadic    -- `Float`: the target's format …
+import Once.Spec.Float.Decimal   -- … its literals, rounded once …
+import Once.Spec.Float.Arith     -- … and its arithmetic
+import Once.Spec.Numerics        -- the target's numbers
+import Once.Spec.Bool            -- truth values
 
--- What it means.
-import Once.Spec.Meaning      -- the denotation
-import Once.Spec.Contract     -- what an interpretation owes
-import Once.Spec.Program      -- what a typed program is
+-- Effects, and what is observed.
+import Once.Spec.Signature       -- the operations Σ and their functor H_Σ
+import Once.Spec.Effect          -- T = μ(X + H_Σ), T∞ = ν(X + H_Σ), the grades' monads
+import Once.Spec.Observation     -- Interpretations, and a run's calls
+import Once.Spec.Polynomial      -- polynomial functors and their initial algebras
+import Once.Spec.Domain          -- the value of each type
+import Once.Spec.Equivalence     -- when two meanings are the same
 
--- What a correct compiler is.
+-- The core calculus.
+import Once.Spec.Context         -- contexts and usages
+import Once.Spec.Core.Syntax     -- terms
+import Once.Spec.Core.Typing     -- the typing judgment
+import Once.Spec.Core.Meaning    -- the meaning of a derivation
+import Once.Spec.Core.Derived    -- the categorical combinators, as terms
+import Once.Spec.Core.Program    -- a program, and what it does
+
+-- What a programmer writes.
+import Once.Spec.Surface.Syntax      -- the syntax tree
+import Once.Spec.Surface.Lexing      -- text to tokens
+import Once.Spec.Surface.Grammar     -- tokens to a module
+import Once.Spec.Surface.Resolution  -- what each name denotes
+import Once.Spec.Surface.Typing      -- which expressions are typed, and their core terms
+import Once.Spec.Surface.Program     -- the program a module denotes
+import Once.Spec.Source              -- what a source text denotes
+
+-- What a correct compiler is, and what the language promises about itself.
 import Once.Spec.Correct
-
--- What the language promises about itself.
+import Once.Spec.Examples
 import Once.Spec.Metatheory

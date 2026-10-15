@@ -21,7 +21,6 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.List.Relation.Unary.Any using (Any)
 open import Data.String using (String)
-import Data.String as String
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 
 record CanonicalName : Set where
@@ -60,9 +59,3 @@ genNames = "id" ∷ "fst" ∷ "snd" ∷ "terminal" ∷ "initial" ∷ "inl" ∷ "
 NotGenerator : CanonicalName → Set
 NotGenerator cn = All (λ g → cn ≢ gen g) genNames
 
--- The dotted form, used as an external operation's key.
-showCanonical : CanonicalName → String
-showCanonical (canonical [])        = ""
-showCanonical (canonical (x ∷ []))  = x
-{-# CATCHALL #-}
-showCanonical (canonical (x ∷ xs))  = x String.++ "." String.++ showCanonical (canonical xs)

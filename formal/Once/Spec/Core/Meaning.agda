@@ -1,191 +1,246 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Spec.Core.Meaning — the CORE's meaning (plan 0.102 A; graded by D250,
--- plan 0.104 A.3).
+-- Once.Spec.Core.Meaning — the meaning of a core derivation.
 --
--- SPEC. One clause per typing rule. A derivation at grade `π` denotes
+-- At every closed instance `σ` of its type variables that respects their
+-- kinds, a derivation of `Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π` means
 --
---     ⟦ Γ ⊢[ Ψ ] t ∷ A ! π ⟧ : ⟦ Γ ↾ Ψ ⟧ → M π ⟦ A ⟧ᵛ
+--     ⟦ Γ ↾ Ψ ⟧ → M π ⟦ A ⟧
 --
--- call-by-value, over the environment RESTRICTED to the variables the term uses
--- (D143), with `M pure` the identity and `M eff` the trace monad. So a pure term
--- denotes a VALUE: `pure` is referential transparency (D250). Subeffecting
--- (`⊢sub-eff`) is the monad's unit; a definition (`⊢ref`) is a value of its
--- type, so referencing it IS that value.
+-- call by value, over the values of the variables the term USES: a variable
+-- used zero times has no value (an erased binder binds nothing). One clause
+-- per rule. Sub-usage forgets values; sub-effect is the monad morphism. A
+-- polymorphic definition means the family of its instances.
 --
--- The semantic operations at grade `π` are `Denotation.GradedOps`'.
+-- Relative to the target's numbers (`TargetNum`), the meanings of the
+-- earlier definitions, and an Interpretation of the signature.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Core.Syntax using (Defs)
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; sigOf; _!!_; Respects; _⟪_⟫; GSub; module Schema)
-open Schema using (arity; kinds; type)
 
-open import Once.Spec.Contract using (ISig)
-module Once.Spec.Core.Meaning {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+module Once.Spec.Core.Meaning (Σ : Signature) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-import Data.Fin
-open import Data.Product using (_,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂; [_,_]′; map₂)
-open import Data.Unit using (tt)
+open import Data.Bool using (not)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (refl)
-import Once.Spec.Word as OnceWord
+open import Data.Fin using (Fin; zero; suc)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω; EffGrade; eg-act; eg-eff)
+open import Once.Spec.Type using (Ty; KCtx; ∅ₖ; TySub; _⟨_⟩; _⟨_⟩F; Respects; respects-∘; ⟨⟩-∘; μ; ν)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.Spec.Signature
+  using (DeclType; constant; arrow; _∶_; Op; op; Effectful; e-act; e-g; e-eff; Layer; call; ⌜_⌝)
+open import Once.Spec.Context
+  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Spec.Numerics using (module TargetNum)
+open TargetNum fmt using (int-bits; float-format)
+import Once.Spec.Word as Word
 open import Once.Spec.Float.Decimal using (round)
-open import Once.Spec.Numerics using (TargetNum; module TargetNum)
-open TargetNum using (int-bits; float-format)
-open import Once.Spec.Type.Grade using (Zero; One; Many; eff)
-open import Once.Spec.Guarded using (iter∞)
-open import Once.Spec.Context using (Ctx; Usage; _↾_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Spec.Graded using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
-open import Once.Spec.Type.WellFormed using (con-fun)
-open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Spec.GradedOps
-  using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; sigOpGuardᵛ; ⟦_⟧<:ᵛ)
 import Once.Spec.Float.Arith as FA
 open import Once.Spec.Bool using (truth)
-open import Data.Bool using (not)
-open import Once.Spec.Contract using (Impl)
-open import Once.Spec.Core.Syntax S
-open import Once.Spec.Core.Typing S
-import Data.Fin
+open import Once.Spec.Effect Σ using (M; bind; fmap; bindᵍ; sub; T; T∞; returnT; return∞; T⁺; iter∞; performT; perform; perform⁺; module νM)
+open νM using (outν)
+open import Once.Spec.Observation Σ using (Interp; module Interp)
+open Interp using (value)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; foldM; anaM; conv)
+open import Once.Spec.Polynomial using (inS)
+open import Once.Spec.Core.Syntax
+open Schema using (arity; kinds; type)
+open import Once.Spec.Core.Typing Σ S
 
--- Plan 0.103 phase 4: the meaning of the signature — each definition's VALUE at
--- every kind-respecting ground instance (`∀` as a family). A definition is
--- pure (`⊢ref`), so it denotes a value, not a computation (D250).
---
--- Plan 0.105 (D257 amendment 2): and the meaning of what the program does NOT
--- define — an implementation of the interpretation signatures it is compiled
--- against, whose value contracts a reference reads. The two together are
--- everything a term can name. (An answering contract is a call, answered when
--- the program runs.)
+------------------------------------------------------------------------
+-- What a term may name besides its variables
+------------------------------------------------------------------------
+
 record DefSem : Set where
-  constructor defSem
   field
-    defs : (d : Data.Fin.Fin s) (τ : GSub (arity (S !! d))) → Respects (kinds (S !! d)) τ
-         → ⟦ type (S !! d) ⟪ τ ⟫ ⟧ᵛ
-    impl : Impl (sigOf S)
-open DefSem public
+    -- each earlier definition, at each instance of its schema
+    defs   : (d : Fin s) (τ : TySub (arity (S !! d)) 0) → Respects (kinds (S !! d)) ∅ₖ τ
+           → ⟦ type (S !! d) ⟨ τ ⟩ ⟧ᵛ
+    -- the world: an Interpretation of the signature
+    interp : Interp
+open DefSem
 
--- The runtime environment of a derivation at usage `Ψ`.
-Env : ∀ {n} → Ctx n → Usage n → Set
-Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
+------------------------------------------------------------------------
+-- The environment: the values of the variables used
+------------------------------------------------------------------------
 
--- The arithmetic is the target's (D054, D055, D113): an `Int` is a word of the
--- target's width and `+`, `-`, `*` wrap; `/` and `%` are total (RISC-V's
--- results for `x / 0` and `MIN / -1`); a comparison reads the words as SIGNED;
--- a `Float` operation is the target format's, correctly rounded.
-primSem : (p : Prim) → TargetNum → ⟦ primDom p ⟧ᵛ → ⟦ primCod p ⟧ᵛ
-primSem p-add  fmt (a , b) = OnceWord.Width._⊕_  (int-bits fmt) a b
-primSem p-sub  fmt (a , b) = OnceWord.Width._⊖_  (int-bits fmt) a b
-primSem p-mul  fmt (a , b) = OnceWord.Width._⊗_  (int-bits fmt) a b
-primSem p-div  fmt (a , b) = OnceWord.Width._/ˢ_ (int-bits fmt) a b
-primSem p-mod  fmt (a , b) = OnceWord.Width._%ˢ_ (int-bits fmt) a b
-primSem p-neg  fmt a       = OnceWord.Width.⊝_   (int-bits fmt) a
-primSem p-lt   fmt (a , b) = truth (OnceWord.Width._<ˢ_ (int-bits fmt) a b)
-primSem p-le   fmt (a , b) = truth (not (OnceWord.Width._<ˢ_ (int-bits fmt) b a))
-primSem p-gt   fmt (a , b) = truth (OnceWord.Width._<ˢ_ (int-bits fmt) b a)
-primSem p-ge   fmt (a , b) = truth (not (OnceWord.Width._<ˢ_ (int-bits fmt) a b))
-primSem p-eq   fmt (a , b) = truth (OnceWord.Width._≡ʷ_ (int-bits fmt) a b)
-primSem p-ne   fmt (a , b) = truth (not (OnceWord.Width._≡ʷ_ (int-bits fmt) a b))
-primSem p-fadd fmt (a , b) = FA.fadd (float-format fmt) a b
-primSem p-fsub fmt (a , b) = FA.fsub (float-format fmt) a b
-primSem p-fmul fmt (a , b) = FA.fmul (float-format fmt) a b
-primSem p-fdiv fmt (a , b) = FA.fdiv (float-format fmt) a b
-primSem p-i2f  fmt a       = FA.i2f (float-format fmt) (OnceWord.Width.toℤ (int-bits fmt) a)
+Slot : Quantity → Set → Set
+Slot Zero X = ⊤
+Slot One  X = X
+Slot Many X = X
 
-⟦_⟧ : ∀ {n} {Γ : Ctx n} {Ψ t A π} → Γ ⊢[ Ψ ] t ∷ A ! π → TargetNum → DefSem → Env Γ Ψ → M π ⟦ A ⟧ᵛ
+slot : ∀ q {X} → X → Slot q X
+slot Zero x = tt
+slot One  x = x
+slot Many x = x
 
-⟦ ⊢var {Γ = Γ} i ⟧ fmt ρ dγ = lookupᵛUsed Γ i dγ
+module _ {m : ℕ} (σ : TySub m 0) where
 
--- A λ is a value; its body's grade is the arrow's. An ERASED arrow takes no
--- argument (`⊤ → M π ⟦B⟧`); an erased binder is not bound (`bindᵛ0`).
-⟦ ⊢lam {Γ = Γ} {q = Zero} {q' = Zero} {A = A} _ d ⟧ fmt ρ dγ =
-  λ _ → ⟦ d ⟧ fmt ρ (bindᵛ0 {Γ = Γ} {A = A} dγ)
-⟦ ⊢lam {q = Zero} {q' = One}  () _ ⟧
-⟦ ⊢lam {q = Zero} {q' = Many} () _ ⟧
-⟦ ⊢lam {Γ = Γ} {q = One} {q' = Zero} {A = A} _ d ⟧ fmt ρ dγ =
-  λ _ → ⟦ d ⟧ fmt ρ (bindᵛ0 {Γ = Γ} {A = A} dγ)
-⟦ ⊢lam {Γ = Γ} {q = One} {q' = One} {A = A} _ d ⟧ fmt ρ dγ =
-  λ a → ⟦ d ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} One dγ a)
-⟦ ⊢lam {q = One} {q' = Many} () _ ⟧
-⟦ ⊢lam {Γ = Γ} {q = Many} {q' = Zero} {A = A} _ d ⟧ fmt ρ dγ =
-  λ _ → ⟦ d ⟧ fmt ρ (bindᵛ0 {Γ = Γ} {A = A} dγ)
-⟦ ⊢lam {Γ = Γ} {q = Many} {q' = One} {A = A} _ d ⟧ fmt ρ dγ =
-  λ a → ⟦ d ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} One dγ a)
-⟦ ⊢lam {Γ = Γ} {q = Many} {q' = Many} {A = A} _ d ⟧ fmt ρ dγ =
-  λ a → ⟦ d ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} Many dγ a)
+  Env : ∀ {n} → Ctx m n → Usage n → Set
+  Env ∅       []      = ⊤
+  Env (Γ ▸ A) (q ∷ Ψ) = Env Γ Ψ × Slot q ⟦ A ⟨ σ ⟩ ⟧ᵛ
 
--- D143: at an ERASED arrow the argument is not evaluated.
-⟦ ⊢app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {π = π} {π₁ = π₁} df dx ⟧ fmt ρ dγ =
-  bindᵍ π₁ π (⟦ df ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) dγ)) λ vf → vf tt
-⟦ ⊢app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} {π₁ = π₁} {π₂ = π₂} df dx ⟧ fmt ρ dγ =
-  bindᵍ π₁ _ (⟦ df ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) dγ)) λ vf →
-  bindᵍ π₂ π (⟦ dx ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) dγ)) λ vx → vf vx
-⟦ ⊢app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} {π₁ = π₁} {π₂ = π₂} df dx ⟧ fmt ρ dγ =
-  bindᵍ π₁ _ (⟦ df ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ)) λ vf →
-  bindᵍ π₂ π (⟦ dx ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ)) λ vx → vf vx
+  -- Forget the values a part of the term does not use.
+  restrict : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} → Ψ ⊑ᵘ Ψ′ → Env Γ Ψ′ → Env Γ Ψ
+  restrict {Γ = ∅}     []         tt      = tt
+  restrict {Γ = Γ ▸ A} (0≤q ⊑∷ ps) (ρ , v) = restrict ps ρ , tt
+  restrict {Γ = Γ ▸ A} (1≤1 ⊑∷ ps) (ρ , v) = restrict ps ρ , v
+  restrict {Γ = Γ ▸ A} (1≤ω ⊑∷ ps) (ρ , v) = restrict ps ρ , v
+  restrict {Γ = Γ ▸ A} (ω≤ω ⊑∷ ps) (ρ , v) = restrict ps ρ , v
 
-⟦ ⊢let {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {A = A} d₁ d₂ ⟧ fmt ρ dγ =
-  ⟦ d₂ ⟧ fmt ρ (bindᵛ0 {Γ = Γ} {A = A} (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) dγ))
-⟦ ⊢let {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π₁ = π₁} {π₂ = π₂} {A = A} d₁ d₂ ⟧ fmt ρ dγ =
-  bindᵍ π₁ π₂ (⟦ d₁ ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) dγ)) λ v →
-  ⟦ d₂ ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} One (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) dγ) v)
-⟦ ⊢let {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π₁ = π₁} {π₂ = π₂} {A = A} d₁ d₂ ⟧ fmt ρ dγ =
-  bindᵍ π₁ π₂ (⟦ d₁ ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) dγ)) λ v →
-  ⟦ d₂ ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} Many (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) dγ) v)
+  lookupᵛ : ∀ {n} (Γ : Ctx m n) (i : Fin n) → Env Γ (Once.Spec.Context.singleUse i One) → ⟦ lookup Γ i ⟨ σ ⟩ ⟧ᵛ
+  lookupᵛ (Γ ▸ A) zero    (ρ , v) = v
+  lookupᵛ (Γ ▸ A) (suc i) (ρ , _) = lookupᵛ Γ i ρ
 
-⟦ ⊢unit ⟧ fmt ρ dγ = tt
+  ----------------------------------------------------------------------
+  -- A reference to the signature: a value the world provides, or an
+  -- operation — one call, read at its grade
+  ----------------------------------------------------------------------
 
-⟦ ⊢pair {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {π₂ = π₂} da db ⟧ fmt ρ dγ =
-  bindᵍ π₁ π₂ (⟦ da ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ)) λ a →
-  fmapM π₂ (λ b → a , b) (⟦ db ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-⟦ ⊢fst {π = π} d ⟧ fmt ρ dγ = fmapM π proj₁ (⟦ d ⟧ fmt ρ dγ)
-⟦ ⊢snd {π = π} d ⟧ fmt ρ dγ = fmapM π proj₂ (⟦ d ⟧ fmt ρ dγ)
+  sigopᵛ : ∀ (c : CanonicalName) (t : DeclType) → (c ∶ t) ∈ Σ → Interp → ⟦ Once.Spec.Signature.⌜_⌝ᵈ t ⟨ σ ⟩ ⟧ᵛ
+  sigopᵛ c (constant b) m ι = fromB σ b (value ι m tt)
+  sigopᵛ c (arrow a (mk-kind Zero pure) b) m ι = λ _ → fromB σ b (value ι m tt tt)
+  sigopᵛ c (arrow a (mk-kind One  pure) b) m ι = λ x → fromB σ b (value ι m tt (toB σ a x))
+  sigopᵛ c (arrow a (mk-kind Many pure) b) m ι = λ x → fromB σ b (value ι m tt (toB σ a x))
+  sigopᵛ c (arrow a (mk-kind Zero act) b)  m ι = λ _ → performT (call (op m e-act) tt (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind One  act) b)  m ι = λ x → performT (call (op m e-act) (toB σ a x) (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind Many act) b)  m ι = λ x → performT (call (op m e-act) (toB σ a x) (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind Zero eff) b)  m ι = λ _ → perform (call (op m e-eff) tt (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind One  eff) b)  m ι = λ x → perform (call (op m e-eff) (toB σ a x) (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind Many eff) b)  m ι = λ x → perform (call (op m e-eff) (toB σ a x) (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind Zero eff⁺) b) m ι = λ _ → perform⁺ (call (op m e-g) tt (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind One  eff⁺) b) m ι = λ x → perform⁺ (call (op m e-g) (toB σ a x) (fromB σ b))
+  sigopᵛ c (arrow a (mk-kind Many eff⁺) b) m ι = λ x → perform⁺ (call (op m e-g) (toB σ a x) (fromB σ b))
 
-⟦ ⊢inl {π = π} d ⟧ fmt ρ dγ = fmapM π inj₁ (⟦ d ⟧ fmt ρ dγ)
-⟦ ⊢inr {π = π} d ⟧ fmt ρ dγ = fmapM π inj₂ (⟦ d ⟧ fmt ρ dγ)
-⟦ ⊢case {Γ = Γ} {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁} {π₂ = π₂} {A = A} {B = B} ds dl dr ⟧ fmt ρ dγ =
-  bindᵍ π₁ π₂ (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψs Ψ) dγ)) λ v →
-  [ (λ a → ⟦ dl ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = A} qℓ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψs Ψ) dγ) a))
-  , (λ b → ⟦ dr ⟧ fmt ρ (bindᵛ {Γ = Γ} {A = B} qr (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψs Ψ) dγ) b))
-  ]′ v
+  -- An operation referenced at its guard: the same one call.
+  effectful : ∀ {π} → EffGrade π → Effectful π
+  effectful eg-act = e-act
+  effectful eg-eff = e-eff
 
-⟦ ⊢absurd {π = π} d ⟧ fmt ρ dγ = bindM π (⟦ d ⟧ fmt ρ dγ) λ v → ⊥-elim v
+  sigop⁺ᵛ : ∀ (c : CanonicalName) a q {π} b → (c ∶ arrow a (mk-kind q π) b) ∈ Σ → EffGrade π
+          → ⟦ (⌜ a ⌝ Once.Spec.Type.⇒[ mk-kind q eff⁺ ] ⌜ b ⌝) ⟨ σ ⟩ ⟧ᵛ
+  sigop⁺ᵛ c a Zero b m g = λ _ → perform⁺ (call (op m (effectful g)) tt (fromB σ b))
+  sigop⁺ᵛ c a One  b m g = λ x → perform⁺ (call (op m (effectful g)) (toB σ a x) (fromB σ b))
+  sigop⁺ᵛ c a Many b m g = λ x → perform⁺ (call (op m (effectful g)) (toB σ a x) (fromB σ b))
 
-⟦ ⊢roll {π = π} wf d ⟧ fmt ρ dγ = fmapM π (in-valueᵛ wf) (⟦ d ⟧ fmt ρ dγ)
-⟦ ⊢fold {Γ = Γ} {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} u wf da dt ⟧ fmt ρ dγ =
-  -- plan 0.113 B1: the algebra's part is ω-scaled (it runs per node).
-  bindᵍ π₁ _ (⟦ da ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) dγ)) λ valg →
-  bindᵍ π₂ π (⟦ dt ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) dγ)) λ v → cata-semᵛ u wf valg v
--- `unfold c s`, left to right: the coalgebra TERM is evaluated once, then the
--- seed (D273, plan 0.116 E: as `fold`'s algebra, D131, and the IR's `Ana`); the
--- coalgebra FUNCTION runs in each forced layer, so an effectful one (a server,
--- D233) emits per layer.
-⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ = π₂} wf dc ds ⟧ fmt ρ dγ =
-  bindᵍ π₁ π₂ (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) λ clo →
-  fmapM π₂ (ana-semᵛ π wf clo) (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ))
-⟦ ⊢out {π = π} {π₁ = π₁} wf d ⟧ fmt ρ dγ = bindᵍ π₁ π (⟦ d ⟧ fmt ρ dγ) (out-semᵛ π wf)
--- D311: the step, then the seed, then the loop (`iter∞`, guarded corecursion);
--- a round that does not end at once runs its suspended computation (D312 O2).
-⟦ ⊢iter {Γ = Γ} {Ψf = Ψf} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} df ds ⟧ fmt ρ dγ =
-  bindᵍ π₁ _ (⟦ df ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) dγ)) λ step →
-  bindᵍ π₂ eff (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) dγ)) λ a → iter∞ (λ a′ → map₂ (λ th → th tt) (step a′)) a
+  -- The arithmetic is the target's: words of its width (`+`, `-`, `*` wrap;
+  -- `/`, `%` total; comparisons signed), floats of its format, correctly
+  -- rounded.
+  primᵛ : ∀ (p : Prim) → ⟦ primDom p ⟨ σ ⟩ ⟧ᵛ → ⟦ primCod p ⟨ σ ⟩ ⟧ᵛ
+  primᵛ p-add  (a , b) = Word.Width._⊕_  int-bits a b
+  primᵛ p-sub  (a , b) = Word.Width._⊖_  int-bits a b
+  primᵛ p-mul  (a , b) = Word.Width._⊗_  int-bits a b
+  primᵛ p-div  (a , b) = Word.Width._/ˢ_ int-bits a b
+  primᵛ p-mod  (a , b) = Word.Width._%ˢ_ int-bits a b
+  primᵛ p-neg  a       = Word.Width.⊝_   int-bits a
+  primᵛ p-lt   (a , b) = truth (Word.Width._<ˢ_ int-bits a b)
+  primᵛ p-le   (a , b) = truth (not (Word.Width._<ˢ_ int-bits b a))
+  primᵛ p-gt   (a , b) = truth (Word.Width._<ˢ_ int-bits b a)
+  primᵛ p-ge   (a , b) = truth (not (Word.Width._<ˢ_ int-bits a b))
+  primᵛ p-eq   (a , b) = truth (Word.Width._≡ʷ_ int-bits a b)
+  primᵛ p-ne   (a , b) = truth (not (Word.Width._≡ʷ_ int-bits a b))
+  primᵛ p-fadd (a , b) = FA.fadd float-format a b
+  primᵛ p-fsub (a , b) = FA.fsub float-format a b
+  primᵛ p-fmul (a , b) = FA.fmul float-format a b
+  primᵛ p-fdiv (a , b) = FA.fdiv float-format a b
+  primᵛ p-i2f  a       = FA.i2f float-format (Word.Width.toℤ int-bits a)
 
-⟦ ⊢coerce {π = π} p d ⟧ fmt ρ dγ = fmapM π ⟦ p ⟧<:ᵛ (⟦ d ⟧ fmt ρ dγ)
+------------------------------------------------------------------------
+-- The meaning
+------------------------------------------------------------------------
 
-⟦ ⊢lit-int {i = i} ⟧   fmt ρ dγ = OnceWord.Width.fromℤ (int-bits fmt) i
-⟦ ⊢lit-float {d = d} ⟧ fmt ρ dγ = round (float-format fmt) d
+⟦_⟧ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t A π} → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π
+    → DefSem → (σ : TySub m 0) → Respects Δ ∅ₖ σ → Env σ Γ Ψ → M π ⟦ A ⟨ σ ⟩ ⟧ᵛ
 
-⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = fmapM π (primSem p fmt) (⟦ d ⟧ fmt ρ dγ)
+⟦ ⊢var {Γ = Γ} i ⟧ ρ σ r γ = lookupᵛ σ Γ i γ
 
-⟦ ⊢sigop {A = A} c k _ _ m ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt (sigOf S) (impl ρ) c k m
-⟦ ⊢sigop⁺ {q = q} c (con-fun bA bB) _ _ _ _ ⟧ fmt ρ dγ = sigOpGuardᵛ c bA bB q
+-- A λ is a value. An erased argument is not passed.
+⟦ ⊢lam {q = Zero} 0≤q d ⟧ ρ σ r γ = λ _ → ⟦ d ⟧ ρ σ r (γ , tt)
+⟦ ⊢lam {q = One}  0≤q d ⟧ ρ σ r γ = λ _ → ⟦ d ⟧ ρ σ r (γ , tt)
+⟦ ⊢lam {q = Many} 0≤q d ⟧ ρ σ r γ = λ _ → ⟦ d ⟧ ρ σ r (γ , tt)
+⟦ ⊢lam 1≤1 d ⟧ ρ σ r γ = λ a → ⟦ d ⟧ ρ σ r (γ , a)
+⟦ ⊢lam 1≤ω d ⟧ ρ σ r γ = λ a → ⟦ d ⟧ ρ σ r (γ , a)
+⟦ ⊢lam ω≤ω d ⟧ ρ σ r γ = λ a → ⟦ d ⟧ ρ σ r (γ , a)
 
-⟦ ⊢sub-eff g d ⟧ fmt ρ dγ = subM g (⟦ d ⟧ fmt ρ dγ)
+-- The function, then the argument, then the call.
+⟦ ⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Zero} {π} {π₁} df dx ⟧ ρ σ r γ =
+  bindᵍ π₁ π (⟦ df ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) γ)) λ f → f tt
+⟦ ⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = One} {π} {π₁} {π₂} df dx ⟧ ρ σ r γ =
+  bindᵍ π₁ _ (⟦ df ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) γ)) λ f →
+  bindᵍ π₂ π (⟦ dx ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) γ)) λ x → f x
+⟦ ⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Many} {π} {π₁} {π₂} df dx ⟧ ρ σ r γ =
+  bindᵍ π₁ _ (⟦ df ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) γ)) λ f →
+  bindᵍ π₂ π (⟦ dx ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) γ)) λ x → f x
 
--- D276: claiming more usage is the model's discard.
-⟦ ⊢sub-use {Γ = Γ} p d ⟧ fmt ρ dγ = ⟦ d ⟧ fmt ρ (restrictᵛ {Γ = Γ} p dγ)
+-- An erased right-hand side is not evaluated.
+⟦ ⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = Zero} d₁ d₂ ⟧ ρ σ r γ =
+  ⟦ d₂ ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) γ , tt)
+⟦ ⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = One} {π₁} {π₂} d₁ d₂ ⟧ ρ σ r γ =
+  bindᵍ π₁ π₂ (⟦ d₁ ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) γ)) λ v →
+  ⟦ d₂ ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) γ , v)
+⟦ ⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = Many} {π₁} {π₂} d₁ d₂ ⟧ ρ σ r γ =
+  bindᵍ π₁ π₂ (⟦ d₁ ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) γ)) λ v →
+  ⟦ d₂ ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) γ , v)
 
-⟦ ⊢ref d τ r ⟧ fmt ρ dγ = defs ρ d τ r
+⟦ ⊢unit ⟧ ρ σ r γ = tt
+
+⟦ ⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} da db ⟧ ρ σ r γ =
+  bindᵍ π₁ π₂ (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) γ)) λ a →
+  fmap π₂ (λ b → a , b) (⟦ db ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) γ))
+⟦ ⊢fst {π = π} d ⟧ ρ σ r γ = fmap π proj₁ (⟦ d ⟧ ρ σ r γ)
+⟦ ⊢snd {π = π} d ⟧ ρ σ r γ = fmap π proj₂ (⟦ d ⟧ ρ σ r γ)
+
+⟦ ⊢inl {π = π} d ⟧ ρ σ r γ = fmap π inj₁ (⟦ d ⟧ ρ σ r γ)
+⟦ ⊢inr {π = π} d ⟧ ρ σ r γ = fmap π inj₂ (⟦ d ⟧ ρ σ r γ)
+⟦ ⊢case {Ψs = Ψs} {Ψ} {qℓ} {qr} {π₁} {π₂} ds dl dr ⟧ ρ σ r γ =
+  bindᵍ π₁ π₂ (⟦ ds ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψs Ψ) γ))
+    [ (λ a → ⟦ dl ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ Ψs Ψ) γ , slot qℓ a))
+    , (λ b → ⟦ dr ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ Ψs Ψ) γ , slot qr b)) ]′
+
+⟦ ⊢absurd {π = π} d ⟧ ρ σ r γ = bind π (⟦ d ⟧ ρ σ r γ) ⊥-elim
+
+⟦ ⊢roll {π = π} {F = F} wf d ⟧ ρ σ r γ = fmap π (λ l → inS (toL σ F (μ F) l)) (⟦ d ⟧ ρ σ r γ)
+⟦ ⊢fold {Ψa = Ψa} {Ψt} {π} {π₁} {π₂} {F} {A} e wf da dt ⟧ ρ σ r γ =
+  bindᵍ π₁ _ (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) γ)) λ alg →
+  bindᵍ π₂ π (⟦ dt ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) γ)) λ v →
+  foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v
+
+⟦ ⊢unfold {Ψc = Ψc} {Ψs} {π} {π₁} {π₂} {F} {A} wf dc da ⟧ ρ σ r γ =
+  bindᵍ π₁ π₂ (⟦ dc ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) γ)) λ c →
+  fmap π₂ (anaM π (code (F ⟨ σ ⟩F)) (λ x → fmap π (toL σ F A) (c x)))
+          (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) γ))
+⟦ ⊢out {π = π} {π₁} {F} wf d ⟧ ρ σ r γ =
+  bindᵍ π₁ π (⟦ d ⟧ ρ σ r γ) λ v → fmap π (fromL σ F (ν F π)) (outν v)
+
+-- The server: the step is evaluated once, then the seed; the loop is guarded
+-- iteration over the step.
+⟦ ⊢iter {Ψf = Ψf} {Ψs} {π₁} {π₂} d ds ⟧ ρ σ r γ =
+  bindᵍ π₁ _ (⟦ d ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) γ)) λ f →
+  bindᵍ π₂ eff (⟦ ds ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) γ)) λ a →
+  iter∞ (λ x → [ inj₁ , (λ k → inj₂ (k tt)) ]′ (f x)) a
+
+⟦ ⊢coerce {π = π} p d ⟧ ρ σ r γ = fmap π (conv σ p) (⟦ d ⟧ ρ σ r γ)
+
+⟦ ⊢lit-int {i = i} ⟧   ρ σ r γ = Word.Width.fromℤ int-bits i
+⟦ ⊢lit-float {d = d} ⟧ ρ σ r γ = round float-format d
+
+⟦ ⊢prim {π = π} p d ⟧ ρ σ r γ = fmap π (primᵛ σ p) (⟦ d ⟧ ρ σ r γ)
+
+⟦ ⊢sigop {c = c} {t} m ⟧ ρ σ r γ = sigopᵛ σ c t m (interp ρ)
+⟦ ⊢sigop⁺ {c = c} {a} {q} {b = b} m g ⟧ ρ σ r γ = sigop⁺ᵛ σ c a q b m g
+
+⟦ ⊢ref d τ rd ⟧ ρ σ r γ =
+  subst ⟦_⟧ᵛ (sym (⟨⟩-∘ (type (S !! d)) τ σ)) (defs ρ d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r))
+
+⟦ ⊢sub-use p d ⟧ ρ σ r γ = ⟦ d ⟧ ρ σ r (restrict σ p γ)
+⟦ ⊢sub-eff g d ⟧ ρ σ r γ = sub g (⟦ d ⟧ ρ σ r γ)
