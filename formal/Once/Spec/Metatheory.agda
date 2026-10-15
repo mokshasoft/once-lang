@@ -1,289 +1,272 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Spec.Metatheory — WHAT THE LANGUAGE PROMISES ABOUT ITSELF (D304).
+-- Once.Spec.Metatheory — what the language promises about itself.
 --
--- A metatheorem is a claim about the Spec ALONE: it mentions no compiler. If
--- one cannot be proved, the LANGUAGE is wrong, not the compiler — D276 made
--- the grades affine precisely so that substitution is typed. So the
--- statements are part of the Spec, read with the definition they constrain;
--- the proofs are not (D140): they live under `Once.Metatheory`, which may
--- import only the Spec and its semantic domain, never the compiler
--- (`scripts/metatheory-gate.sh`). `Once.Certified` carries the proofs, so
--- each statement is on the apex and goes red when the Spec moves.
+-- Claims about the Spec alone; they mention no compiler. Their proofs are not
+-- part of the Spec (`Once.Metatheory` proves them, importing only the Spec);
+-- if one cannot be proved, the language is wrong.
 --
--- Seven parts:
---   * `term-model` — for every signature of definitions `S`, the core's TERM
---     MODEL (`Once.Spec.Core.TermModel`): substitution of terms is typed
---     (`subst-⊢`), a pure `let` means its substitution (`let-β`, referential
---     transparency), and substitution of types is typed (`ty-subst-⊢`, D303).
---   * `type-system` — the surface typing judgment (D305): subtyping and the
---     purity order are partial orders whose derivations are unique (so a
---     coercion has one meaning), and a term's usage is a property of the term,
---     not of the mode that typed it — synthesis is unique, checking agrees
---     with it, the domain-given mode is exact.
---   * `effects` — the meaning's effect structure (plan 0.112 E, C4): each
---     grade's `M π` is a monad (effectful ones up to bisimilarity, D312),
---     subeffecting `subM` and the erasure `toT∞` to the completely iterative
---     monad are monad morphisms, the graded bind erases to `T∞`'s (D311), and
---     the observation `events∞` respects bisimilarity.
---   * `coherence` — the core meaning is a function of the JUDGMENT, not of the
---     derivation chosen for it (plan 0.116; `Spec.Core.Coherence`).
---   * `freyd` — effects form a Freyd category (plan 0.116): a computation is
---     central (commutes with every other, up to bisimilarity) exactly when it
---     is pure, and only a
---     pure computation may be skipped. So `pure` (D250: referential
---     transparency) is the categorical notion, and a meaning that drops or
---     moves an effectful computation is unsound.
---   * `recursion` — the fold is the unique algebra morphism out of `μ`, and
---     fusion holds (plan 0.112 D3). STATED, NOT YET PROVED: `Once.Metatheory`
---     postulates both (`Once.Metatheory.Recursion`).
---   * `totality` — Once is total and productive (D311, D312): an effectful
---     computation reaches each next event after finite work and need not
---     stop, and every layer of every stream comes after finite work
---     (`Spec.Totality`).
---
--- No type-safety theorem is needed in this setting: the meaning is a TOTAL
--- function on derivations, so every well-typed program means something by
--- construction.
+--   * types       — subtyping and the effect order are partial orders with
+--                   one derivation per pair (a conversion has one meaning);
+--   * surface     — the surface judgment's modes agree: a synthesized type is
+--                   unique, the domain-given mode is exact and agrees with
+--                   synthesis;
+--   * effects     — each grade's monad is a monad (up to bisimilarity at
+--                   `eff`); the morphisms along the chain and into `T∞` are
+--                   monad morphisms; the observation respects bisimilarity;
+--   * coherence   — a core term's meaning is a function of its judgment, not
+--                   of the derivation chosen for it;
+--   * term model  — substitution is typed, a pure `let` means its
+--                   substitution, and typing survives type substitution;
+--   * Freyd       — a computation is central exactly when it is pure, and
+--                   only a pure one may be dropped;
+--   * recursion   — the fold is the unique algebra morphism, with fusion; the
+--                   unfold's computation law; the server is the unique map
+--                   into `T∞` its round determines;
+--   * totality    — a behaviour is a prefix family; a definition cannot name
+--                   itself or a later one; a stream and a server are typed,
+--                   and the server runs forever.
 ------------------------------------------------------------------------
 
 module Once.Spec.Metatheory where
 
+open import Data.Fin using (Fin)
+open import Data.List using (List; []; length)
 open import Data.Nat using (ℕ)
-open import Data.List using (List)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Contract using (ISig)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Core.TermModel using (TermModel) public
-open import Once.Spec.Core.Coherence using (Coherence)
-open import Once.Spec.Type.Grade using (Purity; pure; eff⁺; mk-kind; Many; _·p_)
-open import Once.Spec.Iterative using (TreeEq∞; return∞; _>>=∞_)
-open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
-open import Once.Spec.Guarded using (T⁺; iter∞)
+open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; [_,_]′)
-open import Once.Spec.Iterative using (T∞; events∞)
-open import Once.Spec.Trace using (PrefixFamily)
-open import Data.List using (List)
-open import Once.Spec.Totality using (echoDefs; echoSig; echoServer)
-open import Once.Spec.Type using (Void)
-open import Data.List using (length)
-open import Once.Spec.Trace using (interp)
-open import Once.Spec.Totality using (FiniteT; ProductiveM; ProductiveT∞; selfRef; forwardRef; defF; tickDefs; ticker)
-open import Once.Spec.Module using (ModTele; emptyScope)
-open import Once.Spec.Context using (∅)
-open import Once.Spec.Type.WellFormed using (wf-Id)
-open import Once.Spec.Type.Grade using (eff)
-open import Once.Spec.Type using (Id)
-open import Once.Spec.Type.Sub using (⊑-pe)
-open import Data.List using (_∷_; [])
-open import Data.Unit using (tt)
-open import Data.Product using (∃-syntax)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Iterative using (call∞; module T∞)
-open T∞ using (force)
-import Once.Spec.Core.Typing
-import Once.Spec.Core.Meaning
-open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
-open import Once.Spec.Type.WellFormed using (WellFormedF)
-open import Once.Spec.Meaning
-  using ( T ; Interp ; SigOpEvent
-        ; M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT∞ ; bindᵍ ; EqM
-        ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ )
-open import Once.Spec.Syntax using (RawExpr)
-open import Once.Spec.Typing.Scope using (NamedCtx)
-open import Once.Spec.Typing using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_)
-import Once.Spec.Context as Surface
+open import Once.Spec.Grade using (Quantity; Purity; pure; act; eff; Many; mk-kind; _⊑π_; ⊑-pe; _⊔p_; positionGrade; Zero; One)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; Req; _⇒[_]_)
+open import Once.Spec.Sub using (_<:_)
+open import Once.Spec.Signature using (Signature; Layer; call)
+open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
+open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⟨_⟩ᶜ)
+open import Once.Spec.Core.Syntax using (Defs; []; Tm; let′; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
+open Schema using (type)
+open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.Spec.Surface.Program using (Denotes)
+import Once.Spec.Effect as Effect
+import Once.Spec.Observation as Observation
+import Once.Spec.Domain as Domain
+import Once.Spec.Equivalence as Equivalence
+import Once.Spec.Core.Typing as CoreTyping
+import Once.Spec.Core.Meaning as Meaning
+import Once.Spec.Core.Program as CoreProgram
+import Once.Spec.Surface.Typing as SurfaceTyping
+open import Once.Spec.Examples
 
--- The surface typing judgment's laws (D305).
-record TypeSystem : Set where
+------------------------------------------------------------------------
+-- Types
+------------------------------------------------------------------------
+
+record Types : Set where
   field
-    -- subtyping is a preorder with unique derivations (D226: one judgment)
-    <:-refl   : ∀ A → A <: A
-    <:-trans  : ∀ {A B C} → A <: B → B <: C → A <: C
-    <:-unique : ∀ {A B} (p q : A <: B) → p ≡ q
-    -- …and so is the purity order
+    <:-refl   : ∀ {m} (A : Ty m) → A <: A
+    <:-trans  : ∀ {m} {A B C : Ty m} → A <: B → B <: C → A <: C
+    <:-unique : ∀ {m} {A B : Ty m} (p q : A <: B) → p ≡ q
     ⊑π-refl   : ∀ π → π ⊑π π
     ⊑π-trans  : ∀ {π₁ π₂ π₃} → π₁ ⊑π π₂ → π₂ ⊑π π₃ → π₁ ⊑π π₃
     ⊑π-unique : ∀ {π π′} (g h : π ⊑π π′) → g ≡ h
 
-    -- synthesis is unique
-    synth-unique : ∀ {ctx : NamedCtx} {e : RawExpr} {A A′ : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-                 → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′ → A ≡ A′ × Ψ ≡ Ψ′
-    -- checking at one type gives one usage
-    check-usage-unique : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-                       → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ A ⨾ Ψ′ → Ψ ≡ Ψ′
-    -- checking agrees with synthesis on usage
-    check-agrees-synth : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-                       → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → Ψ ≡ Ψ′
-    -- the domain-given mode agrees with checking at an arrow from its domain
-    domain-agrees-check : ∀ {ctx : NamedCtx} {e : RawExpr} {A B B′ : Type} {π : Purity}
-                            {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-                        → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ mk-kind Many π ] B′) ⨾ Ψ′ → Ψ ≡ Ψ′
-    -- a term that synthesizes is domain-given only through its synthesized arrow
-    domain-agrees-synth : ∀ {ctx : NamedCtx} {e : RawExpr} {A B S : Type} {π : Purity}
-                            {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-                        → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵢ e ∶ S ⨾ Ψ′
-                        → Σ[ A′ ∈ Type ] Σ[ π′ ∈ Purity ] (S ≡ (A′ ⇒[ mk-kind Many π′ ] B)) × π′ ⊑π π × Ψ ≡ Ψ′
-    -- the domain-given mode is exact: its output is determined by its input
-    domain-exact : ∀ {ctx : NamedCtx} {e : RawExpr} {A B B′ : Type} {π : Purity}
-                     {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-                 → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′ → B ≡ B′ × Ψ ≡ Ψ′
+------------------------------------------------------------------------
+-- The surface judgment's modes agree
+------------------------------------------------------------------------
 
--- The meaning's effect structure (plan 0.112 E, C4).
-record Effects : Set₁ where
+record Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) : Set where
+  open SurfaceTyping Σ S nm
   field
-    -- each grade's `M π` is a monad
-    M-identityˡ : ∀ {π} (u : pure ⊑π π) {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bindM π (returnM u x) k) (k x)
-    M-identityʳ : ∀ {π} (u : pure ⊑π π) {X : Set} (m : M π X) → EqM π (bindM π m (returnM u)) m
+    synth-unique : ∀ {m} {Δ : KCtx m} {n} {L : Locals m n} {e A A′ t t′}
+                 → _⊢_⇒_↝_ Δ L e A t → _⊢_⇒_↝_ Δ L e A′ t′ → A ≡ A′
+    domain-exact : ∀ {m} {Δ : KCtx m} {n} {L : Locals m n} {e A B B′ π t t′}
+                 → _⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t → _⊢_⇐_⇒[_]↦_↝_ Δ L e A π B′ t′ → B ≡ B′
+    domain-agrees-synth : ∀ {m} {Δ : KCtx m} {n} {L : Locals m n} {e A B T π t t′}
+                        → _⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t → _⊢_⇒_↝_ Δ L e T t′
+                        → Σ[ A′ ∈ Ty m ] Σ[ π′ ∈ Purity ] (T ≡ A′ ⇒[ mk-kind Many π′ ] B) × π′ ⊑π π
+
+------------------------------------------------------------------------
+-- Effects
+------------------------------------------------------------------------
+
+record Effects (Σ : Signature) : Set₁ where
+  open Effect Σ
+  open Observation Σ using (Interp; History; events)
+  field
+    M-identityˡ : ∀ π {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bind π (return π x) k) (k x)
+    M-identityʳ : ∀ π {X : Set} (m : M π X) → EqM π (bind π m (return π)) m
     M-assoc     : ∀ π {X Y Z : Set} (m : M π X) (f : X → M π Y) (g : Y → M π Z)
-                → EqM π (bindM π (bindM π m f) g) (bindM π m (λ x → bindM π (f x) g))
-    -- subeffecting is a monad morphism `M π → M π′`
-    subM-return : ∀ {π π′} (u : pure ⊑π π) (g : π ⊑π π′) (u′ : pure ⊑π π′) {X : Set} (x : X) → EqM π′ (subM g (returnM u x)) (returnM u′ x)
-    subM-bind   : ∀ {π π′} (g : π ⊑π π′) {X Y : Set} (m : M π X) (k : X → M π Y)
-                → EqM π′ (subM g (bindM π m k)) (bindM π′ (subM g m) (λ x → subM g (k x)))
-    -- so is the erasure of a grade to the completely iterative monad (D311)
-    toT∞-return : ∀ {π} (u : pure ⊑π π) {X : Set} (x : X) → TreeEq∞ _≡_ (toT∞ π (returnM u x)) (return∞ x)
+                → EqM π (bind π (bind π m f) g) (bind π m (λ x → bind π (f x) g))
+    sub-return  : ∀ {π π′} (g : π ⊑π π′) {X : Set} (x : X) → EqM π′ (sub g (return π x)) (return π′ x)
+    sub-bind    : ∀ {π π′} (g : π ⊑π π′) {X Y : Set} (m : M π X) (k : X → M π Y)
+                → EqM π′ (sub g (bind π m k)) (bind π′ (sub g m) (λ x → sub g (k x)))
+    toT∞-return : ∀ π {X : Set} (x : X) → toT∞ π (return π x) ≈ return∞ x
     toT∞-bind   : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
-                → TreeEq∞ _≡_ (toT∞ π (bindM π m k)) (toT∞ π m >>=∞ λ x → toT∞ π (k x))
-    -- and of the GRADED bind (D311): `M` is a graded monad over the grades'
-    -- ordered monoid, and erasing it gives `T∞`'s bind
+                → toT∞ π (bind π m k) ≈ (toT∞ π m >>=∞ λ x → toT∞ π (k x))
     toT∞-bindᵍ  : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
-                → TreeEq∞ _≡_ (toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k)) (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
-    -- the observation (`events∞`, D312) is well-defined on effectful equality:
-    -- bisimilar computations make the same events at every depth …
-    obs-≈       : ∀ (ι : Interp) (h : List SigOpEvent) {X : Set} {m m′ : T∞ X}
-                → TreeEq∞ _≡_ m m′ → ∀ n → events∞ ι h m n ≡ events∞ ι h m′ n
-    -- … and the unit makes none
-    obs-return  : ∀ (ι : Interp) (h : List SigOpEvent) {X : Set} (x : X) n → events∞ ι h (return∞ x) n ≡ []
+                → toT∞ (π₁ ⊔p π₂) (bindᵍ π₁ π₂ m k) ≈ (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
+    obs-≈       : ∀ (ι : Interp) (h : History) {X : Set} {m m′ : T∞ X}
+                → m ≈ m′ → ∀ n → events ι h m n ≡ events ι h m′ n
+    obs-return  : ∀ (ι : Interp) (h : History) {X : Set} (x : X) n → events ι h (return∞ x) n ≡ []
 
--- The fold's universal property (plan 0.112 D3) and unfold's computation law
--- (plan 0.116 E).
-record Recursion : Set₁ where
-  field
-    -- `fold alg` is the only `h` that commutes with the constructor
-    fold-unique : ∀ {π} (u : pure ⊑π π) {F A} (wf : WellFormedF F) (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)
-                    (h : ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ)
-                → (∀ x → EqM π (h (in-valueᵛ wf x)) (bindM π (mapLayerᵛ u wf h x) alg))
-                → ∀ v → EqM π (h v) (cata-semᵛ u wf alg v)
-    -- fusion: a map that commutes with the algebras commutes with the folds
-    fold-fusion : ∀ {π} (u : pure ⊑π π) {F A B} (wf : WellFormedF F)
-                    (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg′ : ⟦ ⟦ F ⟧T B ⟧ᵛ → M π ⟦ B ⟧ᵛ)
-                    (f : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ)
-                → (∀ y → EqM π (bindM π (alg y) f) (bindM π (mapLayerᵛ u wf f y) alg′))
-                → ∀ v → EqM π (bindM π (cata-semᵛ u wf alg v) f) (cata-semᵛ u wf alg′ v)
-    -- unfold's computation law (plan 0.116 E): forcing `unfold c s` runs the
-    -- coalgebra FUNCTION on the seed (once per forced layer; its term was
-    -- evaluated once, when the stream was built — D273) and puts `unfold c` at
-    -- the recursive positions. An effectful coalgebra is a server (D233). With
-    -- it, every observation of a stream is determined; uniqueness holds up to
-    -- bisimilarity (the final T∘F-coalgebra).
-    unfold-out  : ∀ {π} (u : pure ⊑π π) {F A} (wf : WellFormedF F) (clo : ⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) (a : ⟦ A ⟧ᵛ)
-                → EqM π (out-semᵛ π wf (ana-semᵛ π wf clo a))
-                    (bindM π (clo a) (mapLayerᵛ u wf (λ a′ → returnM u (ana-semᵛ π wf clo a′))))
-    -- guarded iteration (D311, D312 O2): `iter f` takes a step of `f` — it
-    -- ends at once with a value, or runs a round that begins with an event,
-    -- then stops with its answer or runs the next round from the new seed …
-    iter-unfold : ∀ {A B : Set} (f : A → B ⊎ T⁺ (B ⊎ A)) (a : A)
-                → TreeEq∞ _≡_ (iter∞ f a) ([ return∞ , (λ m → toT∞ eff⁺ m >>=∞ [ return∞ , iter∞ f ]′) ]′ (f a))
-    -- … and it is the ONLY function that does: a round that does not end
-    -- begins with an event (`eff⁺`), so the equation fixes the tree one event
-    -- at a time
-    iter-unique : ∀ {A B : Set} (f : A → B ⊎ T⁺ (B ⊎ A)) (g : A → T∞ B)
-                → (∀ a → TreeEq∞ _≡_ (g a) ([ return∞ , (λ m → toT∞ eff⁺ m >>=∞ [ return∞ , g ]′) ]′ (f a)))
-                → ∀ a → TreeEq∞ _≡_ (g a) (iter∞ f a)
+------------------------------------------------------------------------
+-- Coherence, and the term model
+------------------------------------------------------------------------
 
--- Effects form a Freyd category (plan 0.116). Values and pure maps are the
--- category C, computations `X → T∞ Y` the premonoidal category K = Kleisli(T∞)
--- (D312), and subeffecting `return∞` (D250, `subM ⊑-pe`) the embedding
--- J : C → K. Effectful equality is bisimilarity (`_≈_`, D201). A computation
--- is CENTRAL when it commutes with every computation: running it before or
--- after another gives the same tree.
-infix 4 _≈_
-_≈_ : ∀ {Y : Set} → T∞ Y → T∞ Y → Set
-m ≈ m′ = TreeEq∞ _≡_ m m′
+module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
+  open CoreTyping Σ S
+  open Meaning Σ fmt S using (⟦_⟧; DefSem; module DefSem; Env)
+  open DefSem using (defs)
+  open Domain Σ using (⟦_⟧ᵛ)
+  open Equivalence Σ using (Same; SameM)
 
-Central : ∀ {Y : Set} → T∞ Y → Set₁
-Central {Y} m = ∀ {W : Set} (n : T∞ W)
-              → (m >>=∞ λ y → n >>=∞ λ w → return∞ (y , w)) ≈ (n >>=∞ λ w → m >>=∞ λ y → return∞ (y , w))
+  -- The definitions' meanings are each the same as itself, whichever proof
+  -- shows its instance respects the kinds.
+  SameDefs : DefSem → Set
+  SameDefs δ = ∀ d τ r r′ → Same (type (S !! d) ⟨ τ ⟩) (defs δ d τ r) (defs δ d τ r′)
 
--- The premonoidal pairing of two Kleisli maps: the first arm runs first.
-pairK : ∀ {X Y Z : Set} → (X → T∞ Y) → (X → T∞ Z) → X → T∞ (Y × Z)
-pairK f g x = f x >>=∞ λ y → g x >>=∞ λ z → return∞ (y , z)
+  -- An environment whose values are each the same as itself.
+  SameEnv : ∀ {m n} (σ : TySub m 0) (Γ : Ctx m n) (Ψ : Usage n) → Env σ Γ Ψ → Set
+  SameEnv σ ∅       []         γ       = ⊤
+  SameEnv σ (Γ ▸ A) (Zero ∷ Ψ) (γ , v) = SameEnv σ Γ Ψ γ
+  SameEnv σ (Γ ▸ A) (One  ∷ Ψ) (γ , v) = SameEnv σ Γ Ψ γ × Same (A ⟨ σ ⟩) v v
+  SameEnv σ (Γ ▸ A) (Many ∷ Ψ) (γ , v) = SameEnv σ Γ Ψ γ × Same (A ⟨ σ ⟩) v v
 
-record Freyd : Set₁ where
-  field
-    -- J's image is central: a pure computation commutes with every computation
-    pure-central : ∀ {Y : Set} (y : Y) → Central (return∞ y)
-    -- and only it: a central computation is pure (`T∞` is free over call/halt)
-    central-pure : ∀ {Y : Set} (m : T∞ Y) → Central m → Σ[ y ∈ Y ] m ≈ return∞ y
-    -- only a pure computation may be skipped: one whose run can be dropped
-    -- before every continuation is a value
-    discard-pure : ∀ {Y : Set} (m : T∞ Y) → (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≈ k)
-                 → Σ[ y ∈ Y ] m ≈ return∞ y
-    -- the pairing is a PRODUCT on central arms (plan 0.112 G7): projecting
-    -- gives an arm back when the other is central (β) — its events are not
-    -- dropped — and pairing the projections of a central map is the map (η)
-    -- — its events are not doubled. On other arms it is only premonoidal.
-    pair-β₁ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (g x))
-            → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₁ p)) ≈ f x
-    pair-β₂ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (f x))
-            → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₂ p)) ≈ g x
-    pair-η  : ∀ {X Y Z : Set} (h : X → T∞ (Y × Z)) → (∀ x → Central (h x))
-            → ∀ x → pairK (λ x → h x >>=∞ λ p → return∞ (proj₁ p)) (λ x → h x >>=∞ λ p → return∞ (proj₂ p)) x ≈ h x
+  record Coherence : Set where
+    field
+      coherent : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t A π} (d d′ : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π)
+                   (δ : DefSem) → SameDefs δ → (σ : TySub m 0) (r r′ : Respects Δ ∅ₖ σ)
+                   (γ : Env σ Γ Ψ) → SameEnv σ Γ Ψ γ
+               → SameM π (A ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r′ γ)
 
--- Once is TOTAL and PRODUCTIVE (D311, D312, plan 0.117; `Spec.Totality`). An
--- effectful computation reaches each next event, or its end, after finite
--- work, and need not stop; so does each layer of every stream. With `T∞`'s
--- nodes all events or ends these hold by construction, and that is their job
--- here: a silent step in `T∞` — what general recursion would need (OCP-0003)
--- — makes them false.
---
--- And what it does NOT give up (`Spec.Totality` names the programs): a
--- definition cannot name itself or a later definition — there is no general
--- recursion to be partial with — while a stream whose every layer performs an
--- effect, the shape of every server, is typed, and its first layer does
--- perform one.
-module TickTyping  = Once.Spec.Core.Typing tickDefs
-module TickMeaning = Once.Spec.Core.Meaning tickDefs
-module EchoTyping  = Once.Spec.Core.Typing echoDefs
-module EchoMeaning = Once.Spec.Core.Meaning echoDefs
+  record TermModel : Set where
+    field
+      subst-⊢ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψₜ Ψᵤ q π A B t u}
+              → Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π
+              → Δ ⊩ Γ ⊢[ Ψᵤ ] u ∷ A ! pure
+              → Δ ⊩ Γ ⊢[ Ψₜ +ᵘ q *ᵘ Ψᵤ ] t [ u ] ∷ B ! π
+      -- A pure `let` means its substitution (referential transparency).
+      let-β : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψₜ Ψᵤ q π A B t u}
+                (dt : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Δ ⊩ Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
+                (dl : Δ ⊩ Γ ⊢[ Ψₜ +ᵘ q *ᵘ Ψᵤ ] let′ q u t ∷ B ! π)
+                (δ : DefSem) → SameDefs δ → (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+                (γ : Env σ Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) → SameEnv σ Γ _ γ
+            → SameM π (B ⟨ σ ⟩) (⟦ subst-⊢ dt du ⟧ δ σ r γ) (⟦ dl ⟧ δ σ r γ)
+      -- Typing survives every instance of the type variables that respects
+      -- their kinds (a polymorphic definition is typed once).
+      ty-subst-⊢ : ∀ {m k n} {Δ : KCtx m} {Δ′ : KCtx k} {Γ : Ctx m n} {Ψ t A π} (σ : TySub m k)
+                 → Respects Δ Δ′ σ
+                 → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π
+                 → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ A ⟨ σ ⟩ ! π
+
+------------------------------------------------------------------------
+-- Effects form a Freyd category
+------------------------------------------------------------------------
+
+module _ (Σ : Signature) where
+  open Effect Σ
+
+  -- A computation is CENTRAL when it commutes with every computation.
+  Central : ∀ {Y : Set} → T∞ Y → Set₁
+  Central {Y} m = ∀ {W : Set} (n : T∞ W)
+                → (m >>=∞ λ y → n >>=∞ λ w → return∞ (y , w)) ≈ (n >>=∞ λ w → m >>=∞ λ y → return∞ (y , w))
+
+  -- The premonoidal pairing: the first arm runs first.
+  pairK : ∀ {X Y Z : Set} → (X → T∞ Y) → (X → T∞ Z) → X → T∞ (Y × Z)
+  pairK f g x = f x >>=∞ λ y → g x >>=∞ λ z → return∞ (y , z)
+
+  record Freyd : Set₁ where
+    field
+      pure-central : ∀ {Y : Set} (y : Y) → Central (return∞ y)
+      central-pure : ∀ {Y : Set} (m : T∞ Y) → Central m → Σ[ y ∈ Y ] m ≈ return∞ y
+      discard-pure : ∀ {Y : Set} (m : T∞ Y) → (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≈ k)
+                   → Σ[ y ∈ Y ] m ≈ return∞ y
+      pair-β₁ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (g x))
+              → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₁ p)) ≈ f x
+      pair-β₂ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (f x))
+              → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₂ p)) ≈ g x
+      pair-η  : ∀ {X Y Z : Set} (h : X → T∞ (Y × Z)) → (∀ x → Central (h x))
+              → ∀ x → pairK (λ x → h x >>=∞ λ p → return∞ (proj₁ p)) (λ x → h x >>=∞ λ p → return∞ (proj₂ p)) x ≈ h x
+
+------------------------------------------------------------------------
+-- Structured recursion
+------------------------------------------------------------------------
+
+  record Recursion : Set₁ where
+    open Domain Σ using (foldM; traverseM; anaM)
+    field
+      -- the fold is the only map that commutes with the constructor
+      fold-unique : ∀ π (G : SFunctor) {X : Set} (alg : ⟦ G ⟧SF X → M π X) (h : μS G → M π X)
+                  → (∀ x → EqM π (h (inS x)) (bind π (traverseM π G h x) alg))
+                  → ∀ v → EqM π (h v) (foldM π G alg v)
+      -- fusion: a map that commutes with the algebras commutes with the folds
+      fold-fusion : ∀ π (G : SFunctor) {X Y : Set} (alg : ⟦ G ⟧SF X → M π X) (alg′ : ⟦ G ⟧SF Y → M π Y)
+                      (f : X → M π Y)
+                  → (∀ l → EqM π (bind π (alg l) f) (bind π (traverseM π G f l) alg′))
+                  → ∀ v → EqM π (bind π (foldM π G alg v) f) (foldM π G alg′ v)
+      -- forcing an unfold runs the coalgebra and unfolds the rest
+      unfold-out  : ∀ π (G : SFunctor) {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
+                  → EqM π (νM.outν (anaM π G c x)) (fmap π (sfmap G (anaM π G c)) (c x))
+      -- THE SERVER: the anamorphism into `T∞` runs a round, performs the
+      -- request it returns, and runs the next round from the answer …
+      unfoldEff-unfold : ∀ {A B : Set} (c : A → T (B ⊎ Layer Σ A)) (a : A)
+                       → unfoldEff c a ≈ (embed (c a) >>=∞ [ return∞ , (λ r → perform r >>=∞ unfoldEff c) ]′)
+      -- … and is the only map that does
+      unfoldEff-unique : ∀ {A B : Set} (c : A → T (B ⊎ Layer Σ A)) (g : A → T∞ B)
+                       → (∀ a → g a ≈ (embed (c a) >>=∞ [ return∞ , (λ r → perform r >>=∞ g) ]′))
+                       → ∀ a → g a ≈ unfoldEff c a
+
+------------------------------------------------------------------------
+-- Total and productive
+------------------------------------------------------------------------
+
+private
+  noVars : TySub 0 0
+  noVars ()
+  noResp : Respects ∅ₖ ∅ₖ noVars
+  noResp ()
 
 record Totality : Set₁ where
   field
-    -- a computation that returns (`act`, D313) is a finite tree
-    finite     : ∀ {X : Set} (m : T X) → FiniteT m
-    productive : ∀ π {F} (wf : WellFormedF F) (v : ⟦ ν-type F π ⟧ᵛ) → ProductiveM π (out-semᵛ π wf v)
-    -- every effectful computation (a server's `iter` among them) reaches
-    -- each next event, or its end, after finite work
-    productive∞ : ∀ {X : Set} (m : T∞ X) → ProductiveT∞ m
-    -- … so its observation is defined at every depth: observing one event
-    -- further appends, the `n`-th has at most `n` events, and one short of its
-    -- budget is finished (D058, D179) — a server's behaviour as a returning
-    -- program's
-    observable∞ : ∀ {X : Set} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) → PrefixFamily (events∞ ι h m)
-    no-self-reference    : ¬ ModTele emptyScope (selfRef ∷ [])
-    no-forward-reference : ¬ ModTele emptyScope (forwardRef ∷ defF ∷ [])
-    stream-typed : TickTyping._⊢[_]_∷_!_ ∅ Surface.[] ticker (ν-type Id eff) pure
-    stream-emits : ∀ fmt (ds : TickMeaning.DefSem)
+    -- what a program does is a prefix family, at every Interpretation
+    observable : ∀ (Σ : Signature) (ι : Observation.Interp Σ) (h : Observation.History Σ) {X : Set}
+                   (m : Effect.T∞ Σ X) → Observation.PrefixFamily Σ (Observation.events Σ ι h m)
+    -- no general recursion
+    no-self-reference    : ∀ {Σ p} → ¬ Denotes [] selfReference Σ p
+    no-forward-reference : ∀ {Σ p} → ¬ Denotes [] forwardReference Σ p
+    -- a stream that calls an operation in every layer is typed, and its
+    -- first layer does call it
+    stream-typed : CoreTyping._⊩_⊢[_]_∷_!_ tickΣ [] ∅ₖ ∅ [] ticker (ν Id eff) pure
+    stream-emits : ∀ fmt (δ : Meaning.DefSem tickΣ fmt [])
                  → ∃[ o ] ∃[ a ] ∃[ k ]
-                   force (TickMeaning.⟦ TickTyping.⊢out wf-Id (TickTyping.⊢sub-eff ⊑-pe stream-typed) ⟧ fmt ds tt)
-                   ≡ call∞ o a k
-    -- and a SERVER (D311): `iter step ()`, an echo loop, is typed at `eff` …
-    server-typed : EchoTyping._⊢[_]_∷_!_ ∅ Surface.[] echoServer Void eff
-    -- … and runs forever: under every implementation, its observation at
-    -- depth `n` has exactly `n` events
-    server-runs  : ∀ fmt (ds : EchoMeaning.DefSem) n
-                 → length (events∞ (interp echoSig (EchoMeaning.impl ds)) [] (EchoMeaning.⟦ server-typed ⟧ fmt ds tt) n) ≡ n
+                   Effect.T∞.force
+                     (Meaning.⟦_⟧ tickΣ fmt [] (CoreTyping.⊢out Once.Spec.Type.wf-Id (CoreTyping.⊢sub-eff ⊑-pe stream-typed))
+                       δ noVars noResp tt)
+                   ≡ Effect.node (call o a k)
+    -- a server is typed at `eff` …
+    server-typed : CoreTyping._⊩_⊢[_]_∷_!_ echoΣ [] ∅ₖ ∅ [] echoServer Void eff
+    -- … and runs forever: at depth `n` it has made `n` calls, at every
+    -- Interpretation
+    server-runs  : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) n
+                 → length (Observation.events echoΣ (Meaning.DefSem.interp δ) [] (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt) n) ≡ n
+
+------------------------------------------------------------------------
+-- All of it
+------------------------------------------------------------------------
 
 record Metatheory : Set₁ where
   field
-    term-model  : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → TermModel S
-    type-system : TypeSystem
-    effects     : Effects
-    coherence   : ∀ {Fs : ISig} {s : ℕ} (S : Sig Fs s) → Coherence S
-    freyd       : Freyd
-    recursion   : Recursion
-    totality    : Totality
+    types      : Types
+    surface    : ∀ (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) → Surface Σ S nm
+    effects    : ∀ (Σ : Signature) → Effects Σ
+    coherence  : ∀ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) → Coherence Σ fmt S
+    term-model : ∀ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) → TermModel Σ fmt S
+    freyd      : ∀ (Σ : Signature) → Freyd Σ
+    recursion  : ∀ (Σ : Signature) → Recursion Σ
+    totality   : Totality
