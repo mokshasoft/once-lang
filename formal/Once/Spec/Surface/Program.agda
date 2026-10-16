@@ -20,7 +20,9 @@
 module Once.Spec.Surface.Program where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Relation.Nullary using (¬_)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Maybe using (Maybe)
 open import Data.Nat using (ℕ; suc)
@@ -234,4 +236,8 @@ record Denotes (mm : ModuleMap) (m : Module) (Σ : Signature) (p : CoreProgram.P
     names     : Fin (CoreProgram.Program.size p) → CanonicalName
     walk      : Walk Σ [] (λ ()) [] resolved (CoreProgram.Program.sig p) names (CoreProgram.Program.defs p)
     distinct  : Injective _≡_ _≡_ names
+    -- Every entry has its own name, operations included (D249): an operation
+    -- of Σ is declared once, and no definition is named as one.
+    sig-distinct : Unique (map BT.Decl.name Σ)
+    def-not-sig  : ∀ d {t} → ¬ ((names d ∶ t) ∈ Σ)
     entry     : names (CoreProgram.Program.main p) ≡ canonical ("main" ∷ [])
