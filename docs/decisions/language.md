@@ -219,9 +219,10 @@ entry updates the rule it changes here, in the same commit.
   yields its layer unchanged and emits nothing. (D197 ← D194, D193 ← D192,
   D191, D281)
 - **Sameness is observational**: two computations are the same when every
-  world's traces are weakly bisimilar; two streams when forcing them gives
-  the same layer computations, coinductively (`Spec.Equivalence`); it is a
-  partial equivalence respected by `>>=`. Bisimulation-to-equality is not
+  world's traces are weakly bisimilar; two streams when they agree on every
+  finite number of layers (the final coalgebra of a polynomial functor is the
+  limit of its terminal sequence) (`Spec.Equivalence`); it is a partial
+  equivalence respected by `>>=`. Bisimulation-to-equality is not
   assumed. (D318 ← D317, D201, plan 0.116 D0)
 
 ## 6. Subtyping

@@ -14,9 +14,12 @@
 --
 -- Two values of a type are the same by recursion on the type: base values
 -- are equal; functions take the same arguments to the same computations; two
--- streams are the same when forcing them gives the same layer computations,
--- with equal constants and the same streams at the recursive positions
--- (coinductively). Infinite objects are never compared by `≡`.
+-- streams are the same when they agree on every finite number of layers:
+-- forcing them gives the same layer computations, with equal constants and
+-- streams agreeing on one layer fewer at the recursive positions. (The
+-- functors are polynomial, so the final coalgebra is the limit of its
+-- terminal sequence: agreeing at every finite stage is being the same.)
+-- Infinite objects are never compared by `≡`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -25,6 +28,7 @@ module Once.Spec.Equivalence (Σ : Signature) where
 
 open import Data.Empty using (⊥)
 open import Data.List using ([])
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤)
@@ -47,10 +51,11 @@ m ≃ m′ = Observed _≡_ m m′
 
 infix 4 _≃_
 
--- Two streams: forcing them gives the same layer computations.
-record SameNu (f : Finite) (G : SFunctor) (v w : νM f G) : Set where
-  coinductive
-  field same-out : Observed (LayerEq G (SameNu f G)) (toT∞ (fin f) (outν v)) (toT∞ (fin f) (outν w))
+-- Two streams, to `n` layers: forcing them gives the same layer
+-- computations, the streams at the recursive positions agreeing to `n - 1`.
+SameNu : ∀ (f : Finite) (G : SFunctor) → ℕ → νM f G → νM f G → Set
+SameNu f G zero    v w = ⊤
+SameNu f G (suc n) v w = Observed (LayerEq G (SameNu f G n)) (toT∞ (fin f) (outν v)) (toT∞ (fin f) (outν w))
 
 -- No world tells them apart.
 Same  : (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᵛ → Set
@@ -70,4 +75,4 @@ Same (A + B) (inj₂ _) (inj₁ _)  = ⊥
 Same (A ⇒[ mk-kind Zero π ] B) f g = SameM π B (f _) (g _)
 Same (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → Same A a a′ → SameM π B (f a) (g a′)
 Same (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → Same A a a′ → SameM π B (f a) (g a′)
-Same (ν F f) v w = SameNu f (code F) v w
+Same (ν F f) v w = ∀ n → SameNu f (code F) n v w

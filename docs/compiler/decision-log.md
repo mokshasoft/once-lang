@@ -18840,7 +18840,12 @@ findings; two POCs (plans/0.120-poc) showed the mechanization goes through.
    PER respected by `>>=` (`Sameness`), an inhabited world and model (`Inhabited`), coercions functorial
    (`conv-id`, `conv-∘`). Removed as instances or depth artefacts: `loop-out`, `loop-unique`,
    `observable` (the prefix family).
-7. **Kept, with the reason recorded**: the first-order types of signatures (`BTy`) beside `Type.Base` —
+7. **Two streams are the same when they agree on every finite number of layers**, each layer's
+   computations compared observationally: the functors are polynomial, so the final coalgebra is the
+   limit of its terminal sequence. (A coinductive sameness was drafted first; it cannot be constructed
+   under `--safe`: building it needs a corecursive call through weak bisimilarity's relation and the
+   layer map, which guardedness rejects, and sized types are not `--safe`.)
+8. **Kept, with the reason recorded**: the first-order types of signatures (`BTy`) beside `Type.Base` —
    the value domain of a general type depends on Σ (arrows run Σ's calls) and that of a first-order type
    does not; `toB`/`fromB` is the canonical isomorphism between them.
 
