@@ -36,6 +36,7 @@ module Once.Spec.Metatheory where
 
 open import Data.Fin using (Fin)
 open import Data.List using (List; []; length)
+open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
 open import Data.Nat using (ℕ)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; [_,_]′)
@@ -47,7 +48,7 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; _⇒[_]_)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Spec.Signature using (Signature; Layer; call)
+open import Once.Spec.Signature using (Signature; Layer; call; Op; op)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⟨_⟩ᶜ)
 open import Once.Spec.Core.Syntax using (Defs; []; Tm; let′; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
@@ -171,13 +172,40 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
 -- Effects form a Freyd category
 ------------------------------------------------------------------------
 
+-- A computation over Σ is one over any larger signature, calling the same
+-- operations.
+module _ {Σ Σ′ : Signature} (ι : Σ ⊆ Σ′) where
+  private
+    module E  = Effect Σ
+    module E′ = Effect Σ′
+
+  liftOp : Op Σ → Op Σ′
+  liftOp (op d e) = op (ι d) e
+
+  lift     : ∀ {X} → E.T∞ X → E′.T∞ X
+  liftStep : ∀ {X} → E.Step X (E.T∞ X) → E′.Step X (E′.T∞ X)
+  E′.T∞.force (lift m) = liftStep (E.T∞.force m)
+  liftStep (E.done x)            = E′.done x
+  liftStep (E.node (call o a k)) = E′.node (call (liftOp o) a (λ b → lift (k b)))
+
+-- Two computations COMMUTE when running them in either order gives the same
+-- pair.
 module _ (Σ : Signature) where
   open Effect Σ
 
-  -- A computation is CENTRAL when it commutes with every computation.
+  Commute : ∀ {Y W : Set} → T∞ Y → T∞ W → Set
+  Commute m n = (m >>=∞ λ y → n >>=∞ λ w → return∞ (y , w)) ≈ (n >>=∞ λ w → m >>=∞ λ y → return∞ (y , w))
+
+module _ (Σ : Signature) where
+  open Effect Σ
+
+  -- A computation is CENTRAL when it commutes with every computation, over Σ
+  -- and over every larger signature: being central is a property of the
+  -- computation, not of which other operations happen to be declared. (Over
+  -- Σ alone a poor signature cannot tell: over `tick : Unit → Unit` every
+  -- computation is some ticks, and `tick` commutes with each of them.)
   Central : ∀ {Y : Set} → T∞ Y → Set₁
-  Central {Y} m = ∀ {W : Set} (n : T∞ W)
-                → (m >>=∞ λ y → n >>=∞ λ w → return∞ (y , w)) ≈ (n >>=∞ λ w → m >>=∞ λ y → return∞ (y , w))
+  Central m = ∀ {Σ′} (ι : Σ ⊆ Σ′) {W : Set} (n : Effect.T∞ Σ′ W) → Commute Σ′ (lift ι m) n
 
   -- The premonoidal pairing: the first arm runs first.
   pairK : ∀ {X Y Z : Set} → (X → T∞ Y) → (X → T∞ Z) → X → T∞ (Y × Z)
