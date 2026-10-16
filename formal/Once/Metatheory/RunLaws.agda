@@ -206,3 +206,18 @@ module _ (w : World) where
 
   run-det : ∀ {X h} {m : T∞ X} {n d d′ e e′} → Run w h m n d e → Run w h m n d′ e′ → e ≡ e′
   run-det (run r) (run r′) = detB r r′
+
+  private
+    callsB : ∀ {X h t n d d′} {e e′ : Maybe (End X)} → RunB w h t n d e → RunB w h t n d′ e′ → d ≡ d′
+    callsA : ∀ {X h o a k D n d d′} {e e′ : Maybe (End X)} → RunA w h o a k D n d e → RunA w h o a k D n d′ e′ → d ≡ d′
+    callsB rb-cut      rb-cut       = refl
+    callsB rb-ret      rb-ret       = refl
+    callsB (rb-next r) (rb-next r′) = callsB r r′
+    callsB (rb-call r) (rb-call r′) = cong (_ ∷_) (callsA r r′)
+    callsA (ra-go r)   (ra-go r′)   = callsB r r′
+    callsA ra-halt     ra-halt      = refl
+    callsA ra-cut      ra-cut       = refl
+
+  -- … and so are its calls.
+  run-det-calls : ∀ {X h} {m : T∞ X} {n d d′ e e′} → Run w h m n d e → Run w h m n d′ e′ → d ≡ d′
+  run-det-calls (run r) (run r′) = callsB r r′
