@@ -23,7 +23,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Grade
-  using (Quantity; Zero; One; Many; Purity; pure; act; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+  using (Quantity; Zero; One; Many; Purity; pure; act; fin; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
   using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Int; Float; _⇒[_]_; _*_; _+_; μ; ν; ⟦_⟧F; Unit)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_;
@@ -34,7 +34,7 @@ open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (M; fmap; module νM)
 open νM using (outν)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; anaM)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (SameDefs)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
@@ -194,19 +194,19 @@ module RenSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
                                      (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
           (sameμ sv)
           (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
-  renSem θ ρ h c (⊢unfold {π = π} {F = F} {A} g wf dc da) ag =
+  renSem θ ρ h c (⊢unfold {f = f} {F = F} {A} wf dc da) ag =
     relBindᵍ (renSem θ ρ h c dc (r3 c _ _ _ ag)) λ {c₁} {c₂} sc →
     relFmap (renSem θ ρ h c da (r3 c _ _ _ ag)) λ sa n →
-      Ana.anaRel π g (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c₁ x)) (λ x → fmap π (toL σ F A) (c₂ x))
-        (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap π (toL σ F A) (c₁ a)) (≈-Relatedʳ (toT∞-fmap π (toL σ F A) (c₂ a′))
-                          (relatedFmap (runs (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
+      Ana.anaRel f (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap (fin f) (toL σ F A) (c₁ x)) (λ x → fmap (fin f) (toL σ F A) (c₂ x))
+        (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap (fin f) (toL σ F A) (c₁ a)) (≈-Relatedʳ (toT∞-fmap (fin f) (toL σ F A) (c₂ a′))
+                          (relatedFmap (runs (appMany {π = fin f} sc s)) (Functor.toL-same σ r wf A))))
         n sa
-  renSem θ ρ h c (⊢out {π = π} {F = F} wf d) ag =
+  renSem θ ρ h c (⊢out {f = f} {F = F} wf d) ag =
     relBindᵍ (renSem θ ρ h c d ag) λ {v} {v′} sv → rel (
-      ≈-Relatedˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
-        (≈-Relatedʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
-          (relatedFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
-                    (λ k → Functor.fromL-same σ r wf (ν F π) (LayerEq-∀ (code (F ⟨ σ ⟩F)) k)))))
+      ≈-Relatedˡ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v))
+        (≈-Relatedʳ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v′))
+          (relatedFmap (outRel f (code (F ⟨ σ ⟩F)) sv)
+                    (λ k → Functor.fromL-same σ r wf (ν F f) (LayerEq-∀ (code (F ⟨ σ ⟩F)) k)))))
   renSem θ ρ h c (⊢iter {A = A} {B} df ds) ag =
     relBindᵍ (renSem θ ρ h c df (r3 c _ _ _ ag)) λ {f} {f′} sf →
     relBindᵍ (renSem θ ρ h c ds (r3 c _ _ _ ag)) λ sa →
@@ -215,7 +215,7 @@ module RenSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   renSem θ ρ h c ⊢lit-int ag = relPure {A = Int} refl
   renSem θ ρ h c ⊢lit-float ag = relPure {A = Float} refl
   renSem θ ρ h c (⊢prim {π = π} p d) ag = relFmap {π} {π} (renSem θ ρ h c d ag) (primSame σ p)
-  renSem θ ρ h c (⊢sigop {c = c₀} {t} mem) ag = relPure (sigopRefl σ c₀ t mem (interp δ))
+  renSem θ ρ h c (⊢sigop {c = c₀} {t} mem) ag = relPure (sigopRefl σ c₀ t mem (model δ))
   renSem θ ρ h c (⊢ref d τ rd) ag =
     relPure (substSame (sym (⟨⟩-∘ (type (S !! d)) τ σ))
                        (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd r)))

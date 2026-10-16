@@ -23,22 +23,20 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many; _·p_; _⊑π_)
+open import Once.Spec.Grade using (Finite; fin; Purity; pure; act; eff; mk-kind; Zero; One; Many; _·p_; _⊑π_)
 open import Once.Spec.Type
   using (Ty; Type; Fun; KCtx; ∅ₖ; TySub; Respects; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; base-⟨⟩;
          WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
          ⟦_⟧F; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; layerM; anaM)
-open import Once.Spec.Observation Σ using (Interp)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; layerM)
 open import Once.Spec.Equivalence Σ
 open import Once.Metatheory.Bisim Σ using (≈-refl)
 open import Once.Metatheory.Erase Σ
 open import Once.Metatheory.Unfold Σ using (module Unfold)
 open import Once.Metatheory.Coherence.Relation Σ
 
-open T∞ using (force)
 open νM using (outν)
 
 ------------------------------------------------------------------------
@@ -56,8 +54,8 @@ relPure : ∀ {A : Type} {x x′} → Same A x x′ → Rel pure pure A x x′
 relPure s = rel (returnRel s)
 
 -- A pure computation's value is observed by running it somewhere.
-relPure⁻ : ∀ {A : Type} {x x′} → Interp → Rel pure pure A x x′ → Same A x x′
-relPure⁻ ι p = returnRel⁻ ι (runs p)
+relPure⁻ : ∀ {A : Type} {x x′} → Rel pure pure A x x′ → Same A x x′
+relPure⁻ p = returnRel⁻ (runs p)
 
 relSubˡ : ∀ {π₀ π π′} (g : π ⊑π π₀) {A : Type} {m m′} → Rel π π′ A m m′ → Rel π₀ π′ A (sub g m) m′
 relSubˡ g {m = m} p = rel (≈-Relatedˡ (toT∞-sub g m) (runs p))
@@ -96,28 +94,28 @@ relatedFmap p h = bindRel p λ r → returnRel (h r)
 -- Applying the same functions to the same arguments.
 appZero : ∀ {π} {A B : Type} {f f′ : ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᵛ} → Same (A ⇒[ mk-kind Zero π ] B) f f′
         → Rel π π B (f tt) (f′ tt)
-appZero s = rel (fromUpTo s)
+appZero s = rel (fromObserved s)
 
 appOne : ∀ {π} {A B : Type} {f f′ : ⟦ A ⇒[ mk-kind One π ] B ⟧ᵛ} → Same (A ⇒[ mk-kind One π ] B) f f′
        → ∀ {a a′} → Same A a a′ → Rel π π B (f a) (f′ a′)
-appOne s sa = rel (fromUpTo (s _ _ sa))
+appOne s sa = rel (fromObserved (s _ _ sa))
 
 appMany : ∀ {π} {A B : Type} {f f′ : ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ} → Same (A ⇒[ mk-kind Many π ] B) f f′
         → ∀ {a a′} → Same A a a′ → Rel π π B (f a) (f′ a′)
-appMany s sa = rel (fromUpTo (s _ _ sa))
+appMany s sa = rel (fromObserved (s _ _ sa))
 
 -- A function whose results are related on related arguments.
 lamZero : ∀ {π} {A B : Type} {f f′ : ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᵛ} → Rel π π B (f tt) (f′ tt)
         → Same (A ⇒[ mk-kind Zero π ] B) f f′
-lamZero p = toUpTo (runs p)
+lamZero p = toObserved (runs p)
 
 lamOne : ∀ {π} {A B : Type} {f f′ : ⟦ A ⇒[ mk-kind One π ] B ⟧ᵛ}
        → (∀ {a a′} → Same A a a′ → Rel π π B (f a) (f′ a′)) → Same (A ⇒[ mk-kind One π ] B) f f′
-lamOne h a a′ sa = toUpTo (runs (h sa))
+lamOne h a a′ sa = toObserved (runs (h sa))
 
 lamMany : ∀ {π} {A B : Type} {f f′ : ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ}
         → (∀ {a a′} → Same A a a′ → Rel π π B (f a) (f′ a′)) → Same (A ⇒[ mk-kind Many π ] B) f f′
-lamMany h a a′ sa = toUpTo (runs (h sa))
+lamMany h a a′ sa = toObserved (runs (h sa))
 
 ------------------------------------------------------------------------
 -- Data
@@ -269,19 +267,19 @@ module Fold (π : Purity) (G : SFunctor) (A : Type)
 -- The unfold, and forcing it
 ------------------------------------------------------------------------
 
-module Ana (π : Purity) (g : π ⊑π act) (G : SFunctor) (A : Type) (c c′ : ⟦ A ⟧ᵛ → M π (⟦ G ⟧SF ⟦ A ⟧ᵛ))
-           (h : ∀ {a a′} → Same A a a′ → Related (LayerEq G (Same A)) (toT∞ π (c a)) (toT∞ π (c′ a′))) where
+module Ana (f : Finite) (G : SFunctor) (A : Type) (c c′ : ⟦ A ⟧ᵛ → Mᶠ f (⟦ G ⟧SF ⟦ A ⟧ᵛ))
+           (h : ∀ {a a′} → Same A a a′ → Related (LayerEq G (Same A)) (toT∞ (fin f) (c a)) (toT∞ (fin f) (c′ a′))) where
   open Unfold G using (unfold-out≈)
 
-  anaRel : ∀ n {a a′} → Same A a a′ → νUpTo π G n (anaM g G c a) (anaM g G c′ a′)
+  anaRel : ∀ n {a a′} → Same A a a′ → SameNu f G n (ana f G c a) (ana f G c′ a′)
   anaRel zero    s = tt
   anaRel (suc n) {a} {a′} s =
-    toUpTo (≈-Relatedˡ (unfold-out≈ g c a) (≈-Relatedʳ (unfold-out≈ g c′ a′)
-             (≈-Relatedˡ (toT∞-fmap π (sfmap G (anaM g G c)) (c a))
-               (≈-Relatedʳ (toT∞-fmap π (sfmap G (anaM g G c′)) (c′ a′))
-                 (relatedFmap (h s) (LayerEq-map G (anaRel n)))))))
+    toObserved (≈-Relatedˡ (unfold-out≈ f c a) (≈-Relatedʳ (unfold-out≈ f c′ a′)
+                 (≈-Relatedˡ (toT∞-fmap (fin f) (sfmap G (ana f G c)) (c a))
+                   (≈-Relatedʳ (toT∞-fmap (fin f) (sfmap G (ana f G c′)) (c′ a′))
+                     (relatedFmap (h s) (LayerEq-map G (anaRel n)))))))
 
 -- Forcing the same codata gives the same layer computations.
-outRel : ∀ π (G : SFunctor) {v v′ : νM π G} → (∀ n → νUpTo π G n v v′)
-       → Related (λ l l′ → ∀ n → LayerEq G (νUpTo π G n) l l′) (toT∞ π (outν v)) (toT∞ π (outν v′))
-outRel π G s = Related-∀ λ n → fromUpTo (s (suc n))
+outRel : ∀ (f : Finite) (G : SFunctor) {v v′ : νM f G} → (∀ n → SameNu f G n v v′)
+       → Related (λ l l′ → ∀ n → LayerEq G (SameNu f G n) l l′) (toT∞ (fin f) (outν v)) (toT∞ (fin f) (outν v′))
+outRel f G s = Related-∀ λ n → fromObserved (s (suc n))

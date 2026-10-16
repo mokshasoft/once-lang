@@ -153,9 +153,9 @@ module _ {m : ℕ} {Δ : KCtx m} where
   ren-⊢ θ ρ h c (⊢fold {Ψa = Ψa} {Ψt} wf da dt) =
     cast (sym (trans (θ*-+ θ (Many *ᵘ Ψa) Ψt) (cong (_+ᵘ θ θ* Ψt) (θ*-* θ Many Ψa))))
       (⊢fold wf (ren-⊢ θ ρ h c da) (ren-⊢ θ ρ h c dt))
-  ren-⊢ θ ρ h c (⊢unfold {Ψc = Ψc} {Ψs} g wf dc da) =
+  ren-⊢ θ ρ h c (⊢unfold {Ψc = Ψc} {Ψs} wf dc da) =
     cast (sym (trans (θ*-+ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ θ θ* Ψs) (θ*-* θ Many Ψc))))
-      (⊢unfold g wf (ren-⊢ θ ρ h c dc) (ren-⊢ θ ρ h c da))
+      (⊢unfold wf (ren-⊢ θ ρ h c dc) (ren-⊢ θ ρ h c da))
   ren-⊢ θ ρ h c (⊢out wf d) = ⊢out wf (ren-⊢ θ ρ h c d)
   ren-⊢ θ ρ h c (⊢iter {Ψf = Ψf} {Ψs} df ds) =
     cast (sym (trans (θ*-+ θ (Many *ᵘ Ψf) Ψs) (cong (_+ᵘ θ θ* Ψs) (θ*-* θ Many Ψf))))
@@ -232,9 +232,9 @@ module _ {m : ℕ} {Δ : KCtx m} where
   sub-⊢ σ (⊢fold {Ψa = Ψa} {Ψt} wf da dt) =
     cast (sym (trans (·ᵐ-+ (Many *ᵘ Ψa) Ψt (usage σ)) (cong (_+ᵘ Ψt ·ᵐ usage σ) (·ᵐ-* Many Ψa (usage σ)))))
       (⊢fold wf (sub-⊢ σ da) (sub-⊢ σ dt))
-  sub-⊢ σ (⊢unfold {Ψc = Ψc} {Ψs} g wf dc da) =
+  sub-⊢ σ (⊢unfold {Ψc = Ψc} {Ψs} wf dc da) =
     cast (sym (trans (·ᵐ-+ (Many *ᵘ Ψc) Ψs (usage σ)) (cong (_+ᵘ Ψs ·ᵐ usage σ) (·ᵐ-* Many Ψc (usage σ)))))
-      (⊢unfold g wf (sub-⊢ σ dc) (sub-⊢ σ da))
+      (⊢unfold wf (sub-⊢ σ dc) (sub-⊢ σ da))
   sub-⊢ σ (⊢out wf d) = ⊢out wf (sub-⊢ σ d)
   sub-⊢ σ (⊢iter {Ψf = Ψf} {Ψs} df ds) =
     cast (sym (trans (·ᵐ-+ (Many *ᵘ Ψf) Ψs (usage σ)) (cong (_+ᵘ Ψs ·ᵐ usage σ) (·ᵐ-* Many Ψf (usage σ)))))

@@ -30,8 +30,7 @@ open import Once.Spec.Core.Syntax using (Defs; let′; _[_])
 open import Once.Spec.Equivalence Σ using (Same)
 import Once.Spec.Equivalence
 open import Once.Spec.Metatheory using (TermModel; SameDefs; SameEnv)
-open import Once.Spec.Observation Σ using (Interp)
-open import Once.Metatheory.Coherence.Relation Σ using (Related-trans; toUpTo)
+open import Once.Metatheory.Coherence.Relation Σ using (Related-trans; toObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs; relPure⁻)
 open import Once.Metatheory.Coherence.PER Σ using (Same-trans)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-≡)
@@ -52,10 +51,8 @@ module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
                 → ⟦ subst (λ x → Δ ⊩ Γ ⊢[ Ψ ] x ∷ B ! π) e D ⟧ δ σ r γ ≡ ⟦ D ⟧ δ σ r γ
   termSubst-sem refl D δ σ r γ = refl
 
-  -- Pure values are read by running them in `ι₀`: the Interpretation the
-  -- conclusion is observed in.
-  module _ (ι₀ : Interp) {m n} {Δ : KCtx m} (Γ : Ctx m n) (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
-    open SubSem ι₀ δ sd σ r
+  module _ {m n} {Δ : KCtx m} (Γ : Ctx m n) (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
+    open SubSem δ sd σ r
 
     -- A variable other than the substituted one reads the same value.
     varAg : ∀ {U Ψ₀ Ψ₂} {γ : Env σ Γ U} → SelfSame σ γ → ∀ j (nz : NZ (At Ψ₂ j)) (p : singleUse j One ⊑ᵘ Ψ₀) (P : Ψ₀ ⊑ᵘ U) (R : Ψ₂ ⊑ᵘ U)
@@ -76,7 +73,7 @@ module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
             → SubAgree (single du) (q ∷ Ψₜ) (restrict σ (⊑ᵘ-≡ (single-usage du q Ψₜ)) γ) γdt
             → Once.Spec.Equivalence.SameM Σ π (B ⟨ σ ⟩) (⟦ subst-⊢ dt du ⟧ δ σ r γ) (⟦ dl ⟧ δ σ r γ)
     letCore {Ψₜ} {Ψᵤ} {q} {π} {A} {B} {t} dt du dl γ sγ canon γdt ceq ag =
-      toUpTo
+      toObserved
         (Related-trans (Same-trans (B ⟨ σ ⟩))
           (runs (subst₂ (Rel π π (B ⟨ σ ⟩))
                         (sym (termSubst-sem (single-term du t) (cast (single-usage du q Ψₜ) (sub-⊢ (single du) dt)) δ σ r γ))
@@ -84,44 +81,36 @@ module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
                         (subSem (single du) dt (selfSame-restrict σ _ {γ = γ} (selfSame σ Γ _ γ sγ)) ag)))
           (runs (FL.FL δ sd σ r r canon dl refl (selfAgree σ Γ _ γ sγ))))
 
-  let-β′ : (ι₀ : Interp) → ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψₜ Ψᵤ q π A B t u}
-            (dt : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Δ ⊩ Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
-            (dl : Δ ⊩ Γ ⊢[ Ψₜ +ᵘ q *ᵘ Ψᵤ ] let′ q u t ∷ B ! π)
-            (δ : DefSem) → SameDefs Σ fmt S δ → (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
-            (γ : Env σ Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) → SameEnv Σ fmt S σ Γ _ γ
-          → Once.Spec.Equivalence.SameM Σ π (B ⟨ σ ⟩) (⟦ subst-⊢ dt du ⟧ δ σ r γ) (⟦ dl ⟧ δ σ r γ)
-  let-β′ ι₀ {Γ = Γ} {Ψₜ} {Ψᵤ} {Zero} dt du dl δ sd σ r γ sγ =
-    letCore ι₀ Γ δ sd σ r dt du dl γ sγ (⊢let {q = Zero} {π₁ = pure} du dt) (restrict σ (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ)) γ , tt) refl ag
-    where
-      ag : _
-      ag zero () p
-      ag (suc j) nz p = varAg ι₀ Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
-  let-β′ ι₀ {Γ = Γ} {Ψₜ} {Ψᵤ} {One} dt du dl δ sd σ r γ sγ =
-    letCore ι₀ Γ δ sd σ r dt du dl γ sγ (⊢let {q = One} {π₁ = pure} du dt)
-      (restrict σ (⊑ᵘ-+ˡ Ψₜ (One *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
-    where
-      R₁ = ⊑ᵘ-trans (⊑ᵘ-*One Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (One *ᵘ Ψᵤ))
-      ag : _
-      ag zero nz p = relPure⁻ ι₀ (FL.FL δ sd σ r r du du refl
-                       (restrictˡ σ p (restrictˡ σ _ (restrictʳ σ R₁ (selfAgree σ Γ _ γ sγ)))))
-      ag (suc j) nz p = varAg ι₀ Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
-  let-β′ ι₀ {Γ = Γ} {Ψₜ} {Ψᵤ} {Many} dt du dl δ sd σ r γ sγ =
-    letCore ι₀ Γ δ sd σ r dt du dl γ sγ (⊢let {q = Many} {π₁ = pure} du dt)
-      (restrict σ (⊑ᵘ-+ˡ Ψₜ (Many *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
-    where
-      R₁ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (Many *ᵘ Ψᵤ))
-      ag : _
-      ag zero nz p = relPure⁻ ι₀ (FL.FL δ sd σ r r du du refl
-                       (restrictˡ σ p (restrictˡ σ _ (restrictʳ σ R₁ (selfAgree σ Γ _ γ sγ)))))
-      ag (suc j) nz p = varAg ι₀ Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
-
   let-β : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψₜ Ψᵤ q π A B t u}
             (dt : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Δ ⊩ Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
             (dl : Δ ⊩ Γ ⊢[ Ψₜ +ᵘ q *ᵘ Ψᵤ ] let′ q u t ∷ B ! π)
             (δ : DefSem) → SameDefs Σ fmt S δ → (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
             (γ : Env σ Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) → SameEnv Σ fmt S σ Γ _ γ
           → Once.Spec.Equivalence.SameM Σ π (B ⟨ σ ⟩) (⟦ subst-⊢ dt du ⟧ δ σ r γ) (⟦ dl ⟧ δ σ r γ)
-  let-β dt du dl δ sd σ r γ sγ n ι = let-β′ ι dt du dl δ sd σ r γ sγ n ι
+  let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {Zero} dt du dl δ sd σ r γ sγ =
+    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = Zero} {π₁ = pure} du dt) (restrict σ (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ)) γ , tt) refl ag
+    where
+      ag : _
+      ag zero () p
+      ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
+  let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {One} dt du dl δ sd σ r γ sγ =
+    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = One} {π₁ = pure} du dt)
+      (restrict σ (⊑ᵘ-+ˡ Ψₜ (One *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
+    where
+      R₁ = ⊑ᵘ-trans (⊑ᵘ-*One Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (One *ᵘ Ψᵤ))
+      ag : _
+      ag zero nz p = relPure⁻ (FL.FL δ sd σ r r du du refl
+                       (restrictˡ σ p (restrictˡ σ _ (restrictʳ σ R₁ (selfAgree σ Γ _ γ sγ)))))
+      ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
+  let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {Many} dt du dl δ sd σ r γ sγ =
+    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = Many} {π₁ = pure} du dt)
+      (restrict σ (⊑ᵘ-+ˡ Ψₜ (Many *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
+    where
+      R₁ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (Many *ᵘ Ψᵤ))
+      ag : _
+      ag zero nz p = relPure⁻ (FL.FL δ sd σ r r du du refl
+                       (restrictˡ σ p (restrictˡ σ _ (restrictʳ σ R₁ (selfAgree σ Γ _ γ sγ)))))
+      ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
 
   termModel : TermModel Σ fmt S
   termModel = record

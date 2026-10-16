@@ -31,18 +31,19 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type
   using (Ty; Type; TySub; Base; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ; Unit; Int; Float; _*_; _+_; _⟨_⟩)
 open import Once.Spec.Signature
-  using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; arrow; Decl; _∶_; Op; op; e-act; e-eff)
+  using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; value; operation; Decl; _∶_; Op; op; NotEmpty; notEmpty?)
 import Once.Spec.Signature as S
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toB; fromB)
 open import Once.Spec.Equivalence Σ
-open import Once.Spec.Observation Σ using (Interp; module Interp; Answer; resume; returned; halted; cut)
+open import Once.Spec.Observation Σ using (World; returned; halted; EndRel; returned≈; halted≈)
+open import Once.Metatheory.Trace Σ using (MaybeEnd; cut≈; end≈)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.Metatheory.Run Σ
 open import Once.Spec.Metatheory using (OneName)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
 
-open T∞ using (force)
 
 ------------------------------------------------------------------------
 -- One declaration per name
@@ -90,31 +91,21 @@ module _ {m : ℕ} (σ : TySub m 0) where
 
   private
     -- One call's runs end the same as themselves, when its answers do.
-    selfRes : ∀ {X : Set} {R : X → X → Set} {ι h n d e} (β : BTy) (v : Answer β) (k : S.⟦ β ⟧ᵇ → X)
-            → (∀ r → R (k r) (k r)) → RunA ι h (resume β v (λ r → roll (done (inj₁ (k r))))) n d e → EndRel R e e
-    selfRes void    v k hk ra-halt = halted≈
-    selfRes unit    v k hk (ra-go rb-cut) = cut≈
-    selfRes unit    v k hk (ra-go rb-ret) = returned≈ (hk v)
-    selfRes int     v k hk (ra-go rb-cut) = cut≈
-    selfRes int     v k hk (ra-go rb-ret) = returned≈ (hk v)
-    selfRes float   v k hk (ra-go rb-cut) = cut≈
-    selfRes float   v k hk (ra-go rb-ret) = returned≈ (hk v)
-    selfRes (p S.* q) v k hk (ra-go rb-cut) = cut≈
-    selfRes (p S.* q) v k hk (ra-go rb-ret) = returned≈ (hk v)
-    selfRes (p S.+ q) v k hk (ra-go rb-cut) = cut≈
-    selfRes (p S.+ q) v k hk (ra-go rb-ret) = returned≈ (hk v)
+    selfA : ∀ {X : Set} {R : X → X → Set} {w h o v n d e} {k : S.⟦ S.Op.ans o ⟧ᵇ → X} {D : Dec (NotEmpty (S.Op.ans o))}
+          → (∀ r → R (k r) (k r)) → RunA w h o v (λ r → roll (done (inj₁ (k r)))) D n d e → MaybeEnd R e e
+    selfA hk (ra-go rb-cut) = cut≈
+    selfA hk (ra-go rb-ret) = end≈ (returned≈ (hk _))
+    selfA hk ra-halt = end≈ halted≈
+    selfA hk ra-cut  = cut≈
 
     selfCall : ∀ {X : Set} {R : X → X → Set} {o v} {k : S.⟦ S.Op.ans o ⟧ᵇ → X} → (∀ r → R (k r) (k r))
-             → ∀ {ι h n d e} → Run ι h (embed (performT (call o v k))) n d e → EndRel R e e
+             → ∀ {w h n d e} → Run w h (embed (performT (call o v k))) n d e → MaybeEnd R e e
     selfCall hk (run rb-cut) = cut≈
-    selfCall {o = o} {v} {k} hk {ι} {h} (run (rb-call r)) = selfRes (S.Op.ans o) (Interp.answer ι o h v) k hk r
+    selfCall hk (run (rb-call r)) = selfA hk r
 
-  -- One call of an operation, answered with a base value, at each grade.
-  module _ {c a q π b} (mem : (c ∶ arrow a (mk-kind q π) b) ∈ Σ) (ef : S.Effectful π) where
+  -- One call of an operation, answered with a base value: a block.
+  module _ {c a q b} (mem : (c ∶ operation a q b) ∈ Σ) where
     callT : ∀ {v v′} → v ≡ v′
-          → Rel act act (⌜ b ⌝ ⟨ σ ⟩) (performT (call (op mem ef) v (fromB σ b))) (performT (call (op mem ef) v′ (fromB σ b)))
+          → Rel act act (⌜ b ⌝ ⟨ σ ⟩) (performT (call (op mem) v (fromB σ b))) (performT (call (op mem) v′ (fromB σ b)))
     callT refl = rel (Related-self (selfCall (fromB-same b)))
 
-    call∞ : ∀ {v v′} → v ≡ v′
-          → Rel eff eff (⌜ b ⌝ ⟨ σ ⟩) (perform (call (op mem ef) v (fromB σ b))) (perform (call (op mem ef) v′ (fromB σ b)))
-    call∞ refl = rel (Related-self (selfCall (fromB-same b)))

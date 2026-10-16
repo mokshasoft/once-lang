@@ -20,10 +20,10 @@ module Once.Metatheory.TermModel.TySubst (Σ : Signature) {s : ℕ} (S : Defs s)
 
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
-open import Once.Spec.Grade using (mk-kind; Many; pure)
+open import Once.Spec.Grade using (mk-kind; Many; pure; act)
 open import Once.Spec.Type
 open import Once.Spec.Sub
-open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; arrow)
+open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; value; operation)
 import Once.Spec.Signature as BT
 open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; _⟨_⟩ᶜ)
 open import Once.Spec.Core.Syntax
@@ -65,7 +65,8 @@ module _ {m k : ℕ} (σ : TySub m k) where
 
   ⌜⌝ᵈ-⟨⟩ : ∀ t → ⌜ t ⌝ᵈ ⟨ σ ⟩ ≡ ⌜ t ⌝ᵈ
   ⌜⌝ᵈ-⟨⟩ (constant b)   = ⌜⌝-⟨⟩ b
-  ⌜⌝ᵈ-⟨⟩ (arrow a κ b)  = cong₂ (λ x y → x ⇒[ κ ] y) (⌜⌝-⟨⟩ a) (⌜⌝-⟨⟩ b)
+  ⌜⌝ᵈ-⟨⟩ (value a q b)     = cong₂ (λ x y → x ⇒[ mk-kind q pure ] y) (⌜⌝-⟨⟩ a) (⌜⌝-⟨⟩ b)
+  ⌜⌝ᵈ-⟨⟩ (operation a q b) = cong₂ (λ x y → x ⇒[ mk-kind q act ] y) (⌜⌝-⟨⟩ a) (⌜⌝-⟨⟩ b)
 
   primDom-⟨⟩ : ∀ p → primDom {m} p ⟨ σ ⟩ ≡ primDom {k} p
   primDom-⟨⟩ p-add  = refl
@@ -134,10 +135,10 @@ module _ {m k : ℕ} (σ : TySub m k) where
       ⊢roll (wf-⟨⟩ wf) (retype (⟦⟧F-⟨⟩ F (μ F)) (ty-subst-⊢ d))
     ty-subst-⊢ (⊢fold {F = F} {A} wf da dt) =
       ⊢fold (wf-⟨⟩ wf) (retype (cong (λ X → X ⇒[ mk-kind Many _ ] A ⟨ σ ⟩) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ da)) (ty-subst-⊢ dt)
-    ty-subst-⊢ (⊢unfold {F = F} {A} g wf dc da) =
-      ⊢unfold g (wf-⟨⟩ wf) (retype (cong (λ X → A ⟨ σ ⟩ ⇒[ mk-kind Many _ ] X) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ dc)) (ty-subst-⊢ da)
-    ty-subst-⊢ (⊢out {π = π} {F = F} wf d) =
-      retype (sym (⟦⟧F-⟨⟩ F (ν F π))) (⊢out (wf-⟨⟩ wf) (ty-subst-⊢ d))
+    ty-subst-⊢ (⊢unfold {F = F} {A} wf dc da) =
+      ⊢unfold (wf-⟨⟩ wf) (retype (cong (λ X → A ⟨ σ ⟩ ⇒[ mk-kind Many _ ] X) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ dc)) (ty-subst-⊢ da)
+    ty-subst-⊢ (⊢out {f = f} {F = F} wf d) =
+      retype (sym (⟦⟧F-⟨⟩ F (ν F f))) (⊢out (wf-⟨⟩ wf) (ty-subst-⊢ d))
     ty-subst-⊢ (⊢iter df ds) = ⊢iter (ty-subst-⊢ df) (ty-subst-⊢ ds)
     ty-subst-⊢ (⊢coerce p d) = ⊢coerce (<:-⟨⟩ p) (ty-subst-⊢ d)
     ty-subst-⊢ ⊢lit-int = ⊢lit-int

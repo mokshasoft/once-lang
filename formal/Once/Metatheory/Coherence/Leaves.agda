@@ -31,7 +31,7 @@ open import Once.Spec.Type
   using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; WFFun; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Base; b-Unit; b-Int; b-Float; b-*; b-+;
          Unit; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Signature
-  using (_∶_; arrow; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op; e-act; e-eff)
+  using (_∶_; constant; value; operation; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
@@ -39,9 +39,9 @@ open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (M; toT∞; fmap; bind; bindᵍ; sub; module νM)
 open νM using (outν)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; foldM; anaM; conv)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; foldM; conv)
 open import Once.Spec.Equivalence Σ using (Same)
-open import Once.Spec.Observation Σ using (Interp)
+open import Once.Spec.Observation Σ using (Model; module Model)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv; Coherence)
 import Once.Spec.Word as Word
 open import Once.Metatheory.Types using (<:-unique; ⊑π-unique)
@@ -59,21 +59,18 @@ open DefSem
 
 module _ {m : ℕ} (σ : TySub m 0) where
 
-  sigopRefl : ∀ c t (mem : (c ∶ t) ∈ Σ) (ι : Interp) → Same (⌜ t ⌝ᵈ ⟨ σ ⟩) (sigopᵛ σ c t mem ι) (sigopᵛ σ c t mem ι)
-  sigopRefl c (constant b) mem ι = fromB-same σ b _
-  sigopRefl c (arrow a (mk-kind Zero pure) b) mem ι = lamZero {π = pure} {A = ⌜ a ⌝ ⟨ σ ⟩} (relPure (fromB-same σ b _))
-  sigopRefl c (arrow a (mk-kind One  pure) b) mem ι =
-    lamOne {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (Interp.value ι mem tt (toB σ a x))) (fromB σ b (Interp.value ι mem tt z)))
+  sigopRefl : ∀ c t (mem : (c ∶ t) ∈ Σ) (μ₀ : Model) → Same (⌜ t ⌝ᵈ ⟨ σ ⟩) (sigopᵛ σ c t mem μ₀) (sigopᵛ σ c t mem μ₀)
+  sigopRefl c (constant b) mem μ₀ = fromB-same σ b _
+  sigopRefl c (value a Zero b) mem μ₀ = lamZero {π = pure} {A = ⌜ a ⌝ ⟨ σ ⟩} (relPure (fromB-same σ b _))
+  sigopRefl c (value a One  b) mem μ₀ =
+    lamOne {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (Model.valueᵐ μ₀ mem (toB σ a x))) (fromB σ b (Model.valueᵐ μ₀ mem z)))
                                      (argEq σ a sa) (fromB-same σ b _))
-  sigopRefl c (arrow a (mk-kind Many pure) b) mem ι =
-    lamMany {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (Interp.value ι mem tt (toB σ a x))) (fromB σ b (Interp.value ι mem tt z)))
+  sigopRefl c (value a Many b) mem μ₀ =
+    lamMany {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (Model.valueᵐ μ₀ mem (toB σ a x))) (fromB σ b (Model.valueᵐ μ₀ mem z)))
                                       (argEq σ a sa) (fromB-same σ b _))
-  sigopRefl c (arrow a (mk-kind Zero act) b)  mem ι = lamZero {π = act} {A = ⌜ a ⌝ ⟨ σ ⟩} (callT σ mem e-act refl)
-  sigopRefl c (arrow a (mk-kind One  act) b)  mem ι = lamOne {π = act}  λ sa → callT σ mem e-act (argEq σ a sa)
-  sigopRefl c (arrow a (mk-kind Many act) b)  mem ι = lamMany {π = act} λ sa → callT σ mem e-act (argEq σ a sa)
-  sigopRefl c (arrow a (mk-kind Zero eff) b)  mem ι = lamZero {π = eff} {A = ⌜ a ⌝ ⟨ σ ⟩} (call∞ σ mem e-eff refl)
-  sigopRefl c (arrow a (mk-kind One  eff) b)  mem ι = lamOne {π = eff}  λ sa → call∞ σ mem e-eff (argEq σ a sa)
-  sigopRefl c (arrow a (mk-kind Many eff) b)  mem ι = lamMany {π = eff} λ sa → call∞ σ mem e-eff (argEq σ a sa)
+  sigopRefl c (operation a Zero b) mem μ₀ = lamZero {π = act} {A = ⌜ a ⌝ ⟨ σ ⟩} (callT σ mem refl)
+  sigopRefl c (operation a One  b) mem μ₀ = lamOne {π = act}  λ sa → callT σ mem (argEq σ a sa)
+  sigopRefl c (operation a Many b) mem μ₀ = lamMany {π = act} λ sa → callT σ mem (argEq σ a sa)
 
   baseDom : ∀ p → Base ∅ₖ (primDom {m} p ⟨ σ ⟩)
   baseDom p-add  = b-* b-Int b-Int

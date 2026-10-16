@@ -3,16 +3,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.Run — a finished observation, as an inductive relation.
+-- Once.Metatheory.Run — a run to a depth, as an inductive relation.
 --
--- `Run ι h m n d e`: against `ι`, in a world that has seen `h`, the
--- computation `m` observed to depth `n` makes the calls `d` and ends `e`.
--- It is exactly what `observeFrom` arrives at (`run-sound`,
--- `run-complete`), with the `Delay` steps unrolled into the derivation: a
--- block's end is a step of the derivation (`rb-next`), so a silent loop has
--- no run past depth zero. Stated inductively, runs compose by plain
--- induction: the runs of `m >>= f` are a run of `m`, then of `f` from where it
--- returned (`Once.Metatheory.Sequencing`).
+-- `Run w h m n d e`: in the world `w`, which has seen `h`, the computation
+-- `m` observed to `n` visible steps makes the calls `d` and ends `e` (`just`
+-- an end, `nothing` cut at the depth). It is exactly the trace's depth-`n`
+-- observation (`run-sound`, `run-complete`), with the silent steps unrolled
+-- into the derivation: a block's end is a step of the derivation
+-- (`rb-next`), so a silent loop has no run past depth zero. Stated
+-- inductively, runs compose by plain induction (`Once.Metatheory.RunLaws`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature; call)
@@ -20,130 +19,126 @@ open import Once.Spec.Signature using (Signature; call)
 module Once.Metatheory.Run (Σ : Signature) where
 
 open import Data.List using (List; []; _∷_; _++_; [_])
-open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Once.Spec.Signature using (Event; eventOf; module Op)
+open import Relation.Nullary using (Dec; yes; no)
+open import Once.Spec.Signature using (Event; eventOf; Op; module Op; arg; ⟦_⟧ᵇ; NotEmpty; notEmpty?)
 open Op using (ans)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Observation Σ
-open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓)
+open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted; Tr; module Tr; trace; blockD; after)
+open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
+open import Once.Metatheory.Trace Σ using (Obs; pre; preStep; bindD; bind⇓; bind⇓⁻; nowInv)
 
 open Delay using (step)
-open T∞ using (force)
+open Tr using (next)
 
-module _ (ι : Interp) where
-  open Interp ι using (answer)
+module _ (w : World) where
+  open World w using (answer)
 
-  data RunB {X : Set} : History → T (X ⊎ T∞ X) → ℕ → History → End X → Set
-  data RunA {X : Set} : History → Maybe (T (X ⊎ T∞ X)) → ℕ → History → End X → Set
+  data RunB {X : Set} : History → T (X ⊎ T∞ X) → ℕ → History → Maybe (End X) → Set
+  data RunA {X : Set} (h : History) (o : Op Σ) (a : ⟦ arg o ⟧ᵇ) (k : ⟦ ans o ⟧ᵇ → T (X ⊎ T∞ X))
+       : Dec (NotEmpty (ans o)) → ℕ → History → Maybe (End X) → Set
 
   data RunB {X} where
-    rb-cut  : ∀ {h t} → RunB h t zero [] cut
-    rb-ret  : ∀ {h x n} → RunB h (roll (done (inj₁ x))) (suc n) [] (returned x)
+    rb-cut  : ∀ {h t} → RunB h t zero [] nothing
+    rb-ret  : ∀ {h x n} → RunB h (roll (done (inj₁ x))) (suc n) [] (just (returned x))
     rb-next : ∀ {h m n d e} → RunB h (force m) (suc n) d e → RunB h (roll (done (inj₂ m))) (suc n) d e
     rb-call : ∀ {h o a k n d e}
-            → RunA (h ++ [ eventOf o a ]) (resume (ans o) (answer o h a) k) n d e
+            → RunA h o a k (notEmpty? (ans o)) n d e
             → RunB h (roll (node (call o a k))) (suc n) (eventOf o a ∷ d) e
 
-  data RunA {X} where
-    ra-halt : ∀ {h n} → RunA h nothing n [] halted
-    ra-go   : ∀ {h t n d e} → RunB h t n d e → RunA h (just t) n d e
+  data RunA {X} h o a k where
+    ra-go   : ∀ {p n d e} → RunB (h ++ [ eventOf o a ]) (k (answer o h a p)) n d e → RunA h o a k (yes p) n d e
+    ra-halt : ∀ {¬p n} → RunA h o a k (no ¬p) (suc n) [] (just halted)
+    ra-cut  : ∀ {¬p} → RunA h o a k (no ¬p) zero [] nothing
 
   -- A run of the computation itself (so `m` is known from the type).
-  record Run {X : Set} (h : History) (m : T∞ X) (n : ℕ) (d : History) (e : End X) : Set where
+  record Run {X : Set} (h : History) (m : T∞ X) (n : ℕ) (d : History) (e : Maybe (End X)) : Set where
     constructor run
     field unrun : RunB h (force m) n d e
 
   ----------------------------------------------------------------------
-  -- A run is what the observation arrives at
+  -- A run is the trace's observation to its depth
   ----------------------------------------------------------------------
 
-  private
-    S : Set → Set
-    S X = (History × End X) ⊎ Delay (History × End X)
-
-    -- A step of a delay that arrives at `o`.
-    data Arrives {X : Set} (o : History × End X) : S X → Set where
-      here  : Arrives o (inj₁ o)
-      later : ∀ {d} → d ⇓ o → Arrives o (inj₂ d)
-
-    arrive : ∀ {X} {d : Delay (History × End X)} {o} → Arrives o (step d) → d ⇓ o
-    arrive′ : ∀ {X} {d : Delay (History × End X)} {o} {s} → step d ≡ s → Arrives o s → d ⇓ o
-    arrive {d = d} a = arrive′ {d = d} refl a
-    arrive′ e here      = now⇓ e
-    arrive′ e (later x) = later⇓ e x
-
-    snoc++ : ∀ (c : History) (v : Event) d → (c ++ [ v ]) ++ d ≡ c ++ (v ∷ d)
-    snoc++ c v d = ++-assoc c [ v ] d
-
-  run-soundB : ∀ {X} {h t n d} {e : End X} → RunB h t n d e → ∀ c → Arrives (c ++ d , e) (blockObs ι h c t n)
-  run-soundA : ∀ {X} {h mt n d} {e : End X} → RunA h mt n d e → ∀ c → Arrives (c ++ d , e) (answerObs ι h c mt n)
-  run-soundB rb-cut c rewrite ++-identityʳ c = here
-  run-soundB rb-ret c rewrite ++-identityʳ c = here
-  run-soundB (rb-next r) c = later (arrive (run-soundB r c))
-  run-soundB (rb-call {o = o} {a} {d = d} r) c = subst (λ x → Arrives (x , _) _) (snoc++ c (eventOf o a) d) (run-soundA r (c ++ [ eventOf o a ]))
-  run-soundA ra-halt c rewrite ++-identityʳ c = here
-  run-soundA (ra-go r) c = run-soundB r c
-
-  run-sound : ∀ {X} {h} {m : T∞ X} {n d e} → Run h m n d e → ∀ c → observeFrom ι h c m n ⇓ (c ++ d , e)
-  run-sound (run r) c = arrive (run-soundB r c)
-
-  -- What the observation arrives at is a run, and the calls it made.
-  Made : ∀ {X} → History → (T∞ X) → ℕ → History → History × End X → Set
-  Made h m n c o = ∃[ d ] ∃[ e ] (o ≡ (c ++ d , e) × Run h m n d e)
+  -- The trace of a block.
+  blk : ∀ {X} → History → T (X ⊎ T∞ X) → Tr X
+  next (blk h t) = blockD w h t
 
   private
-    MadeB : ∀ {X} → History → T (X ⊎ T∞ X) → ℕ → History → History × End X → Set
-    MadeB h t n c o = ∃[ d ] ∃[ e ] (o ≡ (c ++ d , e) × RunB h t n d e)
+    preTrace : ∀ {X} h (m : T∞ X) n → pre n (trace w h m) ≡ pre n (blk h (force m))
+    preTrace h m zero    = refl
+    preTrace h m (suc n) = refl
 
-    MadeA : ∀ {X} → History → Maybe (T (X ⊎ T∞ X)) → ℕ → History → History × End X → Set
-    MadeA h mt n c o = ∃[ d ] ∃[ e ] (o ≡ (c ++ d , e) × RunA h mt n d e)
+    preAfter : ∀ {X} h (o : Op Σ) a (k : ⟦ ans o ⟧ᵇ → T (X ⊎ T∞ X)) p n
+             → pre n (after w h o a k (yes p)) ≡ pre n (blk (h ++ [ eventOf o a ]) (k (answer o h a p)))
+    preAfter h o a k p zero    = refl
+    preAfter h o a k p (suc n) = refl
 
-    -- `c` with nothing after it.
-    none : ∀ {X} (c : History) {e : End X} → (c , e) ≡ (c ++ [] , e)
-    none c rewrite ++-identityʳ c = refl
+  runB-sound : ∀ {X h t n d} {e : Maybe (End X)} → RunB h t n d e → pre n (blk h t) ⇓ (d , e)
+  runA-sound : ∀ {X h o a k D n d} {e : Maybe (End X)} → RunA h o a k D n d e → pre n (after w h o a k D) ⇓ (d , e)
+  runB-sound rb-cut = now⇓ refl
+  runB-sound rb-ret = bind⇓ (now⇓ refl) (now⇓ refl)
+  runB-sound {h = h} {n = suc n} (rb-next {m = m} r) = go (bind⇓⁻ (blockD w h (force m)) (preStep n) (runB-sound r))
+    where go : ∀ {o} → ∃[ s ] (blockD w h (force m) ⇓ s × preStep n s ⇓ o) → bindD (blockD w h (roll (done (inj₂ m)))) (preStep n) ⇓ o
+          go (s , a , p) = bind⇓ (later⇓ refl a) p
+  runB-sound (rb-call r) = bind⇓ (now⇓ refl) (bind⇓ (runA-sound r) (now⇓ refl))
+  runA-sound {h = h} {o} {a} {k} {n = n} (ra-go {p} r) = subst (_⇓ _) (sym (preAfter h o a k p n)) (runB-sound r)
+  runA-sound ra-halt = bind⇓ (now⇓ refl) (now⇓ refl)
+  runA-sound ra-cut  = now⇓ refl
 
-  run-complete : ∀ {X} h c (m : T∞ X) n {o} → observeFrom ι h c m n ⇓ o → Made h m n c o
+  run-sound : ∀ {X h} {m : T∞ X} {n d e} → Run h m n d e → pre n (trace w h m) ⇓ (d , e)
+  run-sound {h = h} {m} {n} (run r) = subst (_⇓ _) (sym (preTrace h m n)) (runB-sound r)
+
+  -- What the observation arrives at is a run.
+  MadeB : ∀ {X} → History → T (X ⊎ T∞ X) → ℕ → Obs X → Set
+  MadeB h t n o = ∃[ d ] ∃[ e ] (o ≡ (d , e) × RunB h t n d e)
+
   private
-    compB : ∀ {X} h c (t : T (X ⊎ T∞ X)) n {o} {d₀ : Delay (History × End X)}
-          → step d₀ ≡ blockObs ι h c t n → d₀ ⇓ o → MadeB h t n c o
-    compA : ∀ {X} h c (mt : Maybe (T (X ⊎ T∞ X))) n {o} {d₀ : Delay (History × End X)}
-          → step d₀ ≡ answerObs ι h c mt n → d₀ ⇓ o → MadeA h mt n c o
-    compNext : ∀ {X} h c (m : T∞ X) n {o d′} → _≡_ {A = S X} (inj₂ (observeFrom ι h c m (suc n))) (inj₂ d′) → d′ ⇓ o
-             → MadeB h (roll (done (inj₂ m))) (suc n) c o
-    compCall : ∀ {X} h c o a k n {out} → MadeA (h ++ [ eventOf o a ]) (resume (ans o) (answer o h a) k) n (c ++ [ eventOf o a ]) out
-             → MadeB {X} h (roll (node (call o a k))) (suc n) c out
-    inj₁-inj : ∀ {X} {a b : History × End X} → _≡_ {A = S X} (inj₁ a) (inj₁ b) → a ≡ b
-    inj₁-inj refl = refl
-    clash₁ : ∀ {X} {a : History × End X} {d} {P : Set} → _≡_ {A = S X} (inj₁ a) (inj₂ d) → P
-    clash₁ ()
-    clash₂ : ∀ {X} {a : History × End X} {d} {P : Set} → _≡_ {A = S X} (inj₂ d) (inj₁ a) → P
-    clash₂ ()
+    MadeA : ∀ {X} → History → (o : Op Σ) → ⟦ arg o ⟧ᵇ → (⟦ ans o ⟧ᵇ → T (X ⊎ T∞ X)) → Dec (NotEmpty (ans o)) → ℕ → Obs X → Set
+    MadeA h o a k D n ob = ∃[ d ] ∃[ e ] (ob ≡ (d , e) × RunA h o a k D n d e)
 
-    compB h c t zero e (now⇓ e′) = [] , cut , trans (sym (inj₁-inj (trans (sym e) e′))) (none c) , rb-cut
-    compB h c t zero e (later⇓ e′ _) = clash₁ (trans (sym e) e′)
-    compB h c (roll (done (inj₁ x))) (suc n) e (now⇓ e′) =
-      [] , returned x , trans (sym (inj₁-inj (trans (sym e) e′))) (none c) , rb-ret
-    compB h c (roll (done (inj₁ x))) (suc n) e (later⇓ e′ _) = clash₁ (trans (sym e) e′)
-    compB h c (roll (done (inj₂ m))) (suc n) e (now⇓ e′) = clash₂ (trans (sym e) e′)
-    compB h c (roll (done (inj₂ m))) (suc n) e (later⇓ e′ d⇓) = compNext h c m n (trans (sym e) e′) d⇓
-    compB h c (roll (node (call o a k))) (suc n) e d⇓ =
-      compCall h c o a k n (compA (h ++ [ eventOf o a ]) (c ++ [ eventOf o a ]) (resume (ans o) (answer o h a) k) n e d⇓)
-    compA h c nothing n e (now⇓ e′) = [] , halted , trans (sym (inj₁-inj (trans (sym e) e′))) (none c) , ra-halt
-    compA h c nothing n e (later⇓ e′ _) = clash₁ (trans (sym e) e′)
-    compA h c (just t) n e d⇓ = goA (compB h c t n e d⇓)
-      where
-        goA : ∀ {o} → MadeB h t n c o → MadeA h (just t) n c o
-        goA (d , e″ , eq , r) = d , e″ , eq , ra-go r
-    compNext h c m n refl d⇓ = goN (run-complete h c m (suc n) d⇓)
-      where
-        goN : ∀ {o} → Made h m (suc n) c o → MadeB h (roll (done (inj₂ m))) (suc n) c o
-        goN (d , e , eq , run r) = d , e , eq , rb-next r
-    compCall h c o a k n (d , e , eq , r) = eventOf o a ∷ d , e , trans eq (cong (_, e) (snoc++ c (eventOf o a) d)) , rb-call r
-  run-complete h c m n d⇓ = wrap (compB h c (force m) n refl d⇓)
-    where wrap : ∀ {o} → MadeB h (force m) n c o → Made h m n c o
+  completeB : ∀ {X} h (t : T (X ⊎ T∞ X)) n {ob} → pre n (blk h t) ⇓ ob → MadeB h t n ob
+  completeS : ∀ {X} h (t : T (X ⊎ T∞ X)) n {s ob} → blockD w h t ⇓ s → preStep n s ⇓ ob → MadeB h t (suc n) ob
+  completeA : ∀ {X} h (o : Op Σ) a (k : ⟦ ans o ⟧ᵇ → T (X ⊎ T∞ X)) (D : Dec (NotEmpty (ans o))) n {ob}
+            → pre n (after w h o a k D) ⇓ ob → MadeA h o a k D n ob
+  completeB h t zero    p = [] , nothing , sym (nowInv p) , rb-cut
+  completeB h t (suc n) p = split (bind⇓⁻ (blockD w h t) (preStep n) p)
+    where split : ∀ {ob} → ∃[ s ] (blockD w h t ⇓ s × preStep n s ⇓ ob) → MadeB h t (suc n) ob
+          split (s , a , ps) = completeS h t n a ps
+  completeS h (roll (done (inj₁ x))) n (now⇓ refl) ps = [] , just (returned x) , sym (nowInv ps) , rb-ret
+  completeS h (roll (done (inj₁ x))) n (later⇓ () _) ps
+  completeS h (roll (done (inj₂ m))) n (now⇓ ()) ps
+  completeS h (roll (done (inj₂ m))) n (later⇓ refl a) ps = wrap (completeS h (force m) n a ps)
+    where wrap : ∀ {ob} → MadeB h (force m) (suc n) ob → MadeB h (roll (done (inj₂ m))) (suc n) ob
+          wrap (d , e , eq , r) = d , e , eq , rb-next r
+  completeS h (roll (node (call o a k))) n (now⇓ refl) ps = wrap (bind⇓⁻ (pre n (after w h o a k (notEmpty? (ans o)))) _ ps)
+    where
+      wrap : ∀ {ob} → ∃[ o₁ ] (pre n (after w h o a k (notEmpty? (ans o))) ⇓ o₁ × now (eventOf o a ∷ proj₁ o₁ , proj₂ o₁) ⇓ ob)
+           → MadeB h (roll (node (call o a k))) (suc n) ob
+      wrap (o₁ , o₁⇓ , q) = fin (nowInv q) (completeA h o a k (notEmpty? (ans o)) n o₁⇓)
+        where fin : ∀ {ob} → (eventOf o a ∷ proj₁ o₁ , proj₂ o₁) ≡ ob → MadeA h o a k (notEmpty? (ans o)) n o₁
+                  → MadeB h (roll (node (call o a k))) (suc n) ob
+              fin refl (d , e , refl , r) = eventOf o a ∷ d , e , refl , rb-call r
+  completeS h (roll (node (call o a k))) n (later⇓ () _) ps
+  completeA h o a k (yes p) n q = wrap (completeB (h ++ [ eventOf o a ]) (k (answer o h a p)) n (subst (_⇓ _) (preAfter h o a k p n) q))
+    where wrap : ∀ {ob} → MadeB (h ++ [ eventOf o a ]) (k (answer o h a p)) n ob → MadeA h o a k (yes p) n ob
+          wrap (d , e , eq , r) = d , e , eq , ra-go r
+  completeA h o a k (no ¬p) zero    q = [] , nothing , sym (nowInv q) , ra-cut
+  completeA h o a k (no ¬p) (suc n) q = fin (bind⇓⁻ (now (inj₁ halted)) (preStep n) q)
+    where fin : ∀ {ob} → ∃[ s ] (now (inj₁ halted) ⇓ s × preStep n s ⇓ ob) → MadeA h o a k (no ¬p) (suc n) ob
+          fin (s , s⇓ , ps) = at (nowInv s⇓) ps
+            where at : ∀ {s ob} → inj₁ halted ≡ s → preStep n s ⇓ ob → MadeA h o a k (no ¬p) (suc n) ob
+                  at refl ps′ = [] , just halted , sym (nowInv ps′) , ra-halt
+
+  -- What the trace's observation arrives at is a run, and the calls it made.
+  Made : ∀ {X} → History → T∞ X → ℕ → Obs X → Set
+  Made h m n ob = ∃[ d ] ∃[ e ] (ob ≡ (d , e) × Run h m n d e)
+
+  run-complete : ∀ {X} h (m : T∞ X) n {ob} → pre n (trace w h m) ⇓ ob → Made h m n ob
+  run-complete h m n p = wrap (completeB h (force m) n (subst (_⇓ _) (preTrace h m n) p))
+    where wrap : ∀ {ob} → MadeB h (force m) n ob → Made h m n ob
           wrap (d , e , eq , r) = d , e , eq , run r

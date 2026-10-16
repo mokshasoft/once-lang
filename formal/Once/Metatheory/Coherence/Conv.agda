@@ -20,7 +20,7 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Once.Spec.Grade using (pure; act; eff; mk-kind; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
+open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; pure; act; eff; mk-kind; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-act)
 open import Once.Spec.Type using (Ty; TySub; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Sub
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
@@ -30,9 +30,9 @@ open import Once.Spec.Equivalence Σ
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
 
-open T∞ using (force)
-open _≈_ using (force≈)
+open _≈ν_ using (force≈)
 open νM using (outν)
+open import Once.Metatheory.Bisim Σ using (return≈)
 
 ------------------------------------------------------------------------
 -- Re-grading codata
@@ -49,62 +49,18 @@ module _ (G : SFunctor) where
   lpaRel (H₁ S⊕ H₂) h {inj₂ x} {inj₁ y} ()
   lpaRel (H₁ S⊗ H₂) h (p , q) = lpaRel H₁ h p , lpaRel H₂ h q
 
-  lpeRel : ∀ H {R R′} → (∀ {x y} → R x y → R′ (νpe G x) (νpe G y)) → ∀ {l l′}
-         → LayerEq H R l l′ → LayerEq H R′ (lpe G H l) (lpe G H l′)
-  lpeRel (SK B)     h p = p
-  lpeRel SId        h p = h p
-  lpeRel (H₁ S⊕ H₂) h {inj₁ x} {inj₁ y} p = lpeRel H₁ h p
-  lpeRel (H₁ S⊕ H₂) h {inj₂ x} {inj₂ y} p = lpeRel H₂ h p
-  lpeRel (H₁ S⊕ H₂) h {inj₁ x} {inj₂ y} ()
-  lpeRel (H₁ S⊕ H₂) h {inj₂ x} {inj₁ y} ()
-  lpeRel (H₁ S⊗ H₂) h (p , q) = lpeRel H₁ h p , lpeRel H₂ h q
-
-  laeRel : ∀ H {R R′} → (∀ {x y} → R x y → R′ (νae G x) (νae G y)) → ∀ {l l′}
-         → LayerEq H R l l′ → LayerEq H R′ (lae G H l) (lae G H l′)
-  laeRel (SK B)     h p = p
-  laeRel SId        h p = h p
-  laeRel (H₁ S⊕ H₂) h {inj₁ x} {inj₁ y} p = laeRel H₁ h p
-  laeRel (H₁ S⊕ H₂) h {inj₂ x} {inj₂ y} p = laeRel H₂ h p
-  laeRel (H₁ S⊕ H₂) h {inj₁ x} {inj₂ y} ()
-  laeRel (H₁ S⊕ H₂) h {inj₂ x} {inj₁ y} ()
-  laeRel (H₁ S⊗ H₂) h (p , q) = laeRel H₁ h p , laeRel H₂ h q
-
-  subνUp : ∀ {π π′} (g : π ⊑π π′) n {v v′} → νUpTo π G n v v′ → νUpTo π′ G n (subν g G v) (subν g G v′)
+  subνUp : ∀ {f f′} (g : fin f ⊑π fin f′) n {v v′} → SameNu f G n v v′ → SameNu f′ G n (subν g G v) (subν g G v′)
 
   private
-    -- Each re-graded layer computation is the old one, mapped.
-    pa≈ : ∀ (v : νM pure G) → toT∞ act (outν (νpa G v)) ≈ (toT∞ pure (outν v) >>=∞ λ l → return∞ (lpa G G l))
+    -- The re-graded layer computation is the old one, mapped.
+    pa≈ : ∀ (v : νM pureᶠ G) → toT∞ act (outν (νpa G v)) ≈ (toT∞ pure (outν v) >>=∞ λ l → return∞ (lpa G G l))
     force≈ (pa≈ v) = return≈
-
-    pe≈ : ∀ (v : νM pure G) → toT∞ eff (outν (νpe G v)) ≈ (toT∞ pure (outν v) >>=∞ λ l → return∞ (lpe G G l))
-    force≈ (pe≈ v) = return≈
-
-    aeB : ∀ (t : T (⟦ G ⟧SF (νM act G))) → BlockEq _≈_ (bae G t) (bindBlock (mapT inj₁ t) λ l → return∞ (lae G G l))
-    aeB (roll (done l))            = return≈
-    aeB (roll (node (call o a k))) = node≈ λ b → aeB (k b)
-
-    ae≈ : ∀ (v : νM act G) → toT∞ eff (outν (νae G v)) ≈ (toT∞ act (outν v) >>=∞ λ l → return∞ (lae G G l))
-    force≈ (ae≈ v) = aeB (outν v)
-
-    regrade : ∀ {π π′} {f : ⟦ G ⟧SF (νM π G) → ⟦ G ⟧SF (νM π′ G)} {R R′} → (∀ {l l′} → LayerEq G R l l′ → LayerEq G R′ (f l) (f l′))
-            → ∀ {v v′ : νM π G} {w w′ : νM π′ G} → toT∞ π′ (outν w) ≈ (toT∞ π (outν v) >>=∞ λ l → return∞ (f l))
-            → toT∞ π′ (outν w′) ≈ (toT∞ π (outν v′) >>=∞ λ l → return∞ (f l))
-            → (∀ k → UpTo k (LayerEq G R) (toT∞ π (outν v)) (toT∞ π (outν v′)))
-            → ∀ k → UpTo k (LayerEq G R′) (toT∞ π′ (outν w)) (toT∞ π′ (outν w′))
-    regrade h e e′ p = toUpTo (≈-Relatedˡ e (≈-Relatedʳ e′ (relatedFmap (fromUpTo p) h)))
 
   subνUp ⊑-pure n p = p
   subνUp ⊑-act  n p = p
-  subνUp ⊑-eff  n p = p
-  subνUp ⊑-pa   zero    p = tt
-  subνUp ⊑-pa   (suc n) {v} {v′} p =
-    regrade (lpaRel G (subνUp ⊑-pa n)) {v = v} {v′} {νpa G v} {νpa G v′} (pa≈ v) (pa≈ v′) p
-  subνUp ⊑-pe   zero    p = tt
-  subνUp ⊑-pe   (suc n) {v} {v′} p =
-    regrade (lpeRel G (subνUp ⊑-pe n)) {v = v} {v′} {νpe G v} {νpe G v′} (pe≈ v) (pe≈ v′) p
-  subνUp ⊑-ae   zero    p = tt
-  subνUp ⊑-ae   (suc n) {v} {v′} p =
-    regrade (laeRel G (subνUp ⊑-ae n)) {v = v} {v′} {νae G v} {νae G v′} (ae≈ v) (ae≈ v′) p
+  subνUp ⊑-pa zero    p = tt
+  subνUp ⊑-pa (suc n) {v} {v′} p =
+    toObserved (≈-Relatedˡ (pa≈ v) (≈-Relatedʳ (pa≈ v′) (relatedFmap (fromObserved p) (lpaRel G (subνUp ⊑-pa n)))))
 
 ------------------------------------------------------------------------
 -- Coercions

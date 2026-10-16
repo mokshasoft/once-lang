@@ -34,13 +34,13 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Grade
-  using (positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _⊑π_;
+  using (fin; _·p_; positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _⊑π_;
          0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
   using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; WFFun; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Base; b-Unit; b-Int; b-Float; b-*; b-+;
          Unit; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Signature
-  using (_∶_; arrow; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op; e-act; e-eff)
+  using (_∶_; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
@@ -48,9 +48,8 @@ open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (M; toT∞; fmap; bind; bindᵍ; sub; module νM)
 open νM using (outν)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; foldM; anaM; conv)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; foldM; conv)
 open import Once.Spec.Equivalence Σ using (Same)
-open import Once.Spec.Observation Σ using (Interp)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv; Coherence)
 import Once.Spec.Word as Word
 open import Once.Metatheory.Types using (<:-unique; ⊑π-unique)
@@ -59,6 +58,7 @@ open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
 open import Once.Metatheory.Coherence.Loop Σ using (loopSame)
+import Once.Metatheory.Coherence.Conversions Σ as Conversions
 open import Once.Metatheory.Coherence.Conv Σ using (convSame)
 open import Once.Metatheory.Coherence.Sigop Σ
 open import Once.Metatheory.Coherence.Env Σ fmt S
@@ -167,33 +167,33 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
           (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _
              (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
 
-  unfoldH : ∀ {n} {Γ : Ctx m n} {Ψc Ψs Ψc′ Ψs′ π π₁ π₂ π₁′ π₂′ F A A′ c a}
-          → (A ⇒[ mk-kind Many π ] ⟦ F ⟧F A) ≡ (A′ ⇒[ mk-kind Many π ] ⟦ F ⟧F A′)
-          → (g : π ⊑π act) (wf : WFFun Δ F) (dc : Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π₁) (da : Δ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂)
-          → (g′ : π ⊑π act) (wf′ : WFFun Δ F) (dc′ : Δ ⊩ Γ ⊢[ Ψc′ ] c ∷ A′ ⇒[ mk-kind Many π ] ⟦ F ⟧F A′ ! π₁′)
+  unfoldH : ∀ {n} {Γ : Ctx m n} {Ψc Ψs Ψc′ Ψs′ f π₁ π₂ π₁′ π₂′ F A A′ c a}
+          → (A ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A) ≡ (A′ ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A′)
+          → (wf : WFFun Δ F) (dc : Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A ! π₁) (da : Δ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂)
+          → (wf′ : WFFun Δ F) (dc′ : Δ ⊩ Γ ⊢[ Ψc′ ] c ∷ A′ ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A′ ! π₁′)
             (da′ : Δ ⊩ Γ ⊢[ Ψs′ ] a ∷ A′ ! π₂′)
           → ∀ {γ γ′} → Agree σ Γ (Many *ᵘ Ψc +ᵘ Ψs) (Many *ᵘ Ψc′ +ᵘ Ψs′) γ γ′
-          → Rel _ _ (ν F π ⟨ σ ⟩) (⟦ ⊢unfold g wf dc da ⟧ δ σ r γ) (⟦ ⊢unfold g′ wf′ dc′ da′ ⟧ δ σ r′ γ′)
-  unfoldH {Ψc = Ψc} {Ψs} {Ψc′} {Ψs′} {π} {F = F} {A} refl g wf dc da g′ wf′ dc′ da′ ag rewrite ⊑π-unique g′ g =
+          → Rel _ _ (ν F f ⟨ σ ⟩) (⟦ ⊢unfold wf dc da ⟧ δ σ r γ) (⟦ ⊢unfold wf′ dc′ da′ ⟧ δ σ r′ γ′)
+  unfoldH {Ψc = Ψc} {Ψs} {Ψc′} {Ψs′} {f} {F = F} {A} refl wf dc da wf′ dc′ da′ ag =
     relBindᵍ (FL dc dc′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs))
                                  (⊑ᵘ-trans (⊑ᵘ-*Many Ψc′) (⊑ᵘ-+ˡ (Many *ᵘ Ψc′) Ψs′)) ag)) λ {c} {c′} sc →
     relFmap (FL da da′ refl (rr (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (⊑ᵘ-+ʳ (Many *ᵘ Ψc′) Ψs′) ag)) λ sa n →
-      Ana.anaRel π g (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c x)) (λ x → fmap π (toL σ F A) (c′ x))
-        (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap π (toL σ F A) (c a)) (≈-Relatedʳ (toT∞-fmap π (toL σ F A) (c′ a′))
-                          (relatedFmap (runs (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
+      Ana.anaRel f (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap (fin f) (toL σ F A) (c x)) (λ x → fmap (fin f) (toL σ F A) (c′ x))
+        (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap (fin f) (toL σ F A) (c a)) (≈-Relatedʳ (toT∞-fmap (fin f) (toL σ F A) (c′ a′))
+                          (relatedFmap (runs (appMany {π = fin f} sc s)) (Functor.toL-same σ r wf A))))
         n sa
 
-  outH : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ π π′ π₁ π₁′ F F′ t}
-       → ν F π ≡ ν F′ π′ → (eq : ⟦ F′ ⟧F (ν F′ π′) ≡ ⟦ F ⟧F (ν F π))
-       → (wf : WFFun Δ F) (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν F π ! π₁) (wf′ : WFFun Δ F′) (d′ : Δ ⊩ Γ ⊢[ Ψ′ ] t ∷ ν F′ π′ ! π₁′)
+  outH : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ f f′ π₁ π₁′ F F′ t}
+       → ν F f ≡ ν F′ f′ → (eq : ⟦ F′ ⟧F (ν F′ f′) ≡ ⟦ F ⟧F (ν F f))
+       → (wf : WFFun Δ F) (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν F f ! π₁) (wf′ : WFFun Δ F′) (d′ : Δ ⊩ Γ ⊢[ Ψ′ ] t ∷ ν F′ f′ ! π₁′)
        → ∀ {γ γ′} → Agree σ Γ Ψ Ψ′ γ γ′
-       → Rel _ _ ((⟦ F ⟧F (ν F π)) ⟨ σ ⟩) (⟦ ⊢out wf d ⟧ δ σ r γ) (substM _ eq (⟦ ⊢out wf′ d′ ⟧ δ σ r′ γ′))
-  outH {π = π} {F = F} refl refl wf d wf′ d′ ag =
+       → Rel _ _ ((⟦ F ⟧F (ν F f)) ⟨ σ ⟩) (⟦ ⊢out wf d ⟧ δ σ r γ) (substM (π₁′ ·p fin f′) eq (⟦ ⊢out wf′ d′ ⟧ δ σ r′ γ′))
+  outH {f = f} {F = F} refl refl wf d wf′ d′ ag =
     relBindᵍ (FL d d′ refl ag) λ {v} {v′} sv → rel (
-      ≈-Relatedˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
-        (≈-Relatedʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
-          (relatedFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
-                    (λ h → Functor.fromL-same σ r wf (ν F π) (LayerEq-∀ (code (F ⟨ σ ⟩F)) h)))))
+      ≈-Relatedˡ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v))
+        (≈-Relatedʳ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v′))
+          (relatedFmap (outRel f (code (F ⟨ σ ⟩F)) sv)
+                    (λ h → Functor.fromL-same σ r wf (ν F f) (LayerEq-∀ (code (F ⟨ σ ⟩F)) h)))))
 
   iterH : ∀ {n} {Γ : Ctx m n} {Ψf Ψs Ψf′ Ψs′ π₁ π₂ π₁′ π₂′ A A′ B f a}
         → (A ⇒[ mk-kind Many act ] (B + A)) ≡ (A′ ⇒[ mk-kind Many act ] (B + A′))
@@ -214,8 +214,8 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
   coerceH p p′ d d′ ag rewrite <:-unique p′ p = relFmap (FL d d′ refl ag) (convSame σ p)
 
   sigopH : ∀ {c t} (mem mem′ : (c ∶ t) ∈ Σ)
-         → Rel pure pure (⌜ t ⌝ᵈ ⟨ σ ⟩) (sigopᵛ σ c t mem (interp δ)) (sigopᵛ σ c t mem′ (interp δ))
-  sigopH {c} {t} mem mem′ rewrite mem-unique mem′ mem = relPure (sigopRefl σ c t mem (interp δ))
+         → Rel pure pure (⌜ t ⌝ᵈ ⟨ σ ⟩) (sigopᵛ σ c t mem (model δ)) (sigopᵛ σ c t mem′ (model δ))
+  sigopH {c} {t} mem mem′ rewrite mem-unique mem′ mem = relPure (sigopRefl σ c t mem (model δ))
 
   -- Peeling the structural rules.
   FL (⊢sub-use p d) d′ eq ag = FL d d′ eq (restrictˡ σ p ag)
@@ -269,7 +269,7 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
   FL (⊢absurd {π = π} d) (⊢absurd {π = π′} d′) refl ag = relBind {π} {π′} (FL d d′ refl ag) λ {x} _ → ⊥-elim x
   FL (⊢roll {π = π} wf d) (⊢roll {π = π′} wf′ d′) refl ag = relFmap {π} {π′} (FL d d′ refl ag) λ s → Functor.roll-same σ r wf s
   FL (⊢fold wf da dt) (⊢fold wf′ da′ dt′) refl ag = foldH (ty-unique da da′) wf da dt wf′ da′ dt′ ag
-  FL (⊢unfold g wf dc da) (⊢unfold g′ wf′ dc′ da′) refl ag = unfoldH (ty-unique dc dc′) g wf dc da g′ wf′ dc′ da′ ag
+  FL (⊢unfold wf dc da) (⊢unfold wf′ dc′ da′) refl ag = unfoldH (ty-unique dc dc′) wf dc da wf′ dc′ da′ ag
   FL (⊢out wf d) (⊢out wf′ d′) eq ag = outH (ty-unique d d′) eq wf d wf′ d′ ag
   FL (⊢iter df ds) (⊢iter df′ ds′) refl ag = iterH (ty-unique df df′) df ds df′ ds′ ag
   FL (⊢coerce p d) (⊢coerce p′ d′) refl ag = coerceH p p′ d d′ ag
@@ -288,4 +288,6 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
 coherence : Coherence Σ fmt S
 coherence = record
   { coherent = λ {m} {n} {Δ} {Γ} {Ψ} {t} {A} {π} d d′ δ sd σ r r′ γ sγ →
-      toUpTo (runs (FL.FL δ sd σ r r′ d d′ refl (selfAgree σ Γ Ψ γ sγ))) }
+      toObserved (runs (FL.FL δ sd σ r r′ d d′ refl (selfAgree σ Γ Ψ γ sγ)))
+  ; conv-id = λ σ p s → Conversions.conv-id σ p s
+  ; conv-∘  = λ σ p q r s → Conversions.conv-∘ σ p q r s }

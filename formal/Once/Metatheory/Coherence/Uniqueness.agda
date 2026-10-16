@@ -16,7 +16,7 @@ module Once.Metatheory.Coherence.Uniqueness (Σ : Signature) {s : ℕ} (S : Defs
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Spec.Grade using (mk-kind)
+open import Once.Spec.Grade using (mk-kind; fin)
 open import Once.Spec.Type using (Ty; Fun; KCtx; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
 open import Once.Spec.Core.Syntax
@@ -32,6 +32,9 @@ private
 
 ⇒-inj : ∀ {m} {A A′ B B′ : Ty m} {k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → (A ≡ A′) × (k ≡ k′) × (B ≡ B′)
 ⇒-inj refl = refl , refl , refl
+
+fin-inj : ∀ {f f′} → fin f ≡ fin f′ → f ≡ f′
+fin-inj refl = refl
 
 kind-inj : ∀ {q q′ π π′} → mk-kind q π ≡ mk-kind q′ π′ → (q ≡ q′) × (π ≡ π′)
 kind-inj refl = refl , refl
@@ -64,8 +67,8 @@ ty-unique (⊢case ds dl _) (⊢case ds′ dl′ _) = under (proj₁ (+-inj (ty-
 ty-unique (⊢absurd _)    (⊢absurd _)      = refl
 ty-unique (⊢roll _ _)    (⊢roll _ _)      = refl
 ty-unique (⊢fold _ da _) (⊢fold _ da′ _) = proj₂ (proj₂ (⇒-inj (ty-unique da da′)))
-ty-unique (⊢unfold _ _ dc _) (⊢unfold _ _ dc′ _) =
-  cong (ν _) (proj₂ (kind-inj (proj₁ (proj₂ (⇒-inj (ty-unique dc dc′))))))
+ty-unique (⊢unfold _ dc _) (⊢unfold _ dc′ _) =
+  cong (ν _) (fin-inj (proj₂ (kind-inj (proj₁ (proj₂ (⇒-inj (ty-unique dc dc′)))))))
 ty-unique (⊢out {F = F} _ d) (⊢out _ d′) =
   let e = ν-inj (ty-unique d d′) in cong₂ (λ F π → ⟦ F ⟧F (ν F π)) (proj₁ e) (proj₂ e)
 ty-unique (⊢iter df _)   (⊢iter df′ _)    = proj₁ (+-inj (proj₂ (proj₂ (⇒-inj (ty-unique df df′)))))
