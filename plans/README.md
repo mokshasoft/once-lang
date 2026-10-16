@@ -22,6 +22,7 @@ This index is a map and was last re-derived from the code on 2026-10-11.
 
 | Plan | State | What remains |
 |---|---|---|
+| 0.120 the categorical review | POCs done | one Spec patch with the review's 19 items, then the metatheory again |
 | 0.114 the Spec stands alone | A (gate) done; B next | the Spec is `Once/Spec`, imports only itself, no re-exports/renaming/hiding, `--safe`, definitions only, reads as categorical semantics |
 | 0.59 oracle principality | open | C1/C3 coverage, P1–P4 (mgu, completeness, principality, diagnostics) |
 | 0.50 named defs are morphisms | ABI landed | retire `classifyAppHead` from the judgment (moved here by D293) |
