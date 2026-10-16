@@ -7,11 +7,12 @@
 --
 -- A program is compiled against the declarations of the Interpretations it
 -- uses (D061): each is a name with a first-order type —
---   * a CONSTANT of a base type, or a PURE arrow between base types: a value
---     the Interpretation provides;
---   * an EFFECTFUL arrow between base types: an OPERATION. Applying it is one
---     observable EVENT; the world answers it, except at an empty answer type
---     (`void`), where the program halts.
+--   * a CONSTANT of a base type, or a pure function between base types (a
+--     VALUE declaration): what the world's model provides;
+--   * an OPERATION between base types, at `act`: applying it is one
+--     observable EVENT, a block of one call (its use at `eff` is that block,
+--     coerced). The world answers it whenever an answer exists; at an empty
+--     answer type (`void`) the call has no continuation and the run halts.
 --
 -- The operations define one functor,
 --
@@ -31,7 +32,10 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
-open import Once.Spec.Grade using (ArrowKind; mk-kind; Quantity; Zero; One; Many; Purity; pure; act; eff)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Data.Product using (_,_)
+open import Data.Sum using (inj₁; inj₂)
+open import Once.Spec.Grade using (ArrowKind; mk-kind; Quantity; Zero; One; Many; pure; act)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Type as T
@@ -75,13 +79,41 @@ NotEmpty float   = ⊤
 NotEmpty (a * b) = NotEmpty a × NotEmpty b
 NotEmpty (a + b) = NotEmpty a ⊎ NotEmpty b
 
+-- Whether a base type is inhabited is decided by its form.
+notEmpty? : ∀ b → Dec (NotEmpty b)
+notEmpty? unit    = yes _
+notEmpty? void    = no λ ()
+notEmpty? int     = yes _
+notEmpty? float   = yes _
+notEmpty? (a * b) = both (notEmpty? a) (notEmpty? b)
+  where both : Dec (NotEmpty a) → Dec (NotEmpty b) → Dec (NotEmpty (a * b))
+        both (yes p) (yes q) = yes (p , q)
+        both (no ¬p) _       = no λ { (p , _) → ¬p p }
+        both (yes _) (no ¬q) = no λ { (_ , q) → ¬q q }
+notEmpty? (a + b) = either (notEmpty? a) (notEmpty? b)
+  where either : Dec (NotEmpty a) → Dec (NotEmpty b) → Dec (NotEmpty (a + b))
+        either (yes p) _       = yes (inj₁ p)
+        either (no _)  (yes q) = yes (inj₂ q)
+        either (no ¬p) (no ¬q) = no λ { (inj₁ p) → ¬p p ; (inj₂ q) → ¬q q }
+
+-- An inhabited base type has a value.
+inhabitant : ∀ b → NotEmpty b → ⟦ b ⟧ᵇ
+inhabitant unit    _       = _
+inhabitant void    ()
+inhabitant int     _       = 0
+inhabitant float   _       = 0
+inhabitant (a * b) (p , q) = inhabitant a p , inhabitant b q
+inhabitant (a + b) (inj₁ p) = inj₁ (inhabitant a p)
+inhabitant (a + b) (inj₂ q) = inj₂ (inhabitant b q)
+
 ------------------------------------------------------------------------
 -- Declarations
 ------------------------------------------------------------------------
 
 data DeclType : Set where
-  constant : BTy → DeclType
-  arrow    : BTy → ArrowKind → BTy → DeclType
+  constant  : BTy → DeclType                     -- a value
+  value     : BTy → Quantity → BTy → DeclType    -- a pure function
+  operation : BTy → Quantity → BTy → DeclType    -- an operation, at `act`
 
 record Decl : Set where
   constructor _∶_
@@ -95,8 +127,9 @@ Signature = List Decl
 
 -- A declaration's type.
 ⌜_⌝ᵈ : ∀ {m} → DeclType → T.Ty m
-⌜ constant b ⌝ᵈ  = ⌜ b ⌝
-⌜ arrow a k b ⌝ᵈ = ⌜ a ⌝ T.⇒[ k ] ⌜ b ⌝
+⌜ constant b ⌝ᵈ      = ⌜ b ⌝
+⌜ value a q b ⌝ᵈ     = ⌜ a ⌝ T.⇒[ mk-kind q pure ] ⌜ b ⌝
+⌜ operation a q b ⌝ᵈ = ⌜ a ⌝ T.⇒[ mk-kind q act ] ⌜ b ⌝
 
 -- Not a singleton: `|b| ≠ 1`.
 NotSingleton : BTy → Set
@@ -111,22 +144,16 @@ NotSingleton (a + b) = (NotEmpty a × NotEmpty b) ⊎ (NotSingleton a × NotSing
 -- that is neither empty nor a singleton — those ARE `void` and `unit` and are
 -- written so.
 EffCod : BTy → Set
-EffCod unit    = ⊤
-EffCod void    = ⊤
-EffCod int     = ⊤
-EffCod float   = ⊤
-EffCod (a * b) = NotEmpty (a * b) × NotSingleton (a * b)
-EffCod (a + b) = NotEmpty (a + b) × NotSingleton (a + b)
+EffCod b = b ≡ unit ⊎ b ≡ void ⊎ (NotEmpty b × NotSingleton b)
 
 -- An HONEST declaration hides no effect and can be implemented: a value is
--- inhabited and is not `Unit` (a constant or pure arrow into `Unit` or `Void`
--- would be a hidden effect — it is written effectful); an operation answers
--- as `EffCod` says.
+-- inhabited and is not `Unit` (a constant or pure function into `Unit` or
+-- `Void` would be a hidden effect — it is written as an operation); an
+-- operation answers as `EffCod` says.
 WellFormedDecl : DeclType → Set
-WellFormedDecl (constant b)                 = NotEmpty b × b ≢ unit
-WellFormedDecl (arrow a (mk-kind q pure) b) = NotEmpty b × b ≢ unit
-WellFormedDecl (arrow a (mk-kind q act) b)  = EffCod b
-WellFormedDecl (arrow a (mk-kind q eff) b)  = EffCod b
+WellFormedDecl (constant b)      = NotEmpty b × b ≢ unit
+WellFormedDecl (value a q b)     = NotEmpty b × b ≢ unit
+WellFormedDecl (operation a q b) = EffCod b
 
 data WellFormed : Signature → Set where
   []  : WellFormed Data.List.[]
@@ -142,21 +169,15 @@ argAt Zero a = unit
 argAt One  a = a
 argAt Many a = a
 
-data Effectful : Purity → Set where
-  e-act : Effectful act
-  e-eff : Effectful eff
-
--- An operation of Σ: one of its effectful arrows.
+-- An operation of Σ.
 record Op (Σ : Signature) : Set where
   constructor op
   field
     {opName} : CanonicalName
     {dom}    : BTy
     {q}      : Quantity
-    {π}      : Purity
     {ans}    : BTy
-    declared : (opName ∶ arrow dom (mk-kind q π) ans) ∈ Σ
-    effectful : Effectful π
+    declared : (opName ∶ operation dom q ans) ∈ Σ
 open Op
 
 arg : ∀ {Σ} → Op Σ → BTy

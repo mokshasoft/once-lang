@@ -21,12 +21,9 @@ record Delay (A : Set) : Set where
   field step : A ⊎ Delay A
 open Delay
 
--- What arrives, transformed.
-mapD : ∀ {A B : Set} → (A → B) → Delay A → Delay B
-mapStep : ∀ {A B : Set} → (A → B) → A ⊎ Delay A → B ⊎ Delay B
-step (mapD f d) = mapStep f (step d)
-mapStep f (inj₁ a) = inj₁ (f a)
-mapStep f (inj₂ d) = inj₂ (mapD f d)
+-- Arriving at once.
+now : ∀ {A : Set} → A → Delay A
+step (now a) = inj₁ a
 
 -- `d` arrives at `a`, after finitely many steps.
 data _⇓_ {A : Set} (d : Delay A) (a : A) : Set where
@@ -39,9 +36,3 @@ infix 4 _⇓_
 -- related to it.
 _≈⟨_⟩_ : ∀ {A B : Set} → Delay A → (A → B → Set) → Delay B → Set
 d ≈⟨ R ⟩ d′ = (∀ a → d ⇓ a → ∃[ b ] (d′ ⇓ b × R a b)) × (∀ b → d′ ⇓ b → ∃[ a ] (d ⇓ a × R a b))
-
--- The same.
-_≈D_ : ∀ {A : Set} → Delay A → Delay A → Set
-d ≈D d′ = d ≈⟨ _≡_ ⟩ d′
-
-infix 4 _≈D_

@@ -18,7 +18,7 @@
 --   variables, arrows   var, lam, app, let′
 --   Unit, ×, +, Void    unit, pair, fst, snd, inl, inr, case, absurd
 --   μ F                 roll, fold                (initial algebra, its fold)
---   ν F π               unfold, out               (final coalgebra, its unfold)
+--   ν F f               unfold, out               (final coalgebra, its unfold)
 --   Eff                 iter                      (the loop: a server)
 --   subtyping           coerce
 --   numbers             lit, prim

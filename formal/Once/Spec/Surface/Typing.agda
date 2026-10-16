@@ -35,13 +35,13 @@ open import Data.Nat using (suc; _<_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Quantity; Many; Purity; pure; act; eff; mk-kind; _⊑π_; EffGrade)
+open import Once.Spec.Grade using (Quantity; Many; Finite; pureᶠ; actᶠ; fin; Purity; pure; act; eff; mk-kind; _⊑π_; EffGrade)
 open import Once.Spec.Name using (gen; NotGenerator)
 open import Once.Spec.Type
   using (Ty; Type; Fun; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; K; Id; _⊕_; _⊗_;
          WFFun; Respects; _⟨_⟩; _⟨_⟩F; Occurs)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Spec.Signature using (_∶_; ⌜_⌝; ⌜_⌝ᵈ; arrow)
+open import Once.Spec.Signature using (_∶_; ⌜_⌝; ⌜_⌝ᵈ)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Core.Syntax
@@ -182,10 +182,10 @@ module _ {m : ℕ} (Δ : KCtx m) where
     -- Applying an effectful arrow builds the suspension `Unit ⇒[ π ] B`.
     s-apply-eff-app : ∀ {e A B π t} → EffGrade π → L ⊢ e ⇒ (A ⇒⟨ π ⟩ B) * A ↝ t
                     → L ⊢ RApp (RResolved (gen "apply")) e ⇒ Unit ⇒⟨ π ⟩ B ↝ app (applyEffᶜ π A B) t
-    s-Out-app : ∀ {e F t} → WFFun Δ F → L ⊢ e ⇒ ν F pure ↝ t
-              → L ⊢ RApp (RResolved (gen "Out")) e ⇒ ⟦ F ⟧F (ν F pure) ↝ app (outᶜ F) t
-    s-Out-eff-app : ∀ {e F π t} → EffGrade π → WFFun Δ F → L ⊢ e ⇒ ν F π ↝ t
-                  → L ⊢ RApp (RResolved (gen "Out")) e ⇒ Unit ⇒⟨ π ⟩ ⟦ F ⟧F (ν F π) ↝ app (outEffᶜ π F) t
+    s-Out-app : ∀ {e F t} → WFFun Δ F → L ⊢ e ⇒ ν F pureᶠ ↝ t
+              → L ⊢ RApp (RResolved (gen "Out")) e ⇒ ⟦ F ⟧F (ν F pureᶠ) ↝ app (outᶜ F) t
+    s-Out-act-app : ∀ {e F t} → WFFun Δ F → L ⊢ e ⇒ ν F actᶠ ↝ t
+                  → L ⊢ RApp (RResolved (gen "Out")) e ⇒ Unit ⇒⟨ act ⟩ ⟦ F ⟧F (ν F actᶠ) ↝ app (outActᶜ F) t
 
     -- Application: the head's type synthesized, the argument checked; or the
     -- argument's type synthesized and the head checked from that domain.
@@ -233,11 +233,11 @@ module _ {m : ℕ} (Δ : KCtx m) where
     c-cata : ∀ {alg F A π t} → WFFun Δ F
            → L ⊢ alg ⇐ ⟦ F ⟧F A ⇒⟨ π ⟩ A ↝ t
            → L ⊢ RApp (RResolved (gen "cata")) alg ⇐ μ F ⇒⟨ π ⟩ A ↝ cataᶜ F π t
-    -- `ana` into a stream: a coalgebra of a finite block at most, into
-    -- `ν F π`, built by an arrow that runs nothing more (D317).
-    c-ana : ∀ {c F A π₀ π t} → π₀ ⊑π act → π ⊑π act → WFFun Δ F
-          → L ⊢ c ⇐ A ⇒⟨ π ⟩ ⟦ F ⟧F A ↝ t
-          → L ⊢ RApp (RResolved (gen "ana")) c ⇐ A ⇒⟨ π₀ ⟩ ν F π ↝ anaᶜ F A π₀ t
+    -- `ana` into a stream: a coalgebra at a finite grade, into `ν F f`,
+    -- built by an arrow that runs nothing more (D317).
+    c-ana : ∀ {c F A π₀ f t} → π₀ ⊑π act → WFFun Δ F
+          → L ⊢ c ⇐ A ⇒⟨ fin f ⟩ ⟦ F ⟧F A ↝ t
+          → L ⊢ RApp (RResolved (gen "ana")) c ⇐ A ⇒⟨ π₀ ⟩ ν F f ↝ anaᶜ F A π₀ t
     -- `ana` into `Eff`: THE LOOP. Its round is a finite block that ends with
     -- a `B` or the next state; `T∞ B` is the final coalgebra of `T (B + −)`
     -- (D317).

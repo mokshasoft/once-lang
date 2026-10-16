@@ -11,8 +11,9 @@
 --       pure ≤ act ≤ eff
 --     `pure`: nothing — a value. `act`: finitely many events, then it
 --     returns (or halts). `eff`: blocks of events forever, or until it
---     returns (D314, D317). Sequencing two computations has the grade of the
---     larger: the chain's join `·p`.
+--     returns (D314, D317). The first two are the FINITE grades — what a
+--     stream's layer is produced at (a layer never runs a loop). Sequencing
+--     two computations has the grade of the larger: the chain's join `·p`.
 --
 -- One law couples them: an erased position (`0`) is never evaluated, so what
 -- sits there must be pure.
@@ -59,8 +60,17 @@ infix 4 _≤q_
 -- Effect
 ------------------------------------------------------------------------
 
+-- The grades whose computations finish.
+data Finite : Set where
+  pureᶠ actᶠ : Finite
+
+-- A grade is a finite one, or `eff`.
 data Purity : Set where
-  pure act eff : Purity
+  fin : Finite → Purity
+  eff : Purity
+
+pattern pure = fin pureᶠ
+pattern act  = fin actᶠ
 
 -- The order, one derivation per pair.
 data _⊑π_ : Purity → Purity → Set where

@@ -30,18 +30,18 @@ entry updates the rule it changes here, in the same commit.
   Interpretation, and nothing else: internal states, the work between two
   effects and where a run pauses are not observed. An effectful computation
   means a value of its grade's monad — one finite block of calls (`T`) at
-  `act`, blocks forever (`T∞ X = νY. T (X + Y)`) at `eff` — whose calls answer,
-  or halt at a `Void` codomain. Its first `n` effects are a `Delay`: they
-  arrive once the run has made `n` calls or ended, and never if it runs on
-  without another call; a run ends by returning or by halting at `Void`, or
-  never ends (a server). (D317 ← D313 ← D257 ← D058)
+  `act`, blocks forever (`T∞ X = νY. T (X + Y)`, the stream of blocks) at
+  `eff` — whose calls the world answers; a call whose answer type is empty
+  (`Void`) has no continuation and halts. What it does in a world is its
+  TRACE: the calls it makes, in a run that returns, halts, or never ends (a
+  server), with or without further calls. (D318 ← D317 ← D313 ← D257 ← D058)
 - **One meaning.** A program has exactly one denotational meaning, presented on
   the surface and on the IR and proved equal; conflicting semantics are
   deleted, not bridged. (D060 ← D059 ← D057)
-- **Behaviour is a prefix family** of delayed event sequences with the laws
-  `coherent` (extends), `bounded`, `saturating`; two behaviours are the same
-  when at every depth they arrive at the same sequence or neither arrives. The
-  production rate is not observed. (D317, D179, D058)
+- **Behaviour is a trace**, the final coalgebra `νY. Delay (End + Event × Y)`;
+  two behaviours are the same when they are weakly bisimilar: the next call or
+  end arrives in both or in neither, the same call, the rests again the same.
+  The production rate is not observed. (D318 ← D317, D179, D058)
 - **The observable is Spec**: an event records the operation's canonical name,
   its domain and the argument as a typed value. (D114)
 
@@ -113,9 +113,10 @@ entry updates the rule it changes here, in the same commit.
   that grade's monad (D307) — never chosen by context.
   Every term has a principal type, and every principal type is writable.
   (D314)
-- **Effects form a Freyd category**: a computation is central (commutes with
-  every computation) iff it is pure, and only a pure computation may be
-  skipped. (D308)
+- **Effects form a Freyd category, up to what is observed**: a computation is
+  central (commutes with every computation, over every larger signature, as
+  every world observes) iff it is observed as a pure one, and only such a
+  computation may be skipped. (D318 ← D308)
 - **An erased position is pure.** A `Zero` position is never evaluated, so only
   a pure computation may sit there (`let`'s right-hand side, an application's
   argument, at `positionGrade q π`). Usage counts copies; it never decides
@@ -169,24 +170,28 @@ entry updates the rule it changes here, in the same commit.
 - **Grades**: the chain `pure ⊑ act ⊑ eff`. `act` is a computation that
   RETURNS (the free monad `T`, one finite block; surface `Act A B`); `eff` may
   run forever (`T∞`, blocks forever; surface `Eff A B`). Sequencing's product
-  is the join, and every grade has a unit. (D317, D314 ← D313)
-- **A server is the anamorphism into `Eff`**: `T∞ B` is the final coalgebra
-  of `T (B + −)`, so a loop is its unfold: `ana round` at `A -> Eff A B`, the
+  is the join, and every grade has a unit. `pure` and `act` are the FINITE
+  grades: what a stream's layer is produced at. (D318, D317, D314 ← D313)
+- **A server is the anamorphism into `Eff`**: `T∞ B` is the stream
+  `ν (K B ⊕ Id) act`, the final coalgebra of `T (B + −)`, so a loop is its
+  unfold: `ana round` at `A -> Eff A B`, the
   round any `Act A (B + A)` — a finite block that ends with a `B` or the next
-  state (core `iter`). No guard, no request functor, no new type; against
-  `ν F π` the same `ana` builds a stream. A round never contains a loop. (D317)
+  state (core `iter`, its own former only because `B` need not be
+  first-order). No guard, no request functor, no new type; against `ν F f`
+  the same `ana` builds a stream. A round never contains a loop. (D318 ← D317)
 - **A silent loop is correct and useless**: a round may perform no event; a
   loop of such rounds is never observed doing anything (it waits for nothing,
   so it is not busy-waiting). The compiler warns when it emits one. (D317)
-- **What a program does may never arrive**: its first `n` calls against an
-  Interpretation are a `Delay (List Event)`; two behaviours are the same when
-  at every depth they arrive at the same calls or neither arrives. (D317, D179)
-- **Two equalities, each for its job**: bisimilarity of `T∞` (the same blocks)
-  for the monad laws and finality; observational sameness (every
-  Interpretation, the same calls and ends, up to the delay, the returned
-  values the same whole — so it respects `>>=`) for meanings —
+- **What a program does may never arrive**: its trace may go on forever
+  without another call; two traces are the same when weakly bisimilar.
+  (D318 ← D317, D179)
+- **Two equalities, each for its job**: bisimilarity of streams (for `T∞`, the
+  same blocks) for the monad laws at every grade and for finality;
+  observational sameness (in every world, weakly bisimilar traces, the
+  returned values the same — so it respects `>>=`) for meanings and for the
+  Freyd structure —
   where one block ends is not observed, so unrolling a loop is sound. Effectful
-  laws hold up to one of them, never `≡`. (D317, D201)
+  laws hold up to one of them, never `≡`. (D318 ← D317, D201)
 - **Recursion is correct by construction**, and `make pragma-gate` keeps it
   so: no termination/positivity/coverage pragma may be added to the apex or
   compiler closure. (D242)
@@ -198,22 +203,26 @@ entry updates the rule it changes here, in the same commit.
   (D131, D265, D295, D228)
 - **The fold is the unique algebra morphism out of `μ`**, and fusion holds —
   Spec claims (postulated P2/P3 until proved). (D307)
-- **Only codata carries an effect grade**: arrows and `ν`.
-  `ν F pure <: ν F act <: ν F eff`; the surface writes `Nu F` / `Nu (Act F)` /
-  `Nu (Eff F)`; `Mu (Eff F)` is ill-formed. An effectful stream is the final
-  `T ∘ F`-coalgebra (`ν F act`, a block per layer); no unfold builds a
-  `ν F eff`, which is reached only by subtyping. A server is not a stream value
-  but the anamorphism into `Eff` (above). (D317, D316, D314, D313, D233)
+- **Only codata carries an effect grade**: arrows and `ν`. A stream's layers
+  are produced at a finite grade: `ν F pure <: ν F act`; the surface writes
+  `Nu F` / `Nu (Act F)`; `Nu (Eff F)` and `Mu (Eff F)` are ill-formed. An
+  effectful stream is the final `T ∘ F`-coalgebra (`ν F act`, a block per
+  layer). A server is not a stream value but the anamorphism into `Eff`
+  (above); `T∞ B` is itself the stream `ν (K B ⊕ Id) act`. (D318 ← D317, D316,
+  D314, D313, D233)
 - **`unfold` binds its coalgebra term once, then the seed**; the coalgebra
-  FUNCTION, at most `act` (`A → T (F A)`), runs in each forced layer. The
-  computation law `unfold-out` is a Spec claim. (D317, D309 ← D247; D273)
+  FUNCTION, at a finite grade (`A → T (F A)` at most), runs in each forced
+  layer. The computation law `unfold-out` and finality `unfold-unique` are
+  Spec claims. (D318, D317, D309 ← D247; D273)
 - **`Nu`, `ana` and `Out` are surface syntax**; a ν can be written, typed,
   compiled and forced. `Out` is an inference rule. Forcing a built `in-ν`
   yields its layer unchanged and emits nothing. (D197 ← D194, D193 ← D192,
   D191, D281)
-- **Sameness is observational**: two streams, or two computations, are the
-  same when every finite observation agrees (`Spec.Equivalence`);
-  bisimulation-to-equality is not assumed. (D317, D201, plan 0.116 D0)
+- **Sameness is observational**: two computations are the same when every
+  world's traces are weakly bisimilar; two streams when forcing them gives
+  the same layer computations, coinductively (`Spec.Equivalence`); it is a
+  partial equivalence respected by `>>=`. Bisimulation-to-equality is not
+  assumed. (D318 ← D317, D201, plan 0.116 D0)
 
 ## 6. Subtyping
 
@@ -282,9 +291,15 @@ entry updates the rule it changes here, in the same commit.
   only signatures — the three compile times of GOAL.md. SigOps have two
   producers: Interpretations, and the compiler's own pure SigOps. (D061,
   D245, D257)
-- **The codomain decides the effect**: an effectful arrow into `Void` halts,
-  into `Unit` emits, anything else answers a value. There is no `! halts` /
-  `! emits` annotation; `exit : Eff Int Void`. (D227, D225)
+- **A signature declares constants, pure functions and operations.** The
+  first two are values of the world's MODEL; an operation is declared at
+  `Act` (one call is one block) and used at `Eff` by subtyping. In the Spec an
+  Interpretation is a model and a WORLD, which answers whenever an answer
+  exists, from the calls it has seen. (D318 ← D061)
+- **The answer type decides the effect**: an operation whose answer type is
+  empty (`Void`) has no continuation and halts, into `Unit` it emits, anything
+  else answers a value. There is no `! halts` / `! emits` annotation;
+  `exit : Act Int Void`. (D318 ← D227, D225)
 - **FFI signatures are honest**: an empty codomain is written `Void`, a
   singleton `Unit`; an arrow into `Unit`/`Void` must be effectful; a base
   `Unit`/`Void` constant is rejected; μ/ν codomains are not honest. So
@@ -357,10 +372,11 @@ with the code:
    anamorphisms, chosen by the expected type); a name of its own is the
    alternative.
 3. **D072**: the oracle's completeness is an open obligation.
-4. **The Spec claims over D317's definitions** (the loop's finality and
-   unrolling, the observational sameness, the prefix family of delays) are
-   stated and not yet proved (plan 0.119 §7 D); the earlier claims were proved
-   in plan 0.119 B2 (fusion restated for a pure function, A″).
+4. **The Spec claims over D318's definitions** (finality of every stream,
+   the loop's unrolling, sameness as a partial equivalence respected by
+   `>>=`, the Freyd structure up to observation, the inhabited model and
+   world, functorial coercions) are stated and being proved (plan 0.120); the
+   earlier claims were proved in plan 0.119 B2 and D1.
 5. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical
    names").
 6. **D317 in flight**: the implementation follows the new Spec in plan 0.119

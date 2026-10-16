@@ -20,7 +20,7 @@ open import Data.Maybe using (Maybe)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
-open import Once.Spec.Grade using (Quantity; Purity)
+open import Once.Spec.Grade using (Quantity; Finite)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type)
 
@@ -41,7 +41,7 @@ mutual
     _P⇒[_]_   : PolyType → Quantity → PolyType → PolyType   -- a pure arrow
     PAct PEff : PolyType → PolyType → PolyType               -- `Act A B`, `Eff A B`
     Pμ        : PolyFunctor → PolyType                       -- `Mu F`
-    Pν        : PolyFunctor → Purity → PolyType              -- `Nu F`, `Nu (Act F)`, `Nu (Eff F)`
+    Pν        : PolyFunctor → Finite → PolyType              -- `Nu F`, `Nu (Act F)`
     PTVar     : String → PolyType                            -- a type variable
 
 infixr 40 _P⊕_

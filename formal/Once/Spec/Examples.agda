@@ -23,7 +23,7 @@ open import Data.List using (List; []; _∷_)
 open import Once.Spec.Grade using (Many; mk-kind; pure; act; eff)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Type using (Ty; Unit; Void; Int; Id)
-open import Once.Spec.Signature using (int; unit; arrow; _∶_; Signature)
+open import Once.Spec.Signature using (int; unit; operation; _∶_; Signature)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; DTypeSig; DFunDef; PInt; RVar; RInt)
 open import Once.Spec.Core.Syntax using (Defs; []; Tm; lam; app; unit; inr; lit; lit-int; unfold; sigop; iter)
 
@@ -48,10 +48,10 @@ tick : CanonicalName
 tick = canonical ("tick" ∷ [])
 
 tickΣ : Signature
-tickΣ = (tick ∶ arrow int (mk-kind Many act) int) ∷ []
+tickΣ = (tick ∶ operation int Many int) ∷ []
 
 ticker : Tm [] 0 0
-ticker = unfold Id (sigop tick (arrow int (mk-kind Many act) int)) (lit (lit-int (+ 0)))
+ticker = unfold Id (sigop tick (operation int Many int)) (lit (lit-int (+ 0)))
 
 ------------------------------------------------------------------------
 -- A server: echo, over `read : Unit → Int` and `write : Int → Unit`
@@ -62,15 +62,15 @@ readN  = canonical ("read" ∷ [])
 writeN = canonical ("write" ∷ [])
 
 echoΣ : Signature
-echoΣ = (readN ∶ arrow unit (mk-kind Many act) int) ∷ (writeN ∶ arrow int (mk-kind Many act) unit) ∷ []
+echoΣ = (readN ∶ operation unit Many int) ∷ (writeN ∶ operation int Many unit) ∷ []
 
 -- round = λ _ → inr (write (read ())): never the exit; each round reads,
 -- writes and continues.
 echoRound : Tm [] 0 0
 echoRound =
   lam Unit Many act
-    (inr Void (app (sigop writeN (arrow int (mk-kind Many act) unit))
-                   (app (sigop readN (arrow unit (mk-kind Many act) int)) unit)))
+    (inr Void (app (sigop writeN (operation int Many unit))
+                   (app (sigop readN (operation unit Many int)) unit)))
 
 -- The server: `iter round ()`.
 echoServer : Tm [] 0 0

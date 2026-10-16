@@ -14,24 +14,29 @@
 --   * surface     — the surface judgment's modes agree: a synthesized type is
 --                   unique, the domain-given mode is exact and agrees with
 --                   synthesis;
---   * effects     — each grade's monad is a monad (up to bisimilarity at
---                   `eff`); the morphisms along the chain and into `T∞` are
---                   monad morphisms and compose (one lift per pair, P7); the
---                   observation respects bisimilarity;
+--   * effects     — each grade's monad is a monad (up to bisimilarity); the
+--                   morphisms along the chain and into `T∞` are monad
+--                   morphisms and compose (one lift per pair, P7); a trace
+--                   respects bisimilarity;
+--   * inhabited   — every signature has a world, every well-formed one a
+--                   model: no observation is vacuous;
+--   * sameness    — a partial equivalence, respected by `>>=` (the kernel of
+--                   observation);
 --   * coherence   — a core term's meaning is a function of its judgment, not
---                   of the derivation chosen for it;
+--                   of the derivation chosen for it; a coercion along `refl`
+--                   is the identity and along a composite the composite;
 --   * term model  — substitution is typed, a pure `let` means its
 --                   substitution, and typing survives type substitution;
---   * Freyd       — a computation is central exactly when it is pure, and
---                   only a pure one may be dropped;
+--   * Freyd       — up to what is observed, a computation is central
+--                   exactly when it is pure, and only a pure one may be
+--                   dropped;
 --   * recursion   — the fold is the unique algebra morphism, with fusion; the
---                   unfold's computation law; the loop is the unique
---                   coalgebra morphism into `T∞ B`, the final coalgebra of
---                   `T (B + −)`, and is observed as its unrolling;
---   * totality    — a behaviour is a prefix family; a definition cannot name
---                   itself or a later one; a stream and a server are typed,
---                   the server runs forever, and a silent loop is never
---                   observed doing anything.
+--                   unfold is the unique coalgebra morphism into the stream
+--                   (the loop is the unfold at `K B ⊕ Id`), and the loop is
+--                   observed as its unrolling;
+--   * totality    — a definition cannot name itself or a later one; a stream
+--                   and a server are typed, the server runs forever, and a
+--                   silent loop is never observed doing anything.
 ------------------------------------------------------------------------
 
 module Once.Spec.Metatheory where
@@ -45,13 +50,13 @@ open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Quantity; Purity; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
+open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; _⇒[_]_)
-open import Once.Spec.Delay using (_⇓_; _≈D_; _≈⟨_⟩_)
+open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Spec.Signature using (Signature; Layer; call; Op; op; _∶_)
+open import Once.Spec.Signature using (Signature; WellFormed; Layer; call; Op; op; _∶_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 import Data.List
@@ -121,7 +126,7 @@ record Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) 
 
 record Effects (Σ : Signature) : Set₁ where
   open Effect Σ
-  open Observation Σ using (Interp; History; observe; events)
+  open Observation Σ using (World; History; trace; module Tr; _≈ᵗ⟨_⟩_; returned)
   field
     M-identityˡ : ∀ π {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bind π (return π x) k) (k x)
     M-identityʳ : ∀ π {X : Set} (m : M π X) → EqM π (bind π m (return π)) m
@@ -139,9 +144,40 @@ record Effects (Σ : Signature) : Set₁ where
                 → toT∞ π (bind π m k) ≈ (toT∞ π m >>=∞ λ x → toT∞ π (k x))
     toT∞-bindᵍ  : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
                 → toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≈ (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
-    obs-≈       : ∀ (ι : Interp) (h : History) {X : Set} {m m′ : T∞ X}
-                → m ≈ m′ → ∀ n → observe ι h m n ≈D observe ι h m′ n
-    obs-return  : ∀ (ι : Interp) (h : History) {X : Set} (x : X) n → events ι h (return∞ x) n ⇓ []
+    -- bisimilar computations have the same trace
+    trace-≈     : ∀ (w : World) (h : History) {X : Set} {m m′ : T∞ X}
+                → m ≈ m′ → trace w h m ≈ᵗ⟨ _≡_ ⟩ trace w h m′
+    -- a computation that returns at once is traced so
+    trace-return : ∀ (w : World) (h : History) {X : Set} (x : X) → Tr.next (trace w h (return∞ x)) ⇓ inj₁ (returned x)
+
+------------------------------------------------------------------------
+-- No observation is vacuous
+------------------------------------------------------------------------
+
+record Inhabited (Σ : Signature) : Set where
+  open Observation Σ using (World; Model)
+  field
+    -- a world answers whenever an answer exists
+    a-world : World
+    -- an honest signature can be implemented
+    a-model : WellFormed Σ → Model
+
+------------------------------------------------------------------------
+-- Sameness: a partial equivalence, the kernel of observation
+------------------------------------------------------------------------
+
+record Sameness (Σ : Signature) : Set₁ where
+  open Effect Σ using (M; bindᵍ)
+  open Domain Σ using (⟦_⟧ᵛ)
+  open Equivalence Σ using (Same; SameM)
+  field
+    Same-sym   : ∀ (A : Type) {x y} → Same A x y → Same A y x
+    Same-trans : ∀ (A : Type) {x y z} → Same A x y → Same A y z → Same A x z
+    -- running the same computations, then the same continuations on the same
+    -- values, is the same
+    SameM-bind : ∀ π₁ π₂ (A B : Type) {m m′ : M π₁ ⟦ A ⟧ᵛ} {f f′ : ⟦ A ⟧ᵛ → M π₂ ⟦ B ⟧ᵛ}
+               → SameM π₁ A m m′ → (∀ {x x′} → Same A x x′ → SameM π₂ B (f x) (f′ x′))
+               → SameM (π₁ ·p π₂) B (bindᵍ π₁ π₂ m f) (bindᵍ π₁ π₂ m′ f′)
 
 ------------------------------------------------------------------------
 -- Coherence, and the term model
@@ -151,7 +187,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
   open CoreTyping Σ S
   open Meaning Σ fmt S using (⟦_⟧; DefSem; module DefSem; Env)
   open DefSem using (defs)
-  open Domain Σ using (⟦_⟧ᵛ)
+  open Domain Σ using (⟦_⟧ᵛ; conv)
   open Equivalence Σ using (Same; SameM)
 
   -- The definitions' meanings are each the same as itself, whichever proof
@@ -172,6 +208,12 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                    (δ : DefSem) → SameDefs δ → (σ : TySub m 0) (r r′ : Respects Δ ∅ₖ σ)
                    (γ : Env σ Γ Ψ) → SameEnv σ Γ Ψ γ
                → SameM π (A ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r′ γ)
+      -- a coercion is functorial: along `refl` the identity, along a
+      -- composite the composite (each up to sameness)
+      conv-id : ∀ {m} (σ : TySub m 0) {A : Ty m} (p : A <: A) {x x′}
+              → Same (A ⟨ σ ⟩) x x′ → Same (A ⟨ σ ⟩) (conv σ p x) x′
+      conv-∘  : ∀ {m} (σ : TySub m 0) {A B C : Ty m} (p : A <: B) (q : B <: C) (r : A <: C) {x x′}
+              → Same (A ⟨ σ ⟩) x x′ → Same (C ⟨ σ ⟩) (conv σ r x) (conv σ q (conv σ p x′))
 
   record TermModel : Set where
     field
@@ -194,7 +236,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                  → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ A ⟨ σ ⟩ ! π
 
 ------------------------------------------------------------------------
--- Effects form a Freyd category
+-- Effects form a Freyd category, up to what is observed
 ------------------------------------------------------------------------
 
 -- A computation over Σ is one over any larger signature, calling the same
@@ -205,25 +247,27 @@ module _ {Σ Σ′ : Signature} (ι : Σ ⊆ Σ′) where
     module E′ = Effect Σ′
 
   liftOp : Op Σ → Op Σ′
-  liftOp (op d e) = op (ι d) e
+  liftOp (op d) = op (ι d)
 
   lift      : ∀ {X} → E.T∞ X → E′.T∞ X
   liftBlock : ∀ {X} → E.T (X ⊎ E.T∞ X) → E′.T (X ⊎ E′.T∞ X)
-  E′.T∞.force (lift m) = liftBlock (E.T∞.force m)
+  E′.νM.outν (lift m) = liftBlock (E.force m)
   liftBlock (E.roll (E.done (inj₁ x)))     = E′.roll (E′.done (inj₁ x))
   liftBlock (E.roll (E.done (inj₂ m)))     = E′.roll (E′.done (inj₂ (lift m)))
   liftBlock (E.roll (E.node (call o a k))) = E′.roll (E′.node (call (liftOp o) a (λ b → liftBlock (k b))))
 
--- Two computations COMMUTE when running them in either order gives the same
--- pair.
+-- Two computations COMMUTE when running them in either order is observed
+-- the same.
 module _ (Σ : Signature) where
   open Effect Σ
+  open Equivalence Σ using (_≃_)
 
   Commute : ∀ {Y W : Set} → T∞ Y → T∞ W → Set
-  Commute m n = (m >>=∞ λ y → n >>=∞ λ w → return∞ (y , w)) ≈ (n >>=∞ λ w → m >>=∞ λ y → return∞ (y , w))
+  Commute m n = (m >>=∞ λ y → n >>=∞ λ w → return∞ (y , w)) ≃ (n >>=∞ λ w → m >>=∞ λ y → return∞ (y , w))
 
 module _ (Σ : Signature) where
   open Effect Σ
+  open Equivalence Σ using (_≃_)
 
   -- A computation is CENTRAL when it commutes with every computation, over Σ
   -- and over every larger signature: being central is a property of the
@@ -240,23 +284,22 @@ module _ (Σ : Signature) where
   record Freyd : Set₁ where
     field
       pure-central : ∀ {Y : Set} (y : Y) → Central (return∞ y)
-      central-pure : ∀ {Y : Set} (m : T∞ Y) → Central m → Σ[ y ∈ Y ] m ≈ return∞ y
-      discard-pure : ∀ {Y : Set} (m : T∞ Y) → (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≈ k)
-                   → Σ[ y ∈ Y ] m ≈ return∞ y
+      central-pure : ∀ {Y : Set} (m : T∞ Y) → Central m → Σ[ y ∈ Y ] m ≃ return∞ y
+      discard-pure : ∀ {Y : Set} (m : T∞ Y) → (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≃ k)
+                   → Σ[ y ∈ Y ] m ≃ return∞ y
       pair-β₁ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (g x))
-              → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₁ p)) ≈ f x
+              → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₁ p)) ≃ f x
       pair-β₂ : ∀ {X Y Z : Set} (f : X → T∞ Y) (g : X → T∞ Z) → (∀ x → Central (f x))
-              → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₂ p)) ≈ g x
+              → ∀ x → (pairK f g x >>=∞ λ p → return∞ (proj₂ p)) ≃ g x
       pair-η  : ∀ {X Y Z : Set} (h : X → T∞ (Y × Z)) → (∀ x → Central (h x))
-              → ∀ x → pairK (λ x → h x >>=∞ λ p → return∞ (proj₁ p)) (λ x → h x >>=∞ λ p → return∞ (proj₂ p)) x ≈ h x
+              → ∀ x → pairK (λ x → h x >>=∞ λ p → return∞ (proj₁ p)) (λ x → h x >>=∞ λ p → return∞ (proj₂ p)) x ≃ h x
 
 ------------------------------------------------------------------------
 -- Structured recursion
 ------------------------------------------------------------------------
 
   record Recursion : Set₁ where
-    open Domain Σ using (foldM; traverseM; anaM)
-    open Observation Σ using (Interp; History; observe)
+    open Domain Σ using (foldM; traverseM)
     field
       -- the fold is the only map that commutes with the constructor
       fold-unique : ∀ π (G : SFunctor) {X : Set} (alg : ⟦ G ⟧SF X → M π X) (h : μS G → M π X)
@@ -271,22 +314,19 @@ module _ (Σ : Signature) where
                       (g : X → Y)
                   → (∀ l → EqM π (fmap π g (alg l)) (alg′ (sfmap G g l)))
                   → ∀ v → EqM π (fmap π g (foldM π G alg v)) (foldM π G alg′ v)
-      -- forcing an unfold runs the coalgebra and unfolds the rest
-      unfold-out  : ∀ {π} (g : π ⊑π act) (G : SFunctor) {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
-                  → EqM π (νM.outν (anaM g G c x)) (fmap π (sfmap G (anaM g G c)) (c x))
-      -- THE LOOP (D317): a round runs the block `c a`, which ends with the
-      -- result or with where the next round starts …
-      loop-out    : ∀ {A B : Set} (c : A → T (B ⊎ A)) (a : A)
-                  → T∞.force (loop c a) ≡ mapT [ inj₁ , (λ a′ → inj₂ (loop c a′)) ]′ (c a)
-      -- … and it is the only map that does: `T∞ B` is the final coalgebra of
-      -- `T (B + −)`, and the loop its anamorphism
-      loop-unique : ∀ {A B : Set} (c : A → T (B ⊎ A)) (g : A → T∞ B)
-                  → (∀ a → BlockEq _≈_ (T∞.force (g a)) (mapT [ inj₁ , (λ a′ → inj₂ (g a′)) ]′ (c a)))
-                  → ∀ a → g a ≈ loop c a
+      -- forcing an unfold runs the coalgebra and unfolds the rest …
+      unfold-out  : ∀ (f : Finite) (G : SFunctor) {X : Set} (c : X → Mᶠ f (⟦ G ⟧SF X)) (x : X)
+                  → EqM (fin f) (νM.outν (ana f G c x)) (fmap (fin f) (sfmap G (ana f G c)) (c x))
+      -- … and it is the only map that does: `νM f G` is the final coalgebra
+      -- of `M f ∘ G` (so `T∞ B`, the stream `ν (K B ⊕ Id) act`, is the final
+      -- coalgebra of `T (B + −)`, and the loop its anamorphism)
+      unfold-unique : ∀ (f : Finite) (G : SFunctor) {X : Set} (c : X → Mᶠ f (⟦ G ⟧SF X)) (g : X → νM f G)
+                    → (∀ x → EqLayer f (LayerEq G _≈ν_) (νM.outν (g x)) (fmap (fin f) (sfmap G g) (c x)))
+                    → ∀ x → g x ≈ν ana f G c x
       -- where one round ends and the next begins is not observed: the loop
       -- is its unrolling (P12)
-      loop-unroll : ∀ {A B : Set} (c : A → T (B ⊎ A)) (a : A) (ι : Interp) (h : History) n
-                  → observe ι h (loop c a) n ≈D observe ι h (embed (c a) >>=∞ [ return∞ , loop c ]′) n
+      loop-unroll : ∀ {A B : Set} (c : A → T (B ⊎ A)) (a : A)
+                  → loop c a ≃ (embed (c a) >>=∞ [ return∞ , loop c ]′)
 
 ------------------------------------------------------------------------
 -- Total and productive
@@ -299,34 +339,29 @@ private
   noResp ()
 
 record Totality : Set₁ where
+  open Observation using (World; trace; Calls; module Tr)
   field
-    -- what a program does is a prefix family, at every Interpretation
-    observable : ∀ (Σ : Signature) (ι : Observation.Interp Σ) (h : Observation.History Σ) {X : Set}
-                   (m : Effect.T∞ Σ X) → Observation.PrefixFamily Σ (Observation.events Σ ι h m)
     -- no general recursion
     no-self-reference    : ∀ {Σ p} → ¬ Denotes [] selfReference Σ p
     no-forward-reference : ∀ {Σ p} → ¬ Denotes [] forwardReference Σ p
     -- a stream that calls an operation in every layer is typed, and its
     -- first layer does call it
-    stream-typed : CoreTyping._⊩_⊢[_]_∷_!_ tickΣ [] ∅ₖ ∅ [] ticker (ν Id act) pure
+    stream-typed : CoreTyping._⊩_⊢[_]_∷_!_ tickΣ [] ∅ₖ ∅ [] ticker (ν Id actᶠ) pure
     stream-emits : ∀ fmt (δ : Meaning.DefSem tickΣ fmt [])
                  → ∃[ o ] ∃[ a ] ∃[ k ]
                    Meaning.⟦_⟧ tickΣ fmt [] (CoreTyping.⊢out Once.Spec.Type.wf-Id stream-typed) δ noVars noResp tt
                    ≡ Effect.roll (Effect.node (call o a k))
     -- a server is typed at `eff` …
     server-typed : CoreTyping._⊩_⊢[_]_∷_!_ echoΣ [] ∅ₖ ∅ [] echoServer Void eff
-    -- … and runs forever: at depth `n` it has made `n` calls, at every
-    -- Interpretation
-    server-runs  : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) n
-                 → ∃[ h ] (Observation.events echoΣ (Meaning.DefSem.interp δ) []
-                             (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt) n ⇓ h
-                           × length h ≡ n)
-    -- a silent loop is typed, and is never observed doing anything: past
-    -- depth zero, what it does never arrives (D317)
+    -- … and runs forever: in every world it makes as many calls as asked
+    server-runs  : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) (w : World echoΣ) n
+                 → ∃[ vs ] (length vs ≡ n
+                            × Calls echoΣ (trace echoΣ w [] (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt)) vs)
+    -- a silent loop is typed, and is never observed doing anything: nothing
+    -- of its trace ever arrives (D317)
     silent-typed : CoreTyping._⊩_⊢[_]_∷_!_ [] [] ∅ₖ ∅ [] silentLoop Void eff
-    silent-never : ∀ fmt (δ : Meaning.DefSem [] fmt []) n h
-                 → ¬ (Observation.events [] (Meaning.DefSem.interp δ) []
-                        (Meaning.⟦_⟧ [] fmt [] silent-typed δ noVars noResp tt) (Data.Nat.suc n) ⇓ h)
+    silent-never : ∀ fmt (δ : Meaning.DefSem [] fmt []) (w : World []) o
+                 → ¬ (Tr.next (trace [] w [] (Meaning.⟦_⟧ [] fmt [] silent-typed δ noVars noResp tt)) ⇓ o)
 
 ------------------------------------------------------------------------
 -- All of it
@@ -337,6 +372,8 @@ record Metatheory : Set₁ where
     types      : Types
     surface    : ∀ (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) → Distinct Σ nm → Surface Σ S nm
     effects    : ∀ (Σ : Signature) → Effects Σ
+    inhabited  : ∀ (Σ : Signature) → Inhabited Σ
+    sameness   : ∀ (Σ : Signature) → Sameness Σ
     coherence  : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → Coherence Σ fmt S
     term-model : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → TermModel Σ fmt S
     freyd      : ∀ (Σ : Signature) → Freyd Σ

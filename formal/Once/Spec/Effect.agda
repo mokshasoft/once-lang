@@ -7,40 +7,39 @@
 --
 -- One functor, `Step X Y = X + H_Σ Y`: the computation is done with a value,
 -- or it makes one call and continues from the answer. Its initial algebra is
--- a finite BLOCK of calls:
+-- a finite BLOCK of calls — `T X = μY. X + H_Σ Y`, the free monad.
 --
---   T X  = μY. X + H_Σ Y      finitely many events, then a value (or it
---                             halts) — the free monad;
+-- A STREAM `νM f F` is the final coalgebra of `M f ∘ F`: each layer produced
+-- at a finite grade `f` (as a value, or by a block). A computation that need
+-- not stop runs blocks forever, each ending with the result or with what to
+-- run next (D317) — the stream of blocks that ends with a value:
 --
--- and a computation that need not stop runs such blocks forever, each one
--- ending with the result or with what to run next (D317):
+--   T∞ X = νY. T (X + Y) = νM act (K X ⊕ Id)
 --
---   T∞ X = νY. T (X + Y)      the coinductive resumption monad over `T`.
+-- the coinductive resumption monad over `T`. So programs and effects have one
+-- shape: finite folds inside the rounds of a loop, finite blocks inside
+-- `T∞`; and THE LOOP is the stream unfold at `K B ⊕ Id`: any round
+-- `A → T (B + A)` that ends with a `B` or continues with the next state. A
+-- block may perform no event: a silent round is an empty block.
 --
--- So programs and effects have one shape: finite folds inside the rounds of a
--- loop, finite blocks inside `T∞`. A block may perform no event: a silent
--- round is an empty block, observed as a step of `Delay` (`Spec.Observation`).
--- Equality of `T∞` computations as trees is bisimilarity (`_≈_`), which sees
--- where the blocks end; when two meanings are the same is decided by what
--- they do (`Spec.Equivalence`).
+-- Equality of streams (and so of `T∞` computations) as trees is
+-- bisimilarity (`_≈ν_`), which sees where the blocks end; when two meanings
+-- are the same is decided by what they do (`Spec.Equivalence`).
 --
 -- A grade chooses the monad: `M pure = Id`, `M act = T`, `M eff = T∞`, with
 -- the monad morphisms along the chain (`sub`).
---
--- THE LOOP (`loop`) is the anamorphism into `T∞ B`, the final coalgebra of
--- `T (B + −)`: any round `A → T (B + A)` that either ends with a `B` or
--- continues with the next state.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature; Layer; call)
 
 module Once.Spec.Effect (Σ : Signature) where
 
+open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Grade using (Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
-open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
+open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 
 ------------------------------------------------------------------------
 -- Blocks: the free monad
@@ -65,55 +64,123 @@ mapT : ∀ {X Y} → (X → Y) → T X → T Y
 mapT f m = m >>=T λ x → returnT (f x)
 
 ------------------------------------------------------------------------
--- Blocks forever: the coinductive resumption monad
+-- Streams: the final coalgebras of `M f ∘ F`, at a finite grade
 ------------------------------------------------------------------------
 
-record T∞ (X : Set) : Set where
+-- The monad of a finite grade.
+Mᶠ : Finite → Set → Set
+Mᶠ pureᶠ X = X
+Mᶠ actᶠ  X = T X
+
+record νM (f : Finite) (F : SFunctor) : Set where
   coinductive
-  field force : T (X ⊎ T∞ X)
-open T∞
+  field outν : Mᶠ f (⟦ F ⟧SF (νM f F))
+open νM
+
+-- The unfold (anamorphism): each forced layer runs the coalgebra.
+ana : ∀ (f : Finite) (G : SFunctor) {X : Set} → (X → Mᶠ f (⟦ G ⟧SF X)) → X → νM f G
+private
+  anaP   : ∀ (G : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → X → νM pureᶠ G
+  mapP   : ∀ (G H : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM pureᶠ G)
+  outν (anaP G c x) = mapP G G c (c x)
+  mapP G (SK B)     c x        = x
+  mapP G SId        c x        = anaP G c x
+  mapP G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapP G H₁ c x)
+  mapP G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapP G H₂ c y)
+  mapP G (H₁ S⊗ H₂) c (x , y)  = mapP G H₁ c x , mapP G H₂ c y
+
+  anaA   : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → X → νM actᶠ G
+  treeA  : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → T (⟦ G ⟧SF X) → T (⟦ G ⟧SF (νM actᶠ G))
+  mapA   : ∀ (G H : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM actᶠ G)
+  outν (anaA G c x) = treeA G c (c x)
+  treeA G c (roll (done l))            = roll (done (mapA G G c l))
+  treeA G c (roll (node (call o a k))) = roll (node (call o a (λ b → treeA G c (k b))))
+  mapA G (SK B)     c x        = x
+  mapA G SId        c x        = anaA G c x
+  mapA G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapA G H₁ c x)
+  mapA G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapA G H₂ c y)
+  mapA G (H₁ S⊗ H₂) c (x , y)  = mapA G H₁ c x , mapA G H₂ c y
+ana pureᶠ = anaP
+ana actᶠ  = anaA
+
+------------------------------------------------------------------------
+-- Bisimilarity of streams: equal constants, the same blocks, bisimilar
+-- recursive positions
+------------------------------------------------------------------------
+
+LayerEq : ∀ (G : SFunctor) {X : Set} → (X → X → Set) → ⟦ G ⟧SF X → ⟦ G ⟧SF X → Set
+LayerEq (SK B)   R x y = x ≡ y
+LayerEq SId      R x y = R x y
+LayerEq (G S⊕ H) R (inj₁ x) (inj₁ y) = LayerEq G R x y
+LayerEq (G S⊕ H) R (inj₂ x) (inj₂ y) = LayerEq H R x y
+LayerEq (G S⊕ H) R (inj₁ _) (inj₂ _) = ⊥
+LayerEq (G S⊕ H) R (inj₂ _) (inj₁ _) = ⊥
+LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′ y′
+
+-- Two blocks: the same calls, related layers where they end.
+data BlockEq {Z : Set} (R : Z → Z → Set) : T Z → T Z → Set where
+  done≈ : ∀ {z z′} → R z z′ → BlockEq R (roll (done z)) (roll (done z′))
+  node≈ : ∀ {o a k k′} → (∀ b → BlockEq R (k b) (k′ b))
+        → BlockEq R (roll (node (call o a k))) (roll (node (call o a k′)))
+
+-- One layer at a finite grade.
+EqLayer : ∀ (f : Finite) {Z : Set} → (Z → Z → Set) → Mᶠ f Z → Mᶠ f Z → Set
+EqLayer pureᶠ R = R
+EqLayer actᶠ  R = BlockEq R
+
+record _≈ν_ {f : Finite} {G : SFunctor} (v w : νM f G) : Set where
+  coinductive
+  field force≈ : EqLayer f (LayerEq G _≈ν_) (outν v) (outν w)
+open _≈ν_
+
+infix 4 _≈ν_
+
+------------------------------------------------------------------------
+-- Blocks forever: the resumption monad, the stream of blocks
+------------------------------------------------------------------------
+
+T∞ : Set → Set
+T∞ X = νM actᶠ (SK X S⊕ SId)
+
+-- One block, ending with the value or with what to run next.
+force : ∀ {X} → T∞ X → T (X ⊎ T∞ X)
+force = outν
+
+-- Bisimilar computations: the same blocks forever, equal values at the ends.
+_≈_ : ∀ {X} → T∞ X → T∞ X → Set
+_≈_ = _≈ν_
+
+infix 4 _≈_
 
 return∞ : ∀ {X} → X → T∞ X
-force (return∞ x) = returnT (inj₁ x)
+outν (return∞ x) = returnT (inj₁ x)
 
 -- Run the first block; at its result, the continuation's first block follows
 -- in the same block; at a block's end, continue.
 _>>=∞_    : ∀ {X Y} → T∞ X → (X → T∞ Y) → T∞ Y
 bindBlock : ∀ {X Y} → T (X ⊎ T∞ X) → (X → T∞ Y) → T (Y ⊎ T∞ Y)
-force (m >>=∞ f) = bindBlock (force m) f
-bindBlock (roll (done (inj₁ x)))     f = force (f x)
+outν (m >>=∞ f) = bindBlock (outν m) f
+bindBlock (roll (done (inj₁ x)))     f = outν (f x)
 bindBlock (roll (done (inj₂ m)))     f = roll (done (inj₂ (m >>=∞ f)))
 bindBlock (roll (node (call o a k))) f = roll (node (call o a (λ b → bindBlock (k b) f)))
 
 -- One block is a computation: the monad morphism `T → T∞`.
 embed : ∀ {X} → T X → T∞ X
-force (embed m) = mapT inj₁ m
+outν (embed m) = mapT inj₁ m
 
-------------------------------------------------------------------------
--- Bisimilarity: the same blocks forever, equal values at the ends
-------------------------------------------------------------------------
-
-data BlockEq {X : Set} (R : T∞ X → T∞ X → Set) : T (X ⊎ T∞ X) → T (X ⊎ T∞ X) → Set where
-  return≈ : ∀ {x} → BlockEq R (roll (done (inj₁ x))) (roll (done (inj₁ x)))
-  next≈   : ∀ {m m′} → R m m′ → BlockEq R (roll (done (inj₂ m))) (roll (done (inj₂ m′)))
-  node≈   : ∀ {o a k k′} → (∀ b → BlockEq R (k b) (k′ b))
-          → BlockEq R (roll (node (call o a k))) (roll (node (call o a k′)))
-
-record _≈_ {X : Set} (m m′ : T∞ X) : Set where
-  coinductive
-  field force≈ : BlockEq _≈_ (force m) (force m′)
-open _≈_
-
-infix 4 _≈_
+-- THE LOOP: the anamorphism at `K B ⊕ Id`. Each round runs the block `c a`; where
+-- it ends with a `B` the loop returns it, where it ends with the next state
+-- the loop continues from it.
+loop : ∀ {A B : Set} → (A → T (B ⊎ A)) → A → T∞ B
+loop {B = B} c = ana actᶠ (SK B S⊕ SId) c
 
 ------------------------------------------------------------------------
 -- The grades
 ------------------------------------------------------------------------
 
 M : Purity → Set → Set
-M pure X = X
-M act  X = T X
-M eff  X = T∞ X
+M (fin f) X = Mᶠ f X
+M eff     X = T∞ X
 
 bind : ∀ π {X Y} → M π X → (X → M π Y) → M π Y
 bind pure m f = f m
@@ -153,39 +220,14 @@ bindᵍ eff  pure m f = m >>=∞ λ x → return∞ (f x)
 bindᵍ eff  act  m f = m >>=∞ λ x → embed (f x)
 bindᵍ eff  eff  m f = m >>=∞ f
 
--- Equal computations as trees: equal values and blocks; bisimilar loops.
+-- Equal computations as trees, at every grade: bisimilar in `T∞`.
 EqM : ∀ π {X : Set} → M π X → M π X → Set
-EqM pure m m′ = m ≡ m′
-EqM act  m m′ = m ≡ m′
-EqM eff  m m′ = m ≈ m′
+EqM π m m′ = toT∞ π m ≈ toT∞ π m′
 
 ------------------------------------------------------------------------
--- Codata whose layers are produced at a grade: the final coalgebra of
--- `M π ∘ F`
-------------------------------------------------------------------------
-
-record νM (π : Purity) (F : SFunctor) : Set where
-  coinductive
-  field outν : M π (⟦ F ⟧SF (νM π F))
-open νM
-
-------------------------------------------------------------------------
--- Calls, and the loop
+-- Calls
 ------------------------------------------------------------------------
 
 -- Performing one call of an operation: the generic effect, as one block.
 performT : ∀ {A} → Layer Σ A → T A
 performT (call o a k) = roll (node (call o a (λ b → returnT (k b))))
-
-perform : ∀ {A} → Layer Σ A → T∞ A
-perform l = embed (performT l)
-
--- THE LOOP: the anamorphism into the final coalgebra of `T (B + −)`. Each
--- round runs the block `c a`; where it ends with a `B` the loop returns it,
--- where it ends with the next state the loop continues from it.
-loop      : ∀ {A B : Set} → (A → T (B ⊎ A)) → A → T∞ B
-loopBlock : ∀ {A B : Set} → (A → T (B ⊎ A)) → T (B ⊎ A) → T (B ⊎ T∞ B)
-force (loop c a) = loopBlock c (c a)
-loopBlock c (roll (done (inj₁ b)))     = returnT (inj₁ b)
-loopBlock c (roll (done (inj₂ a)))     = roll (done (inj₂ (loop c a)))
-loopBlock c (roll (node (call o x k))) = roll (node (call o x (λ r → loopBlock c (k r))))

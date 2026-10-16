@@ -18804,3 +18804,50 @@ a ∀∃ correctness statement), and resumptions (R). R keeps E's freedom withou
   again over the new definitions, and B3's remainder (resolution, typing, meaning) bridged once.
 * Programs and tests: `main : IO Unit` becomes its principal type; a `Nu (Eff F)` built by an `Eff`
   coalgebra is no longer typed (`Nu (Act F)` is the stream whose layers run blocks).
+
+## D318 — THE SPEC AFTER A CATEGORICAL REVIEW: BEHAVIOUR IS A TRACE, `T∞` IS A STREAM, OPERATIONS ARE BLOCKS (2026-10-16)
+
+**Decided by the user, 2026-10-16** (plan 0.120: "fix them all" — every finding of a purist categorical
+review of the Spec, "the best Spec we can", in one patch); the patch awaits the user's review and
+`make spec-approve`. **Amends**: D317 items 3 (no `ν F eff`), 5 (behaviour is a trace, not a depth family),
+6 (one equality for the monad laws; Freyd up to observation); D308 (Freyd); D227, D225 (an operation's
+answer type decides the effect, operations at `Act`); D061 (an Interpretation is a model and a world).
+**Relates**: plan 0.120 (findings and POCs), plan 0.119.
+
+### Context
+After plan 0.119's metatheory over D317 (D1), a review asked of every definition: does it mean what it
+says, is it the canonical construction, which laws are missing, can anything be simpler. Nineteen
+findings; two POCs (plans/0.120-poc) showed the mechanization goes through.
+
+### Decision
+1. **Behaviour is a trace**: the final coalgebra `νY. Delay (End + Event × Y)`; two behaviours, and two
+   computations in every world, are the same when weakly bisimilar. The depth-indexed observation and the
+   prefix-family laws are gone (they were a stratification of this; tying values to the call depth is
+   where D1's defect came from). `Spec.Correct`'s instance compares traces.
+2. **`T∞` is a stream**: `T∞ X = νM act (K X ⊕ Id)`; the loop is the stream unfold at `K B ⊕ Id` (core
+   `iter` stays a former because `B` need not be first-order). Streams' layers are at a FINITE grade
+   (`pure`, `act`; `Purity = fin Finite | eff`): no `ν F eff` (it had no introduction, and it blocks the
+   definition by positivity). One bisimilarity for every stream, `T∞`'s its instance.
+3. **One equality for the monad laws**: `EqM π m m′` is bisimilarity of the images in `T∞` at every grade
+   (no `≡` on trees of continuations, so no function extensionality).
+4. **Freyd up to observation**: commuting, centrality and the pair laws are stated with observational
+   equality `≃`, so a silent step before `return y` is central, as `return y` is.
+5. **Operations are blocks**: a signature declares constants and pure functions (values of the world's
+   MODEL) and operations, declared at `Act` and used at `Eff` by subtyping (`Effectful` and `e-eff` go).
+   A call whose answer type is empty has no continuation and halts; the WORLD answers whenever an
+   answer exists, so every signature has a world, and every well-formed one a model.
+6. **Claims added**: finality of every stream (`unfold-unique`; the loop's is an instance), sameness a
+   PER respected by `>>=` (`Sameness`), an inhabited world and model (`Inhabited`), coercions functorial
+   (`conv-id`, `conv-∘`). Removed as instances or depth artefacts: `loop-out`, `loop-unique`,
+   `observable` (the prefix family).
+7. **Kept, with the reason recorded**: the first-order types of signatures (`BTy`) beside `Type.Base` —
+   the value domain of a general type depends on Σ (arrows run Σ's calls) and that of a first-order type
+   does not; `toB`/`fromB` is the canonical isomorphism between them.
+
+### Consequences
+* Spec (this patch): Grade, Type, Sub, Signature, Effect, Delay, Observation, Equivalence, Domain,
+  Core.Typing, Core.Meaning, Core.Derived, Core.Program, Surface.Syntax, Surface.Grammar,
+  Surface.Program, Surface.Typing, Source, Examples, Metatheory, the root.
+* Metatheory: proved again (plan 0.120); the D1 run relation becomes the finite-prefix lemmas.
+* Implementation (plan 0.119 §7 D): `Nu (Eff F)` and `Eff`-declared operations no longer parse; the
+  compiler's `correct` targets weak bisimilarity of traces (D4).

@@ -7,16 +7,18 @@
 --
 -- Each combinator a program writes is a term of the core, so its meaning is
 -- derived, never listed. A combinator's arms are evaluated once, left to
--- right (by `let`), and the arrow it builds runs them at each application;
--- an arm consumed by `let` costs its own usage (composition is linear in each
--- arm). Each takes the types it is used at (a core term determines its type).
+-- right (by `let`), and the arrow it builds runs them at each application.
+-- Usage is standard QTT: an arm costs its usage scaled by how often the
+-- arrow it builds consumes it — `compose f g`'s inner arm sits in `f`'s
+-- argument, so it costs `ω·Ψg`. Each takes the types it is used at (a core
+-- term determines its type).
 ------------------------------------------------------------------------
 
 module Once.Spec.Core.Derived where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (zero; suc)
-open import Once.Spec.Grade using (Purity; pure; eff; mk-kind; One; Many)
+open import Once.Spec.Grade using (Purity; pure; act; eff; pureᶠ; actᶠ; mk-kind; One; Many)
 open import Once.Spec.Type using (Ty; Fun; Unit; Void; _*_; _+_; _⇒[_]_; ⟦_⟧F; μ; ν)
 open import Once.Spec.Core.Syntax
 
@@ -49,7 +51,7 @@ module _ {s} {S : Defs s} {m : ℕ} where
 
   inᶜ outᶜ : ∀ {n} → Fun m → Tm S m n
   inᶜ  F = lam (⟦ F ⟧F (μ F)) Many pure (roll F v0)
-  outᶜ F = lam (ν F pure) Many pure (out v0)
+  outᶜ F = lam (ν F pureᶠ) Many pure (out v0)
 
   -- `compose f g` = f ∘ g: `f` evaluated first, `g` applied first.
   composeᶜ : ∀ {n} → Ty m → Purity → Tm S m n → Tm S m n → Tm S m n
@@ -89,5 +91,6 @@ module _ {s} {S : Defs s} {m : ℕ} where
   applyEffᶜ : ∀ {n} → Purity → Ty m → Ty m → Tm S m n
   applyEffᶜ π A B = lam ((A ⇒[ mk-kind Many π ] B) * A) Many pure (lam Unit Many π (app (fst v1) (snd v1)))
 
-  outEffᶜ : ∀ {n} → Purity → Fun m → Tm S m n
-  outEffᶜ π F = lam (ν F π) Many pure (lam Unit Many π (out v1))
+  -- Forcing a stream whose layers are blocks builds a suspension.
+  outActᶜ : ∀ {n} → Fun m → Tm S m n
+  outActᶜ F = lam (ν F actᶠ) Many pure (lam Unit Many act (out v1))

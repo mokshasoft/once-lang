@@ -37,7 +37,7 @@ open import Once.Spec.Type
   using (Ty; Fun; KCtx; base; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; Occurs; OccursF)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature
-  using (BTy; unit; void; int; float; DeclType; constant; arrow; _∶_; Signature; WellFormed)
+  using (BTy; unit; void; int; float; DeclType; constant; value; operation; _∶_; Signature; WellFormed)
 import Once.Spec.Signature as BT
 open import Once.Spec.Context using (∅; [])
 open import Once.Spec.Core.Syntax using (Defs; []; _▷_; Schema; module Schema; schema; Tm)
@@ -62,13 +62,13 @@ data BaseType : PolyType → BTy → Set where
   bt-*     : ∀ {A B a b} → BaseType A a → BaseType B b → BaseType (A P* B) (a BT.* b)
   bt-+     : ∀ {A B a b} → BaseType A a → BaseType B b → BaseType (A P+ B) (a BT.+ b)
 
--- A `signature` declaration's type: a base type, or an arrow between base
--- types.
+-- A `signature` declaration's type: a base type (a constant), a pure arrow
+-- between base types (a value), or an `Act` arrow between them (an
+-- operation; it is used at `Eff` by subtyping).
 data DeclTypeOf : PolyType → DeclType → Set where
   dt-const : ∀ {A a} → BaseType A a → DeclTypeOf A (constant a)
-  dt-pure  : ∀ {A B a b q} → BaseType A a → BaseType B b → DeclTypeOf (A P⇒[ q ] B) (arrow a (mk-kind q pure) b)
-  dt-act   : ∀ {A B a b} → BaseType A a → BaseType B b → DeclTypeOf (PAct A B) (arrow a (mk-kind Many act) b)
-  dt-eff   : ∀ {A B a b} → BaseType A a → BaseType B b → DeclTypeOf (PEff A B) (arrow a (mk-kind Many eff) b)
+  dt-pure  : ∀ {A B a b q} → BaseType A a → BaseType B b → DeclTypeOf (A P⇒[ q ] B) (value a q b)
+  dt-act   : ∀ {A B a b} → BaseType A a → BaseType B b → DeclTypeOf (PAct A B) (operation a Many b)
 
 data NotSignature : Decl → Set where
   ns-tsig   : ∀ {x t}    → NotSignature (DTypeSig x t)
@@ -120,7 +120,7 @@ data TypeOf {a} ns where
   to-act   : ∀ {A B A′ B′} → TypeOf ns A A′ → TypeOf ns B B′ → TypeOf ns (PAct A B) (A′ ⇒[ mk-kind Many act ] B′)
   to-eff   : ∀ {A B A′ B′} → TypeOf ns A A′ → TypeOf ns B B′ → TypeOf ns (PEff A B) (A′ ⇒[ mk-kind Many eff ] B′)
   to-μ     : ∀ {F F′} → FunOf ns F F′ → TypeOf ns (Pμ F) (μ F′)
-  to-ν     : ∀ {F F′ π} → FunOf ns F F′ → TypeOf ns (Pν F π) (ν F′ π)
+  to-ν     : ∀ {F F′ f} → FunOf ns F F′ → TypeOf ns (Pν F f) (ν F′ f)
 data FunOf {a} ns where
   fo-K  : ∀ {A A′} → TypeOf ns A A′ → FunOf ns (PK A) (K A′)
   fo-Id : FunOf ns PId Id
@@ -139,7 +139,7 @@ data UnderK i where
   uk-⇒ˡ : ∀ {A k B} → UnderK i A → UnderK i (A ⇒[ k ] B)
   uk-⇒ʳ : ∀ {A k B} → UnderK i B → UnderK i (A ⇒[ k ] B)
   uk-μ  : ∀ {F} → UnderKF i F → UnderK i (μ F)
-  uk-ν  : ∀ {F π} → UnderKF i F → UnderK i (ν F π)
+  uk-ν  : ∀ {F f} → UnderKF i F → UnderK i (ν F f)
 data UnderKF {a} i where
   uk-K  : ∀ {A} → Occurs i A → UnderKF i (K A)
   uk-⊕ˡ : ∀ {F G} → UnderKF i F → UnderKF i (F ⊕ G)

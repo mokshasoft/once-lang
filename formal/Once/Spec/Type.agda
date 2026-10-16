@@ -9,8 +9,8 @@
 --   A * B, A + B    product and coproduct;
 --   A ⇒[ k ] B      the exponential, graded by `k` (`Spec.Grade`);
 --   μ F             the initial algebra of the polynomial functor `F`;
---   ν F π           the final coalgebra of `F`, each layer produced at
---                   effect `π` (`ν F eff` is the final `T∞ ∘ F`-coalgebra);
+--   ν F f           the final coalgebra of `M f ∘ F`: each layer produced at
+--                   the finite effect `f` (`pure` or `act`, `Spec.Grade`);
 --   Int, Float      the target's machine integer and floating-point number;
 --   var i           the `i`-th type variable of a polymorphic definition.
 --
@@ -24,7 +24,7 @@ module Once.Spec.Type where
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Spec.Grade using (ArrowKind; Purity)
+open import Once.Spec.Grade using (ArrowKind; Finite)
 
 mutual
   data Ty (m : ℕ) : Set where
@@ -33,7 +33,7 @@ mutual
     _*_ _+_        : Ty m → Ty m → Ty m
     _⇒[_]_         : Ty m → ArrowKind → Ty m → Ty m
     μ              : Fun m → Ty m
-    ν              : Fun m → Purity → Ty m
+    ν              : Fun m → Finite → Ty m
     Int Float      : Ty m
 
   -- The polynomial functors: a constant, the recursive position, sum and
@@ -107,7 +107,7 @@ mutual
   (A + B)      ⟨ σ ⟩ = A ⟨ σ ⟩ + B ⟨ σ ⟩
   (A ⇒[ k ] B) ⟨ σ ⟩ = A ⟨ σ ⟩ ⇒[ k ] B ⟨ σ ⟩
   μ F          ⟨ σ ⟩ = μ (F ⟨ σ ⟩F)
-  ν F π        ⟨ σ ⟩ = ν (F ⟨ σ ⟩F) π
+  ν F f        ⟨ σ ⟩ = ν (F ⟨ σ ⟩F) f
   Int          ⟨ σ ⟩ = Int
   Float        ⟨ σ ⟩ = Float
 
@@ -148,7 +148,7 @@ mutual
   ⟨⟩-∘ (A + B)      σ τ = cong₂ _+_ (⟨⟩-∘ A σ τ) (⟨⟩-∘ B σ τ)
   ⟨⟩-∘ (A ⇒[ k ] B) σ τ = cong₂ (λ a b → a ⇒[ k ] b) (⟨⟩-∘ A σ τ) (⟨⟩-∘ B σ τ)
   ⟨⟩-∘ (μ F)        σ τ = cong μ (⟨⟩F-∘ F σ τ)
-  ⟨⟩-∘ (ν F π)      σ τ = cong (λ G → ν G π) (⟨⟩F-∘ F σ τ)
+  ⟨⟩-∘ (ν F f)      σ τ = cong (λ G → ν G f) (⟨⟩F-∘ F σ τ)
   ⟨⟩-∘ Int          σ τ = refl
   ⟨⟩-∘ Float        σ τ = refl
 
@@ -174,7 +174,7 @@ data Occurs i where
   o-⇒ˡ   : ∀ {A k B} → Occurs i A → Occurs i (A ⇒[ k ] B)
   o-⇒ʳ   : ∀ {A k B} → Occurs i B → Occurs i (A ⇒[ k ] B)
   o-μ    : ∀ {F} → OccursF i F → Occurs i (μ F)
-  o-ν    : ∀ {F π} → OccursF i F → Occurs i (ν F π)
+  o-ν    : ∀ {F f} → OccursF i F → Occurs i (ν F f)
 data OccursF i where
   o-K  : ∀ {A} → Occurs i A → OccursF i (K A)
   o-⊕ˡ : ∀ {F G} → OccursF i F → OccursF i (F ⊕ G)

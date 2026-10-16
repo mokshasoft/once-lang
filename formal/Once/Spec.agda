@@ -12,9 +12,11 @@
 --
 -- A program is a composition of morphisms: a telescope of definitions over a
 -- signature Σ of operations, built from a cartesian closed core with initial
--- algebras and final coalgebras, whose effects are the free (completely
--- iterative) monads on Σ. What it means is the sequence of operations it
--- performs against an Interpretation of Σ.
+-- algebras and final coalgebras, whose effects are the free monad on Σ (a
+-- finite block of calls) and the resumption monad over it (blocks forever,
+-- the stream of blocks). What it means is its trace against an
+-- Interpretation of Σ: the operations it performs, in a run that may go on
+-- forever.
 ------------------------------------------------------------------------
 
 module Once.Spec where
@@ -33,9 +35,9 @@ import Once.Spec.Bool            -- truth values
 
 -- Effects, and what is observed.
 import Once.Spec.Signature       -- the operations Σ and their functor H_Σ
-import Once.Spec.Effect          -- T = μ(X + H_Σ), T∞ = νY. T(X + Y), the grades' monads
+import Once.Spec.Effect          -- T = μ(X + H_Σ), streams, T∞ = νY. T(X + Y), the grades' monads
 import Once.Spec.Delay           -- a value that may never arrive
-import Once.Spec.Observation     -- Interpretations, and a run's calls
+import Once.Spec.Observation     -- the world, traces, weak bisimilarity
 import Once.Spec.Polynomial      -- polynomial functors and their initial algebras
 import Once.Spec.Domain          -- the value of each type
 import Once.Spec.Equivalence     -- when two meanings are the same

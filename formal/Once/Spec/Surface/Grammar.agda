@@ -10,8 +10,8 @@
 --
 -- Types: `->` (with an optional grade `^0`/`^1`/`^w` before it) binds
 -- loosest and to the right, then `+`, then `*`; atoms are `Unit`, `Void`,
--- `Int`, `Float`, `Eff A B`, `Act A B`, `Mu F`, `Nu F`, `Nu (Eff F)`,
--- `Nu (Act F)` and parentheses; a functor is built from `Id`, `K A`, `+`, `*`.
+-- `Int`, `Float`, `Eff A B`, `Act A B`, `Mu F`, `Nu F`, `Nu (Act F)` and
+-- parentheses; a functor is built from `Id`, `K A`, `+`, `*`.
 -- In a signature a lowercase word is a type variable.
 --
 -- Expressions, loosest first: composition `.` (left), one comparison,
@@ -34,7 +34,7 @@ open import Data.String using (String; toList; fromList)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
 open import Data.Maybe using (just; nothing)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Finite; pureᶠ; actᶠ; pure; act; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Lexing
   using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow;
@@ -73,7 +73,7 @@ record TypeAlg (R RF : Set) : Set₁ where
     aProd aSum aEff aAct    : R → R → R
     aArrow                  : Quantity → R → R → R
     aMu                     : RF → R
-    aNu                     : Purity → RF → R
+    aNu                     : Finite → RF → R
     fK                      : R → RF
     fId                     : RF
     fSum fProd              : RF → RF → RF
@@ -104,11 +104,9 @@ module Types {R RF : Set} (alg : TypeAlg R RF) where
     a-eff   : ∀ {ts₁ ts₂ r A B} → ParsesAtom ts₁ A ts₂ → ParsesAtom ts₂ B r → ParsesAtom (TWord "Eff" ∷ ts₁) (aEff A B) r
     a-act   : ∀ {ts₁ ts₂ r A B} → ParsesAtom ts₁ A ts₂ → ParsesAtom ts₂ B r → ParsesAtom (TWord "Act" ∷ ts₁) (aAct A B) r
     a-mu    : ∀ {ts r F} → ParsesFunSum ts F r → ParsesAtom (TWord "Mu" ∷ ts) (aMu F) r
-    a-nu    : ∀ {ts r F} → ParsesFunSum ts F r → ParsesAtom (TWord "Nu" ∷ ts) (aNu pure F) r
-    a-nu-eff : ∀ {ts r F} → ParsesFunSum ts F (TRParen ∷ r)
-             → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ ts) (aNu eff F) r
+    a-nu    : ∀ {ts r F} → ParsesFunSum ts F r → ParsesAtom (TWord "Nu" ∷ ts) (aNu pureᶠ F) r
     a-nu-act : ∀ {ts r F} → ParsesFunSum ts F (TRParen ∷ r)
-             → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ ts) (aNu act F) r
+             → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ ts) (aNu actᶠ F) r
     a-extra : ∀ {ts A r} → Extra ts A r → ParsesAtom ts A r
     a-paren : ∀ {ts A r} → ParsesType ts A (TRParen ∷ r) → ParsesAtom (TLParen ∷ ts) A r
 
@@ -171,7 +169,7 @@ private
   written X = record
     { aUnit = PUnit ; aVoid = PVoid ; aInt = PInt ; aFloat = PFloat
     ; aProd = _P*_ ; aSum = _P+_ ; aEff = PEff ; aAct = PAct
-    ; aArrow = λ q A B → A P⇒[ q ] B ; aMu = Pμ ; aNu = λ π F → Pν F π
+    ; aArrow = λ q A B → A P⇒[ q ] B ; aMu = Pμ ; aNu = λ f F → Pν F f
     ; fK = PK ; fId = PId ; fSum = _P⊕_ ; fProd = _P⊗_
     ; Extra = X }
 
@@ -180,7 +178,7 @@ private
     { aUnit = Unit ; aVoid = Void ; aInt = Int ; aFloat = Float
     ; aProd = _*_ ; aSum = _+_
     ; aEff = λ A B → A ⇒[ mk-kind Many eff ] B ; aAct = λ A B → A ⇒[ mk-kind Many act ] B
-    ; aArrow = λ q A B → A ⇒[ mk-kind q pure ] B ; aMu = μ ; aNu = λ π F → ν F π
+    ; aArrow = λ q A B → A ⇒[ mk-kind q pure ] B ; aMu = μ ; aNu = λ f F → ν F f
     ; fK = K ; fId = Id ; fSum = _⊕_ ; fProd = _⊗_
     ; Extra = NoExtra }
 

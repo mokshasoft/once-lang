@@ -11,10 +11,10 @@
 -- texts parse (`Spec.Surface.Grammar`) and the program's module denotes a
 -- program over its signature (`Spec.Surface.Program`). What the program does
 -- is its behaviour against an Interpretation of that signature
--- (`Spec.Core.Program.behaviour`): at each depth, the calls it makes — which
--- may never arrive. Two behaviours are the same when at every depth they
--- arrive at the same calls, or neither arrives (D317); that is the
--- equivalence a correct compiler preserves (`Spec.Correct`).
+-- (`Spec.Core.Program.behaviour`): its trace — the calls it makes, in a run
+-- that may go on forever. Two behaviours are the same when their traces are
+-- weakly bisimilar (D317); that is the equivalence a correct compiler
+-- preserves (`Spec.Correct`).
 --
 -- A target owes an answer only for the programs it can express
 -- (ADMISSIBLE): every integer literal, a negated one read as negative, fits
@@ -31,10 +31,10 @@ open import Data.Nat using (ℕ)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Delay using (Delay; _≈D_)
+open import Data.Unit using (⊤)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 import Once.Spec.Word as Word
-open import Once.Spec.Signature using (Signature; Event)
+open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Grammar using (Parses)
 open import Once.Spec.Surface.Resolution using (ModuleMap)
@@ -68,22 +68,10 @@ src ⊢ tp = Σ[ mm ∈ ModuleMap ]
 -- What a target can express
 ------------------------------------------------------------------------
 
-intLits : Expr → List ℤ
+intLits  : Expr → List ℤ
+negLits : Expr → List ℤ   -- under a negation: a literal there is negative
 intLits (RInt i)              = i ∷ []
-intLits (RNeg (RInt i))       = (- i) ∷ []
-intLits (RNeg (RVar _))       = []
-intLits (RNeg (RQualified _ _)) = []
-intLits (RNeg (RResolved _))  = []
-intLits (RNeg (RApp f x))     = intLits f ++ intLits x
-intLits (RNeg (RLam _ b))     = intLits b
-intLits (RNeg (RLet _ e b))   = intLits e ++ intLits b
-intLits (RNeg (RPair a b))    = intLits a ++ intLits b
-intLits (RNeg (RDestruct e _ l _ r)) = intLits e ++ intLits l ++ intLits r
-intLits (RNeg RUnit)          = []
-intLits (RNeg (RFloat _ _ _)) = []
-intLits (RNeg (RAnnot e _))   = intLits e
-intLits (RNeg (RBinOp _ a b)) = intLits a ++ intLits b
-intLits (RNeg (RNeg e))       = intLits (RNeg e)
+intLits (RNeg e)              = negLits e
 intLits (RVar _)              = []
 intLits (RQualified _ _)      = []
 intLits (RResolved _)         = []
@@ -96,6 +84,9 @@ intLits RUnit                 = []
 intLits (RFloat _ _ _)        = []
 intLits (RAnnot e _)          = intLits e
 intLits (RBinOp _ a b)        = intLits a ++ intLits b
+negLits (RInt i) = (- i) ∷ []
+{-# CATCHALL #-}
+negLits e        = intLits e
 
 declLits : List Decl → List ℤ
 declLits []                     = []
@@ -109,9 +100,9 @@ Admissible : TargetNum → Typed → Set
 Admissible fmt tp = All (Word.Width.InRange (TargetNum.int-bits fmt)) (declLits (Module.decls (module′ tp)))
 
 -- What the program does, against an Interpretation of its signature.
-behaviour : TargetNum → (tp : Typed) → Observation.Interp (signature tp) → ℕ → Delay (List Event)
+behaviour : TargetNum → (tp : Typed) → Observation.Interp (signature tp) → Observation.Tr (signature tp) ⊤
 behaviour fmt tp = CoreProgram.behaviour (signature tp) fmt (program tp)
 
--- The same behaviour.
-SameBehaviour : (ℕ → Delay (List Event)) → (ℕ → Delay (List Event)) → Set
-SameBehaviour b b′ = ∀ n → b n ≈D b′ n
+-- The same behaviour: weakly bisimilar traces.
+SameBehaviour : ∀ {Σ} → Observation.Tr Σ ⊤ → Observation.Tr Σ ⊤ → Set
+SameBehaviour {Σ} t t′ = Observation._≈ᵗ⟨_⟩_ Σ t _≡_ t′

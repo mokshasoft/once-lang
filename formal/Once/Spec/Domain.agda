@@ -7,15 +7,13 @@
 --
 -- One value domain. A pure arrow is a total function, an effectful one a
 -- function into its grade's monad (`Spec.Effect`); an erased arrow takes no
--- argument. `μ F` is the initial algebra of `F`'s polynomial functor, `ν F π`
--- the final coalgebra of `M π ∘ F`.
+-- argument. `μ F` is the initial algebra of `F`'s polynomial functor, `ν F f`
+-- the final coalgebra of `M f ∘ F` (its unfold is `Spec.Effect.ana`).
 --
--- With it: the fold and the unfold on the polynomial functors (the fold runs
--- a product layer left first; the unfold's coalgebra is at most `act`, a
--- finite block per layer — a round never contains a loop, D317), the action
--- of `ν` on the monad morphisms, and
--- the conversion each subtyping derivation means. Everything is stated at a
--- closed instance `σ` of the type variables.
+-- With it: the fold on the polynomial functors (a product layer left first),
+-- the action of `ν` on the monad morphism `pure → act`, and the conversion
+-- each subtyping derivation means. Everything is stated at a closed instance
+-- `σ` of the type variables.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -27,7 +25,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
-open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
+open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; Purity; pure; act; eff; mk-kind; Zero; One; Many; _⊑π_; ⊑-pure; ⊑-pa; ⊑-act)
 open import Once.Spec.Type
   using (Ty; Type; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; K; Id; _⊕_; _⊗_; ⟦_⟧F; TySub; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Sub
@@ -35,9 +33,7 @@ open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⟦_⟧ᵇ; Layer; call)
 import Once.Spec.Signature as S
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS)
-open import Once.Spec.Effect Σ
-  using (M; return; bind; fmap; sub; T; roll; done; node; returnT; mapT; T∞; embed; νM; module T∞; module νM)
-open T∞ using (force)
+open import Once.Spec.Effect Σ using (M; return; bind; fmap; sub; T; roll; done; returnT; νM; module νM)
 open νM using (outν)
 
 ------------------------------------------------------------------------
@@ -55,7 +51,7 @@ code : Fun 0 → SFunctor
 ⟦ A ⇒[ mk-kind One  π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ
 ⟦ μ F ⟧ᵛ   = μS (code F)
-⟦ ν F π ⟧ᵛ = νM π (code F)
+⟦ ν F f ⟧ᵛ = νM f (code F)
 ⟦ Int ⟧ᵛ   = Carrier
 ⟦ Float ⟧ᵛ = Carrier
 code (K A)   = SK ⟦ A ⟧ᵛ
@@ -66,6 +62,11 @@ code (F ⊗ G) = code F S⊗ code G
 ------------------------------------------------------------------------
 -- A base type's values are its values as a type; a functor applied to a type
 -- is the polynomial functor applied to its values
+--
+-- (Two value domains meet here, canonically isomorphic: a first-order type's
+-- values do not depend on Σ — they are what the world takes and answers —
+-- while a general type's do, since an arrow runs Σ's calls. `toB`/`fromB` is
+-- that isomorphism, the identity on each value.)
 ------------------------------------------------------------------------
 
 module _ {m : ℕ} (σ : TySub m 0) where
@@ -116,41 +117,11 @@ layerM π G (H₁ S⊗ H₂) alg (x , y)  =
   bind π (layerM π G H₁ alg x) λ u → bind π (layerM π G H₂ alg y) λ v → return π (u , v)
 
 ------------------------------------------------------------------------
--- The unfold: each forced layer runs the coalgebra at its grade
+-- ν on the monad morphism `pure → act`: every layer converted
 ------------------------------------------------------------------------
 
-anaP   : ∀ (G : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → X → νM pure G
-mapP   : ∀ (G H : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM pure G)
-outν (anaP G c x) = mapP G G c (c x)
-mapP G (SK B)     c x        = x
-mapP G SId        c x        = anaP G c x
-mapP G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapP G H₁ c x)
-mapP G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapP G H₂ c y)
-mapP G (H₁ S⊗ H₂) c (x , y)  = mapP G H₁ c x , mapP G H₂ c y
-
-anaA   : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → X → νM act G
-treeA  : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → T (⟦ G ⟧SF X) → T (⟦ G ⟧SF (νM act G))
-mapA   : ∀ (G H : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM act G)
-outν (anaA G c x) = treeA G c (c x)
-treeA G c (roll (done l))            = roll (done (mapA G G c l))
-treeA G c (roll (node (call o a k))) = roll (node (call o a (λ b → treeA G c (k b))))
-mapA G (SK B)     c x        = x
-mapA G SId        c x        = anaA G c x
-mapA G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapA G H₁ c x)
-mapA G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapA G H₂ c y)
-mapA G (H₁ S⊗ H₂) c (x , y)  = mapA G H₁ c x , mapA G H₂ c y
-
--- A coalgebra of grade at most `act`.
-anaM : ∀ {π} → π ⊑π act → (G : SFunctor) {X : Set} → (X → M π (⟦ G ⟧SF X)) → X → νM π G
-anaM ⊑-pa  = anaP
-anaM ⊑-act = anaA
-
-------------------------------------------------------------------------
--- ν on the monad morphisms: every layer converted
-------------------------------------------------------------------------
-
-νpa  : ∀ (G : SFunctor) → νM pure G → νM act G
-lpa  : ∀ (G H : SFunctor) → ⟦ H ⟧SF (νM pure G) → ⟦ H ⟧SF (νM act G)
+νpa  : ∀ (G : SFunctor) → νM pureᶠ G → νM actᶠ G
+lpa  : ∀ (G H : SFunctor) → ⟦ H ⟧SF (νM pureᶠ G) → ⟦ H ⟧SF (νM actᶠ G)
 outν (νpa G v) = roll (done (lpa G G (outν v)))
 lpa G (SK B)     x        = x
 lpa G SId        v        = νpa G v
@@ -158,38 +129,10 @@ lpa G (H₁ S⊕ H₂) (inj₁ x) = inj₁ (lpa G H₁ x)
 lpa G (H₁ S⊕ H₂) (inj₂ y) = inj₂ (lpa G H₂ y)
 lpa G (H₁ S⊗ H₂) (x , y)  = lpa G H₁ x , lpa G H₂ y
 
-νpe  : ∀ (G : SFunctor) → νM pure G → νM eff G
-tpe  : ∀ (G : SFunctor) → ⟦ G ⟧SF (νM pure G) → T∞ (⟦ G ⟧SF (νM eff G))
-lpe  : ∀ (G H : SFunctor) → ⟦ H ⟧SF (νM pure G) → ⟦ H ⟧SF (νM eff G)
-outν (νpe G v) = tpe G (outν v)
-force (tpe G l) = roll (done (inj₁ (lpe G G l)))
-lpe G (SK B)     x        = x
-lpe G SId        v        = νpe G v
-lpe G (H₁ S⊕ H₂) (inj₁ x) = inj₁ (lpe G H₁ x)
-lpe G (H₁ S⊕ H₂) (inj₂ y) = inj₂ (lpe G H₂ y)
-lpe G (H₁ S⊗ H₂) (x , y)  = lpe G H₁ x , lpe G H₂ y
-
-νae  : ∀ (G : SFunctor) → νM act G → νM eff G
-tae  : ∀ (G : SFunctor) → T (⟦ G ⟧SF (νM act G)) → T∞ (⟦ G ⟧SF (νM eff G))
-bae  : ∀ (G : SFunctor) → T (⟦ G ⟧SF (νM act G)) → T (⟦ G ⟧SF (νM eff G) ⊎ T∞ (⟦ G ⟧SF (νM eff G)))
-lae  : ∀ (G H : SFunctor) → ⟦ H ⟧SF (νM act G) → ⟦ H ⟧SF (νM eff G)
-outν (νae G v) = tae G (outν v)
-force (tae G t) = bae G t
-bae G (roll (done l))            = roll (done (inj₁ (lae G G l)))
-bae G (roll (node (call o a k))) = roll (node (call o a (λ b → bae G (k b))))
-lae G (SK B)     x        = x
-lae G SId        v        = νae G v
-lae G (H₁ S⊕ H₂) (inj₁ x) = inj₁ (lae G H₁ x)
-lae G (H₁ S⊕ H₂) (inj₂ y) = inj₂ (lae G H₂ y)
-lae G (H₁ S⊗ H₂) (x , y)  = lae G H₁ x , lae G H₂ y
-
-subν : ∀ {π π′} → π ⊑π π′ → ∀ (G : SFunctor) → νM π G → νM π′ G
+subν : ∀ {f f′} → fin f ⊑π fin f′ → ∀ (G : SFunctor) → νM f G → νM f′ G
 subν ⊑-pure G v = v
 subν ⊑-pa   G v = νpa G v
-subν ⊑-pe   G v = νpe G v
 subν ⊑-act  G v = v
-subν ⊑-ae   G v = νae G v
-subν ⊑-eff  G v = v
 
 ------------------------------------------------------------------------
 -- What a subtyping derivation means: its conversion
