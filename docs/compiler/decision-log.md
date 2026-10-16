@@ -18827,7 +18827,11 @@ findings; two POCs (plans/0.120-poc) showed the mechanization goes through.
 2. **`T∞` is a stream**: `T∞ X = νM act (K X ⊕ Id)`; the loop is the stream unfold at `K B ⊕ Id` (core
    `iter` stays a former because `B` need not be first-order). Streams' layers are at a FINITE grade
    (`pure`, `act`; `Purity = fin Finite | eff`): no `ν F eff` (it had no introduction, and it blocks the
-   definition by positivity). One bisimilarity for every stream, `T∞`'s its instance.
+   definition by positivity). One bisimilarity for every stream, `T∞`'s its instance. D233's effectful
+   stream — the final coalgebra of `T ∘ F` for a coalgebra `A → T (F A)`, with an effectful `Out` — is
+   `Nu (Act F)` since D314 split the grade (`T` is the finite block, `act`); what `ν F eff` would add is
+   a layer that may run forever, which GOAL.md excludes (every layer is computed in finite time). A
+   computation that runs forever is a loop, `T∞ B`, itself the stream of finite blocks.
 3. **One equality for the monad laws**: `EqM π m m′` is bisimilarity of the images in `T∞` at every grade
    (no `≡` on trees of continuations, so no function extensionality).
 4. **Freyd up to observation**: commuting, centrality and the pair laws are stated with observational
@@ -18844,11 +18848,15 @@ findings; two POCs (plans/0.120-poc) showed the mechanization goes through.
    to an `act` one is the unfold that returns each layer as a block with no call (no hand-written copy);
    the remaining helpers of `ana` and the fold exist for Agda's guardedness and termination checkers and
    are pinned by `unfold-out`/`unfold-unique` and `fold-in`/`fold-unique`.
-7. **Two streams are the same when they agree on every finite number of layers**, each layer's
-   computations compared observationally: the functors are polynomial, so the final coalgebra is the
-   limit of its terminal sequence. (A coinductive sameness was drafted first; it cannot be constructed
-   under `--safe`: building it needs a corecursive call through weak bisimilarity's relation and the
-   layer map, which guardedness rejects, and sized types are not `--safe`.)
+7. **Two streams are the same when they agree on every finite number of layers** (`SameStream`), each
+   layer's computations compared observationally. This is exactly what a coinductive sameness would be,
+   and the Spec claims it: `SameStream` is a fixed point of one layer and the greatest one (every
+   relation one layer preserves lies inside it; `stream-out`, `stream-in`, `stream-coind`). It holds
+   because a layer is finite — in each world one run with one pair of values — and the functors are
+   polynomial, so one layer commutes with "at every depth". (A coinductive definition was drafted first;
+   it cannot be constructed under `--safe`: it needs a corecursive call through weak bisimilarity's
+   relation and the layer map, which guardedness rejects, and sized types are not `--safe`. The claims
+   give its meaning without the definition.)
 8. **Kept, with the reason recorded**: the first-order types of signatures (`BTy`) beside `Type.Base` —
    the value domain of a general type depends on Σ (arrows run Σ's calls) and that of a first-order type
    does not; `toB`/`fromB` is the canonical isomorphism between them.

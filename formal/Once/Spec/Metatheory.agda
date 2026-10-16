@@ -167,9 +167,14 @@ record Inhabited (Σ : Signature) : Set where
 ------------------------------------------------------------------------
 
 record Sameness (Σ : Signature) : Set₁ where
-  open Effect Σ using (M; bindᵍ)
+  open Effect Σ using (M; bindᵍ; νM; module νM; toT∞; LayerEq)
   open Domain Σ using (⟦_⟧ᵛ)
-  open Equivalence Σ using (Same; SameM)
+  open Equivalence Σ using (Same; SameM; Observed; SameStream)
+  -- One layer of a relation on streams: forcing gives layer computations
+  -- observed the same, with equal constants and the relation at the
+  -- recursive positions.
+  OneLayer : ∀ (f : Finite) (G : SFunctor) → (νM f G → νM f G → Set) → νM f G → νM f G → Set
+  OneLayer f G R v w = Observed (LayerEq G R) (toT∞ (fin f) (νM.outν v)) (toT∞ (fin f) (νM.outν w))
   field
     Same-sym   : ∀ (A : Type) {x y} → Same A x y → Same A y x
     Same-trans : ∀ (A : Type) {x y z} → Same A x y → Same A y z → Same A x z
@@ -178,6 +183,13 @@ record Sameness (Σ : Signature) : Set₁ where
     SameM-bind : ∀ π₁ π₂ (A B : Type) {m m′ : M π₁ ⟦ A ⟧ᵛ} {f f′ : ⟦ A ⟧ᵛ → M π₂ ⟦ B ⟧ᵛ}
                → SameM π₁ A m m′ → (∀ {x x′} → Same A x x′ → SameM π₂ B (f x) (f′ x′))
                → SameM (π₁ ·p π₂) B (bindᵍ π₁ π₂ m f) (bindᵍ π₁ π₂ m′ f′)
+    -- sameness of streams is what a coinductive sameness would be: a fixed
+    -- point of one layer …
+    stream-out   : ∀ f (G : SFunctor) {v w} → SameStream f G v w → OneLayer f G (SameStream f G) v w
+    stream-in    : ∀ f (G : SFunctor) {v w} → OneLayer f G (SameStream f G) v w → SameStream f G v w
+    -- … and the greatest: every relation that one layer preserves lies inside it
+    stream-coind : ∀ f (G : SFunctor) (R : νM f G → νM f G → Set) → (∀ {v w} → R v w → OneLayer f G R v w)
+                 → ∀ {v w} → R v w → SameStream f G v w
 
 ------------------------------------------------------------------------
 -- Coherence, and the term model

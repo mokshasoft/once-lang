@@ -30,7 +30,7 @@ open import Data.Unit using (tt)
 open import Once.Spec.Grade using (Finite; fin)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Effect Σ using (νM; module νM; toT∞; LayerEq)
-open import Once.Spec.Equivalence Σ using (Observed; SameNu)
+open import Once.Spec.Equivalence Σ using (Observed; SameNu; SameStream)
 open import Once.Metatheory.Coherence.Relation Σ using (Related-∀; Related-mono; LayerEq-mono; fromObserved; toObserved)
 
 open νM using (outν)
@@ -41,7 +41,7 @@ Step f G R v w = Observed (LayerEq G R) (toT∞ (fin f) (outν v)) (toT∞ (fin 
 
 -- Sameness of streams, as `Same (ν F f)` states it.
 SameS : ∀ (f : Finite) (G : SFunctor) → νM f G → νM f G → Set
-SameS f G v w = ∀ n → SameNu f G n v w
+SameS = SameStream
 
 -- A polynomial layer commutes with `∀ n`.
 LayerEq-∀ : ∀ (G : SFunctor) {X : Set} {R : ℕ → X → X → Set} {l l′ : ⟦ G ⟧SF X}

@@ -16,9 +16,10 @@
 -- are equal; functions take the same arguments to the same computations; two
 -- streams are the same when they agree on every finite number of layers:
 -- forcing them gives the same layer computations, with equal constants and
--- streams agreeing on one layer fewer at the recursive positions. (The
--- functors are polynomial, so the final coalgebra is the limit of its
--- terminal sequence: agreeing at every finite stage is being the same.)
+-- streams agreeing on one layer fewer at the recursive positions. This is
+-- what a coinductive sameness would be: the greatest relation that one layer
+-- preserves (`Spec.Metatheory.Sameness`), since a layer is finite and the
+-- functors are polynomial.
 -- Infinite objects are never compared by `≡`.
 ------------------------------------------------------------------------
 
@@ -57,6 +58,11 @@ SameNu : ∀ (f : Finite) (G : SFunctor) → ℕ → νM f G → νM f G → Set
 SameNu f G zero    v w = ⊤
 SameNu f G (suc n) v w = Observed (LayerEq G (SameNu f G n)) (toT∞ (fin f) (outν v)) (toT∞ (fin f) (outν w))
 
+-- Two streams: agreeing on every finite number of layers. It is the
+-- greatest relation that one layer preserves (`Spec.Metatheory.Sameness`).
+SameStream : ∀ (f : Finite) (G : SFunctor) → νM f G → νM f G → Set
+SameStream f G v w = ∀ n → SameNu f G n v w
+
 -- No world tells them apart.
 Same  : (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᵛ → Set
 SameM : (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → M π ⟦ A ⟧ᵛ → Set
@@ -75,4 +81,4 @@ Same (A + B) (inj₂ _) (inj₁ _)  = ⊥
 Same (A ⇒[ mk-kind Zero π ] B) f g = SameM π B (f _) (g _)
 Same (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → Same A a a′ → SameM π B (f a) (g a′)
 Same (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → Same A a a′ → SameM π B (f a) (g a′)
-Same (ν F f) v w = ∀ n → SameNu f (code F) n v w
+Same (ν F f) v w = SameStream f (code F) v w
