@@ -2,93 +2,174 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.Effects — the meaning's effect structure
--- (`Spec.Metatheory.Effects`, plan 0.112 E and C4).
+-- Once.Metatheory.Effects — each grade's monad is a monad, and the
+-- morphisms along the order and into `T∞` are monad morphisms
+-- (`Spec.Metatheory.Effects`).
 --
--- `M π` is one monad per grade (the identity monad at `pure`, the free monad
--- `T` at `act`, D313, the completely iterative monad `T∞` at `eff`, D312), equal up to the grade's equality
--- (`EqM`: `≡`, or bisimilarity), and a
--- graded monad through `bindᵍ` (D311). The monad morphisms between them are
--- `subM` (subeffecting) and `toT∞` (every grade read as a tree of `T∞`); the
--- observation `events∞` respects bisimilarity and sees no event in a unit.
+-- Not `--safe`: equality at `act` is `≡` on finite trees, whose nodes hold
+-- continuations, so the laws at `act` use function extensionality
+-- (`Once.Postulates`), as HEAD's proof did.
 ------------------------------------------------------------------------
 
-module Once.Metatheory.Effects where
+open import Once.Spec.Signature using (Signature; call)
 
-open import Data.List using (List; [])
-open import Data.List.Properties using (++-identityʳ)
-open import Data.Product using (_,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff⁺; eff; _·p_)
-open import Once.Lang.Guarded using (forget⁺)
-open import Once.Denotation.GuardedLaws using (forget-bind⁺; assoc⁺)
-open import Once.Metatheory.Coherence.Relation using (toT∞-returnM; toT∞-bindM; toT∞-bindᵍ)
-open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge)
+module Once.Metatheory.Effects (Σ : Signature) where
+
+open import Data.List using ([]; _∷_)
+open import Data.Nat using (zero; suc)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Once.Postulates using (extensionality)
+open import Once.Spec.Grade using (Purity; pure; act; eff⁺; eff; _·p_; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-g; ⊑-ge; ⊑-eff)
+open import Once.Spec.Signature using (BTy; void; unit; int; float; _*_; _+_)
+open import Once.Spec.Effect Σ
+open import Once.Spec.Observation Σ using (Interp; History; events; stepEvents; next; resume)
 open import Once.Spec.Metatheory using (Effects)
-open import Once.Lang.Event using (SigOpEvent)
-open import Once.Lang.Trace using (T; returnT; _>>=T_; Interp; run; then)
-open import Once.Lang.Graded using (M; returnM; bindM; subM; toT∞; bindᵍ; EqM; _>>=ᵖ_)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; embed; TreeEq∞; ret≈∞; events∞)
-open Once.Lang.Iterative.TreeEq∞ using (force≈)
-open import Once.Denotation.TraceMonadInfLaws using (≈∞-refl; ≈∞-bind; ≈∞-rewrite; ≈∞-idˡ; ≈∞-idʳ; ≈∞-assoc; events∞-≈; embed-bind)
-open import Once.Denotation.TraceMonadLaws using (>>=T-identityʳ; >>=T-assoc)
-open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ; bindM-idˡ)
+open import Once.Metatheory.Bisim Σ
 
-M-identityʳ : ∀ {π} (u : pure ⊑π π) {X : Set} (m : M π X) → EqM π (bindM π m (returnM u)) m
-M-identityʳ ⊑-pure m = >>=ᵖ-idʳ m
-M-identityʳ ⊑-pa   m = >>=T-identityʳ m
-M-identityʳ ⊑-pe   m = ≈∞-idʳ m
+open T∞ using (force)
+open _≈_ using (force≈)
+
+------------------------------------------------------------------------
+-- The finite trees
+------------------------------------------------------------------------
+
+T-idʳ : ∀ {X} (m : T X) → (m >>=T returnT) ≡ m
+T-idʳ (roll (done x))            = refl
+T-idʳ (roll (node (call o a k))) = cong (λ k → roll (node (call o a k))) (extensionality λ b → T-idʳ (k b))
+
+T-assoc : ∀ {X Y Z} (m : T X) (f : X → T Y) (g : Y → T Z) → ((m >>=T f) >>=T g) ≡ (m >>=T λ x → f x >>=T g)
+T-assoc (roll (done x))            f g = refl
+T-assoc (roll (node (call o a k))) f g = cong (λ k → roll (node (call o a k))) (extensionality λ b → T-assoc (k b) f g)
+
+embed-bind : ∀ {X Y} (m : T X) (k : X → T Y) → embed (m >>=T k) ≈ (embed m >>=∞ λ x → embed (k x))
+force≈ (embed-bind (roll (done x))            k) = ≈-reflS (force (embed (k x)))
+force≈ (embed-bind (roll (node (call o a k′))) k) = node≈ λ b → embed-bind (k′ b) k
+
+embed-return : ∀ {X} (x : X) → embed (returnT x) ≈ return∞ x
+force≈ (embed-return x) = done≈
+
+------------------------------------------------------------------------
+-- The guarded computations
+------------------------------------------------------------------------
+
+forget⁺-bind : ∀ {X Y} (p : T⁺ X) (h : X → T∞ Y) → forget⁺ (p >>=⁺ h) ≈ (forget⁺ p >>=∞ h)
+force≈ (forget⁺-bind (call⁺ (call o a k)) h) = node≈ λ b → ≈-refl (k b >>=∞ h)
+
+forget⁺-=<<  : ∀ {X Y} (n : T∞ X) (f : X → T⁺ Y) → forget⁺ (n ⁺=<< f) ≈ (n >>=∞ λ x → forget⁺ (f x))
+forget⁺-=<<S : ∀ {X Y} (s : Step X (T∞ X)) (f : X → T⁺ Y)
+             → StepEq _≈_ (force (forget⁺ (bindF⁺ s f))) (bindStep s λ x → forget⁺ (f x))
+force≈ (forget⁺-=<< n f) = forget⁺-=<<S (force n) f
+forget⁺-=<<S (done x)            f = ≈-reflS (force (forget⁺ (f x)))
+forget⁺-=<<S (node (call o a k)) f = node≈ λ b → ≈-refl (k b >>=∞ λ x → forget⁺ (f x))
+
+------------------------------------------------------------------------
+-- The laws
+------------------------------------------------------------------------
+
+M-identityˡ : ∀ {π} (u : pure ⊑π π) {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bind π (return u x) k) (k x)
+M-identityˡ ⊑-pure x k = refl
+M-identityˡ ⊑-pa   x k = refl
+M-identityˡ ⊑-pe   x k = idˡ x k
+
+M-identityʳ : ∀ {π} (u : pure ⊑π π) {X : Set} (m : M π X) → EqM π (bind π m (return u)) m
+M-identityʳ ⊑-pure m = refl
+M-identityʳ ⊑-pa   m = T-idʳ m
+M-identityʳ ⊑-pe   m = idʳ m
 
 M-assoc : ∀ π {X Y Z : Set} (m : M π X) (f : X → M π Y) (g : Y → M π Z)
-        → EqM π (bindM π (bindM π m f) g) (bindM π m (λ x → bindM π (f x) g))
-M-assoc pure m f g = >>=ᵖ-assoc m f g
-M-assoc act  m f g = >>=T-assoc m f g
-M-assoc eff⁺ m f g = assoc⁺ m f g
-M-assoc eff  m f g = ≈∞-assoc m f g
+        → EqM π (bind π (bind π m f) g) (bind π m (λ x → bind π (f x) g))
+M-assoc pure m f g = refl
+M-assoc act  m f g = T-assoc m f g
+M-assoc eff  m f g = assoc m f g
+M-assoc eff⁺ (call⁺ (call o a k)) f g =
+  record { force≈ = node≈ λ b →
+    ≈-trans (assoc (k b) _ _)
+            (≈-bind (≈-refl (k b)) (λ x → ≈-sym (forget⁺-bind (f x) λ y → forget⁺ (g y)))) }
 
-private
-  ret-≈ : ∀ {X} (x : X) → TreeEq∞ _≡_ (embed (returnT x)) (return∞ x)
-  force≈ (ret-≈ x) = ret≈∞ refl
+sub-return : ∀ {π π′} (u : pure ⊑π π) (g : π ⊑π π′) (u′ : pure ⊑π π′) {X : Set} (x : X)
+           → EqM π′ (sub g (return u x)) (return u′ x)
+sub-return ⊑-pure ⊑-pure ⊑-pure x = refl
+sub-return ⊑-pure ⊑-pa   ⊑-pa   x = refl
+sub-return ⊑-pure ⊑-pe   ⊑-pe   x = ≈-refl (return∞ x)
+sub-return ⊑-pa   ⊑-act  ⊑-pa   x = refl
+sub-return ⊑-pa   ⊑-ae   ⊑-pe   x = embed-return x
+sub-return ⊑-pe   ⊑-eff  ⊑-pe   x = ≈-refl (return∞ x)
 
-  retβ-≈ : ∀ {X Y} (m : X) (k : X → Y) → TreeEq∞ _≡_ (return∞ (m >>=ᵖ k)) (return∞ m >>=∞ λ x → return∞ (k x))
-  force≈ (retβ-≈ m k) = ret≈∞ (>>=ᵖ-β m k)
+sub-bind : ∀ {π π′} (g : π ⊑π π′) {X Y : Set} (m : M π X) (k : X → M π Y)
+         → EqM π′ (sub g (bind π m k)) (bind π′ (sub g m) (λ x → sub g (k x)))
+sub-bind ⊑-pure m k = refl
+sub-bind ⊑-pa   m k = refl
+sub-bind ⊑-pe   m k = ≈-sym (idˡ m (λ x → return∞ (k x)))
+sub-bind ⊑-act  m k = refl
+sub-bind ⊑-ae   m k = embed-bind m k
+sub-bind ⊑-g    m k = ≈-refl (forget⁺ (m >>=⁺ λ x → forget⁺ (k x)))
+sub-bind ⊑-ge   m k = forget⁺-bind m (λ x → forget⁺ (k x))
+sub-bind ⊑-eff  m k = ≈-refl (m >>=∞ k)
 
-subM-return : ∀ {π π′} (u : pure ⊑π π) (g : π ⊑π π′) (u′ : pure ⊑π π′) {X : Set} (x : X)
-            → EqM π′ (subM g (returnM u x)) (returnM u′ x)
-subM-return ⊑-pure ⊑-pure ⊑-pure x = refl
-subM-return ⊑-pure ⊑-pe   ⊑-pe   x = ≈∞-refl (λ _ → refl) (return∞ x)
-subM-return ⊑-pe   ⊑-eff  ⊑-pe   x = ≈∞-refl (λ _ → refl) (return∞ x)
-subM-return ⊑-pure ⊑-pa   ⊑-pa   x = refl
-subM-return ⊑-pa   ⊑-act  ⊑-pa   x = refl
-subM-return ⊑-pa   ⊑-ae   ⊑-pe   x = ret-≈ x
+toT∞-return : ∀ {π} (u : pure ⊑π π) {X : Set} (x : X) → toT∞ π (return u x) ≈ return∞ x
+toT∞-return ⊑-pure x = ≈-refl (return∞ x)
+toT∞-return ⊑-pa   x = embed-return x
+toT∞-return ⊑-pe   x = ≈-refl (return∞ x)
 
-subM-bind : ∀ {π π′} (g : π ⊑π π′) {X Y : Set} (m : M π X) (k : X → M π Y)
-          → EqM π′ (subM g (bindM π m k)) (bindM π′ (subM g m) (λ x → subM g (k x)))
-subM-bind ⊑-pure m k = refl
-subM-bind ⊑-eff  m k = ≈∞-refl (λ _ → refl) (m >>=∞ k)
-subM-bind ⊑-pe   m k = retβ-≈ m k
-subM-bind ⊑-act  m k = refl
-subM-bind ⊑-pa   m k = cong returnT (>>=ᵖ-β m k)
-subM-bind ⊑-ae   m k = embed-bind m k
-subM-bind ⊑-g    m k = ≈∞-refl (λ _ → refl) _
-subM-bind ⊑-ge   m k = forget-bind⁺ m (λ x → forget⁺ (k x))
+toT∞-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
+          → toT∞ π (bind π m k) ≈ (toT∞ π m >>=∞ λ x → toT∞ π (k x))
+toT∞-bind pure m k = ≈-sym (idˡ m (λ x → return∞ (k x)))
+toT∞-bind act  m k = embed-bind m k
+toT∞-bind eff⁺ m k = forget⁺-bind m (λ x → forget⁺ (k x))
+toT∞-bind eff  m k = ≈-refl (m >>=∞ k)
 
-open import Data.Nat using (zero; suc)
+toT∞-bindᵍ : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
+           → toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≈ (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
+toT∞-bindᵍ pure π₂   m k = ≈-sym (idˡ m (λ x → toT∞ π₂ (k x)))
+toT∞-bindᵍ act  pure m k =
+  ≈-trans (embed-bind m (λ x → returnT (k x))) (≈-bind (≈-refl (embed m)) (λ x → embed-return (k x)))
+toT∞-bindᵍ act  act  m k = embed-bind m k
+toT∞-bindᵍ act  eff⁺ m k = forget⁺-=<< (embed m) k
+toT∞-bindᵍ act  eff  m k = ≈-refl (embed m >>=∞ k)
+toT∞-bindᵍ eff⁺ pure m k = forget⁺-bind m (λ x → return∞ (k x))
+toT∞-bindᵍ eff⁺ act  m k = forget⁺-bind m (λ x → embed (k x))
+toT∞-bindᵍ eff⁺ eff⁺ m k = forget⁺-bind m (λ x → forget⁺ (k x))
+toT∞-bindᵍ eff⁺ eff  m k = forget⁺-bind m k
+toT∞-bindᵍ eff  pure m k = ≈-refl (m >>=∞ λ x → return∞ (k x))
+toT∞-bindᵍ eff  act  m k = ≈-refl (m >>=∞ λ x → embed (k x))
+toT∞-bindᵍ eff  eff⁺ m k = forget⁺-=<< m k
+toT∞-bindᵍ eff  eff  m k = ≈-refl (m >>=∞ k)
 
-obs-return : ∀ (ι : Interp) (h : List SigOpEvent) {X : Set} (x : X) n → events∞ ι h (return∞ x) n ≡ []
+------------------------------------------------------------------------
+-- The observation
+------------------------------------------------------------------------
+
+obs-≈    : ∀ (ι : Interp) (h : History) {X : Set} {m m′ : T∞ X}
+         → m ≈ m′ → ∀ n → events ι h m n ≡ events ι h m′ n
+obs-≈S   : ∀ (ι : Interp) (h : History) {X : Set} {s s′ : Step X (T∞ X)}
+         → StepEq _≈_ s s′ → ∀ n → stepEvents ι h s n ≡ stepEvents ι h s′ n
+obs-next : ∀ (ι : Interp) (h : History) {X : Set} (b : BTy) v {k k′ : _ → T∞ X}
+         → (∀ r → k r ≈ k′ r) → ∀ n → next ι h (resume b v k) n ≡ next ι h (resume b v k′) n
+obs-≈ ι h e zero    = refl
+obs-≈ ι h e (suc n) = obs-≈S ι h (force≈ e) n
+obs-≈S ι h done≈ n = refl
+obs-≈S ι h (node≈ {o} {a} e) n = cong (_ ∷_) (obs-next ι _ _ _ e n)
+obs-next ι h void    v e n = refl
+obs-next ι h unit    v e n = obs-≈ ι h (e v) n
+obs-next ι h int     v e n = obs-≈ ι h (e v) n
+obs-next ι h float   v e n = obs-≈ ι h (e v) n
+obs-next ι h (a * b) v e n = obs-≈ ι h (e v) n
+obs-next ι h (a + b) v e n = obs-≈ ι h (e v) n
+
+obs-return : ∀ (ι : Interp) (h : History) {X : Set} (x : X) n → events ι h (return∞ x) n ≡ []
 obs-return ι h x zero    = refl
 obs-return ι h x (suc n) = refl
 
-effects : Effects
+effects : Effects Σ
 effects = record
-  { M-identityˡ = bindM-idˡ
+  { M-identityˡ = M-identityˡ
   ; M-identityʳ = M-identityʳ
   ; M-assoc     = M-assoc
-  ; subM-return = subM-return
-  ; subM-bind   = subM-bind
-  ; toT∞-return = toT∞-returnM
-  ; toT∞-bind   = toT∞-bindM
+  ; sub-return  = sub-return
+  ; sub-bind    = sub-bind
+  ; toT∞-return = toT∞-return
+  ; toT∞-bind   = toT∞-bind
   ; toT∞-bindᵍ  = toT∞-bindᵍ
-  ; obs-≈       = λ ι h e n → events∞-≈ ι h e n
+  ; obs-≈       = obs-≈
   ; obs-return  = obs-return
   }
