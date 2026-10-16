@@ -28,7 +28,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Signature using (Event; eventOf; Op; module Op; arg; ⟦_⟧ᵇ; NotEmpty; notEmpty?)
 open Op using (ans)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted; Tr; module Tr; trace; blockD; after)
+open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted; Tr; module Tr; trace; blockD; after; Calls; none)
+import Once.Spec.Observation
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
 open import Once.Metatheory.Trace Σ using (Obs; pre; preStep; bindD; bind⇓; bind⇓⁻; nowInv)
 
@@ -142,3 +143,33 @@ module _ (w : World) where
   run-complete h m n p = wrap (completeB h (force m) n (subst (_⇓ _) (preTrace h m n) p))
     where wrap : ∀ {ob} → MadeB h (force m) n ob → Made h m n ob
           wrap (d , e , eq , r) = d , e , eq , run r
+
+  ----------------------------------------------------------------------
+  -- A run's calls are calls the trace makes
+  ----------------------------------------------------------------------
+
+  private
+    -- The calls a delayed step makes first.
+    data CallsD {X : Set} : Delay (End X ⊎ (Event × Tr X)) → List Event → Set where
+      noneD : ∀ {D} → CallsD D []
+      callD : ∀ {D v t′ vs} → D ⇓ inj₂ (v , t′) → Calls t′ vs → CallsD D (v ∷ vs)
+
+    toCalls : ∀ {X} {t : Tr X} {vs} → CallsD (next t) vs → Calls t vs
+    toCalls noneD       = none
+    toCalls (callD p c) = Once.Spec.Observation.call p c
+
+    callsB : ∀ {X h t n d} {e : Maybe (End X)} → RunB h t n d e → CallsD (blockD w h t) d
+    callsA : ∀ {X h o a k D n d} {e : Maybe (End X)} → RunA h o a k D n d e → Calls (after w h o a k D) d
+    callsB rb-cut      = noneD
+    callsB rb-ret      = noneD
+    callsB (rb-next r) = later refl (callsB r)
+      where later : ∀ {X} {D D′ : Delay (End X ⊎ (Event × Tr X))} {vs} → step D ≡ inj₂ D′ → CallsD D′ vs → CallsD D vs
+            later q noneD       = noneD
+            later q (callD p c) = callD (later⇓ q p) c
+    callsB (rb-call r) = callD (now⇓ refl) (callsA r)
+    callsA (ra-go r) = toCalls (callsB r)
+    callsA ra-halt   = none
+    callsA ra-cut    = none
+
+  run-calls : ∀ {X h} {m : T∞ X} {n d e} → Run h m n d e → Calls (trace w h m) d
+  run-calls (run r) = toCalls (callsB r)

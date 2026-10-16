@@ -7,12 +7,14 @@
 --
 --   types       Once.Metatheory.Types
 --   surface     Once.Metatheory.Surface
---   effects     Once.Metatheory.Effects (and Erase, Bisim)
+--   effects     Once.Metatheory.Effects (and Erase, Bisim, Observe)
+--   inhabited   Once.Metatheory.Inhabited
+--   sameness    Once.Metatheory.Sameness (and Coherence.PER)
 --   coherence   Once.Metatheory.Coherence.Fundamental
 --   term model  Once.Metatheory.TermModel
 --   Freyd       Once.Metatheory.Freyd
 --   recursion   Once.Metatheory.Recursion (and Unfold, Lawful)
---   totality    Once.Metatheory.Totality
+--   totality    Once.Metatheory.Totality (and Run, RunLaws, Trace)
 ------------------------------------------------------------------------
 
 module Once.Metatheory where
@@ -22,6 +24,8 @@ open import Once.Metatheory.Types using (types)
 open import Once.Metatheory.Totality using (totality)
 import Once.Metatheory.Surface as Surface
 import Once.Metatheory.Effects as Effects
+import Once.Metatheory.Inhabited as Inhabited
+import Once.Metatheory.Sameness as Sameness
 import Once.Metatheory.Coherence.Fundamental as Coherence
 import Once.Metatheory.TermModel as TermModel
 import Once.Metatheory.Freyd as Freyd
@@ -32,6 +36,8 @@ metatheory = record
   { types      = types
   ; surface    = λ Σ S nm dist → Surface.surface Σ S nm dist
   ; effects    = λ Σ → Effects.effects Σ
+  ; inhabited  = λ Σ → Inhabited.inhabited Σ
+  ; sameness   = λ Σ → Sameness.sameness Σ
   ; coherence  = λ Σ u fmt S → Coherence.coherence Σ u fmt S
   ; term-model = λ Σ u fmt S → TermModel.termModel Σ u fmt S
   ; freyd      = λ Σ → Freyd.freyd Σ

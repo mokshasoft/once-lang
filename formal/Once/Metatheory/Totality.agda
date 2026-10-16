@@ -6,16 +6,14 @@
 -- Once.Metatheory.Totality — total and productive
 -- (`Spec.Metatheory.Totality`).
 --
---   * a run's calls are a prefix family, from every history
---     (`Once.Metatheory.Prefix`);
 --   * a definition cannot name itself or a later one: the name resolves to
 --     the module's own entry, which the definitions signature does not yet
 --     hold, and Σ is empty;
 --   * the stream and the echo server are typed; the stream's first layer
---     calls `tick`, and each round of the server makes two calls, so at
---     depth `n` it has made `n`;
---   * the silent loop is typed, and past depth zero what it does never
---     arrives: each round ends where it began.
+--     calls `tick`, and each round of the server makes two calls, so in
+--     every world it makes as many calls as asked;
+--   * the silent loop is typed, and nothing of its trace ever arrives: each
+--     round ends where it began.
 ------------------------------------------------------------------------
 
 module Once.Metatheory.Totality where
@@ -32,6 +30,8 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using (≤-refl; +-identityʳ; +-assoc)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Maybe using (nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (0≤q; ⊑-pa; ⊑-act)
@@ -55,12 +55,10 @@ import Once.Spec.Core.Meaning as Meaning
 import Once.Spec.Surface.Typing as SurfaceTyping
 open import Once.Spec.Metatheory using (Totality)
 open import Once.Spec.Delay using (_⇓_; now⇓; later⇓)
-open import Once.Metatheory.DelayLaws using (mapD⇓; mapD⇓⁻)
-import Once.Metatheory.Prefix as Prefix
-import Data.Empty
+import Once.Metatheory.Run as RunM
 
 ------------------------------------------------------------------------
--- A run is a prefix family
+-- No general recursion
 ------------------------------------------------------------------------
 
 module Unreachable (Σ : Signature) (empty : Σ ≡ []) (nm : Fin 0 → CanonicalName) where
@@ -154,8 +152,8 @@ module TickTyping   = CoreTyping tickΣ []
 module EchoTyping   = CoreTyping echoΣ []
 module SilentTyping = CoreTyping [] []
 
-stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.act) Once.Spec.Grade.pure
-stream-typed = TickTyping.⊢unfold ⊑-act wf-Id (TickTyping.⊢sigop (here refl)) TickTyping.⊢lit-int
+stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.actᶠ) Once.Spec.Grade.pure
+stream-typed = TickTyping.⊢unfold wf-Id (TickTyping.⊢sigop (here refl)) TickTyping.⊢lit-int
 
 server-typed : EchoTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] echoServer Once.Spec.Type.Void Once.Spec.Grade.eff
 server-typed =
@@ -169,65 +167,49 @@ silent-typed : SilentTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once
 silent-typed =
   SilentTyping.⊢iter (SilentTyping.⊢lam 0≤q (SilentTyping.⊢sub-eff ⊑-pa (SilentTyping.⊢inr SilentTyping.⊢unit))) SilentTyping.⊢unit
 
-module Runs (fmt : TargetNum) (δ : Meaning.DefSem echoΣ fmt []) (σ : TySub 0 0) (r : Respects ∅ₖ ∅ₖ σ) where
-  open Observation echoΣ using (History; observeFrom)
+module Runs (fmt : TargetNum) (δ : Meaning.DefSem echoΣ fmt []) (w : Observation.World echoΣ) where
+  open Observation echoΣ using (History)
+  open RunM echoΣ using (Run; RunB; run; rb-cut; rb-next; rb-call; ra-go)
 
-  ι = Meaning.DefSem.interp δ
-  run = Meaning.⟦_⟧ echoΣ fmt [] server-typed δ σ r tt
+  server = Meaning.⟦_⟧ echoΣ fmt [] server-typed δ (λ ()) (λ ()) tt
 
   private
-    len2 : ∀ (c : History) e₁ e₂ n → length ((c ++ [ e₁ ]) ++ [ e₂ ]) + n ≡ length c + suc (suc n)
-    len2 c e₁ e₂ n =
-      trans (cong (_+ n) (trans (length-++ (c ++ [ e₁ ])) (cong (_+ 1) (length-++ c))))
-            (trans (+-assoc (length c + 1) 1 n) (+-assoc (length c) 1 (suc n)))
+    -- A block that ends to continue, cut or run on.
+    onward : ∀ {X h} {m : Effect.T∞ echoΣ X} {n d e} → RunB w h (Effect.force echoΣ m) n d e
+           → RunB w h (Effect.roll (Effect.done (inj₂ m))) n d e
+    onward {n = zero}  rb-cut = rb-cut
+    onward {n = suc n} r      = rb-next r
 
   -- Each round is a read and a write, and then the next round.
-  runs : ∀ n h (c : History) → ∃[ o ] (observeFrom ι h c run n ⇓ o × length (proj₁ o) ≡ length c + n)
-  runs zero                h c = _ , now⇓ refl , sym (+-identityʳ (length c))
-  runs (suc zero)          h c = _ , now⇓ refl , length-++ c
-  runs (suc (suc zero))    h c = _ , now⇓ refl , trans (sym (+-identityʳ _)) (len2 c _ _ zero)
-  runs (suc (suc (suc n))) h c =
-    let r = runs (suc n) _ _ in
-    proj₁ r , later⇓ refl (proj₁ (proj₂ r)) , trans (proj₂ (proj₂ r)) (len2 c _ _ (suc n))
+  runs : ∀ n h → ∃[ d ] (Run w h server n d nothing × length d ≡ n)
+  runs zero             h = [] , run rb-cut , refl
+  runs (suc zero)       h = _ , run (rb-call (ra-go rb-cut)) , refl
+  runs (suc (suc n))    h = more (runs n _)
+    where more : ∃[ d ] (Run w _ server n d nothing × length d ≡ n) → ∃[ d ] (Run w h server (suc (suc n)) d nothing × length d ≡ suc (suc n))
+          more (d , run r , eq) = _ , run (rb-call (ra-go (rb-call (ra-go (onward r))))) , cong (λ k → suc (suc k)) eq
 
-module Silent (fmt : TargetNum) (δ : Meaning.DefSem [] fmt []) (σ : TySub 0 0) (r : Respects ∅ₖ ∅ₖ σ) where
-  open Observation [] using (History; observeFrom)
+module Silent (fmt : TargetNum) (δ : Meaning.DefSem [] fmt []) (w : Observation.World []) where
+  open Observation [] using (History; blockD)
 
-  ι = Meaning.DefSem.interp δ
-  run = Meaning.⟦_⟧ [] fmt [] silent-typed δ σ r tt
+  silent = Meaning.⟦_⟧ [] fmt [] silent-typed δ (λ ()) (λ ()) tt
 
-  -- Each round ends where it began: one more step of the delay, forever.
-  never : ∀ n h c {o} → ¬ (observeFrom ι h c run (suc n) ⇓ o)
-  never n h c (now⇓ ())
-  never n h c (later⇓ refl d⇓) = never n h c d⇓
-
-private
-  server-runs : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) n
-              → ∃[ h ] (Observation.events echoΣ (Meaning.DefSem.interp δ) []
-                          (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ (λ ()) (λ ()) tt) n ⇓ h × length h ≡ n)
-  server-runs fmt δ n = pick (Runs.runs fmt δ (λ ()) (λ ()) n [] [])
-    where
-      pick : ∃[ o ] (Observation.observeFrom echoΣ (Meaning.DefSem.interp δ) [] [] (Runs.run fmt δ (λ ()) (λ ())) n ⇓ o
-                     × length (proj₁ o) ≡ 0 + n)
-           → ∃[ h ] (Observation.events echoΣ (Meaning.DefSem.interp δ) []
-                       (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ (λ ()) (λ ()) tt) n ⇓ h × length h ≡ n)
-      pick (o , o⇓ , eq) = proj₁ o , mapD⇓ o⇓ , eq
-
-  silent-never : ∀ fmt (δ : Meaning.DefSem [] fmt []) n {h}
-               → ∃[ o ] (Observation.observeFrom [] (Meaning.DefSem.interp δ) [] [] (Silent.run fmt δ (λ ()) (λ ())) (suc n) ⇓ o
-                         × proj₁ o ≡ h)
-               → Data.Empty.⊥
-  silent-never fmt δ n (o , o⇓ , _) = Silent.never fmt δ (λ ()) (λ ()) n [] [] o⇓
+  -- Each round ends where it began: one more silent step, forever.
+  never : ∀ h {o} → ¬ (blockD w h (Effect.force [] silent) ⇓ o)
+  never h (now⇓ ())
+  never h (later⇓ refl d⇓) = never h d⇓
 
 totality : Totality
 totality = record
-  { observable           = λ Σ ι h m → Prefix.observable Σ ι h m
-  ; no-self-reference    = no-self-reference
+  { no-self-reference    = no-self-reference
   ; no-forward-reference = no-forward-reference
   ; stream-typed         = stream-typed
   ; stream-emits         = λ fmt δ → _ , _ , _ , refl
   ; server-typed         = server-typed
-  ; server-runs          = server-runs
+  ; server-runs          = λ fmt δ w n → calls {fmt} {δ} {w} {n} (Runs.runs fmt δ w n [])
   ; silent-typed         = silent-typed
-  ; silent-never         = λ fmt δ n h d⇓ → silent-never fmt δ n (mapD⇓⁻ d⇓)
+  ; silent-never         = λ fmt δ w o → Silent.never fmt δ w [] {o}
   }
+  where
+    calls : ∀ {fmt δ w n} → ∃[ d ] (RunM.Run echoΣ w [] (Runs.server fmt δ w) n d nothing × length d ≡ n)
+          → ∃[ vs ] (length vs ≡ n × Observation.Calls echoΣ (Observation.trace echoΣ w [] (Runs.server fmt δ w)) vs)
+    calls {w = w} (d , r , eq) = d , eq , RunM.run-calls echoΣ w r

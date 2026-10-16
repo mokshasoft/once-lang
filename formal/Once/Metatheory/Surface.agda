@@ -33,7 +33,7 @@ open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Purity; pure; Many; mk-kind; ArrowKind; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
+open import Once.Spec.Grade using (Purity; pure; act; Finite; pureᶠ; actᶠ; fin; Many; mk-kind; ArrowKind; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
 open import Once.Spec.Name using (gen; NotGenerator; genNames)
 open import Once.Spec.Type
   using (Ty; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; _⟨_⟩; _⟨_⟩F; Occurs; OccursF;
@@ -329,12 +329,15 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-apply-eff-app g d) (s-apply-eff-app g′ d′) =
     let e = ⇒-inj (proj₁ (*-inj (synth-unique d d′)))
     in cong₂ (λ π B → Unit ⇒[ mk-kind Many π ] B) (kind-π (proj₁ (proj₂ e))) (proj₂ (proj₂ e))
-  synth-unique (s-Out-app _ d)     (s-Out-app _ d′)     = cong (λ F → ⟦ F ⟧F (ν F pure)) (proj₁ (ν-inj (synth-unique d d′)))
-  synth-unique (s-Out-app _ d)     (s-Out-eff-app g _ d′) = ⊥-elim (effPure g (sym (proj₂ (ν-inj (synth-unique d d′)))))
-  synth-unique (s-Out-eff-app g _ d) (s-Out-app _ d′)   = ⊥-elim (effPure g (proj₂ (ν-inj (synth-unique d d′))))
-  synth-unique (s-Out-eff-app g _ d) (s-Out-eff-app g′ _ d′) =
-    let e = ν-inj (synth-unique d d′)
-    in cong₂ (λ F π → Unit ⇒[ mk-kind Many π ] ⟦ F ⟧F (ν F π)) (proj₁ e) (proj₂ e)
+  synth-unique (s-Out-app _ d)     (s-Out-app _ d′)     = cong (λ F → ⟦ F ⟧F (ν F pureᶠ)) (proj₁ (ν-inj (synth-unique d d′)))
+  synth-unique (s-Out-app _ d)     (s-Out-act-app _ d′) = ⊥-elim (pa (proj₂ (ν-inj (synth-unique d d′))))
+    where pa : pureᶠ ≡ actᶠ → ⊥
+          pa ()
+  synth-unique (s-Out-act-app _ d) (s-Out-app _ d′)     = ⊥-elim (ap (proj₂ (ν-inj (synth-unique d d′))))
+    where ap : actᶠ ≡ pureᶠ → ⊥
+          ap ()
+  synth-unique (s-Out-act-app _ d) (s-Out-act-app _ d′) =
+    cong (λ F → Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)) (proj₁ (ν-inj (synth-unique d d′)))
   -- an ordinary application: the function's type decides
   synth-unique (s-app _ df _) (s-app _ df′ _) = proj₂ (proj₂ (⇒-inj (synth-unique df df′)))
   synth-unique (s-app _ df _) (s-effApp _ g df′ _) =
@@ -377,9 +380,9 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-Out-app _ _)    (s-app h _ _)        = ⊥-elim (h (sh-gen sOut))
   synth-unique (s-Out-app _ _)    (s-effApp h _ _ _)   = ⊥-elim (h (sh-gen sOut))
   synth-unique (s-Out-app _ _)    (s-app-spine h _ _)  = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-eff-app _ _ _) (s-app h _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-eff-app _ _ _) (s-effApp h _ _ _)  = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-eff-app _ _ _) (s-app-spine h _ _) = ⊥-elim (h (sh-gen sOut))
+  synth-unique (s-Out-act-app _ _) (s-app h _ _)       = ⊥-elim (h (sh-gen sOut))
+  synth-unique (s-Out-act-app _ _) (s-effApp h _ _ _)  = ⊥-elim (h (sh-gen sOut))
+  synth-unique (s-Out-act-app _ _) (s-app-spine h _ _) = ⊥-elim (h (sh-gen sOut))
   synth-unique (s-app h _ _)        (s-id-app _)          = ⊥-elim (h (sh-gen sid))
   synth-unique (s-app h _ _)        (s-fst-app _)         = ⊥-elim (h (sh-gen sfst))
   synth-unique (s-app h _ _)        (s-snd-app _)         = ⊥-elim (h (sh-gen ssnd))
@@ -387,7 +390,7 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-app h _ _)        (s-apply-app _)       = ⊥-elim (h (sh-gen sapply))
   synth-unique (s-app h _ _)        (s-apply-eff-app _ _) = ⊥-elim (h (sh-gen sapply))
   synth-unique (s-app h _ _)        (s-Out-app _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-app h _ _)        (s-Out-eff-app _ _ _) = ⊥-elim (h (sh-gen sOut))
+  synth-unique (s-app h _ _)        (s-Out-act-app _ _) = ⊥-elim (h (sh-gen sOut))
   synth-unique (s-effApp h _ _ _)   (s-id-app _)          = ⊥-elim (h (sh-gen sid))
   synth-unique (s-effApp h _ _ _)   (s-fst-app _)         = ⊥-elim (h (sh-gen sfst))
   synth-unique (s-effApp h _ _ _)   (s-snd-app _)         = ⊥-elim (h (sh-gen ssnd))
@@ -395,7 +398,7 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-effApp h _ _ _)   (s-apply-app _)       = ⊥-elim (h (sh-gen sapply))
   synth-unique (s-effApp h _ _ _)   (s-apply-eff-app _ _) = ⊥-elim (h (sh-gen sapply))
   synth-unique (s-effApp h _ _ _)   (s-Out-app _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-effApp h _ _ _)   (s-Out-eff-app _ _ _) = ⊥-elim (h (sh-gen sOut))
+  synth-unique (s-effApp h _ _ _)   (s-Out-act-app _ _) = ⊥-elim (h (sh-gen sOut))
   synth-unique (s-app-spine h _ _)  (s-id-app _)          = ⊥-elim (h (sh-gen sid))
   synth-unique (s-app-spine h _ _)  (s-fst-app _)         = ⊥-elim (h (sh-gen sfst))
   synth-unique (s-app-spine h _ _)  (s-snd-app _)         = ⊥-elim (h (sh-gen ssnd))
@@ -403,7 +406,7 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-app-spine h _ _)  (s-apply-app _)       = ⊥-elim (h (sh-gen sapply))
   synth-unique (s-app-spine h _ _)  (s-apply-eff-app _ _) = ⊥-elim (h (sh-gen sapply))
   synth-unique (s-app-spine h _ _)  (s-Out-app _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-app-spine h _ _)  (s-Out-eff-app _ _ _) = ⊥-elim (h (sh-gen sOut))
+  synth-unique (s-app-spine h _ _)  (s-Out-act-app _ _) = ⊥-elim (h (sh-gen sOut))
 
   -- The domain-given mode.
   domain-exact (d-infer dg _ _) (d-infer dg′ _ _) = proj₂ (proj₂ (⇒-inj (synth-unique dg dg′)))
