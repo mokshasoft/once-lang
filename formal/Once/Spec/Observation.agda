@@ -92,20 +92,26 @@ data End (X : Set) : Set where
   halted   : End X
   cut      : End X
 
--- The first `n` calls a computation makes against `ι`, after the history
--- `h`, and how it ends. A block's end is one step of the delay: a run that
--- goes on forever without another call never arrives.
-observe   : ∀ {X} → Interp → History → T∞ X → ℕ → Delay (History × End X)
-blockObs  : ∀ {X} → Interp → History → T (X ⊎ T∞ X) → ℕ → (History × End X) ⊎ Delay (History × End X)
-answerObs : ∀ {X} → Interp → History → Maybe (T (X ⊎ T∞ X)) → ℕ → (History × End X) ⊎ Delay (History × End X)
-step (observe ι h m n) = blockObs ι h (force m) n
-blockObs ι h t                          zero    = inj₁ (h , cut)
-blockObs ι h (roll (done (inj₁ x)))     (suc n) = inj₁ (h , returned x)
-blockObs ι h (roll (done (inj₂ m)))     (suc n) = inj₂ (observe ι h m (suc n))
-blockObs ι h (roll (node (call o a k))) (suc n) =
-  answerObs ι (h ++ [ eventOf o a ]) (resume (ans o) (answer ι o h a) k) n
-answerObs ι h nothing  n = inj₁ (h , halted)
-answerObs ι h (just t) n = blockObs ι h t n
+-- The first `n` calls a computation makes against `ι`, in a world that has
+-- seen the calls `h`, and how it ends. A block's end is one step of the
+-- delay: a run that goes on forever without another call never arrives.
+-- What the world has seen (what it answers from) and what the run has made
+-- (what is observed) are kept apart, so observing `m >>= f` observes `m`'s
+-- calls and then `f`'s.
+observe     : ∀ {X} → Interp → History → T∞ X → ℕ → Delay (History × End X)
+observeFrom : ∀ {X} → Interp → History → History → T∞ X → ℕ → Delay (History × End X)
+blockObs    : ∀ {X} → Interp → History → History → T (X ⊎ T∞ X) → ℕ → (History × End X) ⊎ Delay (History × End X)
+answerObs   : ∀ {X} → Interp → History → History → Maybe (T (X ⊎ T∞ X)) → ℕ → (History × End X) ⊎ Delay (History × End X)
+observe ι h m n = observeFrom ι h [] m n
+-- … having made the calls `c` so far.
+step (observeFrom ι h c m n) = blockObs ι h c (force m) n
+blockObs ι h c t                          zero    = inj₁ (c , cut)
+blockObs ι h c (roll (done (inj₁ x)))     (suc n) = inj₁ (c , returned x)
+blockObs ι h c (roll (done (inj₂ m)))     (suc n) = inj₂ (observeFrom ι h c m (suc n))
+blockObs ι h c (roll (node (call o a k))) (suc n) =
+  answerObs ι (h ++ [ eventOf o a ]) (c ++ [ eventOf o a ]) (resume (ans o) (answer ι o h a) k) n
+answerObs ι h c nothing  n = inj₁ (c , halted)
+answerObs ι h c (just t) n = blockObs ι h c t n
 
 -- The calls alone.
 events : ∀ {X} → Interp → History → T∞ X → ℕ → Delay History

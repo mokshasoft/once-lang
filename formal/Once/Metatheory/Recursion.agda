@@ -8,14 +8,16 @@
 -- The fold: a `μ` value is a finite tree, so a map that commutes with the
 -- constructor agrees with the fold by induction (`fold-unique`); a pure
 -- function that commutes with the algebras commutes with the folds
--- (`fold-fusion`). Both at every grade with a unit (`Lawful`).
+-- (`fold-fusion`). Both at every grade (`Lawful`).
 --
 -- The unfold: forcing it runs the coalgebra and unfolds the rest
--- (`unfold-out`), at each grade.
+-- (`unfold-out`), at each grade a coalgebra may have.
 --
--- The server: `iter∞ f` satisfies its equation (`iter-unfold`), and is its
--- only solution (`iter-unique`) — a bisimulation up to the equation, whose
--- every round begins with an event.
+-- The loop: its first block is the round's, ending at the loop of the next
+-- state (`loop-out`); it is the only map that is (`loop-unique`: `T∞ B` is the
+-- final coalgebra of `T (B + −)`); and it is observed as its unrolling
+-- (`loop-unroll`): the two observations differ by one step of the delay at the
+-- end of the first round.
 --
 -- Not `--safe`: `Lawful`'s `act` instance and the `act` unfold use function
 -- extensionality (`Once.Postulates`).
@@ -25,15 +27,21 @@ open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.Recursion (Σ : Signature) where
 
-open import Data.Product using (_,_)
+open import Data.Nat using (ℕ; zero; suc)
+open import Data.List using ([])
+open import Data.Product using (_×_; _,_)
+import Data.Empty
+open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Grade using (Purity; pure; act; eff⁺; eff; _⊑π_)
+open import Once.Spec.Grade using (Purity; pure; act; eff; _⊑π_; ⊑-pa; ⊑-act)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Domain Σ
-  using (foldM; layerM; traverseM; anaM; anaP; mapP; anaA; treeA; mapA; anaE; treeE; stepE; mapE; anaG; rootG; treeG; stepG; mapG)
+open import Once.Spec.Domain Σ using (foldM; layerM; traverseM; anaM; anaP; mapP; anaA; treeA; mapA)
+open import Once.Spec.Signature using (BTy; ⟦_⟧ᵇ; void; unit; int; float; _*_; _+_; module Op)
+open import Once.Spec.Observation Σ using (Interp; module Interp; History; End; observe; blockObs; answerObs; resume)
+open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓; _≈D_)
 open import Once.Spec.Metatheory using (Recursion)
 open import Once.Metatheory.Bisim Σ
 open import Once.Metatheory.Lawful Σ
@@ -47,8 +55,8 @@ open νM using (outν)
 -- The fold
 ------------------------------------------------------------------------
 
-module Fold (π : Purity) (e : pure ⊑π π) (G : SFunctor) where
-  open Lawful (lawful π e)
+module Fold (π : Purity) (G : SFunctor) where
+  open Lawful (lawful π)
 
   fmap-cong : ∀ {X Y} (f : X → Y) {m m′ : M π X} → EqM π m m′ → EqM π (fmap π f m) (fmap π f m′)
   fmap-cong f p = eq-trans (fmap-bind f _) (eq-trans (bind-cong p (λ x → eq-refl _)) (eq-sym (fmap-bind f _)))
@@ -72,13 +80,13 @@ module Fold (π : Purity) (e : pure ⊑π π) (G : SFunctor) where
     eq-trans (fmap-bind h _)
       (eq-trans (bind-fmap h′ m _) (eq-sym (fmap-bind _ m)))
 
-  fmap-return : ∀ {A B} (h : A → B) (a : A) → EqM π (fmap π h (return e a)) (return e (h a))
+  fmap-return : ∀ {A B} (h : A → B) (a : A) → EqM π (fmap π h (return π a)) (return π (h a))
   fmap-return h a = eq-trans (fmap-bind h _) (bind-idˡ a _)
 
   module Unique {X : Set} (alg : ⟦ G ⟧SF X → M π X) (h : μS G → M π X)
-                (hyp : ∀ x → EqM π (h (inS x)) (bind π (traverseM π e G h x) alg)) where
-    unique : ∀ v → EqM π (h v) (foldM π e G alg v)
-    layer  : ∀ H (x : ⟦ H ⟧SF (μS G)) → EqM π (traverseM π e H h x) (layerM π e G H alg x)
+                (hyp : ∀ x → EqM π (h (inS x)) (bind π (traverseM π G h x) alg)) where
+    unique : ∀ v → EqM π (h v) (foldM π G alg v)
+    layer  : ∀ H (x : ⟦ H ⟧SF (μS G)) → EqM π (traverseM π H h x) (layerM π G H alg x)
     unique (inS x) = eq-trans (hyp x) (bind-cong (layer G x) (λ l → eq-refl (alg l)))
     layer (SK B)     x        = eq-refl _
     layer SId        x        = unique x
@@ -88,13 +96,13 @@ module Fold (π : Purity) (e : pure ⊑π π) (G : SFunctor) where
 
   module Fusion {X Y : Set} (alg : ⟦ G ⟧SF X → M π X) (alg′ : ⟦ G ⟧SF Y → M π Y) (g : X → Y)
                 (hyp : ∀ l → EqM π (fmap π g (alg l)) (alg′ (sfmap G g l))) where
-    fusion : ∀ v → EqM π (fmap π g (foldM π e G alg v)) (foldM π e G alg′ v)
+    fusion : ∀ v → EqM π (fmap π g (foldM π G alg v)) (foldM π G alg′ v)
     layer  : ∀ H (x : ⟦ H ⟧SF (μS G))
-           → EqM π (fmap π (sfmap H g) (layerM π e G H alg x)) (layerM π e G H alg′ x)
+           → EqM π (fmap π (sfmap H g) (layerM π G H alg x)) (layerM π G H alg′ x)
     fusion (inS x) =
-      eq-trans (fmap-after g (layerM π e G G alg x) alg)
+      eq-trans (fmap-after g (layerM π G G alg x) alg)
         (eq-trans (bind-cong (eq-refl _) hyp)
-          (eq-trans (eq-sym (bind-fmap (sfmap G g) (layerM π e G G alg x) alg′))
+          (eq-trans (eq-sym (bind-fmap (sfmap G g) (layerM π G G alg x) alg′))
             (bind-cong (layer G x) (λ l → eq-refl (alg′ l)))))
     layer (SK B)     x        = fmap-return (sfmap (SK B) g) x
     layer SId        x        = fusion x
@@ -113,8 +121,8 @@ module Fold (π : Purity) (e : pure ⊑π π) (G : SFunctor) where
             (eq-trans (eq-sym (bind-fmap (sfmap H₁ g) L₁ _))
               (bind-cong (layer H₁ x) (λ u′ → bind-cong (layer H₂ y) (λ v′ → eq-refl _))))))
       where
-        L₁ = layerM π e G H₁ alg x
-        L₂ = layerM π e G H₂ alg y
+        L₁ = layerM π G H₁ alg x
+        L₂ = layerM π G H₂ alg y
 
 ------------------------------------------------------------------------
 -- The unfold
@@ -129,62 +137,102 @@ module UnfoldEq (G : SFunctor) where
   treeA≡ c (roll (node (call o a k))) =
     cong (λ k → roll (node (call o a k))) (extensionality λ b → treeA≡ c (k b))
 
-  unfold-out : ∀ π {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
-             → EqM π (outν (anaM π G c x)) (fmap π (sfmap G (anaM π G c)) (c x))
-  unfold-out pure c x = mapP≡ c G (c x)
-  unfold-out act  c x = treeA≡ c (c x)
-  unfold-out eff⁺ c x = rootG≈ c (c x)
-  unfold-out eff  c x = treeE≈ c (c x)
+  unfold-out : ∀ {π} (g : π ⊑π act) {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
+             → EqM π (outν (anaM g G c x)) (fmap π (sfmap G (anaM g G c)) (c x))
+  unfold-out ⊑-pa  c x = mapP≡ c G (c x)
+  unfold-out ⊑-act c x = treeA≡ c (c x)
 
-------------------------------------------------------------------------
--- The server
-------------------------------------------------------------------------
 
-module Server {A B : Set} (f : A → B ⊎ T⁺ (B ⊎ A)) where
-  -- The equation's right-hand side, at a solution `g`.
-  rhs : (A → T∞ B) → B ⊎ T⁺ (B ⊎ A) → T∞ B
-  rhs g = [ return∞ , (λ m → forget⁺ m >>=∞ [ return∞ , g ]′) ]′
+module Loop {A B : Set} (c : A → T (B ⊎ A)) where
+  -- Where a round ends: with the result, or with the loop from the next state.
+  next : (A → T∞ B) → B ⊎ A → B ⊎ T∞ B
+  next g = [ inj₁ , (λ a′ → inj₂ (g a′)) ]′
 
-  iter-unfoldT : ∀ (t : T∞ (B ⊎ A)) → iterTree f t ≈ (t >>=∞ [ return∞ , iter∞ f ]′)
-  iter-unfoldS : ∀ (s : Step (B ⊎ A) (T∞ (B ⊎ A))) → StepEq _≈_ (iterStep f s) (bindStep s [ return∞ , iter∞ f ]′)
-  force≈ (iter-unfoldT t) = iter-unfoldS (force t)
-  iter-unfoldS (done (inj₁ b))     = done≈
-  iter-unfoldS (done (inj₂ a))     = ≈-reflS (iterStart f (f a))
-  iter-unfoldS (node (call o x k)) = node≈ λ r → iter-unfoldT (k r)
+  loopBlock≡ : ∀ (t : T (B ⊎ A)) → loopBlock c t ≡ mapT (next (loop c)) t
+  loopBlock≡ (roll (done (inj₁ b)))     = refl
+  loopBlock≡ (roll (done (inj₂ a)))     = refl
+  loopBlock≡ (roll (node (call o x k))) =
+    cong (λ k → roll (node (call o x k))) (extensionality λ r → loopBlock≡ (k r))
 
-  iter-unfoldU : ∀ (u : B ⊎ T⁺ (B ⊎ A)) → StepEq _≈_ (iterStart f u) (force (rhs (iter∞ f) u))
-  iter-unfoldU (inj₁ b)                    = done≈
-  iter-unfoldU (inj₂ (call⁺ (call o x k))) = node≈ λ r → iter-unfoldT (k r)
+  loop-out : ∀ (a : A) → force (loop c a) ≡ mapT (next (loop c)) (c a)
+  loop-out a = loopBlock≡ (c a)
 
-  iter-unfold : ∀ (a : A) → iter∞ f a ≈ rhs (iter∞ f) (f a)
-  force≈ (iter-unfold a) = iter-unfoldU (f a)
+  module Unique (g : A → T∞ B) (hyp : ∀ a → BlockEq _≈_ (force (g a)) (mapT (next g) (c a))) where
+    -- A computation bisimilar to `g a` is bisimilar to the loop from `a`.
+    up  : ∀ (m : T∞ B) (a : A) → m ≈ g a → m ≈ loop c a
+    upB : ∀ (s : T (B ⊎ T∞ B)) (t : T (B ⊎ A)) → BlockEq _≈_ s (mapT (next g) t) → BlockEq _≈_ s (loopBlock c t)
+    force≈ (up m a p) = upB (force m) (c a) (≈-transB (force≈ p) (hyp a))
+    upB s (roll (done (inj₁ b)))     p         = p
+    upB s (roll (done (inj₂ a′)))    (next≈ q) = next≈ (up _ a′ q)
+    upB s (roll (node (call o x k))) (node≈ e) = node≈ λ r → upB _ (k r) (e r)
 
-  module Unique (g : A → T∞ B) (hyp : ∀ a → g a ≈ rhs g (f a)) where
-    -- A tree bisimilar to `t >>= [ return , g ]` is bisimilar to `iterTree f t`.
-    upT : ∀ (m : T∞ B) (t : T∞ (B ⊎ A)) → m ≈ (t >>=∞ [ return∞ , g ]′) → m ≈ iterTree f t
-    upS : ∀ (s₁ : Step B (T∞ B)) (s : Step (B ⊎ A) (T∞ (B ⊎ A)))
-        → StepEq _≈_ s₁ (bindStep s [ return∞ , g ]′) → StepEq _≈_ s₁ (iterStep f s)
-    upU : ∀ (s₁ : Step B (T∞ B)) (u : B ⊎ T⁺ (B ⊎ A))
-        → StepEq _≈_ s₁ (force (rhs g u)) → StepEq _≈_ s₁ (iterStart f u)
-    force≈ (upT m t p) = upS (force m) (force t) (force≈ p)
-    upS s₁ (done (inj₁ b))     p         = p
-    upS s₁ (done (inj₂ a))     p         = upU s₁ (f a) (≈-transS p (force≈ (hyp a)))
-    upS s₁ (node (call o x k)) (node≈ e) = node≈ λ r → upT _ (k r) (e r)
-    upU s₁ (inj₁ b)                    p         = p
-    upU s₁ (inj₂ (call⁺ (call o x k))) (node≈ e) = node≈ λ r → upT _ (k r) (e r)
+    loop-unique : ∀ a → g a ≈ loop c a
+    loop-unique a = up (g a) a (≈-refl (g a))
 
-    iter-unique : ∀ a → g a ≈ iter∞ f a
-    force≈ (iter-unique a) = upU (force (g a)) (f a) (force≈ (hyp a))
+  module Unroll (ι : Interp) where
+    open Interp ι using (answer)
+    open Delay using (step)
 
-------------------------------------------------------------------------
--- All of it
-------------------------------------------------------------------------
+    -- The unrolled loop runs the round's block, then the loop at once.
+    unrolled : A → T∞ B
+    unrolled a = embed (c a) >>=∞ [ return∞ , loop c ]′
+
+    S : Set
+    S = (History × End B) ⊎ Delay (History × End B)
+
+    -- One step of the two observations: the same, or one extra step on the left.
+    data Rel : S → S → Set where
+      same  : ∀ {s} → Rel s s
+      extra : ∀ {d} → Rel (inj₂ d) (step d)
+
+    rel  : ∀ h cs (t : T (B ⊎ A)) n
+         → Rel (blockObs ι h cs (loopBlock c t) n) (blockObs ι h cs (bindBlock (mapT inj₁ t) [ return∞ , loop c ]′) n)
+    relA : ∀ h cs (b : BTy) v (k : ⟦ b ⟧ᵇ → T (B ⊎ A)) n
+         → Rel (answerObs ι h cs (resume b v (λ r → loopBlock c (k r))) n)
+               (answerObs ι h cs (resume b v (λ r → bindBlock (mapT inj₁ (k r)) [ return∞ , loop c ]′)) n)
+    rel h cs t                          zero    = same
+    rel h cs (roll (done (inj₁ b)))     (suc n) = same
+    rel h cs (roll (done (inj₂ a′)))    (suc n) = extra
+    rel h cs (roll (node (call o x k))) (suc n) = relA _ _ (Op.ans o) (answer o h x) k n
+    relA h cs void    v k n = same
+    relA h cs unit    v k n = rel h cs (k v) n
+    relA h cs int     v k n = rel h cs (k v) n
+    relA h cs float   v k n = rel h cs (k v) n
+    relA h cs (a * b) v k n = rel h cs (k v) n
+    relA h cs (a + b) v k n = rel h cs (k v) n
+
+    private
+      sameStep : ∀ {d d′ : Delay (History × End B)} {o} → step d ≡ step d′ → d ⇓ o → d′ ⇓ o
+      sameStep p (now⇓ e)      = now⇓ (trans (sym p) e)
+      sameStep p (later⇓ e d⇓) = later⇓ (trans (sym p) e) d⇓
+
+      inj₂-inj : ∀ {d d′ : Delay (History × End B)} → _≡_ {A = S} (inj₂ d) (inj₂ d′) → d ≡ d′
+      inj₂-inj refl = refl
+
+      inj₂≢inj₁ : ∀ {d : Delay (History × End B)} {o} → _≡_ {A = S} (inj₂ d) (inj₁ o) → Data.Empty.⊥
+      inj₂≢inj₁ ()
+
+      fwd : ∀ {sL sR} {dL dR : Delay (History × End B)} {o} → Rel sL sR → step dL ≡ sL → step dR ≡ sR → dL ⇓ o → dR ⇓ o
+      fwd same eL eR d⇓ = sameStep (trans eL (sym eR)) d⇓
+      fwd extra eL eR (now⇓ e) = ⊥-elim (inj₂≢inj₁ (trans (sym eL) e))
+      fwd extra eL eR (later⇓ e d⇓) = sameStep (sym eR) (subst (_⇓ _) (sym (inj₂-inj (trans (sym eL) e))) d⇓)
+
+      bwd : ∀ {sL sR} {dL dR : Delay (History × End B)} {o} → Rel sL sR → step dL ≡ sL → step dR ≡ sR → dR ⇓ o → dL ⇓ o
+      bwd same eL eR d⇓ = sameStep (trans eR (sym eL)) d⇓
+      bwd extra eL eR d⇓ = later⇓ eL (sameStep eR d⇓)
+
+    loop-unroll : ∀ (a : A) (h : History) n → observe ι h (loop c a) n ≈D observe ι h (unrolled a) n
+    loop-unroll a h n =
+        (λ o d⇓ → o , fwd (rel h [] (c a) n) refl refl d⇓ , refl)
+      , (λ o d⇓ → o , bwd (rel h [] (c a) n) refl refl d⇓ , refl)
+
 
 recursion : Recursion Σ
 recursion = record
-  { fold-unique = λ π e G alg h hyp → Fold.Unique.unique π e G alg h hyp
-  ; fold-fusion = λ π e G alg alg′ g hyp → Fold.Fusion.fusion π e G alg alg′ g hyp
-  ; unfold-out  = λ π G c x → UnfoldEq.unfold-out G π c x
-  ; iter-unfold = λ f a → Server.iter-unfold f a
-  ; iter-unique = λ f g hyp a → Server.Unique.iter-unique f g hyp a
+  { fold-unique = λ π G alg h hyp → Fold.Unique.unique π G alg h hyp
+  ; fold-fusion = λ π G alg alg′ g hyp → Fold.Fusion.fusion π G alg alg′ g hyp
+  ; unfold-out  = λ g G c x → UnfoldEq.unfold-out G g c x
+  ; loop-out    = λ c a → Loop.loop-out c a
+  ; loop-unique = λ c g hyp a → Loop.Unique.loop-unique c g hyp a
+  ; loop-unroll = λ c a ι h n → Loop.Unroll.loop-unroll c ι a h n
   }

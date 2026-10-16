@@ -11,7 +11,7 @@ module Once.Metatheory.Types where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade
-  using (Purity; pure; act; eff⁺; eff; mk-kind; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-g; ⊑-ge; ⊑-eff)
+  using (Purity; pure; act; eff; mk-kind; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
 open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 open import Once.Spec.Sub
 open import Once.Spec.Metatheory using (Types)
@@ -19,7 +19,6 @@ open import Once.Spec.Metatheory using (Types)
 ⊑π-refl : ∀ π → π ⊑π π
 ⊑π-refl pure = ⊑-pure
 ⊑π-refl act  = ⊑-act
-⊑π-refl eff⁺ = ⊑-g
 ⊑π-refl eff  = ⊑-eff
 
 ⊑π-trans : ∀ {π₁ π₂ π₃} → π₁ ⊑π π₂ → π₂ ⊑π π₃ → π₁ ⊑π π₃
@@ -29,8 +28,6 @@ open import Once.Spec.Metatheory using (Types)
 ⊑π-trans ⊑-pe   ⊑-eff = ⊑-pe
 ⊑π-trans ⊑-act  g     = g
 ⊑π-trans ⊑-ae   ⊑-eff = ⊑-ae
-⊑π-trans ⊑-g    g     = g
-⊑π-trans ⊑-ge   ⊑-eff = ⊑-ge
 ⊑π-trans ⊑-eff  ⊑-eff = ⊑-eff
 
 ⊑π-unique : ∀ {π π′} (g h : π ⊑π π′) → g ≡ h
@@ -39,8 +36,6 @@ open import Once.Spec.Metatheory using (Types)
 ⊑π-unique ⊑-pe   ⊑-pe   = refl
 ⊑π-unique ⊑-act  ⊑-act  = refl
 ⊑π-unique ⊑-ae   ⊑-ae   = refl
-⊑π-unique ⊑-g    ⊑-g    = refl
-⊑π-unique ⊑-ge   ⊑-ge   = refl
 ⊑π-unique ⊑-eff  ⊑-eff  = refl
 
 <:-refl : ∀ {m} (A : Ty m) → A <: A

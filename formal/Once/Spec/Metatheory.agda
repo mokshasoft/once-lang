@@ -141,7 +141,7 @@ record Effects (Σ : Signature) : Set₁ where
                 → toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≈ (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
     obs-≈       : ∀ (ι : Interp) (h : History) {X : Set} {m m′ : T∞ X}
                 → m ≈ m′ → ∀ n → observe ι h m n ≈D observe ι h m′ n
-    obs-return  : ∀ (ι : Interp) (h : History) {X : Set} (x : X) n → events ι h (return∞ x) n ⇓ h
+    obs-return  : ∀ (ι : Interp) (h : History) {X : Set} (x : X) n → events ι h (return∞ x) n ⇓ []
 
 ------------------------------------------------------------------------
 -- Coherence, and the term model

@@ -23,6 +23,7 @@ open import Data.List using (_∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (¬_)
@@ -31,7 +32,7 @@ open import Once.Spec.Grade using (mk-kind; Many; eff)
 open import Once.Spec.Signature using (_∶_; arrow; unit; op; e-eff; Effectful; BTy)
 import Once.Spec.Effect as Effect
 import Once.Metatheory.Bisim as Bisim
-open import Once.Spec.Metatheory using (Freyd; Central; pairK; lift; liftStep)
+open import Once.Spec.Metatheory using (Freyd; Central; pairK; lift; liftBlock)
 
 open Effect Σ
 open T∞ using (force)
@@ -39,14 +40,14 @@ open _≈_ using (force≈)
 open Bisim Σ
 
 private
-  byForce : ∀ {X} (m m′ : T∞ X) → force m ≡ force m′ → m ≈ m′
-  force≈ (byForce m m′ e) = subst (StepEq _≈_ (force m)) e (≈-reflS (force m))
+  ret-≈ : ∀ {Y} {m : T∞ Y} {y} → force m ≡ roll (done (inj₁ y)) → m ≈ return∞ y
+  force≈ (ret-≈ {y = y} e) = subst (λ t → BlockEq _≈_ t (roll (done (inj₁ y)))) (sym e) return≈
 
-  ret-≈ : ∀ {Y} {m : T∞ Y} {y} → force m ≡ done y → m ≈ return∞ y
-  force≈ (ret-≈ {y = y} e) = subst (λ s → StepEq _≈_ s (done y)) (sym e) done≈
-
-  noND : ∀ {X Y : Set} {R : Y → Y → Set} {o a k} {x : X} → ¬ StepEq R (node (call o a k)) (done x)
+  -- A block that calls, or ends to continue, is not one that returns.
+  noND : ∀ {X : Set} {R : T∞ X → T∞ X → Set} {o a k} {x : X} → ¬ BlockEq R (roll (node (call o a k))) (roll (done (inj₁ x)))
   noND ()
+  noNextRet : ∀ {X : Set} {R : T∞ X → T∞ X → Set} {m} {x : X} → ¬ BlockEq R (roll (done (inj₂ m))) (roll (done (inj₁ x)))
+  noNextRet ()
 
   -- The larger signature with the probe, and one call of it.
   Σ′ : Signature
@@ -60,37 +61,55 @@ private
 
   -- A lifted call of Σ is not the probe's.
   clash : ∀ {Z : Set} {nm dm q π an} {d : (nm ∶ arrow dm (mk-kind q π) an) ∈ Σ} {ef : Effectful π} {a k k′}
-        → ¬ E′.StepEq {X = Z} {Y = E′.T∞ Z} {Y′ = E′.T∞ Z} E′._≈_ (E′.node (call (op (there d) ef) a k)) (E′.node (call (op (here refl) e-eff) tt k′))
+        → ¬ E′.BlockEq {X = Z} E′._≈_ (E′.roll (E′.node (call (op (there d) ef) a k))) (E′.roll (E′.node (call (op (here refl) e-eff) tt k′)))
   clash ()
 
-central-pureS : ∀ {Y : Set} (m : T∞ Y) (s : Step Y (T∞ Y)) → force m ≡ s → Central Σ m → Σ[ y ∈ Y ] m ≈ return∞ y
-central-pureS m (done y) e c = y , ret-≈ e
-central-pureS {Y} m (node (call (op d ef) a k)) e c =
-  ⊥-elim (clash (subst (λ s → E′.StepEq {X = Y × ⊤} E′._≈_
-                                (E′.bindStep (liftStep there s) (λ y → probe E′.>>=∞ λ w → E′.return∞ (y , w)))
-                                (E′.bindStep (E′.T∞.force probe) (λ w → lift there m E′.>>=∞ λ y → E′.return∞ (y , w))))
-                       e (E′._≈_.force≈ (c there probe))))
+  -- A block that ends to continue is not one that calls.
+  clashNext : ∀ {Z : Set} {m k′}
+            → ¬ E′.BlockEq {X = Z} E′._≈_ (E′.roll (E′.done (inj₂ m))) (E′.roll (E′.node (call (op (here refl) e-eff) tt k′)))
+  clashNext ()
+
+-- The central computation against the probe: each run's first block.
+private
+  probeRel : ∀ {Y : Set} (m : T∞ Y) → Central Σ m
+           → E′.BlockEq E′._≈_ (E′.bindBlock (liftBlock there (force m)) (λ y → probe E′.>>=∞ λ w → E′.return∞ (y , w)))
+                               (E′.bindBlock (E′.T∞.force probe) (λ w → lift there m E′.>>=∞ λ y → E′.return∞ (y , w)))
+  probeRel m c = E′._≈_.force≈ (c there probe)
+
+central-pureB : ∀ {Y : Set} (m : T∞ Y) (t : T (Y ⊎ T∞ Y)) → force m ≡ t → Central Σ m → Σ[ y ∈ Y ] m ≈ return∞ y
+central-pureB m (roll (done (inj₁ y))) e c = y , ret-≈ e
+central-pureB {Y} m (roll (done (inj₂ m′))) e c =
+  ⊥-elim (clashNext (subst (λ t → E′.BlockEq {X = Y × ⊤} E′._≈_
+                                    (E′.bindBlock (liftBlock there t) (λ y → probe E′.>>=∞ λ w → E′.return∞ (y , w)))
+                                    (E′.bindBlock (E′.T∞.force probe) (λ w → lift there m E′.>>=∞ λ y → E′.return∞ (y , w))))
+                           e (probeRel m c)))
+central-pureB {Y} m (roll (node (call (op d ef) a k))) e c =
+  ⊥-elim (clash (subst (λ t → E′.BlockEq {X = Y × ⊤} E′._≈_
+                                (E′.bindBlock (liftBlock there t) (λ y → probe E′.>>=∞ λ w → E′.return∞ (y , w)))
+                                (E′.bindBlock (E′.T∞.force probe) (λ w → lift there m E′.>>=∞ λ y → E′.return∞ (y , w))))
+                       e (probeRel m c)))
 
 central-pure : ∀ {Y : Set} (m : T∞ Y) → Central Σ m → Σ[ y ∈ Y ] m ≈ return∞ y
-central-pure m = central-pureS m (force m) refl
+central-pure m = central-pureB m (force m) refl
 
-discard-pureS : ∀ {Y : Set} (m : T∞ Y) (s : Step Y (T∞ Y)) → force m ≡ s
+discard-pureB : ∀ {Y : Set} (m : T∞ Y) (t : T (Y ⊎ T∞ Y)) → force m ≡ t
               → (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≈ k) → Σ[ y ∈ Y ] m ≈ return∞ y
-discard-pureS m (done y) e h = y , ret-≈ e
-discard-pureS m (node (call o a k)) e h =
-  ⊥-elim (noND (subst (λ s → StepEq _≈_ (bindStep s (λ _ → return∞ tt)) (done tt)) e (force≈ (h (return∞ tt)))))
+discard-pureB m (roll (done (inj₁ y))) e h = y , ret-≈ e
+discard-pureB m (roll (done (inj₂ m′))) e h =
+  ⊥-elim (noNextRet (subst (λ t → BlockEq _≈_ (bindBlock t (λ _ → return∞ tt)) (roll (done (inj₁ tt)))) e (force≈ (h (return∞ tt)))))
+discard-pureB m (roll (node (call o a k))) e h =
+  ⊥-elim (noND (subst (λ t → BlockEq _≈_ (bindBlock t (λ _ → return∞ tt)) (roll (done (inj₁ tt)))) e (force≈ (h (return∞ tt)))))
 
 discard-pure : ∀ {Y : Set} (m : T∞ Y) → (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≈ k) → Σ[ y ∈ Y ] m ≈ return∞ y
-discard-pure m = discard-pureS m (force m) refl
+discard-pure m = discard-pureB m (force m) refl
 
--- A value, lifted, is that value: running it first or last is the same.
 module PureCentral {Σ″ : Signature} where
   private
     module E″ = Effect Σ″
     module B″ = Bisim Σ″
 
   byForce″ : ∀ {X} (m m′ : E″.T∞ X) → E″.T∞.force m ≡ E″.T∞.force m′ → m E″.≈ m′
-  E″._≈_.force≈ (byForce″ m m′ e) = subst (E″.StepEq E″._≈_ (E″.T∞.force m)) e (B″.≈-reflS (E″.T∞.force m))
+  E″._≈_.force≈ (byForce″ m m′ e) = subst (E″.BlockEq E″._≈_ (E″.T∞.force m)) e (B″.≈-reflB (E″.T∞.force m))
 
 pure-central : ∀ {Y : Set} (y : Y) → Central Σ (return∞ y)
 pure-central y {Σ″} ι n =
