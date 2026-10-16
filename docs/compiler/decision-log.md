@@ -18808,8 +18808,8 @@ a ∀∃ correctness statement), and resumptions (R). R keeps E's freedom withou
 ## D318 — THE SPEC AFTER A CATEGORICAL REVIEW: BEHAVIOUR IS A TRACE, `T∞` IS A STREAM, OPERATIONS ARE BLOCKS (2026-10-16)
 
 **Decided by the user, 2026-10-16** (plan 0.120: "fix them all" — every finding of a purist categorical
-review of the Spec, "the best Spec we can", in one patch); the patch awaits the user's review and
-`make spec-approve`. **Amends**: D317 items 3 (no `ν F eff`), 5 (behaviour is a trace, not a depth family),
+review of the Spec, "the best Spec we can", in one patch); reviewed and approved by the user
+(`make spec-approve`, 2026-10-16). **Amends**: D317 items 3 (no `ν F eff`), 5 (behaviour is a trace, not a depth family),
 6 (one equality for the monad laws; Freyd up to observation); D308 (Freyd); D227, D225 (an operation's
 answer type decides the effect, operations at `Act`); D061 (an Interpretation is a model and a world).
 **Relates**: plan 0.120 (findings and POCs), plan 0.119.
