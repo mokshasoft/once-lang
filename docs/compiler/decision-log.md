@@ -18838,8 +18838,12 @@ findings; two POCs (plans/0.120-poc) showed the mechanization goes through.
    answer exists, so every signature has a world, and every well-formed one a model.
 6. **Claims added**: finality of every stream (`unfold-unique`; the loop's is an instance), sameness a
    PER respected by `>>=` (`Sameness`), an inhabited world and model (`Inhabited`), coercions functorial
-   (`conv-id`, `conv-∘`). Removed as instances or depth artefacts: `loop-out`, `loop-unique`,
-   `observable` (the prefix family).
+   (`conv-id`, `conv-∘`), the fold's computation law (`fold-in`: the children's folds, left to right, then
+   the algebra — what pins the fold's layer helper to `traverseM`). Removed as instances or depth
+   artefacts: `loop-out`, `loop-unique`, `observable` (the prefix family). The coercion of a pure stream
+   to an `act` one is the unfold that returns each layer as a block with no call (no hand-written copy);
+   the remaining helpers of `ana` and the fold exist for Agda's guardedness and termination checkers and
+   are pinned by `unfold-out`/`unfold-unique` and `fold-in`/`fold-unique`.
 7. **Two streams are the same when they agree on every finite number of layers**, each layer's
    computations compared observationally: the functors are polynomial, so the final coalgebra is the
    limit of its terminal sequence. (A coinductive sameness was drafted first; it cannot be constructed

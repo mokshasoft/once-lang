@@ -301,7 +301,10 @@ module _ (Σ : Signature) where
   record Recursion : Set₁ where
     open Domain Σ using (foldM; traverseM)
     field
-      -- the fold is the only map that commutes with the constructor
+      -- the fold runs the children's folds, left to right, then the algebra …
+      fold-in     : ∀ π (G : SFunctor) {X : Set} (alg : ⟦ G ⟧SF X → M π X) (x : ⟦ G ⟧SF (μS G))
+                  → EqM π (foldM π G alg (inS x)) (bind π (traverseM π G (foldM π G alg) x) alg)
+      -- … and it is the only map that does
       fold-unique : ∀ π (G : SFunctor) {X : Set} (alg : ⟦ G ⟧SF X → M π X) (h : μS G → M π X)
                   → (∀ x → EqM π (h (inS x)) (bind π (traverseM π G h x) alg))
                   → ∀ v → EqM π (h v) (foldM π G alg v)

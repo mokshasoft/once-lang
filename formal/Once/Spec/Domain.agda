@@ -33,7 +33,7 @@ open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⟦_⟧ᵇ; Layer; call)
 import Once.Spec.Signature as S
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS)
-open import Once.Spec.Effect Σ using (M; return; bind; fmap; sub; T; roll; done; returnT; νM; module νM)
+open import Once.Spec.Effect Σ using (M; return; bind; fmap; sub; T; roll; done; returnT; νM; module νM; ana)
 open νM using (outν)
 
 ------------------------------------------------------------------------
@@ -117,21 +117,13 @@ layerM π G (H₁ S⊗ H₂) alg (x , y)  =
   bind π (layerM π G H₁ alg x) λ u → bind π (layerM π G H₂ alg y) λ v → return π (u , v)
 
 ------------------------------------------------------------------------
--- ν on the monad morphism `pure → act`: every layer converted
+-- ν on the monad morphism `pure → act`: the unfold that returns each layer
+-- as a block with no call
 ------------------------------------------------------------------------
-
-νpa  : ∀ (G : SFunctor) → νM pureᶠ G → νM actᶠ G
-lpa  : ∀ (G H : SFunctor) → ⟦ H ⟧SF (νM pureᶠ G) → ⟦ H ⟧SF (νM actᶠ G)
-outν (νpa G v) = roll (done (lpa G G (outν v)))
-lpa G (SK B)     x        = x
-lpa G SId        v        = νpa G v
-lpa G (H₁ S⊕ H₂) (inj₁ x) = inj₁ (lpa G H₁ x)
-lpa G (H₁ S⊕ H₂) (inj₂ y) = inj₂ (lpa G H₂ y)
-lpa G (H₁ S⊗ H₂) (x , y)  = lpa G H₁ x , lpa G H₂ y
 
 subν : ∀ {f f′} → fin f ⊑π fin f′ → ∀ (G : SFunctor) → νM f G → νM f′ G
 subν ⊑-pure G v = v
-subν ⊑-pa   G v = νpa G v
+subν ⊑-pa   G v = ana actᶠ G (λ u → returnT (outν u)) v
 subν ⊑-act  G v = v
 
 ------------------------------------------------------------------------

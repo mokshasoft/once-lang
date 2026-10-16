@@ -39,8 +39,13 @@ open import Once.Metatheory.Bisim Σ using (return≈)
 ------------------------------------------------------------------------
 
 module _ (G : SFunctor) where
-  lpaRel : ∀ H {R R′} → (∀ {x y} → R x y → R′ (νpa G x) (νpa G y)) → ∀ {l l′}
-         → LayerEq H R l l′ → LayerEq H R′ (lpa G H l) (lpa G H l′)
+  -- The coalgebra of the `pure → act` coercion: each layer, as a block with no call.
+  private
+    up : νM pureᶠ G → T (⟦ G ⟧SF (νM pureᶠ G))
+    up u = returnT (outν u)
+
+  lpaRel : ∀ H {R R′} → (∀ {x y} → R x y → R′ (subν ⊑-pa G x) (subν ⊑-pa G y)) → ∀ {l l′}
+         → LayerEq H R l l′ → LayerEq H R′ (mapA G H up l) (mapA G H up l′)
   lpaRel (SK B)     h p = p
   lpaRel SId        h p = h p
   lpaRel (H₁ S⊕ H₂) h {inj₁ x} {inj₁ y} p = lpaRel H₁ h p
@@ -53,7 +58,7 @@ module _ (G : SFunctor) where
 
   private
     -- The re-graded layer computation is the old one, mapped.
-    pa≈ : ∀ (v : νM pureᶠ G) → toT∞ act (outν (νpa G v)) ≈ (toT∞ pure (outν v) >>=∞ λ l → return∞ (lpa G G l))
+    pa≈ : ∀ (v : νM pureᶠ G) → toT∞ act (outν (subν ⊑-pa G v)) ≈ (toT∞ pure (outν v) >>=∞ λ l → return∞ (mapA G G up l))
     force≈ (pa≈ v) = return≈
 
   subνUp ⊑-pure n p = p

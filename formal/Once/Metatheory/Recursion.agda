@@ -79,6 +79,20 @@ module Fold (π : Purity) (G : SFunctor) where
   fmap-return : ∀ {A B} (h : A → B) (a : A) → EqM π (fmap π h (return π a)) (return π (h a))
   fmap-return h a = eq-trans (fmap-bind h _) (bind-idˡ a _)
 
+  -- A layer of the fold is the traversal by the fold.
+  layer≡ : ∀ {X} (alg : ⟦ G ⟧SF X → M π X) (H : SFunctor) (x : ⟦ H ⟧SF (μS G))
+         → layerM π G H alg x ≡ traverseM π H (foldM π G alg) x
+  layer≡ alg (SK B)     x        = refl
+  layer≡ alg SId        x        = refl
+  layer≡ alg (H₁ S⊕ H₂) (inj₁ x) = cong (fmap π inj₁) (layer≡ alg H₁ x)
+  layer≡ alg (H₁ S⊕ H₂) (inj₂ y) = cong (fmap π inj₂) (layer≡ alg H₂ y)
+  layer≡ alg (H₁ S⊗ H₂) (x , y)  =
+    cong₂ (λ a b → bind π a λ u → bind π b λ v → return π (u , v)) (layer≡ alg H₁ x) (layer≡ alg H₂ y)
+
+  fold-in : ∀ {X} (alg : ⟦ G ⟧SF X → M π X) (x : ⟦ G ⟧SF (μS G))
+          → EqM π (foldM π G alg (inS x)) (bind π (traverseM π G (foldM π G alg) x) alg)
+  fold-in alg x = subst (λ t → EqM π (foldM π G alg (inS x)) (bind π t alg)) (layer≡ alg G x) (eq-refl _)
+
   module Unique {X : Set} (alg : ⟦ G ⟧SF X → M π X) (h : μS G → M π X)
                 (hyp : ∀ x → EqM π (h (inS x)) (bind π (traverseM π G h x) alg)) where
     unique : ∀ v → EqM π (h v) (foldM π G alg v)
@@ -240,7 +254,8 @@ module Unroll {A B : Set} (c : A → T (B ⊎ A)) (w : World) where
 
 recursion : Recursion Σ
 recursion = record
-  { fold-unique   = λ π G alg h hyp → Fold.Unique.unique π G alg h hyp
+  { fold-in       = λ π G alg x → Fold.fold-in π G alg x
+  ; fold-unique   = λ π G alg h hyp → Fold.Unique.unique π G alg h hyp
   ; fold-fusion   = λ π G alg alg′ g hyp → Fold.Fusion.fusion π G alg alg′ g hyp
   ; unfold-out    = λ f G c x → UnfoldEq.unfold-out G f c x
   ; unfold-unique = λ f G c g hyp x → Final.unfold-unique G f c g hyp x
