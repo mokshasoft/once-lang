@@ -34,7 +34,7 @@ open import Data.Product using (_,_)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
-open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
 open import Once.Spec.Name using (bare)
 
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
@@ -52,7 +52,7 @@ open import Once.Spec.Float.Decimal using (Decimal; round)
 open Once.Spec.Float.Decimal.Decimal using (exp10; sig)
 import Once.Spec.Float.Arith as FA
 open import Once.Arith.Type using (NumType; NInt; NFloat)
-import Once.Spec.Value OnceWord.Carrier OnceWord.Carrier as M
+import Once.Lang.Value OnceWord.Carrier OnceWord.Carrier as M
 -- (Core ℤ as I removed: block-info's semI deleted — block-semM is the meaning.)
 
 ------------------------------------------------------------------------

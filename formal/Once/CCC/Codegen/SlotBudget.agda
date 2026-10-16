@@ -54,7 +54,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Spec.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Lang.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero)

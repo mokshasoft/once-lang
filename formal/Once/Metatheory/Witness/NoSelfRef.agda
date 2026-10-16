@@ -15,12 +15,12 @@ module Once.Metatheory.Witness.NoSelfRef where
 
 open import Relation.Nullary using (¬_)
 open import Data.List using ([]; _∷_)
-open import Once.Spec.Syntax using (RVar)
-open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; module _⊢ᵢ_∶_⨾_; module _⊢ᶜ_∶_⨾_)
+open import Once.Lang.Syntax using (RVar)
+open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; module _⊢ᵢ_∶_⨾_; module _⊢ᶜ_∶_⨾_)
 open _⊢ᵢ_∶_⨾_
 open _⊢ᶜ_∶_⨾_
-open import Once.Spec.Module using (ModTele; mono; ffi; ctxOf; emptyScope)
-open import Once.Spec.Totality using (selfRef; forwardRef; defF)
+open import Once.Lang.Module using (ModTele; mono; ffi; ctxOf; emptyScope)
+open import Once.Lang.Totality using (selfRef; forwardRef; defF)
 
 -- Nothing is in the empty scope.
 no-var-i : ∀ {T Ψ} → ¬ (ctxOf emptyScope ⊢ᵢ RVar "f" ∶ T ⨾ Ψ)

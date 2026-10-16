@@ -5,7 +5,7 @@
 -- Once.Type.Rigid — facts and deciders about kinded instances.
 --
 -- Parameters, kinds and kinded instances are the Spec's
--- (`Once.Spec.Type.Instance`). This module proves that a ground schema is its
+-- (`Once.Lang.Type.Instance`). This module proves that a ground schema is its
 -- own kinded instance and decides `KindedInstance`.
 ------------------------------------------------------------------------
 
@@ -20,12 +20,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.WellFormed using (IsBaseType; RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
-open import Once.Spec.Type.Instance
+open import Once.Lang.Type.WellFormed using (IsBaseType; RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
+open import Once.Lang.Type.Instance
 
 ------------------------------------------------------------------------
 -- A ground schema is its own (unique) kinded instance

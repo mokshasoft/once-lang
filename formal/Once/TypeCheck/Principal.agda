@@ -43,16 +43,17 @@ open import Relation.Nullary using (yes; no; does)
 open import Relation.Nullary.Decidable using (isYes)
 import Relation.Nullary
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.DecEq using (_≟q_; _≟p_; _≟k_)
-open import Once.Spec.Name using (CanonicalName; canonical; showCanonical; gen)
+open import Once.Lang.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Spec.Name using (CanonicalName; canonical; gen)
+open import Once.Lang.Name using (showCanonical)
 open import Once.Spec.Name using (generatorNS)
 open import Once.CanonicalName using (_≟ᶜ_)
-open import Once.Spec.Syntax as Raw using (RawExpr; isComparisonOp)
-open import Once.Spec.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport)
+open import Once.Lang.Syntax as Raw using (RawExpr; isComparisonOp)
+open import Once.Lang.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport)
 open import Once.TypeCheck.Classify using (emptyCtx)
 
 ------------------------------------------------------------------------

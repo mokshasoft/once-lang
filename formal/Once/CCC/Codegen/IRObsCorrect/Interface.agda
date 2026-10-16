@@ -41,7 +41,7 @@ open AllocState using (next-slot; current-frame)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; μ-type; ⟦_⟧TI; IRTy; Unit; ν-type; _*_)
 open import Once.Memory.HeapAddress using (HeapLocation)
 import Once.CCC.FrameSemantics as FrameSemantics′
@@ -59,8 +59,8 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.Spec.Trace as TM
-open import Once.Spec.Res using (Res; returns; is-stopped)
+import Once.Lang.Trace as TM
+open import Once.Lang.Res using (Res; returns; is-stopped)
 open import Data.Bool using (Bool)
 import Data.List.Properties
 open import Once.CCC.Machine.FlatLog using (LogFree)

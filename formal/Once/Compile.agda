@@ -22,7 +22,7 @@
 
 module Once.Compile where
 
-import Once.Spec.Context as Srf
+import Once.Lang.Context as Srf
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
@@ -36,9 +36,9 @@ open import Data.Unit using (⊤; tt)
 open import Function using (case_of_)
 
 -- Re-export types
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
 
 -- Re-export Core IR
@@ -96,8 +96,8 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 open import Once.Parser
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Module)
-open import Once.Spec.Syntax using (RawExpr)
-open import Once.Spec.Type using (Type)
+open import Once.Lang.Syntax using (RawExpr)
+open import Once.Lang.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (no; yes)
 open FunInfo
@@ -111,18 +111,18 @@ open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.Spec.Typing.Scope using (NamedCtx; PolyCtx)
+open import Once.Lang.Typing.Scope using (NamedCtx; PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; topCtx; emptyTopCtx; ctxWithImportsAndPolys; emptyPolyCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
-open import Once.Spec.Type.Instance using (rigidOf)
-open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Lang.Type.Instance using (rigidOf)
+open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?)
-open import Once.Spec.Type.WellFormed using (IsConcrete)
+open import Once.Lang.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Spec.Type.Honest using (HonestFFI; honest?)
-open import Once.Spec.Type.DecEq using (_≟T_)
+open import Once.Lang.Type.Honest using (HonestFFI; honest?)
+open import Once.Lang.Type.DecEq using (_≟T_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
 import Once.TypeCheck.Principal as Principal

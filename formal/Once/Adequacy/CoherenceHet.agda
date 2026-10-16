@@ -28,22 +28,23 @@ open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Type.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
-import Once.Spec.Type.Poly as T
-open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
-open import Once.Spec.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Spec.Syntax as Raw using (RawExpr)
-open import Once.Spec.Name using (NotGenerator; showCanonical)
-open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
+open import Once.Lang.Type.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
+import Once.Lang.Type.Poly as T
+open import Once.Lang.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
+open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Lang.Syntax as Raw using (RawExpr)
+open import Once.Spec.Name using (NotGenerator)
+open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
-open import Once.Spec.Typing
+open import Once.Lang.Typing
 open import Once.Metatheory.ModeAgreement using (extractGround-irr; dpoly-det)
 open import Once.TypeCheck.ModeSub using (arrow-at)
-open import Once.Spec.Type.WellFormed using (IsConcrete; WellFormedF)
+open import Once.Lang.Type.WellFormed using (IsConcrete; WellFormedF)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)
-import Once.Spec.Context as Surface
-open import Once.Spec.Context using (Ctx; Usage; _∷_; _,_^_)
+import Once.Lang.Context as Surface
+open import Once.Lang.Context using (Ctx; Usage; _∷_; _,_^_)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; lam; coerce; poly)
 import Once.IR as IR
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)

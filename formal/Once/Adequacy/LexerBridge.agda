@@ -39,13 +39,13 @@ open import Once.Parser.Lexer
   using (adv; tokenize-WF; tok-str; tok-gen; tok-nl; tok-op2; tok-lbrace; tok-minus; tok-caret; tokenizeString; isIdentStart; collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB; drop1; drop1-≤; nlIndent; isEqHead; isDashHead; dashClass; caretClass; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK)
 
 ------------------------------------------------------------------------
--- The relation lives in `Once.Spec.Lexing` (Plan 0.84): it is part of what
+-- The relation lives in `Once.Lang.Lexing` (Plan 0.84): it is part of what
 -- `correct` CLAIMS, so it belongs inside the `Once.Spec` closure. What is
 -- proven below — soundness, determinism, completeness — is EVIDENCE that
 -- `tokenizeString` meets it, and is not re-exported into the spec.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Lexing using (LexesChars; Lexes;
+open import Once.Lang.Lexing using (LexesChars; Lexes;
   lex-eof; lex-ws; lex-nl-ind; lex-nl;
   lex-caret1; lex-caret0; lex-caretw; lex-caret-gen;
   lex-lcomment-ind; lex-arrow-ind; lex-minus;

@@ -23,8 +23,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Lang.Contract using (ISig)
 
 module Once.Metatheory.CoreSubstSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
@@ -35,24 +35,24 @@ open import Data.Unit using (tt)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
-open import Once.Spec.Type using (Type)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Lang.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Context using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Lang.Context using (Ctx; ∅; _,_^_; _,_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Surface.GradeMatrix using (Grades; _⋆_; ⋆-mono; extΦ; ⋆-ext)
-open import Once.Spec.Graded using (⟦_⟧ᵛ)
-open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Lang.Graded using (⟦_⟧ᵛ)
+open import Once.Lang.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-irr; restrict-refl; restrict-∘; restrict-≡; restrict-bind)
-open import Once.Spec.Core.Syntax S
-open import Once.Spec.Core.Typing S
-open import Once.Spec.Type.WellFormed using (con-fun)
-open import Once.Spec.Core.Subst S using (SubTy; tailᴿ; ext-ty; retype)
+open import Once.Lang.Core.Syntax S
+open import Once.Lang.Core.Typing S
+open import Once.Lang.Type.WellFormed using (con-fun)
+open import Once.Lang.Core.Subst S using (SubTy; tailᴿ; ext-ty; retype)
 open SubTy using (row)
-import Once.Spec.Core.Meaning S as GM
+import Once.Lang.Core.Meaning S as GM
 open import Once.Metatheory.CoreRenameSem S using (wk-sem; bindC; bindCᵍ)
-open import Once.Spec.Graded using (bindM; subM)
-open import Once.Spec.GradedOps using (fmapM; ana-semᵛ)
-open import Once.Spec.Core.Subst S using (sub-⊢)
+open import Once.Lang.Graded using (bindM; subM)
+open import Once.Lang.GradedOps using (fmapM; ana-semᵛ)
+open import Once.Lang.Core.Subst S using (sub-⊢)
 open import Once.Surface.GradeMatrix using (⋆-zero; ⋆-+; ⋆-*; ⋆-single)
 
 ------------------------------------------------------------------------

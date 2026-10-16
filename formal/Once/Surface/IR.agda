@@ -12,11 +12,11 @@
 
 module Once.Surface.IR where
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.WellFormed using (IsBaseType)
+open import Once.Lang.Type.WellFormed using (IsBaseType)
 
 open import Data.String using (String)
 

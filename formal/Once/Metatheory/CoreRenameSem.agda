@@ -22,9 +22,9 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
+open import Once.Lang.Core.PolyTy using (Sig)
 
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 module Once.Metatheory.CoreRenameSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin; zero; suc)
@@ -34,19 +34,19 @@ open import Data.Sum using (inj₁; inj₂)
 open import Once.Postulates using (extensionality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst-sym-subst)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
-open import Once.Spec.Type using (Type)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Lang.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Lang.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup; thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)
-open import Once.Spec.Core.Rename S using (ren-⊢; ren-cong; keep-extR)
-open import Once.Spec.Graded using (⟦_⟧ᵛ; M; bindM; subM; bindᵍ)
-open import Once.Spec.Environment using (restrictᵛ; bindᵛ; lookupᵛUsed)
+open import Once.Lang.Core.Rename S using (ren-⊢; ren-cong; keep-extR)
+open import Once.Lang.Graded using (⟦_⟧ᵛ; M; bindM; subM; bindᵍ)
+open import Once.Lang.Environment using (restrictᵛ; bindᵛ; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
-open import Once.Spec.GradedOps using (ana-semᵛ; fmapM)
-open import Once.Spec.Core.Typing S
-open import Once.Spec.Type.WellFormed using (con-fun)
-import Once.Spec.Core.Meaning S as GM
+open import Once.Lang.GradedOps using (ana-semᵛ; fmapM)
+open import Once.Lang.Core.Typing S
+open import Once.Lang.Type.WellFormed using (con-fun)
+import Once.Lang.Core.Meaning S as GM
 
 Env : ∀ {n} → Ctx n → Usage n → Set
 Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
@@ -157,7 +157,7 @@ back e x = subst-sym-subst e
 ------------------------------------------------------------------------
 
 -- UIP-style peeling of a usage equation at a cons (K is available).
-tail≡ : ∀ {n} {q : Quantity} {A B : Usage n} → (Once.Spec.Context._∷_ q A) ≡ (q ∷ B) → A ≡ B
+tail≡ : ∀ {n} {q : Quantity} {A B : Usage n} → (Once.Lang.Context._∷_ q A) ≡ (q ∷ B) → A ≡ B
 tail≡ refl = refl
 
 peel0 : ∀ {n} {Δ : Ctx n} {X : Type} {r : Quantity} {A B : Usage n} (e : Zero ∷ A ≡ Zero ∷ B) (x : Env Δ A)
@@ -346,8 +346,8 @@ ren-sem {Δ = Δ} θ (⊢ref d τ r) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (t
 ------------------------------------------------------------------------
 
 open import Once.Surface.Thinning using (⊆-refl; thin-usage-refl)
-open import Once.Spec.Core.DerivedTyping S using (wk-⊢′)
-open import Once.Spec.Core.Rename S using (wk-⊢; thin-var-refl)
+open import Once.Lang.Core.DerivedTyping S using (wk-⊢′)
+open import Once.Lang.Core.Rename S using (wk-⊢; thin-var-refl)
 
 -- The identity thinning is the identity, across its usage transport.
 thin-refl : ∀ {n} {Γ : Ctx n} (Ψ : Usage n) (e : thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ) (y : Env Γ Ψ)
@@ -397,5 +397,5 @@ wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =
 -- A closed term, embedded in any context (`⊢close`), means what it meant.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Core.Rename S using (⊢close; ∅⊆)
+open import Once.Lang.Core.Rename S using (⊢close; ∅⊆)
 

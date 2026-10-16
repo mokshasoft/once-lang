@@ -19,7 +19,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects)
+open import Once.Lang.Core.PolyTy using (KCtx; GSub; Respects)
 
 module Once.TypeCheck.RigidSubst {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
 
@@ -32,30 +32,31 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
 open ArrowKind using (quantity)
-open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
-open import Once.Spec.Type.Sub using (<:-refl)
-open import Once.Spec.Type.Instance using (KindedInstance)
-open import Once.Spec.Type.WellFormed using (RigidFree; rf-⇒)
+open import Once.Lang.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Lang.Type.Sub using (<:-refl)
+open import Once.Lang.Type.Instance using (KindedInstance)
+open import Once.Lang.Type.WellFormed using (RigidFree; rf-⇒)
 open import Once.Type.Rigid using (extractGround-rf)
-open import Once.Spec.Type.WellFormed using (IsBaseType; WellFormedF; IsConcrete)
-open import Once.Spec.Name using (CanonicalName; showCanonical; NotGenerator)
-open import Once.Spec.Syntax using (RResolved)
-open import Once.Spec.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
-open import Once.Spec.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
-import Once.Spec.Context as Surface
-open import Once.Spec.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
-open import Once.Spec.Typing.Scope using (mkBinding)
-open Once.Spec.Typing.Scope.Binding using (quantity)
-open Once.Spec.Typing.Scope.Binding using (name; type)
-import Once.Spec.Typing.Scope as NC
-open import Once.Spec.Typing.Scope
+open import Once.Lang.Type.WellFormed using (IsBaseType; WellFormedF; IsConcrete)
+open import Once.Spec.Name using (CanonicalName; NotGenerator)
+open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Syntax using (RResolved)
+open import Once.Lang.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
+open import Once.Lang.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
+import Once.Lang.Context as Surface
+open import Once.Lang.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
+open import Once.Lang.Typing.Scope using (mkBinding)
+open Once.Lang.Typing.Scope.Binding using (quantity)
+open Once.Lang.Typing.Scope.Binding using (name; type)
+import Once.Lang.Typing.Scope as NC
+open import Once.Lang.Typing.Scope
 open import Once.TypeCheck.Classify
-open import Once.Spec.Typing
+open import Once.Lang.Typing
 
 ------------------------------------------------------------------------
 -- The substitution on types.

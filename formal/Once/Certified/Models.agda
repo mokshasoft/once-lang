@@ -34,7 +34,7 @@ module Once.Certified.Models where
 
 open import Data.List using ([])
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
-open import Once.Spec.Trace using (Interp; interp)
+open import Once.Lang.Trace using (Interp; interp)
 open import Once.Memory.RuntimeContract using (RuntimeContract)
 
 record NonVacuous : Set where

@@ -19,40 +19,40 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
+open import Once.Lang.Core.PolyTy using (Sig)
 
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 module Once.Adequacy.CoreAbsSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc; _<?_)
 import Data.Nat
 open import Data.Unit using (tt)
 open import Relation.Nullary using (Dec; yes; no)
-import Once.Spec.Type.Sub
+import Once.Lang.Type.Sub
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
-import Once.Spec.Type.Grade as T
-import Once.Spec.Type as T
-open import Once.Spec.Type.WellFormed using (rf-⇒)
+import Once.Lang.Type.Grade as T
+import Once.Lang.Type as T
+open import Once.Lang.Type.WellFormed using (rf-⇒)
 import Once.Type as T
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Graded using (⟦_⟧ᵛ; M)
-import Once.Spec.Context as C
+open import Once.Lang.Graded using (⟦_⟧ᵛ; M)
+import Once.Lang.Context as C
 import Once.Surface.Context as C
-open import Once.Spec.Context using ([]; _∷_)
-open import Once.Spec.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; module Schema)
+open import Once.Lang.Context using ([]; _∷_)
+open import Once.Lang.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; module Schema)
 open Schema using (arity; type)
-open import Once.Spec.Core.AbsTy using (absTy; absF; ar-bound; absTy-⟦⟧; absTy-ground; abs-⟪⟫)
-import Once.Spec.Core.Syntax S as G
-import Once.Spec.Core.Typing S as GT
+open import Once.Lang.Core.AbsTy using (absTy; absF; ar-bound; absTy-⟦⟧; absTy-ground; abs-⟪⟫)
+import Once.Lang.Core.Syntax S as G
+import Once.Lang.Core.Typing S as GT
 open GT using (_⊢[_]_∷_!_)
-import Once.Spec.Core.PolyTyping S as PT
+import Once.Lang.Core.PolyTyping S as PT
 open PT using (_⟪_⟫ᶜ; _⟪_⟫ₜ; lookup-⟪⟫)
-open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; absCtx-lookup; primDom-abs; primCod-abs)
-import Once.Spec.Core.Meaning S as GM
+open import Once.Lang.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; absCtx-lookup; primDom-abs; primCod-abs)
+import Once.Lang.Core.Meaning S as GM
 
 ------------------------------------------------------------------------
 -- Transport of ground derivations, and its irrelevance (K)
@@ -180,7 +180,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-roll {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl d
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-fold : ∀ {Ψa Ψt π π₁ π₂ F' F A' A} {a' a t' t : G.Tm n} {wf' wf} {u : Once.Spec.Type.Sub._⊑π_ T.pure π}
+  tr-fold : ∀ {Ψa Ψt π π₁ π₂ F' F A' A} {a' a t' t : G.Tm n} {wf' wf} {u : Once.Lang.Type.Sub._⊑π_ T.pure π}
               {eΓ : Γ' ≡ Γ} {et : G.fold F' a' t' ≡ G.fold F a t} {eA : A' ≡ A}
               (eF : F' ≡ F) (ea : a' ≡ a) (eAl : (T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A') ≡ (T.⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A))
               (eA′ : A' ≡ A) (ed : t' ≡ t) (eM : T.μ-type F' ≡ T.μ-type F)
@@ -407,7 +407,7 @@ tr-sem refl refl refl D fmt δ γ = refl
 
 -- A MONOMORPHIC ENTRY (`Translate.monoBody`: the abstraction, retyped at the
 -- embedded ground type) read back at arity 0 means its elaboration.
-open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Lang.Type.WellFormed using (RigidFree)
 
 mono-entry-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
                    {t A} (g : RigidFree A) (D : C.∅ ⊢[ [] ] t ∷ A ! T.pure) (fmt : TargetNum) (δ : GM.DefSem)

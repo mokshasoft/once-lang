@@ -30,7 +30,7 @@ module Once.Adequacy.CPU where
 open import Data.List using (List)
 
 open import Once.Denotation.Behavior        using (Behavior)
-open import Once.Spec.Trace      using (Interp)
+open import Once.Lang.Trace      using (Interp)
 open import Once.Adequacy.CPU.Interface  -- re-export
 open import Once.Target.Arch
 import Once.Adequacy.CPU.RiscV64 as RiscV64-CPU

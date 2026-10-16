@@ -26,14 +26,14 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind)
-open import Once.Spec.Type using (Type; _⇒[_]_; Void)
-open import Once.Spec.Type.Sub
+open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind)
+open import Once.Lang.Type using (Type; _⇒[_]_; Void)
+open import Once.Lang.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 -- `fmapT` is a functor and congruent: the tree's laws (plan 0.105).
-open import Once.Spec.Trace using (T; ret; call; halt; fmapT; _>>=T_)
+open import Once.Lang.Trace using (T; ret; call; halt; fmapT; _>>=T_)
 open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-∘; fmapT-cong)
 open import Once.Postulates using (extensionality)
 

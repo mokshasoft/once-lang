@@ -17,12 +17,12 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Lang.Contract using (ISig)
 
 module Once.Metatheory.Coherence {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
-open import Once.Spec.Core.Coherence S using (Coherence)
+open import Once.Lang.Core.Coherence S using (Coherence)
 open import Once.Metatheory.Coherence.Relation using (≈∞→N; S→Same)
 open import Once.Metatheory.Coherence.Env using (Same-Agree)
 open import Once.Metatheory.Coherence.Fundamental S using (FL)

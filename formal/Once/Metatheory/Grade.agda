@@ -27,11 +27,11 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; isEquivalence; cong₂)
 open import Relation.Binary.Structures using (IsDecTotalOrder)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Spec.Type.Grade
+open import Once.Lang.Type.Grade
   using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; act; eff⁺; eff; _⊔p_; _·p_)
-open import Once.Spec.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge)
-open import Once.Spec.Type.DecEq using (_≟q_)
+open import Once.Lang.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge)
+open import Once.Lang.Type.DecEq using (_≟q_)
 
 ------------------------------------------------------------------------
 -- Usage: a commutative semiring

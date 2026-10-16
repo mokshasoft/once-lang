@@ -16,8 +16,8 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Spec.Trace using (FFIAnswers)
-open import Once.Spec.Trace using (Interp; pureHalf)
+open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Lang.Trace using (Interp; pureHalf)
 
 -- Plan 0.105 (D257 amendment 2): in a world `ι` — its signatures and their
 -- implementation; the IR reads its pure half.
@@ -30,16 +30,16 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many; pure)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many; pure)
+open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.IRTy using (⌊_⌋)
 import Once.Surface.Syntax as Srf
 import Once.Compile as C
 import Once.Denotation.SourceDenote as SD
-open import Once.Spec.Trace using (T; ret; returnT; _>>=T_; rel-ret)
+open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; rel-ret)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.Denotation.DenotTrace using ()
-open import Once.Spec.Graded using (⟦_⟧ᵛ)
+open import Once.Lang.Graded using (⟦_⟧ᵛ)
 open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV; RelGM; RelGT-return)
 open import Once.Adequacy.TableCall fmt φ using (abiT)
 import Once.Adequacy.MeaningBridge as MB

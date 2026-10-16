@@ -22,8 +22,8 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 
 
-open import Once.Spec.Trace using (interp)
-open import Once.Spec.Contract using (ISig; Impl)
+open import Once.Lang.Trace using (interp)
+open import Once.Lang.Contract using (ISig; Impl)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
@@ -115,7 +115,7 @@ once-compiler b64 b32 brv = record
   ; Bytes    = List Byte
   ; Behavior = Behavior
   -- Plan 0.105 (D257, D061): an interpretation's declared signatures and an
-  -- implementation of them in the compiler's contract form (`Once.Spec.Contract`).
+  -- implementation of them in the compiler's contract form (`Once.Lang.Contract`).
   ; Signature      = ISig
   ; Implementation = Impl
   -- Plan 0.49: the INDEPENDENT meaning is RELATIONAL. `Typed` = an executable

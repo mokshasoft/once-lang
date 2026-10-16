@@ -13,17 +13,18 @@
 -- (`CoreInst.c-*`), and a reference's is the view's naturality.
 ------------------------------------------------------------------------
 
-import Once.Spec.Type.Sub
-open import Once.Spec.Type.Sub using (·p-diag)
+import Once.Lang.Name
+import Once.Lang.Type.Sub
+open import Once.Lang.Type.Sub using (·p-diag)
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; KCtx; GSub; Respects)
-import Once.Spec.Core.Abstract as Abs
-import Once.Spec.Elaboration as El
+open import Once.Lang.Core.PolyTy using (Sig; KCtx; GSub; Respects)
+import Once.Lang.Core.Abstract as Abs
+import Once.Lang.Elaboration as El
 import Once.TypeCheck.RigidSubst as RSm
 import Once.Adequacy.ViewNatural as VN
-open import Once.Spec.Typing.Scope using (Imports; PolyCtx)
+open import Once.Lang.Typing.Scope using (Imports; PolyCtx)
 
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ)
   (sg : Abs.SigGround S) {imps sigs : Imports} {polys : PolyCtx} (V : El.View S imps sigs polys)
   (nat : VN.Natural S Δ τ r V) (ir : RSm.TopRF Δ τ r imps sigs) where
@@ -31,7 +32,7 @@ module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} 
 import Once.Spec.Name
 import Data.String
 import Data.Maybe
-import Once.Spec.Typing.Scope
+import Once.Lang.Typing.Scope
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -39,27 +40,27 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
-import Once.Spec.Type as T
+import Once.Lang.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; eff⁺; positionGrade; EffGrade; Purity)
-open import Once.Spec.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; eff⁺; positionGrade; EffGrade; Purity)
+open import Once.Lang.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
 open import Once.Spec.Name using (NotGenerator)
-open import Once.Spec.Type using (μ-type; ν-type)
+open import Once.Lang.Type using (μ-type; ν-type)
 open import Once.Metatheory.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)
-import Once.Spec.Context as C
-open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Spec.Typing.Scope using (mkCtx)
-open import Once.Spec.Typing
-import Once.Spec.Core.Syntax S as G
-import Once.Spec.Core.Typing S as GT
+import Once.Lang.Context as C
+open import Once.Lang.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Lang.Typing.Scope using (mkCtx)
+open import Once.Lang.Typing
+import Once.Lang.Core.Syntax S as G
+import Once.Lang.Core.Typing S as GT
 open GT using (_⊢[_]_∷_!_)
-open import Once.Spec.Core.PolyTy using (_!!_; module Schema)
+open import Once.Lang.Core.PolyTy using (_!!_; module Schema)
 open Schema using (arity)
-import Once.Spec.Core.Rename S as RN
-import Once.Spec.Core.DerivedTyping S as DT
+import Once.Lang.Core.Rename S as RN
+import Once.Lang.Core.DerivedTyping S as DT
 open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; declared; def; importE; sigE; sigE⁺; refE; InstanceOf)
 open RSm Δ τ r using (ρ̂; ρ̂F; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; guard-rf; _⇝ᵢ_; _⇝ᶜ_)
 import Once.Adequacy.CoreInst S Δ τ r as CI
@@ -102,17 +103,17 @@ private
       (H.trans (≅ref h) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e₀) (rmA (λ X → X) (sym (ρ̂-ref d τ₀))))))
 
   -- A generator's reference: its contract is ground (D274).
-  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Spec.Name.showCanonical cn) T)
+  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Lang.Name.showCanonical cn) T)
          → proj₁ (sigE {Γ = ρ̂S Γ} cn k dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k dc))
   sig-tm cn k dc = refl
 
-  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Spec.Name.showCanonical cn) T)
+  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Lang.Name.showCanonical cn) T)
          → proj₂ (sigE {Γ = ρ̂S Γ} cn k dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k dc))
   sig-dr cn k dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
 
   -- D313: a generator at its guard — the guarded arrow is ground too.
   sig⁺-dr : ∀ {n} {Γ : C.Ctx n} {A B q π} (cn : Once.Spec.Name.CanonicalName) k (e : EffGrade π)
-              (dc : Declared (Once.Spec.Name.showCanonical cn) (A T.⇒[ mk-kind q π ] B))
+              (dc : Declared (Once.Lang.Name.showCanonical cn) (A T.⇒[ mk-kind q π ] B))
           → proj₂ (sigE⁺ {Γ = ρ̂S Γ} cn k e dc) ≅ ρ̂ᶜ (proj₂ (sigE⁺ {Γ = Γ} cn k e dc))
   sig⁺-dr cn k e (declared h (rf-⇒ ga gb) m) = H.sym (rmA (λ X → X) (sym (ρ̂-rf (rf-⇒ ga gb))))
 
@@ -160,7 +161,7 @@ private
   closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
   closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
 
-  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Spec.Type.Sub.<: B}
+  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Lang.Type.Sub.<: B}
               {d₁ : Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ ] t₂ ∷ A ! π}
           → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢coerce p₁ d₁ ≅ GT.⊢coerce p₂ d₂
   ≅coerce {p₁ = p₁} {p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl
@@ -172,14 +173,14 @@ private
 -- D313: the guard's case, at its rigid-free evidence in constructor form (so
 -- the core substitution of `⊢sigop⁺` reduces).
 guard-tm : ∀ {n Γ D cn A B q π} (rf : RigidFree (A T.⇒[ mk-kind q π ] B)) (ng : NotGenerator cn)
-             (li : Once.Spec.Typing.Scope.lookupImport sigs (Once.Spec.Name.showCanonical cn) ≡ Data.Maybe.just (A T.⇒[ mk-kind q π ] B))
+             (li : Once.Lang.Typing.Scope.lookupImport sigs (Once.Lang.Name.showCanonical cn) ≡ Data.Maybe.just (A T.⇒[ mk-kind q π ] B))
              (e : EffGrade π) (c : IsConcrete (A T.⇒[ mk-kind q π ] B))
          → proj₁ (elabᶜ V (guard-rf {n = n} {Γ = Γ} {D = D} {polys = polys} rf ng li e c))
            ≡ ρ̂ₜ (proj₁ (elabᶜ V (t-var-resolved-guard {ctx = mkCtx n Γ D imps polys sigs} ng li e c)))
 guard-tm (rf-⇒ ga gb) ng li e c = ⇝ᶜ-tm (sym (ρ̂-rf (rf-⇒ ga gb))) _
 
 guard-dr : ∀ {n Γ D cn A B q π} (rf : RigidFree (A T.⇒[ mk-kind q π ] B)) (ng : NotGenerator cn)
-             (li : Once.Spec.Typing.Scope.lookupImport sigs (Once.Spec.Name.showCanonical cn) ≡ Data.Maybe.just (A T.⇒[ mk-kind q π ] B))
+             (li : Once.Lang.Typing.Scope.lookupImport sigs (Once.Lang.Name.showCanonical cn) ≡ Data.Maybe.just (A T.⇒[ mk-kind q π ] B))
              (e : EffGrade π) (c : IsConcrete (A T.⇒[ mk-kind q π ] B))
          → proj₂ (elabᶜ V (guard-rf {n = n} {Γ = Γ} {D = D} {polys = polys} rf ng li e c))
            ≅ ρ̂ᶜ (proj₂ (elabᶜ V (t-var-resolved-guard {ctx = mkCtx n Γ D imps polys sigs} ng li e c)))

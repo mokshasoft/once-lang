@@ -17,11 +17,11 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
+open import Once.Lang.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 
-open import Once.Spec.Polynomial
+open import Once.Lang.Polynomial
 open import Once.Semantics.Functor
-open Once.Spec.Polynomial.νS using (unfoldS)
+open Once.Lang.Polynomial.νS using (unfoldS)
 
 -- | Relational interpretation of semantic functors
 --

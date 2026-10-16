@@ -33,17 +33,17 @@ module Once.Denotation.Realize where
 
 open import Data.Integer using ()   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
-open import Once.Spec.Type.Grade using (Many; Purity; mk-kind; ≤q-Many)
-open import Once.Spec.Type using (Type; μ-type; ν-type; _⇒[_]_)
-open import Once.Spec.Type.Sub using (sub-arr)
-open import Once.Spec.Type.WellFormed using (con-fun)
-open import Once.Spec.Type.Sub using (<:-refl)
+open import Once.Lang.Type.Grade using (Many; Purity; mk-kind; ≤q-Many)
+open import Once.Lang.Type using (Type; μ-type; ν-type; _⇒[_]_)
+open import Once.Lang.Type.Sub using (sub-arr)
+open import Once.Lang.Type.WellFormed using (con-fun)
+open import Once.Lang.Type.Sub using (<:-refl)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Spec.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Spec.Typing.Scope using (NamedCtx)
-open import Once.Spec.Typing
+open import Once.Lang.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Lang.Typing.Scope using (NamedCtx)
+open import Once.Lang.Typing
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-id-check; t-fst-check; t-snd-check;
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
@@ -59,10 +59,10 @@ open import Once.Spec.Typing
          t-var-poly-instantiate;
          t-var-poly-instantiate-infer; d-poly)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
-open import Once.Spec.Context using (Usage; zeroUsage)
+open import Once.Lang.Context using (Usage; zeroUsage)
 open import Once.Surface.Syntax using (Expr; svar→expr; lam; app; effApp; pair; neg; let'; case'; int; float; unit; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Spec.Name using (bare)
-open import Once.Spec.Context using (_+ᵘ_; _*ᵘ_)
+open import Once.Lang.Context using (_+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong; sym)
 import Relation.Binary.PropositionalEquality as PE
@@ -239,15 +239,15 @@ realize-infer (t-snd-app d)      = morph-app IR.snd      (realize-infer d)
 -- direction — `In` lands AT `⌊ μ-type F ⌋`, `Out` STARTS there.
 realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _ Z) ceq
-    (morph-app (subst (λ o → IR ⌊ ν-type F Once.Spec.Type.Grade.pure ⌋ o)
-                      (sym (⌊⟧T-commute F (ν-type F Once.Spec.Type.Grade.pure)))
+    (morph-app (subst (λ o → IR ⌊ ν-type F Once.Lang.Type.Grade.pure ⌋ o)
+                      (sym (⌊⟧T-commute F (ν-type F Once.Lang.Type.Grade.pure)))
                       (IR.Out (wf-⌊⌋ wfF)))
                (realize-infer d))
 -- D233: at an EFFECTFUL stream the force is suspended (`curry (Out ∘ fst)`),
 -- as `t-apply-eff-app-infer` suspends `apply` — the elaborator's term exactly.
 realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} {π = π} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _
-                 (Once.Spec.Type.Unit ⇒[ mk-kind Many π ] Z)) ceq
+                 (Once.Lang.Type.Unit ⇒[ mk-kind Many π ] Z)) ceq
     (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F π ⌋ o)
                                 (sym (⌊⟧T-commute F (ν-type F π)))
                                 (IR.Out (wf-⌊⌋ wfF))

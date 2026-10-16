@@ -16,7 +16,7 @@ open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.IR as C
 import Once.IRTy as IRTy
 open import Once.Arith.SigOp.Builders using (generic-info)
-open import Once.Spec.Type.WellFormed using (IsBaseType)
+open import Once.Lang.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (bare)
 
 open import Data.String using (String)

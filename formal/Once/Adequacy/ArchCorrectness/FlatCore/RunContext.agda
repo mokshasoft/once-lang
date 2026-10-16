@@ -25,7 +25,7 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word; fs-interp)
-open import Once.Spec.Trace using (module Interp)
+open import Once.Lang.Trace using (module Interp)
 open Interp using (sig)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)

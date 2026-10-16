@@ -20,7 +20,7 @@
 -- (`resolveExpr-sigOp-closure-faithful`; plan 0.103 1c deleted the inconsistent poly-splice one).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Typing.Scope using (PolyCtx; Imports)
+open import Once.Lang.Typing.Scope using (PolyCtx; Imports)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
@@ -48,25 +48,25 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 
-open import Once.Spec.Type.Grade using (Zero; One; Many)
-open import Once.Spec.Type using (Type; Int; Float; Unit; _+_)
-import Once.Spec.Type.Grade as T
-import Once.Spec.Type as T
+open import Once.Lang.Type.Grade using (Zero; One; Many)
+open import Once.Lang.Type using (Type; Int; Float; Unit; _+_)
+import Once.Lang.Type.Grade as T
+import Once.Lang.Type as T
 import Once.Type as T
-open import Once.Spec.Type.WellFormed using (IsConcrete; con-fun; con-base)
-open import Once.Spec.Context as Srf using (Usage; ⟦_⟧ᶜ)
+open import Once.Lang.Type.WellFormed using (IsConcrete; con-fun; con-base)
+open import Once.Lang.Context as Srf using (Usage; ⟦_⟧ᶜ)
 open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Denotation.DenotTrace using (evalᴰ)
-open import Once.Spec.Stream using (anaFᵈ)
+open import Once.Lang.Stream using (anaFᵈ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders
-open import Once.Spec.Trace using (T; _>>=T_; returnT; fmapT)
+open import Once.Lang.Trace using (T; _>>=T_; returnT; fmapT)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV)
 import Once.TypeCheck.Elaborate as Elaborate
-open import Once.Spec.Typing.Scope using (lookupPolyPrefix)
+open import Once.Lang.Typing.Scope using (lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)

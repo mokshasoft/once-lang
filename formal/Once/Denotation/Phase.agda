@@ -24,11 +24,11 @@ open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
 -- Imported from `Surface.Context` (the DEFINING module) rather than through
 -- `Surface.Syntax`'s re-export: `_↾_` is recursive, and a recursive function
 -- reached through a re-export does not always reduce at the use site.
-open import Once.Spec.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
+open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 
 --

@@ -31,9 +31,9 @@ open import Once.Grammar as G
   using ( GExpr; GType; GDecl; GModule; ELam )
 open import Once.Parser.Module.Core as P
   using (Decl; Module; mkImport; mkModule)
-open import Once.Spec.Type.Grade using (pure)
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.Poly using (PolyType; PolyFunctor; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; PInt; PFloat; PTVar; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
+open import Once.Lang.Type.Grade using (pure)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Type.Poly using (PolyType; PolyFunctor; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; PInt; PFloat; PTVar; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Grammar.Convert    using (gtypeToType)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
 open import Once.Grammar.ConcreteDec using (concrete?)
@@ -56,8 +56,8 @@ gtypeToPolyType (G.TEff a b)     = PEff (gtypeToPolyType a) (gtypeToPolyType b)
 gtypeToPolyType (G.TAct a b)     = PAct (gtypeToPolyType a) (gtypeToPolyType b)
 gtypeToPolyType (G.GMu gf)       = Pμ-type (gtypeToPolyFunctor gf)
 gtypeToPolyType (G.GNu gf)       = Pν-type (gtypeToPolyFunctor gf) pure
-gtypeToPolyType (G.GNuEff gf)    = Pν-type (gtypeToPolyFunctor gf) Once.Spec.Type.Grade.eff
-gtypeToPolyType (G.GNuAct gf)    = Pν-type (gtypeToPolyFunctor gf) Once.Spec.Type.Grade.act
+gtypeToPolyType (G.GNuEff gf)    = Pν-type (gtypeToPolyFunctor gf) Once.Lang.Type.Grade.eff
+gtypeToPolyType (G.GNuAct gf)    = Pν-type (gtypeToPolyFunctor gf) Once.Lang.Type.Grade.act
 
 gtypeToPolyFunctor (G.GFK g)      = PK (gtypeToPolyType g)
 gtypeToPolyFunctor G.GFId         = PId

@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 open import Data.String using (String)
 
 open import Once.Denotation.Behavior using (Behavior; silent)
-open import Once.Spec.Trace using (Interp)
+open import Once.Lang.Trace using (Interp)
 
 -- Bytes
 Byte : Set

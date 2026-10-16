@@ -19,12 +19,12 @@ open import Data.String using (String)
 import Data.String as Str
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.DecEq using (_≟q_; _≟p_; _≟k_)
-open import Once.Spec.Type.DecEq using (_≟T_)
+open import Once.Lang.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Lang.Type.DecEq using (_≟T_)
 
 -- Plan 0.6.2 Phase 1 (load-bearing POC for Option C of D044's
 -- follow-up). Given a PolyType schema with `PTVar` type variables

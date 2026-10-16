@@ -25,8 +25,8 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Spec.Trace using (Interp; pureHalf; interp)
-open import Once.Spec.Contract using (ISig; Impl)
+open import Once.Lang.Trace using (Interp; pureHalf; interp)
+open import Once.Lang.Contract using (ISig; Impl)
 
 -- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
 -- run against the same one.
@@ -54,9 +54,9 @@ open import Data.Bool using (false)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.DecEq using (_≟T_)
-open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -65,21 +65,21 @@ open Parser.FunInfo using (funName)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
-import Once.Spec.Context as Ctx
+import Once.Lang.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Core.Telescope using (Tele; runProgram; program; noKinds; noVars; noResp)
+open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
+open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Lang.Core.Telescope using (Tele; runProgram; program; noKinds; noVars; noResp)
 open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; RelT∞′-events)
-open import Once.Spec.Iterative using (events∞; T∞)
+open import Once.Lang.Iterative using (events∞; T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Spec.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
-import Once.Spec.Core.Abstract as A
-import Once.Spec.Core.Translate as TR
+open import Once.Lang.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
+import Once.Lang.Core.Abstract as A
+import Once.Lang.Core.Translate as TR
 open import Once.Compile using (irFunOf; tableOf-go; mainCall)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
@@ -88,19 +88,19 @@ import Once.Adequacy.MeaningBridge as MB
 import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.CoreAbsSem as CAS
-import Once.Spec.Elaboration as ElabM
-import Once.Spec.Core.Meaning as GM
-import Once.Spec.Core.PolyTyping as PT
+import Once.Lang.Elaboration as ElabM
+import Once.Lang.Core.Meaning as GM
+import Once.Lang.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
-open import Once.Spec.Trace using (FFIAnswers)
+open import Once.Lang.Trace using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
 φ = pureHalf ι
 
 open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV)
-open import Once.Spec.Trace using (returnT; rel-ret)
-open import Once.Spec.Trace using (projTrace)
+open import Once.Lang.Trace using (returnT; rel-ret)
+open import Once.Lang.Trace using (projTrace)
 import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
@@ -111,12 +111,12 @@ import Once.TypeCheck.Elaborate
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; uncurry-app)
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 import Data.Fin
 import Relation.Nullary
-open import Once.Spec.Graded using (⟦_⟧ᵛ)
+open import Once.Lang.Graded using (⟦_⟧ᵛ)
 open import Once.Adequacy.TelePosition
-open import Once.Spec.Trace using ()
+open import Once.Lang.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (RelT′-events)
 open import Once.Denotation.Program using (tableCalls)
 open import Data.List using (take)
@@ -157,9 +157,9 @@ private
       un (_ ∷ es) ((h ∷ []) ∷ hs) = h ∷ un es hs
 
 -- The entries after `main` extend the telescope; the program still names `main`.
-from-sem : ∀ {s} {S : Sig Fs s} {sc es} (tl : Tele S) (ss : SigSig Fs (Once.Spec.Module.Scope.sig sc)) (is : ImpSig S (Once.Spec.Module.Scope.imps sc))
-             (ts : TeleSig S (Once.Spec.Module.Scope.tele sc)) (sg : SigCF S)
-             (d : Data.Fin.Fin s) (e : S Once.Spec.Core.PolyTy.!! d ≡ monoSchema EffUU) (rest : ModTele sc es) (u : SigIn rest S) (n : ℕ)
+from-sem : ∀ {s} {S : Sig Fs s} {sc es} (tl : Tele S) (ss : SigSig Fs (Once.Lang.Module.Scope.sig sc)) (is : ImpSig S (Once.Lang.Module.Scope.imps sc))
+             (ts : TeleSig S (Once.Lang.Module.Scope.tele sc)) (sg : SigCF S)
+             (d : Data.Fin.Fin s) (e : S Once.Lang.Core.PolyTy.!! d ≡ monoSchema EffUU) (rest : ModTele sc es) (u : SigIn rest S) (n : ℕ)
          → runProgram fmt (TR.toProgramFrom tl ss is ts sg d e rest u) Ip n ≡ runProgram fmt (program tl d e) Ip n
 from-sem tl ss is ts sg d e [] u n = refl
 from-sem tl ss is ts sg d e (ffi _ _ c h g rest) u n = from-sem tl (s-ffi h g (u (here refl)) ss) is ts sg d e rest (λ m → u (there m)) n
@@ -170,13 +170,13 @@ from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep 
 
 -- A pure value against a Kleisli computation, fed to effectful continuations:
 -- the computation returns at once, so the continuation's relation is the whole.
-ret-bind∞ : ∀ {A B : Type} {v : ⟦ A ⟧ᵛ} {t : Once.Spec.Trace.T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → T∞ ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → Once.Spec.Trace.T ⟦ B ⟧ᴰ}
+ret-bind∞ : ∀ {A B : Type} {v : ⟦ A ⟧ᵛ} {t : Once.Lang.Trace.T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → T∞ ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → Once.Lang.Trace.T ⟦ B ⟧ᴰ}
           → RelGT A (returnT v) t → (∀ {a b} → RelGV A a b → RelT∞′ (RelGV B) (k a) (g b))
-          → RelT∞′ (RelGV B) (k v) (t Once.Spec.Trace.>>=T g)
+          → RelT∞′ (RelGV B) (k v) (t Once.Lang.Trace.>>=T g)
 ret-bind∞ (rel-ret r) h = h r
 
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} (g : RigidFree EffUU)
-              (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ EffUU ⌋}
+              (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ EffUU ⌋}
               (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" EffUU bd ≡ Data.Sum.inj₂ irFun)
               {es} (rest : ModTele (AS.scopeOf (C.extendScope csc "main" EffUU)) es)
@@ -188,19 +188,19 @@ here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} 
 here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {es} rest rest-b inv u hs n =
   -- Plan 0.105: related computations make the same calls under any
   -- interpretation (`RelT∞′-events`), so their first `n` events agree.
-  trans ir-side (trans (sym (RelT∞′-events ι [] (ret-bind∞ {EffUU} {Once.Spec.Type.Unit} {k = λ c → c tt} {g = λ c → c tt} relM (λ rv → rv {tt} {tt} tt)) n))
+  trans ir-side (trans (sym (RelT∞′-events ι [] (ret-bind∞ {EffUU} {Once.Lang.Type.Unit} {k = λ c → c tt} {g = λ c → c tt} relM (λ rv → rv {tt} {tt} tt)) n))
                        (trans (cong (λ (v : ⟦ EffUU ⟧ᵛ) → events∞ ι [] (v tt) n) (sym core≡))
                               (sym (from-sem tl′ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero refl rest u n))))
   where
     open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {Parser.mkFunInfo "main" ft bd false} {EffUU} g D {irFun} cf inv
     later = tableOf-go (FB.bundle→compiled rest-b) []
 
-    ir-side : RunAt (tableOf-go (FB.bundle→compiled rest-b) (e ∷ pre)) n ≡ projTrace ι (M Once.Spec.Trace.>>=T λ c → c tt) n
+    ir-side : RunAt (tableOf-go (FB.bundle→compiled rest-b) (e ∷ pre)) n ≡ projTrace ι (M Once.Lang.Trace.>>=T λ c → c tt) n
     ir-side =
       trans (cong (λ tbl → RunAt tbl n) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))
         (cong (λ t → projTrace ι t n)
           (trans (skip-later later (e ∷ pre) tt (later-not-main rest-b hs))
-            (trans (tableEnv-hit (bare "main") ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Unit ⌋
+            (trans (tableEnv-hit (bare "main") ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Unit ⌋
                       (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)
                    (uncurry-app (tableEnv fmt φ pre) irFun tt))))
 
@@ -257,7 +257,7 @@ mutual
                 (sg : SigCF S) (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn rest S) → Fresh csc (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es)
                 → (nd : Dec (x ≡ "main")) (td : Dec (ty ≡ EffUU))
               → ∀ n → RunAt (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre)) n
-                    ≡ runProgram fmt (Once.Spec.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo x ft bd false}
+                    ≡ runProgram fmt (Once.Lang.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo x ft bd false}
                                         {ty = ty} {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest mi′ nd td u) Ip n
   -- `main`, found by the dispatch
   walk-mono-d {csc} {es} {ft = ft} {bd} er g D rest cf rest-b mi′ {S = S} tl ss is ts sg pre inv u ((hd ∷ _) , _) (yes refl) (yes refl) n =

@@ -27,7 +27,7 @@
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
 module Once.TypeCheck.Completeness.Rules where
-import Once.Spec.Context as Srf
+import Once.Lang.Context as Srf
 open import Data.Nat using (ℕ)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
@@ -37,38 +37,39 @@ open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Data.String.Properties as StrProp using ()
-open import Once.Spec.Type.Grade as T using (Quantity; _≤q_; Zero; One; Many)
-open import Once.Spec.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
-open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
-open import Once.Spec.Name using (CanonicalName; showCanonical; gen; own; NotGenerator; GenWord)
+open import Once.Lang.Type.Grade as T using (Quantity; _≤q_; Zero; One; Many)
+open import Once.Lang.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
+open import Once.Lang.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
+open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
+open import Once.Lang.Name using (showCanonical)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
 open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQualified-aux; inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
-import Once.Spec.Typing.Scope as Classify
+import Once.Lang.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
-open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
+open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (wellFormedF?-complete-at)
-open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
-open import Once.Spec.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Lang.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
-open import Once.Spec.Type.Sub using (_⊑π_)
+open import Once.Lang.Type.Sub using (_⊑π_)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Spec.Type.DecEq using (_≟T_)
-open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
+open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
 open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J)

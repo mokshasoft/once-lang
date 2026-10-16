@@ -12,15 +12,15 @@
 
 module Once.Metatheory.Totality where
 
-open import Once.Spec.Type.Grade using (pure; act; eff⁺; eff)
-open import Once.Spec.Trace using (T; ret; call; halt)
-open import Once.Spec.Guarded using (forget⁺)
-open import Once.Spec.Totality using (FiniteT; fin-ret; fin-call; fin-halt; ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
-open Once.Spec.Totality.ProductiveT∞ using (node)
-open import Once.Spec.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
-open Once.Spec.Iterative.T∞ using (force)
+open import Once.Lang.Type.Grade using (pure; act; eff⁺; eff)
+open import Once.Lang.Trace using (T; ret; call; halt)
+open import Once.Lang.Guarded using (forget⁺)
+open import Once.Lang.Totality using (FiniteT; fin-ret; fin-call; fin-halt; ProductiveT∞; ProductiveNode; prod-ret; prod-call; prod-halt)
+open Once.Lang.Totality.ProductiveT∞ using (node)
+open import Once.Lang.Iterative using (T∞; T∞F; ret∞; call∞; halt∞)
+open Once.Lang.Iterative.T∞ using (force)
 open import Once.Spec.Metatheory using (Totality)
-open import Once.Spec.GradedOps using (out-semᵛ)
+open import Once.Lang.GradedOps using (out-semᵛ)
 open import Once.Denotation.TraceMonadInfLaws using (events∞-pf)
 open import Once.Metatheory.Witness.NoSelfRef using (no-self-reference; no-forward-reference)
 open import Once.Metatheory.Witness.Server using (stream-typed; stream-emits)

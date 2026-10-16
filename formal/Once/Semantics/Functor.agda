@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------
 -- Once.Semantics.Functor — the laws of the polynomial functors
--- (`Once.Spec.Polynomial`): functoriality, Lambek, the fold's and the
+-- (`Once.Lang.Polynomial`): functoriality, Lambek, the fold's and the
 -- unfold's computation laws; and the optimizer's paramorphism and fusion
 -- forms (`paraS`, `fuseNatS`, `NatSF`).
 ------------------------------------------------------------------------
@@ -11,8 +11,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
-open import Once.Spec.Res using (Res; stopped; returns; mapRes)
-open import Once.Spec.Polynomial
+open import Once.Lang.Res using (Res; stopped; returns; mapRes)
+open import Once.Lang.Polynomial
 open νS
 
 ------------------------------------------------------------------------

@@ -32,7 +32,7 @@
 open import Once.Spec.Name using (CanonicalName)
 
 
-open import Once.Spec.Trace using (Interp)
+open import Once.Lang.Trace using (Interp)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
@@ -83,10 +83,10 @@ open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type using (Unit)
+open import Once.Lang.Type using (Unit)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
-open import Once.Spec.Module using (moduleSig)
+open import Once.Lang.Module using (moduleSig)
 import Once.Parser.Module.Core as P
 
 import Once.Adequacy.FileWF as FileWF

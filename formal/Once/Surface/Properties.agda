@@ -12,11 +12,11 @@ module Once.Surface.Properties where
 
 import Once.Metatheory.Grade as G
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Context
+open import Once.Lang.Context
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 

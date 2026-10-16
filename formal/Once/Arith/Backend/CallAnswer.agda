@@ -32,16 +32,17 @@ module Once.Arith.Backend.CallAnswer where
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; maybe′)
-open import Once.Spec.Name using (CanonicalName; showCanonical)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.Lang.Name using (showCanonical)
 open import Data.String using (String)
 
-open import Once.Spec.Type using (Type; Int; Float)
+open import Once.Lang.Type using (Type; Int; Float)
 open import Once.Spec.Word using (Carrier)
-import Once.Spec.Value Carrier Carrier as M
-open import Once.Spec.Event using (SigOpEvent)
-open import Once.Spec.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
-open Once.Spec.Trace.CallOp using (ccod; cdom)
-open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_)
+import Once.Lang.Value Carrier Carrier as M
+open import Once.Lang.Event using (SigOpEvent)
+open import Once.Lang.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
+open Once.Lang.Trace.CallOp using (ccod; cdom)
+open import Once.Lang.Contract using (Key; key; kdom; kcod; _∈K?_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 

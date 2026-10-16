@@ -25,11 +25,11 @@ module Once.TypeCheck.Determinism where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Syntax using (RawExpr)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult)
-open import Once.Spec.Typing.Scope using (NamedCtx)
+open import Once.Lang.Typing.Scope using (NamedCtx)
 
 ------------------------------------------------------------------------
 -- Reflexivity: the typechecker is a function

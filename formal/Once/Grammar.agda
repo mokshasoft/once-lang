@@ -19,7 +19,7 @@ open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
 open import Data.String using (String)
 
-open import Once.Spec.Type.Grade using (Quantity)
+open import Once.Lang.Type.Grade using (Quantity)
 
 ------------------------------------------------------------------------
 -- Identifiers
@@ -90,7 +90,7 @@ mutual
 -- | Convenience alias for the unrestricted (Many) arrow, matching
 -- the common `A -> B` surface form.
 _⇒_ : GType → GType → GType
-A ⇒ B = _⇒[_]_ A Once.Spec.Type.Grade.Many B
+A ⇒ B = _⇒[_]_ A Once.Lang.Type.Grade.Many B
 
 infixr 20 _⇒_
 infixr 20 _⇒[_]_

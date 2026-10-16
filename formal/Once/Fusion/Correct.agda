@@ -22,9 +22,9 @@
 
 module Once.Fusion.Correct where
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
 open import Once.IR
 -- plan 0.98: RED, and the red is the work-list. This module is stated over
@@ -66,7 +66,7 @@ fusion-compose-correct g f x = refl
 open import Data.Integer using (ℤ)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Float.Dyadic using (Dyadic)
-open import Once.Spec.Value Carrier Carrier using (sem-cata; sem-para; sem-ana; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
+open import Once.Lang.Value Carrier Carrier using (sem-cata; sem-para; sem-ana; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 open import Once.Semantics.Value Carrier Carrier using (sem-fuseNat; sem-fuseNat-cong)
 
 fusion-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)

@@ -23,7 +23,7 @@
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Spec.Trace using (FFIAnswers)
+open import Once.Lang.Trace using (FFIAnswers)
 
 -- Plan 0.105: over the interpretation's FFI half `φ`.
 module Once.Adequacy.TeleEnvLemmas (fmt : TargetNum) (φ : FFIAnswers) where
@@ -41,24 +41,24 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Induction.WellFounded using (Acc; acc)
 
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Type.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
-open import Once.Spec.Type.Poly using (PolyType)
+open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many)
+open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Lang.Type.Poly using (PolyType)
 open import Once.IRTy using (IRTy)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)
-import Once.Spec.Context as Srf
+import Once.Lang.Context as Srf
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
-open import Once.Spec.Trace using (T)
+open import Once.Lang.Trace using (T)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; module CallEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; cohᴰ)
 open CallEnv using (callsE)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
-open import Once.Spec.Syntax using (RawExpr)
-open import Once.Spec.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
+open import Once.Lang.Syntax using (RawExpr)
+open import Once.Lang.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
 open import Once.TypeCheck.Elaborate using (success; failure; checkElabV; VerifiedCheckResult)
@@ -67,7 +67,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; re
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
 open import Once.Adequacy.GradedRelation fmt using (RelGM)
-open import Once.Spec.Type.Grade using (pure)
+open import Once.Lang.Type.Grade using (pure)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip)
 
 ------------------------------------------------------------------------
@@ -166,9 +166,9 @@ imprel-transport σ₁ σ₂ ((n , U) ∷ rest) {e , ι} (h , hs) (r , rs) =
 refIR-cong : ∀ (U : Type) (f : CanonicalName) (ρ₁ ρ₂ : CallEnv)
   → (∀ (A B : IRTy) (a : ⟦ A ⟧ᴰᴵ) → callsE ρ₁ f A B a ≡ callsE ρ₂ f A B a)
   → evalᴰ fmt ρ₁ (refIR U f) tt ≡ evalᴰ fmt ρ₂ (refIR U f) tt
-refIR-cong (A ⇒[ mk-kind Zero π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Spec.Trace.returnT g) (extensionality λ b → h _ _ b)
-refIR-cong (A ⇒[ mk-kind One  π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Spec.Trace.returnT g) (extensionality λ b → h _ _ b)
-refIR-cong (A ⇒[ mk-kind Many π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Spec.Trace.returnT g) (extensionality λ b → h _ _ b)
+refIR-cong (A ⇒[ mk-kind Zero π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Lang.Trace.returnT g) (extensionality λ b → h _ _ b)
+refIR-cong (A ⇒[ mk-kind One  π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Lang.Trace.returnT g) (extensionality λ b → h _ _ b)
+refIR-cong (A ⇒[ mk-kind Many π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Lang.Trace.returnT g) (extensionality λ b → h _ _ b)
 refIR-cong Unit         f ρ₁ ρ₂ h = h _ _ tt
 refIR-cong Void         f ρ₁ ρ₂ h = h _ _ tt
 refIR-cong (A * B)      f ρ₁ ρ₂ h = h _ _ tt

@@ -11,7 +11,7 @@
 -- preparation) to break the import cycle that prevented
 -- `Elaborate.agda` from importing `Judgment.agda`. After the split:
 --
---   * `Once.Spec.Typing`  imports `Classify` (no longer
+--   * `Once.Lang.Typing`  imports `Classify` (no longer
 --     `Elaborate`).
 --   * `Once.TypeCheck.Elaborate` imports `Classify` and re-exports
 --     it `public` for backward compatibility, then imports
@@ -23,7 +23,7 @@
 
 module Once.TypeCheck.Classify where
 
-open import Once.Spec.Typing.Scope
+open import Once.Lang.Typing.Scope
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
@@ -41,25 +41,25 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Syntax using (RawExpr)
-open import Once.Spec.Syntax as Raw
+open import Once.Lang.Syntax using (RawExpr)
+open import Once.Lang.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
 open import Once.Spec.Name using (CanonicalName; canonical; gen; NotGenerator)
 open import Once.Spec.Name using (generatorNS)
 open import Once.CanonicalName using (gen-inj)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Once.Spec.Typing.Scope using (Ctx)
+open import Once.Lang.Typing.Scope using (Ctx)
 open import Once.TypeCheck.Context using (∅)
-open Once.Spec.Typing.Scope.Binding using (name)
+open Once.Lang.Typing.Scope.Binding using (name)
 -- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
 -- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
-open import Once.Spec.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Lang.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------

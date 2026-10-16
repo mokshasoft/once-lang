@@ -21,7 +21,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.IR using (IR; Heap)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type using (Unit)
+open import Once.Lang.Type using (Unit)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Target.Arch using (Arch)

@@ -18,9 +18,9 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; sigOf)
+open import Once.Lang.Core.PolyTy using (Sig; sigOf)
 
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 module Once.Adequacy.CoreMeaningBridge (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin)
@@ -30,30 +30,31 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.Poly using (Ground; extractGround)
-open import Once.Spec.Type.Instance using (KindedInstance)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Type.Poly using (Ground; extractGround)
+open import Once.Lang.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Spec.Type.WellFormed using (IsConcrete)
-open import Once.Spec.Name using (bare; showCanonical)
+open import Once.Lang.Type.WellFormed using (IsConcrete)
+open import Once.Spec.Name using (bare)
+open import Once.Lang.Name using (showCanonical)
 open import Data.List using (_∷_)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (_++_)
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Graded using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; bindᵍ)
-open import Once.Spec.Type.Sub using (·p-diag)
+open import Once.Lang.Graded using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; bindᵍ)
+open import Once.Lang.Type.Sub using (·p-diag)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ)
-open import Once.Spec.Trace using (T; interp; module Interp)
+open import Once.Lang.Trace using (T; interp; module Interp)
 open Interp using (sig; impl)
-open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
+open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
 open import Data.String using (String)
-open import Once.Spec.Typing
+open import Once.Lang.Typing
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; returnᵖ)
 open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
-open import Once.Spec.GradedOps using (fmapM; sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
-import Once.Spec.Core.Meaning S as GM
-open import Once.Spec.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE)
+open import Once.Lang.GradedOps using (fmapM; sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
+import Once.Lang.Core.Meaning S as GM
+open import Once.Lang.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE)
 open View
 
 ------------------------------------------------------------------------
@@ -97,22 +98,22 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
 -- The derived combinators' meanings (one lemma per combinator)
 ------------------------------------------------------------------------
 
-open import Once.Spec.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One)
-open import Once.Spec.Type using (_*_; Functor; ⟦_⟧T)
-open import Once.Spec.Type.WellFormed using (WellFormedF; con-fun)
-open import Once.Spec.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
+open import Once.Lang.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One)
+open import Once.Lang.Type using (_*_; Functor; ⟦_⟧T)
+open import Once.Lang.Type.WellFormed using (WellFormedF; con-fun)
+open import Once.Lang.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
-open import Once.Spec.Environment using (bindᵛ)
+open import Once.Lang.Environment using (bindᵛ)
 open import Data.Fin using (zero; suc)
-open import Once.Spec.Type.Grade using (Many; mk-kind; pure; eff)
-open import Once.Spec.Type using (_⇒[_]_)
-open import Once.Spec.Environment using (restrictᵛ)
-open import Once.Spec.Core.Syntax S
-open import Once.Spec.Type.Sub using (_⊑π_; sub-arr)
-open import Once.Spec.Type.Sub using (<:-refl)
-open import Once.Spec.Core.Typing S
-open import Once.Spec.Core.DerivedTyping S
+open import Once.Lang.Type.Grade using (Many; mk-kind; pure; eff)
+open import Once.Lang.Type using (_⇒[_]_)
+open import Once.Lang.Environment using (restrictᵛ)
+open import Once.Lang.Core.Syntax S
+open import Once.Lang.Type.Sub using (_⊑π_; sub-arr)
+open import Once.Lang.Type.Sub using (<:-refl)
+open import Once.Lang.Core.Typing S
+open import Once.Lang.Core.DerivedTyping S
 import Once.Metatheory.CoreRenameSem S as RS
 import Once.Denotation.EnvAlgebraV as EA
 
@@ -140,10 +141,10 @@ env-subst₂ {Γ = Γ} u v refl w x = EA.restrict-≡ {Γ = Γ} u v w x
 
 -- A shared grade read as the product of two (D311): the diagonal's bind.
 diag-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y) → subM (·p-diag π) (bindᵍ π π m k) ≡ bindM π m k
-diag-bind Once.Spec.Type.Grade.pure m k = refl
-diag-bind Once.Spec.Type.Grade.eff  m k = refl
-diag-bind Once.Spec.Type.Grade.eff⁺ m k = refl
-diag-bind Once.Spec.Type.Grade.act  m k = refl
+diag-bind Once.Lang.Type.Grade.pure m k = refl
+diag-bind Once.Lang.Type.Grade.eff  m k = refl
+diag-bind Once.Lang.Type.Grade.eff⁺ m k = refl
+diag-bind Once.Lang.Type.Grade.act  m k = refl
 
 module Comb {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)
@@ -330,10 +331,10 @@ module Comb {δ : GM.DefSem} where
 ------------------------------------------------------------------------
 
 open import Once.Denotation.Meaning using (EnvRun)
-open import Once.Spec.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Lang.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 
 -- The monad laws are equalities of trees (plan 0.105).
-open import Once.Spec.Trace using (returnT; _>>=T_)
+open import Once.Lang.Trace using (returnT; _>>=T_)
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityʳ)
 
 assocT : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z) → ((m >>=T f) >>=T g) ≡ (m >>=T (λ x → f x >>=T g))
@@ -448,7 +449,7 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-float i f l p) dγ = refl
   bridge-i V ag t-unit dγ = refl
   bridge-i V ag t-unit-var dγ = refl
-  bridge-i V ag (t-var-local {eV = Once.Spec.Context.svar i} _) dγ = refl
+  bridge-i V ag (t-var-local {eV = Once.Lang.Context.svar i} _) dγ = refl
   bridge-i V ag (t-var-qualified {name = name} {alias = alias} lk k) dγ = sym (Agree.agree-qualified ag {name = name} {alias = alias} lk k)
   bridge-i V ag (t-var-resolved {cn = cn} _ lk k) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
   bridge-i V ag (t-var-own _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
@@ -468,10 +469,10 @@ module _ {δ : GM.DefSem} where
     bindC (bridge-i V ag ds _)
       (λ { (inj₁ a) → trans (bridge-i V ag dl _)
                             (cong (GM.⟦ proj₂ (elabᵢ V dl) ⟧ fmt δ)
-                                  (sym (EA.restrict-bind {Γ = Γc} {A = A} qL qL (⊑ᵘ-keep qL (Once.Spec.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) (Once.Spec.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) x a)))
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = A} qL qL (⊑ᵘ-keep qL (Once.Lang.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) (Once.Lang.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) x a)))
          ; (inj₂ b) → trans (bridge-i V ag dr _)
                             (cong (GM.⟦ proj₂ (elabᵢ V dr) ⟧ fmt δ)
-                                  (sym (EA.restrict-bind {Γ = Γc} {A = B} qR qR (⊑ᵘ-keep qR (Once.Spec.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) (Once.Spec.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) x b))) })
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = B} qR qR (⊑ᵘ-keep qR (Once.Lang.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) (Once.Lang.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) x b))) })
     where Γc = NamedCtx.debruijn ctx
           x  = restrictᵛ {Γ = Γc} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ
   bridge-i V ag (t-binop-arith {op = OpAdd} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bridge-i V ag d₂ _)

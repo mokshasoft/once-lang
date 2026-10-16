@@ -32,10 +32,10 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
-open import Once.Spec.Type.Grade using (mk-kind; Many)
-open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
+open import Once.Lang.Type.Grade using (mk-kind; Many)
+open import Once.Lang.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
-open import Once.Spec.Trace using (T; returnT; _>>=T_)
+open import Once.Lang.Trace using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.IR as IR
 import Once.IRTy as IRTy
@@ -210,30 +210,30 @@ liftFn-curry {A} {B} {C} g =
 -- `returnT p >>=T f` is DEFINITIONALLY `f p` — `_>>=T_` concatenates `[] ++ es`
 -- and threads `n ∸ 0` — so the `fst` step collapses without a monad law.
 liftFn-eff-apply : ∀ {A B : Type}
-  → liftFn fmt ρ {(A ⇒[ mk-kind Many Once.Spec.Type.Grade.eff ] B) * A} {Unit ⇒[ mk-kind Many Once.Spec.Type.Grade.eff ] B}
+  → liftFn fmt ρ {(A ⇒[ mk-kind Many Once.Lang.Type.Grade.eff ] B) * A} {Unit ⇒[ mk-kind Many Once.Lang.Type.Grade.eff ] B}
            (IR.curry (apply ∘ fst))
     ≡ (λ p → returnT (λ _ → proj₁ p (proj₂ p)))
 liftFn-eff-apply {A} {B} = extensionality λ p →
   trans (cong (λ h → h p)
-              (liftFn-curry {A = P} {B = Unit} {C = B} {π = Once.Spec.Type.Grade.eff} (apply ∘ fst)))
+              (liftFn-curry {A = P} {B = Unit} {C = B} {π = Once.Lang.Type.Grade.eff} (apply ∘ fst)))
         (cong returnT (extensionality λ b →
           trans (cong (λ h → h (p , b)) (liftFn-∘ {B = P} {C = B} {A = P * Unit} apply fst))
           (trans (cong (_>>=T liftFn fmt ρ {P} {B} apply)
                        (cong (λ h → h (p , b)) (liftFn-fst {P} {Unit})))
-                 (cong (λ h → h p) (liftFn-apply {A} {B} {Once.Spec.Type.Grade.eff})))))
+                 (cong (λ h → h p) (liftFn-apply {A} {B} {Once.Lang.Type.Grade.eff})))))
   where
     P : Type
-    P = (A ⇒[ mk-kind Many Once.Spec.Type.Grade.eff ] B) * A
+    P = (A ⇒[ mk-kind Many Once.Lang.Type.Grade.eff ] B) * A
 
 -- D233: `curry (g ∘ fst)` is the SUSPENSION of `g` — what forcing an effectful
 -- stream at the surface elaborates to (`g = Out`). `liftFn-eff-apply` is the
 -- same shape at `g = apply`; the final `refl` is `returnT a >>=T f ≡ f a`.
 liftFn-curry-fst : ∀ {A C : Type} (g : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋)
-  → liftFn fmt ρ {A} {Unit ⇒[ mk-kind Many Once.Spec.Type.Grade.eff ] C} (IR.curry (g ∘ fst))
+  → liftFn fmt ρ {A} {Unit ⇒[ mk-kind Many Once.Lang.Type.Grade.eff ] C} (IR.curry (g ∘ fst))
     ≡ (λ a → returnT (λ _ → liftFn fmt ρ {A} {C} g a))
 liftFn-curry-fst {A} {C} g = extensionality λ a →
   trans (cong (λ h → h a)
-              (liftFn-curry {A = A} {B = Unit} {C = C} {π = Once.Spec.Type.Grade.eff} (g ∘ fst)))
+              (liftFn-curry {A = A} {B = Unit} {C = C} {π = Once.Lang.Type.Grade.eff} (g ∘ fst)))
         (cong returnT (extensionality λ b →
           trans (cong (λ h → h (a , b)) (liftFn-∘ {B = A} {C = C} {A = A * Unit} g fst))
                 (trans (cong (_>>=T liftFn fmt ρ {A} {C} g)

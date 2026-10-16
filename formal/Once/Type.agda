@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Type — the implementation's operations on types.
 --
--- The types themselves are the Spec's (`Once.Spec.Type`, `.Grade`, `.Poly`).
+-- The types themselves are the Spec's (`Once.Lang.Type`, `.Grade`, `.Poly`).
 -- This module holds what the compiler needs beyond them: decidable equality,
 -- Boolean equality, the groundness decider, printing for error messages, the
 -- register-resident classification and a few example functors.
@@ -25,12 +25,12 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
-open import Once.Spec.Type.Grade
+open import Once.Lang.Type.Grade
   using (Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff; ArrowKind; mk-kind)
-open import Once.Spec.Type
+open import Once.Lang.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any;
          Functor; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Poly
   using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
 
@@ -55,7 +55,7 @@ showArrowKind : ArrowKind → String
 showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
 
 
--- The deciders on quantities, purities and kinds are `Once.Spec.Type.DecEq`'s.
+-- The deciders on quantities, purities and kinds are `Once.Lang.Type.DecEq`'s.
 
 ------------------------------------------------------------------------
 -- Common Functor Patterns

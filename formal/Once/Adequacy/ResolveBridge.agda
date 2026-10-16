@@ -5,7 +5,7 @@
 -- Once.Adequacy.ResolveBridge — the executable resolver IMPLEMENTS the
 -- resolution spec. Plan 0.81 step 2.
 --
--- PROOF (not trusted). `Once.Spec.Resolution` says which `CanonicalName` each
+-- PROOF (not trusted). `Once.Lang.Resolution` says which `CanonicalName` each
 -- written reference denotes, as rules over PROPERTIES. This module proves that
 -- `Once.Parser.Module.Resolve.canonExpr` computes exactly that:
 --
@@ -40,14 +40,14 @@ open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Name using (GenWord)
-open import Once.Spec.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
+open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature;
   DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; canonDecl; isBuiltinName; expandPath;
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
-open import Once.Spec.Resolution
+open import Once.Lang.Resolution
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser.Module.Core using (Module; mkModule; Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames;

@@ -14,12 +14,12 @@
 -- the abstracted elaboration.
 ------------------------------------------------------------------------
 
-import Once.Spec.Type.WellFormed
+import Once.Lang.Type.WellFormed
 import Once.Type.Rigid
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
+open import Once.Lang.Core.PolyTy using (Sig)
 
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 module Once.Adequacy.ElabInst {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
@@ -29,23 +29,23 @@ import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.Poly using (PolyType)
-open import Once.Spec.Type.Instance using (KindedInstance; rigidOf)
-import Once.Spec.Context as C
-open import Once.Spec.Core.PolyTy using (KCtx; GSub; Respects; _⟪_⟫)
-open import Once.Spec.Core.Schema using (kindsOf; kinded-instance)
-open import Once.Spec.Typing.Scope using (Imports; PolyCtx; NamedCtx)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Type.Poly using (PolyType)
+open import Once.Lang.Type.Instance using (KindedInstance; rigidOf)
+import Once.Lang.Context as C
+open import Once.Lang.Core.PolyTy using (KCtx; GSub; Respects; _⟪_⟫)
+open import Once.Lang.Core.Schema using (kindsOf; kinded-instance)
+open import Once.Lang.Typing.Scope using (Imports; PolyCtx; NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
-open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Spec.Graded using (⟦_⟧ᵛ)
+open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Lang.Graded using (⟦_⟧ᵛ)
 import Once.TypeCheck.RigidSubst as RS
 import Once.TypeCheck.Instance as Inst
 import Once.Adequacy.CoreInst as CI
-import Once.Spec.Core.PolyTyping S as PT
-open import Once.Spec.Core.Abstract S using (SigGround; abs-⊢)
-import Once.Spec.Core.Meaning S as GM
-open import Once.Spec.Elaboration S using (View; Views; elabᶜ)
+import Once.Lang.Core.PolyTyping S as PT
+open import Once.Lang.Core.Abstract S using (SigGround; abs-⊢)
+import Once.Lang.Core.Meaning S as GM
+open import Once.Lang.Elaboration S using (View; Views; elabᶜ)
 
 ------------------------------------------------------------------------
 -- The view must agree with instantiation: a use at the substituted instance
@@ -61,7 +61,7 @@ import Once.Adequacy.ElabCommute as EC
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   elab-ρ̂ᶜ : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (nat : Natural Δ τ r V) (sg : SigGround)
               (ir : RS.TopRF Δ τ r imps sigs) {n Γ D e A Ψ}
-              (d : Once.Spec.Typing.Scope.mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+              (d : Once.Lang.Typing.Scope.mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
           → elabᶜ V (RS.subst-c′ Δ τ r ir d) ≡ (CI.ρ̂ₜ S Δ τ r (proj₁ (elabᶜ V d)) , CI.WithSG.ρ̂ᶜ S Δ τ r sg (proj₂ (elabᶜ V d)))
   elab-ρ̂ᶜ V nat sg ir d = EC.elab-ρ̂ᶜ S Δ τ r sg V nat ir d
 
@@ -97,8 +97,8 @@ poly-instance-sem : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps s
                       (fmt : TargetNum) (δ : GM.DefSem) {body : _} (sc : PolyType)
                       (nat : ∀ {U} (ki : KindedInstance sc U)
                              → Natural (kindsOf sc) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) V)
-                      (irf : (∀ {x T} → Once.Spec.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T → Once.Spec.Type.WellFormed.RigidFree T)
-                           × (∀ {x T} → Once.Spec.Typing.Scope.lookupImport sigs x ≡ Data.Maybe.just T → Once.Spec.Type.WellFormed.RigidFree T))
+                      (irf : (∀ {x T} → Once.Lang.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T → Once.Lang.Type.WellFormed.RigidFree T)
+                           × (∀ {x T} → Once.Lang.Typing.Scope.lookupImport sigs x ≡ Data.Maybe.just T → Once.Lang.Type.WellFormed.RigidFree T))
                       (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Type} (ki : KindedInstance sc U)
                   → GM.⟦ proj₂ (elabᶜ V (inst-at sc irf D ki)) ⟧ fmt δ tt
                     ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
@@ -120,11 +120,11 @@ import Data.String.Properties as StrProp
 open import Data.Maybe.Properties using (just-injective)
 open import Relation.Nullary using (yes; no)
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Core.PolyTy using (Schema; module Schema)
+open import Once.Lang.Core.PolyTy using (Schema; module Schema)
 open Schema using (arity; kinds; type)
 import Once.Compile as Cmp
-open import Once.Spec.Core.Translate using (SigSig; ImpSig; TeleSig; viewOf; telFind; i-def)
-import Once.Spec.Core.Translate as TR
+open import Once.Lang.Core.Translate using (SigSig; ImpSig; TeleSig; viewOf; telFind; i-def)
+import Once.Lang.Core.Translate as TR
 
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   private
@@ -142,7 +142,7 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
               → (λ i → RS.ρ̂ Δ τ r (proj₁ (subst (Inst T) (sym e) X) i)) ≡ proj₁ (subst (Inst T) (sym e) X)
     subst-fix refl X h = h
 
-    nat-imp′ : ∀ {imps} (is : ImpSig S imps) {x T} (lk : Once.Spec.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T)
+    nat-imp′ : ∀ {imps} (is : ImpSig S imps) {x T} (lk : Once.Lang.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T)
              → NatImp Δ τ r (TR.impAt is lk)
     nat-imp′ TR.[] ()
     nat-imp′ {(n , T₀) ∷ rest} (i-def d e is) {x} lk with StrProp._≟_ n x

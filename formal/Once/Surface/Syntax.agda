@@ -10,14 +10,14 @@
 
 module Once.Surface.Syntax where
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.Sub using (_<:_)
+open import Once.Lang.Type.Sub using (_<:_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type.WellFormed using (WellFormedF; IsConcrete)
+open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
 
 open import Data.Fin using (Fin)
 open import Data.Bool using (true)
@@ -36,7 +36,7 @@ open import Once.Spec.Name using (CanonicalName)
 -- Plan 0.58 (OCP-0006): the IR-FREE context/usage core moved to
 -- `Once.Surface.Context` and re-exported here (consumers unchanged), so the
 -- typing judgment / direct denotation can use it without `Once.IR`.
-open import Once.Spec.Context
+open import Once.Lang.Context
 open import Once.Surface.Context
 
 -- | Surface expressions (well-typed AND well-used by construction)

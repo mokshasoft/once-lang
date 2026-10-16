@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Metatheory.TySubst — the proof of THE TYPE-SUBSTITUTION LEMMA (D303),
--- stated as `ty-subst-⊢` in `Once.Spec.Core.TermModel`:
+-- stated as `ty-subst-⊢` in `Once.Lang.Core.TermModel`:
 --
 --     Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π   ⟹   Δ′ ⊩ Γ⟨σ⟩ ⊢[ Ψ ] t⟨σ⟩ₜ ∷ A⟨σ⟩ ! π
 --
@@ -15,24 +15,24 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Lang.Contract using (ISig)
 
 module Once.Metatheory.TySubst {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-import Once.Spec.Type as T
+import Once.Lang.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (Purity; pure; mk-kind; Many; One; _·p_; eff⁺)
-open import Once.Spec.Context using (Usage; zeroUsage; singleUse)
-open import Once.Spec.Core.PolyTy
+open import Once.Lang.Type.Grade using (Purity; pure; mk-kind; Many; One; _·p_; eff⁺)
+open import Once.Lang.Context using (Usage; zeroUsage; singleUse)
+open import Once.Lang.Core.PolyTy
 open Schema using (type)
-open import Once.Spec.Core.PolyTyping S
-import Once.Spec.Core.Syntax S as G
+open import Once.Lang.Core.PolyTyping S
+import Once.Lang.Core.Syntax S as G
 open G using (primDom; primCod)
-open import Once.Spec.Core.TySubst S
+open import Once.Lang.Core.TySubst S
 
 ------------------------------------------------------------------------
 -- Kinds, functors and subtyping are stable under a kind-respecting σ

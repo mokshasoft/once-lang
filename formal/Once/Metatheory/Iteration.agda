@@ -19,8 +19,8 @@ module Once.Metatheory.Iteration where
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
-open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; root⁺; forget⁺; iter∞; iterRoot∞; iterTree∞; iterLayer∞; iterStart∞)
-open import Once.Spec.Iterative
+open import Once.Lang.Guarded using (T⁺; call⁺; halt⁺; root⁺; forget⁺; iter∞; iterRoot∞; iterTree∞; iterLayer∞; iterStart∞)
+open import Once.Lang.Iterative
 open T∞ using (force)
 open TreeEq∞ using (force≈)
 

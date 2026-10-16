@@ -3,9 +3,9 @@
 
 ------------------------------------------------------------------------
 -- Once.Metatheory.TermModel — plan 0.102 phase B (D276, D304): THE PROOF of
--- `Once.Spec.Core.TermModel`.
+-- `Once.Lang.Core.TermModel`.
 --
---   * `subst-⊢` is `Once.Spec.Core.Subst.subst-⊢` (composition is defined);
+--   * `subst-⊢` is `Once.Lang.Core.Subst.subst-⊢` (composition is defined);
 --   * `let-β`: `t[u/x]` means what `let x = u in t` means, for a pure `u` —
 --     the semantic substitution lemma (`CoreSubstSem.sub-sem`) at the
 --     substitution `single u`, whose induced environment is exactly the one
@@ -14,27 +14,27 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Lang.Contract using (ISig)
 
 module Once.Metatheory.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
-open import Once.Spec.Type using (Type)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
+open import Once.Lang.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Context using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
-open import Once.Spec.Graded using ()
+open import Once.Lang.Context using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Lang.Graded using ()
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
-open import Once.Spec.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Lang.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Denotation.EnvAlgebraV using (Env; restrict-≡)
-open import Once.Spec.Core.Syntax S
-open import Once.Spec.Core.Typing S
-open import Once.Spec.Core.Subst S using (sub-⊢; single-ty; single-usage; subst-⊢)
-import Once.Spec.Core.Meaning S as GM
-open import Once.Spec.Core.TermModel S using (TermModel)
+open import Once.Lang.Core.Syntax S
+open import Once.Lang.Core.Typing S
+open import Once.Lang.Core.Subst S using (sub-⊢; single-ty; single-usage; subst-⊢)
+import Once.Lang.Core.Meaning S as GM
+open import Once.Lang.Core.TermModel S using (TermModel)
 open import Once.Metatheory.TySubst S using (tsubst)
 open import Once.Metatheory.CoreSubstSem S
   using (Live; l-one; l-many; l-suc; look; env-ext; look-bind; subst-restr; ⟦retype⟧; single-⊑; module Rows)

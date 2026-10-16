@@ -1,0 +1,190 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Lang.Type.Honest — SPEC. An FFI declaration's type does not hide an effect
+-- (D231: `pure` means no side effects).
+--
+-- A SigOp's effect is read off its codomain (D225): returning `Unit` EMITS,
+-- returning `Void` HALTS. So an FFI arrow into `Unit`/`Void` must be
+-- effectful, and a bare constant of type `Unit`/`Void` — a nullary effect,
+-- whose every REFERENCE would emit — is not a declaration at all: effects live
+-- on arrows (D032), so it is written `Eff Unit Unit`. A curried declaration is
+-- honest when its innermost Unit/Void-returning arrow is.
+------------------------------------------------------------------------
+
+module Once.Lang.Type.Honest where
+
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (_×_; _,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
+
+-- Plan 0.113 B2: HALTING and EMITTING are properties UP TO ISOMORPHISM — a codomain
+-- that is EMPTY halts (initial object), one that is a SINGLETON owes no answer
+-- (terminal object). The contract (`Spec.Contract.contract-eff`) and every layer
+-- after it decide by the syntactic `B ≡ Void` / `B ≡ Unit`. That is correct only on
+-- a SKELETON: an honest declaration writes an empty codomain as `Void` and a
+-- singleton one as `Unit`. Otherwise `Void * Int` would be an "answers" contract
+-- whose answer type is empty — no implementation of the signature exists, and the
+-- correctness theorem is vacuous for the program.
+--
+-- Over the first-order codomains an FFI signature can have (`IsConcrete`: the ABI),
+-- both are structural. Anything else (an arrow inside data, `μ`, `ν`, `rigid`) is
+-- not first-order data: `⊥`, i.e. not an honest codomain.
+NotEmpty : Type → Set
+NotEmpty Unit    = ⊤
+NotEmpty Void    = ⊥
+NotEmpty Int     = ⊤
+NotEmpty Float   = ⊤
+NotEmpty (A * B) = NotEmpty A × NotEmpty B
+NotEmpty (A + B) = NotEmpty A ⊎ NotEmpty B
+NotEmpty (_ ⇒[ _ ] _) = ⊥
+NotEmpty (μ-type _)   = ⊥
+NotEmpty (ν-type _ _) = ⊥
+NotEmpty (rigid _ _)  = ⊥
+
+-- `|A + B| ≠ 1` iff both summands are inhabited, or neither is a singleton.
+NotSingleton : Type → Set
+NotSingleton Unit    = ⊥
+NotSingleton Void    = ⊤
+NotSingleton Int     = ⊤
+NotSingleton Float   = ⊤
+NotSingleton (A * B) = NotSingleton A ⊎ NotSingleton B
+NotSingleton (A + B) = (NotEmpty A × NotEmpty B) ⊎ (NotSingleton A × NotSingleton B)
+NotSingleton (_ ⇒[ _ ] _) = ⊥
+NotSingleton (μ-type _)   = ⊥
+NotSingleton (ν-type _ _) = ⊥
+NotSingleton (rigid _ _)  = ⊥
+
+-- A data codomain at grade `π` (not `Unit`/`Void`, not an arrow): a pure one must be
+-- inhabited (a value contract); an effectful one must be neither empty nor a
+-- singleton — those ARE `Void` / `Unit` and must be written so.
+DataCod : Purity → Type → Set
+DataCod pure B = NotEmpty B
+DataCod eff  B = NotEmpty B × NotSingleton B
+DataCod eff⁺ B = NotEmpty B × NotSingleton B
+DataCod act  B = NotEmpty B × NotSingleton B
+
+-- An effectful grade of one call: the codomain may be `Unit` (it emits) or
+-- `Void` (it halts). A foreign operation is ONE call at every effectful
+-- grade: at `act` a one-node tree of `T` (D313), at `eff` of `T∞` (D312), at
+-- the guard `eff⁺` the generic effect itself (D311).
+Effectful : Purity → Set
+Effectful eff  = ⊤
+Effectful eff⁺ = ⊤
+Effectful act  = ⊤
+Effectful pure = ⊥
+
+-- The codomain `B` of an arrow at grade `π`.
+HonestCod : Purity → Type → Set
+HonestCod π Unit                       = Effectful π
+HonestCod π Void                       = Effectful π
+HonestCod π (A ⇒[ mk-kind q π′ ] B)    = HonestCod π′ B
+HonestCod π (A * B)                    = DataCod π (A * B)
+HonestCod π (A + B)                    = DataCod π (A + B)
+HonestCod π (μ-type _)                 = ⊥   -- B2: not first-order data
+HonestCod π (ν-type _ _)               = ⊥
+HonestCod π Int                        = ⊤
+HonestCod π Float                      = ⊤
+HonestCod π (rigid _ _)                = ⊥   -- D243: an FFI signature is ground
+
+-- A constant is a pure value: it must be inhabited.
+HonestFFI : Type → Set
+HonestFFI Unit                    = ⊥
+HonestFFI Void                    = ⊥
+HonestFFI (A ⇒[ mk-kind q π ] B)  = HonestCod π B
+HonestFFI (A * B)                 = NotEmpty (A * B)
+HonestFFI (A + B)                 = NotEmpty (A + B)
+HonestFFI (μ-type _)              = ⊥
+HonestFFI (ν-type _ _)            = ⊥
+HonestFFI Int                     = ⊤
+HonestFFI Float                   = ⊤
+HonestFFI (rigid _ _)             = ⊥   -- D243: an FFI signature is ground
+
+------------------------------------------------------------------------
+-- Deciders (implementation; the elaborator checks a reference with them)
+------------------------------------------------------------------------
+
+isEff? : (π : Purity) → Maybe (π ≡ eff)
+isEff? pure = nothing
+isEff? eff  = just refl
+isEff? eff⁺ = nothing
+isEff? act  = nothing
+
+effectful? : (π : Purity) → Maybe (Effectful π)
+effectful? eff  = just tt
+effectful? eff⁺ = just tt
+effectful? act  = just tt
+effectful? pure = nothing
+
+-- Two witnesses, or the first that exists (no `with`: proofs follow by cases).
+both : ∀ {A B : Set} → Maybe A → Maybe B → Maybe (A × B)
+both (just a) (just b) = just (a , b)
+both (just _) nothing  = nothing
+both nothing  _        = nothing
+
+either : ∀ {A B : Set} → Maybe A → Maybe B → Maybe (A ⊎ B)
+either (just a) _        = just (inj₁ a)
+either nothing  (just b) = just (inj₂ b)
+either nothing  nothing  = nothing
+
+notEmpty? : (T : Type) → Maybe (NotEmpty T)
+notEmpty? Unit         = just tt
+notEmpty? Void         = nothing
+notEmpty? Int          = just tt
+notEmpty? Float        = just tt
+notEmpty? (A * B)      = both (notEmpty? A) (notEmpty? B)
+notEmpty? (A + B)      = either (notEmpty? A) (notEmpty? B)
+notEmpty? (_ ⇒[ _ ] _) = nothing
+notEmpty? (μ-type _)   = nothing
+notEmpty? (ν-type _ _) = nothing
+notEmpty? (rigid _ _)  = nothing
+
+notSingleton? : (T : Type) → Maybe (NotSingleton T)
+notSingleton? Unit         = nothing
+notSingleton? Void         = just tt
+notSingleton? Int          = just tt
+notSingleton? Float        = just tt
+notSingleton? (A * B)      = either (notSingleton? A) (notSingleton? B)
+notSingleton? (A + B)      = either (both (notEmpty? A) (notEmpty? B)) (both (notSingleton? A) (notSingleton? B))
+notSingleton? (_ ⇒[ _ ] _) = nothing
+notSingleton? (μ-type _)   = nothing
+notSingleton? (ν-type _ _) = nothing
+notSingleton? (rigid _ _)  = nothing
+
+dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
+dataCod? pure B = notEmpty? B
+dataCod? eff  B = both (notEmpty? B) (notSingleton? B)
+dataCod? eff⁺ B = both (notEmpty? B) (notSingleton? B)
+dataCod? act  B = both (notEmpty? B) (notSingleton? B)
+
+honestCod? : (π : Purity) (B : Type) → Maybe (HonestCod π B)
+honestCod? π Unit                     = effectful? π
+honestCod? π Void                     = effectful? π
+honestCod? π (A ⇒[ mk-kind q π′ ] B)  = honestCod? π′ B
+honestCod? π (A * B)                  = dataCod? π (A * B)
+honestCod? π (A + B)                  = dataCod? π (A + B)
+honestCod? π (μ-type _)               = nothing
+honestCod? π (ν-type _ _)             = nothing
+honestCod? π Int                      = just tt
+honestCod? π Float                    = just tt
+honestCod? π (rigid _ _)              = nothing
+
+honest? : (T : Type) → Maybe (HonestFFI T)
+honest? Unit                    = nothing
+honest? Void                    = nothing
+honest? (A ⇒[ mk-kind q π ] B)  = honestCod? π B
+honest? (A * B)                 = notEmpty? (A * B)
+honest? (A + B)                 = notEmpty? (A + B)
+honest? (μ-type _)              = nothing
+honest? (ν-type _ _)            = nothing
+honest? Int                     = just tt
+honest? Float                   = just tt
+honest? (rigid _ _)             = nothing
+

@@ -29,15 +29,15 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.Spec.Type.Grade as Ty using (Zero; One; Many; mk-kind)
-open import Once.Spec.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
-open import Once.Spec.Type.Sub
+open import Once.Lang.Type.Grade as Ty using (Zero; One; Many; mk-kind)
+open import Once.Lang.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
+open import Once.Lang.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Spec.Trace using (T; returnT; _>>=T_; fmapT)
+open import Once.Lang.Trace using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-cong)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Sub using (⟦_⟧<:)

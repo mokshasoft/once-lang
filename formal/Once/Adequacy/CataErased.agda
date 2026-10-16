@@ -36,8 +36,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
-open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Spec.Trace using (T; fmapT; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.Lang.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
+open import Once.Lang.Trace using (T; fmapT; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.Denotation.TraceMonadLaws using (fmapT-id; RelT′-bind; RelT′-fmap; RelT′-≡; ≡-RelT′)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
@@ -46,23 +46,23 @@ open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Type using (Type; Functor; ⟦_⟧T; μ-type)
-open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
-open import Once.Spec.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+open import Once.Lang.Type using (Type; Functor; ⟦_⟧T; μ-type)
+open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Lang.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
-open import Once.Spec.Stream using (seqF)
+open import Once.Lang.Stream using (seqF)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor⁻¹-D)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (conB; baseA)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
-open import Once.Spec.Value Carrier Carrier using (coerce-base-to-full)
+open import Once.Lang.Value Carrier Carrier using (coerce-base-to-full)
 open import Once.Semantics.ValueIR Carrier Carrier using (base-coh)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Postulates using (extensionality)
 open import Data.Sum using (_⊎_)
-import Once.Spec.Type as TT
+import Once.Lang.Type as TT
 import Once.Type as TT
 import Once.IRTy as II
 import Once.IR as IR

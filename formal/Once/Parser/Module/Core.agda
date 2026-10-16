@@ -21,9 +21,9 @@ open import Data.Nat using (_≤_; _<_; s≤s)
 open import Data.Nat.Properties using (≤-refl)
 open import Data.Nat.Induction using (<-wellFounded)
 
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.Poly using (PolyType)
-open import Once.Spec.Syntax using (RawExpr)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Type.Poly using (PolyType)
+open import Once.Lang.Syntax using (RawExpr)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseTypeWF)
 open import Once.Parser.TypeRelation using (ParsesType-shrinks)

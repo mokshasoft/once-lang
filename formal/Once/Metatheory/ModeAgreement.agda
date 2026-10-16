@@ -31,18 +31,18 @@ open import Data.List.Relation.Unary.All using (_∷_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Spec.Type as T using (Type; _*_; _+_; _⇒[_]_; μ-type; ν-type)
-import Once.Spec.Type.Grade as T
-open import Once.Spec.Type.Poly as T using (PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PInt; PFloat; PTVar; PK; PId; _P⊕_; _P⊗_)
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure)
+open import Once.Lang.Type as T using (Type; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+import Once.Lang.Type.Grade as T
+open import Once.Lang.Type.Poly as T using (PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PInt; PFloat; PTVar; PK; PId; _P⊕_; _P⊗_)
+open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure)
 open import Once.Type.Determined using (cod-determined)
 open import Data.String using (String)
-open import Once.Spec.Syntax as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
+open import Once.Lang.Syntax as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (gen)
-open import Once.Spec.Typing.Scope using (NamedCtx)
-open import Once.Spec.Typing
-import Once.Spec.Context as Surface
-open import Once.Spec.Context using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Lang.Typing.Scope using (NamedCtx)
+open import Once.Lang.Typing
+import Once.Lang.Context as Surface
+open import Once.Lang.Context using (zeroUsage; _+ᵘ_; _*ᵘ_)
 
 ------------------------------------------------------------------------
 -- Small facts

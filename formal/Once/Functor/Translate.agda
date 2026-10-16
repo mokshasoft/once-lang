@@ -1,13 +1,13 @@
 ------------------------------------------------------------------------
 -- Once.Functor.Translate — the laws of reading a functor code as a set
--- functor (`Once.Spec.FunctorMeaning`), and the irrelevance of the
+-- functor (`Once.Lang.FunctorMeaning`), and the irrelevance of the
 -- well-formedness witnesses.
 --
 -- Translation from syntactic Functor (with Type) to semantic SFunctor (with Set).
 --
 -- This module provides the bridge between:
---   - Once.Spec.Type.Functor (K takes Type)
---   - Once.Spec.Polynomial.SFunctor (K takes Set)
+--   - Once.Lang.Type.Functor (K takes Type)
+--   - Once.Lang.Polynomial.SFunctor (K takes Set)
 --
 -- The translation uses a base type interpretation that handles only
 -- base types (Unit, Int, etc.), avoiding dependency on ⟦μ⟧.
@@ -23,14 +23,14 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Polynomial
+open import Once.Lang.Polynomial
 open import Once.Semantics.Functor
-open import Once.Spec.Type.WellFormed
-open import Once.Spec.FunctorMeaning
+open import Once.Lang.Type.WellFormed
+open import Once.Lang.FunctorMeaning
 -- | Translation preserves interpretation
 translate-coherence : ∀ IntRep FloatRep F X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X
 translate-coherence IntRep FloatRep (K A) X = refl

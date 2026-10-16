@@ -28,12 +28,12 @@ import Once.IRTy
 import Once.IRTy as IRTy′
 import Once.IR
 open import Data.List.Properties using (++-identityʳ)
-open import Once.Spec.Res using (is-stopped)
+open import Once.Lang.Res using (is-stopped)
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
-import Once.Spec.Trace as TM
-open import Once.Spec.Res using (returns)
+import Once.Lang.Trace as TM
+open import Once.Lang.Res using (returns)
 
 module ApplyC {FS : FrameSemantics} where
 

@@ -30,15 +30,15 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; trans; sym; subst; subst-subst-sym)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Type using (Functor; μ-type; ⟦_⟧T)
-open import Once.Spec.Type.WellFormed using (WellFormedF)
-open import Once.Spec.FunctorMeaning using (translateF)
+open import Once.Lang.Type using (Functor; μ-type; ⟦_⟧T)
+open import Once.Lang.Type.WellFormed using (WellFormedF)
+open import Once.Lang.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Spec.Polynomial using (μS; ⟨_⟩; ⟦_⟧SF)
-import Once.Spec.Polynomial
+open import Once.Lang.Polynomial using (μS; ⟨_⟩; ⟦_⟧SF)
+import Once.Lang.Polynomial
 open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
-open import Once.Spec.Trace using (T; returnT)
+open import Once.Lang.Trace using (T; returnT)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)
@@ -54,7 +54,7 @@ coerce-μ-in-subst : ∀ (G : Functor) {X X' : Set} (p : X ≡ X') (x : ⟦ G �
 coerce-μ-in-subst G refl x = refl
 
 -- Split a diagonal subst `⟦H⟧SF(μS H)` into carrier-subst then functor-subst.
-subst-diag : ∀ {H₁ H₂ : Once.Spec.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
+subst-diag : ∀ {H₁ H₂ : Once.Lang.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
                (z : ⟦ H₁ ⟧SF (μS H₁))
   → subst (λ H → ⟦ H ⟧SF (μS H)) eq z
     ≡ subst (λ H → ⟦ H ⟧SF (μS H₂)) eq (subst (λ C → ⟦ H₁ ⟧SF C) (cong μS eq) z)
@@ -68,13 +68,13 @@ In-ir {F} wfF = subst (λ o → IR.IR o ⌊ μ-type F ⌋)
 
 -- `⟨_⟩` (the μS "in" constructor) commutes with a subst over the functor eq.
 -- Match-to-refl.
-⟨⟩-subst-nat : ∀ {H₁ H₂ : Once.Spec.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
+⟨⟩-subst-nat : ∀ {H₁ H₂ : Once.Lang.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
                  (z : ⟦ H₁ ⟧SF (μS H₁))
   → subst μS eq ⟨ z ⟩ ≡ ⟨ subst (λ H → ⟦ H ⟧SF (μS H)) eq z ⟩
 ⟨⟩-subst-nat refl z = refl
 
 -- `subst id (cong μS p) = subst μS p`.  Match-to-refl.
-subst-id-μS : ∀ {H₁ H₂ : Once.Spec.Polynomial.SFunctor} (p : H₁ ≡ H₂) (z : μS H₁)
+subst-id-μS : ∀ {H₁ H₂ : Once.Lang.Polynomial.SFunctor} (p : H₁ ≡ H₂) (z : μS H₁)
   → subst id (cong μS p) z ≡ subst μS p z
 subst-id-μS refl z = refl
 

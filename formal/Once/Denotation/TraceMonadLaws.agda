@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.TraceMonadLaws — the lemmas about `Once.Spec.Trace`, moved out so that module
+-- Once.Denotation.TraceMonadLaws — the lemmas about `Once.Lang.Trace`, moved out so that module
 -- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
 ------------------------------------------------------------------------
 
@@ -19,22 +19,23 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
-open import Once.Spec.Type using (Type; isUnit?)
-import Once.Spec.Type as SpecTy
+open import Once.Lang.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
+open import Once.Lang.Type using (Type; isUnit?)
+import Once.Lang.Type as SpecTy
 import Once.Type as Ty
-open import Once.Spec.Type.WellFormed using (IsBaseType)
-open import Once.Spec.Name using (CanonicalName; showCanonical; gen)
+open import Once.Lang.Type.WellFormed using (IsBaseType)
+open import Once.Spec.Name using (CanonicalName; gen)
+open import Once.Lang.Name using (showCanonical)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Spec.Type.WellFormed using (base-Unit)
+open import Once.Lang.Type.WellFormed using (base-Unit)
 open import Once.Spec.Word using (Carrier)
-import Once.Spec.Value Carrier Carrier as M
-open import Once.Spec.Event using (SigOpEvent; mk-event)
-open import Once.Spec.Trace using (FFIAnswers)
-open import Once.Spec.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
-open import Once.Spec.Trace
+import Once.Lang.Value Carrier Carrier as M
+open import Once.Lang.Event using (SigOpEvent; mk-event)
+open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Lang.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
+open import Once.Lang.Trace
 open CallOp
 open HaltOp
 open Interp

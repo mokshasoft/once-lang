@@ -9,11 +9,11 @@
 module Once.Denotation.GuardedLaws where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Iterative
+open import Once.Lang.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; _>>=∞_; bind∞F; TreeEq∞; NodeEq; call≈∞; halt≈∞; module T∞)
 open T∞ using (force)
-open Once.Spec.Iterative.TreeEq∞ using (force≈)
-open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; root⁺; forget⁺; _>>=⁺_; _⁺=<<_; bindF⁺)
+open Once.Lang.Iterative.TreeEq∞ using (force≈)
+open import Once.Lang.Guarded using (T⁺; call⁺; halt⁺; root⁺; forget⁺; _>>=⁺_; _⁺=<<_; bindF⁺)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-refl; ≈∞-reflF; ≈∞-bind; ≈∞-rewrite; ≈∞-assoc)
 
 forget-bind⁺ : ∀ {X Y} (m : T⁺ X) (f : X → T∞ Y) → TreeEq∞ _≡_ (forget⁺ (m >>=⁺ f)) (forget⁺ m >>=∞ f)
@@ -28,8 +28,8 @@ forget-⁺bindF (ret∞ x)      f = ≈∞-reflF (λ _ → refl) (root⁺ (f x))
 forget-⁺bindF (call∞ o a k) f = call≈∞ (λ b → ≈∞-refl (λ _ → refl) _)
 forget-⁺bindF (halt∞ o a)   f = halt≈∞
 
-open import Once.Spec.Guarded using (anaRoot⁺; anaTree⁺)
-open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
+open import Once.Lang.Guarded using (anaRoot⁺; anaTree⁺)
+open import Once.Lang.Polynomial using (SFunctor; ⟦_⟧SF)
 
 forget-anaRoot : ∀ (H : SFunctor) {A : Set} (c : A → T⁺ (⟦ H ⟧SF A)) (m : T⁺ (⟦ H ⟧SF A))
                → TreeEq∞ _≡_ (forget⁺ (anaRoot⁺ H c m)) (anaTree⁺ H c (forget⁺ m))

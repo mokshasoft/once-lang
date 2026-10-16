@@ -22,9 +22,9 @@
 module Once.Adequacy.FunBundle where
 
 
-open import Once.Spec.Typing.Scope using (PolyCtx)
+open import Once.Lang.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
-open import Once.Spec.Module using (ModTele; []; ffi; mono; poly; MainIn)
+open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -43,24 +43,24 @@ open import Function using (case_of_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type.Grade using (mk-kind; Many; eff)
-open import Once.Spec.Type using (Unit; Type; _⇒[_]_)
+open import Once.Lang.Type.Grade using (mk-kind; Many; eff)
+open import Once.Lang.Type using (Unit; Type; _⇒[_]_)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Spec.Type.Instance using (rigidOf)
-open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Lang.Type.Instance using (rigidOf)
+open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?)
-open import Once.Spec.Type.WellFormed using (IsConcrete)
+open import Once.Lang.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Spec.Type.Honest using (HonestFFI; honest?)
+open import Once.Lang.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
-open import Once.Spec.Context using (Usage)
+open import Once.Lang.Context using (Usage)
 open import Once.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
-open import Once.Spec.Typing.Scope using (NamedCtx)
-open import Once.Spec.Syntax using (RawExpr)
+open import Once.Lang.Typing.Scope using (NamedCtx)
+open import Once.Lang.Syntax using (RawExpr)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module

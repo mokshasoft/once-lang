@@ -29,11 +29,11 @@ open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-sym-subst; subst-subst-sym)
 
-open import Once.Spec.Type.Grade using (Purity; mk-kind; Many)
-open import Once.Spec.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
+open import Once.Lang.Type.Grade using (Purity; mk-kind; Many)
+open import Once.Lang.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 import Once.Semantics.Machine as Val
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; Ana)
-open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Lang.Type.WellFormed using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
@@ -43,18 +43,18 @@ open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘)
 open import Once.Adequacy.AnaErased fmt ρ using (VE0ᴰ; coerce-νin-erase-D)
 open import Once.Semantics.Machine using
   (coerce-ν-in; tF-coh; ⟦_⟧F)
-open import Once.Spec.Polynomial using (⟦_⟧SF; SFunctor)
-open import Once.Spec.Stream using (anaFᵈ)
+open import Once.Lang.Polynomial using (⟦_⟧SF; SFunctor)
+open import Once.Lang.Stream using (anaFᵈ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor-D; subst-νᵈ-cong; anaᵈ-erase-full)
-open import Once.Spec.Context using (Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
+open import Once.Lang.Context using (Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Denotation.Phase using (restrictᴰ)
 open import Once.Surface.Elaborate using (elaborate; cataM; anaM; restrictEnv)
 import Once.Compile as C
 import Once.IR as IR
-open import Once.Spec.Trace using (T; returnT; _>>=T_; fmapT)
+open import Once.Lang.Trace using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; fmapT-∘; fmapT-cong)
-open import Once.Spec.FunctorMeaning using (translateF)
+open import Once.Lang.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.Denotation.SourceDenote as SD
@@ -177,7 +177,7 @@ cataM-fold {F} {A} {π} wfF c =
     -- Applying the carried closure IS the algebra: `⟨fst,snd⟩` is pair-η and
     -- `liftFn apply` is application, so the fold's per-layer algebra is `c`.
     apply-closure : ∀ (z : ⟦ ⟦ F ⟧T A ⟧ᴰ)
-                  → liftFn fmt ρ {(⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Once.Spec.Type.* (⟦ F ⟧T A)} {A}
+                  → liftFn fmt ρ {(⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Once.Lang.Type.* (⟦ F ⟧T A)} {A}
                            applyIR (c , z)
                     ≡ c z
     apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {π})
@@ -293,7 +293,7 @@ anaM-unfold {F} {A} {π₀} {π} wf c =
 
     -- Applying the carried closure IS the coalgebra (pair-η, then application).
     apply-closure : ∀ (z : ⟦ A ⟧ᴰ)
-                  → liftFn fmt ρ {Arr Once.Spec.Type.* A} {⟦ F ⟧T A} applyIR (c , z) ≡ c z
+                  → liftFn fmt ρ {Arr Once.Lang.Type.* A} {⟦ F ⟧T A} applyIR (c , z) ≡ c z
     apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {A} {⟦ F ⟧T A} {π})
 
     -- The IR-side coalgebra, as `anaFᵈ` receives it.

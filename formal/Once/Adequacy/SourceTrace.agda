@@ -44,7 +44,7 @@ open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Spec.Type using (Unit)
+open import Once.Lang.Type using (Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C
@@ -69,15 +69,15 @@ open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are
 -- recursive and a parameterised module stops reducing at a variable instance.
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Trace
+open import Once.Lang.Trace
   using (projTrace; PrefixFamily; Interp; pureHalf)
 open import Once.Denotation.TraceMonadLaws using (projTrace-pf)
-open Once.Spec.Trace.PrefixFamily using (bnd; coh; sat)
+open Once.Lang.Trace.PrefixFamily using (bnd; coh; sat)
 open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 import Once.IR as I
 open import Once.IRTy using (IRTy; _≟IRTy_)
 
@@ -241,7 +241,7 @@ rewrite-program-linked p (lm , les) =
 -- The verified front-end (Plan 0.51): parse the user's grammar module,
 -- THEN resolve its imports against the in-`Source` `ModuleMap`. This is the
 -- resolution step the binary runs — now INSIDE the verified pipeline, so a
--- resolver bug is the apex's concern (`Once.Spec.Resolution` + its bridge), not a
+-- resolver bug is the apex's concern (`Once.Lang.Resolution` + its bridge), not a
 -- trusted-I/O step. The INDEPENDENT meaning (`_⊢R_`/`⟦_⟧ˢ`) instead anchors on
 -- the UN-resolved `gmoduleToModule (Source.srcModule src)`, so completeness is
 -- not resolver-vacuous; `Once.Adequacy.ResolveBridge` proves the resolver right.

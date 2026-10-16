@@ -32,8 +32,8 @@
 module Once.TypeCheck.Error where
 
 open import Data.String using (String; _++_)
-open import Once.Spec.Type.Grade using (Quantity)
-open import Once.Spec.Type using (Type)
+open import Once.Lang.Type.Grade using (Quantity)
+open import Once.Lang.Type using (Type)
 open import Once.Type using (showQuantity; showType)
 
 ------------------------------------------------------------------------

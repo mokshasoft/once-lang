@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Denotation.PhaseV — the coherence laws of the runtime environment's
--- operations (`Once.Spec.Environment`).
+-- operations (`Once.Lang.Environment`).
 ------------------------------------------------------------------------
 
 module Once.Denotation.PhaseV where
@@ -11,13 +11,13 @@ module Once.Denotation.PhaseV where
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
 -- Imported from `Surface.Context` (the DEFINING module) rather than through
 -- `Surface.Syntax`'s re-export: `_↾_` is recursive, and a recursive function
 -- reached through a re-export does not always reduce at the use site.
-open import Once.Spec.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
-open import Once.Spec.Graded using (⟦_⟧ᵛ)
-open import Once.Spec.Environment using (restrictᵛ; bindᵛ; eraseᵛ)
+open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
+open import Once.Lang.Graded using (⟦_⟧ᵛ)
+open import Once.Lang.Environment using (restrictᵛ; bindᵛ; eraseᵛ)
 
 -- | THE COHERENCE that makes the factoring work: narrowing an already-erased
 --   environment is the same as erasing at the smaller usage directly.

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.GradedDomainLaws — the lemmas about `Once.Spec.Graded`, moved out so that module
+-- Once.Denotation.GradedDomainLaws — the lemmas about `Once.Lang.Graded`, moved out so that module
 -- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
 ------------------------------------------------------------------------
 
@@ -13,16 +13,16 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pa)
+open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-pa)
 import Once.Semantics.Machine as Val
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
-open import Once.Spec.FunctorMeaning using (translateF)
-open import Once.Spec.Graded
+open import Once.Lang.Polynomial using (SFunctor; ⟦_⟧SF)
+open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Lang.Graded
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-idˡ)
 
 opaque

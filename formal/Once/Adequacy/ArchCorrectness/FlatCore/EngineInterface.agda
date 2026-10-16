@@ -42,7 +42,7 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-s
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface

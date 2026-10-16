@@ -25,15 +25,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
-open import Once.Spec.Res using (Res)
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Res using (Res)
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
-open import Once.Spec.FunctorMeaning using (⟦_,_⟧-base; translateF)
-open import Once.Spec.Polynomial using (SK; _S⊕_; _S⊗_; μS; νS)
-open import Once.Spec.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F)
+open import Once.Lang.FunctorMeaning using (⟦_,_⟧-base; translateF)
+open import Once.Lang.Polynomial using (SK; _S⊕_; _S⊗_; μS; νS)
+open import Once.Lang.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F)
 
 ------------------------------------------------------------------------
 -- The IR-object value domain: the surface domain at the canonical rep.

@@ -46,8 +46,8 @@ open import Once.Spec.Name using (CanonicalName)
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedProgram)
 open Once.Denotation.Program.IRFun using (fbody; fname)
-open import Once.Spec.Contract using (ISig)
-import Once.Spec.Trace as TM
+open import Once.Lang.Contract using (ISig)
+import Once.Lang.Trace as TM
 import Once.CCC.FrameSemantics
 module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List IRFun)
   (arch          : Arch)
@@ -91,7 +91,7 @@ open import Once.IRTy using (Unit)
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Denotation.BehaviorLaws using (behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next; top-done)
 import Once.CCC.Codegen.CataIRSlotStable as CIS

@@ -11,12 +11,12 @@
 
 module Once.Optimizer.PairCaseNormal where
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
 open import Once.IR
-open import Once.Spec.Type.DecEq using () renaming (_≟T_ to _≟Type_)
+open import Once.Lang.Type.DecEq using () renaming (_≟T_ to _≟Type_)
 open import Once.Optimize using (_≟IR_; optimize-pair; optimize-case)
 open import Once.Optimizer.IRReducible
 

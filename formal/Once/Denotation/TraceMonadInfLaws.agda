@@ -15,12 +15,12 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 
-open import Once.Spec.Event using (SigOpEvent)
-open import Once.Spec.Trace
+open import Once.Lang.Event using (SigOpEvent)
+open import Once.Lang.Trace
   using (T; ret; call; halt; _>>=T_; Interp; run; run-call; callAnswer; callEvent)
-open import Once.Spec.Equivalence using (TreeEq)
-import Once.Spec.Equivalence as TM
-open import Once.Spec.Iterative
+open import Once.Lang.Equivalence using (TreeEq)
+import Once.Lang.Equivalence as TM
+open import Once.Lang.Iterative
 open T∞
 open TreeEq∞
 
@@ -117,7 +117,7 @@ force≈ (≈∞-map f h) = ≈∞-mapF f (force≈ h)
 -- The monad laws, up to bisimilarity.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Iterative using (return∞)
+open import Once.Lang.Iterative using (return∞)
 
 ≈∞-idˡ : ∀ {X Y} (x : X) (k : X → T∞ Y) → TreeEq∞ _≡_ (return∞ x >>=∞ k) (k x)
 force≈ (≈∞-idˡ x k) = ≈∞-reflF (λ _ → refl) (force (k x))
@@ -144,7 +144,7 @@ force≈ (≈∞-assoc m f g) = ≈∞-assocF (force m) f g
 -- finite side, the leaves related by `R`. Inductive on the finite tree.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.Lang.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
 
 data RelT∞′ {X Y : Set} (R : X → Y → Set) : T∞ X → T Y → Set where
   rel∞-ret  : ∀ {m x y} → force m ≡ ret∞ x → R x y → RelT∞′ R m (ret y)
@@ -241,7 +241,7 @@ RelT∞′-embed rel-halt     = rel∞-halt refl
 open import Data.Nat using (_≤_; _<_; z≤n; s≤s)
 open import Data.List using (length)
 open import Data.Product using (∃-syntax; _,_; proj₂)
-open import Once.Spec.Trace using (PrefixFamily; prefixFamily)
+open import Once.Lang.Trace using (PrefixFamily; prefixFamily)
 
 events∞-bnd : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) n → length (events∞ ι h m n) ≤ n
 eventsF-bnd : ∀ {X} (ι : Interp) (h : List SigOpEvent) (l : T∞F X (T∞ X)) n → length (eventsF ι h l n) ≤ suc n

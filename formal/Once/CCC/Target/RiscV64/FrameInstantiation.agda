@@ -34,7 +34,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Spec.Trace using (Interp)
+open import Once.Lang.Trace using (Interp)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 

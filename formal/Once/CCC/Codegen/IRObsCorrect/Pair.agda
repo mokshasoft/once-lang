@@ -66,8 +66,8 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.Spec.Trace as TM
-open import Once.Spec.Res using (Res; stopped; returns; is-stopped)
+import Once.Lang.Trace as TM
+open import Once.Lang.Res using (Res; stopped; returns; is-stopped)
 open import Once.Res using (returns-inj)
 
 module PairAsm {FS : FrameSemantics} where

@@ -22,7 +22,7 @@ open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <-≤-trans; <⇒≤; m≤n⇒m≤1+n; n≤1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------

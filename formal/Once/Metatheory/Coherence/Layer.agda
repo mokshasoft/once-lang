@@ -23,35 +23,35 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst₂)
 
-open import Once.Spec.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid;
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind; Zero; One; Many)
+open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid;
   Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
-open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
   WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Spec.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid;
+open import Once.Lang.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid;
   _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge)
-open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; ν⁺-upto; Same; TreeEqN)
-open import Once.Spec.Guarded using (T⁺; root⁺; forget⁺; fmap⁺; ν⁺; ana⁺; anaRoot⁺; anaTree⁺; anaLayer⁺; mapAna⁺; call⁺; halt⁺;
+open import Once.Lang.Equivalence using (TreeEq; ret≈; call≈; halt≈; LayerEq; νᵖ-upto; νᵈ-upto; ν∞-upto; ν⁺-upto; Same; TreeEqN)
+open import Once.Lang.Guarded using (T⁺; root⁺; forget⁺; fmap⁺; ν⁺; ana⁺; anaRoot⁺; anaTree⁺; anaLayer⁺; mapAna⁺; call⁺; halt⁺;
   iter∞; iterStart∞; iterRoot∞; iterTree∞; iterLayer∞)
 import Data.Sum
-open Once.Spec.Guarded.ν⁺ using (force⁺)
+open Once.Lang.Guarded.ν⁺ using (force⁺)
 open import Once.Denotation.GuardedLaws using (forget-bind⁺)
-open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; sfmapCata)
-open import Once.Spec.FunctorMeaning using (translateF)
+open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; sfmapCata)
+open import Once.Lang.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 import Once.Semantics.Machine as Val
-open import Once.Spec.Trace using (T; ret; call; halt; _>>=T_; fmapT)
-open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; νᵖ; module νᵖ)
-open import Once.Spec.Stream using (νᵈ; module νᵈ; anaᵈ; anaTree; mapAnaᵈ; seqF)
+open import Once.Lang.Trace using (T; ret; call; halt; _>>=T_; fmapT)
+open import Once.Lang.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; νᵖ; module νᵖ)
+open import Once.Lang.Stream using (νᵈ; module νᵈ; anaᵈ; anaTree; mapAnaᵈ; seqF)
 open νᵈ using (forceᵈ)
-open import Once.Spec.GradedOps using (fmapM; injB; prjB; cfᵛ; cf⁻¹ᵛ; seqM; cata-semᵛ; anaᵖ; mapAnaᵖ;
+open import Once.Lang.GradedOps using (fmapM; injB; prjB; cfᵛ; cf⁻¹ᵛ; seqM; cata-semᵛ; anaᵖ; mapAnaᵖ;
   embν; mapEmbν; embνᵃ; mapEmbνᵃ; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ; ana-semᵛ; out-semᵛ; ⟦_⟧<:ᵛ; embν⁺; embRoot⁺; embTree⁺; embLayer⁺; mapEmbν⁺)
-open import Once.Spec.Iterative
+open import Once.Lang.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; TreeEq∞; NodeEq; ret≈∞; call≈∞; halt≈∞;
          ν∞; ana∞; anaTree∞; anaLayer∞; mapAna∞)
-open Once.Spec.Iterative.T∞ using (force)
-open Once.Spec.Iterative.TreeEq∞ using (force≈)
-open Once.Spec.Iterative.ν∞ using (force∞)
+open Once.Lang.Iterative.T∞ using (force)
+open Once.Lang.Iterative.TreeEq∞ using (force≈)
+open Once.Lang.Iterative.ν∞ using (force∞)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; ≈∞-map; embed-≈; embed-bind)
 open import Once.Metatheory.Coherence.Relation using (S; SM; TreeEq-map; TreeEq-bind; ∀-TreeEq;
   ≈refl; retT≈; toT∞-bindM; toT∞-returnM; toT∞-subM; LayerEq-map; TreeEqN-mono; module Depth; ν∞-mono; ν⁺-mono)

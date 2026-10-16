@@ -10,7 +10,7 @@
 
 module Once.Parser where
 
-open import Once.Spec.Type.Honest using (HonestFFI; honest?)
+open import Once.Lang.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
@@ -24,12 +24,12 @@ open import Relation.Nullary.Decidable using (¬?)
 open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Spec.Type.Grade using (mk-kind; Many; eff)
-open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
-open import Once.Spec.Type.Poly using (PolyType; extractGround)
+open import Once.Lang.Type.Grade using (mk-kind; Many; eff)
+open import Once.Lang.Type using (Type; Unit; _⇒[_]_)
+open import Once.Lang.Type.Poly using (PolyType; extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Spec.Syntax using (RawExpr; RVar)
+open import Once.Lang.Syntax using (RawExpr; RVar)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
 open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Parser.Token

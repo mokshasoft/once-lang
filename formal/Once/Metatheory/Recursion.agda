@@ -29,14 +29,14 @@ module Once.Metatheory.Recursion where
 import Once.Metatheory.Iteration as It
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Type using (μ-type; ⟦_⟧T)
-open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Lang.Type using (μ-type; ⟦_⟧T)
+open import Once.Lang.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Metatheory using (Recursion)
-open import Once.Spec.Graded using (EqM)
-open import Once.Spec.Graded using (M; ⟦_⟧ᵛ; bindM; returnM)
-open import Once.Spec.Type.Grade using (pure)
-open import Once.Spec.Type.Sub using (_⊑π_)
-open import Once.Spec.GradedOps using (in-valueᵛ; cata-semᵛ; mapLayerᵛ; ana-semᵛ; out-semᵛ)
+open import Once.Lang.Graded using (EqM)
+open import Once.Lang.Graded using (M; ⟦_⟧ᵛ; bindM; returnM)
+open import Once.Lang.Type.Grade using (pure)
+open import Once.Lang.Type.Sub using (_⊑π_)
+open import Once.Lang.GradedOps using (in-valueᵛ; cata-semᵛ; mapLayerᵛ; ana-semᵛ; out-semᵛ)
 
 postulate
   fold-unique : ∀ {π} (u : pure ⊑π π) {F A} (wf : WellFormedF F) (alg : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ)

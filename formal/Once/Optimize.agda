@@ -25,9 +25,9 @@ module Once.Optimize where
 
 open import Relation.Binary.Definitions using (DecidableEquality)
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
 open import Once.IR
 open import Once.IRTy using (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; IRTy; _≟IRTy_)
@@ -49,8 +49,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 -- that used it collapsed to the functor/well-formedness comparison alone.
 ------------------------------------------------------------------------
 
--- Plan 0.99: Functor/Type equality is `Once.Spec.Type.DecEq`'s — the one copy.
-open import Once.Spec.Type.DecEq using (_≟T_)
+-- Plan 0.99: Functor/Type equality is `Once.Lang.Type.DecEq`'s — the one copy.
+open import Once.Lang.Type.DecEq using (_≟T_)
 
 ------------------------------------------------------------------------
 -- IR heads (the eta rules below dispatch on them)

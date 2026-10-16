@@ -18,8 +18,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Lang.Contract using (ISig)
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Metatheory.Coherence.Fundamental {Fs : ISig} {s : ℕ} (Sg : Sig Fs s) where
@@ -33,29 +33,29 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
-open import Once.Spec.Type using (Type; Unit; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Type.WellFormed using (IsBaseType; base-Int; base-Float; base-Unit; base-Prod; base-Sum;
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _≤q_; positionGrade; _·p_; eff⁺)
+open import Once.Lang.Type using (Type; Unit; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Int; base-Float; base-Unit; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun; WellFormedF)
-open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
+open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
 open import Once.Metatheory.SubLaws using (<:-unique; ⊑π-unique)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant; IsBaseType-irrelevant)
-open import Once.Spec.Context using (Ctx; Usage; _∷_) renaming (_,_ to _,ᶜ_)
-open import Once.Spec.Contract using (Impl; Key; valueKeys; valueOf; valueOf-at; _∈K?_)
-open import Once.Spec.Equivalence using (TreeEq; ret≈; call≈; halt≈; Same)
-open import Once.Spec.Core.PolyTy using (_!!_; _⟪_⟫; module Schema)
+open import Once.Lang.Context using (Ctx; Usage; _∷_) renaming (_,_ to _,ᶜ_)
+open import Once.Lang.Contract using (Impl; Key; valueKeys; valueOf; valueOf-at; _∈K?_)
+open import Once.Lang.Equivalence using (TreeEq; ret≈; call≈; halt≈; Same)
+open import Once.Lang.Core.PolyTy using (_!!_; _⟪_⟫; module Schema)
 open Schema using (arity; kinds; type)
-open import Once.Spec.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
-open import Once.Spec.Iterative using (TreeEq∞)
+open import Once.Lang.Graded using (⟦_⟧ᵛ; M; toT∞; bindM; returnM; subM; bindᵍ)
+open import Once.Lang.Iterative using (TreeEq∞)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-bind; ≈∞-rewrite; ≈∞-refl)
-open import Once.Spec.Trace using (T; ret; fmapT)
-open import Once.Spec.Environment using (bindᵛ)
-open import Once.Spec.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ; sigOpGuardᵛ)
+open import Once.Lang.Trace using (T; ret; fmapT)
+open import Once.Lang.Environment using (bindᵛ)
+open import Once.Lang.GradedOps using (fmapM; injB; prjB; cfᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; sigOpRefᵛ; sigOpGuardᵛ)
 import Once.Semantics.Machine as Val
-open import Once.Spec.Core.Syntax Sg
-open import Once.Spec.Core.Typing Sg
-open import Once.Spec.Core.Meaning Sg using (⟦_⟧; DefSem; defs; impl; primSem)
-open import Once.Spec.Core.Coherence Sg using (SameDefs)
+open import Once.Lang.Core.Syntax Sg
+open import Once.Lang.Core.Typing Sg
+open import Once.Lang.Core.Meaning Sg using (⟦_⟧; DefSem; defs; impl; primSem)
+open import Once.Lang.Core.Coherence Sg using (SameDefs)
 open import Once.Metatheory.Coherence.Relation
 open import Once.Metatheory.Coherence.Env
 open import Once.Metatheory.Coherence.Layer

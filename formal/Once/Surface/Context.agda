@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Surface.Context — deciders on usages.
 --
--- Contexts and usages are the Spec's (`Once.Spec.Context`). The elaborator
+-- Contexts and usages are the Spec's (`Once.Lang.Context`). The elaborator
 -- decides two things about them here.
 ------------------------------------------------------------------------
 
@@ -14,8 +14,8 @@ open import Data.Bool using (Bool; true; _∧_)
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Type.Grade using (Zero; One; Many; _≤q_)
-open import Once.Spec.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; zeroUsage)
+open import Once.Lang.Type.Grade using (Zero; One; Many; _≤q_)
+open import Once.Lang.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; zeroUsage)
 
 -- | Is this usage vector all zero, i.e. does the expression read no local
 -- variable? Returns the proof the closed-expression lift needs.

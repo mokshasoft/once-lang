@@ -16,17 +16,17 @@ open import Data.List.Relation.Unary.Any using (here)
 open import Data.Product using (∃-syntax; _,_)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Type.Grade using (pure; eff)
-open import Once.Spec.Type using (ν-type; Id)
-open import Once.Spec.Type.WellFormed using (con-fun; base-Int; wf-Id; rf-Int; rf-⇒)
-open import Once.Spec.Type.Sub using (⊑-pe)
-open import Once.Spec.Context using (∅; [])
-open import Once.Spec.Totality using (tickDefs; tick; ticker)
-open import Once.Spec.Core.Typing tickDefs
-open import Once.Spec.Core.Meaning tickDefs
-open import Once.Spec.Iterative using (call∞; module T∞)
+open import Once.Lang.Type.Grade using (pure; eff)
+open import Once.Lang.Type using (ν-type; Id)
+open import Once.Lang.Type.WellFormed using (con-fun; base-Int; wf-Id; rf-Int; rf-⇒)
+open import Once.Lang.Type.Sub using (⊑-pe)
+open import Once.Lang.Context using (∅; [])
+open import Once.Lang.Totality using (tickDefs; tick; ticker)
+open import Once.Lang.Core.Typing tickDefs
+open import Once.Lang.Core.Meaning tickDefs
+open import Once.Lang.Iterative using (call∞; module T∞)
 open T∞ using (force)
-open import Once.Spec.Graded using (_>>=ᵖ_)
+open import Once.Lang.Graded using (_>>=ᵖ_)
 
 stream-typed : ∅ ⊢[ [] ] ticker ∷ ν-type Id eff ! pure
 stream-typed = ⊢unfold wf-Id (⊢sigop tick (con-fun base-Int base-Int) tt (rf-⇒ rf-Int rf-Int) (here refl)) ⊢lit-int

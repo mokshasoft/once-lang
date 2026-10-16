@@ -59,7 +59,7 @@ open import Once.Parser
 -- module — the three opaque postulates that were here are now retired.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Parsing
+open import Once.Lang.Parsing
   using (ParsesDecls; pds-noskip; pds-stop; pds-cons; ParsesModule; ParsesText)
 open import Once.Adequacy.LexerBridge using (lexer-sound; lexer-complete)
 
@@ -76,7 +76,7 @@ open import Once.Grammar.DeclBridge using (sound-decl; complete-decl)
 -- (`skipNewlines` never returns `nothing`, so there is no no-skip case.)
 ------------------------------------------------------------------------
 
--- The relation is in `Once.Spec.Parsing` (plan 0.84).
+-- The relation is in `Once.Lang.Parsing` (plan 0.84).
 
 -- DECLS-LOOP soundness — PROVEN over the de-`with`'d `pdwf-sk`/`pdwf-dc` by
 -- casing their result PARAMETERS (the `with`-clash is gone). Mutual, terminating
@@ -144,7 +144,7 @@ complete-decls {toks} {ds} {rest} deriv with complete-declsWF (<-wellFounded (le
 -- m) ≡ m`).
 ------------------------------------------------------------------------
 
--- `ParsesModule` is in `Once.Spec.Parsing` (plan 0.84).
+-- `ParsesModule` is in `Once.Lang.Parsing` (plan 0.84).
 
 -- `parseDecls` always succeeds (it wraps the total `parseDeclsWF`).
 parseDecls-total : ∀ (toks : List Token) →
@@ -167,7 +167,7 @@ sound-module {toks} {m} {rest} pmEq with parseDecls-total toks
 -- ParsesText — the apex anchor. PROVEN bridges to the executable front-end.
 ------------------------------------------------------------------------
 
--- `ParsesText` is in `Once.Spec.Parsing` (plan 0.84).
+-- `ParsesText` is in `Once.Lang.Parsing` (plan 0.84).
 
 -- Explicit `trans`/`cong` chain (NOT `rewrite`): `parseModule toks` partially
 -- normalises once the `<-wellFounded` Acc reduces, so `rewrite` can't locate it

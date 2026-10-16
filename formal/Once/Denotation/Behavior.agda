@@ -84,7 +84,7 @@ open import Data.Product using (∃-syntax; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 import Once.Grammar as G
 
 ------------------------------------------------------------------------
@@ -186,7 +186,7 @@ saturates silent _ _ = refl
 -- (`Once.Adequacy.SourceTrace.srcToModule` = `parseStrict` then `resolveImports`),
 -- so lexer/parser correctness becomes part of the apex
 -- (`Once.Adequacy.FrontEndBridge`) rather than a trusted step. Likewise the
--- import resolver (`Once.Spec.Resolution`). Both are the spec-anticipated
+-- import resolver (`Once.Lang.Resolution`). Both are the spec-anticipated
 -- "separate compilation" / complete-program absorption, leaving
 -- `Once.Adequacy`'s `compile`/`correct` arity untouched. (Text-anchoring also
 -- matches what the binary actually has — raw source — so the apex `compile` is

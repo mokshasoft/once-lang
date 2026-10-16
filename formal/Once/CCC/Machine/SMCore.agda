@@ -40,11 +40,11 @@ open import Relation.Nullary using (Dec; yes; no)
 -- Import FrameSemantics for Frame type
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; module FrameSemantics)
 open FrameSemantics using (fs-interp)
-open import Once.Spec.Event using (SigOpEvent; mk-event)
-open import Once.Spec.Trace using (callOp; answer; callKey; calls)
-open import Once.Spec.Contract using (_∈K?_)
+open import Once.Lang.Event using (SigOpEvent; mk-event)
+open import Once.Lang.Trace using (callOp; answer; callKey; calls)
+open import Once.Lang.Contract using (_∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float)
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
@@ -55,14 +55,14 @@ open import Once.Spec.Name using (CanonicalName)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Spec.Type using (Type; Unit; Int; Float; _*_)
+open import Once.Lang.Type using (Type; Unit; Int; Float; _*_)
 open import Once.Type using (FitsInReg; fits-int; fits-float; fits-in-reg?)
 import Once.Type as Ty
-import Once.Spec.Type as Ty
+import Once.Lang.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
 open SigOpInfo using (name; baseA)
-open import Once.Spec.Res using (Res; stopped; returns)
+open import Once.Lang.Res using (Res; stopped; returns)
 
 private
   -- Helper: just is injective (private to avoid name clashes)

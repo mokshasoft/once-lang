@@ -19,7 +19,7 @@ module Once.TypeCheck where
 -- Types
 
 -- Raw syntax (parser output)
-open import Once.Spec.Syntax using (RawExpr; RVar; RApp; RLam; RUnit; RInt; RBinOp; OpAdd; OpLt)
+open import Once.Lang.Syntax using (RawExpr; RVar; RApp; RLam; RUnit; RInt; RBinOp; OpAdd; OpLt)
 
 -- Typing contexts
 import Once.TypeCheck.Context
@@ -37,7 +37,7 @@ open import Once.TypeCheck.Classify using (emptyCtx)
 -- Thinning operations (weaken, exchange)
 
 -- Surface syntax (for empty context S∅)
-open import Once.Spec.Context using () renaming (∅ to S∅)
+open import Once.Lang.Context using () renaming (∅ to S∅)
 
 -- Proof-bundled public API.
 --

@@ -12,11 +12,11 @@ module Once.Denotation.EnvAlgebraV where
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Context using (Ctx; ∅; _,_^_; Usage; _∷_; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Spec.Graded using (⟦_⟧ᵛ)
-open import Once.Spec.Environment using (restrictᵛ; bindᵛ)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Context using (Ctx; ∅; _,_^_; Usage; _∷_; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Lang.Graded using (⟦_⟧ᵛ)
+open import Once.Lang.Environment using (restrictᵛ; bindᵛ)
 
 Env : ∀ {n} → Ctx n → Usage n → Set
 Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ

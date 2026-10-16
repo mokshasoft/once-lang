@@ -56,7 +56,7 @@ open import Once.Target.Arch using (Arch; arch-float-format)
 open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
 open import Once.Spec.Float.Decimal
   using (decimalOf; round; roundSig; storedExp; maxFiniteExp)
-open import Once.Spec.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
+open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
    DImport)

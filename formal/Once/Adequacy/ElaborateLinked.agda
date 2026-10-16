@@ -22,37 +22,38 @@ import Data.Fin as Fin
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind)
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Type.Sub
+open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
-open import Once.Spec.Name using (CanonicalName; bare; showCanonical)
+open import Once.Spec.Name using (CanonicalName; bare)
+open import Once.Lang.Name using (showCanonical)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR using (IR)
 import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
 import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
-open import Once.Spec.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
-open import Once.Spec.Context hiding (_,_; _,_^_)
+open import Once.Lang.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Lang.Context hiding (_,_; _,_^_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
-open import Once.Spec.Context using (_,_^_)
+open import Once.Lang.Context using (_,_^_)
 open import Once.Surface.CoerceIR using (runCoe; runCoe-dec; voidFree?; VoidFree; coeIR; erase-eq)
 open import Once.Surface.Elaborate
 import Once.Surface.Properties
 import Once.IRTy
-open import Once.Spec.Type using (⟦_⟧T)
+open import Once.Lang.Type using (⟦_⟧T)
 open import Once.Denotation.Program using (IRFun; LinkedAt; LinkedAt-at; Linked; Declared-at)
 open Once.Denotation.Program.IRFun using (fcod; fdom; fname)
-open import Once.Spec.Contract using (ISig; contractOf; contract-eff)
-open import Once.Spec.ContractLaws using (value-∈; answer-∈)
+open import Once.Lang.Contract using (ISig; contractOf; contract-eff)
+open import Once.Lang.ContractLaws using (value-∈; answer-∈)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
-import Once.Spec.Type.Grade as Ty
-open import Once.Spec.Type using (Void; isVoid?; isUnit?)
-import Once.Spec.Type as SpecTy
+import Once.Lang.Type.Grade as Ty
+open import Once.Lang.Type using (Void; isVoid?; isUnit?)
+import Once.Lang.Type as SpecTy
 open import Data.List.Membership.Propositional using (_∈_)
 
 private variable σ : ISig

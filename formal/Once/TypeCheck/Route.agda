@@ -25,18 +25,19 @@
 
 module Once.TypeCheck.Route where
 
+import Once.Lang.Name
 open import Relation.Binary.PropositionalEquality using (refl)
 import Relation.Binary.PropositionalEquality
 import Data.Maybe
 import Once.Spec.Name
-import Once.Spec.Typing.Scope
-open import Once.Spec.Type.Grade as T using (Purity; Quantity)
-import Once.Spec.Type.Poly as T
-open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type)
-open import Once.Spec.Syntax as Raw using (RawExpr)
-open import Once.Spec.Typing.Scope using (NamedCtx; extendNamedCtx)
-open import Once.Spec.Typing
-import Once.Spec.Context as Surface
+import Once.Lang.Typing.Scope
+open import Once.Lang.Type.Grade as T using (Purity; Quantity)
+import Once.Lang.Type.Poly as T
+open import Once.Lang.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Lang.Syntax as Raw using (RawExpr)
+open import Once.Lang.Typing.Scope using (NamedCtx; extendNamedCtx)
+open import Once.Lang.Typing
+import Once.Lang.Context as Surface
 
 private
   variable
@@ -189,8 +190,8 @@ mutual
              → Rii d d′ → Ric (t-apply-app-infer d) (t-apply-check d′)
     -- D313: a generator inferred at its declaration and checked at its guard.
     -- No conversion relates the two (`ModeSub._≼_`); every consumer refutes it.
-    ic-guard : ∀ {cn T₁ A₁ B₁ q π n n′ c c′ g} {l : Once.Spec.Typing.Scope.lookupImport (NamedCtx.sig ctx) (Once.Spec.Name.showCanonical cn) Relation.Binary.PropositionalEquality.≡ Data.Maybe.just T₁}
-                 {l′ : Once.Spec.Typing.Scope.lookupImport (NamedCtx.sig ctx) (Once.Spec.Name.showCanonical cn) Relation.Binary.PropositionalEquality.≡ Data.Maybe.just (A₁ ⇒[ T.mk-kind q π ] B₁)}
+    ic-guard : ∀ {cn T₁ A₁ B₁ q π n n′ c c′ g} {l : Once.Lang.Typing.Scope.lookupImport (NamedCtx.sig ctx) (Once.Lang.Name.showCanonical cn) Relation.Binary.PropositionalEquality.≡ Data.Maybe.just T₁}
+                 {l′ : Once.Lang.Typing.Scope.lookupImport (NamedCtx.sig ctx) (Once.Lang.Name.showCanonical cn) Relation.Binary.PropositionalEquality.≡ Data.Maybe.just (A₁ ⇒[ T.mk-kind q π ] B₁)}
       → Ric {ctx} (t-var-resolved {cn = cn} {T = T₁} n l c) (t-var-resolved-guard n′ l′ g c′)
 
   data Rdc : ∀ {ctx e A B B′ π Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → Set where

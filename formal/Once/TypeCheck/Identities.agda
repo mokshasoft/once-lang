@@ -34,14 +34,14 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many; _≤q_)
-open import Once.Spec.Type using (Type)
-open import Once.Spec.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_)
+open import Once.Lang.Type using (Type)
+open import Once.Lang.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
-open import Once.Spec.Typing.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
-import Once.Spec.Typing.Scope as Classify
+open import Once.Lang.Typing.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
+import Once.Lang.Typing.Scope as Classify
 
 ------------------------------------------------------------------------
 -- classifyAppHead determinism
@@ -252,7 +252,7 @@ typeToGType-injective {t₁} {t₂} {g} eq₁ eq₂ =
 -- QTT quantity algebra: commutativity, associativity, identity
 ------------------------------------------------------------------------
 
-open import Once.Spec.Type.Grade using (_+q_; _*q_; _⊔q_)
+open import Once.Lang.Type.Grade using (_+q_; _*q_; _⊔q_)
 
 -- Quantity addition is commutative.
 +q-comm : ∀ (q₁ q₂ : Quantity) → q₁ +q q₂ ≡ q₂ +q q₁
@@ -361,10 +361,10 @@ open import Once.Spec.Type.Grade using (_+q_; _*q_; _⊔q_)
 ------------------------------------------------------------------------
 
 open import Data.Nat using (zero; suc)
-open import Once.Spec.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
-open Once.Spec.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
+open import Once.Lang.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open Once.Lang.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 
--- Note: Once.Spec.Context.Usage is an indexed vector of Quantity.
+-- Note: Once.Lang.Context.Usage is an indexed vector of Quantity.
 -- Pattern matching exposes its per-position structure; the identities
 -- lift the quantity identities pointwise.
 

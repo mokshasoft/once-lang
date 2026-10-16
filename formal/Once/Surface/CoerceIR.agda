@@ -24,9 +24,9 @@ module Once.Surface.CoerceIR where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Spec.Type.Grade as T using (Zero; One; Many)
-import Once.Spec.Type as T
-open import Once.Spec.Type.Sub
+open import Once.Lang.Type.Grade as T using (Zero; One; Many)
+import Once.Lang.Type as T
+open import Once.Lang.Type.Sub
 open import Once.Type.Sub
 open import Once.Metatheory.SubLaws
 open import Once.IR

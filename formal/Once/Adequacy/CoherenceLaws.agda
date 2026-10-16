@@ -29,33 +29,33 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
-open import Once.Spec.Type.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; _≤q_)
-open import Once.Spec.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
+open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; _≤q_)
+open import Once.Lang.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T)
+open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
 open import Once.Metatheory.SubLaws using (<:-trans; <:-unique)
-open import Once.Spec.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Spec.Context using (Ctx; Usage; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Lang.Context using (Ctx; Usage; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
-open import Once.Spec.Trace using (T; ret; returnT; _>>=T_; fmapT)
+open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; fmapT)
 open import Once.Metatheory.Monad using (T-monad; module LawfulMonad)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-id; <:-trans-∘)
-open import Once.Spec.Trace using ()
+open import Once.Lang.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-cong; fmapT-∘)
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Type.WellFormed using (wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Spec.FunctorMeaning using (translateF)
-open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Lang.Type.WellFormed using (wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Lang.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Data.Empty using (⊥)
-open import Once.Spec.Stream using (seqF; anaFᵈ)
+open import Once.Lang.Stream using (seqF; anaFᵈ)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; cohᴰ; coerce-functor-D; ⟦_⟧ᴰ)
 open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
-open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Lang.Type.WellFormed using (WellFormedF)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
@@ -191,7 +191,7 @@ module _ {n} {Γ : Ctx n} where
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))) dγ)
     >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt (calls σ) ir (subst (λ z → z) (sym (cohᴰ A)) v)))
 
-  app-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Spec.Type.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A}
+  app-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Lang.Type.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A}
            → f ≈ˢ f′ → x ≈ˢ x′ → app f x ≈ˢ app f′ x′
   app-congˢ {Ψ₁} {Ψ₂} {q = Zero} ef ex = cong (λ X σ dγ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) dγ) >>=T λ vf → vf _) ef
@@ -202,7 +202,7 @@ module _ {n} {Γ : Ctx n} where
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
     Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx)
 
-  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Spec.Type.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
+  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Lang.Type.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
               → f ≈ˢ f′ → x ≈ˢ x′ → effApp {g = g} f x ≈ˢ effApp {g = g} f′ x′
   effApp-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ → returnT (λ _ →
     X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
@@ -309,8 +309,8 @@ module _ {n} {Γ : Ctx n} where
       (sym (trans (fmap-bind _ (⟦ a ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ a ⟧ˢ fmt σ _) (λ va → fmap-bind _ (⟦ b ⟧ˢ fmt σ _) _)))))
 
   -- Converting the head's domain is converting the argument.
-  app-coerceˢ : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Spec.Type.Grade.pure ⊑π Once.Spec.Type.Grade.pure)
-                 (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Spec.Type.Grade.pure ] B)) (x : Expr Γ Ψ₂ X)
+  app-coerceˢ : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Lang.Type.Grade.pure ⊑π Once.Lang.Type.Grade.pure)
+                 (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Lang.Type.Grade.pure ] B)) (x : Expr Γ Ψ₂ X)
              → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ˢ app f (coerce a x)
   app-coerceˢ {B = B} a g f x = extensionality λ σ → extensionality λ dγ →
     trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _)
@@ -430,8 +430,8 @@ layer-id : ∀ {F} (wf : WellFormedF F) {A A′ : Type} (d : ⟦ F ⟧T A′ <: 
 layer-id {K B} (wf-K b) d p l = trans (cong (λ r → ⟦ r ⟧<: _) (<:-unique d (<:-refl B))) (<:-refl-id B _)
 layer-id wf-Id {A} d p l =
   trans (sym (<:-trans-∘ p d l)) (trans (cong (λ r → ⟦ r ⟧<: l) (<:-unique (<:-trans p d) (<:-refl A))) (<:-refl-id A l))
-layer-id (wf-Sum w₁ w₂) (Once.Spec.Type.Sub.sub-sum d₁ d₂) p (inj₁ x) = cong inj₁ (layer-id w₁ d₁ p x)
-layer-id (wf-Sum w₁ w₂) (Once.Spec.Type.Sub.sub-sum d₁ d₂) p (inj₂ y) = cong inj₂ (layer-id w₂ d₂ p y)
+layer-id (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p (inj₁ x) = cong inj₁ (layer-id w₁ d₁ p x)
+layer-id (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p (inj₂ y) = cong inj₂ (layer-id w₂ d₂ p y)
 layer-id (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p (x , y) = cong₂ _,_ (layer-id w₁ d₁ p x) (layer-id w₂ d₂ p y)
 
 cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}

@@ -28,7 +28,7 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Spec.Trace using (Interp; module Interp)
+open import Once.Lang.Trace using (Interp; module Interp)
 open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.X86-32
   (o : CanonicalName) (tbl : List IRFun)
@@ -76,7 +76,7 @@ open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; block-env
 import Once.CCC.Target.X86-32.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit)
 open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Codegen.ProgramImage using (program-image)

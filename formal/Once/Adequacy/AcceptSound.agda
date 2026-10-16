@@ -7,7 +7,7 @@
 -- The compiler's front-end accepts ONLY genuinely well-typed programs:
 -- if `compileResolvedModule` succeeds, every function has a DECLARATIVE
 -- typing derivation `ctx ⊢ᶜ body ∶ ty ⨾ Ψ` (the judgment in
--- `Once.Spec.Typing`, INDEPENDENT of the elaborator function). This
+-- `Once.Lang.Typing`, INDEPENDENT of the elaborator function). This
 -- is what makes `⟦_⟧⊥`'s domain genuine rather than true-by-construction:
 -- the meaning is defined only for programs the independent judgment admits.
 --
@@ -31,26 +31,26 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type using (Unit; Type)
+open import Once.Lang.Type using (Unit; Type)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-import Once.Spec.Context as Srf
+import Once.Lang.Context as Srf
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
-import Once.Spec.Typing.Scope as Classify
-open import Once.Spec.Typing.Scope using (NamedCtx)
-open import Once.Spec.Syntax using (RawExpr)
-open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Spec.Module
+import Once.Lang.Typing.Scope as Classify
+open import Once.Lang.Typing.Scope using (NamedCtx)
+open import Once.Lang.Syntax using (RawExpr)
+open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Lang.Module
   using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped)
-open import Once.Spec.Type.Instance using (rigidOf)
-open import Once.Spec.Type.WellFormed using (RigidFree)
+open import Once.Lang.Type.Instance using (rigidOf)
+open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?)
-open import Once.Spec.Type.WellFormed using (IsConcrete)
+open import Once.Lang.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Spec.Type.Honest using (HonestFFI; honest?)
-open import Once.Spec.Context using (zeroUsage)
+open import Once.Lang.Type.Honest using (HonestFFI; honest?)
+open import Once.Lang.Context using (zeroUsage)
 import Once.Surface.Context
 open import Data.Maybe using (Maybe; nothing)
 -- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which
@@ -97,7 +97,7 @@ compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
 -- ONLY the judgment `_⊢ᶜ_∶_⨾_` — no elaborator function appears.
 ------------------------------------------------------------------------
 
--- The relation is in `Once.Spec.Module` (plan 0.84).
+-- The relation is in `Once.Lang.Module` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` accepts ⇒ its body has a derivation.

@@ -13,9 +13,9 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig; KCtx; GSub; Respects)
+open import Once.Lang.Core.PolyTy using (Sig; KCtx; GSub; Respects)
 
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 module Once.Adequacy.CoreInst {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
 
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_; ≡-subst-removable)
@@ -26,29 +26,29 @@ import Data.Nat
 open import Relation.Binary.PropositionalEquality using (cong₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-import Once.Spec.Type.Grade as T
-import Once.Spec.Type as T
+import Once.Lang.Type.Grade as T
+import Once.Lang.Type as T
 import Once.Type as T
-open import Once.Spec.Type.Grade using (mk-kind; Many; pure)
-open import Once.Spec.Type.WellFormed using (rf-⇒)
-open import Once.Spec.Type using (Type; μ-type; ν-type; ⟦_⟧T)
-import Once.Spec.Context as C
+open import Once.Lang.Type.Grade using (mk-kind; Many; pure)
+open import Once.Lang.Type.WellFormed using (rf-⇒)
+open import Once.Lang.Type using (Type; μ-type; ν-type; ⟦_⟧T)
+import Once.Lang.Context as C
 import Once.Surface.Context as C
-open import Once.Spec.Core.PolyTy using (_⟪_⟫; _!!_; ⟨⟩-⟪⟫; ⌈⌉-⟪⟫; ⟦⟧F-⟪⟫; module Schema)
+open import Once.Lang.Core.PolyTy using (_⟪_⟫; _!!_; ⟨⟩-⟪⟫; ⌈⌉-⟪⟫; ⟦⟧F-⟪⟫; module Schema)
 open Schema using (type)
-import Once.Spec.Core.PolyTy as Ty
-open import Once.Spec.Core.AbsTy using (absTy; absF; abs-⟪⟫; absTy-⟦⟧; absTy-ground)
-import Once.Spec.Core.Syntax S as G
-import Once.Spec.Core.Typing S as GT
+import Once.Lang.Core.PolyTy as Ty
+open import Once.Lang.Core.AbsTy using (absTy; absF; abs-⟪⟫; absTy-⟦⟧; absTy-ground)
+import Once.Lang.Core.Syntax S as G
+import Once.Lang.Core.Typing S as GT
 open GT using (_⊢[_]_∷_!_)
-import Once.Spec.Core.PolyTyping S as PT
-import Once.Spec.Core.Rename S as RN
+import Once.Lang.Core.PolyTyping S as PT
+import Once.Lang.Core.Rename S as RN
 import Once.Surface.Thinning as TH
-import Once.Spec.Core.DerivedTyping S as DT
-import Once.Spec.Type.Sub
-open import Once.Spec.Type.WellFormed using (WellFormedF)
+import Once.Lang.Core.DerivedTyping S as DT
+import Once.Lang.Type.Sub
+open import Once.Lang.Type.WellFormed using (WellFormedF)
 open PT using (_⟪_⟫ᶜ; _⟪_⟫ₜ)
-open import Once.Spec.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; primDom-abs; primCod-abs; absCtx-lookup)
+open import Once.Lang.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; primDom-abs; primCod-abs; absCtx-lookup)
 import Once.TypeCheck.RigidSubst Δ τ r as RS
 open RS using (ρ̂; ρ̂F; ρ̂S; ρ̂-⟦⟧; ρ̂-wf; ρ̂-<:; ρ̂-rf; ρ̂-base; lookup-ρ̂)
 open import Once.Adequacy.CoreAbsSem S using (tr; tr-subst; tr-lam; tr-app; tr-let; tr-unit; tr-pair; tr-fst; tr-snd;
@@ -68,7 +68,7 @@ open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 module WithSG (sg : SigGround) where
 
   -- A definition's instance, substituted, is the substituted instance.
-  ρ̂-ref : ∀ d (τ′ : GSub (Once.Spec.Core.PolyTy.Schema.arity (S !! d)))
+  ρ̂-ref : ∀ d (τ′ : GSub (Once.Lang.Core.PolyTy.Schema.arity (S !! d)))
         → ρ̂ (type (S !! d) ⟪ τ′ ⟫) ≡ type (S !! d) ⟪ (λ i → ρ̂ (τ′ i)) ⟫
   ρ̂-ref d τ′ = trans (cong (_⟪ τ ⟫) (abs-⟪⟫ Δ τ′ (sg d))) (⟨⟩-⟪⟫ (type (S !! d)) (λ i → absTy Δ (τ′ i)) τ)
 
@@ -147,7 +147,7 @@ module WithSG (sg : SigGround) where
 
     -- An abstraction-side `subst` under `instantiate` (CoreAbsSem's, at any arity).
     tr-isubst′ : ∀ {n} {Γp : PT.PCtx m n} {Γ : C.Ctx n} {Ψ} {tp : PT.PTm m n} {t : G.Tm n} {A : Type} {π}
-                   {Y : Set} {f : Y → Once.Spec.Core.PolyTy.Ty m} {y₁ y₂ : Y}
+                   {Y : Set} {f : Y → Once.Lang.Core.PolyTy.Ty m} {y₁ y₂ : Y}
                    {eΓ : Γp ⟪ τ ⟫ᶜ ≡ Γ} {et : tp ⟪ τ ⟫ₜ ≡ t} {eA : f y₂ ⟪ τ ⟫ ≡ A} (e : y₁ ≡ y₂)
                    (D : PT._⊩_⊢[_]_∷_!_ Δ Γp Ψ tp (f y₁) π)
                → tr eΓ et eA (PT.instantiate τ r (subst (λ y → PT._⊩_⊢[_]_∷_!_ Δ Γp Ψ tp (f y) π) e D))
@@ -520,7 +520,7 @@ module WithSG (sg : SigGround) where
   module _ {n} {Γ : C.Ctx n} where
     open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-identityˡ)
 
-    c-compose : ∀ {Ψ₁ Ψ₂ A B C′ π₁ π₂ π f g} (le : (π₂ T.·p π₁) Once.Spec.Type.Sub.⊑π π)
+    c-compose : ∀ {Ψ₁ Ψ₂ A B C′ π₁ π₂ π f g} (le : (π₂ T.·p π₁) Once.Lang.Type.Sub.⊑π π)
                   (a : Γ ⊢[ Ψ₁ ] f ∷ B T.⇒[ mk-kind Many π₁ ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π₂ ] B ! pure)
               → ρ̂ᶜ (DT.⊢composeᶜ le a b) ≅ DT.⊢composeᶜ le (ρ̂ᶜ a) (ρ̂ᶜ b)
     c-compose {Ψ₁} {Ψ₂} {B = B} {C′} {π₁} {g = g} le a b =
@@ -529,7 +529,7 @@ module WithSG (sg : SigGround) where
                        (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (B T.⇒[ mk-kind Many π₁ ] C′) b) refl refl H.refl))
           (H.sym (rmU (DT.arms Many Ψ₁ Ψ₂ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (DT.z+qz Many))) (DT.z+qz Many))))))
 
-    c-pair : ∀ {Ψ₁ Ψ₂ A B C′ π₁ π₂ π f g} (le : (π₁ T.·p π₂) Once.Spec.Type.Sub.⊑π π)
+    c-pair : ∀ {Ψ₁ Ψ₂ A B C′ π₁ π₂ π f g} (le : (π₁ T.·p π₂) Once.Lang.Type.Sub.⊑π π)
                (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π₁ ] B ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π₂ ] C′ ! pure)
            → ρ̂ᶜ (DT.⊢pairᶜ le a b) ≅ DT.⊢pairᶜ le (ρ̂ᶜ a) (ρ̂ᶜ b)
     c-pair {Ψ₁} {Ψ₂} {A} {B} {π₁ = π₁} {g = g} le a b =
@@ -552,7 +552,7 @@ module WithSG (sg : SigGround) where
                                                (+ᵘ-identityˡ C.zeroUsage)))
                       (cong (Ψ₁ C.+ᵘ_) (*ᵘ-identityˡ Ψ₂))
 
-    c-curry : ∀ {Ψ A B C′ π₀ π f} (u₀ : Once.Spec.Type.Sub._⊑π_ T.pure π₀) (a : Γ ⊢[ Ψ ] f ∷ (A T.* B) T.⇒[ mk-kind Many π ] C′ ! pure)
+    c-curry : ∀ {Ψ A B C′ π₀ π f} (u₀ : Once.Lang.Type.Sub._⊑π_ T.pure π₀) (a : Γ ⊢[ Ψ ] f ∷ (A T.* B) T.⇒[ mk-kind Many π ] C′ ! pure)
             → ρ̂ᶜ (DT.⊢curryᶜ u₀ a) ≅ DT.⊢curryᶜ u₀ (ρ̂ᶜ a)
     c-curry {Ψ} u₀ a = H.trans (ρ̂ᶜ-sU E) (H.sym (rmU E))
       where E = trans (cong₂ C._+ᵘ_ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (+ᵘ-identityˡ C.zeroUsage))) (DT.z+qz Many))
@@ -604,7 +604,7 @@ module WithSG (sg : SigGround) where
     c-outEff {π} {F} wf = outEff-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F π)))
 
     private
-      cata-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ t π} (u : Once.Spec.Type.Sub._⊑π_ T.pure π) (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
+      cata-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ t π} (u : Once.Lang.Type.Sub._⊑π_ T.pure π) (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
                    (D : Δ₀ ⊢[ Ψ ] t ∷ X T.⇒[ mk-kind Many π ] R ! pure)
                → GT.⊢let D (GT.⊢lam {q = Many} refl (GT.⊢fold u w
                      (subst (λ Y → ((Δ₀ C., X T.⇒[ mk-kind Many π ] R) C., μ-type G) ⊢[ C.singleUse (suc zero) T.One ]
@@ -623,7 +623,7 @@ module WithSG (sg : SigGround) where
                                (GT.⊢var zero)
       ana-gen w refl Y = H.refl
 
-    c-cata : ∀ {Ψ F A π alg} (u : Once.Spec.Type.Sub._⊑π_ T.pure π) (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A T.⇒[ mk-kind Many π ] A ! pure)
+    c-cata : ∀ {Ψ F A π alg} (u : Once.Lang.Type.Sub._⊑π_ T.pure π) (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A T.⇒[ mk-kind Many π ] A ! pure)
            → ρ̂ᶜ (DT.⊢cataᶜ u wf da)
              ≅ DT.⊢cataᶜ u (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ alg ∷ X T.⇒[ mk-kind Many π ] ρ̂ A ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ da))
     c-cata {Ψ} {F} {A} u wf da =
@@ -634,7 +634,7 @@ module WithSG (sg : SigGround) where
         E = trans (cong (C._+ᵘ (Many C.*ᵘ Ψ)) (trans (cong (C._+ᵘ C.zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ C.zeroUsage)))
                   (+ᵘ-identityˡ (Many C.*ᵘ Ψ))
 
-    c-ana : ∀ {Ψ F A π₀ π c} (u₀ : Once.Spec.Type.Sub._⊑π_ T.pure π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure)
+    c-ana : ∀ {Ψ F A π₀ π c} (u₀ : Once.Lang.Type.Sub._⊑π_ T.pure π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure)
           → ρ̂ᶜ (DT.⊢anaᶜ u₀ wf dc)
             ≅ DT.⊢anaᶜ u₀ (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many π ] X ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))
     c-ana {Ψ} {F} {A} {π₀} {π} {c} u₀ wf dc =

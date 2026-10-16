@@ -31,15 +31,15 @@ open import Data.Empty using (⊥-elim)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 
-open import Once.Spec.Type.Grade using (Zero; One; Many; mk-kind)
-open import Once.Spec.Type using (Type; Unit; _⇒[_]_; ⟦_⟧T)
-open import Once.Spec.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
+open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind)
+open import Once.Lang.Type using (Type; Unit; _⇒[_]_; ⟦_⟧T)
+open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Surface.Syntax using (Expr)
-open import Once.Spec.Trace using (T; returnT; _>>=T_; fmapT)
+open import Once.Lang.Trace using (T; returnT; _>>=T_; fmapT)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; CallEnv; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
-open import Once.Spec.Stream using (seqF; anaFᵈ)
+open import Once.Lang.Stream using (seqF; anaFᵈ)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰ; coerce-functor⁻¹-D; cohᴰ; coerce-functor-D)
 open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
@@ -47,7 +47,7 @@ open TargetNum using (int-bits; float-format)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.IR.Ref using (refIR)
-open import Once.Spec.Type.WellFormed using (WellFormedF; con-base; con-fun; base-Unit)
+open import Once.Lang.Type.WellFormed using (WellFormedF; con-base; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; ⟦_⟧F)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
@@ -356,15 +356,15 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- D143: split on the arrow's quantity. At an ERASED arrow the symbol never
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Type.Grade.pure ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.pure ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
 -- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Type.Grade.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff) name base-Unit bCod) tt)
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Type.Grade.eff⁺ ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.eff⁺) name base-Unit bCod) tt)
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Type.Grade.act ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Type.Grade.act) name base-Unit bCod) tt)
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff) name base-Unit bCod) tt)
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.eff⁺ ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff⁺) name base-Unit bCod) tt)
+⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.act ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
+  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.act) name base-Unit bCod) tt)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =

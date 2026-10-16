@@ -15,18 +15,18 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Spec.Core.PolyTy using (Sig)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Lang.Contract using (ISig)
 
 module Once.Metatheory.Coherence.Uniqueness {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Spec.Type using (Type; _*_; _+_; _⇒[_]_; ν-type; ⟦_⟧T)
-open import Once.Spec.Type.Grade using (mk-kind; Many)
-open import Once.Spec.Context using (Ctx; _,_^_; _,_; Usage; _∷_)
-open import Once.Spec.Core.Syntax S
-open import Once.Spec.Core.Typing S
+open import Once.Lang.Type using (Type; _*_; _+_; _⇒[_]_; ν-type; ⟦_⟧T)
+open import Once.Lang.Type.Grade using (mk-kind; Many)
+open import Once.Lang.Context using (Ctx; _,_^_; _,_; Usage; _∷_)
+open import Once.Lang.Core.Syntax S
+open import Once.Lang.Core.Typing S
 
 uniq : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {t A A′ π π′}
      → Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ′ ] t ∷ A′ ! π′ → A ≡ A′

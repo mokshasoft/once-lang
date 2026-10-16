@@ -21,14 +21,14 @@ open import Data.Empty using (⊥)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Spec.Name using (gen)
-open import Once.Spec.Type using (Unit)
-open import Once.Spec.Type.WellFormed using (base-Unit)
+open import Once.Lang.Type using (Unit)
+open import Once.Lang.Type.WellFormed using (base-Unit)
 open import Once.Spec.Metatheory using (Freyd; Central; _≈_)
-open import Once.Spec.Trace using (callOp; unlinkedOp)
-open import Once.Spec.Iterative
+open import Once.Lang.Trace using (callOp; unlinkedOp)
+open import Once.Lang.Iterative
   using (T∞; T∞F; ret∞; call∞; halt∞; return∞; _>>=∞_; bind∞F; TreeEq∞; NodeEq; ret≈∞; module T∞)
 open T∞ using (force)
-open Once.Spec.Iterative.TreeEq∞ using (force≈)
+open Once.Lang.Iterative.TreeEq∞ using (force≈)
 open import Once.Denotation.TraceMonadInfLaws using (≈∞-refl; ≈∞-bind; ≈∞-rewrite; ≈∞-sym; ≈∞-idˡ; ≈∞-idʳ; ≈∞-assoc)
 
 private

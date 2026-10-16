@@ -164,7 +164,7 @@ module Once.Spike.RelSpike (o : CanonicalName) where
 open import Once.CCC.Codegen.IRObsCorrect.Interface o
 
 import Once.CCC.FrameSemantics
-import Once.Spec.Trace as TM
+import Once.Lang.Trace as TM
 import Once.Denotation.TraceMonadLaws as TML
 import Data.List.Relation.Unary.All as All
 
@@ -195,9 +195,9 @@ open import Once.IRTy using (Void; Int; Float; _⇛_;
 -- `⟦_,_⟧-base` is RENAMED on import. It parses unambiguously in Translate.agda
 -- only because Sigma's `_,_` is not in scope there; here it is, so the comma
 -- inside the closed mixfix is genuinely ambiguous. A plain prefix name avoids it.
-open import Once.Spec.FunctorMeaning using (translateF) renaming (⟦_,_⟧-base to BaseVal)
-open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
-open import Once.Spec.Stream using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ)
+open import Once.Lang.FunctorMeaning using (translateF) renaming (⟦_,_⟧-base to BaseVal)
+open import Once.Lang.Polynomial using (SFunctor; ⟦_⟧SF)
+open import Once.Lang.Stream using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-ret)
 
 ------------------------------------------------------------------------

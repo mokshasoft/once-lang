@@ -28,10 +28,10 @@ import Data.String.Properties as StrProp
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_)
+open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RApp)
+open import Once.Lang.Syntax as Raw using (RawExpr; RVar; RApp)
 
 ------------------------------------------------------------------------
 -- Lightweight Maybe-valued type equality (positive cases only — a

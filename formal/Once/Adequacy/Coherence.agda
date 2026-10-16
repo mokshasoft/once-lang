@@ -28,22 +28,22 @@ module Once.Adequacy.Coherence (fmt : TargetNum) where
 open import Data.Product using (_,_)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Once.Spec.Type.WellFormed using (con-fun)
+open import Once.Lang.Type.WellFormed using (con-fun)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong-app)
 
-open import Once.Spec.Type as T using (Type; _⇒[_]_)
+open import Once.Lang.Type as T using (Type; _⇒[_]_)
 
-import Once.Spec.Type.Grade as T
-open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_; ⊑-pure)
-open import Once.Spec.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Spec.Syntax using (RawExpr)
-open import Once.Spec.Typing.Scope using (NamedCtx)
-open import Once.Spec.Typing
+import Once.Lang.Type.Grade as T
+open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_; ⊑-pure)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Lang.Syntax using (RawExpr)
+open import Once.Lang.Typing.Scope using (NamedCtx)
+open import Once.Lang.Typing
 import Once.TypeCheck.ModeSub as MS
 open import Once.TypeCheck.Route
 open import Once.TypeCheck.RouteBuild using (route-cc)
-import Once.Spec.Context as Surface
+import Once.Lang.Context as Surface
 open import Once.Surface.Syntax using (coerce)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD

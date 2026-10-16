@@ -18,15 +18,15 @@ open import Once.Metatheory.Freyd using (freyd)
 open import Once.Metatheory.Totality using (totality)
 import Once.Metatheory.Coherence as Coh
 import Once.Metatheory.SubLaws as SL
-import Once.Spec.Type.Sub
+import Once.Lang.Type.Sub
 import Once.Metatheory.ModeAgreement as MA
 
 typeSystem : TypeSystem
 typeSystem = record
-  { <:-refl             = Once.Spec.Type.Sub.<:-refl
+  { <:-refl             = Once.Lang.Type.Sub.<:-refl
   ; <:-trans            = SL.<:-trans
   ; <:-unique           = SL.<:-unique
-  ; ⊑π-refl             = Once.Spec.Type.Sub.⊑π-refl
+  ; ⊑π-refl             = Once.Lang.Type.Sub.⊑π-refl
   ; ⊑π-trans            = SL.⊑π-trans
   ; ⊑π-unique           = SL.⊑π-unique
   ; synth-unique        = MA.agree-ii

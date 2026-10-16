@@ -35,8 +35,8 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using
   (_≡_; refl; cong)
 
-open import Once.Spec.Type.Grade using (Zero; One; Many)
-open import Once.Spec.Type using (Type)
+open import Once.Lang.Type.Grade using (Zero; One; Many)
+open import Once.Lang.Type using (Type)
 open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)

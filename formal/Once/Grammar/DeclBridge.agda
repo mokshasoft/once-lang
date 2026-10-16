@@ -29,7 +29,7 @@ open import Once.Parser.Module.Import using (parseImportB)
 open import Once.Parser.Module.DeclTail using (parseTypeAliasB; parseSignatureB)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Parser.PolyType using (parsePolyTypeB)
-open import Once.Spec.Grammar.Decl
+open import Once.Lang.Grammar.Decl
   using (ParsesDecl; pd-import; pd-typealias; pd-signature; pd-typesig; pd-fundef; pd-opdecl)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
 open import Once.Grammar.ImportBridge using (sound-import; complete-import)
@@ -38,7 +38,7 @@ open import Once.Grammar.SignatureBridge using (sound-signature; complete-signat
 open import Once.Grammar.FunDefBridge using (sound-fundef; complete-fundef)
 open import Once.Grammar.OpDeclBridge using (sound-opDecl; complete-opDecl)
 
--- The relation is in `Once.Spec.Grammar.Decl` (plan 0.84).
+-- The relation is in `Once.Lang.Grammar.Decl` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- Soundness.

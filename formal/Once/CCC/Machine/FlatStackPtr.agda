@@ -53,7 +53,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 open import Data.Product using (proj₁)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -63,7 +63,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_)
 import Once.Allocator.AbstractInstance as AI
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
-open import Once.Spec.Res using (Res; stopped; returns)
+open import Once.Lang.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore

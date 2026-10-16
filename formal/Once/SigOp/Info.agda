@@ -40,14 +40,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
-open import Once.Spec.Type using (Type; Unit; Void)
-open import Once.Spec.Res using (Res; stopped; returns)
-open import Once.Spec.Trace using (FFIAnswers)
+open import Once.Lang.Type using (Type; Unit; Void)
+open import Once.Lang.Res using (Res; stopped; returns)
+open import Once.Lang.Trace using (FFIAnswers)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
-open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
@@ -56,7 +56,7 @@ open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; b
 open import Once.Spec.Word using (Carrier)
 -- Plan 0.74 J5 (D059): a SigOp's machine semantics is TARGET-RELATIVE.
 open import Once.Spec.Numerics using (TargetNum)
-import Once.Spec.Value Carrier Carrier as M
+import Once.Lang.Value Carrier Carrier as M
 open import Once.Arith.Prim using (ArithPrim; primSem)
 
 ------------------------------------------------------------------------

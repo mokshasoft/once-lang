@@ -31,7 +31,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Spec.Trace using (Interp; module Interp)
+open import Once.Lang.Trace using (Interp; module Interp)
 open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
@@ -58,7 +58,7 @@ open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-
 import Once.CCC.Target.RiscV64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.Spec.Event using (SigOpEvent)
+open import Once.Lang.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)

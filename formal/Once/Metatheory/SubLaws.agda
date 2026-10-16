@@ -11,11 +11,11 @@ module Once.Metatheory.SubLaws where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Spec.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind)
-open import Once.Spec.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
-open import Once.Spec.Type.DecEq using (_≟q_)
-open import Once.Spec.Type.DecEq using (_≟F_; _≟T_)
-open import Once.Spec.Type.Sub
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind)
+open import Once.Lang.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Lang.Type.DecEq using (_≟q_)
+open import Once.Lang.Type.DecEq using (_≟F_; _≟T_)
+open import Once.Lang.Type.Sub
 open import Once.Type.Sub
 
 ⊑π-unique : ∀ {π π′} (g h : π ⊑π π′) → g ≡ h

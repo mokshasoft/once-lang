@@ -55,7 +55,7 @@ import Once.CCC.Machine.SMPrimitives as SMP
 -- `valid-closure-wf` sees a different index.
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 import Once.Denotation.DenotTrace as DT
-import Once.Spec.Trace as TM
+import Once.Lang.Trace as TM
 -- Plan 0.54 Phase B rung A: the Type-level `fits-int`/`fits-float` for the stored
 -- `SV-Lit` (SMCore's `SV-Lit` is Type-indexed) in the strengthened primitive leaves.
 open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)

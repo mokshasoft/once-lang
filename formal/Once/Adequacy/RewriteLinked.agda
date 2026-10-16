@@ -13,7 +13,7 @@
 
 module Once.Adequacy.RewriteLinked where
 
-import Once.Spec.Type
+import Once.Lang.Type
 import Once.SigOp.Info
 
 open import Data.Bool using (true; false)
@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 open import Once.IR
 import Once.IRTy as II
 open import Once.Denotation.Program using (IRFun; Linked; Declared)
-open import Once.Spec.Contract using (ISig)
+open import Once.Lang.Contract using (ISig)
 open import Once.Arith.Type using (NInt; NFloat)
 
 private variable σ : ISig
@@ -41,7 +41,7 @@ private
   block-linked {σ = σ} tbl eq body =
     subst′ eq (block-info body) (block-decl body)
     where
-      subst′ : ∀ {A : II.IRTy} {T B : Once.Spec.Type.Type} (e : A ≡ II.⌊ T ⌋) (si : Once.SigOp.Info.SigOpInfo T B)
+      subst′ : ∀ {A : II.IRTy} {T B : Once.Lang.Type.Type} (e : A ≡ II.⌊ T ⌋) (si : Once.SigOp.Info.SigOpInfo T B)
              → Declared σ si → Linked σ tbl (subst (λ U → IR U II.⌊ B ⌋) (Relation.Binary.PropositionalEquality.sym e) (SigOp si))
       subst′ refl si d = d
       -- an arith block is the compiler's: it owes no declaration

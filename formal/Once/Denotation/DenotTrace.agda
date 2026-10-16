@@ -6,7 +6,7 @@
 --
 -- Plan 0.46. `⟦_⟧ᴰ` is the SOURCE OBSERVABLE: a compositional,
 -- effect-graded, monadic interpretation of the CCC IR into the trace
--- monad `T` (Once.Spec.Trace). It is fuel-free (totality is
+-- monad `T` (Once.Lang.Trace). It is fuel-free (totality is
 -- structural recursion on the IR), event-indexed (the `ℕ` of `T` is the
 -- observation depth, consumed only by `Ana`), and HIGHER-ORDER-CORRECT:
 --
@@ -31,7 +31,7 @@ open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Spec.Type using (Type; Unit; _*_; μ-type; ν-type)
+open import Once.Lang.Type using (Type; Unit; _*_; μ-type; ν-type)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR
   using (IR; Call; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
@@ -55,7 +55,7 @@ import Once.Semantics.Machine as Val
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo)
-open import Once.Spec.Trace using (FFIAnswers)
+open import Once.Lang.Trace using (FFIAnswers)
 open SigOpInfo using (name; baseA; sem; conB)
 open import Once.Arith.Prim using (primSem)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -63,13 +63,13 @@ open import Once.Semantics.Machine
   using (sem-cata; sem-In; sem-Out; ⟦_⟧F; coerce-ν-out; coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Spec.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
+open import Once.Lang.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
 -- (consumers unchanged), so the reference meaning `⟦_⟧ᵈ` can land in `⟦_⟧ᴰ`
 -- without `Once.IR` (IR enters only at `evalᴰ` below).
-open import Once.Spec.Stream
+open import Once.Lang.Stream
 open import Once.Denotation.ValueDomain
 open νᵈ using (forceᵈ)
 

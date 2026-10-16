@@ -33,11 +33,11 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
-import Once.Spec.Type as SpecTy
-open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Prod; base-Sum)
+import Once.Lang.Type as SpecTy
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Prod; base-Sum)
 open import Function using () renaming (id to idᶠ)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
-open import Once.Spec.Res using (returns)
+open import Once.Lang.Res using (returns)
 open import Once.Res using (returns-inj)
 open import Once.Denotation.Program using (Declared)
 open import Once.SigOp.Info using (SigOpSem;
@@ -62,7 +62,7 @@ import Once.IRTy
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
-import Once.Spec.Trace as TM
+import Once.Lang.Trace as TM
 
 module CompareC {FS : FrameSemantics} where
 

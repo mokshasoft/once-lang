@@ -34,9 +34,9 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; subst)
 
-open import Once.Spec.Type.Poly using (PolyType; PolyFunctor; Ground; GroundF; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
+open import Once.Lang.Type.Poly using (PolyType; PolyFunctor; Ground; GroundF; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type using (isGround; isGroundF)
-open import Once.Spec.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Translate using (WellFormedF-irrelevant)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete)
 

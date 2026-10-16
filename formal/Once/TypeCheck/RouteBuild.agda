@@ -23,15 +23,15 @@ open import Data.List.Relation.Unary.All using (_∷_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
-open import Once.Spec.Type as T using (Type; _+_; _⇒[_]_)
-import Once.Spec.Type.Grade as T
-open import Once.Spec.Type.Sub using (_<:_; _⊑π_)
-open import Once.Spec.Syntax as Raw using (BinOp; isArithmeticOp; isComparisonOp)
-open import Once.Spec.Typing.Scope using (NamedCtx; extendNamedCtx; classifyAppHead)
-open import Once.Spec.Typing
+open import Once.Lang.Type as T using (Type; _+_; _⇒[_]_)
+import Once.Lang.Type.Grade as T
+open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
+open import Once.Lang.Syntax as Raw using (BinOp; isArithmeticOp; isComparisonOp)
+open import Once.Lang.Typing.Scope using (NamedCtx; extendNamedCtx; classifyAppHead)
+open import Once.Lang.Typing
 open import Once.Metatheory.ModeAgreement
 open import Once.TypeCheck.Route
-import Once.Spec.Context as Surface
+import Once.Lang.Context as Surface
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥

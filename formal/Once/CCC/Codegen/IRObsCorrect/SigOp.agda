@@ -33,11 +33,11 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; SV-Ptr; readReg; Input1; AbstractTrace; StoredValue; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output; module LocState)
 open LocState using (regs; halted)
-import Once.Spec.Type as SpecTy
-open import Once.Spec.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+import Once.Lang.Type as SpecTy
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
-open import Once.Spec.Event using (mk-event)
+open import Once.Lang.Event using (mk-event)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -45,18 +45,18 @@ import Once.IRTy
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
-import Once.Spec.Trace as TM
+import Once.Lang.Trace as TM
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
-open import Once.Spec.Res using (returns)
+open import Once.Lang.Res using (returns)
 open import Once.Res using (returns-inj)
 open import Data.Product using (Σ)
-open import Once.Spec.Contract using (key; _∈K?_)
-open import Once.Spec.ContractLaws using (yes-of)
+open import Once.Lang.Contract using (key; _∈K?_)
+open import Once.Lang.ContractLaws using (yes-of)
 open import Relation.Nullary using (Dec)
-open import Once.Spec.Type using (isUnit?)
+open import Once.Lang.Type using (isUnit?)
 open import Once.Denotation.Program using (Declared; Declared-at)
-open import Once.Spec.Name using (showCanonical)
-open import Once.Spec.Res using (is-stopped)
+open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Res using (is-stopped)
 open import Once.SigOp.Info using (SigOpSem; effect-of; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo; Pure)
 open SigOpInfo using (baseA; conB; sem; name)
 open import Once.Arith.SigOp.Compare using (cmp-of)

@@ -15,7 +15,7 @@
 -- spec rules".
 --
 -- This module covers soundness for the rules currently stated in
--- `Once.Spec.Typing`: literals, the `unit` builtin, local
+-- `Once.Lang.Typing`: literals, the `unit` builtin, local
 -- variable lookup, annotations, pair introduction, and unary
 -- negation. The remaining RawExpr forms (application, let, case,
 -- lambdas, binary operators, qualified/import lookups) are deferred
@@ -26,7 +26,7 @@
 
 module Once.TypeCheck.Soundness where
 
-import Once.Spec.Context as Surface
+import Once.Lang.Context as Surface
 
 open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ)
@@ -35,19 +35,19 @@ open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl)
 
-open import Once.Spec.Type.Grade as T using (Quantity)
-open import Once.Spec.Type as T using (Type)
+open import Once.Lang.Type.Grade as T using (Quantity)
+open import Once.Lang.Type as T using (Type)
 open import Once.Spec.Name using (gen)
-open import Once.Spec.Syntax as Raw using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
+open import Once.Lang.Syntax as Raw using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
 import Data.String.Properties
-import Once.Spec.Type.DecEq
+import Once.Lang.Type.DecEq
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; success; failure)
-open import Once.Spec.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
-import Once.Spec.Typing.Scope as Classify
+open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
+import Once.Lang.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.ElaborateProofs
-open import Once.Spec.Typing
+open import Once.Lang.Typing
 
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
@@ -56,7 +56,7 @@ open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 ------------------------------------------------------------------------
 
 -- | If `inferElab` succeeds, the declarative judgment holds.
--- Covers the rules stated in `Once.Spec.Typing` so far.
+-- Covers the rules stated in `Once.Lang.Typing` so far.
 --
 -- The proof is one case per RawExpr constructor. For cases not yet in
 -- the judgment, we do not claim soundness — the theorem's statement
@@ -453,10 +453,10 @@ caseBranchBundle ctx x T branch = inferElab (extendNamedCtx ctx x T) branch , re
 
 -- Bundle for the type-equality decision.
 TyEqBundle : (A B : Type) → Set
-TyEqBundle A B = ∃[ r ] Once.Spec.Type.DecEq._≟T_ A B ≡ r
+TyEqBundle A B = ∃[ r ] Once.Lang.Type.DecEq._≟T_ A B ≡ r
 
 tyEqBundle : (A B : Type) → TyEqBundle A B
-tyEqBundle A B = Once.Spec.Type.DecEq._≟T_ A B , refl
+tyEqBundle A B = Once.Lang.Type.DecEq._≟T_ A B , refl
 
 sound-RDestruct :
   ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : _) (eL : RawExpr)

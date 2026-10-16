@@ -25,7 +25,7 @@ module Once.Grammar.Printer where
 
 open import Data.List using (List; []; _∷_; _++_)
 
-open import Once.Spec.Type.Grade using (Quantity; Zero; One; Many)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
 import Once.Grammar as G
 open G using (GType)
 open import Once.Parser.Token

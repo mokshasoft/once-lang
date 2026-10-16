@@ -37,7 +37,7 @@ open import Once.Parser.Token
 open import Once.Parser.Module.Core using (ParseAtB; anyWordB; wordHead)
 open import Once.Parser.Module.Import
   using (parseModulePath-WFB; pmp-tail; pmp-dot; parseModulePathB; dropDot; dropDot-≤; dotHead; parseImportAliasB; parseImportB)
-open import Once.Spec.Grammar.Import
+open import Once.Lang.Grammar.Import
   using (ParsesModulePath; pmp-cons; pmp-dotfail; pmp-nodot;
          ParsesImportAlias; pia-alias-r; pia-neq-r; pia-nonword-r;
          ParsesImport; pi-mk)

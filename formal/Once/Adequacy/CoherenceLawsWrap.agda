@@ -26,16 +26,16 @@ module Once.Adequacy.CoherenceLawsWrap (fmt : TargetNum) where
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Spec.Type.Grade using (mk-kind; Many; Quantity; _≤q_)
-open import Once.Spec.Type using (Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T)
-open import Once.Spec.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
+open import Once.Lang.Type.Grade using (mk-kind; Many; Quantity; _≤q_)
+open import Once.Lang.Type using (Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T)
+open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
 open import Once.Metatheory.SubLaws using (<:-trans)
-open import Once.Spec.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Spec.Context using (Ctx; _∷_; _,_^_)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Lang.Context using (Ctx; _∷_; _,_^_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
-import Once.Spec.Type.Grade
+import Once.Lang.Type.Grade
 import Once.Type
-open import Once.Spec.Type.WellFormed using (WellFormedF)
+open import Once.Lang.Type.WellFormed using (WellFormedF)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
@@ -130,11 +130,11 @@ module _ {n} {Γ : Ctx n} where
   morph-app-cong {Ψ} {A} {B} ir {a} {a′} (≈-intro h1) = ≈-intro (morph-app-congˢ {Γ = Γ} {Ψ} {A} {B} ir {a} {a′} h1)
 
 module _ {n} {Γ : Ctx n} where
-  app-cong : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Spec.Type.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → app f x ≈ app f′ x′
+  app-cong : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Lang.Type.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → app f x ≈ app f′ x′
   app-cong {Ψ₁} {Ψ₂} {A} {B} {q} {f} {f′} {x} {x′} (≈-intro h1) (≈-intro h2) = ≈-intro (app-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {q} {f} {f′} {x} {x′} h1 h2)
 
 module _ {n} {Γ : Ctx n} where
-  effApp-cong : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Spec.Type.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → effApp {g = g} f x ≈ effApp {g = g} f′ x′
+  effApp-cong : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Lang.Type.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → effApp {g = g} f x ≈ effApp {g = g} f′ x′
   effApp-cong {Ψ₁} {Ψ₂} {A} {B} {π} {g} {f} {f′} {x} {x′} (≈-intro h1) (≈-intro h2) = ≈-intro (effApp-congˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {π} {g} {f} {f′} {x} {x′} h1 h2)
 
 module _ {n} {Γ : Ctx n} where
@@ -190,7 +190,7 @@ module _ {n} {Γ : Ctx n} where
   pair-coerce {Ψ₁} {Ψ₂} {A} {A′} {B} {B′} pa pb a b = ≈-intro (pair-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {A′} {B} {B′} pa pb a b)
 
 module _ {n} {Γ : Ctx n} where
-  app-coerce : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Spec.Type.Grade.pure ⊑π Once.Spec.Type.Grade.pure) (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Spec.Type.Grade.pure ] B)) (x : Expr Γ Ψ₂ X) → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ app f (coerce a x)
+  app-coerce : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Lang.Type.Grade.pure ⊑π Once.Lang.Type.Grade.pure) (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Lang.Type.Grade.pure ] B)) (x : Expr Γ Ψ₂ X) → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ app f (coerce a x)
   app-coerce {Ψ₁} {Ψ₂} {X} {A′} {B} a g f x = ≈-intro (app-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {X} {A′} {B} a g f x)
 
 module _ {n} {Γ : Ctx n} where

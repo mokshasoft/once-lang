@@ -15,7 +15,7 @@
 
 module Once.Adequacy.ModuleComplete where
 
-open import Once.Spec.Typing.Scope using (PolyCtx)
+open import Once.Lang.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -36,14 +36,14 @@ import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU; bare-injective)
 
-open import Once.Spec.Type using (Type; Unit)
+open import Once.Lang.Type using (Type; Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Context using (Usage; [])
+open import Once.Lang.Context using (Usage; [])
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
-open import Once.Spec.Syntax using (RawExpr)
-open import Once.Spec.Module
+open import Once.Lang.Syntax using (RawExpr)
+open import Once.Lang.Module
   using (EffUU; ModTele; []; ffi; mono; poly; ModuleTyped; MainsEffUU; MainIn; HasValidMain)
 import Once.TypeCheck.Elaborate as TE
 open import Once.Functor.Decide using (isConcrete?-complete)
@@ -55,7 +55,7 @@ cong₃ f refl refl refl = refl
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate
   using ()
-open import Once.Spec.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
@@ -65,7 +65,7 @@ import Once.Parser.Module.Core as Core
 import Data.String as String
 open FunInfo
 
--- `EffUU` is in `Once.Spec.Module` (plan 0.84).
+-- `EffUU` is in `Once.Lang.Module` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- (1) a `⊢ᶜ` derivation ⇒ the body compiles, via `check-complete`.
@@ -107,7 +107,7 @@ compileFun-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
 -- Derivation-indexed "valid main" predicates (over `AllFunsTyped`'s `ty`).
 ------------------------------------------------------------------------
 
--- `AllMainEffUU`/`MainExists` are in `Once.Spec.Module` (plan 0.84).
+-- `AllMainEffUU`/`MainExists` are in `Once.Lang.Module` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- (3) ⇒ the whole list compiles (forward mirror of `caf-go-sound`).

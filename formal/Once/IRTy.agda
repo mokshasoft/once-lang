@@ -33,8 +33,8 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
-open import Once.Spec.Type.Grade as T using (Quantity; Zero; One; Many; Purity)
-open import Once.Spec.Type as T using (Type; Functor)
+open import Once.Lang.Type.Grade as T using (Quantity; Zero; One; Many; Purity)
+open import Once.Lang.Type as T using (Type; Functor)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)

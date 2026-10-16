@@ -15,7 +15,7 @@
 
 module Once.Adequacy.MainBuilds where
 
-import Once.Spec.Context as Srf
+import Once.Lang.Context as Srf
 
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
@@ -27,8 +27,8 @@ open import Data.Product using (Σ-syntax; _,_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Spec.Type.Honest using (honest?)
-open import Once.Spec.Type.Instance using (rigidOf)
+open import Once.Lang.Type.Honest using (honest?)
+open import Once.Lang.Type.Instance using (rigidOf)
 open import Once.Type.Rigid using (rigidFree?)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
@@ -37,18 +37,18 @@ open import Function using (case_of_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Spec.Type using (Unit)
+open import Once.Lang.Type using (Unit)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-import Once.Spec.Type as Type
+import Once.Lang.Type as Type
 import Once.Spec.Name
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
-import Once.Spec.Typing.Scope as Classify
+import Once.Lang.Typing.Scope as Classify
 import Once.TypeCheck.Classify as Classify
-open import Once.Spec.Syntax using (RawExpr)
+open import Once.Lang.Syntax using (RawExpr)
 open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P
 import Data.String as String

@@ -18,12 +18,12 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Spec.Type.Grade
-open import Once.Spec.Type
-open import Once.Spec.Type.Poly
+open import Once.Lang.Type.Grade
+open import Once.Lang.Type
+open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Spec.Type.DecEq using (_≟q_; _≟p_; _≟k_)
-open import Once.Spec.Type.DecEq using (_≟T_)
+open import Once.Lang.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Lang.Type.DecEq using (_≟T_)
 open import Once.Type.Match
 
 lookup-head : ∀ x t s → lookupSubst x ((x , t) ∷ s) ≡ just t

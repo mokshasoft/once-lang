@@ -31,22 +31,22 @@ open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift; bare-at)
-open import Once.Spec.Trace using ()
+open import Once.Lang.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (>>=T-identityˡ)
-open import Once.Spec.Trace using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
+open import Once.Lang.Trace using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Spec.Trace using (FFIAnswers)
+open import Once.Lang.Trace using (FFIAnswers)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
 import Once.Denotation.ValueDomain as ValueDomain
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Semantics.Machine
-open import Once.Spec.Stream
+open import Once.Lang.Stream
 open import Once.Denotation.ValueDomain
 import Once.Denotation.DenotTrace
 open import Once.IRTy.WF using (wf-⌈⌉)
-open import Once.Spec.Trace using (fmapT)
+open import Once.Lang.Trace using (fmapT)
 import Once.Denotation.Behavior
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)

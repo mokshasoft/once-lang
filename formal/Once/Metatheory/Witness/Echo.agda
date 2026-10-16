@@ -17,13 +17,13 @@ module Once.Metatheory.Witness.Echo where
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Type.Grade using (pure; eff⁺; eff; Zero; Many)
-open import Once.Spec.Type using (Unit; Void; _⇒[_]_; _+_)
-open import Once.Spec.Type.Grade using (mk-kind)
-open import Once.Spec.Type.WellFormed using (con-fun; base-Int; base-Unit; rf-Int; rf-Unit; rf-⇒)
-open import Once.Spec.Context using (∅; []; _,_^_)
-open import Once.Spec.Totality using (echoDefs; readN; writeN; echoStep; echoServer)
-open import Once.Spec.Core.Typing echoDefs
+open import Once.Lang.Type.Grade using (pure; eff⁺; eff; Zero; Many)
+open import Once.Lang.Type using (Unit; Void; _⇒[_]_; _+_)
+open import Once.Lang.Type.Grade using (mk-kind)
+open import Once.Lang.Type.WellFormed using (con-fun; base-Int; base-Unit; rf-Int; rf-Unit; rf-⇒)
+open import Once.Lang.Context using (∅; []; _,_^_)
+open import Once.Lang.Totality using (echoDefs; readN; writeN; echoStep; echoServer)
+open import Once.Lang.Core.Typing echoDefs
 
 step-typed : ∅ ⊢[ [] ] echoStep ∷ Unit ⇒[ mk-kind Many pure ] (Void + (Unit ⇒[ mk-kind Many eff⁺ ] (Void + Unit))) ! pure
 step-typed =
@@ -48,10 +48,10 @@ open import Data.Product using (∃-syntax; _,_; _×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; map₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (cong; trans)
-open import Once.Spec.Event using (SigOpEvent)
-open import Once.Spec.Trace using (Interp; CallOp; callAnswer; callEvent)
-open import Once.Spec.Guarded using (T⁺; call⁺; halt⁺; iter∞; iterStart∞; iterRoot∞; iterTree∞; iterLayer∞)
-open import Once.Spec.Iterative using (T∞; T∞F; ret∞; events∞; eventsF; eventsC; call∞; module T∞)
+open import Once.Lang.Event using (SigOpEvent)
+open import Once.Lang.Trace using (Interp; CallOp; callAnswer; callEvent)
+open import Once.Lang.Guarded using (T⁺; call⁺; halt⁺; iter∞; iterStart∞; iterRoot∞; iterTree∞; iterLayer∞)
+open import Once.Lang.Iterative using (T∞; T∞F; ret∞; events∞; eventsF; eventsC; call∞; module T∞)
 open T∞ using (force)
 
 module Forever (ι : Interp) where
@@ -103,10 +103,10 @@ module Forever (ι : Interp) where
 -- The echo server runs forever, under every implementation.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Core.Meaning echoDefs
-open import Once.Spec.Totality using (echoSig)
-open import Once.Spec.Trace using (interp)
-open import Once.Spec.Graded using (_>>=ᵖ_)
+open import Once.Lang.Core.Meaning echoDefs
+open import Once.Lang.Totality using (echoSig)
+open import Once.Lang.Trace using (interp)
+open import Once.Lang.Graded using (_>>=ᵖ_)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 module _ fmt (ds : DefSem) where

@@ -14,7 +14,7 @@
 module Once.Arith.SigOp.Compare where
 
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.Spec.Type using (Int; _*_)
+open import Once.Lang.Type using (Int; _*_)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; primV)
 open import Once.Arith.Prim using (p-cmp)
 open import Once.Arith.CmpOp using (CmpOp)
