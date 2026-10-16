@@ -53,8 +53,11 @@ module _ (ι : Interp) where
     ra-halt : ∀ {h n} → RunA h nothing n [] halted
     ra-go   : ∀ {h t n d e} → RunB h t n d e → RunA h (just t) n d e
 
-  Run : ∀ {X} → History → T∞ X → ℕ → History → End X → Set
-  Run h m n d e = RunB h (force m) n d e
+  -- A run of the computation itself (so `m` is known from the type).
+  record Run {X : Set} (h : History) (m : T∞ X) (n : ℕ) (d : History) (e : End X) : Set where
+    constructor run
+    field unrun : RunB h (force m) n d e
+  open Run public
 
   ----------------------------------------------------------------------
   -- A run is what the observation arrives at
@@ -88,7 +91,7 @@ module _ (ι : Interp) where
   run-soundA (ra-go r) c = run-soundB r c
 
   run-sound : ∀ {X} {h} {m : T∞ X} {n d e} → Run h m n d e → ∀ c → observeFrom ι h c m n ⇓ (c ++ d , e)
-  run-sound r c = arrive (run-soundB r c)
+  run-sound (run r) c = arrive (run-soundB r c)
 
   -- What the observation arrives at is a run, and the calls it made.
   Made : ∀ {X} → History → (T∞ X) → ℕ → History → History × End X → Set
@@ -140,6 +143,8 @@ module _ (ι : Interp) where
     compNext h c m n refl d⇓ = goN (run-complete h c m (suc n) d⇓)
       where
         goN : ∀ {o} → Made h m (suc n) c o → MadeB h (roll (done (inj₂ m))) (suc n) c o
-        goN (d , e , eq , r) = d , e , eq , rb-next r
+        goN (d , e , eq , run r) = d , e , eq , rb-next r
     compCall h c o a k n (d , e , eq , r) = eventOf o a ∷ d , e , trans eq (cong (_, e) (snoc++ c (eventOf o a) d)) , rb-call r
-  run-complete h c m n d⇓ = compB h c (force m) n refl d⇓
+  run-complete h c m n d⇓ = wrap (compB h c (force m) n refl d⇓)
+    where wrap : ∀ {o} → MadeB h (force m) n c o → Made h m n c o
+          wrap (d , e , eq , r) = d , e , eq , run r
