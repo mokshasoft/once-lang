@@ -42,6 +42,7 @@ toNat : Char → ℕ
 toNat = primCharToNat
 
 open import Once.Parser.Token
+import Once.Spec.Surface.Lexing as SL
 
 ------------------------------------------------------------------------
 -- Character Classification
@@ -113,28 +114,37 @@ collectDigitsB (c ∷ cs) with isDigit c
 collectFracB : (cs : List Char) →
                Maybe (Σ[ f ∈ List Char ] Σ[ rest ∈ List Char ]
                         length rest < length cs)
-collectFracB ('.' ∷ c ∷ cs) with isDigit c
-... | true  = let (digs , rest , bnd) = collectDigitsB cs
-              in  just (c ∷ digs , rest , s≤s (m≤n⇒m≤1+n bnd))
-... | false = nothing
-{-# CATCHALL #-}
-collectFracB _ = nothing
+
+-- The characters are told apart by `≟`, not by literal patterns: a literal
+-- pattern with a catch-all does not reduce at a character that is not a
+-- literal, so nothing could be proved of these scanners at an arbitrary
+-- input (`Once.Adequacy.SpecLexing` proves them against `Once.Spec`).
+frac-dot   : Bool → (cs : List Char) →
+             Maybe (Σ[ f ∈ List Char ] Σ[ rest ∈ List Char ] length rest < suc (length cs))
+frac-digit : Bool → (c : Char) (cs : List Char) →
+             Maybe (Σ[ f ∈ List Char ] Σ[ rest ∈ List Char ] length rest < suc (suc (length cs)))
+
+collectFracB []       = nothing
+collectFracB (p ∷ cs) = frac-dot (p == '.') cs
+
+frac-dot false _        = nothing
+frac-dot true  []       = nothing
+frac-dot true  (c ∷ cs) = frac-digit (isDigit c) c cs
+
+frac-digit false c cs = nothing
+frac-digit true  c cs =
+  let (digs , rest , bnd) = collectDigitsB cs
+  in  just (c ∷ digs , rest , s≤s (m≤n⇒m≤1+n bnd))
 
 collectDigits : List Char → List Char × List Char
 collectDigits cs =
   let (ds , rest , _) = collectDigitsB cs
   in ds , rest
 
--- | Convert digit chars to natural number.
+-- | Convert digit chars to natural number: the Spec's reading of a numeral,
+-- so the token carries exactly the value `Once.Spec.Surface.Lexing` gives it.
 digitsToNat : List Char → ℕ
-digitsToNat = go 0
-  where
-  charToDigit : Char → ℕ
-  charToDigit c = toNat c Data.Nat.∸ toNat '0'
-
-  go : ℕ → List Char → ℕ
-  go a [] = a
-  go a (c ∷ cs) = go (a Data.Nat.* 10 Data.Nat.+ charToDigit c) cs
+digitsToNat = SL.digitsToNat
 
 -- | Collect string literal contents (after the opening `"`).
 -- On success, the remainder is strictly shorter than the input.
@@ -142,32 +152,46 @@ digitsToNat = go 0
 collectStringB : (cs : List Char) →
                  Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ]
                           length rest < length cs)
-collectStringB [] = nothing
-collectStringB ('"' ∷ cs) = just ([] , cs , s≤s ≤-refl)
-collectStringB ('\\' ∷ 'n' ∷ cs) with collectStringB cs
-... | just (s , rest , bnd) =
-        just ('\n' ∷ s , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n bnd))
-... | nothing = nothing
-collectStringB ('\\' ∷ 't' ∷ cs) with collectStringB cs
-... | just (s , rest , bnd) =
-        just ('\t' ∷ s , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n bnd))
-... | nothing = nothing
-collectStringB ('\\' ∷ 'r' ∷ cs) with collectStringB cs
-... | just (s , rest , bnd) =
-        just ('\r' ∷ s , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n bnd))
-... | nothing = nothing
-collectStringB ('\\' ∷ '\\' ∷ cs) with collectStringB cs
-... | just (s , rest , bnd) =
-        just ('\\' ∷ s , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n bnd))
-... | nothing = nothing
-collectStringB ('\\' ∷ '"' ∷ cs) with collectStringB cs
-... | just (s , rest , bnd) =
-        just ('"' ∷ s , rest , m≤n⇒m≤1+n (m≤n⇒m≤1+n bnd))
-... | nothing = nothing
-{-# CATCHALL #-}
-collectStringB (c ∷ cs) with collectStringB cs
-... | just (s , rest , bnd) = just (c ∷ s , rest , m≤n⇒m≤1+n bnd)
-... | nothing = nothing
+
+-- What an escape `\e` stands for; `nothing` when `e` escapes nothing (then
+-- the backslash is an ordinary character).
+escChar : Char → Maybe Char
+escChar e =
+  if e == 'n' then just '\n'
+  else if e == 't' then just '\t'
+  else if e == 'r' then just '\r'
+  else if e == '\\' then just '\\'
+  else if e == '"' then just '"'
+  else nothing
+
+-- Prepend characters to a scanned body, keeping its bound.
+str-cons : ∀ {n} → List Char →
+           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < n) →
+           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < suc n)
+str-cons p (just (s , rest , bnd)) = just (p Data.List.++ s , rest , m≤n⇒m≤1+n bnd)
+str-cons p nothing                 = nothing
+
+str-char : Bool → Bool → (c : Char) (cs : List Char) →
+           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < suc (length cs))
+str-esc  : (cs : List Char) →
+           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < suc (length cs))
+str-esc′ : Maybe Char → (e : Char) (cs : List Char) →
+           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < suc (suc (length cs)))
+
+collectStringB []       = nothing
+collectStringB (c ∷ cs) = str-char (c == '"') (c == '\\') c cs
+
+str-char true  _     c cs = just ([] , cs , s≤s ≤-refl)
+str-char false true  c cs = str-esc cs
+str-char false false c cs = str-cons (c ∷ []) (collectStringB cs)
+
+str-esc []       = nothing
+str-esc (e ∷ cs) = str-esc′ (escChar e) e cs
+
+-- An escape is one character; otherwise the backslash and `e` are ordinary
+-- (`e` is then neither a quote nor a backslash, both of which escape).
+str-esc′ (just x) e cs = str-cons [] (str-cons (x ∷ []) (collectStringB cs))
+str-esc′ nothing  e cs = str-cons ('\\' ∷ []) (str-cons (e ∷ []) (collectStringB cs))
 
 collectString : List Char → Maybe (List Char × List Char)
 collectString cs with collectStringB cs
@@ -177,12 +201,14 @@ collectString cs with collectStringB cs
 -- | Skip to end of line (for line comments).
 -- Always returns a list of length ≤ the input.
 skipLineB : (cs : List Char) → Σ[ rest ∈ List Char ] (length rest ≤ length cs)
-skipLineB [] = [] , z≤n
-skipLineB ('\n' ∷ cs) = '\n' ∷ cs , ≤-refl
-skipLineB (c ∷ cs) with c == '\n'
-... | true  = c ∷ cs , ≤-refl
-... | false = let (rest , bnd) = skipLineB cs
-              in  rest , m≤n⇒m≤1+n bnd
+skip-nl   : Bool → (c : Char) (cs : List Char) → Σ[ rest ∈ List Char ] (length rest ≤ suc (length cs))
+
+skipLineB []       = [] , z≤n
+skipLineB (c ∷ cs) = skip-nl (c == '\n') c cs
+
+skip-nl true  c cs = c ∷ cs , ≤-refl
+skip-nl false c cs = let (rest , bnd) = skipLineB cs
+                     in  rest , m≤n⇒m≤1+n bnd
 
 skipLine : List Char → List Char
 skipLine cs = proj₁ (skipLineB cs)
