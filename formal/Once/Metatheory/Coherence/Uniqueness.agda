@@ -1,111 +1,80 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.Coherence.Uniqueness — a core term, in its context,
--- determines its type (D310).
---
---     uniq : Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ′ ] t ∷ A′ ! π′ → A ≡ A′
---
--- The non-syntax-directed rules change only the usage (`⊢sub-use`) and the
--- grade (`⊢sub-eff`); every other rule is fixed by the term's former, and its
--- type by its parts and its annotations. So two derivations of one judgment
--- type every subterm alike, which is what lets coherence compare them at ONE
--- type (`Fundamental`).
+-- Once.Metatheory.Coherence.Uniqueness — a core term in its context has one
+-- type (Church style, `Spec.Core.Syntax`): two derivations of one term
+-- conclude at one type, whatever usages and grades they carry.
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Lang.Core.PolyTy using (Sig)
-open import Once.Lang.Contract using (ISig)
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Core.Syntax using (Defs)
 
-module Once.Metatheory.Coherence.Uniqueness {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+module Once.Metatheory.Coherence.Uniqueness (Σ : Signature) {s : ℕ} (S : Defs s) where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-
-open import Once.Lang.Type using (Type; _*_; _+_; _⇒[_]_; ν-type; ⟦_⟧T)
-open import Once.Lang.Type.Grade using (mk-kind; Many)
-open import Once.Lang.Context using (Ctx; _,_^_; _,_; Usage; _∷_)
-open import Once.Lang.Core.Syntax S
-open import Once.Lang.Core.Typing S
-
-uniq : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {t A A′ π π′}
-     → Γ ⊢[ Ψ ] t ∷ A ! π → Γ ⊢[ Ψ′ ] t ∷ A′ ! π′ → A ≡ A′
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Once.Spec.Grade using (mk-kind)
+open import Once.Spec.Type using (Ty; Fun; KCtx; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
+open import Once.Spec.Context using (Ctx; _▸_; _∷_)
+open import Once.Spec.Core.Syntax
+open import Once.Spec.Core.Typing Σ S
 
 private
-  -- The premises' equations, matched at top level (no `with`).
-  lam-u : ∀ {A B B′ q π} → B ≡ B′
-        → (A ⇒[ mk-kind q π ] B) ≡ (A ⇒[ mk-kind q π ] B′)
-  lam-u refl = refl
+  *-inj : ∀ {m} {A A′ B B′ : Ty m} → (A * B) ≡ (A′ * B′) → (A ≡ A′) × (B ≡ B′)
+  *-inj refl = refl , refl
+  +-inj : ∀ {m} {A A′ B B′ : Ty m} → (A + B) ≡ (A′ + B′) → (A ≡ A′) × (B ≡ B′)
+  +-inj refl = refl , refl
+  ν-inj : ∀ {m} {F F′ : Fun m} {π π′} → ν F π ≡ ν F′ π′ → (F ≡ F′) × (π ≡ π′)
+  ν-inj refl = refl , refl
 
-  app-u : ∀ {A A′ B B′ k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → B ≡ B′
-  app-u refl = refl
+⇒-inj : ∀ {m} {A A′ B B′ : Ty m} {k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → (A ≡ A′) × (k ≡ k′) × (B ≡ B′)
+⇒-inj refl = refl , refl , refl
 
-  fst-u : ∀ {A A′ B B′} → (A * B) ≡ (A′ * B′) → A ≡ A′
-  fst-u refl = refl
+kind-inj : ∀ {q q′ π π′} → mk-kind q π ≡ mk-kind q′ π′ → (q ≡ q′) × (π ≡ π′)
+kind-inj refl = refl , refl
 
-  snd-u : ∀ {A A′ B B′} → (A * B) ≡ (A′ * B′) → B ≡ B′
-  snd-u refl = refl
+ty-unique : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ Ψ′ t A A′ π π′}
+          → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ′ ] t ∷ A′ ! π′ → A ≡ A′
 
-  inl-u : ∀ {A A′ B} → A ≡ A′ → (A + B) ≡ (A′ + B)
-  inl-u refl = refl
+private
+  under : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {A A′ Ψ Ψ′ t B B′ π π′ q q′} → A ≡ A′
+        → Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ ] t ∷ B ! π → Δ ⊩ (Γ ▸ A′) ⊢[ q′ ∷ Ψ′ ] t ∷ B′ ! π′ → B ≡ B′
+  under refl d d′ = ty-unique d d′
 
-  inr-u : ∀ {A B B′} → B ≡ B′ → (A + B) ≡ (A + B′)
-  inr-u refl = refl
-
-  pair-u : ∀ {A A′ B B′} → A ≡ A′ → B ≡ B′ → (A * B) ≡ (A′ * B′)
-  pair-u refl refl = refl
-
-  unfold-u : ∀ {A A′ C C′ k k′ F π π′} → (A ⇒[ k ] C) ≡ (A′ ⇒[ k′ ] C′)
-           → k ≡ mk-kind Many π
-           → k′ ≡ mk-kind Many π′
-           → ν-type F π ≡ ν-type F π′
-  unfold-u refl refl refl = refl
-
-  out-u : ∀ {F F′ π π′} → ν-type F π ≡ ν-type F′ π′ → ⟦ F ⟧T (ν-type F π) ≡ ⟦ F′ ⟧T (ν-type F′ π′)
-  out-u refl = refl
-
-  iter-u : ∀ {A A′ B B′ C C′ k k′} → (A ⇒[ k ] (B + C)) ≡ (A′ ⇒[ k′ ] (B′ + C′)) → B ≡ B′
-  iter-u refl = refl
-
-  -- `let` and `case`: the bound variable's type is the premise's, so the body
-  -- is compared in one context once the premises agree.
-  let-u : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A A′ B B′ π π′ q q′ b}
-        → A ≡ A′ → (Γ , A) ⊢[ q ∷ Ψ ] b ∷ B ! π → (Γ , A′) ⊢[ q′ ∷ Ψ′ ] b ∷ B′ ! π′ → B ≡ B′
-  let-u refl db db′ = uniq db db′
-
-  case-u : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A A′ B B′ C C′ π π′ q q′ l}
-         → (A + B) ≡ (A′ + B′) → (Γ , A) ⊢[ q ∷ Ψ ] l ∷ C ! π → (Γ , A′) ⊢[ q′ ∷ Ψ′ ] l ∷ C′ ! π′ → C ≡ C′
-  case-u refl dl dl′ = uniq dl dl′
-
-uniq (⊢sub-use _ d) d′ = uniq d d′
-uniq (⊢sub-eff _ d) d′ = uniq d d′
+ty-unique (⊢sub-use _ d) d′ = ty-unique d d′
+ty-unique (⊢sub-eff _ d) d′ = ty-unique d d′
 {-# CATCHALL #-}
-uniq d (⊢sub-use _ d′) = uniq d d′
+ty-unique d (⊢sub-use _ d′) = ty-unique d d′
 {-# CATCHALL #-}
-uniq d (⊢sub-eff _ d′) = uniq d d′
-uniq (⊢var i) (⊢var .i) = refl
-uniq (⊢lam _ d) (⊢lam _ d′) = lam-u (uniq d d′)
-uniq (⊢app df _) (⊢app df′ _) = app-u (uniq df df′)
-uniq (⊢let de db) (⊢let de′ db′) = let-u (uniq de de′) db db′
-uniq ⊢unit ⊢unit = refl
-uniq (⊢pair da db) (⊢pair da′ db′) = pair-u (uniq da da′) (uniq db db′)
-uniq (⊢fst d) (⊢fst d′) = fst-u (uniq d d′)
-uniq (⊢snd d) (⊢snd d′) = snd-u (uniq d d′)
-uniq (⊢inl d) (⊢inl d′) = inl-u (uniq d d′)
-uniq (⊢inr d) (⊢inr d′) = inr-u (uniq d d′)
-uniq (⊢case ds dl _) (⊢case ds′ dl′ _) = case-u (uniq ds ds′) dl dl′
-uniq (⊢absurd _) (⊢absurd _) = refl
-uniq (⊢roll _ _) (⊢roll _ _) = refl
-uniq (⊢fold _ _ da _) (⊢fold _ _ da′ _) = app-u (uniq da da′)
-uniq (⊢unfold _ dc _) (⊢unfold _ dc′ _) = unfold-u (uniq dc dc′) refl refl
-uniq (⊢out _ d) (⊢out _ d′) = out-u (uniq d d′)
-uniq (⊢iter df _) (⊢iter df′ _) = iter-u (uniq df df′)
-uniq (⊢coerce _ _) (⊢coerce _ _) = refl
-uniq ⊢lit-int ⊢lit-int = refl
-uniq ⊢lit-float ⊢lit-float = refl
-uniq (⊢prim p _) (⊢prim .p _) = refl
-uniq (⊢sigop _ _ _ _ _) (⊢sigop _ _ _ _ _) = refl
-uniq (⊢sigop _ _ _ _ _) (⊢sigop⁺ _ _ _ _ _ _) = refl
-uniq (⊢sigop⁺ _ _ _ _ _ _) (⊢sigop _ _ _ _ _) = refl
-uniq (⊢sigop⁺ _ _ _ _ _ _) (⊢sigop⁺ _ _ _ _ _ _) = refl
-uniq (⊢ref _ _ _) (⊢ref _ _ _) = refl
+ty-unique d (⊢sub-eff _ d′) = ty-unique d d′
+ty-unique (⊢var i)       (⊢var .i)        = refl
+ty-unique (⊢lam _ d)     (⊢lam _ d′)      = cong (λ B → _ ⇒[ _ ] B) (ty-unique d d′)
+ty-unique (⊢app df _)    (⊢app df′ _)     = proj₂ (proj₂ (⇒-inj (ty-unique df df′)))
+ty-unique (⊢let d₁ d₂)   (⊢let d₁′ d₂′)   = under (ty-unique d₁ d₁′) d₂ d₂′
+ty-unique ⊢unit          ⊢unit            = refl
+ty-unique (⊢pair a b)    (⊢pair a′ b′)    = cong₂ _*_ (ty-unique a a′) (ty-unique b b′)
+ty-unique (⊢fst d)       (⊢fst d′)        = proj₁ (*-inj (ty-unique d d′))
+ty-unique (⊢snd d)       (⊢snd d′)        = proj₂ (*-inj (ty-unique d d′))
+ty-unique (⊢inl d)       (⊢inl d′)        = cong (_+ _) (ty-unique d d′)
+ty-unique (⊢inr d)       (⊢inr d′)        = cong (_ +_) (ty-unique d d′)
+ty-unique (⊢case ds dl _) (⊢case ds′ dl′ _) = under (proj₁ (+-inj (ty-unique ds ds′))) dl dl′
+ty-unique (⊢absurd _)    (⊢absurd _)      = refl
+ty-unique (⊢roll _ _)    (⊢roll _ _)      = refl
+ty-unique (⊢fold _ _ da _) (⊢fold _ _ da′ _) = proj₂ (proj₂ (⇒-inj (ty-unique da da′)))
+ty-unique (⊢unfold _ dc _) (⊢unfold _ dc′ _) =
+  cong (ν _) (proj₂ (kind-inj (proj₁ (proj₂ (⇒-inj (ty-unique dc dc′))))))
+ty-unique (⊢out {F = F} _ d) (⊢out _ d′) =
+  let e = ν-inj (ty-unique d d′) in cong₂ (λ F π → ⟦ F ⟧F (ν F π)) (proj₁ e) (proj₂ e)
+ty-unique (⊢iter df _)   (⊢iter df′ _)    = proj₁ (+-inj (proj₂ (proj₂ (⇒-inj (ty-unique df df′)))))
+ty-unique (⊢coerce _ _)  (⊢coerce _ _)    = refl
+ty-unique ⊢lit-int       ⊢lit-int         = refl
+ty-unique ⊢lit-float     ⊢lit-float       = refl
+ty-unique (⊢prim p _)    (⊢prim .p _)     = refl
+ty-unique (⊢sigop _)     (⊢sigop _)       = refl
+ty-unique (⊢sigop _)     (⊢sigop⁺ _ _)    = refl
+ty-unique (⊢sigop⁺ _ _)  (⊢sigop _)       = refl
+ty-unique (⊢sigop⁺ _ _)  (⊢sigop⁺ _ _)    = refl
+ty-unique (⊢ref d τ _)   (⊢ref .d .τ _)   = refl

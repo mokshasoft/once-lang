@@ -25,6 +25,7 @@ open import Once.Spec.Effect Σ
 open import Once.Spec.Observation Σ using (Interp; History; events; stepEvents; next; resume)
 open import Once.Spec.Metatheory using (Effects)
 open import Once.Metatheory.Bisim Σ
+open import Once.Metatheory.Erase Σ
 
 open T∞ using (force)
 open _≈_ using (force≈)
@@ -40,27 +41,6 @@ T-idʳ (roll (node (call o a k))) = cong (λ k → roll (node (call o a k))) (ex
 T-assoc : ∀ {X Y Z} (m : T X) (f : X → T Y) (g : Y → T Z) → ((m >>=T f) >>=T g) ≡ (m >>=T λ x → f x >>=T g)
 T-assoc (roll (done x))            f g = refl
 T-assoc (roll (node (call o a k))) f g = cong (λ k → roll (node (call o a k))) (extensionality λ b → T-assoc (k b) f g)
-
-embed-bind : ∀ {X Y} (m : T X) (k : X → T Y) → embed (m >>=T k) ≈ (embed m >>=∞ λ x → embed (k x))
-force≈ (embed-bind (roll (done x))            k) = ≈-reflS (force (embed (k x)))
-force≈ (embed-bind (roll (node (call o a k′))) k) = node≈ λ b → embed-bind (k′ b) k
-
-embed-return : ∀ {X} (x : X) → embed (returnT x) ≈ return∞ x
-force≈ (embed-return x) = done≈
-
-------------------------------------------------------------------------
--- The guarded computations
-------------------------------------------------------------------------
-
-forget⁺-bind : ∀ {X Y} (p : T⁺ X) (h : X → T∞ Y) → forget⁺ (p >>=⁺ h) ≈ (forget⁺ p >>=∞ h)
-force≈ (forget⁺-bind (call⁺ (call o a k)) h) = node≈ λ b → ≈-refl (k b >>=∞ h)
-
-forget⁺-=<<  : ∀ {X Y} (n : T∞ X) (f : X → T⁺ Y) → forget⁺ (n ⁺=<< f) ≈ (n >>=∞ λ x → forget⁺ (f x))
-forget⁺-=<<S : ∀ {X Y} (s : Step X (T∞ X)) (f : X → T⁺ Y)
-             → StepEq _≈_ (force (forget⁺ (bindF⁺ s f))) (bindStep s λ x → forget⁺ (f x))
-force≈ (forget⁺-=<< n f) = forget⁺-=<<S (force n) f
-forget⁺-=<<S (done x)            f = ≈-reflS (force (forget⁺ (f x)))
-forget⁺-=<<S (node (call o a k)) f = node≈ λ b → ≈-refl (k b >>=∞ λ x → forget⁺ (f x))
 
 ------------------------------------------------------------------------
 -- The laws
@@ -105,35 +85,6 @@ sub-bind ⊑-ae   m k = embed-bind m k
 sub-bind ⊑-g    m k = ≈-refl (forget⁺ (m >>=⁺ λ x → forget⁺ (k x)))
 sub-bind ⊑-ge   m k = forget⁺-bind m (λ x → forget⁺ (k x))
 sub-bind ⊑-eff  m k = ≈-refl (m >>=∞ k)
-
-toT∞-return : ∀ {π} (u : pure ⊑π π) {X : Set} (x : X) → toT∞ π (return u x) ≈ return∞ x
-toT∞-return ⊑-pure x = ≈-refl (return∞ x)
-toT∞-return ⊑-pa   x = embed-return x
-toT∞-return ⊑-pe   x = ≈-refl (return∞ x)
-
-toT∞-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
-          → toT∞ π (bind π m k) ≈ (toT∞ π m >>=∞ λ x → toT∞ π (k x))
-toT∞-bind pure m k = ≈-sym (idˡ m (λ x → return∞ (k x)))
-toT∞-bind act  m k = embed-bind m k
-toT∞-bind eff⁺ m k = forget⁺-bind m (λ x → forget⁺ (k x))
-toT∞-bind eff  m k = ≈-refl (m >>=∞ k)
-
-toT∞-bindᵍ : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
-           → toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≈ (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
-toT∞-bindᵍ pure π₂   m k = ≈-sym (idˡ m (λ x → toT∞ π₂ (k x)))
-toT∞-bindᵍ act  pure m k =
-  ≈-trans (embed-bind m (λ x → returnT (k x))) (≈-bind (≈-refl (embed m)) (λ x → embed-return (k x)))
-toT∞-bindᵍ act  act  m k = embed-bind m k
-toT∞-bindᵍ act  eff⁺ m k = forget⁺-=<< (embed m) k
-toT∞-bindᵍ act  eff  m k = ≈-refl (embed m >>=∞ k)
-toT∞-bindᵍ eff⁺ pure m k = forget⁺-bind m (λ x → return∞ (k x))
-toT∞-bindᵍ eff⁺ act  m k = forget⁺-bind m (λ x → embed (k x))
-toT∞-bindᵍ eff⁺ eff⁺ m k = forget⁺-bind m (λ x → forget⁺ (k x))
-toT∞-bindᵍ eff⁺ eff  m k = forget⁺-bind m k
-toT∞-bindᵍ eff  pure m k = ≈-refl (m >>=∞ λ x → return∞ (k x))
-toT∞-bindᵍ eff  act  m k = ≈-refl (m >>=∞ λ x → embed (k x))
-toT∞-bindᵍ eff  eff⁺ m k = forget⁺-=<< m k
-toT∞-bindᵍ eff  eff  m k = ≈-refl (m >>=∞ k)
 
 ------------------------------------------------------------------------
 -- The observation

@@ -37,6 +37,7 @@ open import Once.Spec.Domain Σ
 open import Once.Spec.Metatheory using (Recursion)
 open import Once.Metatheory.Bisim Σ
 open import Once.Metatheory.Lawful Σ
+open import Once.Metatheory.Unfold Σ using (module Unfold)
 
 open T∞ using (force)
 open _≈_ using (force≈)
@@ -119,63 +120,14 @@ module Fold (π : Purity) (e : pure ⊑π π) (G : SFunctor) where
 -- The unfold
 ------------------------------------------------------------------------
 
-module Unfold (G : SFunctor) where
-  mapP≡ : ∀ {X} (c : X → ⟦ G ⟧SF X) H (l : ⟦ H ⟧SF X) → mapP G H c l ≡ sfmap H (anaP G c) l
-  mapP≡ c (SK B)     l        = refl
-  mapP≡ c SId        l        = refl
-  mapP≡ c (H₁ S⊕ H₂) (inj₁ x) = cong inj₁ (mapP≡ c H₁ x)
-  mapP≡ c (H₁ S⊕ H₂) (inj₂ y) = cong inj₂ (mapP≡ c H₂ y)
-  mapP≡ c (H₁ S⊗ H₂) (x , y)  = cong₂ _,_ (mapP≡ c H₁ x) (mapP≡ c H₂ y)
-
-  mapA≡ : ∀ {X} (c : X → T (⟦ G ⟧SF X)) H (l : ⟦ H ⟧SF X) → mapA G H c l ≡ sfmap H (anaA G c) l
-  mapA≡ c (SK B)     l        = refl
-  mapA≡ c SId        l        = refl
-  mapA≡ c (H₁ S⊕ H₂) (inj₁ x) = cong inj₁ (mapA≡ c H₁ x)
-  mapA≡ c (H₁ S⊕ H₂) (inj₂ y) = cong inj₂ (mapA≡ c H₂ y)
-  mapA≡ c (H₁ S⊗ H₂) (x , y)  = cong₂ _,_ (mapA≡ c H₁ x) (mapA≡ c H₂ y)
-
-  mapE≡ : ∀ {X} (c : X → T∞ (⟦ G ⟧SF X)) H (l : ⟦ H ⟧SF X) → mapE G H c l ≡ sfmap H (anaE G c) l
-  mapE≡ c (SK B)     l        = refl
-  mapE≡ c SId        l        = refl
-  mapE≡ c (H₁ S⊕ H₂) (inj₁ x) = cong inj₁ (mapE≡ c H₁ x)
-  mapE≡ c (H₁ S⊕ H₂) (inj₂ y) = cong inj₂ (mapE≡ c H₂ y)
-  mapE≡ c (H₁ S⊗ H₂) (x , y)  = cong₂ _,_ (mapE≡ c H₁ x) (mapE≡ c H₂ y)
-
-  mapG≡ : ∀ {X} (c : X → T⁺ (⟦ G ⟧SF X)) H (l : ⟦ H ⟧SF X) → mapG G H c l ≡ sfmap H (anaG G c) l
-  mapG≡ c (SK B)     l        = refl
-  mapG≡ c SId        l        = refl
-  mapG≡ c (H₁ S⊕ H₂) (inj₁ x) = cong inj₁ (mapG≡ c H₁ x)
-  mapG≡ c (H₁ S⊕ H₂) (inj₂ y) = cong inj₂ (mapG≡ c H₂ y)
-  mapG≡ c (H₁ S⊗ H₂) (x , y)  = cong₂ _,_ (mapG≡ c H₁ x) (mapG≡ c H₂ y)
-
-  doneEq : ∀ {X} {x y : X} → x ≡ y → StepEq {X = X} {Y = T∞ X} _≈_ (done x) (done y)
-  doneEq refl = done≈
+module UnfoldEq (G : SFunctor) where
+  open Unfold G
 
   treeA≡ : ∀ {X} (c : X → T (⟦ G ⟧SF X)) (t : T (⟦ G ⟧SF X))
          → treeA G c t ≡ (t >>=T λ l → returnT (sfmap G (anaA G c) l))
   treeA≡ c (roll (done l))            = cong (λ z → roll (done z)) (mapA≡ c G l)
   treeA≡ c (roll (node (call o a k))) =
     cong (λ k → roll (node (call o a k))) (extensionality λ b → treeA≡ c (k b))
-
-  treeE≈ : ∀ {X} (c : X → T∞ (⟦ G ⟧SF X)) (t : T∞ (⟦ G ⟧SF X))
-         → treeE G c t ≈ (t >>=∞ λ l → return∞ (sfmap G (anaE G c) l))
-  treeE≈S : ∀ {X} (c : X → T∞ (⟦ G ⟧SF X)) (s : Step (⟦ G ⟧SF X) (T∞ (⟦ G ⟧SF X)))
-          → StepEq _≈_ (stepE G c s) (bindStep s λ l → return∞ (sfmap G (anaE G c) l))
-  force≈ (treeE≈ c t) = treeE≈S c (force t)
-  treeE≈S c (done l)            = doneEq (mapE≡ c G l)
-  treeE≈S c (node (call o a k)) = node≈ λ b → treeE≈ c (k b)
-
-  treeG≈ : ∀ {X} (c : X → T⁺ (⟦ G ⟧SF X)) (t : T∞ (⟦ G ⟧SF X))
-         → treeG G c t ≈ (t >>=∞ λ l → return∞ (sfmap G (anaG G c) l))
-  treeG≈S : ∀ {X} (c : X → T⁺ (⟦ G ⟧SF X)) (s : Step (⟦ G ⟧SF X) (T∞ (⟦ G ⟧SF X)))
-          → StepEq _≈_ (stepG G c s) (bindStep s λ l → return∞ (sfmap G (anaG G c) l))
-  force≈ (treeG≈ c t) = treeG≈S c (force t)
-  treeG≈S c (done l)            = doneEq (mapG≡ c G l)
-  treeG≈S c (node (call o a k)) = node≈ λ b → treeG≈ c (k b)
-
-  rootG≈ : ∀ {X} (c : X → T⁺ (⟦ G ⟧SF X)) (r : T⁺ (⟦ G ⟧SF X))
-         → forget⁺ (rootG G c r) ≈ forget⁺ (r >>=⁺ λ l → return∞ (sfmap G (anaG G c) l))
-  force≈ (rootG≈ c (call⁺ (call o a k))) = node≈ λ b → treeG≈ c (k b)
 
   unfold-out : ∀ π {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
              → EqM π (outν (anaM π G c x)) (fmap π (sfmap G (anaM π G c)) (c x))
@@ -232,7 +184,7 @@ recursion : Recursion Σ
 recursion = record
   { fold-unique = λ π e G alg h hyp → Fold.Unique.unique π e G alg h hyp
   ; fold-fusion = λ π e G alg alg′ g hyp → Fold.Fusion.fusion π e G alg alg′ g hyp
-  ; unfold-out  = λ π G c x → Unfold.unfold-out G π c x
+  ; unfold-out  = λ π G c x → UnfoldEq.unfold-out G π c x
   ; iter-unfold = λ f a → Server.iter-unfold f a
   ; iter-unique = λ f g hyp a → Server.Unique.iter-unique f g hyp a
   }
