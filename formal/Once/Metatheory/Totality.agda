@@ -6,14 +6,16 @@
 -- Once.Metatheory.Totality — total and productive
 -- (`Spec.Metatheory.Totality`).
 --
---   * a run's events are a prefix family: one event per node, and a run that
---     ended stays ended;
+--   * a run's calls are a prefix family, from every history
+--     (`Once.Metatheory.Prefix`);
 --   * a definition cannot name itself or a later one: the name resolves to
 --     the module's own entry, which the definitions signature does not yet
 --     hold, and Σ is empty;
 --   * the stream and the echo server are typed; the stream's first layer
 --     calls `tick`, and each round of the server makes two calls, so at
---     depth `n` it has made `n`.
+--     depth `n` it has made `n`;
+--   * the silent loop is typed, and past depth zero what it does never
+--     arrives: each round ends where it began.
 ------------------------------------------------------------------------
 
 module Once.Metatheory.Totality where
@@ -21,22 +23,22 @@ module Once.Metatheory.Totality where
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; _++_; length; [_])
-open import Data.List.Properties using (++-identityʳ; ++-assoc)
+open import Data.List.Properties using (++-identityʳ; ++-assoc; length-++)
 open import Data.List.Relation.Unary.Any using (here; there; any?)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (_≟_)
 open import Relation.Nullary.Decidable using (toWitnessFalse)
-open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; z≤n; s≤s)
-open import Data.Nat.Properties using (≤-refl)
-open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat.Properties using (≤-refl; +-identityʳ; +-assoc)
+open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (0≤q; ⊑-pe)
+open import Once.Spec.Grade using (0≤q; ⊑-pa; ⊑-act)
 open import Once.Spec.Name using (CanonicalName; canonical; GenWord; genWords)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (TySub; Respects; ∅ₖ)
-open import Once.Spec.Signature using (Signature; call; BTy; void; unit; int; float; _*_; _+_)
+open import Once.Spec.Signature using (Signature; call)
 open import Once.Spec.Type using (wf-Id)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Resolution
@@ -52,68 +54,13 @@ import Once.Spec.Core.Typing as CoreTyping
 import Once.Spec.Core.Meaning as Meaning
 import Once.Spec.Surface.Typing as SurfaceTyping
 open import Once.Spec.Metatheory using (Totality)
+open import Once.Spec.Delay using (_⇓_; now⇓; later⇓)
+open import Once.Metatheory.DelayLaws using (mapD⇓; mapD⇓⁻)
+import Once.Metatheory.Prefix as Prefix
+import Data.Empty
 
 ------------------------------------------------------------------------
 -- A run is a prefix family
-------------------------------------------------------------------------
-
-module Prefix (Σ : Signature) (ι : Observation.Interp Σ) where
-  open Effect Σ using (T∞; Step; done; node; module T∞)
-  open T∞ using (force)
-  open Observation Σ using (History; events; stepEvents; next; resume; PrefixFamily)
-
-  bounded  : ∀ {X} h (m : T∞ X) k → length (events ι h m k) ≤ k
-  boundedS : ∀ {X} h (s : Step X (T∞ X)) k → length (stepEvents ι h s k) ≤ suc k
-  boundedN : ∀ {X} h (b : BTy) v (k′ : _ → T∞ X) k → length (next ι h (resume b v k′) k) ≤ k
-  bounded h m zero    = z≤n
-  bounded h m (suc k) = boundedS h (force m) k
-  boundedS h (done x)            k = z≤n
-  boundedS h (node (call o a k′)) k = s≤s (boundedN _ _ _ k′ k)
-  boundedN h void    v k′ k = z≤n
-  boundedN h unit    v k′ k = bounded h (k′ v) k
-  boundedN h int     v k′ k = bounded h (k′ v) k
-  boundedN h float   v k′ k = bounded h (k′ v) k
-  boundedN h (a * b) v k′ k = bounded h (k′ v) k
-  boundedN h (a + b) v k′ k = bounded h (k′ v) k
-
-  saturating  : ∀ {X} h (m : T∞ X) k → length (events ι h m k) < k → events ι h m (suc k) ≡ events ι h m k
-  saturatingS : ∀ {X} h (s : Step X (T∞ X)) k → length (stepEvents ι h s k) < suc k
-              → stepEvents ι h s (suc k) ≡ stepEvents ι h s k
-  saturatingN : ∀ {X} h (b : BTy) v (k′ : _ → T∞ X) k → length (next ι h (resume b v k′) k) < k
-              → next ι h (resume b v k′) (suc k) ≡ next ι h (resume b v k′) k
-  saturating h m zero    ()
-  saturating h m (suc k) l = saturatingS h (force m) k l
-  saturatingS h (done x)             k l = refl
-  saturatingS h (node (call o a k′)) k (s≤s l) = cong (_ ∷_) (saturatingN _ _ _ k′ k l)
-  saturatingN h void    v k′ k l = refl
-  saturatingN h unit    v k′ k l = saturating h (k′ v) k l
-  saturatingN h int     v k′ k l = saturating h (k′ v) k l
-  saturatingN h float   v k′ k l = saturating h (k′ v) k l
-  saturatingN h (a * b) v k′ k l = saturating h (k′ v) k l
-  saturatingN h (a + b) v k′ k l = saturating h (k′ v) k l
-
-  coherent  : ∀ {X} h (m : T∞ X) k → ∃[ rest ] (events ι h m (suc k) ≡ events ι h m k ++ rest)
-  coherentS : ∀ {X} h (s : Step X (T∞ X)) k → ∃[ rest ] (stepEvents ι h s (suc k) ≡ stepEvents ι h s k ++ rest)
-  coherentN : ∀ {X} h (b : BTy) v (k′ : _ → T∞ X) k
-            → ∃[ rest ] (next ι h (resume b v k′) (suc k) ≡ next ι h (resume b v k′) k ++ rest)
-  coherent h m zero    = events ι h m 1 , refl
-  coherent h m (suc k) = coherentS h (force m) k
-  coherentS h (done x)             k = [] , refl
-  coherentS h (node (call o a k′)) k = cons (coherentN _ _ _ k′ k)
-    where cons : ∀ {E : Set} {x : E} {A B : List E} → ∃[ r ] (A ≡ B ++ r) → ∃[ r ] (x ∷ A ≡ (x ∷ B) ++ r)
-          cons (r , e) = r , cong (_ ∷_) e
-  coherentN h void    v k′ k = [] , refl
-  coherentN h unit    v k′ k = coherent h (k′ v) k
-  coherentN h int     v k′ k = coherent h (k′ v) k
-  coherentN h float   v k′ k = coherent h (k′ v) k
-  coherentN h (a * b) v k′ k = coherent h (k′ v) k
-  coherentN h (a + b) v k′ k = coherent h (k′ v) k
-
-  observable : ∀ h {X} (m : T∞ X) → PrefixFamily (events ι h m)
-  observable h m = record { bounded = bounded h m ; saturating = saturating h m ; coherent = coherent h m }
-
-------------------------------------------------------------------------
--- No general recursion
 ------------------------------------------------------------------------
 
 module Unreachable (Σ : Signature) (empty : Σ ≡ []) (nm : Fin 0 → CanonicalName) where
@@ -129,7 +76,6 @@ module Unreachable (Σ : Signature) (empty : Σ ≡ []) (nm : Fin 0 → Canonica
 
   noCheck : ∀ {m Δ n} {L : Locals m n} {x A t} → ¬ _⊢_⇐_↝_ Δ L (RResolved (canonical (x ∷ []))) A t
   noCheck (c-sub s _)        = noSynth s
-  noCheck (c-sigop⁺ _ mem _) = noMem empty mem
   noCheck (c-poly () _ _ _ _)
 
 private
@@ -172,13 +118,13 @@ private
   selfWalk : ∀ {Σ} → Σ ≡ [] → ∀ {rs} → ResolvesDecls (env [] []) selfDecls rs
            → ∀ {s′} {S′ : Defs s′} {nm′ tl′} {nm : Fin 0 → CanonicalName} {tl}
            → ¬ Walk Σ [] nm tl rs S′ nm′ tl′
-  selfWalk em (rd-other nf-tsig (rd-def r rd-nil)) (w-sig _ b _) = checkOwn em (resolvesOwn r) (Body.check b)
+  selfWalk em (rd-other nf-tsig (rd-def r rd-nil)) (w-sig _ b _ _) = checkOwn em (resolvesOwn r) (Body.check b)
   selfWalk em (rd-other nf-tsig (rd-def r rd-nil)) (w-skip () _)
 
   forwardWalk : ∀ {Σ} → Σ ≡ [] → ∀ {rs} → ResolvesDecls (env [] []) forwardDecls rs
               → ∀ {s′} {S′ : Defs s′} {nm′ tl′} {nm : Fin 0 → CanonicalName} {tl}
               → ¬ Walk Σ [] nm tl rs S′ nm′ tl′
-  forwardWalk em (rd-other nf-tsig (rd-def r _)) (w-sig _ b _) = checkOwn em (resolvesOwn r) (Body.check b)
+  forwardWalk em (rd-other nf-tsig (rd-def r _)) (w-sig _ b _ _) = checkOwn em (resolvesOwn r) (Body.check b)
   forwardWalk em (rd-other nf-tsig (rd-def r _)) (w-skip () _)
 
   envOf : ∀ {um ds} → um ≡ [] → aliases ds ≡ [] → env um (aliases ds) ≡ env [] []
@@ -204,37 +150,74 @@ no-forward-reference D =
 -- The stream and the server
 ------------------------------------------------------------------------
 
-module TickTyping = CoreTyping tickΣ []
-module EchoTyping = CoreTyping echoΣ []
+module TickTyping   = CoreTyping tickΣ []
+module EchoTyping   = CoreTyping echoΣ []
+module SilentTyping = CoreTyping [] []
 
-stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.eff) Once.Spec.Grade.pure
-stream-typed = TickTyping.⊢unfold wf-Id (TickTyping.⊢sigop (here refl)) TickTyping.⊢lit-int
+stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.act) Once.Spec.Grade.pure
+stream-typed = TickTyping.⊢unfold ⊑-act wf-Id (TickTyping.⊢sigop (here refl)) TickTyping.⊢lit-int
 
 server-typed : EchoTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] echoServer Once.Spec.Type.Void Once.Spec.Grade.eff
 server-typed =
   EchoTyping.⊢iter
-    (EchoTyping.⊢lam 0≤q (EchoTyping.⊢inr (EchoTyping.⊢lam 0≤q (EchoTyping.⊢inr
+    (EchoTyping.⊢lam 0≤q (EchoTyping.⊢inr
       (EchoTyping.⊢app (EchoTyping.⊢sigop (there (here refl)))
-                       (EchoTyping.⊢app (EchoTyping.⊢sigop (here refl)) EchoTyping.⊢unit))))))
+                       (EchoTyping.⊢app (EchoTyping.⊢sigop (here refl)) EchoTyping.⊢unit))))
     EchoTyping.⊢unit
 
+silent-typed : SilentTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] silentLoop Once.Spec.Type.Void Once.Spec.Grade.eff
+silent-typed =
+  SilentTyping.⊢iter (SilentTyping.⊢lam 0≤q (SilentTyping.⊢sub-eff ⊑-pa (SilentTyping.⊢inr SilentTyping.⊢unit))) SilentTyping.⊢unit
+
 module Runs (fmt : TargetNum) (δ : Meaning.DefSem echoΣ fmt []) (σ : TySub 0 0) (r : Respects ∅ₖ ∅ₖ σ) where
-  open Effect echoΣ using (T∞; module T∞)
-  open T∞ using (force)
-  open Observation echoΣ using (History; events; stepEvents)
+  open Observation echoΣ using (History; observeFrom)
 
   ι = Meaning.DefSem.interp δ
   run = Meaning.⟦_⟧ echoΣ fmt [] server-typed δ σ r tt
 
-  evForce : ∀ {X} {h} {m m′ : T∞ X} n → force m ≡ force m′ → events ι h m n ≡ events ι h m′ n
-  evForce zero    e = refl
-  evForce (suc n) e = cong (λ s → stepEvents ι _ s n) e
+  private
+    len2 : ∀ (c : History) e₁ e₂ n → length ((c ++ [ e₁ ]) ++ [ e₂ ]) + n ≡ length c + suc (suc n)
+    len2 c e₁ e₂ n =
+      trans (cong (_+ n) (trans (length-++ (c ++ [ e₁ ])) (cong (_+ 1) (length-++ c))))
+            (trans (+-assoc (length c + 1) 1 n) (+-assoc (length c) 1 (suc n)))
 
   -- Each round is a read and a write, and then the next round.
-  runs : ∀ n (h : History) → length (events ι h run n) ≡ n
-  runs zero          h = refl
-  runs (suc zero)    h = refl
-  runs (suc (suc n)) h = cong (λ k → suc (suc k)) (trans (cong length (evForce {m′ = run} n refl)) (runs n _))
+  runs : ∀ n h (c : History) → ∃[ o ] (observeFrom ι h c run n ⇓ o × length (proj₁ o) ≡ length c + n)
+  runs zero                h c = _ , now⇓ refl , sym (+-identityʳ (length c))
+  runs (suc zero)          h c = _ , now⇓ refl , length-++ c
+  runs (suc (suc zero))    h c = _ , now⇓ refl , trans (sym (+-identityʳ _)) (len2 c _ _ zero)
+  runs (suc (suc (suc n))) h c =
+    let r = runs (suc n) _ _ in
+    proj₁ r , later⇓ refl (proj₁ (proj₂ r)) , trans (proj₂ (proj₂ r)) (len2 c _ _ (suc n))
+
+module Silent (fmt : TargetNum) (δ : Meaning.DefSem [] fmt []) (σ : TySub 0 0) (r : Respects ∅ₖ ∅ₖ σ) where
+  open Observation [] using (History; observeFrom)
+
+  ι = Meaning.DefSem.interp δ
+  run = Meaning.⟦_⟧ [] fmt [] silent-typed δ σ r tt
+
+  -- Each round ends where it began: one more step of the delay, forever.
+  never : ∀ n h c {o} → ¬ (observeFrom ι h c run (suc n) ⇓ o)
+  never n h c (now⇓ ())
+  never n h c (later⇓ refl d⇓) = never n h c d⇓
+
+private
+  server-runs : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) n
+              → ∃[ h ] (Observation.events echoΣ (Meaning.DefSem.interp δ) []
+                          (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ (λ ()) (λ ()) tt) n ⇓ h × length h ≡ n)
+  server-runs fmt δ n = pick (Runs.runs fmt δ (λ ()) (λ ()) n [] [])
+    where
+      pick : ∃[ o ] (Observation.observeFrom echoΣ (Meaning.DefSem.interp δ) [] [] (Runs.run fmt δ (λ ()) (λ ())) n ⇓ o
+                     × length (proj₁ o) ≡ 0 + n)
+           → ∃[ h ] (Observation.events echoΣ (Meaning.DefSem.interp δ) []
+                       (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ (λ ()) (λ ()) tt) n ⇓ h × length h ≡ n)
+      pick (o , o⇓ , eq) = proj₁ o , mapD⇓ o⇓ , eq
+
+  silent-never : ∀ fmt (δ : Meaning.DefSem [] fmt []) n {h}
+               → ∃[ o ] (Observation.observeFrom [] (Meaning.DefSem.interp δ) [] [] (Silent.run fmt δ (λ ()) (λ ())) (suc n) ⇓ o
+                         × proj₁ o ≡ h)
+               → Data.Empty.⊥
+  silent-never fmt δ n (o , o⇓ , _) = Silent.never fmt δ (λ ()) (λ ()) n [] [] o⇓
 
 totality : Totality
 totality = record
@@ -244,5 +227,7 @@ totality = record
   ; stream-typed         = stream-typed
   ; stream-emits         = λ fmt δ → _ , _ , _ , refl
   ; server-typed         = server-typed
-  ; server-runs          = λ fmt δ n → Runs.runs fmt δ (λ ()) (λ ()) n []
+  ; server-runs          = server-runs
+  ; silent-typed         = silent-typed
+  ; silent-never         = λ fmt δ n h d⇓ → silent-never fmt δ n (mapD⇓⁻ d⇓)
   }
