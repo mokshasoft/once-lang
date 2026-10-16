@@ -23,9 +23,9 @@ import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.HeadView
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Lang.Event
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter
 d_Emitter_14 a0 a1 = ()
@@ -326,11 +326,11 @@ d_TraceLoop_366 a0 a1 a2 a3 = ()
 data T_TraceLoop_366
   = C_constructor_472 (AgdaAny ->
                        Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
-                      ([MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
+                      ([MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
                        MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny -> AgdaAny)
                       (AgdaAny -> AgdaAny -> AgdaAny)
                       (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-                       AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124])
+                       AgdaAny -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56])
                       (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface._.Instr
 d_Instr_374 :: T_Emitter_14 -> T_Machine_196 -> ()
@@ -408,7 +408,7 @@ d_matchCall_438 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.ret-call
 d_ret'45'call_440 ::
   T_TraceLoop_366 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny -> AgdaAny
 d_ret'45'call_440 v0
   = case coe v0 of
@@ -425,7 +425,7 @@ d_dispatchArith_442 v0
 d_ev'45'arch_444 ::
   T_TraceLoop_366 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
+  AgdaAny -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
 d_ev'45'arch_444 v0
   = case coe v0 of
       C_constructor_472 v2 v3 v4 v5 v7 -> coe v5
@@ -448,9 +448,9 @@ d_sigop'45'call_448 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.sigop-lowering
 d_sigop'45'lowering_456 ::
   T_TraceLoop_366 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sigop'45'lowering_456 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.sigop-matchCall

@@ -21,8 +21,8 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.CCC.IR.Stack.pair-slots
 d_pair'45'slots_8 :: Integer
@@ -202,7 +202,7 @@ d_'10216''44''10217''45'stack'45'req_92 ::
 d_'10216''44''10217''45'stack'45'req_92 = erased
 -- Once.CCC.IR.Stack.sigOp-stack-req
 d_sigOp'45'stack'45'req_104 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sigOp'45'stack'45'req_104 = erased
 -- Once.CCC.IR.Stack.⟨,⟩-capacity-for-pair

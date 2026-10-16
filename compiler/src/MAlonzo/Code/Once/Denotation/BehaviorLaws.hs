@@ -21,20 +21,18 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.Denotation.Behavior
-import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Lang.Event
 
 -- Once.Denotation.BehaviorLaws.behavior-by
 d_behavior'45'by_12 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
+  (Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_behavior'45'by_12 v0 v1 ~v2 = du_behavior'45'by_12 v0 v1
 du_behavior'45'by_12 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
+  (Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]) ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 du_behavior'45'by_12 v0 v1
   = coe
@@ -43,8 +41,7 @@ du_behavior'45'by_12 v0 v1
 -- Once.Denotation.BehaviorLaws._.ext
 d_ext_28 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
+  (Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_ext_28 v0 ~v1 ~v2 v3 = du_ext_28 v0 v3
@@ -61,8 +58,7 @@ du_ext_28 v0 v1
 -- Once.Denotation.BehaviorLaws._.bnd
 d_bnd_36 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
+  (Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_bnd_36 v0 ~v1 ~v2 v3 = du_bnd_36 v0 v3
@@ -74,8 +70,7 @@ du_bnd_36 v0 v1
 -- Once.Denotation.BehaviorLaws._.sat
 d_sat_44 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6 ->
-  (Integer ->
-   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]) ->
+  (Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]) ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->

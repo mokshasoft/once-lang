@@ -19,7 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
-import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Lang.Type.Grade
 
 -- Once.Grammar.LowerIdent
 d_LowerIdent_4 :: ()
@@ -32,79 +32,80 @@ d_GType_8 = ()
 data T_GType_8
   = C_TUnit_12 | C_TVoid_14 | C_TInt_16 | C_TFloat_18 |
     C__'8658''91'_'93'__20 T_GType_8
-                           MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 T_GType_8 |
+                           MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 T_GType_8 |
     C__'8855'__22 T_GType_8 T_GType_8 |
     C__'8853'__24 T_GType_8 T_GType_8 | C_TEff_26 T_GType_8 T_GType_8 |
-    C_GMu_28 T_GFunctor_10 | C_GNu_30 T_GFunctor_10 |
-    C_GNuEff_32 T_GFunctor_10 |
-    C_TVar_34 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_TAct_28 T_GType_8 T_GType_8 | C_GMu_30 T_GFunctor_10 |
+    C_GNu_32 T_GFunctor_10 | C_GNuEff_34 T_GFunctor_10 |
+    C_GNuAct_36 T_GFunctor_10 |
+    C_TVar_38 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.Grammar.GFunctor
 d_GFunctor_10 = ()
 data T_GFunctor_10
-  = C_GFK_36 T_GType_8 | C_GFId_38 |
-    C_GFSum_40 T_GFunctor_10 T_GFunctor_10 |
-    C_GFProd_42 T_GFunctor_10 T_GFunctor_10
+  = C_GFK_40 T_GType_8 | C_GFId_42 |
+    C_GFSum_44 T_GFunctor_10 T_GFunctor_10 |
+    C_GFProd_46 T_GFunctor_10 T_GFunctor_10
 -- Once.Grammar._⇒_
-d__'8658'__44 :: T_GType_8 -> T_GType_8 -> T_GType_8
-d__'8658'__44 v0 v1
+d__'8658'__48 :: T_GType_8 -> T_GType_8 -> T_GType_8
+d__'8658'__48 v0 v1
   = coe
       C__'8658''91'_'93'__20 (coe v0)
-      (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14) (coe v1)
+      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v1)
 -- Once.Grammar.BinOp
-d_BinOp_54 = ()
-data T_BinOp_54
-  = C_OpAdd_56 | C_OpSub_58 | C_OpMul_60 | C_OpDiv_62 | C_OpMod_64 |
-    C_OpLt_66 | C_OpLe_68 | C_OpGt_70 | C_OpGe_72 | C_OpEq_74 |
-    C_OpNe_76
+d_BinOp_58 = ()
+data T_BinOp_58
+  = C_OpAdd_60 | C_OpSub_62 | C_OpMul_64 | C_OpDiv_66 | C_OpMod_68 |
+    C_OpLt_70 | C_OpLe_72 | C_OpGt_74 | C_OpGe_76 | C_OpEq_78 |
+    C_OpNe_80
 -- Once.Grammar.UnaryOp
-d_UnaryOp_78 = ()
-data T_UnaryOp_78 = C_OpNeg_80
+d_UnaryOp_82 = ()
+data T_UnaryOp_82 = C_OpNeg_84
 -- Once.Grammar.GExpr
-d_GExpr_82 = ()
-data T_GExpr_82
-  = C_EUnit_84 | C_EInt_86 Integer |
-    C_EString_88 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_EVar_90 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_EQualified_92 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_GExpr_86 = ()
+data T_GExpr_86
+  = C_EUnit_88 | C_EInt_90 Integer |
+    C_EString_92 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_EVar_94 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_EQualified_96 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_ELam_94 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_82 |
-    C_EApp_96 T_GExpr_82 T_GExpr_82 |
-    C_EPair_98 T_GExpr_82 T_GExpr_82 |
-    C_ELet_100 [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] T_GExpr_82 |
-    C_EDestruct_102 T_GExpr_82
-                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_82
-                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_82 |
-    C_EBinOp_104 T_BinOp_54 T_GExpr_82 T_GExpr_82 |
-    C_EUnaryOp_106 T_GExpr_82 | C_ECompose_108 T_GExpr_82 T_GExpr_82 |
-    C_EAnnot_110 T_GExpr_82 T_GType_8
+    C_ELam_98 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_86 |
+    C_EApp_100 T_GExpr_86 T_GExpr_86 |
+    C_EPair_102 T_GExpr_86 T_GExpr_86 |
+    C_ELet_104 [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] T_GExpr_86 |
+    C_EDestruct_106 T_GExpr_86
+                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_86
+                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_86 |
+    C_EBinOp_108 T_BinOp_58 T_GExpr_86 T_GExpr_86 |
+    C_EUnaryOp_110 T_GExpr_86 | C_ECompose_112 T_GExpr_86 T_GExpr_86 |
+    C_EAnnot_114 T_GExpr_86 T_GType_8
 -- Once.Grammar.ModulePath
-d_ModulePath_112 :: ()
-d_ModulePath_112 = erased
+d_ModulePath_116 :: ()
+d_ModulePath_116 = erased
 -- Once.Grammar.GDecl
-d_GDecl_114 = ()
-data T_GDecl_114
-  = C_DTypeSig_116 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_GDecl_118 = ()
+data T_GDecl_118
+  = C_DTypeSig_120 MAlonzo.Code.Agda.Builtin.String.T_String_6
                    T_GType_8 |
-    C_DFunDef_118 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                  [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GExpr_82 |
-    C_DSignature_120 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DFunDef_122 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                  [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GExpr_86 |
+    C_DSignature_124 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      T_GType_8 |
-    C_DTypeAlias_122 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DTypeAlias_126 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GType_8 |
-    C_DImport_124 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+    C_DImport_128 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
 -- Once.Grammar.GModule
-d_GModule_126 = ()
-newtype T_GModule_126 = C_mkGModule_132 [T_GDecl_114]
+d_GModule_130 = ()
+newtype T_GModule_130 = C_mkGModule_136 [T_GDecl_118]
 -- Once.Grammar.GModule.decls
-d_decls_130 :: T_GModule_126 -> [T_GDecl_114]
-d_decls_130 v0
+d_decls_134 :: T_GModule_130 -> [T_GDecl_118]
+d_decls_134 v0
   = case coe v0 of
-      C_mkGModule_132 v1 -> coe v1
+      C_mkGModule_136 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ValidDeclPair
-d_ValidDeclPair_134 a0 a1 = ()
-data T_ValidDeclPair_134 = C_validPair_144
+d_ValidDeclPair_138 a0 a1 = ()
+data T_ValidDeclPair_138 = C_validPair_148
 -- Once.Grammar.ValidMainType
-d_ValidMainType_146 a0 = ()
-data T_ValidMainType_146 = C_validMain_150
+d_ValidMainType_150 a0 = ()
+data T_ValidMainType_150 = C_validMain_154

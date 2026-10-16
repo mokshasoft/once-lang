@@ -20,487 +20,127 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
-import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-import qualified MAlonzo.Code.Once.Float.Decimal
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Spec.Float.Decimal
+import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Once.Spec.Name
-import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Spec.Word
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.Word
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._%ˢ_
 d__'37''738'__14 :: Integer -> Integer -> Integer
 d__'37''738'__14
   = coe
-      MAlonzo.Code.Once.Word.d__'37''738'__126 (coe (64 :: Integer))
+      MAlonzo.Code.Once.Spec.Word.d__'37''738'__122 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._/ˢ_
 d__'47''738'__16 :: Integer -> Integer -> Integer
 d__'47''738'__16
   = coe
-      MAlonzo.Code.Once.Word.d__'47''738'__120 (coe (64 :: Integer))
+      MAlonzo.Code.Once.Spec.Word.d__'47''738'__116 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._<ˢ_
 d__'60''738'__18 :: Integer -> Integer -> Bool
 d__'60''738'__18
-  = coe MAlonzo.Code.Once.Word.d__'60''738'__80 (coe (64 :: Integer))
+  = coe
+      MAlonzo.Code.Once.Spec.Word.d__'60''738'__76 (coe (64 :: Integer))
+-- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._divℕ_
+d__divℕ__20 :: Integer -> Integer -> Integer
+d__divℕ__20 = coe MAlonzo.Code.Once.Spec.Word.du__divℕ__88
+-- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._modℕ_
+d__modℕ__22 :: Integer -> Integer -> Integer
+d__modℕ__22 = coe MAlonzo.Code.Once.Spec.Word.du__modℕ__90
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._≡ʷ_
-d__'8801''695'__20 :: Integer -> Integer -> Bool
-d__'8801''695'__20 = coe MAlonzo.Code.Once.Word.du__'8801''695'__86
+d__'8801''695'__24 :: Integer -> Integer -> Bool
+d__'8801''695'__24
+  = coe MAlonzo.Code.Once.Spec.Word.du__'8801''695'__82
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._⊕_
-d__'8853'__22 :: Integer -> Integer -> Integer
-d__'8853'__22
-  = coe MAlonzo.Code.Once.Word.d__'8853'__26 (coe (64 :: Integer))
+d__'8853'__26 :: Integer -> Integer -> Integer
+d__'8853'__26
+  = coe
+      MAlonzo.Code.Once.Spec.Word.d__'8853'__28 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._⊖_
-d__'8854'__24 :: Integer -> Integer -> Integer
-d__'8854'__24
-  = coe MAlonzo.Code.Once.Word.d__'8854'__32 (coe (64 :: Integer))
+d__'8854'__28 :: Integer -> Integer -> Integer
+d__'8854'__28
+  = coe
+      MAlonzo.Code.Once.Spec.Word.d__'8854'__34 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW._⊗_
-d__'8855'__26 :: Integer -> Integer -> Integer
-d__'8855'__26
-  = coe MAlonzo.Code.Once.Word.d__'8855'__38 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.%ˢ-else
-d_'37''738''45'else_28 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'else_28 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.%ˢ-in-range
-d_'37''738''45'in'45'range_30 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_'37''738''45'in'45'range_30 v0 v1 v2 v3 v4
+d__'8855'__30 :: Integer -> Integer -> Integer
+d__'8855'__30
   = coe
-      MAlonzo.Code.Once.Word.du_'37''738''45'in'45'range_604
-      (coe (64 :: Integer)) v2 v3 v4
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.%ˢ-mid
-d_'37''738''45'mid_32 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'mid_32 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.%ˢ-negOne
-d_'37''738''45'negOne_34 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'negOne_34 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.%ˢ-zero
-d_'37''738''45'zero_36 ::
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'37''738''45'zero_36 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW./ˢ-else
-d_'47''738''45'else_38 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'else_38 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW./ˢ-in-range
-d_'47''738''45'in'45'range_40 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_'47''738''45'in'45'range_40 v0 v1 v2 v3
-  = coe
-      MAlonzo.Code.Once.Word.du_'47''738''45'in'45'range_570
-      (coe (64 :: Integer)) v2 v3
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW./ˢ-mid
-d_'47''738''45'mid_42 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'mid_42 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW./ˢ-negOne
-d_'47''738''45'negOne_44 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'negOne_44 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW./ˢ-pow2
-d_'47''738''45'pow2_46 ::
-  Integer ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'pow2_46 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW./ˢ-zero
-d_'47''738''45'zero_48 ::
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'47''738''45'zero_48 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.0<half
-d_0'60'half_50 :: MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_0'60'half_50 = coe MAlonzo.Code.Once.Word.du_0'60'half_168
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.0<modulus
-d_0'60'modulus_52 :: MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_0'60'modulus_52 = coe MAlonzo.Code.Once.Word.du_0'60'modulus_166
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.0<negOne
-d_0'60'negOne_54 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_0'60'negOne_54 v0 v1
-  = coe
-      MAlonzo.Code.Once.Word.du_0'60'negOne_426 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.1<modulus
-d_1'60'modulus_56 ::
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_1'60'modulus_56
-  = coe
-      MAlonzo.Code.Once.Word.d_1'60'modulus_796 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.2*n≡n+n
-d_2'42'n'8801'n'43'n_58 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_2'42'n'8801'n'43'n_58 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.2≤modulus
-d_2'8804'modulus_60 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_2'8804'modulus_60 v0 v1
-  = coe
-      MAlonzo.Code.Once.Word.du_2'8804'modulus_422 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.<⇒<ᵇtrue
-d_'60''8658''60''7495'true_62 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'60''8658''60''7495'true_62 = erased
+      MAlonzo.Code.Once.Spec.Word.d__'8855'__40 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.InRange
-d_InRange_64 :: Integer -> ()
-d_InRange_64 = erased
+d_InRange_32 :: Integer -> ()
+d_InRange_32 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.Word
-d_Word_66 :: ()
-d_Word_66 = erased
+d_Word_34 :: ()
+d_Word_34 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.fromℤ
-d_fromℤ_68 :: Integer -> Integer
-d_fromℤ_68
-  = coe MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.fromℤ-0
-d_fromℤ'45'0_70 :: MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fromℤ'45'0_70 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.fromℤ-in-range
-d_fromℤ'45'in'45'range_72 ::
-  Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_fromℤ'45'in'45'range_72
-  = coe
-      MAlonzo.Code.Once.Word.d_fromℤ'45'in'45'range_174
-      (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.fromℤ-neg-toℤ
-d_fromℤ'45'neg'45'toℤ_74 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fromℤ'45'neg'45'toℤ_74 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.fromℤ-neg1
-d_fromℤ'45'neg1_76 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fromℤ'45'neg1_76 = erased
+d_fromℤ_36 :: Integer -> Integer
+d_fromℤ_36
+  = coe MAlonzo.Code.Once.Spec.Word.d_fromℤ_22 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.half
-d_half_78 :: Integer
-d_half_78
-  = coe MAlonzo.Code.Once.Word.d_half_48 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.half<modulus
-d_half'60'modulus_80 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_half'60'modulus_80 v0 v1
-  = coe
-      MAlonzo.Code.Once.Word.du_half'60'modulus_430 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.half≡2^b
-d_half'8801'2'94'b_82 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_half'8801'2'94'b_82 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.half≤negOne
-d_half'8804'negOne_84 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_half'8804'negOne_84 v0 v1
-  = coe
-      MAlonzo.Code.Once.Word.du_half'8804'negOne_450
-      (coe (64 :: Integer))
+d_half_38 :: Integer
+d_half_38
+  = coe MAlonzo.Code.Once.Spec.Word.d_half_50 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.inRange?
-d_inRange'63'_86 ::
+d_inRange'63'_40 ::
   Integer -> MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_inRange'63'_86
-  = coe MAlonzo.Code.Once.Word.d_inRange'63'_62 (coe (64 :: Integer))
+d_inRange'63'_40
+  = coe
+      MAlonzo.Code.Once.Spec.Word.d_inRange'63'_66 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.intMin
-d_intMin_88 :: Integer
-d_intMin_88
-  = coe MAlonzo.Code.Once.Word.d_intMin_54 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.lit-hi
-d_lit'45'hi_90 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_lit'45'hi_90 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Word.du_lit'45'hi_654 v3
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.lit-lo
-d_lit'45'lo_92 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_lit'45'lo_92 v0 v1 v2 v3
-  = coe
-      MAlonzo.Code.Once.Word.du_lit'45'lo_666 (coe (64 :: Integer)) v2 v3
+d_intMin_42 :: Integer
+d_intMin_42
+  = coe MAlonzo.Code.Once.Spec.Word.d_intMin_56 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.modulus
-d_modulus_94 :: Integer
-d_modulus_94
-  = coe MAlonzo.Code.Once.Word.d_modulus_10 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.modulus∸negOne≡1
-d_modulus'8760'negOne'8801'1_96 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_modulus'8760'negOne'8801'1_96 = erased
+d_modulus_44 :: Integer
+d_modulus_44
+  = coe
+      MAlonzo.Code.Once.Spec.Word.d_modulus_12 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.modulus≢0
-d_modulus'8802'0_98 :: MAlonzo.Code.Data.Nat.Base.T_NonZero_112
-d_modulus'8802'0_98
+d_modulus'8802'0_46 :: MAlonzo.Code.Data.Nat.Base.T_NonZero_112
+d_modulus'8802'0_46
   = coe
-      MAlonzo.Code.Once.Word.d_modulus'8802'0_12 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.mod∸half≡half
-d_mod'8760'half'8801'half_100 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mod'8760'half'8801'half_100 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.mod≡half+half
-d_mod'8801'half'43'half_102 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mod'8801'half'43'half_102 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.negOne
-d_negOne_104 :: Integer
-d_negOne_104
-  = coe MAlonzo.Code.Once.Word.d_negOne_78 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.negOne<modulus
-d_negOne'60'modulus_106 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_negOne'60'modulus_106 v0 v1
-  = coe
-      MAlonzo.Code.Once.Word.du_negOne'60'modulus_438
+      MAlonzo.Code.Once.Spec.Word.d_modulus'8802'0_14
       (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.negOne≢0
-d_negOne'8802'0_108 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_negOne'8802'0_108 = erased
+-- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.negOne
+d_negOne_48 :: Integer
+d_negOne_48
+  = coe MAlonzo.Code.Once.Spec.Word.d_negOne_58 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.norm
-d_norm_110 :: Integer -> Integer
-d_norm_110
-  = coe MAlonzo.Code.Once.Word.d_norm_16 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.norm-0
-d_norm'45'0_112 :: MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_norm'45'0_112 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.norm-id
-d_norm'45'id_114 ::
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_norm'45'id_114 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.sbb-pos
-d_sbb'45'pos_116 ::
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sbb'45'pos_116 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.sbb-zero
-d_sbb'45'zero_118 ::
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sbb'45'zero_118 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.sdiv2ᵏ
-d_sdiv2'7503'_120 :: Integer -> Integer -> Integer
-d_sdiv2'7503'_120
-  = coe
-      MAlonzo.Code.Once.Word.d_sdiv2'7503'_138 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.shlᵂ
-d_shl'7490'_122 :: Integer -> Integer -> Integer
-d_shl'7490'_122
-  = coe MAlonzo.Code.Once.Word.d_shl'7490'_132 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.sucNegOne≡mod
-d_sucNegOne'8801'mod_124 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sucNegOne'8801'mod_124 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.tdiv-neg1
-d_tdiv'45'neg1_126 ::
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tdiv'45'neg1_126 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.tmod-neg1
-d_tmod'45'neg1_128 ::
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tmod'45'neg1_128 = erased
+d_norm_50 :: Integer -> Integer
+d_norm_50
+  = coe MAlonzo.Code.Once.Spec.Word.d_norm_18 (coe (64 :: Integer))
+-- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.tdivℤ
+d_tdivℤ_52 :: Integer -> Integer -> Integer
+d_tdivℤ_52 = coe MAlonzo.Code.Once.Spec.Word.du_tdivℤ_104
+-- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.tmodℤ
+d_tmodℤ_54 :: Integer -> Integer -> Integer
+d_tmodℤ_54 = coe MAlonzo.Code.Once.Spec.Word.du_tmodℤ_106
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.toWord
-d_toWord_130 ::
+d_toWord_56 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_toWord_130 v0 v1
-  = coe MAlonzo.Code.Once.Word.du_toWord_68 (coe (64 :: Integer)) v0
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.toWord≡fromℤ
-d_toWord'8801'fromℤ_132 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toWord'8801'fromℤ_132 = erased
+d_toWord_56 v0 v1
+  = coe
+      MAlonzo.Code.Once.Spec.Word.du_toWord_72 (coe (64 :: Integer)) v0
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.toℤ
-d_toℤ_134 :: Integer -> Integer
-d_toℤ_134
-  = coe MAlonzo.Code.Once.Word.d_toℤ_50 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.toℤ-negOne
-d_toℤ'45'negOne_136 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'45'negOne_136 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.toℤ∘fromℤ
-d_toℤ'8728'fromℤ_138 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toℤ'8728'fromℤ_138 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.unplus
-d_unplus_140 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Integer.Base.T__'8804'__26 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_unplus_140 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Word.du_unplus_648 v4
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.≡ᵇ-refl
-d_'8801''7495''45'refl_142 ::
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495''45'refl_142 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.≡ᵇ0-false
-d_'8801''7495'0'45'false_144 ::
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495'0'45'false_144 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.≤⇒<ᵇfalse
-d_'8804''8658''60''7495'false_146 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804''8658''60''7495'false_146 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊕-neg
-d_'8853''45'neg_148 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg_148 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊕-neg-suc
-d_'8853''45'neg'45'suc_150 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'neg'45'suc_150 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊕-normʳ
-d_'8853''45'norm'691'_152 ::
-  Integer ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''45'norm'691'_152 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊕≡+
-d_'8853''8801''43'_154 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8853''8801''43'_154 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊖-normʳ
-d_'8854''45'norm'691'_156 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''45'norm'691'_156 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊖-self
-d_'8854''45'self_158 ::
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''45'self_158 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊖≡∸
-d_'8854''8801''8760'_160 ::
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''8801''8760'_160 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊗-pow2
-d_'8855''45'pow2_162 ::
-  Integer ->
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8855''45'pow2_162 = erased
+d_toℤ_58 :: Integer -> Integer
+d_toℤ_58
+  = coe MAlonzo.Code.Once.Spec.Word.d_toℤ_52 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊝_
-d_'8861'__164 :: Integer -> Integer
-d_'8861'__164
-  = coe MAlonzo.Code.Once.Word.d_'8861'__44 (coe (64 :: Integer))
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊝-fromℤ
-d_'8861''45'fromℤ_166 ::
-  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'fromℤ_166 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊝-intMin
-d_'8861''45'intMin_168 ::
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'intMin_168 = erased
--- Once.CCC.Target.X86-64.CodeGen.Primitives.IntW.⊝-invol-norm
-d_'8861''45'invol'45'norm_170 ::
-  Integer ->
-  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8861''45'invol'45'norm_170 = erased
+d_'8861'__60 :: Integer -> Integer
+d_'8861'__60
+  = coe
+      MAlonzo.Code.Once.Spec.Word.d_'8861'__46 (coe (64 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-sigOp
-d_compile'45'sigOp_172 ::
+d_compile'45'sigOp_62 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30]
-d_compile'45'sigOp_172 v0
+d_compile'45'sigOp_62 v0
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
@@ -510,31 +150,30 @@ d_compile'45'sigOp_172 v0
             (coe v0)))
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-sigOp-size
-d_compile'45'sigOp'45'size_176 ::
+d_compile'45'sigOp'45'size_66 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 -> Integer
-d_compile'45'sigOp'45'size_176 ~v0
-  = du_compile'45'sigOp'45'size_176
-du_compile'45'sigOp'45'size_176 :: Integer
-du_compile'45'sigOp'45'size_176 = coe (1 :: Integer)
+d_compile'45'sigOp'45'size_66 ~v0 = du_compile'45'sigOp'45'size_66
+du_compile'45'sigOp'45'size_66 :: Integer
+du_compile'45'sigOp'45'size_66 = coe (1 :: Integer)
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-sigOp-length
-d_compile'45'sigOp'45'length_180 ::
+d_compile'45'sigOp'45'length_70 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_compile'45'sigOp'45'length_180 = erased
+d_compile'45'sigOp'45'length_70 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const
-d_compile'45'const_186 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_56 ->
+d_compile'45'const_76 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   AgdaAny ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30]
-d_compile'45'const_186 ~v0 v1 v2 = du_compile'45'const_186 v1 v2
-du_compile'45'const_186 ::
-  MAlonzo.Code.Once.Type.T_FitsInReg_56 ->
+d_compile'45'const_76 ~v0 v1 v2 = du_compile'45'const_76 v1 v2
+du_compile'45'const_76 ::
+  MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   AgdaAny ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30]
-du_compile'45'const_186 v0 v1
+du_compile'45'const_76 v0 v1
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_fits'45'int_58
+      MAlonzo.Code.Once.Type.C_fits'45'int_26
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -545,9 +184,10 @@ du_compile'45'const_186 v0 v1
                 (coe
                    MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28
                    (coe
-                      MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (64 :: Integer)) (coe v1))))
+                      MAlonzo.Code.Once.Spec.Word.d_fromℤ_22 (coe (64 :: Integer))
+                      (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Type.C_fits'45'float_60
+      MAlonzo.Code.Once.Type.C_fits'45'float_28
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -558,23 +198,23 @@ du_compile'45'const_186 v0 v1
                 (coe
                    MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28
                    (coe
-                      MAlonzo.Code.Once.Float.Decimal.d_round_174
-                      (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42) (coe v1))))
+                      MAlonzo.Code.Once.Spec.Float.Decimal.d_round_176
+                      (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_44) (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-size
-d_compile'45'const'45'size_194 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_56 -> Integer
-d_compile'45'const'45'size_194 ~v0 v1
-  = du_compile'45'const'45'size_194 v1
-du_compile'45'const'45'size_194 ::
-  MAlonzo.Code.Once.Type.T_FitsInReg_56 -> Integer
-du_compile'45'const'45'size_194 v0
+d_compile'45'const'45'size_84 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_24 -> Integer
+d_compile'45'const'45'size_84 ~v0 v1
+  = du_compile'45'const'45'size_84 v1
+du_compile'45'const'45'size_84 ::
+  MAlonzo.Code.Once.Type.T_FitsInReg_24 -> Integer
+du_compile'45'const'45'size_84 v0
   = coe seq (coe v0) (coe (1 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-length
-d_compile'45'const'45'length_202 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Type.T_FitsInReg_56 ->
+d_compile'45'const'45'length_92 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_compile'45'const'45'length_202 = erased
+d_compile'45'const'45'length_92 = erased

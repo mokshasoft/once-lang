@@ -19,7 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Effect.Monad
-import qualified MAlonzo.Code.Once.Denotation.TraceMonad
+import qualified MAlonzo.Code.Once.Lang.Trace
 
 -- Once.Metatheory.Monad.LawfulMonad
 d_LawfulMonad_8 a0 = ()
@@ -81,9 +81,6 @@ d_T'45'monad_100 :: T_LawfulMonad_8
 d_T'45'monad_100
   = coe
       C_constructor_98
-      (\ v0 ->
-         coe MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_194)
+      (\ v0 -> coe MAlonzo.Code.Once.Lang.Trace.du_returnT_126)
       (\ v0 v1 v2 v3 ->
-         coe
-           MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__200 v2
-           v3)
+         coe MAlonzo.Code.Once.Lang.Trace.du__'62''62''61'T__132 v2 v3)

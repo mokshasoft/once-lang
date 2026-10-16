@@ -25,8 +25,8 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Spec.Name
-import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.CCC.Codegen.LabelRange._.CataStrategy
 d_CataStrategy_12 a0 = ()
@@ -515,7 +515,7 @@ d_label'45'mono_160 v0 v1 v2 v3 v4 v5
                                              (coe v12))
                                           (coe (1 :: Integer))
                                           (coe addInt (coe (1 :: Integer)) (coe v5)) (coe v10))))
-                                 (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_374 (coe v0) (coe v5))
+                                 (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_300 (coe v0) (coe v5))
                                  (coe (0 :: Integer)) (coe v13) (coe v7)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

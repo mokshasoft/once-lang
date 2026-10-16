@@ -26,9 +26,9 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Layout
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.StackGrowth
-import qualified MAlonzo.Code.Once.Denotation.TraceMonad
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Lang.Trace
 import qualified MAlonzo.Code.Once.Memory.StackSlots
+import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Relation.Binary.Definitions
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
@@ -377,7 +377,7 @@ d_rv64'45'shift'45'frame_240 v0 v1
             MAlonzo.Code.Once.Memory.StackSlots.d_in'45'stack_22 (coe v0)))
 -- Once.CCC.Target.RiscV64.FrameInstantiation.rv64-frame-semantics
 d_rv64'45'frame'45'semantics_246 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6
 d_rv64'45'frame'45'semantics_246 v0
   = coe
@@ -388,7 +388,7 @@ d_rv64'45'frame'45'semantics_246 v0
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
          (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
-      MAlonzo.Code.Once.Float.Dyadic.d_binary64_42 v0
+      MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_44 v0
       (\ v1 v2 v3 ->
          coe
            MAlonzo.Code.Data.Nat.Properties.du_'60''45'trans_3122

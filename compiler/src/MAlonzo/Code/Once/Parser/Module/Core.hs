@@ -24,14 +24,14 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Maybe.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
+import qualified MAlonzo.Code.Once.Lang.Syntax
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Lang.Type.Poly
 import qualified MAlonzo.Code.Once.Parser.Expr
 import qualified MAlonzo.Code.Once.Parser.ExprRelation
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
-import qualified MAlonzo.Code.Once.Spec.Syntax
-import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Spec.Type.Poly
 
 -- Once.Parser.Module.Core.Import
 d_Import_8 = ()
@@ -56,15 +56,15 @@ d_alias_16 v0
 d_Decl_20 = ()
 data T_Decl_20
   = C_DTypeSig_22 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                  MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 |
+                  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 |
     C_DFunDef_24 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                 MAlonzo.Code.Once.Spec.Syntax.T_RawExpr_34 |
+                 MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 |
     C_DSignature_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
-                    MAlonzo.Code.Once.Spec.Type.Poly.T_PolyType_10 |
+                    MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 |
     C_DTypeAlias_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-                    MAlonzo.Code.Once.Spec.Type.T_Type_8 |
+                    MAlonzo.Code.Once.Lang.Type.T_Type_8 |
     C_DImport_30 T_Import_8
 -- Once.Parser.Module.Core.Module
 d_Module_32 = ()
@@ -102,7 +102,7 @@ d_parseTypeB'45'adapt_70 v0 v1
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_440
+                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_460
                                     (coe v0) (coe v3) (coe v5) (coe v6))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

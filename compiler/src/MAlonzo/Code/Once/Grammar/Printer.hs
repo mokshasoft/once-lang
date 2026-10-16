@@ -21,20 +21,20 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.Grammar
+import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.Spec.Type.Grade
 
 -- Once.Grammar.Printer.quantityToken
 d_quantityToken_6 ::
-  MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Parser.Token.T_Token_6
 d_quantityToken_6 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Spec.Type.Grade.C_Zero_10
+      MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
         -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret0_32
-      MAlonzo.Code.Once.Spec.Type.Grade.C_One_12
+      MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
         -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret1_30
-      MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+      MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
         -> coe MAlonzo.Code.Once.Parser.Token.C_TCaretW_34
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Printer.printGType
@@ -144,7 +144,26 @@ d_printGType_8 v0
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
-      MAlonzo.Code.Once.Grammar.C_GMu_28 v1
+      MAlonzo.Code.Once.Grammar.C_TAct_28 v1 v2
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
+             (coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe
+                   MAlonzo.Code.Once.Parser.Token.C_TWord_8
+                   (coe ("Act" :: Data.Text.Text)))
+                (coe
+                   MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                   (coe d_printGType_8 (coe v1))
+                   (coe
+                      MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                      (coe d_printGType_8 (coe v2))
+                      (coe
+                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
+                         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
+      MAlonzo.Code.Once.Grammar.C_GMu_30 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -160,7 +179,7 @@ d_printGType_8 v0
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
-      MAlonzo.Code.Once.Grammar.C_GNu_30 v1
+      MAlonzo.Code.Once.Grammar.C_GNu_32 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -176,7 +195,7 @@ d_printGType_8 v0
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
-      MAlonzo.Code.Once.Grammar.C_GNuEff_32 v1
+      MAlonzo.Code.Once.Grammar.C_GNuEff_34 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
@@ -197,7 +216,28 @@ d_printGType_8 v0
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
-      MAlonzo.Code.Once.Grammar.C_TVar_34 v1
+      MAlonzo.Code.Once.Grammar.C_GNuAct_36 v1
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe
+                MAlonzo.Code.Once.Parser.Token.C_TWord_8
+                (coe ("Nu" :: Data.Text.Text)))
+             (coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
+                (coe
+                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                   (coe
+                      MAlonzo.Code.Once.Parser.Token.C_TWord_8
+                      (coe ("Act" :: Data.Text.Text)))
+                   (coe
+                      MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                      (coe d_printGFunctor_10 (coe v1))
+                      (coe
+                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
+                         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
+      MAlonzo.Code.Once.Grammar.C_TVar_38 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TWord_8 (coe v1))
@@ -209,7 +249,7 @@ d_printGFunctor_10 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
 d_printGFunctor_10 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Grammar.C_GFK_36 v1
+      MAlonzo.Code.Once.Grammar.C_GFK_40 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
@@ -225,14 +265,14 @@ d_printGFunctor_10 v0
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
-      MAlonzo.Code.Once.Grammar.C_GFId_38
+      MAlonzo.Code.Once.Grammar.C_GFId_42
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Parser.Token.C_TWord_8
                 (coe ("Id" :: Data.Text.Text)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Grammar.C_GFSum_40 v1 v2
+      MAlonzo.Code.Once.Grammar.C_GFSum_44 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
@@ -249,7 +289,7 @@ d_printGFunctor_10 v0
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
-      MAlonzo.Code.Once.Grammar.C_GFProd_42 v1 v2
+      MAlonzo.Code.Once.Grammar.C_GFProd_46 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
@@ -268,62 +308,63 @@ d_printGFunctor_10 v0
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Printer.round-trip-Unit
-d_round'45'trip'45'Unit_48 ::
+d_round'45'trip'45'Unit_54 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'Unit_48 = erased
+d_round'45'trip'45'Unit_54 = erased
 -- Once.Grammar.Printer.round-trip-Void
-d_round'45'trip'45'Void_50 ::
+d_round'45'trip'45'Void_56 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'Void_50 = erased
+d_round'45'trip'45'Void_56 = erased
 -- Once.Grammar.Printer.round-trip-Int
-d_round'45'trip'45'Int_52 ::
+d_round'45'trip'45'Int_58 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'Int_52 = erased
+d_round'45'trip'45'Int_58 = erased
 -- Once.Grammar.Printer.round-trip-Float
-d_round'45'trip'45'Float_54 ::
+d_round'45'trip'45'Float_60 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'Float_54 = erased
+d_round'45'trip'45'Float_60 = erased
 -- Once.Grammar.Printer.round-trip-Unit⊗Int-smoke
-d_round'45'trip'45'Unit'8855'Int'45'smoke_56 ::
+d_round'45'trip'45'Unit'8855'Int'45'smoke_62 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'Unit'8855'Int'45'smoke_56 = erased
+d_round'45'trip'45'Unit'8855'Int'45'smoke_62 = erased
 -- Once.Grammar.Printer.round-trip-Int⊕Float-smoke
-d_round'45'trip'45'Int'8853'Float'45'smoke_58 ::
+d_round'45'trip'45'Int'8853'Float'45'smoke_64 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'Int'8853'Float'45'smoke_58 = erased
+d_round'45'trip'45'Int'8853'Float'45'smoke_64 = erased
 -- Once.Grammar.Printer.round-trip-Int⇒Int-smoke
-d_round'45'trip'45'Int'8658'Int'45'smoke_60 ::
+d_round'45'trip'45'Int'8658'Int'45'smoke_66 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'Int'8658'Int'45'smoke_60 = erased
+d_round'45'trip'45'Int'8658'Int'45'smoke_66 = erased
 -- Once.Grammar.Printer.round-trip-linear-smoke
-d_round'45'trip'45'linear'45'smoke_62 ::
+d_round'45'trip'45'linear'45'smoke_68 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'linear'45'smoke_62 = erased
+d_round'45'trip'45'linear'45'smoke_68 = erased
 -- Once.Grammar.Printer.round-trip-erased-smoke
-d_round'45'trip'45'erased'45'smoke_64 ::
+d_round'45'trip'45'erased'45'smoke_70 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'erased'45'smoke_64 = erased
+d_round'45'trip'45'erased'45'smoke_70 = erased
 -- Once.Grammar.Printer.round-trip-nested-product-smoke
-d_round'45'trip'45'nested'45'product'45'smoke_66 ::
+d_round'45'trip'45'nested'45'product'45'smoke_72 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'nested'45'product'45'smoke_66 = erased
+d_round'45'trip'45'nested'45'product'45'smoke_72 = erased
 -- Once.Grammar.Printer.round-trip-arrow-into-product-smoke
-d_round'45'trip'45'arrow'45'into'45'product'45'smoke_68 ::
+d_round'45'trip'45'arrow'45'into'45'product'45'smoke_74 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'arrow'45'into'45'product'45'smoke_68 = erased
+d_round'45'trip'45'arrow'45'into'45'product'45'smoke_74 = erased
 -- Once.Grammar.Printer.round-trip-curried-linear-smoke
-d_round'45'trip'45'curried'45'linear'45'smoke_70 ::
+d_round'45'trip'45'curried'45'linear'45'smoke_76 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'curried'45'linear'45'smoke_70 = erased
+d_round'45'trip'45'curried'45'linear'45'smoke_76 = erased
 -- Once.Grammar.Printer.round-trip-sum-of-arrows-smoke
-d_round'45'trip'45'sum'45'of'45'arrows'45'smoke_72 ::
+d_round'45'trip'45'sum'45'of'45'arrows'45'smoke_78 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_round'45'trip'45'sum'45'of'45'arrows'45'smoke_72 = erased
+d_round'45'trip'45'sum'45'of'45'arrows'45'smoke_78 = erased
 -- Once.Grammar.Printer.Concrete
-d_Concrete_74 a0 = ()
-data T_Concrete_74
-  = C_c'45'unit_76 | C_c'45'void_78 | C_c'45'int_80 |
-    C_c'45'float_82 | C_c'45'prod_88 T_Concrete_74 T_Concrete_74 |
-    C_c'45'sum_94 T_Concrete_74 T_Concrete_74 |
-    C_c'45'fun_102 T_Concrete_74 T_Concrete_74 |
-    C_c'45'eff_108 T_Concrete_74 T_Concrete_74
+d_Concrete_80 a0 = ()
+data T_Concrete_80
+  = C_c'45'unit_82 | C_c'45'void_84 | C_c'45'int_86 |
+    C_c'45'float_88 | C_c'45'prod_94 T_Concrete_80 T_Concrete_80 |
+    C_c'45'sum_100 T_Concrete_80 T_Concrete_80 |
+    C_c'45'fun_108 T_Concrete_80 T_Concrete_80 |
+    C_c'45'eff_114 T_Concrete_80 T_Concrete_80 |
+    C_c'45'act_120 T_Concrete_80 T_Concrete_80

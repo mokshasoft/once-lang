@@ -76,7 +76,7 @@ du_frameSlot_32 ::
   Integer -> Maybe Integer
 du_frameSlot_32 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Memory.Memory.d_readMem_88 (coe v1)
+      MAlonzo.Code.Once.Memory.Memory.d_readMem_28 (coe v1)
       (coe
          MAlonzo.Code.Once.Memory.StackSlots.du_slot'45'addr_104 (coe v0)
          (coe v2) (coe v3))

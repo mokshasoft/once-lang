@@ -30,21 +30,21 @@ import qualified MAlonzo.Code.Once.Arith.SigOp.Compare
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
-import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Symbol
 
 -- Once.CCC.Codegen.NodesOK.sigop-syms
 d_sigop'45'syms_12 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_sigop'45'syms_12 ~v0 ~v1 v2 v3 = du_sigop'45'syms_12 v2 v3
 du_sigop'45'syms_12 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 du_sigop'45'syms_12 v0 v1
@@ -55,7 +55,7 @@ du_sigop'45'syms_12 v0 v1
              (coe
                 MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
                 (coe
-                   MAlonzo.Code.Once.SigOp.Info.d_name_178
+                   MAlonzo.Code.Once.SigOp.Info.d_name_110
                    (coe
                       MAlonzo.Code.Once.Arith.SigOp.Compare.d_cmp'45'block'45'info_24
                       (coe v2))))
@@ -65,14 +65,14 @@ du_sigop'45'syms_12 v0 v1
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
-                (coe MAlonzo.Code.Once.SigOp.Info.d_name_178 (coe v0)))
+                (coe MAlonzo.Code.Once.SigOp.Info.d_name_110 (coe v0)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.NodesOK.SigLeaves
 d_SigLeaves_28 ::
-  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 -> ()) ->
+  (MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 -> ()) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
@@ -171,7 +171,7 @@ d_leaf'45'syms_96 v0 v1 v2
              du_sigop'45'syms_12 (coe v5)
              (coe
                 MAlonzo.Code.Once.Arith.SigOp.Compare.du_cmp'45'of_12
-                (coe MAlonzo.Code.Once.SigOp.Info.d_sem_180 (coe v5)))
+                (coe MAlonzo.Code.Once.SigOp.Info.d_sem_112 (coe v5)))
       MAlonzo.Code.Once.IR.C_Call_138 v5
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -315,9 +315,9 @@ du_leaf'45'syms'45'leaves_128 v0 v1 v2 v3
 -- Once.CCC.Codegen.NodesOK.leaf-syms-all
 d_leaf'45'syms'45'all_206 ::
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()) ->
-  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
+  (MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -326,9 +326,9 @@ d_leaf'45'syms'45'all_206 ::
 d_leaf'45'syms'45'all_206 ~v0 v1 v2 v3 v4
   = du_leaf'45'syms'45'all_206 v1 v2 v3 v4
 du_leaf'45'syms'45'all_206 ::
-  (MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
+  (MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->

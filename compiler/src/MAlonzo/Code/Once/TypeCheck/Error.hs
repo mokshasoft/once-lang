@@ -19,8 +19,8 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Base
-import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.TypeCheck.Error.TypeError
@@ -30,7 +30,7 @@ data T_TypeError_6
     C_UnboundQualified_14 MAlonzo.Code.Agda.Builtin.String.T_String_6
                           MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_NonConcreteSigOpType_20 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                              MAlonzo.Code.Once.Spec.Type.T_Type_8 |
+                              MAlonzo.Code.Once.Lang.Type.T_Type_8 |
     C_FloatLiteralUnsupported_22 | C_StringLiteralUnsupported_24 |
     C_LambdaInInferMode_26 | C_LambdaRequiresFunctionType_28 |
     C_InlInInferMode_30 | C_InrInInferMode_32 |
@@ -38,19 +38,19 @@ data T_TypeError_6
     C_InrNeedsSumType_38 | C_FstNeedsPair_40 | C_SndNeedsPair_42 |
     C_ArrNeedsFunction_44 | C_NegationNotInt_46 |
     C_CaseScrutineeNotSum_48 | C_CaseBranchMismatch_50 |
-    C_ApplicationTypeMismatch_56 MAlonzo.Code.Once.Spec.Type.T_Type_8
-                                 MAlonzo.Code.Once.Spec.Type.T_Type_8 |
-    C_TypeMismatch_62 MAlonzo.Code.Once.Spec.Type.T_Type_8
-                      MAlonzo.Code.Once.Spec.Type.T_Type_8 |
-    C_NotFunction_66 MAlonzo.Code.Once.Spec.Type.T_Type_8 |
+    C_ApplicationTypeMismatch_56 MAlonzo.Code.Once.Lang.Type.T_Type_8
+                                 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
+    C_TypeMismatch_62 MAlonzo.Code.Once.Lang.Type.T_Type_8
+                      MAlonzo.Code.Once.Lang.Type.T_Type_8 |
+    C_NotFunction_66 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
     C_UsageViolation_74 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                        MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8
-                        MAlonzo.Code.Once.Spec.Type.Grade.T_Quantity_8 |
+                        MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8
+                        MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 |
     C_BuiltinTypeMismatch_78 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_ComposeMiddleUndetermined_80 |
     C_BinOpLeftError_82 T_TypeError_6 |
     C_BinOpRightError_84 T_TypeError_6 |
-    C_AnnotationMentionsParameter_88 MAlonzo.Code.Once.Spec.Type.T_Type_8 |
+    C_AnnotationMentionsParameter_88 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
     C_UnclassifiedError_90 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.TypeCheck.Error.renderError
 d_renderError_92 ::
@@ -86,7 +86,7 @@ d_renderError_92 v0
                    ("' has non-concrete type " :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (MAlonzo.Code.Once.Type.d_showType_66 (coe v2))
+                      (MAlonzo.Code.Once.Type.d_showType_34 (coe v2))
                       (" (FFI/SigOp references must be base types or first-order function pointers)"
                        ::
                        Data.Text.Text))))
@@ -149,27 +149,27 @@ d_renderError_92 v0
              ("Application: argument type " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.Type.d_showType_66 (coe v2))
+                (MAlonzo.Code.Once.Type.d_showType_34 (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" does not match function domain " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.Type.d_showType_66 (coe v1))))
+                   (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))))
       C_TypeMismatch_62 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Type mismatch: expected " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.Type.d_showType_66 (coe v1))
+                (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" but got " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.Type.d_showType_66 (coe v2))))
+                   (MAlonzo.Code.Once.Type.d_showType_34 (coe v2))))
       C_NotFunction_66 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("expected function type, got " :: Data.Text.Text)
-             (MAlonzo.Code.Once.Type.d_showType_66 (coe v1))
+             (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))
       C_UsageViolation_74 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -181,11 +181,11 @@ d_renderError_92 v0
                    ("' used with quantity " :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (MAlonzo.Code.Once.Type.d_showQuantity_6 (coe v3))
+                      (MAlonzo.Code.Once.Type.d_showQuantity_4 (coe v3))
                       (coe
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (" but declared with quantity " :: Data.Text.Text)
-                         (MAlonzo.Code.Once.Type.d_showQuantity_6 (coe v2))))))
+                         (MAlonzo.Code.Once.Type.d_showQuantity_4 (coe v2))))))
       C_BuiltinTypeMismatch_78 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
@@ -216,6 +216,6 @@ d_renderError_92 v0
              ("An annotation may not mention a type parameter: "
               ::
               Data.Text.Text)
-             (MAlonzo.Code.Once.Type.d_showType_66 (coe v1))
+             (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))
       C_UnclassifiedError_90 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

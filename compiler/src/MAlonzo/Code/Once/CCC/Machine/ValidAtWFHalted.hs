@@ -28,10 +28,10 @@ import qualified MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Program
-import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Semantics.Functor
+import qualified MAlonzo.Code.Once.Lang.Polynomial
+import qualified MAlonzo.Code.Once.Lang.Trace
 import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Machine.ValidAtWFHalted._.ClosureWellFormedDef.CellAt
@@ -182,7 +182,7 @@ du_validAtWF'45'set'45'halted_1256 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_588
+                          MAlonzo.Code.Once.Lang.Trace.du_valueT_526
                           (coe
                              MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_ι'7584'_26
                              (coe v2))

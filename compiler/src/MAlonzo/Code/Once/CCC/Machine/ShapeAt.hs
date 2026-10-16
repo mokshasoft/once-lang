@@ -29,13 +29,13 @@ import qualified MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Program
-import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Polynomial
+import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
-import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Spec.Name
-import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.CCC.Machine.ShapeAt._.readLoc
@@ -85,13 +85,13 @@ du_prim'45'sv'45'at_68 v0 v1
       MAlonzo.Code.Once.IRTy.C_fits'45'int_512
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Spec.Type.C_Int_34)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'int_58) (coe v1)
+             (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe v1)
       MAlonzo.Code.Once.IRTy.C_fits'45'float_514
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Spec.Type.C_Float_36)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'float_60) (coe v1)
+             (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'float_28) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ShapeAt.InlineRepAt
 d_InlineRepAt_76 a0 a1 = ()
@@ -380,7 +380,7 @@ du_valid'8594'shape_448 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_588
+                          MAlonzo.Code.Once.Lang.Trace.du_valueT_526
                           (coe
                              MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_ι'7584'_26
                              (coe v0))

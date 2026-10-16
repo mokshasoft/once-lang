@@ -23,7 +23,7 @@ import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Lang.Event
 
 -- Once.CCC.Machine.FlatLog.LogFree
 d_LogFree_8 ::
@@ -293,7 +293,7 @@ d_fret_504 v0
 -- Once.CCC.Machine.FlatLog.LogPres.log
 d_log_518 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
 d_log_518 v0
   = coe MAlonzo.Code.Once.CCC.Machine.SMCore.d_ev'45'log_430 (coe v0)
 -- Once.CCC.Machine.FlatLog.LogPres.writeLoc-log
@@ -380,7 +380,7 @@ d_exec'45'abstract'45'log_706 = erased
 -- Once.CCC.Machine.FlatLog.LogPres.flog
 d_flog_880 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
 d_flog_880 v0
   = coe
       MAlonzo.Code.Once.CCC.Machine.SMCore.d_ev'45'log_430

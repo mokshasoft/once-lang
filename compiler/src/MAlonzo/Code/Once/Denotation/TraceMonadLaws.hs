@@ -21,511 +21,233 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
-import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Denotation.Trace
-import qualified MAlonzo.Code.Once.Denotation.TraceMonad
-import qualified MAlonzo.Code.Once.Res
-import qualified MAlonzo.Code.Once.Semantics.Functor
-import qualified MAlonzo.Code.Once.Semantics.Value
-import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
+import qualified MAlonzo.Code.Once.Lang.Event
+import qualified MAlonzo.Code.Once.Lang.Polynomial
+import qualified MAlonzo.Code.Once.Lang.Res
+import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Lang.Type.WellFormed
+import qualified MAlonzo.Code.Once.Lang.Value
 
 -- Once.Denotation.TraceMonadLaws.M.coerce-base-to-full
 d_coerce'45'base'45'to'45'full_8 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
   AgdaAny -> AgdaAny
 d_coerce'45'base'45'to'45'full_8
   = coe
-      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'base'45'to'45'full_786
--- Once.Denotation.TraceMonadLaws.M.coerce-base-type-round-trip
-d_coerce'45'base'45'type'45'round'45'trip_10 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'45'base'45'type'45'round'45'trip_10 = erased
--- Once.Denotation.TraceMonadLaws.M.coerce-base-type⁻¹-round-trip
-d_coerce'45'base'45'type'8315''185''45'round'45'trip_12 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_IsBaseType_8 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'45'base'45'type'8315''185''45'round'45'trip_12 = erased
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'base'45'to'45'full_440
 -- Once.Denotation.TraceMonadLaws.M.coerce-full-to-base
-d_coerce'45'full'45'to'45'base_14 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
-d_coerce'45'full'45'to'45'base_14
+d_coerce'45'full'45'to'45'base_10 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
+d_coerce'45'full'45'to'45'base_10
   = coe
-      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'full'45'to'45'base_754
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'full'45'to'45'base_408
 -- Once.Denotation.TraceMonadLaws.M.coerce-functor
-d_coerce'45'functor_16 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
-d_coerce'45'functor_16 v0 v1 v2
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor_250 v0 v2
+d_coerce'45'functor_12 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
+d_coerce'45'functor_12 v0 v1 v2
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'functor_282 v0 v2
 -- Once.Denotation.TraceMonadLaws.M.coerce-functor⁻¹
-d_coerce'45'functor'8315''185'_18 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
-d_coerce'45'functor'8315''185'_18 v0 v1 v2
+d_coerce'45'functor'8315''185'_14 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
+d_coerce'45'functor'8315''185'_14 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor'8315''185'_292
-      v0 v2
--- Once.Denotation.TraceMonadLaws.M.coerce-round-trip
-d_coerce'45'round'45'trip_20 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'45'round'45'trip_20 = erased
--- Once.Denotation.TraceMonadLaws.M.coerce-struct
-d_coerce'45'struct_22 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
-d_coerce'45'struct_22
-  = coe MAlonzo.Code.Once.Semantics.Value.du_coerce'45'struct_422
--- Once.Denotation.TraceMonadLaws.M.coerce-struct-round-trip
-d_coerce'45'struct'45'round'45'trip_24 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'45'struct'45'round'45'trip_24 = erased
--- Once.Denotation.TraceMonadLaws.M.coerce-struct⁻¹
-d_coerce'45'struct'8315''185'_26 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
-d_coerce'45'struct'8315''185'_26
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'struct'8315''185'_428
--- Once.Denotation.TraceMonadLaws.M.coerce-struct⁻¹-round-trip
-d_coerce'45'struct'8315''185''45'round'45'trip_28 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'45'struct'8315''185''45'round'45'trip_28 = erased
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'functor'8315''185'_324 v0
+      v2
 -- Once.Denotation.TraceMonadLaws.M.coerce-μ-in
-d_coerce'45'μ'45'in_30 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
-d_coerce'45'μ'45'in_30 v0 v1 v2
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'in_886 v0 v2
+d_coerce'45'μ'45'in_16 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
+d_coerce'45'μ'45'in_16 v0 v1 v2
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'μ'45'in_472 v0 v2
 -- Once.Denotation.TraceMonadLaws.M.coerce-μ-out
-d_coerce'45'μ'45'out_32 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+d_coerce'45'μ'45'out_18 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   () -> AgdaAny -> AgdaAny
-d_coerce'45'μ'45'out_32 v0 v1 v2 v3
+d_coerce'45'μ'45'out_18 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_928 v0 v1
-      v3
--- Once.Denotation.TraceMonadLaws.M.coerce-μ-round-trip
-d_coerce'45'μ'45'round'45'trip_34 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'45'μ'45'round'45'trip_34 = erased
--- Once.Denotation.TraceMonadLaws.M.coerce-μ⁻¹-round-trip
-d_coerce'45'μ'8315''185''45'round'45'trip_36 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  () -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'45'μ'8315''185''45'round'45'trip_36 = erased
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'μ'45'out_514 v0 v1 v3
 -- Once.Denotation.TraceMonadLaws.M.coerce-ν-in
-d_coerce'45'ν'45'in_38 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
-d_coerce'45'ν'45'in_38
-  = coe MAlonzo.Code.Once.Semantics.Value.du_coerce'45'ν'45'in_1120
+d_coerce'45'ν'45'in_20 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
+d_coerce'45'ν'45'in_20
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614
 -- Once.Denotation.TraceMonadLaws.M.coerce-ν-out
-d_coerce'45'ν'45'out_40 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+d_coerce'45'ν'45'out_22 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   () -> AgdaAny -> AgdaAny
-d_coerce'45'ν'45'out_40
-  = coe MAlonzo.Code.Once.Semantics.Value.du_coerce'45'ν'45'out_1126
--- Once.Denotation.TraceMonadLaws.M.coerce⁻¹-round-trip
-d_coerce'8315''185''45'round'45'trip_42 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coerce'8315''185''45'round'45'trip_42 = erased
+d_coerce'45'ν'45'out_22
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'out_620
 -- Once.Denotation.TraceMonadLaws.M.eraseᵍ
-d_erase'7501'_44 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> AgdaAny -> AgdaAny
-d_erase'7501'_44
-  = coe MAlonzo.Code.Once.Semantics.Value.du_erase'7501'_92
--- Once.Denotation.TraceMonadLaws.M.fmap-coerce-μ-coherence
-d_fmap'45'coerce'45'μ'45'coherence_46 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmap'45'coerce'45'μ'45'coherence_46 = erased
--- Once.Denotation.TraceMonadLaws.M.fmap-coerce-μ-coherence′
-d_fmap'45'coerce'45'μ'45'coherence'8242'_48 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmap'45'coerce'45'μ'45'coherence'8242'_48 = erased
--- Once.Denotation.TraceMonadLaws.M.fmap-struct-coherence
-d_fmap'45'struct'45'coherence_50 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  (AgdaAny -> AgdaAny) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmap'45'struct'45'coherence_50 = erased
--- Once.Denotation.TraceMonadLaws.M.fmap-struct-coherence′
-d_fmap'45'struct'45'coherence'8242'_52 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  (AgdaAny -> AgdaAny) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmap'45'struct'45'coherence'8242'_52 = erased
+d_erase'7501'_24 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
+d_erase'7501'_24
+  = coe MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116
 -- Once.Denotation.TraceMonadLaws.M.sem-CoIn
-d_sem'45'CoIn_54 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_νS_198
-d_sem'45'CoIn_54
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoIn_1140
+d_sem'45'CoIn_26 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_νS_98
+d_sem'45'CoIn_26
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'CoIn_634
 -- Once.Denotation.TraceMonadLaws.M.sem-CoOut
-d_sem'45'CoOut_56 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  MAlonzo.Code.Once.Semantics.Functor.T_νS_198 ->
-  MAlonzo.Code.Once.Res.T_Res_6
-d_sem'45'CoOut_56
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'CoOut_1130
--- Once.Denotation.TraceMonadLaws.M.sem-CoOut-CoIn
-d_sem'45'CoOut'45'CoIn_58 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'CoOut'45'CoIn_58 = erased
+d_sem'45'CoOut_28 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
+  MAlonzo.Code.Once.Lang.Polynomial.T_νS_98 ->
+  MAlonzo.Code.Once.Lang.Res.T_Res_8
+d_sem'45'CoOut_28
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'CoOut_624
 -- Once.Denotation.TraceMonadLaws.M.sem-In
-d_sem'45'In_60 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_μS_182
-d_sem'45'In_60
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'In_1060
--- Once.Denotation.TraceMonadLaws.M.sem-In-Out
-d_sem'45'In'45'Out_62 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'In'45'Out_62 = erased
+d_sem'45'In_30 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_μS_82
+d_sem'45'In_30 = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'In_554
 -- Once.Denotation.TraceMonadLaws.M.sem-Out
-d_sem'45'Out_64 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
-d_sem'45'Out_64
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'Out_1068
--- Once.Denotation.TraceMonadLaws.M.sem-Out-In
-d_sem'45'Out'45'In_66 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'Out'45'In_66 = erased
+d_sem'45'Out_32 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
+  MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
+d_sem'45'Out_32
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'Out_562
 -- Once.Denotation.TraceMonadLaws.M.sem-ana
-d_sem'45'ana_68 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+d_sem'45'ana_34 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
-  AgdaAny -> MAlonzo.Code.Once.Semantics.Functor.T_νS_198
-d_sem'45'ana_68 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'ana_1164 v0 v2 v3
--- Once.Denotation.TraceMonadLaws.M.sem-case
-d_sem'45'case_70 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  (AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> AgdaAny
-d_sem'45'case_70 v0 v1 v2 v3 v4 v5
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'case_486 v3 v4 v5
--- Once.Denotation.TraceMonadLaws.M.sem-case-inl
-d_sem'45'case'45'inl_72 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  (AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'case'45'inl_72 = erased
--- Once.Denotation.TraceMonadLaws.M.sem-case-inr
-d_sem'45'case'45'inr_74 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  (AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'case'45'inr_74 = erased
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
+  AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_νS_98
+d_sem'45'ana_34 v0 v1 v2 v3
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'ana_644 v0 v2 v3
 -- Once.Denotation.TraceMonadLaws.M.sem-cata
-d_sem'45'cata_76 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+d_sem'45'cata_36 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
-d_sem'45'cata_76 v0 v1 v2 v3
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_sem'45'cata_1080 v0 v1 v3
--- Once.Denotation.TraceMonadLaws.M.sem-cata-compute
-d_sem'45'cata'45'compute_78 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  () ->
-  (AgdaAny -> AgdaAny) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'cata'45'compute_78 = erased
+  MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
+d_sem'45'cata_36 v0 v1 v2 v3
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'cata_574 v0 v1 v3
 -- Once.Denotation.TraceMonadLaws.M.sem-fmap
-d_sem'45'fmap_80 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+d_sem'45'fmap_38 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   () -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
-d_sem'45'fmap_80 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_574 v0 v3 v4
--- Once.Denotation.TraceMonadLaws.M.sem-fmap-Type
-d_sem'45'fmap'45'Type_82 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
-d_sem'45'fmap'45'Type_82 v0 v1 v2 v3 v4
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap'45'Type_618 v0 v3
-      v4
--- Once.Denotation.TraceMonadLaws.M.sem-fst
-d_sem'45'fst_84 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> AgdaAny
-d_sem'45'fst_84 v0 v1 v2
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'fst_450 v2
--- Once.Denotation.TraceMonadLaws.M.sem-fst-pair
-d_sem'45'fst'45'pair_86 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'fst'45'pair_86 = erased
--- Once.Denotation.TraceMonadLaws.M.sem-functor-coherence
-d_sem'45'functor'45'coherence_88 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'functor'45'coherence_88 = erased
--- Once.Denotation.TraceMonadLaws.M.sem-fuseNat
-d_sem'45'fuseNat_90 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  () ->
-  (() -> AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
-d_sem'45'fuseNat_90 v0 v1 v2 v3 v4 v5 v6
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_sem'45'fuseNat_1314 v0 v1 v2
-      v3 v5 v6
--- Once.Denotation.TraceMonadLaws.M.sem-fuseNat-cong
-d_sem'45'fuseNat'45'cong_92 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  () ->
-  (() -> AgdaAny -> AgdaAny) ->
-  (() -> AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  (AgdaAny -> AgdaAny) ->
-  (() ->
-   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'fuseNat'45'cong_92 = erased
--- Once.Denotation.TraceMonadLaws.M.sem-fuseNat-events
-d_sem'45'fuseNat'45'events_94 ::
-  () ->
-  (AgdaAny -> AgdaAny -> AgdaAny) ->
-  AgdaAny ->
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
-  () ->
-  (() -> AgdaAny -> AgdaAny) ->
-  (AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_sem'45'fuseNat'45'events_94 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_sem'45'fuseNat'45'events_1410
-      v1 v2 v3 v4 v5 v6 v8 v9
--- Once.Denotation.TraceMonadLaws.M.sem-inl
-d_sem'45'inl_96 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_sem'45'inl_96 v0 v1
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'inl_472
--- Once.Denotation.TraceMonadLaws.M.sem-inr
-d_sem'45'inr_98 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_sem'45'inr_98 v0 v1
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'inr_478
--- Once.Denotation.TraceMonadLaws.M.sem-pair
-d_sem'45'pair_100 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_sem'45'pair_100 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_462 v2 v3
+d_sem'45'fmap_38 v0 v1 v2 v3 v4
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'fmap_368 v0 v3 v4
 -- Once.Denotation.TraceMonadLaws.M.sem-para
-d_sem'45'para_102 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Spec.Type.WellFormed.T_WellFormedF_48 ->
+d_sem'45'para_40 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   () ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Semantics.Functor.T_μS_182 -> AgdaAny
-d_sem'45'para_102 v0 v1 v2 v3 v4
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_sem'45'para_1096 v0 v1 v3 v4
--- Once.Denotation.TraceMonadLaws.M.sem-snd
-d_sem'45'snd_104 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> AgdaAny
-d_sem'45'snd_104 v0 v1 v2
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'snd_456 v2
--- Once.Denotation.TraceMonadLaws.M.sem-snd-pair
-d_sem'45'snd'45'pair_106 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  AgdaAny ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sem'45'snd'45'pair_106 = erased
+  MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
+d_sem'45'para_40 v0 v1 v2 v3 v4
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'para_590 v0 v1 v3 v4
 -- Once.Denotation.TraceMonadLaws.M.semAnaLayer
-d_semAnaLayer_108 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
+d_semAnaLayer_42 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
-  MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
-d_semAnaLayer_108 v0 v1 v2 v3
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_semAnaLayer_1170 v0 v2 v3
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
+  MAlonzo.Code.Once.Lang.Res.T_Res_8 ->
+  MAlonzo.Code.Once.Lang.Res.T_Res_8
+d_semAnaLayer_42 v0 v1 v2 v3
+  = coe MAlonzo.Code.Once.Lang.Value.du_semAnaLayer_650 v0 v2 v3
 -- Once.Denotation.TraceMonadLaws.M.sfmapSemAna
-d_sfmapSemAna_110 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
+d_sfmapSemAna_44 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
-d_sfmapSemAna_110 v0 v1 v2 v3 v4
-  = coe
-      MAlonzo.Code.Once.Semantics.Value.du_sfmapSemAna_1178 v0 v1 v3 v4
--- Once.Denotation.TraceMonadLaws.M.sfmapSemAna-is-sfmap
-d_sfmapSemAna'45'is'45'sfmap_112 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Semantics.Functor.T_SFunctor_6 ->
-  () ->
-  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sfmapSemAna'45'is'45'sfmap_112 = erased
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
+  AgdaAny -> AgdaAny
+d_sfmapSemAna_44 v0 v1 v2 v3 v4
+  = coe MAlonzo.Code.Once.Lang.Value.du_sfmapSemAna_658 v0 v1 v3 v4
 -- Once.Denotation.TraceMonadLaws.M.⟦_⟧
-d_'10214'_'10215'_114 :: MAlonzo.Code.Once.Spec.Type.T_Type_8 -> ()
-d_'10214'_'10215'_114 = erased
+d_'10214'_'10215'_46 :: MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()
+d_'10214'_'10215'_46 = erased
 -- Once.Denotation.TraceMonadLaws.M.⟦_⟧F
-d_'10214'_'10215'F_116 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> () -> ()
-d_'10214'_'10215'F_116 = erased
+d_'10214'_'10215'F_48 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> ()
+d_'10214'_'10215'F_48 = erased
 -- Once.Denotation.TraceMonadLaws.M.⟦_⟧ᵍ
-d_'10214'_'10215''7501'_118 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> ()
-d_'10214'_'10215''7501'_118 = erased
+d_'10214'_'10215''7501'_50 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()
+d_'10214'_'10215''7501'_50 = erased
 -- Once.Denotation.TraceMonadLaws.M.⟦μ⟧
-d_'10214'μ'10215'_120 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> ()
-d_'10214'μ'10215'_120 = erased
+d_'10214'μ'10215'_52 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> ()
+d_'10214'μ'10215'_52 = erased
 -- Once.Denotation.TraceMonadLaws.M.⟦ν⟧
-d_'10214'ν'10215'_122 ::
-  MAlonzo.Code.Once.Spec.Type.T_Functor_6 -> ()
-d_'10214'ν'10215'_122 = erased
+d_'10214'ν'10215'_54 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> ()
+d_'10214'ν'10215'_54 = erased
 -- Once.Denotation.TraceMonadLaws.>>=T-identityˡ
-d_'62''62''61'T'45'identity'737'_132 ::
+d_'62''62''61'T'45'identity'737'_64 ::
   () ->
   () ->
   AgdaAny ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'62''62''61'T'45'identity'737'_132 = erased
+d_'62''62''61'T'45'identity'737'_64 = erased
 -- Once.Denotation.TraceMonadLaws.>>=T-identityʳ
-d_'62''62''61'T'45'identity'691'_142 ::
+d_'62''62''61'T'45'identity'691'_74 ::
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'62''62''61'T'45'identity'691'_142 = erased
+d_'62''62''61'T'45'identity'691'_74 = erased
 -- Once.Denotation.TraceMonadLaws.>>=T-assoc
-d_'62''62''61'T'45'assoc_172 ::
+d_'62''62''61'T'45'assoc_104 ::
   () ->
   () ->
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'62''62''61'T'45'assoc_172 = erased
+d_'62''62''61'T'45'assoc_104 = erased
 -- Once.Denotation.TraceMonadLaws.>>=T-cong
-d_'62''62''61'T'45'cong_212 ::
+d_'62''62''61'T'45'cong_144 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'62''62''61'T'45'cong_212 = erased
+d_'62''62''61'T'45'cong_144 = erased
 -- Once.Denotation.TraceMonadLaws.fmapT-id
-d_fmapT'45'id_226 ::
+d_fmapT'45'id_158 ::
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmapT'45'id_226 = erased
+d_fmapT'45'id_158 = erased
 -- Once.Denotation.TraceMonadLaws.fmapT-∘
-d_fmapT'45''8728'_242 ::
+d_fmapT'45''8728'_174 ::
   () ->
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmapT'45''8728'_242 = erased
+d_fmapT'45''8728'_174 = erased
 -- Once.Denotation.TraceMonadLaws.fmapT-cong
-d_fmapT'45'cong_262 ::
+d_fmapT'45'cong_194 ::
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmapT'45'cong_262 = erased
+d_fmapT'45'cong_194 = erased
 -- Once.Denotation.TraceMonadLaws.length-take-≤
-d_length'45'take'45''8804'_274 ::
+d_length'45'take'45''8804'_206 ::
   Integer ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_length'45'take'45''8804'_274 v0 v1
+d_length'45'take'45''8804'_206 v0 v1
   = case coe v0 of
       0 -> coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26
       _ -> let v2 = subInt (coe v0) (coe (1 :: Integer)) in
@@ -535,21 +257,21 @@ d_length'45'take'45''8804'_274 v0 v1
                 (:) v3 v4
                   -> coe
                        MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                       (d_length'45'take'45''8804'_274 (coe v2) (coe v4))
+                       (d_length'45'take'45''8804'_206 (coe v2) (coe v4))
                 _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Denotation.TraceMonadLaws.take-sat
-d_take'45'sat_284 ::
+d_take'45'sat_216 ::
   Integer ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_take'45'sat_284 = erased
+d_take'45'sat_216 = erased
 -- Once.Denotation.TraceMonadLaws.take-coh
-d_take'45'coh_302 ::
+d_take'45'coh_234 ::
   Integer ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_take'45'coh_302 v0 v1
+d_take'45'coh_234 v0 v1
   = case coe v0 of
       0 -> case coe v1 of
              []
@@ -569,93 +291,88 @@ d_take'45'coh_302 v0 v1
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe d_take'45'coh_302 (coe v2) (coe v4)))
+                          (coe d_take'45'coh_234 (coe v2) (coe v4)))
                        erased
                 _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Denotation.TraceMonadLaws.take-pf
-d_take'45'pf_322 ::
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_PrefixFamily_538
-d_take'45'pf_322 v0
+d_take'45'pf_254 ::
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  MAlonzo.Code.Once.Lang.Trace.T_PrefixFamily_476
+d_take'45'pf_254 v0
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_prefixFamily_554
-      (\ v1 -> d_length'45'take'45''8804'_274 (coe v1) (coe v0))
-      (\ v1 -> d_take'45'coh_302 (coe v1) (coe v0))
+      MAlonzo.Code.Once.Lang.Trace.C_prefixFamily_492
+      (\ v1 -> d_length'45'take'45''8804'_206 (coe v1) (coe v0))
+      (\ v1 -> d_take'45'coh_234 (coe v1) (coe v0))
 -- Once.Denotation.TraceMonadLaws.projTrace-pf
-d_projTrace'45'pf_338 ::
+d_projTrace'45'pf_270 ::
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_PrefixFamily_538
-d_projTrace'45'pf_338 ~v0 v1 v2 = du_projTrace'45'pf_338 v1 v2
-du_projTrace'45'pf_338 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_PrefixFamily_538
-du_projTrace'45'pf_338 v0 v1
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_PrefixFamily_476
+d_projTrace'45'pf_270 ~v0 v1 v2 = du_projTrace'45'pf_270 v1 v2
+du_projTrace'45'pf_270 ::
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_PrefixFamily_476
+du_projTrace'45'pf_270 v0 v1
   = coe
-      d_take'45'pf_322
-      (coe
-         MAlonzo.Code.Once.Denotation.TraceMonad.du_eventsT_500 (coe v0)
-         (coe v1))
+      d_take'45'pf_254
+      (coe MAlonzo.Code.Once.Lang.Trace.du_eventsT_438 (coe v0) (coe v1))
 -- Once.Denotation.TraceMonadLaws.RelT′-bind
-d_RelT'8242''45'bind_368 ::
+d_RelT'8242''45'bind_300 ::
   () ->
   () ->
   () ->
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
   (AgdaAny -> AgdaAny -> ()) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   (AgdaAny ->
    AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-d_RelT'8242''45'bind_368 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 v7 ~v8 ~v9 v10
+   AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542) ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+d_RelT'8242''45'bind_300 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 v7 ~v8 ~v9 v10
                          v11
-  = du_RelT'8242''45'bind_368 v6 v7 v10 v11
-du_RelT'8242''45'bind_368 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
+  = du_RelT'8242''45'bind_300 v6 v7 v10 v11
+du_RelT'8242''45'bind_300 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   (AgdaAny ->
    AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-du_RelT'8242''45'bind_368 v0 v1 v2 v3
+   AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542) ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+du_RelT'8242''45'bind_300 v0 v1 v2 v3
   = case coe v2 of
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_616 v6
+      MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554 v6
         -> case coe v0 of
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182 v7
+             MAlonzo.Code.Once.Lang.Trace.C_ret_114 v7
                -> case coe v1 of
-                    MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182 v8
-                      -> coe v3 v7 v8 v6
+                    MAlonzo.Code.Once.Lang.Trace.C_ret_114 v8 -> coe v3 v7 v8 v6
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_628 v8
+      MAlonzo.Code.Once.Lang.Trace.C_rel'45'call_566 v8
         -> case coe v0 of
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_call_186 v9 v10 v11
+             MAlonzo.Code.Once.Lang.Trace.C_call_118 v9 v10 v11
                -> case coe v1 of
-                    MAlonzo.Code.Once.Denotation.TraceMonad.C_call_186 v12 v13 v14
+                    MAlonzo.Code.Once.Lang.Trace.C_call_118 v12 v13 v14
                       -> coe
-                           MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_628
+                           MAlonzo.Code.Once.Lang.Trace.C_rel'45'call_566
                            (\ v15 ->
                               coe
-                                du_RelT'8242''45'bind_368 (coe v11 v15) (coe v14 v15) (coe v8 v15)
+                                du_RelT'8242''45'bind_300 (coe v11 v15) (coe v14 v15) (coe v8 v15)
                                 (coe v3))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_634
-        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_634
+      MAlonzo.Code.Once.Lang.Trace.C_rel'45'halt_572
+        -> coe MAlonzo.Code.Once.Lang.Trace.C_rel'45'halt_572
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.TraceMonadLaws.RelT′-fmap
-d_RelT'8242''45'fmap_418 ::
+d_RelT'8242''45'fmap_350 ::
   () ->
   () ->
   () ->
@@ -664,161 +381,156 @@ d_RelT'8242''45'fmap_418 ::
   (AgdaAny -> AgdaAny -> ()) ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-d_RelT'8242''45'fmap_418 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+d_RelT'8242''45'fmap_350 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10
                          v11
-  = du_RelT'8242''45'fmap_418 v8 v9 v10 v11
-du_RelT'8242''45'fmap_418 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  = du_RelT'8242''45'fmap_350 v8 v9 v10 v11
+du_RelT'8242''45'fmap_350 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-du_RelT'8242''45'fmap_418 v0 v1 v2 v3
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+du_RelT'8242''45'fmap_350 v0 v1 v2 v3
   = coe
-      du_RelT'8242''45'bind_368 (coe v0) (coe v1) (coe v3)
+      du_RelT'8242''45'bind_300 (coe v0) (coe v1) (coe v3)
       (coe
          (\ v4 v5 v6 ->
             coe
-              MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_616
-              (coe v2 v4 v5 v6)))
+              MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554 (coe v2 v4 v5 v6)))
 -- Once.Denotation.TraceMonadLaws.RelT′-refl
-d_RelT'8242''45'refl_442 ::
+d_RelT'8242''45'refl_374 ::
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-d_RelT'8242''45'refl_442 ~v0 ~v1 v2 v3
-  = du_RelT'8242''45'refl_442 v2 v3
-du_RelT'8242''45'refl_442 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+d_RelT'8242''45'refl_374 ~v0 ~v1 v2 v3
+  = du_RelT'8242''45'refl_374 v2 v3
+du_RelT'8242''45'refl_374 ::
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-du_RelT'8242''45'refl_442 v0 v1
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+du_RelT'8242''45'refl_374 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182 v2
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v2
+        -> coe MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554 (coe v0 v2)
+      MAlonzo.Code.Once.Lang.Trace.C_call_118 v2 v3 v4
         -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_616
-             (coe v0 v2)
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_call_186 v2 v3 v4
-        -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_628
-             (\ v5 -> coe du_RelT'8242''45'refl_442 (coe v0) (coe v4 v5))
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_halt_190 v2 v3
-        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_634
+             MAlonzo.Code.Once.Lang.Trace.C_rel'45'call_566
+             (\ v5 -> coe du_RelT'8242''45'refl_374 (coe v0) (coe v4 v5))
+      MAlonzo.Code.Once.Lang.Trace.C_halt_122 v2 v3
+        -> coe MAlonzo.Code.Once.Lang.Trace.C_rel'45'halt_572
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.TraceMonadLaws.RelT′-≡
-d_RelT'8242''45''8801'_478 ::
+d_RelT'8242''45''8801'_410 ::
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_RelT'8242''45''8801'_478 = erased
+d_RelT'8242''45''8801'_410 = erased
 -- Once.Denotation.TraceMonadLaws.≡-RelT′
-d_'8801''45'RelT'8242'_504 ::
+d_'8801''45'RelT'8242'_436 ::
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-d_'8801''45'RelT'8242'_504 ~v0 ~v1 ~v2 v3 ~v4 ~v5
-  = du_'8801''45'RelT'8242'_504 v3
-du_'8801''45'RelT'8242'_504 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-du_'8801''45'RelT'8242'_504 v0 = coe du_to'45'fmap_520 (coe v0)
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+d_'8801''45'RelT'8242'_436 ~v0 ~v1 ~v2 v3 ~v4 ~v5
+  = du_'8801''45'RelT'8242'_436 v3
+du_'8801''45'RelT'8242'_436 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+du_'8801''45'RelT'8242'_436 v0 = coe du_to'45'fmap_452 (coe v0)
 -- Once.Denotation.TraceMonadLaws._.to-fmap
-d_to'45'fmap_520 ::
+d_to'45'fmap_452 ::
   () ->
   () ->
   (AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-d_to'45'fmap_520 ~v0 ~v1 ~v2 ~v3 v4 = du_to'45'fmap_520 v4
-du_to'45'fmap_520 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604
-du_to'45'fmap_520 v0
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+d_to'45'fmap_452 ~v0 ~v1 ~v2 ~v3 v4 = du_to'45'fmap_452 v4
+du_to'45'fmap_452 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
+du_to'45'fmap_452 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_ret_182 v1
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v1
+        -> coe MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554 erased
+      MAlonzo.Code.Once.Lang.Trace.C_call_118 v1 v2 v3
         -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'ret_616 erased
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_call_186 v1 v2 v3
-        -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'call_628
-             (\ v4 -> coe du_to'45'fmap_520 (coe v3 v4))
-      MAlonzo.Code.Once.Denotation.TraceMonad.C_halt_190 v1 v2
-        -> coe MAlonzo.Code.Once.Denotation.TraceMonad.C_rel'45'halt_634
+             MAlonzo.Code.Once.Lang.Trace.C_rel'45'call_566
+             (\ v4 -> coe du_to'45'fmap_452 (coe v3 v4))
+      MAlonzo.Code.Once.Lang.Trace.C_halt_122 v1 v2
+        -> coe MAlonzo.Code.Once.Lang.Trace.C_rel'45'halt_572
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.TraceMonadLaws.RelT′-events
-d_RelT'8242''45'events_550 ::
+d_RelT'8242''45'events_482 ::
   () ->
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604 ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_RelT'8242''45'events_550 = erased
+d_RelT'8242''45'events_482 = erased
 -- Once.Denotation.TraceMonadLaws._.go
-d_go_572 ::
+d_go_504 ::
   () ->
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_CallOp_124 ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 ->
   AgdaAny ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  (AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonad.T_RelT'8242'_604) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542) ->
   Maybe AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go_572 = erased
+d_go_504 = erased
 -- Once.Denotation.TraceMonadLaws.run-bind
-d_run'45'bind_594 ::
+d_run'45'bind_526 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178 ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'bind_594 = erased
+d_run'45'bind_526 = erased
 -- Once.Denotation.TraceMonadLaws.run-bind-call
-d_run'45'bind'45'call_616 ::
+d_run'45'bind'45'call_548 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_CallOp_124 ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 ->
   AgdaAny ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
   Maybe AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'bind'45'call_616 = erased
+d_run'45'bind'45'call_548 = erased
 -- Once.Denotation.TraceMonadLaws.cons-then
-d_cons'45'then_634 ::
+d_cons'45'then_566 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124 ->
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124] ->
-  MAlonzo.Code.Once.Res.T_Res_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Denotation.TraceMonad.T_T_178) ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  MAlonzo.Code.Once.Lang.Res.T_Res_8 ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_cons'45'then_634 = erased
+d_cons'45'then_566 = erased

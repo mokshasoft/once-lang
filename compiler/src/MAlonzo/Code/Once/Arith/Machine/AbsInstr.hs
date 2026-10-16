@@ -21,9 +21,10 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.Machine.AbsState
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
-import qualified MAlonzo.Code.Once.Float.Arith
-import qualified MAlonzo.Code.Once.Float.Decimal
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Spec.Float.Arith
+import qualified MAlonzo.Code.Once.Spec.Float.Decimal
+import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
+import qualified MAlonzo.Code.Once.Spec.Word
 import qualified MAlonzo.Code.Once.Word
 
 -- Once.Arith.Machine.AbsInstr.AbstractInstr
@@ -47,7 +48,7 @@ data T_AbstractInstr_8
     C_reload_38 Integer Integer | C_move'45'to'45'out_40 Integer |
     C_load'45'finput_42 [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24]
                         Integer |
-    C_load'45'fimm_44 MAlonzo.Code.Once.Float.Decimal.T_Decimal_6
+    C_load'45'fimm_44 MAlonzo.Code.Once.Spec.Float.Decimal.T_Decimal_8
                       Integer |
     C_fadd'45'rrr_46 Integer Integer Integer |
     C_fsub'45'rrr_48 Integer Integer Integer |
@@ -93,14 +94,14 @@ d_maybe'45'zero'45'f_76 v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.AbsInstr.Exec.step
-d_step_110 ::
+d_step_112 ::
   Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Spec.Float.Dyadic.T_FloatFormat_30 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   T_AbstractInstr_8 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_step_110 v0 v1 v2 v3
+d_step_112 v0 v1 v2 v3
   = case coe v3 of
       C_load'45'input_10 v4 v5
         -> coe
@@ -114,7 +115,7 @@ d_step_110 v0 v1 v2 v3
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                         (coe
-                           MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0)
+                           MAlonzo.Code.Once.Spec.Word.d_fromℤ_22 (coe v0)
                            (coe
                               d_maybe'45'zero_72
                               (coe
@@ -140,7 +141,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v5)
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                        (coe MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0) (coe v4))))
+                        (coe MAlonzo.Code.Once.Spec.Word.d_fromℤ_22 (coe v0) (coe v4))))
                   (coe
                      MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v6))
                   (coe
@@ -157,7 +158,8 @@ d_step_110 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
                      (coe v4)
                      (coe
-                        d_bin'45'op_58 (coe MAlonzo.Code.Once.Word.d__'8853'__26 (coe v0))
+                        d_bin'45'op_58
+                        (coe MAlonzo.Code.Once.Spec.Word.d__'8853'__28 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -182,7 +184,8 @@ d_step_110 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
                      (coe v4)
                      (coe
-                        d_bin'45'op_58 (coe MAlonzo.Code.Once.Word.d__'8854'__32 (coe v0))
+                        d_bin'45'op_58
+                        (coe MAlonzo.Code.Once.Spec.Word.d__'8854'__34 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -207,7 +210,8 @@ d_step_110 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
                      (coe v4)
                      (coe
-                        d_bin'45'op_58 (coe MAlonzo.Code.Once.Word.d__'8855'__38 (coe v0))
+                        d_bin'45'op_58
+                        (coe MAlonzo.Code.Once.Spec.Word.d__'8855'__40 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -233,7 +237,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Word.d__'47''738'__120 (coe v0))
+                        (coe MAlonzo.Code.Once.Spec.Word.d__'47''738'__116 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -259,7 +263,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Word.d__'37''738'__126 (coe v0))
+                        (coe MAlonzo.Code.Once.Spec.Word.d__'37''738'__122 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -312,7 +316,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Word.d__'47''738'__120 (coe v0))
+                        (coe MAlonzo.Code.Once.Spec.Word.d__'47''738'__116 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -338,7 +342,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Word.d__'37''738'__126 (coe v0))
+                        (coe MAlonzo.Code.Once.Spec.Word.d__'37''738'__122 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -366,7 +370,7 @@ d_step_110 v0 v1 v2 v3
                         d_un'45'op_66
                         (coe
                            (\ v8 ->
-                              MAlonzo.Code.Once.Word.d_shl'7490'_132 (coe v0) (coe v8) (coe v6)))
+                              MAlonzo.Code.Once.Word.d_shl'7490'_64 (coe v0) (coe v8) (coe v6)))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -390,7 +394,7 @@ d_step_110 v0 v1 v2 v3
                         d_un'45'op_66
                         (coe
                            (\ v8 ->
-                              MAlonzo.Code.Once.Word.d_sdiv2'7503'_138
+                              MAlonzo.Code.Once.Word.d_sdiv2'7503'_70
                                 (coe v0) (coe v8) (coe v6)))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
@@ -412,7 +416,8 @@ d_step_110 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
                      (coe v4)
                      (coe
-                        d_un'45'op_66 (coe MAlonzo.Code.Once.Word.d_'8861'__44 (coe v0))
+                        d_un'45'op_66
+                        (coe MAlonzo.Code.Once.Spec.Word.d_'8861'__46 (coe v0))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
@@ -512,7 +517,8 @@ d_step_110 v0 v1 v2 v3
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                         (coe
-                           MAlonzo.Code.Once.Float.Decimal.d_round_174 (coe v1) (coe v4))))
+                           MAlonzo.Code.Once.Spec.Float.Decimal.d_round_176 (coe v1)
+                           (coe v4))))
                   (coe
                      MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v6))
                   (coe
@@ -530,7 +536,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Float.Arith.d_fadd_314 (coe v1))
+                        (coe MAlonzo.Code.Once.Spec.Float.Arith.d_fadd_316 (coe v1))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -556,7 +562,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Float.Arith.d_fsub_316 (coe v1))
+                        (coe MAlonzo.Code.Once.Spec.Float.Arith.d_fsub_318 (coe v1))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -582,7 +588,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Float.Arith.d_fmul_318 (coe v1))
+                        (coe MAlonzo.Code.Once.Spec.Float.Arith.d_fmul_320 (coe v1))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -608,7 +614,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_bin'45'op_58
-                        (coe MAlonzo.Code.Once.Float.Arith.d_fdiv_320 (coe v1))
+                        (coe MAlonzo.Code.Once.Spec.Float.Arith.d_fdiv_322 (coe v1))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
@@ -634,7 +640,7 @@ d_step_110 v0 v1 v2 v3
                      (coe v4)
                      (coe
                         d_un'45'op_66
-                        (coe MAlonzo.Code.Once.Float.Arith.d_fneg_356 (coe v1))
+                        (coe MAlonzo.Code.Once.Spec.Float.Arith.d_fneg_358 (coe v1))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
@@ -658,8 +664,9 @@ d_step_110 v0 v1 v2 v3
                         d_un'45'op_66
                         (coe
                            (\ v7 ->
-                              MAlonzo.Code.Once.Float.Arith.d_i2f_362
-                                (coe v1) (coe MAlonzo.Code.Once.Word.d_toℤ_50 (coe v0) (coe v7))))
+                              MAlonzo.Code.Once.Spec.Float.Arith.d_i2f_364
+                                (coe v1)
+                                (coe MAlonzo.Code.Once.Spec.Word.d_toℤ_52 (coe v0) (coe v7))))
                         (coe
                            MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'93'_44
                            (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
@@ -672,18 +679,18 @@ d_step_110 v0 v1 v2 v3
                      MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v6)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.AbsInstr.Exec.run-abstract
-d_run'45'abstract_296 ::
+d_run'45'abstract_298 ::
   Integer ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Spec.Float.Dyadic.T_FloatFormat_30 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [T_AbstractInstr_8] ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_run'45'abstract_296 v0 v1 v2 v3 v4
+d_run'45'abstract_298 v0 v1 v2 v3 v4
   = case coe v3 of
       [] -> coe v4
       (:) v5 v6
         -> coe
-             d_run'45'abstract_296 (coe v0) (coe v1) (coe v2) (coe v6)
-             (coe d_step_110 v0 v1 v2 v5 v4)
+             d_run'45'abstract_298 (coe v0) (coe v1) (coe v2) (coe v6)
+             (coe d_step_112 v0 v1 v2 v5 v4)
       _ -> MAlonzo.RTE.mazUnreachableError

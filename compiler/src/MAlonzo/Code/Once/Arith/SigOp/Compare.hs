@@ -24,26 +24,26 @@ import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.Prim
 import qualified MAlonzo.Code.Once.Arith.SigOp.Block
 import qualified MAlonzo.Code.Once.Arith.Type
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Arith.SigOp.Compare.cmp-of
 d_cmp'45'of_12 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_142 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6
 d_cmp'45'of_12 ~v0 ~v1 v2 = du_cmp'45'of_12 v2
 du_cmp'45'of_12 ::
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_142 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6
 du_cmp'45'of_12 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.SigOp.Info.C_primV_158 v2
+         MAlonzo.Code.Once.SigOp.Info.C_primV_90 v2
            -> case coe v2 of
-                MAlonzo.Code.Once.Arith.Prim.C_p'45'cmp_410 v3
+                MAlonzo.Code.Once.Arith.Prim.C_p'45'cmp_232 v3
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
                 _ -> coe v1
          _ -> coe v1)
@@ -80,10 +80,10 @@ d_cmp'45'block_20 v0
 -- Once.Arith.SigOp.Compare.cmp-block-info
 d_cmp'45'block'45'info_24 ::
   MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96
 d_cmp'45'block'45'info_24 v0
   = coe
-      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_554
+      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_376
       (coe
          MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16
          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12)

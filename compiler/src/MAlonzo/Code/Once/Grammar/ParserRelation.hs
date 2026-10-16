@@ -19,61 +19,73 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.Grammar
 import qualified MAlonzo.Code.Once.Grammar.Printer
-import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Lang.Type.Grade
 
 -- Once.Grammar.ParserRelation.toType
 d_toType_8 ::
   MAlonzo.Code.Once.Grammar.T_GType_8 ->
-  MAlonzo.Code.Once.Grammar.Printer.T_Concrete_74 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8
+  MAlonzo.Code.Once.Grammar.Printer.T_Concrete_80 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8
 d_toType_8 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'unit_76
-        -> coe MAlonzo.Code.Once.Spec.Type.C_Unit_20
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'void_78
-        -> coe MAlonzo.Code.Once.Spec.Type.C_Void_22
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'int_80
-        -> coe MAlonzo.Code.Once.Spec.Type.C_Int_34
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'float_82
-        -> coe MAlonzo.Code.Once.Spec.Type.C_Float_36
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'prod_88 v4 v5
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'unit_82
+        -> coe MAlonzo.Code.Once.Lang.Type.C_Unit_20
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'void_84
+        -> coe MAlonzo.Code.Once.Lang.Type.C_Void_22
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'int_86
+        -> coe MAlonzo.Code.Once.Lang.Type.C_Int_34
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'float_88
+        -> coe MAlonzo.Code.Once.Lang.Type.C_Float_36
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'prod_94 v4 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C__'8855'__22 v6 v7
                -> coe
-                    MAlonzo.Code.Once.Spec.Type.C__'42'__24
+                    MAlonzo.Code.Once.Lang.Type.C__'42'__24
                     (coe d_toType_8 (coe v6) (coe v4))
                     (coe d_toType_8 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'sum_94 v4 v5
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'sum_100 v4 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C__'8853'__24 v6 v7
                -> coe
-                    MAlonzo.Code.Once.Spec.Type.C__'43'__26
+                    MAlonzo.Code.Once.Lang.Type.C__'43'__26
                     (coe d_toType_8 (coe v6) (coe v4))
                     (coe d_toType_8 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'fun_102 v5 v6
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'fun_108 v5 v6
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C__'8658''91'_'93'__20 v7 v8 v9
                -> coe
-                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28
+                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                     (coe d_toType_8 (coe v7) (coe v5))
                     (coe
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 (coe v8)
-                       (coe MAlonzo.Code.Once.Spec.Type.Grade.C_pure_30))
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v8)
+                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
                     (coe d_toType_8 (coe v9) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Grammar.Printer.C_c'45'eff_108 v4 v5
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'eff_114 v4 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_TEff_26 v6 v7
                -> coe
-                    MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28
+                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                     (coe d_toType_8 (coe v6) (coe v4))
                     (coe
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48
-                       (coe MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14)
-                       (coe MAlonzo.Code.Once.Spec.Type.Grade.C_eff_32))
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                    (coe d_toType_8 (coe v7) (coe v5))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Grammar.Printer.C_c'45'act_120 v4 v5
+        -> case coe v0 of
+             MAlonzo.Code.Once.Grammar.C_TAct_28 v6 v7
+               -> coe
+                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
+                    (coe d_toType_8 (coe v6) (coe v4))
+                    (coe
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_36))
                     (coe d_toType_8 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

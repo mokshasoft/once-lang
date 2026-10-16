@@ -175,7 +175,7 @@ d_showInstr_10 v0
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (", " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.CCC.Label.d_thunkSym_354 (coe v2))))
+                   (MAlonzo.Code.Once.CCC.Label.d_thunkSym_280 (coe v2))))
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_lla'45'sym_30 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -213,7 +213,7 @@ d_showInstr_10 v0
                       (coe
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (", " :: Data.Text.Text)
-                         (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v3))))))
+                         (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v3))))))
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_bne_36 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -230,7 +230,7 @@ d_showInstr_10 v0
                       (coe
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (", " :: Data.Text.Text)
-                         (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v3))))))
+                         (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v3))))))
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_jal_38 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -241,7 +241,7 @@ d_showInstr_10 v0
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (", " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v2))))
+                   (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v2))))
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_jalr_40 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -263,7 +263,7 @@ d_showInstr_10 v0
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    j " :: Data.Text.Text)
-             (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_ret_44
         -> coe ("    ret" :: Data.Text.Text)
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call_46 v1
@@ -282,7 +282,7 @@ d_showInstr_10 v0
       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_label_54 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))
              (":" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Emit.instrToLine

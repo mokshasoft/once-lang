@@ -19,13 +19,13 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Spec.Name
-import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Spec.Type.Grade
 
 -- Once.IR.Ref.refIR
 d_refIR_8 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IR.T_IR_16
 d_refIR_8 v0 v1
@@ -37,11 +37,11 @@ d_refIR_8 v0 v1
               (coe MAlonzo.Code.Once.IR.C_terminal_72) in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v3 v4 v5
+         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v3 v4 v5
            -> case coe v4 of
-                MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v6 v7
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v6 v7
                   -> case coe v6 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_Zero_10
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
                          -> coe
                               MAlonzo.Code.Once.IR.C_curry_84
                               (coe
@@ -49,7 +49,7 @@ d_refIR_8 v0 v1
                                  (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                                  (coe MAlonzo.Code.Once.IR.C_Call_138 v1)
                                  (coe MAlonzo.Code.Once.IR.C_snd_48))
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_One_12
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
                          -> coe
                               MAlonzo.Code.Once.IR.C_curry_84
                               (coe
@@ -57,7 +57,7 @@ d_refIR_8 v0 v1
                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v3))
                                  (coe MAlonzo.Code.Once.IR.C_Call_138 v1)
                                  (coe MAlonzo.Code.Once.IR.C_snd_48))
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                          -> coe
                               MAlonzo.Code.Once.IR.C_curry_84
                               (coe

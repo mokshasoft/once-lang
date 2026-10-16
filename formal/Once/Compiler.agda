@@ -94,7 +94,14 @@ import Once.Adequacy.Compile as VCompile
 -- extracts from this module, and `Once.Extract.Names` must be in that cone to
 -- be extracted. It contributes nothing to the theorem below — it is stable
 -- extracted NAMES plus two predicates the hand-written bridge used to compute
--- by pattern-matching MAlonzo constructors.
+-- by pattern-matching MAlonzo constructors. The same holds for the warnings
+-- (`Once.Warnings`, the CLI's) and the arithmetic IR the Haskell evaluator
+-- reads (`Once.Arith.IR`). No name of these is used here, so a dead-import
+-- pruning drops them — plan 0.92 did, and nothing failed until the next
+-- extraction.
+import Once.Extract.Names
+import Once.Warnings
+import Once.Arith.IR
 
 -- Instantiate the verified pipeline with the concrete per-arch
 -- semantics AND the per-arch backend-correctness witnesses. `VC.compile` /

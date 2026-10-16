@@ -130,14 +130,14 @@ fromMFunInfo fi = FunSig
     -- D007: funType is now `Maybe Type` (Nothing = no explicit sig, inferred).
     -- MAlonzo's Maybe is Haskell's Maybe (Just/Nothing pattern synonyms).
   , funSigType = case MP.d_funType_108 fi of
-      Just ty -> agdaToText (MT.d_showType_66 ty)
+      Just ty -> agdaToText (MT.d_showType_34 ty)
       Nothing -> T.pack "<inferred>"
   }
 
 fromMPolyFunInfo :: MP.T_PolyFunInfo_116 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
   { polyFunSigName = agdaToText (MP.d_pfunName_124 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_156 (MP.d_pfunType_126 pfi))
+  , polyFunSigType = agdaToText (MT.d_showPolyType_140 (MP.d_pfunType_126 pfi))
   }
 
 fromMResult :: MC.T_CompileResult_1078 -> CompileResult
@@ -221,7 +221,7 @@ resolveImports
   -> Either Text Module
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MMR.d_resolveImports_1020 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MMR.d_resolveImports_1000 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))

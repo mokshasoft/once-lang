@@ -47,10 +47,10 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.BehaviorLaws
 import qualified MAlonzo.Code.Once.Denotation.Program
-import qualified MAlonzo.Code.Once.Denotation.Trace
-import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Event
+import qualified MAlonzo.Code.Once.Lang.Trace
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Target.Arch
@@ -324,7 +324,7 @@ d_place_1744 v0
 -- Once.Adequacy.ArchCorrectness.FlatFromObs._.IRObsCorrectFlatness.ValueRealized.run
 d_run_1746 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_ValueRealized_2094 ->
-  MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_358
+  MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_334
 d_run_1746 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_run_2172
@@ -643,7 +643,7 @@ d_place_2004 v0
 -- Once.Adequacy.ArchCorrectness.FlatFromObs._.ValueRealized.run
 d_run_2006 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_ValueRealized_2094 ->
-  MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_358
+  MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_334
 d_run_2006 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.d_run_2172
@@ -1495,7 +1495,7 @@ du_σFS_2284 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 du_σFS_2284 v0
   = coe
-      MAlonzo.Code.Once.Denotation.TraceMonad.d_sig_256
+      MAlonzo.Code.Once.Lang.Trace.d_sig_188
       (coe
          MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'interp_120 (coe v0))
 -- Once.Adequacy.ArchCorrectness.FlatFromObs.entry-vr
@@ -1637,7 +1637,7 @@ d_flat'45'trace'45'fam_2312 ::
    MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2574) ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
+  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
 d_flat'45'trace'45'fam_2312 v0 v1 ~v2 v3 ~v4 v5 ~v6 v7 v8 v9 v10
                             v11
   = du_flat'45'trace'45'fam_2312 v0 v1 v3 v5 v7 v8 v9 v10 v11
@@ -1679,7 +1679,7 @@ du_flat'45'trace'45'fam_2312 ::
    MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2574) ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_124]
+  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
 du_flat'45'trace'45'fam_2312 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
       MAlonzo.Code.Data.List.Base.du_take_530 (coe v8)

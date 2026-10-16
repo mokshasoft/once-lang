@@ -333,7 +333,7 @@ d_ft'45'at_194 v0 v1 v2 v3 v4
         -> coe
              d_ft'45'match_196 (coe v0)
              (coe
-                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__276 (coe v5)
+                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__228 (coe v5)
                 (coe v3))
              (coe v2) (coe v3) (coe v4)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -619,7 +619,7 @@ du_go_684 v0 v1 v2 v3 v4 v5 v6
              du_go'45'm_694 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
              (coe v5)
              (coe
-                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__276 (coe v7)
+                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__228 (coe v7)
                 (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe

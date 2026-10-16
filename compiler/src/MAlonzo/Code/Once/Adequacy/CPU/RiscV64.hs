@@ -33,7 +33,7 @@ import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.File
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
 import qualified MAlonzo.Code.Once.Denotation.Behavior
-import qualified MAlonzo.Code.Once.Denotation.TraceMonad
+import qualified MAlonzo.Code.Once.Lang.Trace
 
 -- Once.Adequacy.CPU.RiscV64.step-budget-riscv64
 d_step'45'budget'45'riscv64_8
@@ -73,29 +73,29 @@ d_step'45'budget'45'riscv64'45'adequate_32
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.RiscV64.step-budget-riscv64-adequate"
 -- Once.Adequacy.CPU.RiscV64.run-trace-riscv64
 d_run'45'trace'45'riscv64_34 ::
-  MAlonzo.Code.Once.Denotation.TraceMonad.T_Interp_250 ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_422 ->
   MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_run'45'trace'45'riscv64_34 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_234
       (coe
          (\ v3 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_430
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_438
               (coe v3)))
       (coe
          (\ v3 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_428 (coe v3)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_498)
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_436 (coe v3)))
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_506)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_556)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_564)
       (coe
          MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace.d_matchCall_10)
       (coe
          MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace.d_ret'45'call_18
          (coe
-            MAlonzo.Code.Once.Arith.Backend.CallAnswer.du_answer'45'at_220
+            MAlonzo.Code.Once.Arith.Backend.CallAnswer.du_answer'45'at_152
             (coe v0) (coe d_call'45'at'45'riscv64_12)))
       (coe
          MAlonzo.Code.Data.Product.Base.du_uncurry_244
@@ -104,7 +104,7 @@ d_run'45'trace'45'riscv64_34 v0 v1 v2
               MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch.du_dispatch'45'arith_18
               (\ v6 v7 v8 ->
                  coe
-                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64.du_val'45'riscv64_316
+                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64.du_val'45'riscv64_324
                    v6 v7)
               v3 v5))
       (coe
@@ -141,13 +141,13 @@ d_arch'45'semantics_50
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_90
       (\ v0 ->
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initStateAt_442
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initStateAt_450
            (coe
               MAlonzo.Code.Data.Maybe.Base.du_fromMaybe_46 (0 :: Integer)
               (MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_entry_24 (coe v0))))
       (\ v0 ->
          coe
-           MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_916
+           MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_924
            (MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_code_22 (coe v0)))
       d_run'45'trace'45'riscv64_34 d_decode'45'riscv64_42
       d_assemble'45'riscv64_44

@@ -23,16 +23,16 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
-import qualified MAlonzo.Code.Once.Spec.Context
+import qualified MAlonzo.Code.Once.Lang.Context
+import qualified MAlonzo.Code.Once.Lang.Syntax
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Lang.Type.Grade
+import qualified MAlonzo.Code.Once.Lang.Type.Poly
+import qualified MAlonzo.Code.Once.Lang.Type.Sub
+import qualified MAlonzo.Code.Once.Lang.Type.WellFormed
+import qualified MAlonzo.Code.Once.Lang.Typing
+import qualified MAlonzo.Code.Once.Lang.Typing.Scope
 import qualified MAlonzo.Code.Once.Spec.Name
-import qualified MAlonzo.Code.Once.Spec.Syntax
-import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Spec.Type.Grade
-import qualified MAlonzo.Code.Once.Spec.Type.Poly
-import qualified MAlonzo.Code.Once.Spec.Type.Sub
-import qualified MAlonzo.Code.Once.Spec.Type.WellFormed
-import qualified MAlonzo.Code.Once.Spec.Typing
-import qualified MAlonzo.Code.Once.Spec.Typing.Scope
 
 -- Once.TypeCheck.Route.Rii
 d_Rii_70 a0 a1 a2 a3 a4 a5 a6 a7 = ()
@@ -52,57 +52,58 @@ data T_Rii_70
     C_ii'45'id'45'app_536 T_Rii_70 | C_ii'45'fst'45'app_546 T_Rii_70 |
     C_ii'45'snd'45'app_556 T_Rii_70 |
     C_ii'45'terminal'45'app_566 T_Rii_70 | C_ii'45'apply_576 T_Rii_70 |
-    C_ii'45'apply'45'eff_586 T_Rii_70 | C_ii'45'Out_604 T_Rii_70 |
-    C_ii'45'Out'45'eff_622 T_Rii_70 |
-    C_ii'45'app_644 T_Rii_70 T_Rcc_82 |
-    C_ii'45'effApp_666 T_Rii_70 T_Rcc_82 |
-    C_ii'45'app'45'spine_688 T_Ric_96 T_Rdi_138 |
-    C_ii'45'spine'45'app_710 T_Ric_96 T_Rdi_138 |
-    C_ii'45'spine_732 T_Rii_70 T_Rdd_156
+    C_ii'45'apply'45'eff_594 T_Rii_70 | C_ii'45'Out_612 T_Rii_70 |
+    C_ii'45'Out'45'eff_638 T_Rii_70 |
+    C_ii'45'app_660 T_Rii_70 T_Rcc_82 |
+    C_ii'45'effApp_686 T_Rii_70 T_Rcc_82 |
+    C_ii'45'app'45'spine_708 T_Ric_96 T_Rdi_138 |
+    C_ii'45'spine'45'app_730 T_Ric_96 T_Rdi_138 |
+    C_ii'45'spine_752 T_Rii_70 T_Rdd_156
 -- Once.TypeCheck.Route.Rcc
 d_Rcc_82 a0 a1 a2 a3 a4 a5 a6 = ()
 data T_Rcc_82
-  = C_cc'45'sub'45'l_744 T_Ric_96 | C_cc'45'sub'45'r_756 T_Ric_96 |
-    C_cc'45'id_758 | C_cc'45'fst_760 | C_cc'45'snd_762 |
-    C_cc'45'terminal_764 | C_cc'45'initial_766 | C_cc'45'inl_768 |
-    C_cc'45'inr_770 | C_cc'45'gg_788 T_Rdd_156 T_Rcc_82 |
-    C_cc'45'gf_808 T_Rdc_114 T_Ric_96 |
-    C_cc'45'fg_828 T_Rdc_114 T_Ric_96 |
-    C_cc'45'ff_850 T_Rii_70 T_Rcc_82 |
-    C_cc'45'copair_868 T_Rcc_82 T_Rcc_82 |
-    C_cc'45'fork_886 T_Rcc_82 T_Rcc_82 | C_cc'45'curry_896 T_Rcc_82 |
-    C_cc'45'cata_912 T_Rcc_82 | C_cc'45'ana_928 T_Rcc_82 |
-    C_cc'45'lam_948 T_Rcc_82 |
-    C_cc'45'pair'45'lit_966 T_Rcc_82 T_Rcc_82 |
-    C_cc'45'In_982 T_Rcc_82 | C_cc'45'apply_992 T_Rii_70 |
-    C_cc'45'inl'45'app_1002 T_Rcc_82 |
-    C_cc'45'inr'45'app_1012 T_Rcc_82 |
-    C_cc'45'initial'45'app_1022 T_Rcc_82 | C_cc'45'poly_1058
+  = C_cc'45'sub'45'l_764 T_Ric_96 | C_cc'45'sub'45'r_776 T_Ric_96 |
+    C_cc'45'id_782 | C_cc'45'fst_788 | C_cc'45'snd_794 |
+    C_cc'45'terminal_800 | C_cc'45'initial_806 | C_cc'45'inl_812 |
+    C_cc'45'inr_818 | C_cc'45'gg_836 T_Rdd_156 T_Rcc_82 |
+    C_cc'45'gf_856 T_Rdc_114 T_Ric_96 |
+    C_cc'45'fg_876 T_Rdc_114 T_Ric_96 |
+    C_cc'45'ff_898 T_Rii_70 T_Rcc_82 |
+    C_cc'45'copair_916 T_Rcc_82 T_Rcc_82 |
+    C_cc'45'fork_934 T_Rcc_82 T_Rcc_82 | C_cc'45'curry_948 T_Rcc_82 |
+    C_cc'45'cata_968 T_Rcc_82 | C_cc'45'ana_988 T_Rcc_82 |
+    C_cc'45'lam_1012 T_Rcc_82 |
+    C_cc'45'pair'45'lit_1030 T_Rcc_82 T_Rcc_82 |
+    C_cc'45'In_1046 T_Rcc_82 | C_cc'45'apply_1056 T_Rii_70 |
+    C_cc'45'inl'45'app_1066 T_Rcc_82 |
+    C_cc'45'inr'45'app_1076 T_Rcc_82 |
+    C_cc'45'initial'45'app_1086 T_Rcc_82 | C_cc'45'poly_1122 |
+    C_cc'45'guard_1152
 -- Once.TypeCheck.Route.Ric
 d_Ric_96 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 data T_Ric_96
-  = C_ic'45'sub_1070 T_Rii_70 | C_ic'45'pair_1088 T_Ric_96 T_Ric_96 |
-    C_ic'45'apply_1098 T_Rii_70
+  = C_ic'45'sub_1164 T_Rii_70 | C_ic'45'pair_1182 T_Ric_96 T_Ric_96 |
+    C_ic'45'apply_1192 T_Rii_70 | C_ic'45'guard_1220
 -- Once.TypeCheck.Route.Rdc
 d_Rdc_114 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
 data T_Rdc_114
-  = C_dc'45'infer_1112 T_Ric_96 | C_dc'45'sub_1124 T_Rdi_138 |
-    C_dc'45'lam_1144 T_Ric_96 | C_dc'45'cg_1162 T_Rdd_156 T_Rdc_114 |
-    C_dc'45'cf_1182 T_Rdi_138 T_Rdc_114 | C_dc'45'id_1184 |
-    C_dc'45'fst_1186 | C_dc'45'snd_1188 | C_dc'45'terminal_1190 |
-    C_dc'45'initial_1192 | C_dc'45'case_1210 T_Rdc_114 T_Rdc_114 |
-    C_dc'45'pair_1228 T_Rdc_114 T_Rdc_114 |
-    C_dc'45'cata_1244 T_Ric_96 | C_dc'45'poly_1290
+  = C_dc'45'infer_1234 T_Ric_96 | C_dc'45'sub_1246 T_Rdi_138 |
+    C_dc'45'lam_1268 T_Ric_96 | C_dc'45'cg_1286 T_Rdd_156 T_Rdc_114 |
+    C_dc'45'cf_1306 T_Rdi_138 T_Rdc_114 | C_dc'45'id_1312 |
+    C_dc'45'fst_1318 | C_dc'45'snd_1324 | C_dc'45'terminal_1330 |
+    C_dc'45'initial_1336 | C_dc'45'case_1354 T_Rdc_114 T_Rdc_114 |
+    C_dc'45'pair_1372 T_Rdc_114 T_Rdc_114 |
+    C_dc'45'cata_1392 T_Ric_96 | C_dc'45'poly_1438
 -- Once.TypeCheck.Route.Rdi
 d_Rdi_138 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 = ()
-newtype T_Rdi_138 = C_di'45'infer_1304 T_Rii_70
+newtype T_Rdi_138 = C_di'45'infer_1452 T_Rii_70
 -- Once.TypeCheck.Route.Rdd
 d_Rdd_156 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
 data T_Rdd_156
-  = C_dd'45'infer'45'l_1318 T_Rdi_138 |
-    C_dd'45'infer'45'r_1332 T_Rdi_138 | C_dd'45'lam_1352 T_Rii_70 |
-    C_dd'45'compose_1370 T_Rdd_156 T_Rdd_156 | C_dd'45'id_1372 |
-    C_dd'45'fst_1374 | C_dd'45'snd_1376 | C_dd'45'terminal_1378 |
-    C_dd'45'initial_1380 | C_dd'45'case_1398 T_Rdd_156 T_Rdd_156 |
-    C_dd'45'pair_1416 T_Rdd_156 T_Rdd_156 |
-    C_dd'45'cata_1432 T_Rii_70 | C_dd'45'poly_1488
+  = C_dd'45'infer'45'l_1466 T_Rdi_138 |
+    C_dd'45'infer'45'r_1480 T_Rdi_138 | C_dd'45'lam_1500 T_Rii_70 |
+    C_dd'45'compose_1518 T_Rdd_156 T_Rdd_156 | C_dd'45'id_1524 |
+    C_dd'45'fst_1530 | C_dd'45'snd_1536 | C_dd'45'terminal_1542 |
+    C_dd'45'initial_1548 | C_dd'45'case_1566 T_Rdd_156 T_Rdd_156 |
+    C_dd'45'pair_1584 T_Rdd_156 T_Rdd_156 |
+    C_dd'45'cata_1604 T_Rii_70 | C_dd'45'poly_1660

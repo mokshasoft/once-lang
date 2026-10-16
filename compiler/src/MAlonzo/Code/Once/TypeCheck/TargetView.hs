@@ -17,26 +17,26 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Spec.Type.Grade
+import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Lang.Type.Grade
 
 -- Once.TypeCheck.TargetView.CataTarget
 d_CataTarget_6 a0 = ()
 data T_CataTarget_6 = C_cata'45'at_14 | C_cata'45'other_18
 -- Once.TypeCheck.TargetView.cataTarget
 d_cataTarget_22 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_CataTarget_6
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_CataTarget_6
 d_cataTarget_22 v0
   = let v1 = coe C_cata'45'other_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v2 v3 v4
+         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
            -> case coe v2 of
-                MAlonzo.Code.Once.Spec.Type.C_μ'45'type_30 v5
+                MAlonzo.Code.Once.Lang.Type.C_μ'45'type_30 v5
                   -> case coe v3 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v6 v7
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v6 v7
                          -> case coe v6 of
-                              MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14 -> coe C_cata'45'at_14
+                              MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14 -> coe C_cata'45'at_14
                               _ -> coe v1
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v1
@@ -46,18 +46,18 @@ d_AnaTarget_30 a0 = ()
 data T_AnaTarget_30 = C_ana'45'at_40 | C_ana'45'other_44
 -- Once.TypeCheck.TargetView.anaTarget
 d_anaTarget_48 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_AnaTarget_30
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_AnaTarget_30
 d_anaTarget_48 v0
   = let v1 = coe C_ana'45'other_44 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v2 v3 v4
+         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
            -> case coe v3 of
-                MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v5 v6
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v5 v6
                   -> case coe v5 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                          -> case coe v4 of
-                              MAlonzo.Code.Once.Spec.Type.C_ν'45'type_32 v7 v8
+                              MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 v7 v8
                                 -> coe C_ana'45'at_40
                               _ -> coe v1
                        _ -> coe v1
@@ -68,34 +68,34 @@ d_InTarget_58 a0 = ()
 data T_InTarget_58 = C_in'45'at_62 | C_in'45'other_66
 -- Once.TypeCheck.TargetView.inTarget
 d_inTarget_70 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_InTarget_58
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_InTarget_58
 d_inTarget_70 v0
   = let v1 = coe C_in'45'other_66 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C_μ'45'type_30 v2 -> coe C_in'45'at_62
+         MAlonzo.Code.Once.Lang.Type.C_μ'45'type_30 v2 -> coe C_in'45'at_62
          _ -> coe v1)
 -- Once.TypeCheck.TargetView.CurryTarget
 d_CurryTarget_74 a0 = ()
 data T_CurryTarget_74 = C_curry'45'at_86 | C_curry'45'other_90
 -- Once.TypeCheck.TargetView.curryTarget
 d_curryTarget_94 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_CurryTarget_74
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_CurryTarget_74
 d_curryTarget_94 v0
   = let v1 = coe C_curry'45'other_90 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v2 v3 v4
+         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
            -> case coe v3 of
-                MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v5 v6
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v5 v6
                   -> case coe v5 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                          -> case coe v4 of
-                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v7 v8 v9
+                              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v7 v8 v9
                                 -> case coe v8 of
-                                     MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v10 v11
+                                     MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v10 v11
                                        -> case coe v10 of
-                                            MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+                                            MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                                               -> coe C_curry'45'at_86
                                             _ -> coe v1
                                      _ -> MAlonzo.RTE.mazUnreachableError
@@ -108,18 +108,18 @@ d_PairTarget_106 a0 = ()
 data T_PairTarget_106 = C_pair'45'at_116 | C_pair'45'other_120
 -- Once.TypeCheck.TargetView.pairTarget
 d_pairTarget_124 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_PairTarget_106
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_PairTarget_106
 d_pairTarget_124 v0
   = let v1 = coe C_pair'45'other_120 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v2 v3 v4
+         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
            -> case coe v3 of
-                MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v5 v6
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v5 v6
                   -> case coe v5 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                          -> case coe v4 of
-                              MAlonzo.Code.Once.Spec.Type.C__'42'__24 v7 v8
+                              MAlonzo.Code.Once.Lang.Type.C__'42'__24 v7 v8
                                 -> coe C_pair'45'at_116
                               _ -> coe v1
                        _ -> coe v1
@@ -130,18 +130,18 @@ d_CaseTarget_134 a0 = ()
 data T_CaseTarget_134 = C_case'45'at_144 | C_case'45'other_148
 -- Once.TypeCheck.TargetView.caseTarget
 d_caseTarget_152 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_CaseTarget_134
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_CaseTarget_134
 d_caseTarget_152 v0
   = let v1 = coe C_case'45'other_148 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v2 v3 v4
+         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
            -> case coe v2 of
-                MAlonzo.Code.Once.Spec.Type.C__'43'__26 v5 v6
+                MAlonzo.Code.Once.Lang.Type.C__'43'__26 v5 v6
                   -> case coe v3 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v7 v8
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v7 v8
                          -> case coe v7 of
-                              MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14 -> coe C_case'45'at_144
+                              MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14 -> coe C_case'45'at_144
                               _ -> coe v1
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v1
@@ -151,16 +151,16 @@ d_ArrowTarget_162 a0 = ()
 data T_ArrowTarget_162 = C_arrow'45'at_170 | C_arrow'45'other_174
 -- Once.TypeCheck.TargetView.arrowTarget
 d_arrowTarget_178 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_ArrowTarget_162
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_ArrowTarget_162
 d_arrowTarget_178 v0
   = let v1 = coe C_arrow'45'other_174 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v2 v3 v4
+         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
            -> case coe v3 of
-                MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v5 v6
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v5 v6
                   -> case coe v5 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                          -> coe C_arrow'45'at_170
                        _ -> coe v1
                 _ -> MAlonzo.RTE.mazUnreachableError
@@ -173,12 +173,12 @@ d_NuView_198 a0 = ()
 data T_NuView_198 = C_nu'45'at_204 | C_nu'45'other_208
 -- Once.TypeCheck.TargetView.nuView
 d_nuView_212 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_NuView_198
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_NuView_198
 d_nuView_212 v0
   = let v1 = coe C_nu'45'other_208 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C_ν'45'type_32 v2 v3
+         MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 v2 v3
            -> coe C_nu'45'at_204
          _ -> coe v1)
 -- Once.TypeCheck.TargetView.ApplyView
@@ -186,18 +186,18 @@ d_ApplyView_218 a0 = ()
 data T_ApplyView_218 = C_apply'45'at_228 | C_apply'45'other_232
 -- Once.TypeCheck.TargetView.applyView
 d_applyView_236 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_ApplyView_218
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_ApplyView_218
 d_applyView_236 v0
   = let v1 = coe C_apply'45'other_232 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'42'__24 v2 v3
+         MAlonzo.Code.Once.Lang.Type.C__'42'__24 v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__28 v4 v5 v6
+                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v4 v5 v6
                   -> case coe v5 of
-                       MAlonzo.Code.Once.Spec.Type.Grade.C_mk'45'kind_48 v7 v8
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v7 v8
                          -> case coe v7 of
-                              MAlonzo.Code.Once.Spec.Type.Grade.C_Many_14
+                              MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                                 -> coe C_apply'45'at_228
                               _ -> coe v1
                        _ -> MAlonzo.RTE.mazUnreachableError
@@ -208,11 +208,11 @@ d_ProdView_246 a0 = ()
 data T_ProdView_246 = C_prod'45'at_252 | C_prod'45'other_256
 -- Once.TypeCheck.TargetView.prodView
 d_prodView_260 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 -> T_ProdView_246
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T_ProdView_246
 d_prodView_260 v0
   = let v1 = coe C_prod'45'other_256 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Spec.Type.C__'42'__24 v2 v3
+         MAlonzo.Code.Once.Lang.Type.C__'42'__24 v2 v3
            -> coe C_prod'45'at_252
          _ -> coe v1)

@@ -32,8 +32,8 @@ import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.SigOp.Block
 import qualified MAlonzo.Code.Once.Arith.Type
-import qualified MAlonzo.Code.Once.Float.Decimal
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Spec.Float.Decimal
+import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
 import qualified MAlonzo.Code.Once.Target.Symbol
 
@@ -720,8 +720,8 @@ d_instr'45'text_24 v0
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (coe
                          MAlonzo.Code.Data.Nat.Show.d_show_56
-                         (MAlonzo.Code.Once.Float.Decimal.d_round_174
-                            (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42) (coe v2)))
+                         (MAlonzo.Code.Once.Spec.Float.Decimal.d_round_176
+                            (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_44) (coe v2)))
                       ("\n" :: Data.Text.Text))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_74 v1 v2
         -> coe
@@ -955,7 +955,7 @@ d_arith'45'block'45'symbol_242 v0
   = coe
       MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_62
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_366
+         MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_188
          (coe
             MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_174 (coe v0))
          (coe

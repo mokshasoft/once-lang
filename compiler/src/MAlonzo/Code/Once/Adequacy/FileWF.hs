@@ -252,7 +252,7 @@ du_lib'45'wf_102 v0
          MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_630 v0)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_648 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
@@ -431,7 +431,7 @@ du_lib'45'wf_180 v0
          MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_630 v0)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_648 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
@@ -610,7 +610,7 @@ du_lib'45'wf_258 v0
          MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_630 v0)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_648 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196

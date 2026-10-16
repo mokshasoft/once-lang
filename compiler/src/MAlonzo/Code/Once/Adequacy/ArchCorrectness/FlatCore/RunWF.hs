@@ -800,7 +800,7 @@ du_ft'45'at'45'complete_992 v0 v1 v2 v3
         -> coe
              du_match_1020 (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__276 (coe v4)
+                MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7473'__228 (coe v4)
                 (coe v1))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe v3 (addInt (coe (1 :: Integer)) (coe v2))

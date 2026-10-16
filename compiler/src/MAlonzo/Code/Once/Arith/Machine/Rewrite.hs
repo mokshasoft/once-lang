@@ -32,8 +32,8 @@ import qualified MAlonzo.Code.Once.Arith.SigOp.Compare
 import qualified MAlonzo.Code.Once.Arith.Type
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Arith.Machine.Rewrite.shape-of
 d_shape'45'of_12 ::
@@ -141,7 +141,7 @@ du_block'45'as'45'ir_46 v0 v1 v2
          MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_164
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_554 (coe v0)
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_376 (coe v0)
          (coe v1) (coe v2))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_64 ::
@@ -251,9 +251,9 @@ d_sigop'45'blocks_198 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.Rewrite.bare-at
 d_bare'45'at_208 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_bare'45'at_208 v0 v1 v2 v3
@@ -275,7 +275,7 @@ d_bare'45'at_208 v0 v1 v2 v3
                 d_sigop'45'blocks_198
                 (coe
                    MAlonzo.Code.Once.Arith.SigOp.Compare.du_cmp'45'of_12
-                   (coe MAlonzo.Code.Once.SigOp.Info.d_sem_180 (coe v2))))
+                   (coe MAlonzo.Code.Once.SigOp.Info.d_sem_112 (coe v2))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.Rewrite.rewrite-ir
 d_rewrite'45'ir_222 ::

@@ -19,7 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
-import qualified MAlonzo.Code.Once.Float.Decimal
+import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 
 -- Once.Arith.Backend.XInstr.Syntax.XReg
 d_XReg_10 = ()
@@ -60,7 +60,7 @@ data T_XInstr_24
     C_Xfsubr'45'rr_66 T_XReg_10 T_XReg_10 | C_Xfneg'45'r_68 T_XReg_10 |
     C_Xi2f'45'r_70 T_XReg_10 T_XReg_10 |
     C_Xmov'45'fimm_72 T_XReg_10
-                      MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 |
+                      MAlonzo.Code.Once.Spec.Float.Decimal.T_Decimal_8 |
     C_Xmov'45'farg_74 T_XReg_10
                       [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] |
     C_Xmov'45'out_76 T_XReg_10

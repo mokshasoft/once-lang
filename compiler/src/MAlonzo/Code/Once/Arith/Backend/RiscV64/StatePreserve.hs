@@ -28,26 +28,26 @@ d_PreservesCCCState_12 a0 a1 a2 = ()
 -- Once.Arith.Backend.RiscV64.StatePreserve._.preserves-state-refl
 d_preserves'45'state'45'refl_18 ::
   Integer ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_422 ->
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56
 d_preserves'45'state'45'refl_18
   = coe
       MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.du_preserves'45'state'45'refl_78
       (coe
          (\ v0 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_regs_424
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_regs_432
               (coe v0)))
       (coe
          (\ v0 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_memory_426
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_memory_434
               (coe v0)))
       erased erased
 -- Once.Arith.Backend.RiscV64.StatePreserve._.preserves-state-trans
 d_preserves'45'state'45'trans_20 ::
   Integer ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_414 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_422 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_422 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_422 ->
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56 ->
   MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.T_PreservesCCCState_56
@@ -56,11 +56,11 @@ d_preserves'45'state'45'trans_20
       MAlonzo.Code.Once.Arith.Backend.StatePreserveCore.du_preserves'45'state'45'trans_92
       (coe
          (\ v0 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_regs_424
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_regs_432
               (coe v0)))
       (coe
          (\ v0 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_memory_426
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_memory_434
               (coe v0)))
       erased erased
 -- Once.Arith.Backend.RiscV64.StatePreserve._.PreservesCCCState.mem≈

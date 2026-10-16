@@ -1171,7 +1171,7 @@ d_table'45'names_572 v0
   = case coe v0 of
       MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_38 v1
         -> let v2
-                 = MAlonzo.Code.Once.Parser.d_guardDistinct_560
+                 = MAlonzo.Code.Once.Parser.d_guardDistinct_538
                      (coe
                         MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_216
                         (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
@@ -1193,26 +1193,26 @@ d_table'45'names_572 v0
                           MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v5
                             -> coe
                                  C_constructor_546
-                                 (MAlonzo.Code.Once.Parser.d_emittedNames_544
+                                 (MAlonzo.Code.Once.Parser.d_emittedNames_522
                                     (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3)))
-                                 (MAlonzo.Code.Once.Adequacy.NameClash.d_map'45'allpairs'45'own_150
+                                 (MAlonzo.Code.Once.Adequacy.NameClash.d_map'45'allpairs'45'own_110
                                     (coe
-                                       MAlonzo.Code.Once.Parser.d_emittedNames_544
+                                       MAlonzo.Code.Once.Parser.d_emittedNames_522
                                        (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3)))
                                     (coe
-                                       MAlonzo.Code.Once.Adequacy.NameClash.du_namesDistinct'45'sound_110
+                                       MAlonzo.Code.Once.Adequacy.NameClash.du_namesDistinct'45'sound_68
                                        (coe
-                                          MAlonzo.Code.Once.Parser.d_emittedNames_544
+                                          MAlonzo.Code.Once.Parser.d_emittedNames_522
                                           (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3))))
                                     (coe
                                        MAlonzo.Code.Once.Adequacy.NameClash.du_allValidIdentB'45'sound_58
                                        (coe
-                                          MAlonzo.Code.Once.Parser.d_emittedNames_544
+                                          MAlonzo.Code.Once.Parser.d_emittedNames_522
                                           (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3)))))
                                  (coe
                                     MAlonzo.Code.Once.Adequacy.NameClash.du_allValidIdentB'45'sound_58
                                     (coe
-                                       MAlonzo.Code.Once.Parser.d_emittedNames_544
+                                       MAlonzo.Code.Once.Parser.d_emittedNames_522
                                        (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3))))
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> MAlonzo.RTE.mazUnreachableError)
@@ -1960,7 +1960,7 @@ d_tagged_1172 v0
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'digest_358
+                   MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'digest_180
                    (coe
                       MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_174 (coe v1))
                    (coe

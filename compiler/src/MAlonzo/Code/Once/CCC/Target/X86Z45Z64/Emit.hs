@@ -58,7 +58,7 @@ d_showMem_10 v0
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'label_18 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (MAlonzo.Code.Once.CCC.Label.d_thunkSym_354 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_thunkSym_280 (coe v1))
              ("(%rip)" :: Data.Text.Text)
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'sym_20 v1
         -> coe
@@ -164,17 +164,17 @@ d_showInstr_32 v0
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    jmp " :: Data.Text.Text)
-             (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_48 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    je " :: Data.Text.Text)
-             (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jne_50 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    jne " :: Data.Text.Text)
-             (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call_52 v1
         -> case coe v1 of
              MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_24 v2
@@ -200,7 +200,7 @@ d_showInstr_32 v0
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("    call " :: Data.Text.Text)
-             (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ret_58
         -> coe ("    ret" :: Data.Text.Text)
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_push_60 v1
@@ -234,7 +234,7 @@ d_showInstr_32 v0
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_70 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (MAlonzo.Code.Once.CCC.Label.d_labelSym_364 (coe v1))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))
              (":" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.instrToLine

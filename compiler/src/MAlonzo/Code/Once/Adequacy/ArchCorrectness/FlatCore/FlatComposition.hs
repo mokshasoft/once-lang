@@ -1654,10 +1654,9 @@ du_find'45'thunk'45'pres_616 v0 v1 v2
                            (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased)
                     MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.HeadView.C_hv'45'otherlabel_100 v9 v10
                       -> let v15
-                               = coe
-                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.du_isYes_132
+                               = MAlonzo.Code.Relation.Nullary.Decidable.Core.d_does_28
                                    (coe
-                                      MAlonzo.Code.Once.CCC.Label.d__'8799''7473'__234 (coe v9)
+                                      MAlonzo.Code.Once.CCC.Label.d__'8799''7473'__186 (coe v9)
                                       (coe v1)) in
                          coe
                            (if coe v15
@@ -1881,8 +1880,7 @@ du_find'45'label'45'pres_788 v0 v1 v2
                -> case coe v7 of
                     MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.HeadView.C_hv'45'clabel_68 v9
                       -> let v13
-                               = coe
-                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.du_isYes_132
+                               = MAlonzo.Code.Relation.Nullary.Decidable.Core.d_does_28
                                    (let v13 = MAlonzo.Code.Once.CCC.Label.d_path_16 (coe v9) in
                                     coe
                                       (let v14 = MAlonzo.Code.Once.CCC.Label.d_idx_18 (coe v9) in

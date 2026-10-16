@@ -47,13 +47,13 @@ du_plg_26 v0 v1 v2 v3 v4
   = case coe v4 of
       []
         -> coe
-             v0 (MAlonzo.Code.Once.Memory.Memory.d_readMem_88 (coe v2) (coe v3))
+             v0 (MAlonzo.Code.Once.Memory.Memory.d_readMem_28 (coe v2) (coe v3))
       (:) v5 v6
         -> coe
              du_plg_26 (coe v0) (coe v1) (coe v2)
              (coe
                 v0
-                (MAlonzo.Code.Once.Memory.Memory.d_readMem_88
+                (MAlonzo.Code.Once.Memory.Memory.d_readMem_28
                    (coe v2) (coe addInt (coe v1 v5) (coe v3))))
              (coe v6)
       _ -> MAlonzo.RTE.mazUnreachableError

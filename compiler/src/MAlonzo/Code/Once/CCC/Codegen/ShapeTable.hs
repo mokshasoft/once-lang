@@ -37,9 +37,9 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Machine.ShapeAt
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
@@ -492,39 +492,39 @@ d_load'45'snd_298 v0
          _ -> coe v1)
 -- Once.CCC.Codegen.ShapeTable.claim-at
 d_claim'45'at_318 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_EffectShape_126 ->
-  Maybe MAlonzo.Code.Once.Type.T_FitsInReg_56 -> T_RegExpect_8
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
+  Maybe MAlonzo.Code.Once.Type.T_FitsInReg_24 -> T_RegExpect_8
 d_claim'45'at_318 ~v0 v1 v2 = du_claim'45'at_318 v1 v2
 du_claim'45'at_318 ::
-  MAlonzo.Code.Once.SigOp.Info.T_EffectShape_126 ->
-  Maybe MAlonzo.Code.Once.Type.T_FitsInReg_56 -> T_RegExpect_8
+  MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
+  Maybe MAlonzo.Code.Once.Type.T_FitsInReg_24 -> T_RegExpect_8
 du_claim'45'at_318 v0 v1
   = let v2 = coe C_e'45'any_10 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.SigOp.Info.C_Pure_130
+         MAlonzo.Code.Once.SigOp.Info.C_Pure_62
            -> case coe v1 of
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
                   -> case coe v3 of
-                       MAlonzo.Code.Once.Type.C_fits'45'int_58 -> coe C_e'45'word_20
+                       MAlonzo.Code.Once.Type.C_fits'45'int_26 -> coe C_e'45'word_20
                        _ -> coe v2
                 _ -> coe v2
          _ -> coe v2)
 -- Once.CCC.Codegen.ShapeTable.sigop-claim
 d_sigop'45'claim_324 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 -> T_RegExpect_8
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 -> T_RegExpect_8
 d_sigop'45'claim_324 ~v0 v1 v2 = du_sigop'45'claim_324 v1 v2
 du_sigop'45'claim_324 ::
-  MAlonzo.Code.Once.Spec.Type.T_Type_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_164 -> T_RegExpect_8
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 -> T_RegExpect_8
 du_sigop'45'claim_324 v0 v1
   = coe
       du_claim'45'at_318
-      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_284 (coe v1))
-      (coe MAlonzo.Code.Once.Type.d_fits'45'in'45'reg'63'_64 (coe v0))
+      (coe MAlonzo.Code.Once.SigOp.Info.du_effect_210 (coe v1))
+      (coe MAlonzo.Code.Once.Type.d_fits'45'in'45'reg'63'_32 (coe v0))
 -- Once.CCC.Codegen.ShapeTable.step-expect
 d_step'45'expect_330 ::
   (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_26) ->
