@@ -6,12 +6,19 @@
 -- Once.Spec.Equivalence — when two meanings are the same.
 --
 -- Two values of a type are the same when no finite observation tells them
--- apart: base values are equal; functions take the same arguments to the same
--- computations; computations, against every Interpretation, make the same
--- first `n` calls and end the same way with the same values — or both go on
--- forever without another call (D317); a stream's first `n` layers agree.
--- Every grade is observed through its embedding into `T∞`; where a block of
--- calls ends is not observed. Infinite objects are never compared by `≡`.
+-- apart, by recursion on the type: base values are equal; functions take the
+-- same arguments to the same computations; a stream's first `n` layers agree,
+-- for every `n`.
+--
+-- Two computations are the same when observing them cannot tell them apart:
+-- against every Interpretation and to every depth `n`, they make the same
+-- first `n` calls and end the same way, with values that are the same — or
+-- neither run gets that far (D317). This is the kernel of observation lifted
+-- by sameness of the values, so it respects `return` and `>>=`. The depth
+-- counts calls only; the values a run returns are compared whole, never to
+-- the depth they were observed at. Every grade is observed through its
+-- embedding into `T∞`; where a block of calls ends is not observed. Infinite
+-- objects are never compared by `≡`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -59,34 +66,28 @@ LayerEq (G S⊕ H) R (inj₁ _) (inj₂ _) = ⊥
 LayerEq (G S⊕ H) R (inj₂ _) (inj₁ _) = ⊥
 LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′ y′
 
--- A stream to depth `n`: its first `n` layers agree.
+-- A stream to `n` layers: its first `n` layers agree, each layer's
+-- computation observed to every depth.
 νUpTo : ∀ π (G : SFunctor) → ℕ → νM π G → νM π G → Set
 νUpTo π G zero    v w = ⊤
-νUpTo π G (suc n) v w = UpTo (suc n) (LayerEq G (νUpTo π G n)) (toT∞ π (outν v)) (toT∞ π (outν w))
-
-
-Obs  : ℕ → (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᵛ → Set
-ObsM : ℕ → (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → M π ⟦ A ⟧ᵛ → Set
-ObsM n π A m m′ = UpTo n (Obs n A) (toT∞ π m) (toT∞ π m′)
-Obs n (var ())
-Obs n Unit    _ _ = ⊤
-Obs n Void    _ _ = ⊤
-Obs n Int     x y = x ≡ y
-Obs n Float   x y = x ≡ y
-Obs n (μ F)   x y = x ≡ y
-Obs n (A * B) (a , b) (a′ , b′) = Obs n A a a′ × Obs n B b b′
-Obs n (A + B) (inj₁ a) (inj₁ a′) = Obs n A a a′
-Obs n (A + B) (inj₂ b) (inj₂ b′) = Obs n B b b′
-Obs n (A + B) (inj₁ _) (inj₂ _)  = ⊥
-Obs n (A + B) (inj₂ _) (inj₁ _)  = ⊥
-Obs n (A ⇒[ mk-kind Zero π ] B) f g = ObsM n π B (f _) (g _)
-Obs n (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → (∀ k → Obs k A a a′) → ObsM n π B (f a) (g a′)
-Obs n (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → (∀ k → Obs k A a a′) → ObsM n π B (f a) (g a′)
-Obs n (ν F π) v w = νUpTo π (code F) n v w
+νUpTo π G (suc n) v w = ∀ k → UpTo k (LayerEq G (νUpTo π G n)) (toT∞ π (outν v)) (toT∞ π (outν w))
 
 -- No finite observation tells them apart.
-Same : (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᵛ → Set
-Same A x y = ∀ n → Obs n A x y
-
+Same  : (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᵛ → Set
 SameM : (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → M π ⟦ A ⟧ᵛ → Set
-SameM π A m m′ = ∀ n → ObsM n π A m m′
+SameM π A m m′ = ∀ n → UpTo n (Same A) (toT∞ π m) (toT∞ π m′)
+Same (var ())
+Same Unit    _ _ = ⊤
+Same Void    _ _ = ⊤
+Same Int     x y = x ≡ y
+Same Float   x y = x ≡ y
+Same (μ F)   x y = x ≡ y
+Same (A * B) (a , b) (a′ , b′) = Same A a a′ × Same B b b′
+Same (A + B) (inj₁ a) (inj₁ a′) = Same A a a′
+Same (A + B) (inj₂ b) (inj₂ b′) = Same B b b′
+Same (A + B) (inj₁ _) (inj₂ _)  = ⊥
+Same (A + B) (inj₂ _) (inj₁ _)  = ⊥
+Same (A ⇒[ mk-kind Zero π ] B) f g = SameM π B (f _) (g _)
+Same (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → Same A a a′ → SameM π B (f a) (g a′)
+Same (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → Same A a a′ → SameM π B (f a) (g a′)
+Same (ν F π) v w = ∀ n → νUpTo π (code F) n v w

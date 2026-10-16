@@ -18780,8 +18780,10 @@ a ∀∃ correctness statement), and resumptions (R). R keeps E's freedom withou
 6. **Two equalities, each for its job.** Bisimilarity (`_≈_`: the same blocks forever) is the equality of
    the ν itself: the monad laws, the lifts and finality hold up to it. When two MEANINGS are the same is
    observational (`Spec.Equivalence`): against every Interpretation, the same first `n` calls and the same
-   ends, up to the delay. Where one block ends and the next begins is not observed, so unrolling a loop
-   and moving pure work between rounds are sound (P12).
+   ends, up to the delay, with returned values that are the same — compared whole, not to the depth `n`, so
+   sameness is the kernel of observation and respects `>>=` (amended 2026-10-16: tying the values' depth to
+   the calls' depth let a run that goes silent hide the calls before it). Where one block ends and the next
+   begins is not observed, so unrolling a loop and moving pure work between rounds are sound (P12).
 7. **The claims** (`Spec.Metatheory`): the loop's computation law and uniqueness (finality, up to
    bisimilarity), its unrolling (up to observation), the lifts compose and embed (P7), a behaviour is a
    prefix family of delays, an echo server runs forever, a silent loop is never observed doing anything.

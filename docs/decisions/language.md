@@ -183,7 +183,8 @@ entry updates the rule it changes here, in the same commit.
   at every depth they arrive at the same calls or neither arrives. (D317, D179)
 - **Two equalities, each for its job**: bisimilarity of `T∞` (the same blocks)
   for the monad laws and finality; observational sameness (every
-  Interpretation, the same calls and ends, up to the delay) for meanings —
+  Interpretation, the same calls and ends, up to the delay, the returned
+  values the same whole — so it respects `>>=`) for meanings —
   where one block ends is not observed, so unrolling a loop is sound. Effectful
   laws hold up to one of them, never `≡`. (D317, D201)
 - **Recursion is correct by construction**, and `make pragma-gate` keeps it
