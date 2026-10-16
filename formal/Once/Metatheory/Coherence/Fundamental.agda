@@ -8,7 +8,7 @@
 -- computations (`Spec.Metatheory.Coherence`).
 --
 -- By induction on the two derivations. `⊢sub-use` forgets variables, which
--- keeps the environments agreeing (`Env`); `⊢sub-eff` is invisible as a tree
+-- keeps the environments agreeing (`Env`); `⊢sub-eff` is invisible up to bisimilarity
 -- (`Erase.toT∞-sub`). Every other rule is fixed by the term's former, and a
 -- term in its context has one type (`Uniqueness`), so the two derivations'
 -- premises are at one type; their usages and grades may differ, and only
@@ -34,13 +34,13 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Grade
-  using (positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff; mk-kind; _⊑π_; EffGrade; eg-act; eg-eff;
+  using (positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _⊑π_;
          0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
   using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; WFFun; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Base; b-Unit; b-Int; b-Float; b-*; b-+;
          Unit; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Signature
-  using (_∶_; arrow; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op; e-act; e-g; e-eff)
+  using (_∶_; arrow; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op; e-act; e-eff)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
@@ -58,6 +58,7 @@ open import Once.Spec.Sub using (_<:_)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
+open import Once.Metatheory.Coherence.Loop Σ using (loopSame)
 open import Once.Metatheory.Coherence.Conv Σ using (convSame)
 open import Once.Metatheory.Coherence.Sigop Σ
 open import Once.Metatheory.Coherence.Env Σ fmt S
@@ -150,37 +151,36 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
 
   foldH : ∀ {n} {Γ : Ctx m n} {Ψa Ψt Ψa′ Ψt′ π π′ π₁ π₂ π₁′ π₂′ F A alg t}
         → (⟦ F ⟧F A ⇒[ mk-kind Many π ] A) ≡ (⟦ F ⟧F A ⇒[ mk-kind Many π′ ] A)
-        → (e : pure ⊑π π) (wf : WFFun Δ F) (da : Δ ⊩ Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁)
+        → (wf : WFFun Δ F) (da : Δ ⊩ Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁)
           (dt : Δ ⊩ Γ ⊢[ Ψt ] t ∷ μ F ! π₂)
-        → (e′ : pure ⊑π π′) (wf′ : WFFun Δ F) (da′ : Δ ⊩ Γ ⊢[ Ψa′ ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π′ ] A ! π₁′)
+        → (wf′ : WFFun Δ F) (da′ : Δ ⊩ Γ ⊢[ Ψa′ ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π′ ] A ! π₁′)
           (dt′ : Δ ⊩ Γ ⊢[ Ψt′ ] t ∷ μ F ! π₂′)
         → ∀ {γ γ′} → Agree σ Γ (Many *ᵘ Ψa +ᵘ Ψt) (Many *ᵘ Ψa′ +ᵘ Ψt′) γ γ′
-        → Rel _ _ (A ⟨ σ ⟩) (⟦ ⊢fold e wf da dt ⟧ δ σ r γ) (⟦ ⊢fold e′ wf′ da′ dt′ ⟧ δ σ r′ γ′)
-  foldH {Ψa = Ψa} {Ψt} {Ψa′} {Ψt′} {π} {F = F} {A} refl e wf da dt e′ wf′ da′ dt′ ag
-    rewrite ⊑π-unique e′ e =
+        → Rel _ _ (A ⟨ σ ⟩) (⟦ ⊢fold wf da dt ⟧ δ σ r γ) (⟦ ⊢fold wf′ da′ dt′ ⟧ δ σ r′ γ′)
+  foldH {Ψa = Ψa} {Ψt} {Ψa′} {Ψt′} {π} {F = F} {A} refl wf da dt wf′ da′ dt′ ag =
     relBindᵍ (FL da da′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt))
                                  (⊑ᵘ-trans (⊑ᵘ-*Many Ψa′) (⊑ᵘ-+ˡ (Many *ᵘ Ψa′) Ψt′)) ag)) λ {alg} {alg′} salg →
     relBindᵍ (FL dt dt′ refl (rr (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) (⊑ᵘ-+ʳ (Many *ᵘ Ψa′) Ψt′) ag)) λ {v} {v′} sv →
-    subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
-                                     (foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
+    subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
+                                     (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
           (sameμ sv)
-          (Fold.foldRel π e (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _
+          (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _
              (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
 
   unfoldH : ∀ {n} {Γ : Ctx m n} {Ψc Ψs Ψc′ Ψs′ π π₁ π₂ π₁′ π₂′ F A A′ c a}
           → (A ⇒[ mk-kind Many π ] ⟦ F ⟧F A) ≡ (A′ ⇒[ mk-kind Many π ] ⟦ F ⟧F A′)
-          → (wf : WFFun Δ F) (dc : Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π₁) (da : Δ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂)
-          → (wf′ : WFFun Δ F) (dc′ : Δ ⊩ Γ ⊢[ Ψc′ ] c ∷ A′ ⇒[ mk-kind Many π ] ⟦ F ⟧F A′ ! π₁′)
+          → (g : π ⊑π act) (wf : WFFun Δ F) (dc : Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π₁) (da : Δ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂)
+          → (g′ : π ⊑π act) (wf′ : WFFun Δ F) (dc′ : Δ ⊩ Γ ⊢[ Ψc′ ] c ∷ A′ ⇒[ mk-kind Many π ] ⟦ F ⟧F A′ ! π₁′)
             (da′ : Δ ⊩ Γ ⊢[ Ψs′ ] a ∷ A′ ! π₂′)
           → ∀ {γ γ′} → Agree σ Γ (Many *ᵘ Ψc +ᵘ Ψs) (Many *ᵘ Ψc′ +ᵘ Ψs′) γ γ′
-          → Rel _ _ (ν F π ⟨ σ ⟩) (⟦ ⊢unfold wf dc da ⟧ δ σ r γ) (⟦ ⊢unfold wf′ dc′ da′ ⟧ δ σ r′ γ′)
-  unfoldH {Ψc = Ψc} {Ψs} {Ψc′} {Ψs′} {π} {F = F} {A} refl wf dc da wf′ dc′ da′ ag =
+          → Rel _ _ (ν F π ⟨ σ ⟩) (⟦ ⊢unfold g wf dc da ⟧ δ σ r γ) (⟦ ⊢unfold g′ wf′ dc′ da′ ⟧ δ σ r′ γ′)
+  unfoldH {Ψc = Ψc} {Ψs} {Ψc′} {Ψs′} {π} {F = F} {A} refl g wf dc da g′ wf′ dc′ da′ ag rewrite ⊑π-unique g′ g =
     relBindᵍ (FL dc dc′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs))
                                  (⊑ᵘ-trans (⊑ᵘ-*Many Ψc′) (⊑ᵘ-+ˡ (Many *ᵘ Ψc′) Ψs′)) ag)) λ {c} {c′} sc →
     relFmap (FL da da′ refl (rr (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (⊑ᵘ-+ʳ (Many *ᵘ Ψc′) Ψs′) ag)) λ sa n →
-      Ana.anaRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c x)) (λ x → fmap π (toL σ F A) (c′ x))
-        (λ {a} {a′} s → ≈-TreeRelˡ (toT∞-fmap π (toL σ F A) (c a)) (≈-TreeRelʳ (toT∞-fmap π (toL σ F A) (c′ a′))
-                          (treeFmap (tree (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
+      Ana.anaRel π g (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c x)) (λ x → fmap π (toL σ F A) (c′ x))
+        (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap π (toL σ F A) (c a)) (≈-Relatedʳ (toT∞-fmap π (toL σ F A) (c′ a′))
+                          (relatedFmap (runs (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
         n sa
 
   outH : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ π π′ π₁ π₁′ F F′ t}
@@ -190,25 +190,22 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
        → Rel _ _ ((⟦ F ⟧F (ν F π)) ⟨ σ ⟩) (⟦ ⊢out wf d ⟧ δ σ r γ) (substM _ eq (⟦ ⊢out wf′ d′ ⟧ δ σ r′ γ′))
   outH {π = π} {F = F} refl refl wf d wf′ d′ ag =
     relBindᵍ (FL d d′ refl ag) λ {v} {v′} sv → rel (
-      ≈-TreeRelˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
-        (≈-TreeRelʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
-          (treeFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
+      ≈-Relatedˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
+        (≈-Relatedʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
+          (relatedFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
                     (λ h → Functor.fromL-same σ r wf (ν F π) (LayerEq-∀ (code (F ⟨ σ ⟩F)) h)))))
 
   iterH : ∀ {n} {Γ : Ctx m n} {Ψf Ψs Ψf′ Ψs′ π₁ π₂ π₁′ π₂′ A A′ B f a}
-        → (A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))))
-          ≡ (A′ ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A′))))
-        → (df : Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))) ! π₁)
-          (ds : Δ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂)
-        → (df′ : Δ ⊩ Γ ⊢[ Ψf′ ] f ∷ A′ ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A′))) ! π₁′)
-          (ds′ : Δ ⊩ Γ ⊢[ Ψs′ ] a ∷ A′ ! π₂′)
+        → (A ⇒[ mk-kind Many act ] (B + A)) ≡ (A′ ⇒[ mk-kind Many act ] (B + A′))
+        → (df : Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁) (ds : Δ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂)
+        → (df′ : Δ ⊩ Γ ⊢[ Ψf′ ] f ∷ A′ ⇒[ mk-kind Many act ] (B + A′) ! π₁′) (ds′ : Δ ⊩ Γ ⊢[ Ψs′ ] a ∷ A′ ! π₂′)
         → ∀ {γ γ′} → Agree σ Γ (Many *ᵘ Ψf +ᵘ Ψs) (Many *ᵘ Ψf′ +ᵘ Ψs′) γ γ′
         → Rel _ _ (B ⟨ σ ⟩) (⟦ ⊢iter df ds ⟧ δ σ r γ) (⟦ ⊢iter df′ ds′ ⟧ δ σ r′ γ′)
   iterH {Ψf = Ψf} {Ψs} {Ψf′} {Ψs′} {A = A} {B = B} refl df ds df′ ds′ ag =
     relBindᵍ (FL df df′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs))
                                  (⊑ᵘ-trans (⊑ᵘ-*Many Ψf′) (⊑ᵘ-+ˡ (Many *ᵘ Ψf′) Ψs′)) ag)) λ {f} {f′} sf →
     relBindᵍ (FL ds ds′ refl (rr (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) (⊑ᵘ-+ʳ (Many *ᵘ Ψf′) Ψs′) ag)) λ sa →
-    rel (Iter.iterRel (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → relPure⁻ (appMany sf s)) sa)
+    rel (loopSame (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → runs (appMany {π = act} sf s)) sa)
 
   coerceH : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ π π′ A B t} (p p′ : A <: B)
           → (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) (d′ : Δ ⊩ Γ ⊢[ Ψ′ ] t ∷ A ! π′)
@@ -219,20 +216,6 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
   sigopH : ∀ {c t} (mem mem′ : (c ∶ t) ∈ Σ)
          → Rel pure pure (⌜ t ⌝ᵈ ⟨ σ ⟩) (sigopᵛ σ c t mem (interp δ)) (sigopᵛ σ c t mem′ (interp δ))
   sigopH {c} {t} mem mem′ rewrite mem-unique mem′ mem = relPure (sigopRefl σ c t mem (interp δ))
-
-  sigop⁺H : ∀ {c a q π π′ b} → arrow a (mk-kind q π) b ≡ arrow a (mk-kind q π′) b
-          → (mem : (c ∶ arrow a (mk-kind q π) b) ∈ Σ) (g : EffGrade π)
-            (mem′ : (c ∶ arrow a (mk-kind q π′) b) ∈ Σ) (g′ : EffGrade π′)
-          → Rel pure pure ((⌜ a ⌝ ⇒[ mk-kind q eff⁺ ] ⌜ b ⌝) ⟨ σ ⟩) (sigop⁺ᵛ σ c a q b mem g) (sigop⁺ᵛ σ c a q b mem′ g′)
-  sigop⁺H {c} {a} {q} {b = b} refl mem g mem′ g′ rewrite mem-unique mem′ mem | effGrade-unique g′ g =
-    relPure (sigop⁺Refl σ c a q b mem g)
-
-  -- A declaration at the guard and one at an effectful grade cannot both be
-  -- the declaration of one name.
-  guardClash : ∀ {c a q π b} → (c ∶ arrow a (mk-kind q eff⁺) b) ∈ Σ → (c ∶ arrow a (mk-kind q π) b) ∈ Σ → EffGrade π → ⊥
-  guardClash mem mem′ g = effNotGuard g (sym (proj₂ (kind-inj (arrowKind (decl-unique mem mem′)))))
-    where arrowKind : ∀ {a a′ k k′ b b′} → arrow a k b ≡ arrow a′ k′ b′ → k ≡ k′
-          arrowKind refl = refl
 
   -- Peeling the structural rules.
   FL (⊢sub-use p d) d′ eq ag = FL d d′ eq (restrictˡ σ p ag)
@@ -273,7 +256,7 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
     relPure {A = (A ⇒[ mk-kind Many π ] B) ⟨ σ ⟩} (lamMany {π = π} {A = A ⟨ σ ⟩} {B = B ⟨ σ ⟩} λ sa → FL d d′ refl (ag , sa))
   FL (⊢app df dx) (⊢app df′ dx′) refl ag = appH (ty-unique df df′) df dx df′ dx′ ag
   FL (⊢let d₁ d₂) (⊢let d₁′ d₂′) refl ag = letH (ty-unique d₁ d₁′) d₁ d₂ d₁′ d₂′ ag
-  FL ⊢unit ⊢unit refl ag = relPure (λ n → tt)
+  FL ⊢unit ⊢unit refl ag = relPure tt
   FL (⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} {A} {B} da db) (⊢pair {Ψ₁ = Ψ₁′} {Ψ₂′} {π₁′} {π₂′} da′ db′) refl ag =
     relBindᵍ {π₁} {π₂} {π₁′} {π₂′} {A ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (FL da da′ refl (rr (⊑ᵘ-+ˡ Ψ₁ Ψ₂) (⊑ᵘ-+ˡ Ψ₁′ Ψ₂′) ag)) λ sa →
     relFmap {π₂} {π₂′} {B ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (FL db db′ refl (rr (⊑ᵘ-+ʳ Ψ₁ Ψ₂) (⊑ᵘ-+ʳ Ψ₁′ Ψ₂′) ag)) λ sb →
@@ -284,19 +267,16 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
   FL (⊢inr {π = π} {A} {B} d) (⊢inr {π = π′} d′) refl ag = relFmap {π} {π′} (FL d d′ refl ag) (sameInr {A ⟨ σ ⟩} {B ⟨ σ ⟩})
   FL (⊢case ds dl dr) (⊢case ds′ dl′ dr′) refl ag = caseH (ty-unique ds ds′) ds dl dr ds′ dl′ dr′ ag
   FL (⊢absurd {π = π} d) (⊢absurd {π = π′} d′) refl ag = relBind {π} {π′} (FL d d′ refl ag) λ {x} _ → ⊥-elim x
-  FL (⊢roll {π = π} wf d) (⊢roll {π = π′} wf′ d′) refl ag = relFmap {π} {π′} (FL d d′ refl ag) λ s n → Functor.roll-same σ r wf s
-  FL (⊢fold e wf da dt) (⊢fold e′ wf′ da′ dt′) refl ag = foldH (ty-unique da da′) e wf da dt e′ wf′ da′ dt′ ag
-  FL (⊢unfold wf dc da) (⊢unfold wf′ dc′ da′) refl ag = unfoldH (ty-unique dc dc′) wf dc da wf′ dc′ da′ ag
+  FL (⊢roll {π = π} wf d) (⊢roll {π = π′} wf′ d′) refl ag = relFmap {π} {π′} (FL d d′ refl ag) λ s → Functor.roll-same σ r wf s
+  FL (⊢fold wf da dt) (⊢fold wf′ da′ dt′) refl ag = foldH (ty-unique da da′) wf da dt wf′ da′ dt′ ag
+  FL (⊢unfold g wf dc da) (⊢unfold g′ wf′ dc′ da′) refl ag = unfoldH (ty-unique dc dc′) g wf dc da g′ wf′ dc′ da′ ag
   FL (⊢out wf d) (⊢out wf′ d′) eq ag = outH (ty-unique d d′) eq wf d wf′ d′ ag
   FL (⊢iter df ds) (⊢iter df′ ds′) refl ag = iterH (ty-unique df df′) df ds df′ ds′ ag
   FL (⊢coerce p d) (⊢coerce p′ d′) refl ag = coerceH p p′ d d′ ag
-  FL ⊢lit-int ⊢lit-int refl ag = relPure {A = Int} (λ n → refl)
-  FL ⊢lit-float ⊢lit-float refl ag = relPure {A = Float} (λ n → refl)
+  FL ⊢lit-int ⊢lit-int refl ag = relPure {A = Int} refl
+  FL ⊢lit-float ⊢lit-float refl ag = relPure {A = Float} refl
   FL (⊢prim {π = π} p d) (⊢prim {π = π′} .p d′) refl ag = relFmap {π} {π′} (FL d d′ refl ag) (primSame σ p)
   FL (⊢sigop mem) (⊢sigop mem′) refl ag = sigopH mem mem′
-  FL (⊢sigop mem) (⊢sigop⁺ mem′ g) refl ag = ⊥-elim (guardClash mem mem′ g)
-  FL (⊢sigop⁺ mem g) (⊢sigop mem′) refl ag = ⊥-elim (guardClash mem′ mem g)
-  FL (⊢sigop⁺ mem g) (⊢sigop⁺ mem′ g′) refl ag = sigop⁺H (decl-unique mem mem′) mem g mem′ g′
   FL (⊢ref d τ rd) (⊢ref .d .τ rd′) refl ag =
     relPure (substSame (sym (⟨⟩-∘ (type (S !! d)) τ σ))
                        (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd′ r′)))
@@ -308,4 +288,4 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
 coherence : Coherence Σ fmt S
 coherence = record
   { coherent = λ {m} {n} {Δ} {Γ} {Ψ} {t} {A} {π} d d′ δ sd σ r r′ γ sγ →
-      Tree→SameM π (A ⟨ σ ⟩) (tree (FL.FL δ sd σ r r′ d d′ refl (selfAgree σ Γ Ψ γ sγ))) }
+      toUpTo (runs (FL.FL δ sd σ r r′ d d′ refl (selfAgree σ Γ Ψ γ sγ))) }

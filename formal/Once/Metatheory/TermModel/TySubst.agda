@@ -20,7 +20,7 @@ module Once.Metatheory.TermModel.TySubst (Σ : Signature) {s : ℕ} (S : Defs s)
 
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
-open import Once.Spec.Grade using (mk-kind; Many; pure; eff⁺)
+open import Once.Spec.Grade using (mk-kind; Many; pure)
 open import Once.Spec.Type
 open import Once.Spec.Sub
 open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; arrow)
@@ -132,10 +132,10 @@ module _ {m k : ℕ} (σ : TySub m k) where
     ty-subst-⊢ (⊢absurd d) = ⊢absurd (ty-subst-⊢ d)
     ty-subst-⊢ (⊢roll {F = F} wf d) =
       ⊢roll (wf-⟨⟩ wf) (retype (⟦⟧F-⟨⟩ F (μ F)) (ty-subst-⊢ d))
-    ty-subst-⊢ (⊢fold {F = F} {A} e wf da dt) =
-      ⊢fold e (wf-⟨⟩ wf) (retype (cong (λ X → X ⇒[ mk-kind Many _ ] A ⟨ σ ⟩) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ da)) (ty-subst-⊢ dt)
-    ty-subst-⊢ (⊢unfold {F = F} {A} wf dc da) =
-      ⊢unfold (wf-⟨⟩ wf) (retype (cong (λ X → A ⟨ σ ⟩ ⇒[ mk-kind Many _ ] X) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ dc)) (ty-subst-⊢ da)
+    ty-subst-⊢ (⊢fold {F = F} {A} wf da dt) =
+      ⊢fold (wf-⟨⟩ wf) (retype (cong (λ X → X ⇒[ mk-kind Many _ ] A ⟨ σ ⟩) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ da)) (ty-subst-⊢ dt)
+    ty-subst-⊢ (⊢unfold {F = F} {A} g wf dc da) =
+      ⊢unfold g (wf-⟨⟩ wf) (retype (cong (λ X → A ⟨ σ ⟩ ⇒[ mk-kind Many _ ] X) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ dc)) (ty-subst-⊢ da)
     ty-subst-⊢ (⊢out {π = π} {F = F} wf d) =
       retype (sym (⟦⟧F-⟨⟩ F (ν F π))) (⊢out (wf-⟨⟩ wf) (ty-subst-⊢ d))
     ty-subst-⊢ (⊢iter df ds) = ⊢iter (ty-subst-⊢ df) (ty-subst-⊢ ds)
@@ -144,8 +144,6 @@ module _ {m k : ℕ} (σ : TySub m k) where
     ty-subst-⊢ ⊢lit-float = ⊢lit-float
     ty-subst-⊢ (⊢prim p d) = retype (sym (primCod-⟨⟩ p)) (⊢prim p (retype (primDom-⟨⟩ p) (ty-subst-⊢ d)))
     ty-subst-⊢ (⊢sigop {t = t} mem) = retype (sym (⌜⌝ᵈ-⟨⟩ t)) (⊢sigop mem)
-    ty-subst-⊢ (⊢sigop⁺ {a = a} {q} {b = b} mem g) =
-      retype (sym (⌜⌝ᵈ-⟨⟩ (arrow a (mk-kind q eff⁺) b))) (⊢sigop⁺ mem g)
     ty-subst-⊢ (⊢ref d τ rd) =
       retype (sym (⟨⟩-∘ (type (S !! d)) τ σ)) (⊢ref d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd rσ))
     ty-subst-⊢ (⊢sub-use p d) = ⊢sub-use p (ty-subst-⊢ d)

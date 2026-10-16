@@ -26,17 +26,18 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
-open import Once.Spec.Grade using (pure; act; eff⁺; eff; mk-kind; Zero; One; Many; EffGrade; eg-act; eg-eff)
+open import Once.Spec.Grade using (pure; act; eff; mk-kind; Zero; One; Many)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type
   using (Ty; Type; TySub; Base; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ; Unit; Int; Float; _*_; _+_; _⟨_⟩)
 open import Once.Spec.Signature
-  using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; arrow; Decl; _∶_; Op; op; e-act; e-g; e-eff)
+  using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; arrow; Decl; _∶_; Op; op; e-act; e-eff)
 import Once.Spec.Signature as S
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toB; fromB)
 open import Once.Spec.Equivalence Σ
-open import Once.Spec.Observation Σ using (Interp; module Interp)
+open import Once.Spec.Observation Σ using (Interp; module Interp; Answer; resume; returned; halted; cut)
+open import Once.Metatheory.Run Σ
 open import Once.Spec.Metatheory using (OneName)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
@@ -87,22 +88,33 @@ module _ {m : ℕ} (σ : TySub m 0) where
   fromB-same : ∀ b v → Same (⌜ b ⌝ ⟨ σ ⟩) (fromB σ b v) (fromB σ b v)
   fromB-same b v = reflBase (baseB b) (fromB σ b v)
 
+  private
+    -- One call's runs end the same as themselves, when its answers do.
+    selfRes : ∀ {X : Set} {R : X → X → Set} {ι h n d e} (β : BTy) (v : Answer β) (k : S.⟦ β ⟧ᵇ → X)
+            → (∀ r → R (k r) (k r)) → RunA ι h (resume β v (λ r → roll (done (inj₁ (k r))))) n d e → EndRel R e e
+    selfRes void    v k hk ra-halt = halted≈
+    selfRes unit    v k hk (ra-go rb-cut) = cut≈
+    selfRes unit    v k hk (ra-go rb-ret) = returned≈ (hk v)
+    selfRes int     v k hk (ra-go rb-cut) = cut≈
+    selfRes int     v k hk (ra-go rb-ret) = returned≈ (hk v)
+    selfRes float   v k hk (ra-go rb-cut) = cut≈
+    selfRes float   v k hk (ra-go rb-ret) = returned≈ (hk v)
+    selfRes (p S.* q) v k hk (ra-go rb-cut) = cut≈
+    selfRes (p S.* q) v k hk (ra-go rb-ret) = returned≈ (hk v)
+    selfRes (p S.+ q) v k hk (ra-go rb-cut) = cut≈
+    selfRes (p S.+ q) v k hk (ra-go rb-ret) = returned≈ (hk v)
+
+    selfCall : ∀ {X : Set} {R : X → X → Set} {o v} {k : S.⟦ S.Op.ans o ⟧ᵇ → X} → (∀ r → R (k r) (k r))
+             → ∀ {ι h n d e} → Run ι h (embed (performT (call o v k))) n d e → EndRel R e e
+    selfCall hk (run rb-cut) = cut≈
+    selfCall {o = o} {v} {k} hk {ι} {h} (run (rb-call r)) = selfRes (S.Op.ans o) (Interp.answer ι o h v) k hk r
+
   -- One call of an operation, answered with a base value, at each grade.
   module _ {c a q π b} (mem : (c ∶ arrow a (mk-kind q π) b) ∈ Σ) (ef : S.Effectful π) where
     callT : ∀ {v v′} → v ≡ v′
           → Rel act act (⌜ b ⌝ ⟨ σ ⟩) (performT (call (op mem ef) v (fromB σ b))) (performT (call (op mem ef) v′ (fromB σ b)))
-    callT refl = rel t
-      where t : TreeRel _ _ _
-            forceR t = nodeR λ r → record { forceR = doneR (fromB-same b r) }
+    callT refl = rel (Related-self (selfCall (fromB-same b)))
 
     call∞ : ∀ {v v′} → v ≡ v′
           → Rel eff eff (⌜ b ⌝ ⟨ σ ⟩) (perform (call (op mem ef) v (fromB σ b))) (perform (call (op mem ef) v′ (fromB σ b)))
-    call∞ refl = rel t
-      where t : TreeRel _ _ _
-            forceR t = nodeR λ r → returnRel (fromB-same b r)
-
-    call⁺ʳ : ∀ {v v′} → v ≡ v′
-           → Rel eff⁺ eff⁺ (⌜ b ⌝ ⟨ σ ⟩) (perform⁺ (call (op mem ef) v (fromB σ b))) (perform⁺ (call (op mem ef) v′ (fromB σ b)))
-    call⁺ʳ refl = rel t
-      where t : TreeRel _ _ _
-            forceR t = nodeR λ r → returnRel (fromB-same b r)
+    call∞ refl = rel (Related-self (selfCall (fromB-same b)))

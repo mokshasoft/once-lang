@@ -57,7 +57,6 @@ module _ (ι : Interp) where
   record Run {X : Set} (h : History) (m : T∞ X) (n : ℕ) (d : History) (e : End X) : Set where
     constructor run
     field unrun : RunB h (force m) n d e
-  open Run public
 
   ----------------------------------------------------------------------
   -- A run is what the observation arrives at

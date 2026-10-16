@@ -63,8 +63,8 @@ ty-unique (⊢inr d)       (⊢inr d′)        = cong (_ +_) (ty-unique d d′)
 ty-unique (⊢case ds dl _) (⊢case ds′ dl′ _) = under (proj₁ (+-inj (ty-unique ds ds′))) dl dl′
 ty-unique (⊢absurd _)    (⊢absurd _)      = refl
 ty-unique (⊢roll _ _)    (⊢roll _ _)      = refl
-ty-unique (⊢fold _ _ da _) (⊢fold _ _ da′ _) = proj₂ (proj₂ (⇒-inj (ty-unique da da′)))
-ty-unique (⊢unfold _ dc _) (⊢unfold _ dc′ _) =
+ty-unique (⊢fold _ da _) (⊢fold _ da′ _) = proj₂ (proj₂ (⇒-inj (ty-unique da da′)))
+ty-unique (⊢unfold _ _ dc _) (⊢unfold _ _ dc′ _) =
   cong (ν _) (proj₂ (kind-inj (proj₁ (proj₂ (⇒-inj (ty-unique dc dc′))))))
 ty-unique (⊢out {F = F} _ d) (⊢out _ d′) =
   let e = ν-inj (ty-unique d d′) in cong₂ (λ F π → ⟦ F ⟧F (ν F π)) (proj₁ e) (proj₂ e)
@@ -74,7 +74,4 @@ ty-unique ⊢lit-int       ⊢lit-int         = refl
 ty-unique ⊢lit-float     ⊢lit-float       = refl
 ty-unique (⊢prim p _)    (⊢prim .p _)     = refl
 ty-unique (⊢sigop _)     (⊢sigop _)       = refl
-ty-unique (⊢sigop _)     (⊢sigop⁺ _ _)    = refl
-ty-unique (⊢sigop⁺ _ _)  (⊢sigop _)       = refl
-ty-unique (⊢sigop⁺ _ _)  (⊢sigop⁺ _ _)    = refl
 ty-unique (⊢ref d τ _)   (⊢ref .d .τ _)   = refl

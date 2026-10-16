@@ -48,7 +48,9 @@ open νM using (outν)
 record Rel π π′ (A : Type) (m : M π ⟦ A ⟧ᵛ) (m′ : M π′ ⟦ A ⟧ᵛ) : Set where
   constructor rel
   field runs : Related (Same A) (toT∞ π m) (toT∞ π′ m′)
-open Rel public
+
+runs : ∀ {π π′} {A : Type} {m m′} → Rel π π′ A m m′ → Related (Same A) (toT∞ π m) (toT∞ π′ m′)
+runs = Rel.runs
 
 relPure : ∀ {A : Type} {x x′} → Same A x x′ → Rel pure pure A x x′
 relPure s = rel (returnRel s)

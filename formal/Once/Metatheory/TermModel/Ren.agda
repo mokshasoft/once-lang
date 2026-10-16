@@ -23,7 +23,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Grade
-  using (Quantity; Zero; One; Many; Purity; pure; eff⁺; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+  using (Quantity; Zero; One; Many; Purity; pure; act; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
   using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Int; Float; _⇒[_]_; _*_; _+_; μ; ν; ⟦_⟧F; Unit)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_;
@@ -40,9 +40,10 @@ open import Once.Spec.Metatheory using (SameDefs)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
+open import Once.Metatheory.Coherence.Loop Σ using (loopSame)
 open import Once.Metatheory.Coherence.Conv Σ using (convSame)
 open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree)
-open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; sigop⁺Refl; primSame; substSame; slotSame; caseRel)
+open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; primSame; substSame; slotSame; caseRel)
 open import Once.Metatheory.TermModel.Usage
 open import Once.Metatheory.TermModel.Subst Σ S
 
@@ -170,7 +171,7 @@ module RenSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   renSem θ ρ h c (⊢let {q = Many} d₁ d₂) ag =
     relBindᵍ (renSem θ ρ h c d₁ (r3 c _ _ _ ag)) λ sv →
     renSem (keep θ) _ (ext-hρ {m = m} θ ρ h) (ckeep c) d₂ (r3 c _ _ _ ag , sv)
-  renSem θ ρ h c ⊢unit ag = relPure (λ n → tt)
+  renSem θ ρ h c ⊢unit ag = relPure tt
   renSem θ ρ h c (⊢pair {π₁ = π₁} {π₂} {A} {B} da db) ag =
     relBindᵍ {π₁} {π₂} {π₁} {π₂} {A ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (renSem θ ρ h c da (r3 c _ _ _ ag)) λ sa →
     relFmap {π₂} {π₂} {B ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (renSem θ ρ h c db (r3 c _ _ _ ag)) λ sb → samePair {A ⟨ σ ⟩} {B ⟨ σ ⟩} sa sb
@@ -185,37 +186,36 @@ module RenSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
         (λ {b} {b′} sb → renSem (keep θ) _ (ext-hρ {m = m} θ ρ h) (ckeep c) dr (r3 c _ _ _ ag , slotSame σ B qr {b} {b′} sb))
         {w} {w′} sw
   renSem θ ρ h c (⊢absurd {π = π} d) ag = relBind {π} {π} (renSem θ ρ h c d ag) λ {x} _ → ⊥-elim x
-  renSem θ ρ h c (⊢roll {π = π} wf d) ag = relFmap {π} {π} (renSem θ ρ h c d ag) λ s n → Functor.roll-same σ r wf s
-  renSem θ ρ h c (⊢fold {π = π} {F = F} {A} e wf da dt) ag =
+  renSem θ ρ h c (⊢roll {π = π} wf d) ag = relFmap {π} {π} (renSem θ ρ h c d ag) λ s → Functor.roll-same σ r wf s
+  renSem θ ρ h c (⊢fold {π = π} {F = F} {A} wf da dt) ag =
     relBindᵍ (renSem θ ρ h c da (r3 c _ _ _ ag)) λ {alg} {alg′} salg →
     relBindᵍ (renSem θ ρ h c dt (r3 c _ _ _ ag)) λ {v} {v′} sv →
-    subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
-                                     (foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
+    subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
+                                     (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
           (sameμ sv)
-          (Fold.foldRel π e (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
-  renSem θ ρ h c (⊢unfold {π = π} {F = F} {A} wf dc da) ag =
+          (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
+  renSem θ ρ h c (⊢unfold {π = π} {F = F} {A} g wf dc da) ag =
     relBindᵍ (renSem θ ρ h c dc (r3 c _ _ _ ag)) λ {c₁} {c₂} sc →
     relFmap (renSem θ ρ h c da (r3 c _ _ _ ag)) λ sa n →
-      Ana.anaRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c₁ x)) (λ x → fmap π (toL σ F A) (c₂ x))
-        (λ {a} {a′} s → ≈-TreeRelˡ (toT∞-fmap π (toL σ F A) (c₁ a)) (≈-TreeRelʳ (toT∞-fmap π (toL σ F A) (c₂ a′))
-                          (treeFmap (tree (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
+      Ana.anaRel π g (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c₁ x)) (λ x → fmap π (toL σ F A) (c₂ x))
+        (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap π (toL σ F A) (c₁ a)) (≈-Relatedʳ (toT∞-fmap π (toL σ F A) (c₂ a′))
+                          (relatedFmap (runs (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
         n sa
   renSem θ ρ h c (⊢out {π = π} {F = F} wf d) ag =
     relBindᵍ (renSem θ ρ h c d ag) λ {v} {v′} sv → rel (
-      ≈-TreeRelˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
-        (≈-TreeRelʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
-          (treeFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
+      ≈-Relatedˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
+        (≈-Relatedʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
+          (relatedFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
                     (λ k → Functor.fromL-same σ r wf (ν F π) (LayerEq-∀ (code (F ⟨ σ ⟩F)) k)))))
   renSem θ ρ h c (⊢iter {A = A} {B} df ds) ag =
     relBindᵍ (renSem θ ρ h c df (r3 c _ _ _ ag)) λ {f} {f′} sf →
     relBindᵍ (renSem θ ρ h c ds (r3 c _ _ _ ag)) λ sa →
-    rel (Iter.iterRel (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → relPure⁻ (appMany sf s)) sa)
+    rel (loopSame (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → runs (appMany {π = act} sf s)) sa)
   renSem θ ρ h c (⊢coerce p d) ag = relFmap (renSem θ ρ h c d ag) (convSame σ p)
-  renSem θ ρ h c ⊢lit-int ag = relPure {A = Int} (λ n → refl)
-  renSem θ ρ h c ⊢lit-float ag = relPure {A = Float} (λ n → refl)
+  renSem θ ρ h c ⊢lit-int ag = relPure {A = Int} refl
+  renSem θ ρ h c ⊢lit-float ag = relPure {A = Float} refl
   renSem θ ρ h c (⊢prim {π = π} p d) ag = relFmap {π} {π} (renSem θ ρ h c d ag) (primSame σ p)
   renSem θ ρ h c (⊢sigop {c = c₀} {t} mem) ag = relPure (sigopRefl σ c₀ t mem (interp δ))
-  renSem θ ρ h c (⊢sigop⁺ {c = c₀} {a} {q} {b = b} mem g) ag = relPure (sigop⁺Refl σ c₀ a q b mem g)
   renSem θ ρ h c (⊢ref d τ rd) ag =
     relPure (substSame (sym (⟨⟩-∘ (type (S !! d)) τ σ))
                        (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd r)))

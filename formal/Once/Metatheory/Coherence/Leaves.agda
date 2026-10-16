@@ -25,13 +25,13 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Grade
-  using (positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff; mk-kind; _⊑π_; EffGrade; eg-act; eg-eff;
+  using (positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _⊑π_;
          0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
   using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; WFFun; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Base; b-Unit; b-Int; b-Float; b-*; b-+;
          Unit; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Signature
-  using (_∶_; arrow; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op; e-act; e-g; e-eff)
+  using (_∶_; arrow; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op; e-act; e-eff)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
@@ -74,15 +74,6 @@ module _ {m : ℕ} (σ : TySub m 0) where
   sigopRefl c (arrow a (mk-kind Zero eff) b)  mem ι = lamZero {π = eff} {A = ⌜ a ⌝ ⟨ σ ⟩} (call∞ σ mem e-eff refl)
   sigopRefl c (arrow a (mk-kind One  eff) b)  mem ι = lamOne {π = eff}  λ sa → call∞ σ mem e-eff (argEq σ a sa)
   sigopRefl c (arrow a (mk-kind Many eff) b)  mem ι = lamMany {π = eff} λ sa → call∞ σ mem e-eff (argEq σ a sa)
-  sigopRefl c (arrow a (mk-kind Zero eff⁺) b) mem ι = lamZero {π = eff⁺} {A = ⌜ a ⌝ ⟨ σ ⟩} (call⁺ʳ σ mem e-g refl)
-  sigopRefl c (arrow a (mk-kind One  eff⁺) b) mem ι = lamOne {π = eff⁺}  λ sa → call⁺ʳ σ mem e-g (argEq σ a sa)
-  sigopRefl c (arrow a (mk-kind Many eff⁺) b) mem ι = lamMany {π = eff⁺} λ sa → call⁺ʳ σ mem e-g (argEq σ a sa)
-
-  sigop⁺Refl : ∀ c a q {π} b (mem : (c ∶ arrow a (mk-kind q π) b) ∈ Σ) (g : EffGrade π)
-             → Same ((⌜ a ⌝ ⇒[ mk-kind q eff⁺ ] ⌜ b ⌝) ⟨ σ ⟩) (sigop⁺ᵛ σ c a q b mem g) (sigop⁺ᵛ σ c a q b mem g)
-  sigop⁺Refl c a Zero b mem g = lamZero {π = eff⁺} {A = ⌜ a ⌝ ⟨ σ ⟩} (call⁺ʳ σ mem (effectful σ g) refl)
-  sigop⁺Refl c a One  b mem g = lamOne  {π = eff⁺} λ sa → call⁺ʳ σ mem (effectful σ g) (argEq σ a sa)
-  sigop⁺Refl c a Many b mem g = lamMany {π = eff⁺} λ sa → call⁺ʳ σ mem (effectful σ g) (argEq σ a sa)
 
   baseDom : ∀ p → Base ∅ₖ (primDom {m} p ⟨ σ ⟩)
   baseDom p-add  = b-* b-Int b-Int
@@ -134,16 +125,8 @@ caseRel : ∀ {A B C : Type} {π π′} {l : ⟦ A ⟧ᵛ → _} {l′ r r′}
         → ∀ {w w′} → Same (A + B) w w′ → Rel π π′ C ([ l , r ]′ w) ([ l′ , r′ ]′ w′)
 caseRel hl hr {inj₁ a} {inj₁ a′} s = hl s
 caseRel hl hr {inj₂ b} {inj₂ b′} s = hr s
-caseRel hl hr {inj₁ a} {inj₂ b′} s = ⊥-elim (s 0)
-caseRel hl hr {inj₂ b} {inj₁ a′} s = ⊥-elim (s 0)
-
-effNotGuard : ∀ {π} → EffGrade π → π ≡ eff⁺ → ⊥
-effNotGuard eg-act ()
-effNotGuard eg-eff ()
-
-effGrade-unique : ∀ {π} (g g′ : EffGrade π) → g ≡ g′
-effGrade-unique eg-act eg-act = refl
-effGrade-unique eg-eff eg-eff = refl
+caseRel hl hr {inj₁ a} {inj₂ b′} ()
+caseRel hl hr {inj₂ b} {inj₁ a′} ()
 
 slotSame : ∀ {m} (σ : TySub m 0) (A : Ty m) q {a a′} → Same (A ⟨ σ ⟩) a a′ → SlotAgree σ A q q (slot q a) (slot q a′)
 slotSame σ A Zero s = tt

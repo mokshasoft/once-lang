@@ -25,7 +25,7 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Once.Spec.Grade
-  using (Quantity; Zero; One; Many; Purity; pure; eff⁺; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+  using (Quantity; Zero; One; Many; Purity; pure; act; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
   using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Int; Float; _⇒[_]_; _*_; _+_; μ; ν; ⟦_⟧F; Unit)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_; ⊑ᵘ-trans)
@@ -37,14 +37,16 @@ open import Once.Spec.Effect Σ using (M; fmap; module νM)
 open νM using (outν)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; anaM)
 open import Once.Spec.Equivalence Σ using (Same; SameM)
+open import Once.Spec.Observation Σ using (Interp)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
+open import Once.Metatheory.Coherence.Loop Σ using (loopSame)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Conv Σ using (convSame)
 open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; selfAgree; restrictˡ; restrictʳ)
-open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; sigop⁺Refl; primSame; substSame; slotSame; caseRel)
+open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; primSame; substSame; slotSame; caseRel)
 open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
 open import Once.Metatheory.TermModel.Usage
 open import Once.Metatheory.TermModel.Subst Σ S
@@ -53,7 +55,8 @@ open import Once.Metatheory.TermModel.Val Σ fmt S
 
 open DefSem
 
-module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
+-- A pure computation's value is read by running it in `ι₀`.
+module SubSem (ι₀ : Interp) {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
   open TSub
 
   -- At each variable the original holds, the replacement's value (in any
@@ -112,7 +115,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
       e₂ = restrict σ E γx
   subExts {n} {Γ = Γ} {Γ′ = Γ′} σS {A} q Ψ {γ} {γ′} {x} {x′} ss ag sx (suc j) nz p =
     Same-trans (lookup Γ′ j ⟨ σ ⟩)
-      (relPure⁻ (RenSem.renSem δ sd σ r (skip (idθ n)) suc (λ i → cong suc (idθ-id i)) (cskip (cid Γ)) (typed σS j)
+      (relPure⁻ ι₀ (RenSem.renSem δ sd σ r (skip (idθ n)) suc (λ i → cong suc (idθ-id i)) (cskip (cid Γ)) (typed σS j)
                    {γ′ = restrict σ W (restrict σ p (restrict σ E γx))} {γ = restrict σ p₀ γ}
                    (thin-cid σ Γ (λ k nz′ nz″ →
                       subst₂ (Same _)
@@ -183,7 +186,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   subSem σS (⊢let {Ψ₂ = Ψ₂} {q = Many} d₁ d₂) ss ag =
     let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
     relBindᵍ (subSem σS d₁ ss₁ ag₁) λ sv → under σS Many Ψ₂ d₂ ss₂ ag₂ sv
-  subSem σS ⊢unit ss ag = relPure (λ n → tt)
+  subSem σS ⊢unit ss ag = relPure tt
   subSem σS (⊢pair {π₁ = π₁} {π₂} {A} {B} da db) ss ag =
     let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
     relBindᵍ {π₁} {π₂} {π₁} {π₂} {A ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (subSem σS da ss₁ ag₁) λ sa →
@@ -200,40 +203,39 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
         (λ {b} {b′} sb → under σS qr Ψ dr ss₂ ag₂ (slotSame σ B qr {b} {b′} sb))
         {w} {w′} sw
   subSem σS (⊢absurd {π = π} d) ss ag = relBind {π} {π} (subSem σS d ss ag) λ {x} _ → ⊥-elim x
-  subSem σS (⊢roll {π = π} wf d) ss ag = relFmap {π} {π} (subSem σS d ss ag) λ s n → Functor.roll-same σ r wf s
-  subSem σS (⊢fold {π = π} {F = F} {A} e wf da dt) ss ag =
+  subSem σS (⊢roll {π = π} wf d) ss ag = relFmap {π} {π} (subSem σS d ss ag) λ s → Functor.roll-same σ r wf s
+  subSem σS (⊢fold {π = π} {F = F} {A} wf da dt) ss ag =
     let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
     relBindᵍ (subSem σS da ss₁ ag₁) λ {alg} {alg′} salg →
     relBindᵍ (subSem σS dt ss₂ ag₂) λ {v} {v′} sv →
-    subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
-                                     (foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
+    subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
+                                     (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
           (sameμ sv)
-          (Fold.foldRel π e (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
-  subSem σS (⊢unfold {π = π} {F = F} {A} wf dc da) ss ag =
+          (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
+  subSem σS (⊢unfold {π = π} {F = F} {A} g wf dc da) ss ag =
     let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
     relBindᵍ (subSem σS dc ss₁ ag₁) λ {c₁} {c₂} sc →
     relFmap (subSem σS da ss₂ ag₂) λ sa n →
-      Ana.anaRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c₁ x)) (λ x → fmap π (toL σ F A) (c₂ x))
-        (λ {a} {a′} s → ≈-TreeRelˡ (toT∞-fmap π (toL σ F A) (c₁ a)) (≈-TreeRelʳ (toT∞-fmap π (toL σ F A) (c₂ a′))
-                          (treeFmap (tree (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
+      Ana.anaRel π g (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap π (toL σ F A) (c₁ x)) (λ x → fmap π (toL σ F A) (c₂ x))
+        (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap π (toL σ F A) (c₁ a)) (≈-Relatedʳ (toT∞-fmap π (toL σ F A) (c₂ a′))
+                          (relatedFmap (runs (appMany {π = π} sc s)) (Functor.toL-same σ r wf A))))
         n sa
   subSem σS (⊢out {π = π} {F = F} wf d) ss ag =
     relBindᵍ (subSem σS d ss ag) λ {v} {v′} sv → rel (
-      ≈-TreeRelˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
-        (≈-TreeRelʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
-          (treeFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
+      ≈-Relatedˡ (toT∞-fmap π (fromL σ F (ν F π)) (outν v))
+        (≈-Relatedʳ (toT∞-fmap π (fromL σ F (ν F π)) (outν v′))
+          (relatedFmap (outRel π (code (F ⟨ σ ⟩F)) sv)
                     (λ k → Functor.fromL-same σ r wf (ν F π) (LayerEq-∀ (code (F ⟨ σ ⟩F)) k)))))
   subSem σS (⊢iter {A = A} {B} df ds) ss ag =
     let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
     relBindᵍ (subSem σS df ss₁ ag₁) λ {f} {f′} sf →
     relBindᵍ (subSem σS ds ss₂ ag₂) λ sa →
-    rel (Iter.iterRel (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → relPure⁻ (appMany sf s)) sa)
+    rel (loopSame (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → runs (appMany {π = act} sf s)) sa)
   subSem σS (⊢coerce p d) ss ag = relFmap (subSem σS d ss ag) (convSame σ p)
-  subSem σS ⊢lit-int ss ag = relPure {A = Int} (λ n → refl)
-  subSem σS ⊢lit-float ss ag = relPure {A = Float} (λ n → refl)
+  subSem σS ⊢lit-int ss ag = relPure {A = Int} refl
+  subSem σS ⊢lit-float ss ag = relPure {A = Float} refl
   subSem σS (⊢prim {π = π} p d) ss ag = relFmap {π} {π} (subSem σS d ss ag) (primSame σ p)
   subSem σS (⊢sigop {c = c₀} {t} mem) ss ag = relPure (sigopRefl σ c₀ t mem (interp δ))
-  subSem σS (⊢sigop⁺ {c = c₀} {a} {q} {b = b} mem g) ss ag = relPure (sigop⁺Refl σ c₀ a q b mem g)
   subSem σS (⊢ref d τ rd) ss ag =
     relPure (substSame (sym (⟨⟩-∘ (type (S !! d)) τ σ))
                        (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd r)))

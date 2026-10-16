@@ -80,7 +80,12 @@ record Related {X : Set} (R : X → X → Set) (m m′ : T∞ X) : Set where
   field
     fwd : Sim R m m′
     bwd : Sim (flip R) m′ m
-open Related public
+
+fwd : ∀ {X : Set} {R : X → X → Set} {m m′} → Related R m m′ → Sim R m m′
+fwd = Related.fwd
+
+bwd : ∀ {X : Set} {R : X → X → Set} {m m′} → Related R m m′ → Sim (flip R) m′ m
+bwd = Related.bwd
 
 module _ {X : Set} where
   private
@@ -112,6 +117,10 @@ module _ {X : Set} where
   Related-trans : ∀ {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z) → ∀ {m₁ m₂ m₃}
                 → Related R m₁ m₂ → Related R m₂ m₃ → Related R m₁ m₃
   Related-trans t p q = related (Sim-trans t (fwd p) (fwd q)) (Sim-trans (λ a b → t b a) (bwd q) (bwd p))
+
+  -- A computation whose every run ends the same as itself is related to itself.
+  Related-self : ∀ {R : X → X → Set} {m} → (∀ {ι h n d e} → Run ι h m n d e → EndRel R e e) → Related R m m
+  Related-self p = related (λ ι g n r → _ , r , p r) (λ ι g n r → _ , r , EndRel-flip (p r))
 
   -- Bisimilar computations may replace each other, on either side.
   ≈-Relatedˡ : ∀ {R : X → X → Set} {m m₀ m′} → m ≈ m₀ → Related R m₀ m′ → Related R m m′
