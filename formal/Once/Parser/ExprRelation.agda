@@ -51,7 +51,8 @@ open import Data.List using (List; []; _∷_; length; reverse)
 open import Data.Char using (Char)
 import Data.String
 open import Data.String using (String)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∨_)
+open import Relation.Nullary.Decidable using (isYes)
 open import Data.Nat using (_<_; _≤_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-trans; ≤-<-trans; <⇒≤; n≤1+n; m≤n⇒m≤1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
@@ -70,14 +71,13 @@ open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
 -- this module without creating an import cycle.
 ------------------------------------------------------------------------
 
+-- Decided by `≟`, not by literal patterns: a literal pattern with a catch-all
+-- does not reduce at a name that is not a literal, so nothing could be proved
+-- of it at an arbitrary name (`Once.Adequacy.SpecGrammar` needs `¬ Reserved`).
 isReserved : String → Bool
-isReserved "in"       = true   -- let ... in
-isReserved "of"       = true   -- destruct ... of
-isReserved "let"      = true   -- let keyword
-isReserved "destruct" = true   -- destruct keyword
-isReserved "Left"     = true   -- pattern branch
-isReserved "Right"    = true   -- pattern branch
-isReserved _          = false
+isReserved s =
+  isYes (s ≟ "in") ∨ isYes (s ≟ "of") ∨ isYes (s ≟ "let") ∨ isYes (s ≟ "destruct")
+  ∨ isYes (s ≟ "Left") ∨ isYes (s ≟ "Right")
 
 ------------------------------------------------------------------------
 -- Residual classifiers: token prefixes that would trigger a tail

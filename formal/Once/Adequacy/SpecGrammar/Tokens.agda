@@ -13,7 +13,7 @@
 
 module Once.Adequacy.SpecGrammar.Tokens where
 
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; []; _∷_; map; _++_)
 open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ)
 open import Data.String using (String)
@@ -215,3 +215,47 @@ peel : ∀ {u us} {toks} → isLit u ≡ false → map forget toks ≡ u ∷ us
 peel {toks = toks} nl e = step (λ x → Σ[ toks′ ∈ List P.Token ] (x ≡ back _ ∷ toks′ × map forget toks′ ≡ _)) nl e
   (λ {toks′} e′ → toks′ , refl , e′)
 
+
+-- Several heads at once.
+data NonLits : List Token → Set where
+  []  : NonLits []
+  _∷_ : ∀ {u us} → isLit u ≡ false → NonLits us → NonLits (u ∷ us)
+
+private
+  peels-cons : ∀ u us {toks₁ toks r} → (Σ[ toks′ ∈ List P.Token ] (toks₁ ≡ map back us ++ toks′ × map forget toks′ ≡ r))
+             → toks ≡ back u ∷ toks₁ → Σ[ toks′ ∈ List P.Token ] (toks ≡ back u ∷ map back us ++ toks′ × map forget toks′ ≡ r)
+  peels-cons u us (toks′ , refl , e′) refl = toks′ , refl , e′
+
+peels : ∀ us {toks r} → NonLits us → map forget toks ≡ us ++ r
+      → Σ[ toks′ ∈ List P.Token ] (toks ≡ map back us ++ toks′ × map forget toks′ ≡ r)
+peels []       []         e = _ , refl , e
+peels (u ∷ us) (nl ∷ nls) e = peels-go (peel nl e)
+  where
+    peels-go : Σ[ toks₁ ∈ List P.Token ] (_ ≡ back u ∷ toks₁ × map forget toks₁ ≡ us ++ _) → _
+    peels-go (toks₁ , eq , e₁) = peels-cons u us (peels us nls e₁) eq
+
+-- A literal head.
+private
+  int′ : ∀ {n r} (K : List P.Token → Set) {toks} → ConsView (TInt n) r toks
+       → (∀ p {toks′} → map forget toks′ ≡ r → K (P.TInt n p ∷ toks′)) → K toks
+  int′ K (cv ft er) k = int″ K (tview ft) er k
+    where
+      int″ : ∀ {n r t toks′} (K : List P.Token → Set) → TokView t (TInt n) → map forget toks′ ≡ r
+           → (∀ p {toks′} → map forget toks′ ≡ r → K (P.TInt n p ∷ toks′)) → K (t ∷ toks′)
+      int″ K tv-int er k = k _ er
+
+  float′ : ∀ {i f l r} (K : List P.Token → Set) {toks} → ConsView (TFloat i f l) r toks
+         → (∀ p {toks′} → map forget toks′ ≡ r → K (P.TFloat i f l p ∷ toks′)) → K toks
+  float′ K (cv ft er) k = float″ K (tview ft) er k
+    where
+      float″ : ∀ {i f l r t toks′} (K : List P.Token → Set) → TokView t (TFloat i f l) → map forget toks′ ≡ r
+             → (∀ p {toks′} → map forget toks′ ≡ r → K (P.TFloat i f l p ∷ toks′)) → K (t ∷ toks′)
+      float″ K tv-float er k = k _ er
+
+stepInt : ∀ {n r} (K : List P.Token → Set) {toks} → map forget toks ≡ TInt n ∷ r
+        → (∀ p {toks′} → map forget toks′ ≡ r → K (P.TInt n p ∷ toks′)) → K toks
+stepInt K e k = int′ K (uncons e) k
+
+stepFloat : ∀ {i f l r} (K : List P.Token → Set) {toks} → map forget toks ≡ TFloat i f l ∷ r
+          → (∀ p {toks′} → map forget toks′ ≡ r → K (P.TFloat i f l p ∷ toks′)) → K toks
+stepFloat K e k = float′ K (uncons e) k
