@@ -10,7 +10,7 @@
 
 module Once.Surface.Properties where
 
-import Once.Metatheory.Grade as G
+import Once.Lang.Laws.Grade as G
 
 open import Once.Lang.Type.Grade
 open import Once.Lang.Type

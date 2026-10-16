@@ -26,7 +26,7 @@ open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind)
 open import Once.Lang.Type using (Type)
 open import Once.Lang.Type.Sub
 open import Once.Type.Sub
-open import Once.Metatheory.SubLaws
+open import Once.Lang.Laws.SubLaws
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Lang.Name using (showCanonical)
 open import Once.CanonicalName using (_≟ᶜ_)

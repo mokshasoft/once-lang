@@ -18,7 +18,7 @@
 
 module Once.Surface.GradeMatrix where
 
-import Once.Metatheory.Grade as G
+import Once.Lang.Laws.Grade as G
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)

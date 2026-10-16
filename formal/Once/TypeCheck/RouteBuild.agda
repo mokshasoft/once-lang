@@ -29,7 +29,7 @@ open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
 open import Once.Lang.Syntax as Raw using (BinOp; isArithmeticOp; isComparisonOp)
 open import Once.Lang.Typing.Scope using (NamedCtx; extendNamedCtx; classifyAppHead)
 open import Once.Lang.Typing
-open import Once.Metatheory.ModeAgreement
+open import Once.Lang.Laws.ModeAgreement
 open import Once.TypeCheck.Route
 import Once.Lang.Context as Surface
 

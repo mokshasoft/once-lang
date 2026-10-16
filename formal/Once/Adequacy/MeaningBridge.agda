@@ -71,7 +71,7 @@ open import Once.Lang.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Lang.Type.Sub
 open import Once.Type.Sub
-open import Once.Metatheory.SubLaws
+open import Once.Lang.Laws.SubLaws
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Lang.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;

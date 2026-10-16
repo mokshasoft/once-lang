@@ -21,7 +21,7 @@
 
 module Once.TypeCheck.Identities where
 
-import Once.Metatheory.Grade as G
+import Once.Lang.Laws.Grade as G
 import Once.Surface.Properties as P
 import Relation.Binary.PropositionalEquality as Eq
 

@@ -39,7 +39,7 @@ open import Once.Lang.Syntax using (RawExpr)
 open import Once.Lang.Typing.Scope using (NamedCtx)
 import Once.Lang.Typing.Scope
 open import Once.Lang.Typing
-open import Once.Metatheory.ModeAgreement
+open import Once.Lang.Laws.ModeAgreement
 import Once.Lang.Context as Surface
 
 private

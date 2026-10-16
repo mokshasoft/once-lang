@@ -46,7 +46,7 @@ open import Once.Lang.Type.Grade using (Quantity; Zero; One; mk-kind; Many; pure
 open import Once.Lang.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
 open import Once.Spec.Name using (NotGenerator)
 open import Once.Lang.Type using (μ-type; ν-type)
-open import Once.Metatheory.SubLaws using (<:-unique)
+open import Once.Lang.Laws.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)

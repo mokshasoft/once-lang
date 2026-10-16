@@ -173,3 +173,12 @@ returnRel⁻ : ∀ {X} {R : X → X → Set} {x y} → TreeRel R (return∞ x) (
 returnRel⁻ p = unDone (forceR p)
   where unDone : ∀ {X} {R : X → X → Set} {x y : X} → StepRel R (done x) (done y) → R x y
         unDone (doneR r) = r
+
+-- Related trees compose, when their leaf relation does.
+TreeRel-trans  : ∀ {X} {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z)
+               → ∀ {m₁ m₂ m₃} → TreeRel R m₁ m₂ → TreeRel R m₂ m₃ → TreeRel R m₁ m₃
+StepRel-trans : ∀ {X} {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z)
+              → ∀ {s₁ s₂ s₃} → StepRel R s₁ s₂ → StepRel R s₂ s₃ → StepRel R s₁ s₃
+forceR (TreeRel-trans t p q) = StepRel-trans t (forceR p) (forceR q)
+StepRel-trans t (doneR r) (doneR r′) = doneR (t r r′)
+StepRel-trans t (nodeR e) (nodeR e′) = nodeR λ b → TreeRel-trans t (e b) (e′ b)

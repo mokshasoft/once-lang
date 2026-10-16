@@ -1,116 +1,120 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.TermModel — plan 0.102 phase B (D276, D304): THE PROOF of
--- `Once.Lang.Core.TermModel`.
---
---   * `subst-⊢` is `Once.Lang.Core.Subst.subst-⊢` (composition is defined);
---   * `let-β`: `t[u/x]` means what `let x = u in t` means, for a pure `u` —
---     the semantic substitution lemma (`CoreSubstSem.sub-sem`) at the
---     substitution `single u`, whose induced environment is exactly the one
---     `let` binds (`single-env`, by environment extensionality), and the left
---     unit law of the grade's monad (a pure `u` is a value, D250).
+-- Once.Metatheory.TermModel — the term model (`Spec.Metatheory.TermModel`):
+-- substitution is typed (`TermModel.Subst`), typing survives type
+-- substitution (`TermModel.TySubst`), and a pure `let` means its
+-- substitution (`let-β`): the substituted term means what the body means
+-- with the bound value in its environment (`TermModel.SubSem`), which is
+-- what a canonical `let` means, which by the fundamental lemma is what any
+-- derivation of the `let` means.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Metatheory using (OneName)
+
+module Once.Metatheory.TermModel (Σ : Signature) (u : OneName Σ) where
+
+open import Data.Fin using (Fin; zero; suc)
 open import Data.Nat using (ℕ)
-open import Once.Lang.Core.PolyTy using (Sig)
-open import Once.Lang.Contract using (ISig)
-
-module Once.Metatheory.TermModel {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
-
-open import Data.Nat using (suc)
-open import Data.Fin using (suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; subst; cong)
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; Purity; pure)
-open import Once.Lang.Type using (Type)
+open import Data.Product using (_,_)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+open import Once.Spec.Grade using (Zero; One; Many; pure)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Lang.Context using (Ctx; _,_; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
-open import Once.Lang.Graded using ()
-open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
-open import Once.Lang.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Denotation.EnvAlgebraV using (Env; restrict-≡)
-open import Once.Lang.Core.Syntax S
-open import Once.Lang.Core.Typing S
-open import Once.Lang.Core.Subst S using (sub-⊢; single-ty; single-usage; subst-⊢)
-import Once.Lang.Core.Meaning S as GM
-open import Once.Lang.Core.TermModel S using (TermModel)
-open import Once.Metatheory.TySubst S using (tsubst)
-open import Once.Metatheory.CoreSubstSem S
-  using (Live; l-one; l-many; l-suc; look; env-ext; look-bind; subst-restr; ⟦retype⟧; single-⊑; module Rows)
+open import Once.Spec.Type using (KCtx; TySub; Respects; ∅ₖ; _⟨_⟩)
+open import Once.Spec.Context using (Ctx; _▸_; lookup; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Spec.Core.Syntax using (Defs; let′; _[_])
+open import Once.Spec.Equivalence Σ using (Same)
+import Once.Spec.Equivalence
+open import Once.Spec.Metatheory using (TermModel; SameDefs; SameEnv)
+open import Once.Metatheory.Coherence.Relation Σ using (TreeRel-trans; Tree→SameM)
+open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; tree; relPure⁻)
+open import Once.Metatheory.Coherence.PER Σ using (Same-trans)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-≡)
 
-module _ (fmt : TargetNum) (δ : GM.DefSem) where
-  open Rows fmt δ
+module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
+  open import Once.Spec.Core.Typing Σ S
+  open import Once.Spec.Core.Meaning Σ fmt S
+  open import Once.Metatheory.TermModel.Subst Σ S using (subst-⊢; sub-⊢; single; cast; single-usage; single-term; module TSub)
+  open import Once.Metatheory.TermModel.TySubst Σ S using (ty-subst-⊢)
+  open import Once.Metatheory.TermModel.Val Σ fmt S
+  open import Once.Metatheory.TermModel.SubSem Σ u fmt S using (module SubSem)
+  open import Once.Metatheory.Coherence.Env Σ fmt S using (selfAgree; restrictˡ; restrictʳ)
+  open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
 
-  -- The environment `single u` induces is the one `let` binds.
-  single-slot : ∀ {n} {Γ : Ctx n} {Ψₜ Ψᵤ : Usage n} {A u} (q : Quantity) (du : Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
-                  (x : Env Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) (r : Ψᵤ ⊑ᵘ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) {i} (l : Live (q ∷ Ψₜ) i)
-              → look {Γ = Γ , A} l (rowsᴰ (single-ty du) (q ∷ Ψₜ) (subst (Env Γ) (sym (single-usage q Ψₜ Ψᵤ)) x))
-                ≡ look {Γ = Γ , A} l (bindᵛ {Γ = Γ} {A = A} q (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψₜ (q *ᵘ Ψᵤ)) x) (GM.⟦ du ⟧ fmt δ (restrictᵛ {Γ = Γ} r x)))
-  single-slot {Γ = Γ} {Ψₜ} {Ψᵤ} .One du x r l-one =
-    trans (lookup-rowsᴰ (single-ty du) {Ψ = One ∷ Ψₜ} l-one _)
-          (cong (GM.⟦ du ⟧ fmt δ)
-                (trans (cong (restrictᵛ {Γ = Γ} _) (subst-restr {Δ = Γ} (sym (single-usage One Ψₜ Ψᵤ)) x))
-                       (restrict-≡ {Γ = Γ} _ _ r x)))
-  single-slot {Γ = Γ} {Ψₜ} {Ψᵤ} .Many du x r l-many =
-    trans (lookup-rowsᴰ (single-ty du) {Ψ = Many ∷ Ψₜ} l-many _)
-          (cong (GM.⟦ du ⟧ fmt δ)
-                (trans (cong (restrictᵛ {Γ = Γ} _) (subst-restr {Δ = Γ} (sym (single-usage Many Ψₜ Ψᵤ)) x))
-                       (restrict-≡ {Γ = Γ} _ _ r x)))
-  single-slot {Γ = Γ} {Ψₜ} {Ψᵤ} {A} q du x r (l-suc {i = i} l) =
-    trans (lookup-rowsᴰ (single-ty du) {Ψ = q ∷ Ψₜ} (l-suc l) _)
-      (trans (cong (lookupᵛUsed Γ i)
-                   (trans (cong (restrictᵛ {Γ = Γ} _) (subst-restr {Δ = Γ} (sym (single-usage q Ψₜ Ψᵤ)) x))
-                          (trans (restrict-≡ {Γ = Γ} _ _ W x)
-                                 (sym (restrict-≡ {Γ = Γ} (single-⊑ l) (⊑ᵘ-+ˡ Ψₜ (q *ᵘ Ψᵤ)) W x)))))
-             (sym (look-bind {Γ = Γ} {A = A} q l (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψₜ (q *ᵘ Ψᵤ)) x) (GM.⟦ du ⟧ fmt δ (restrictᵛ {Γ = Γ} r x)))))
-    where W = ⊑ᵘ-trans (single-⊑ l) (⊑ᵘ-+ˡ Ψₜ (q *ᵘ Ψᵤ))
+  -- A derivation's meaning does not see which proof put its term in place.
+  termSubst-sem : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t t′ B π} (e : t ≡ t′) (D : Δ ⊩ Γ ⊢[ Ψ ] t ∷ B ! π)
+                  (δ : DefSem) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) γ
+                → ⟦ subst (λ x → Δ ⊩ Γ ⊢[ Ψ ] x ∷ B ! π) e D ⟧ δ σ r γ ≡ ⟦ D ⟧ δ σ r γ
+  termSubst-sem refl D δ σ r γ = refl
 
-  single-env : ∀ {n} {Γ : Ctx n} {Ψₜ Ψᵤ : Usage n} {A u} (q : Quantity) (du : Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
-                 (x : Env Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) (r : Ψᵤ ⊑ᵘ (Ψₜ +ᵘ q *ᵘ Ψᵤ))
-             → rowsᴰ (single-ty du) (q ∷ Ψₜ) (subst (Env Γ) (sym (single-usage q Ψₜ Ψᵤ)) x)
-               ≡ bindᵛ {Γ = Γ} {A = A} q (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψₜ (q *ᵘ Ψᵤ)) x) (GM.⟦ du ⟧ fmt δ (restrictᵛ {Γ = Γ} r x))
-  single-env {Γ = Γ} {Ψₜ} {Ψᵤ} {A} q du x r = env-ext {Γ = Γ , A} {Ψ = q ∷ Ψₜ} _ _ (single-slot {Γ = Γ} {Ψₜ} {Ψᵤ} {A} q du x r)
+  module _ {m n} {Δ : KCtx m} (Γ : Ctx m n) (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
+    open SubSem δ sd σ r
 
-  -- …and at an erased binder, the one `let` binds without evaluating `u`.
-  single-env0 : ∀ {n} {Γ : Ctx n} {Ψₜ Ψᵤ : Usage n} {A u} (du : Γ ⊢[ Ψᵤ ] u ∷ A ! pure) (x : Env Γ (Ψₜ +ᵘ Zero *ᵘ Ψᵤ))
-              → rowsᴰ (single-ty du) (Zero ∷ Ψₜ) (subst (Env Γ) (sym (single-usage Zero Ψₜ Ψᵤ)) x)
-                ≡ bindᵛ0 {Γ = Γ} {A = A} (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ)) x)
-  single-env0 {Γ = Γ} {Ψₜ} {Ψᵤ} {A} du x =
-    env-ext {Γ = Γ , A} {Ψ = Zero ∷ Ψₜ} _ _ slot
+    -- A variable other than the substituted one reads the same value.
+    varAg : ∀ {U Ψ₀ Ψ₂} {γ : Env σ Γ U} → SelfSame σ γ → ∀ j (nz : NZ (At Ψ₂ j)) (p : singleUse j One ⊑ᵘ Ψ₀) (P : Ψ₀ ⊑ᵘ U) (R : Ψ₂ ⊑ᵘ U)
+          → Same (lookup Γ j ⟨ σ ⟩) (lookupᵛ σ Γ j (restrict σ p (restrict σ P γ))) (val σ (restrict σ R γ) j nz)
+    varAg {γ = γ} ss j nz p P R =
+      subst₂ (Same _)
+        (sym (trans (lookup-val σ Γ j (restrict σ p (restrict σ P γ)))
+             (trans (restrict-val σ p (restrict σ P γ) j _) (restrict-val σ P γ j _))))
+        (sym (restrict-val σ R γ j nz))
+        (subst (λ w → Same _ (val σ γ j w) (val σ γ j _)) (nz-irr _ _) (ss j _))
+
+    letCore : ∀ {Ψₜ Ψᵤ q π A B t u}
+                (dt : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Δ ⊩ Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
+                (dl : Δ ⊩ Γ ⊢[ Ψₜ +ᵘ q *ᵘ Ψᵤ ] let′ q u t ∷ B ! π)
+                (γ : Env σ Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) → SameEnv Σ fmt S σ Γ _ γ
+            → (canon : Δ ⊩ Γ ⊢[ Ψₜ +ᵘ q *ᵘ Ψᵤ ] let′ q u t ∷ B ! π) (γdt : Env σ (Γ ▸ A) (q ∷ Ψₜ))
+            → ⟦ canon ⟧ δ σ r γ ≡ ⟦ dt ⟧ δ σ r γdt
+            → SubAgree (single du) (q ∷ Ψₜ) (restrict σ (⊑ᵘ-≡ (single-usage du q Ψₜ)) γ) γdt
+            → Once.Spec.Equivalence.SameM Σ π (B ⟨ σ ⟩) (⟦ subst-⊢ dt du ⟧ δ σ r γ) (⟦ dl ⟧ δ σ r γ)
+    letCore {Ψₜ} {Ψᵤ} {q} {π} {A} {B} {t} dt du dl γ sγ canon γdt ceq ag =
+      Tree→SameM π (B ⟨ σ ⟩)
+        (TreeRel-trans (Same-trans (B ⟨ σ ⟩))
+          (tree (subst₂ (Rel π π (B ⟨ σ ⟩))
+                        (sym (termSubst-sem (single-term du t) (cast (single-usage du q Ψₜ) (sub-⊢ (single du) dt)) δ σ r γ))
+                        (sym ceq)
+                        (subSem (single du) dt (selfSame-restrict σ _ {γ = γ} (selfSame σ Γ _ γ sγ)) ag)))
+          (tree (FL.FL δ sd σ r r canon dl refl (selfAgree σ Γ _ γ sγ))))
+
+  let-β : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψₜ Ψᵤ q π A B t u}
+            (dt : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Δ ⊩ Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
+            (dl : Δ ⊩ Γ ⊢[ Ψₜ +ᵘ q *ᵘ Ψᵤ ] let′ q u t ∷ B ! π)
+            (δ : DefSem) → SameDefs Σ fmt S δ → (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+            (γ : Env σ Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) → SameEnv Σ fmt S σ Γ _ γ
+          → Once.Spec.Equivalence.SameM Σ π (B ⟨ σ ⟩) (⟦ subst-⊢ dt du ⟧ δ σ r γ) (⟦ dl ⟧ δ σ r γ)
+  let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {Zero} dt du dl δ sd σ r γ sγ =
+    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = Zero} {π₁ = pure} du dt) (restrict σ (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ)) γ , tt) refl ag
     where
-      slot : ∀ {i} (l : Live (Zero ∷ Ψₜ) i) → _
-      slot (l-suc {i = i} l) =
-        trans (lookup-rowsᴰ (single-ty du) {Ψ = Zero ∷ Ψₜ} (l-suc l) _)
-              (cong (lookupᵛUsed Γ i)
-                    (trans (cong (restrictᵛ {Γ = Γ} _) (subst-restr {Δ = Γ} (sym (single-usage Zero Ψₜ Ψᵤ)) x))
-                           (trans (restrict-≡ {Γ = Γ} _ _ W x)
-                                  (sym (restrict-≡ {Γ = Γ} (single-⊑ l) (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ)) W x)))))
-        where W = ⊑ᵘ-trans (single-⊑ l) (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ))
+      ag : _
+      ag zero () p
+      ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
+  let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {One} dt du dl δ sd σ r γ sγ =
+    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = One} {π₁ = pure} du dt)
+      (restrict σ (⊑ᵘ-+ˡ Ψₜ (One *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
+    where
+      R₁ = ⊑ᵘ-trans (⊑ᵘ-*One Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (One *ᵘ Ψᵤ))
+      ag : _
+      ag zero nz p = relPure⁻ (FL.FL δ sd σ r r du du refl
+                       (restrictˡ σ p (restrictˡ σ _ (restrictʳ σ R₁ (selfAgree σ Γ _ γ sγ)))))
+      ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
+  let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {Many} dt du dl δ sd σ r γ sγ =
+    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = Many} {π₁ = pure} du dt)
+      (restrict σ (⊑ᵘ-+ˡ Ψₜ (Many *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
+    where
+      R₁ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (Many *ᵘ Ψᵤ))
+      ag : _
+      ag zero nz p = relPure⁻ (FL.FL δ sd σ r r du du refl
+                       (restrictˡ σ p (restrictˡ σ _ (restrictʳ σ R₁ (selfAgree σ Γ _ γ sγ)))))
+      ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
 
-  -- THE β-LAW: substitution means `let`.
-  let-β-sem : ∀ {n} {Γ : Ctx n} {Ψₜ Ψᵤ : Usage n} {q : Quantity} {π : Purity} {A B : Type}
-                {t : Tm (suc n)} {u : Tm n}
-                (dt : (Γ , A) ⊢[ q ∷ Ψₜ ] t ∷ B ! π) (du : Γ ⊢[ Ψᵤ ] u ∷ A ! pure)
-                (x : Env Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ))
-            → GM.⟦ subst-⊢ dt du ⟧ fmt δ x ≡ GM.⟦ ⊢let-pure q du dt ⟧ fmt δ x
-  let-β-sem {Γ = Γ} {Ψₜ} {Ψᵤ} {Zero} dt du x =
-    trans (⟦retype⟧ (single-usage Zero Ψₜ Ψᵤ) (sub-⊢ dt (single-ty du)) fmt δ x)
-      (trans (sub-sem dt (single-ty du) _) (cong (GM.⟦ dt ⟧ fmt δ) (single-env0 du x)))
-  let-β-sem {Γ = Γ} {Ψₜ} {Ψᵤ} {One} {π} dt du x =
-    trans (⟦retype⟧ (single-usage One Ψₜ Ψᵤ) (sub-⊢ dt (single-ty du)) fmt δ x)
-      (trans (sub-sem dt (single-ty du) _)
-        (trans (cong (GM.⟦ dt ⟧ fmt δ) (single-env One du x (⊑ᵘ-trans (⊑ᵘ-*One Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (One *ᵘ Ψᵤ)))))
-               (sym (>>=ᵖ-β _ _))))
-  let-β-sem {Γ = Γ} {Ψₜ} {Ψᵤ} {Many} {π} dt du x =
-    trans (⟦retype⟧ (single-usage Many Ψₜ Ψᵤ) (sub-⊢ dt (single-ty du)) fmt δ x)
-      (trans (sub-sem dt (single-ty du) _)
-        (trans (cong (GM.⟦ dt ⟧ fmt δ) (single-env Many du x (⊑ᵘ-trans (⊑ᵘ-*Many Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (Many *ᵘ Ψᵤ)))))
-               (sym (>>=ᵖ-β _ _))))
-
-termModel : TermModel
-termModel = record
-  { subst-⊢ = subst-⊢
-  ; let-β   = λ dt du fmt δ x → let-β-sem fmt δ dt du x
-  ; ty-subst-⊢ = tsubst
-  }
+  termModel : TermModel Σ fmt S
+  termModel = record
+    { subst-⊢    = subst-⊢
+    ; let-β      = let-β
+    ; ty-subst-⊢ = λ σ rσ d → ty-subst-⊢ σ rσ d
+    }

@@ -74,7 +74,7 @@ open import Once.Lang.Type.DecEq using (_≟T_)
 open import Once.Lang.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-open import Once.Metatheory.ModeAgreement using (mode-agree-ic; mode-agree-dc)
+open import Once.Lang.Laws.ModeAgreement using (mode-agree-ic; mode-agree-dc)
 open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; withUnit-elim)
 
 

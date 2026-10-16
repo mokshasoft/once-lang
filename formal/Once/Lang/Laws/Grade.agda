@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.Grade — the grades are the algebraic structures they are
+-- Once.Lang.Laws.Grade — the grades are the algebraic structures they are
 -- meant to be (plan 0.112 B2, B4).
 --
 --   * usage `(Quantity, +q, *q, Zero, One)` is a commutative semiring;
@@ -17,7 +17,7 @@
 -- by instance search or names them at the use site is plan 0.112's decision X.
 ------------------------------------------------------------------------
 
-module Once.Metatheory.Grade where
+module Once.Lang.Laws.Grade where
 
 import Algebra.Structures as Structures
 open import Data.Bool using (Bool; true; false)

@@ -36,7 +36,7 @@ import Once.Lang.Type.Grade as T
 import Once.Lang.Type as T
 open import Once.Lang.Type.WellFormed using (rf-⇒)
 import Once.Type as T
-open import Once.Metatheory.SubLaws using (<:-unique)
+open import Once.Lang.Laws.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Lang.Graded using (⟦_⟧ᵛ; M)

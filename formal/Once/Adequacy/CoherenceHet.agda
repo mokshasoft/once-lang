@@ -39,7 +39,7 @@ open import Once.Lang.Name using (showCanonical)
 open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
 open import Once.Lang.Typing
-open import Once.Metatheory.ModeAgreement using (extractGround-irr; dpoly-det)
+open import Once.Lang.Laws.ModeAgreement using (extractGround-irr; dpoly-det)
 open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.Lang.Type.WellFormed using (IsConcrete; WellFormedF)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)

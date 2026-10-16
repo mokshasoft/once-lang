@@ -114,7 +114,7 @@ open import Once.Lang.Type.Sub using (_⊑π_; sub-arr)
 open import Once.Lang.Type.Sub using (<:-refl)
 open import Once.Lang.Core.Typing S
 open import Once.Lang.Core.DerivedTyping S
-import Once.Metatheory.CoreRenameSem S as RS
+import Once.Lang.Laws.CoreRenameSem S as RS
 import Once.Denotation.EnvAlgebraV as EA
 
 -- A restriction of a transported environment is any restriction of the original.

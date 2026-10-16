@@ -33,7 +33,7 @@ open import Once.Lang.Type.Grade as Ty using (Zero; One; Many; mk-kind)
 open import Once.Lang.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
 open import Once.Lang.Type.Sub
 open import Once.Type.Sub
-open import Once.Metatheory.SubLaws
+open import Once.Lang.Laws.SubLaws
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)

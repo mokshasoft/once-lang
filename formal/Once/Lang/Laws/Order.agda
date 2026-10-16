@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.Order — the language's orders are partial orders
+-- Once.Lang.Laws.Order — the language's orders are partial orders
 -- (plan 0.112 B6).
 --
 -- Reflexivity and transitivity were already proved (`Metatheory.SubLaws`,
@@ -11,7 +11,7 @@
 -- usage order `⊑ᵘ`.
 ------------------------------------------------------------------------
 
-module Once.Metatheory.Order where
+module Once.Lang.Laws.Order where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; isEquivalence)
 open import Relation.Binary.Structures using (IsPartialOrder)
@@ -22,9 +22,9 @@ open import Once.Lang.Type.Sub
         ; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid )
 open import Once.Lang.Context
   using (Usage; []; _∷_; _⊑ᵘ_; ⊑[]; _⊑∷_; ⊑ᵘ-refl; ⊑ᵘ-trans)
-open import Once.Metatheory.SubLaws using (⊑π-trans; <:-trans)
+open import Once.Lang.Laws.SubLaws using (⊑π-trans; <:-trans)
 open import Once.Lang.Type.Sub using (⊑π-refl; <:-refl)
-open import Once.Metatheory.Grade using (≤q'-antisym)
+open import Once.Lang.Laws.Grade using (≤q'-antisym)
 
 ------------------------------------------------------------------------
 -- The effect order

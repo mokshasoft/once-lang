@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.ModeAgreement (D305: promised as `TypeSystem` in `Once.Spec.Metatheory`)
+-- Once.Lang.Laws.ModeAgreement (D305: promised as `TypeSystem` in `Once.Spec.Metatheory`)
 --
 -- Plan 0.94 C3: CHECKING AGREES WITH INFERENCE on usage. A term's usage is a
 -- property of the term in its context, not of the mode (or the route) that
@@ -23,7 +23,7 @@
 -- that would have to synthesize (it never does — `classifyAppHead` names it,
 -- or `NotGenerator` excludes it) and premises that contradict each other.
 ------------------------------------------------------------------------
-module Once.Metatheory.ModeAgreement where
+module Once.Lang.Laws.ModeAgreement where
 
 open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)

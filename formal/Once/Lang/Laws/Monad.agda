@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.Monad — the meaning's monad is a lawful monad
+-- Once.Lang.Laws.Monad — the meaning's monad is a lawful monad
 -- (plan 0.112 C1).
 --
 -- `T`, the interaction-tree monad an effectful arrow denotes into (a call is
@@ -15,7 +15,7 @@
 -- defined here: the raw operations and the three laws, at `≡`.
 ------------------------------------------------------------------------
 
-module Once.Metatheory.Monad where
+module Once.Lang.Laws.Monad where
 
 open import Effect.Monad using (RawMonad; mkRawMonad)
 open import Relation.Binary.PropositionalEquality using (_≡_)

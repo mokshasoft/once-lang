@@ -100,7 +100,7 @@ module Prefix (Σ : Signature) (ι : Observation.Interp Σ) where
   coherent h m (suc k) = coherentS h (force m) k
   coherentS h (done x)             k = [] , refl
   coherentS h (node (call o a k′)) k = cons (coherentN _ _ _ k′ k)
-    where cons : ∀ {x : Observation.Event Σ} {A B : List _} → ∃[ r ] (A ≡ B ++ r) → ∃[ r ] (x ∷ A ≡ (x ∷ B) ++ r)
+    where cons : ∀ {E : Set} {x : E} {A B : List E} → ∃[ r ] (A ≡ B ++ r) → ∃[ r ] (x ∷ A ≡ (x ∷ B) ++ r)
           cons (r , e) = r , cong (_ ∷_) e
   coherentN h void    v k′ k = [] , refl
   coherentN h unit    v k′ k = coherent h (k′ v) k
@@ -187,7 +187,7 @@ private
 no-self-reference : ∀ {Σ p} → ¬ Denotes [] selfReference Σ p
 no-self-reference D =
   selfWalk (sigSelf (Denotes.signature D))
-           (subst′ (envOf (unSelf (Denotes.unaliases D)) refl) (Denotes.resolves D))
+           (subst′ (envOf {ds = selfDecls} (unSelf (Denotes.unaliases D)) refl) (Denotes.resolves D))
            (Denotes.walk D)
   where subst′ : ∀ {E E′ ds rs} → E ≡ E′ → ResolvesDecls E ds rs → ResolvesDecls E′ ds rs
         subst′ refl r = r
@@ -195,7 +195,7 @@ no-self-reference D =
 no-forward-reference : ∀ {Σ p} → ¬ Denotes [] forwardReference Σ p
 no-forward-reference D =
   forwardWalk (sigForward (Denotes.signature D))
-              (subst′ (envOf (unForward (Denotes.unaliases D)) refl) (Denotes.resolves D))
+              (subst′ (envOf {ds = forwardDecls} (unForward (Denotes.unaliases D)) refl) (Denotes.resolves D))
               (Denotes.walk D)
   where subst′ : ∀ {E E′ ds rs} → E ≡ E′ → ResolvesDecls E ds rs → ResolvesDecls E′ ds rs
         subst′ refl r = r
@@ -207,10 +207,10 @@ no-forward-reference D =
 module TickTyping = CoreTyping tickΣ []
 module EchoTyping = CoreTyping echoΣ []
 
-stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ [] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.eff) Once.Spec.Grade.pure
+stream-typed : TickTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] ticker (Once.Spec.Type.ν Once.Spec.Type.Id Once.Spec.Grade.eff) Once.Spec.Grade.pure
 stream-typed = TickTyping.⊢unfold wf-Id (TickTyping.⊢sigop (here refl)) TickTyping.⊢lit-int
 
-server-typed : EchoTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ [] echoServer Once.Spec.Type.Void Once.Spec.Grade.eff
+server-typed : EchoTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] echoServer Once.Spec.Type.Void Once.Spec.Grade.eff
 server-typed =
   EchoTyping.⊢iter
     (EchoTyping.⊢lam 0≤q (EchoTyping.⊢inr (EchoTyping.⊢lam 0≤q (EchoTyping.⊢inr
@@ -244,5 +244,5 @@ totality = record
   ; stream-typed         = stream-typed
   ; stream-emits         = λ fmt δ → _ , _ , _ , refl
   ; server-typed         = server-typed
-  ; server-runs          = λ fmt δ n → Runs.runs fmt δ _ _ n []
+  ; server-runs          = λ fmt δ n → Runs.runs fmt δ (λ ()) (λ ()) n []
   }

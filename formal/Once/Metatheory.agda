@@ -2,48 +2,39 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory — THE PROOF of `Once.Spec.Metatheory` (D304, D305): what the
--- language promises about itself, assembled from the proofs under
--- `Once/Metatheory`, which import only the Spec side (`make metatheory-gate`).
--- `Once.Certified` carries it as `CertifiedBuild.language`.
+-- Once.Metatheory — what the language promises about itself
+-- (`Spec.Metatheory`), proved over the Spec alone (D304).
+--
+--   types       Once.Metatheory.Types
+--   surface     Once.Metatheory.Surface
+--   effects     Once.Metatheory.Effects (and Erase, Bisim)
+--   coherence   Once.Metatheory.Coherence.Fundamental
+--   term model  Once.Metatheory.TermModel
+--   Freyd       Once.Metatheory.Freyd
+--   recursion   Once.Metatheory.Recursion (and Unfold, Lawful)
+--   totality    Once.Metatheory.Totality
 ------------------------------------------------------------------------
 
 module Once.Metatheory where
 
-open import Once.Spec.Metatheory using (Metatheory; TypeSystem)
-open import Once.Metatheory.TermModel using (termModel)
-open import Once.Metatheory.Effects using (effects)
-open import Once.Metatheory.Recursion using (recursion)
-open import Once.Metatheory.Freyd using (freyd)
+open import Once.Spec.Metatheory using (Metatheory)
+open import Once.Metatheory.Types using (types)
 open import Once.Metatheory.Totality using (totality)
-import Once.Metatheory.Coherence as Coh
-import Once.Metatheory.SubLaws as SL
-import Once.Lang.Type.Sub
-import Once.Metatheory.ModeAgreement as MA
-
-typeSystem : TypeSystem
-typeSystem = record
-  { <:-refl             = Once.Lang.Type.Sub.<:-refl
-  ; <:-trans            = SL.<:-trans
-  ; <:-unique           = SL.<:-unique
-  ; ⊑π-refl             = Once.Lang.Type.Sub.⊑π-refl
-  ; ⊑π-trans            = SL.⊑π-trans
-  ; ⊑π-unique           = SL.⊑π-unique
-  ; synth-unique        = MA.agree-ii
-  ; check-usage-unique  = MA.agree-cc
-  ; check-agrees-synth  = MA.agree-ic
-  ; domain-agrees-check = MA.agree-dc
-  ; domain-agrees-synth = MA.agree-di
-  ; domain-exact        = MA.agree-dd
-  }
+import Once.Metatheory.Surface as Surface
+import Once.Metatheory.Effects as Effects
+import Once.Metatheory.Coherence.Fundamental as Coherence
+import Once.Metatheory.TermModel as TermModel
+import Once.Metatheory.Freyd as Freyd
+import Once.Metatheory.Recursion as Recursion
 
 metatheory : Metatheory
 metatheory = record
-  { term-model  = termModel
-  ; type-system = typeSystem
-  ; effects     = effects
-  ; coherence   = λ S → Coh.coherence S
-  ; freyd       = freyd
-  ; recursion   = recursion
-  ; totality    = totality
+  { types      = types
+  ; surface    = λ Σ S nm dist → Surface.surface Σ S nm dist
+  ; effects    = λ Σ → Effects.effects Σ
+  ; coherence  = λ Σ u fmt S → Coherence.coherence Σ u fmt S
+  ; term-model = λ Σ u fmt S → TermModel.termModel Σ u fmt S
+  ; freyd      = λ Σ → Freyd.freyd Σ
+  ; recursion  = λ Σ → Recursion.recursion Σ
+  ; totality   = totality
   }

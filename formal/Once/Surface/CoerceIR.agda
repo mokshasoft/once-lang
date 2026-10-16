@@ -28,7 +28,7 @@ open import Once.Lang.Type.Grade as T using (Zero; One; Many)
 import Once.Lang.Type as T
 open import Once.Lang.Type.Sub
 open import Once.Type.Sub
-open import Once.Metatheory.SubLaws
+open import Once.Lang.Laws.SubLaws
 open import Once.IR
 open import Once.IRTy using (_⇛_; Unit; ⌊_⌋; _*_; _+_)
 

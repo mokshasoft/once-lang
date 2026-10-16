@@ -66,8 +66,8 @@ import Once.TypeCheck.Completeness as Cmp
 import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
-import Once.Metatheory.Grade as Grade
-import Once.Metatheory.Order as Ord
+import Once.Lang.Laws.Grade as Grade
+import Once.Lang.Laws.Order as Ord
 import Once.Lang.Type.Sub
 import Once.Surface.GradeMatrix as GM
 import Algebra.Structures
