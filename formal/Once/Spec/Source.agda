@@ -11,7 +11,10 @@
 -- texts parse (`Spec.Surface.Grammar`) and the program's module denotes a
 -- program over its signature (`Spec.Surface.Program`). What the program does
 -- is its behaviour against an Interpretation of that signature
--- (`Spec.Core.Program.behaviour`).
+-- (`Spec.Core.Program.behaviour`): at each depth, the calls it makes — which
+-- may never arrive. Two behaviours are the same when at every depth they
+-- arrive at the same calls, or neither arrives (D317); that is the
+-- equivalence a correct compiler preserves (`Spec.Correct`).
 --
 -- A target owes an answer only for the programs it can express
 -- (ADMISSIBLE): every integer literal, a negated one read as negative, fits
@@ -28,6 +31,7 @@ open import Data.Nat using (ℕ)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Once.Spec.Delay using (Delay; _≈D_)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 import Once.Spec.Word as Word
 open import Once.Spec.Signature using (Signature; Event)
@@ -105,5 +109,9 @@ Admissible : TargetNum → Typed → Set
 Admissible fmt tp = All (Word.Width.InRange (TargetNum.int-bits fmt)) (declLits (Module.decls (module′ tp)))
 
 -- What the program does, against an Interpretation of its signature.
-behaviour : TargetNum → (tp : Typed) → Observation.Interp (signature tp) → ℕ → List Event
+behaviour : TargetNum → (tp : Typed) → Observation.Interp (signature tp) → ℕ → Delay (List Event)
 behaviour fmt tp = CoreProgram.behaviour (signature tp) fmt (program tp)
+
+-- The same behaviour.
+SameBehaviour : (ℕ → Delay (List Event)) → (ℕ → Delay (List Event)) → Set
+SameBehaviour b b′ = ∀ n → b n ≈D b′ n

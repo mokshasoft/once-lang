@@ -18735,3 +18735,70 @@ elaborates to the same core term. So item 2 is amended:
 * (Superseded by the amendment above:) ~~`Spec.Metatheory.TypeSystem` loses the mode-agreement fields; the
   implementation gains the proof that the algorithmic judgment equals the Spec's relation.~~
 * Most of the implementation's proofs go red at once; the branch stays unmergeable until they are green.
+
+---
+
+## D317 — A SERVER IS THE ANAMORPHISM INTO `Eff`; `Eff` IS THE COINDUCTIVE RESUMPTION MONAD OVER `T`; WHAT A PROGRAM DOES MAY NEVER ARRIVE (2026-10-15)
+
+**Approved by the user, 2026-10-15** (solution R of plan 0.119, "lets go for this solution"); its Spec
+patch is plan 0.119 §7 C, reviewed as one piece.
+**Supersedes**: D311 (a server is guarded iteration; `eff⁺`, `T⁺`), D312 (`Eff` is the free completely
+iterative monad, no silent step), D314 item 2 (the loop over a request functor `Req`) and the open question
+of `Req`'s surface names. **Amends**: D058 and D179 (a behaviour is a `Delay`), D201 (sameness is
+observational for computations too). **Applies**: D314 items 1 and 4, D315. **Relates**: GOAL.md, plan
+0.119 (its requirements P1–P21 and solutions G, E, R), D313.
+
+### Context
+A server is an unbounded loop of effectful rounds. Plan 0.119 weighed three meanings for it against a fixed
+list of requirements: guarded iteration (G: a guard judgment and an `Op` type, so a server library cannot
+take a composite receive action), Elgot iteration (E: silent rounds, an extra summand and a quotient in `T∞`,
+a ∀∃ correctness statement), and resumptions (R). R keeps E's freedom without its two blemishes.
+
+### Decision
+1. **Effects are blocks, and blocks forever.** `T X = μY. X + H_Σ Y` is a finite block of calls (the free
+   monad); `T∞ X = νY. T (X + Y)` runs such blocks forever, each ending with the result or with what to
+   run next — the coinductive resumption monad over `T` (Moggi; Piróg–Gibbons). GOAL.md's "the final
+   coalgebra of `T ∘ F`" is literal: programs are folds inside loops, effects are blocks inside `T∞`.
+   `M pure = Id`, `M act = T`, `M eff = T∞` on the chain `pure ⊑ act ⊑ eff` (D314).
+2. **The loop is the anamorphism into `Eff`.** `T∞ B` is the final coalgebra of `T (B + −)`, so a loop is
+   its unfold: a round `A → T (B + A)` — a finite effectful block, `Act A (B + A)` — that ends with a `B` or
+   with the next state. Core `iter round seed`; on the surface, `ana round` checked at `A -> Eff A B`, as
+   `cata` takes any algebra. No `Req`, no `request`, no guard, no new type.
+3. **A round never contains a loop** (structured recursion): the coalgebra of a loop and of a stream's
+   unfold is at most `act`. `ν F eff` stays a type (the end of `ν F act <: ν F eff`) but no unfold builds
+   one, and `ana` into `ν F π` is checked at an arrow of grade at most `act` — at `Eff A B`, `ana` is the
+   loop.
+4. **A silent round is allowed.** A round that performs no event is an empty block; a loop of them is a
+   correct program that is never observed doing anything (it is not busy-waiting: it observes nothing,
+   so it waits for nothing). It is almost always a bug, so the compiler warns when it emits a round that
+   performs no event; GOAL.md says so.
+5. **What a program does may never arrive.** The first `n` calls against an Interpretation are a
+   `Delay (List Event)` (Capretta): a block's end is one step of the delay, and a run that goes on forever
+   without another call never arrives. Two behaviours are the same when, at every depth, they arrive at
+   the same calls or neither arrives (`Spec.Source.SameBehaviour`); the number of steps is not observed
+   (D179). `Spec.Correct` is unchanged; the instance's `_≈_` is this.
+6. **Two equalities, each for its job.** Bisimilarity (`_≈_`: the same blocks forever) is the equality of
+   the ν itself: the monad laws, the lifts and finality hold up to it. When two MEANINGS are the same is
+   observational (`Spec.Equivalence`): against every Interpretation, the same first `n` calls and the same
+   ends, up to the delay. Where one block ends and the next begins is not observed, so unrolling a loop
+   and moving pure work between rounds are sound (P12).
+7. **The claims** (`Spec.Metatheory`): the loop's computation law and uniqueness (finality, up to
+   bisimilarity), its unrolling (up to observation), the lifts compose and embed (P7), a behaviour is a
+   prefix family of delays, an echo server runs forever, a silent loop is never observed doing anything.
+   The Freyd claims keep their A′ form (plan 0.119 §7).
+
+### Consequences
+* Spec (this patch): `Spec.Grade` (the chain), `Spec.Signature`, `Spec.Effect` (blocks, `T∞`, `loop`),
+  `Spec.Delay` (new), `Spec.Observation` (`observe`, `events` into `Delay`, the prefix family),
+  `Spec.Equivalence` (observational), `Spec.Domain` (no guard, `anaM` at most `act`, `ν` on the lifts over
+  the new `T∞`), `Spec.Sub` (comment), `Spec.Core.Typing` (`⊢iter` takes an `act` round, `⊢unfold` at most
+  `act`, no `⊢sigop⁺`, `⊢fold` without the unit premise), `Spec.Core.Meaning`, `Spec.Core.Derived`
+  (`loopᶜ`), `Spec.Core.Program` (entry `<: Eff Unit Unit`, D315; behaviour into `Delay`),
+  `Spec.Surface.Typing` (`c-loop`; `c-ana` at most `act`; no `c-sigop⁺`; no unit premises),
+  `Spec.Surface.Program` (a signature is the principal type, D314), `Spec.Surface.Grammar` (`IO` gone,
+  D315), `Spec.Source` (`SameBehaviour`), `Spec.Examples`, `Spec.Metatheory`.
+* Implementation (plan 0.119 §7 D): the grades as a chain (the F3a rules deleted), the compiler's loop and
+  its warning for a silent round, `correct` over `Delay`'s equivalence (stuttering), the metatheory proved
+  again over the new definitions, and B3's remainder (resolution, typing, meaning) bridged once.
+* Programs and tests: `main : IO Unit` becomes its principal type; a `Nu (Eff F)` built by an `Eff`
+  coalgebra is no longer typed (`Nu (Act F)` is the stream whose layers run blocks).

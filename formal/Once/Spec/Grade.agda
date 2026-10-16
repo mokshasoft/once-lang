@@ -7,12 +7,12 @@
 --
 --   * USAGE: how many times the argument is used, in the ordered semiring
 --     `0 ≤ 1 ≤ ω` (quantitative type theory, affine: `1` is at most once).
---   * EFFECT: what running the arrow may do, ordered by
---       pure ≤ act ≤ eff   and   eff⁺ ≤ eff
+--   * EFFECT: what running the arrow may do, in the chain
+--       pure ≤ act ≤ eff
 --     `pure`: nothing — a value. `act`: finitely many events, then it
---     returns. `eff`: each next event after finite work; it need not stop.
---     `eff⁺`: an event FIRST, then anything — the guard of iteration (D311).
---     Sequencing two computations has the grade `·p` of the two.
+--     returns (or halts). `eff`: blocks of events forever, or until it
+--     returns (D314, D317). Sequencing two computations has the grade of the
+--     larger: the chain's join `·p`.
 --
 -- One law couples them: an erased position (`0`) is never evaluated, so what
 -- sits there must be pure.
@@ -60,40 +60,30 @@ infix 4 _≤q_
 ------------------------------------------------------------------------
 
 data Purity : Set where
-  pure act eff⁺ eff : Purity
+  pure act eff : Purity
 
--- The order, one derivation per pair. `eff⁺` is incomparable with `pure` and
--- `act`: a guarded computation performs an event, and need not return.
+-- The order, one derivation per pair.
 data _⊑π_ : Purity → Purity → Set where
   ⊑-pure : pure ⊑π pure
   ⊑-pa   : pure ⊑π act
   ⊑-pe   : pure ⊑π eff
   ⊑-act  : act  ⊑π act
   ⊑-ae   : act  ⊑π eff
-  ⊑-g    : eff⁺ ⊑π eff⁺
-  ⊑-ge   : eff⁺ ⊑π eff
   ⊑-eff  : eff  ⊑π eff
 
 infix 4 _⊑π_
 
--- Sequencing: one computation, then another. Pure adds nothing; a guarded
--- one first keeps the guard; a guarded one after an `act` keeps it too (the
--- `act` part may perform no event, the guard still comes before any return).
+-- Sequencing: one computation, then another — the join of the chain.
 _·p_ : Purity → Purity → Purity
 pure ·p π    = π
 act  ·p pure = act
 act  ·p act  = act
-act  ·p eff⁺ = eff⁺
 act  ·p eff  = eff
-eff⁺ ·p _    = eff⁺
-eff  ·p pure = eff
-eff  ·p act  = eff
-eff  ·p eff⁺ = eff⁺
-eff  ·p eff  = eff
+eff  ·p _    = eff
 
 infixr 6 _·p_
 
--- The grades an operation is declared at that are not the guard.
+-- The effectful grades.
 data EffGrade : Purity → Set where
   eg-act : EffGrade act
   eg-eff : EffGrade eff

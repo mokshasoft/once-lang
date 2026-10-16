@@ -11,10 +11,11 @@
 --   * Its DEFINITIONS, in declaration order (a telescope: a body sees only the
 --     definitions before it): each body checked at its type
 --     (`Spec.Surface.Typing`) and elaborated to a core term, typed by the core
---     judgment over its type variables. With a signature, a definition has
---     the signature's type; without one, its body's principal type (it checks
---     at no strictly smaller type).
---   * Its ENTRY: the definition named `main`, at `Eff Unit Unit`.
+--     judgment over its type variables. A definition's type is its body's
+--     principal type (it checks at no strictly smaller type); a signature
+--     only confirms it (D314, D007).
+--   * Its ENTRY: the definition named `main`, used at `Eff Unit Unit` (D315,
+--     `Spec.Core.Program`).
 ------------------------------------------------------------------------
 
 module Once.Spec.Surface.Program where
@@ -195,9 +196,10 @@ module _ (Σ : Signature) where
     w-end   : Walk S nm tl [] S nm tl
     w-skip  : ∀ {d ds s′} {S′ : Defs s′} {nm′ tl′}
             → NotDefinition d → Walk S nm tl ds S′ nm′ tl′ → Walk S nm tl (d ∷ ds) S′ nm′ tl′
-    -- A definition with a signature.
+    -- A definition with a signature: the signature is the body's principal
+    -- type.
     w-sig   : ∀ {x T e ds sc s′} {S′ : Defs s′} {nm′ tl′}
-            → SchemaOf T sc → (b : Body S nm sc e)
+            → SchemaOf T sc → (b : Body S nm sc e) → Principal S nm sc e
             → Walk (S ▷ sc) (canonical (x ∷ []) ∷ⁿ nm) (def tl sc (Body.term b) (Body.typed b)) ds S′ nm′ tl′
             → Walk S nm tl (DTypeSig x T ∷ DFunDef x e ∷ ds) S′ nm′ tl′
     -- A definition without one, at a principal schema.

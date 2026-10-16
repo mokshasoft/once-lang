@@ -32,7 +32,7 @@ open import Data.Fin using (Fin)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Grade
-  using (Quantity; Zero; One; Many; _≤q_; Purity; pure; act; eff⁺; eff; _·p_; _⊑π_; mk-kind; positionGrade; EffGrade)
+  using (Quantity; Zero; One; Many; _≤q_; Purity; pure; act; eff; _·p_; _⊑π_; mk-kind; positionGrade)
 open import Once.Spec.Type using (Ty; KCtx; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun; Respects; TySub; _⟨_⟩)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature using (BTy; ⌜_⌝; ⌜_⌝ᵈ; DeclType; arrow; _∶_)
@@ -95,20 +95,18 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → Ctx m n → Usage n → 
         → WFFun Δ F
         → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧F (μ F) ! π
         → Δ ⊩ Γ ⊢[ Ψ ] roll F t ∷ μ F ! π
-  -- The algebra's grade has a unit (`pure ⊑π π`): a layer with no recursive
-  -- position runs nothing (not the guard `eff⁺`; a guarded algebra folds at
-  -- `eff`).
   ⊢fold : ∀ {n} {Γ : Ctx m n} {Ψa Ψt} {π π₁ π₂} {F A alg t}
-        → pure ⊑π π → WFFun Δ F
+        → WFFun Δ F
         → Δ ⊩ Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁
         → Δ ⊩ Γ ⊢[ Ψt ] t ∷ μ F ! π₂
         → Δ ⊩ Γ ⊢[ Many *ᵘ Ψa +ᵘ Ψt ] fold F alg t ∷ A ! π₁ ·p π₂ ·p π
 
   -- ν F π: the final coalgebra of `M π ∘ F` and its unfold. Building it
   -- evaluates the coalgebra term and the seed; each forced layer runs the
-  -- coalgebra function, at `π`.
+  -- coalgebra function, at `π` — a finite block at most (`act`): a layer
+  -- never runs a loop (structured recursion, D317).
   ⊢unfold : ∀ {n} {Γ : Ctx m n} {Ψc Ψs} {π π₁ π₂} {F A c a}
-          → WFFun Δ F
+          → π ⊑π act → WFFun Δ F
           → Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π₁
           → Δ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂
           → Δ ⊩ Γ ⊢[ Many *ᵘ Ψc +ᵘ Ψs ] unfold F c a ∷ ν F π ! π₁ ·p π₂
@@ -117,13 +115,13 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → Ctx m n → Usage n → 
        → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν F π ! π₁
        → Δ ⊩ Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧F (ν F π) ! π₁ ·p π
 
-  -- A SERVER: guarded iteration. The step is a pure choice: end at once with
-  -- a `B`, or a suspended computation that performs an event before it
-  -- answers (`eff⁺`) — so the loop is productive however long it runs, and
-  -- may run forever (`eff`). As `fold`'s algebra, the step is evaluated once
-  -- and applied per round.
+  -- THE LOOP: a SERVER. A round is a finite block (`act`) that ends with a
+  -- `B` or with the next state; the loop runs rounds until one ends with a
+  -- `B`, and may run forever (`eff`) — the anamorphism into `T∞ B`, the final
+  -- coalgebra of `T (B + −)` (D317). As `fold`'s algebra, the round is
+  -- evaluated once and applied per round.
   ⊢iter : ∀ {n} {Γ : Ctx m n} {Ψf Ψs} {π₁ π₂} {A B f s}
-        → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))) ! π₁
+        → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁
         → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
         → Δ ⊩ Γ ⊢[ Many *ᵘ Ψf +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p π₂ ·p eff
 
@@ -142,13 +140,6 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → Ctx m n → Usage n → 
   ⊢sigop : ∀ {n} {Γ : Ctx m n} {c t}
          → (c ∶ t) ∈ Σ
          → Δ ⊩ Γ ⊢[ zeroUsage ] sigop c t ∷ ⌜ t ⌝ᵈ ! pure
-
-  -- An operation is ONE call, so it is also a GUARDED arrow: referenced at
-  -- the guard `eff⁺` of its declared arrow (`eff⁺ ⊑ eff` recovers the declared
-  -- type at `eff`).
-  ⊢sigop⁺ : ∀ {n} {Γ : Ctx m n} {c a q π b}
-          → (c ∶ arrow a (mk-kind q π) b) ∈ Σ → EffGrade π
-          → Δ ⊩ Γ ⊢[ zeroUsage ] sigop c (arrow a (mk-kind q eff⁺) b) ∷ ⌜ a ⌝ ⇒[ mk-kind q eff⁺ ] ⌜ b ⌝ ! pure
 
   -- An earlier definition, at an instance of its schema that respects its
   -- kinds. A definition is a value.

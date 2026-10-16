@@ -9,9 +9,8 @@
 -- loses nothing a program can observe:
 --   * `Void <: B`: the unique map out of the initial object;
 --   * `π ⊑ π′` on an arrow's or a stream's effect: the monad morphism between
---     their monads (a value is a computation with no events; a computation
---     that returns is one that need not; a guarded one, an event first, is
---     one that need not perform one first).
+--     their monads (a value is a computation with no events; a block of
+--     events is one round of a computation that need not stop).
 -- Closed under the type formers: arrows are contravariant in the domain;
 -- products and sums are covariant; `μ` is invariant. The usage is
 -- not varied (that is sub-usage, in the typing rules).

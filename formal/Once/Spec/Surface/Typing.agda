@@ -35,7 +35,7 @@ open import Data.Nat using (suc; _<_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Quantity; Many; Purity; pure; eff⁺; mk-kind; _⊑π_; EffGrade)
+open import Once.Spec.Grade using (Quantity; Many; Purity; pure; act; eff; mk-kind; _⊑π_; EffGrade)
 open import Once.Spec.Name using (gen; NotGenerator)
 open import Once.Spec.Type
   using (Ty; Type; Fun; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; K; Id; _⊕_; _⊗_;
@@ -204,14 +204,14 @@ module _ {m : ℕ} (Δ : KCtx m) where
   ------------------------------------------------------------------
 
   data _⊢_⇐_↝_ {n} L where
-    -- The generators as morphisms, at any grade with a unit (not the guard).
-    c-id       : ∀ {T π} → pure ⊑π π → L ⊢ RResolved (gen "id") ⇐ T ⇒⟨ π ⟩ T ↝ idᶜ T π
-    c-fst      : ∀ {A B π} → pure ⊑π π → L ⊢ RResolved (gen "fst") ⇐ (A * B) ⇒⟨ π ⟩ A ↝ fstᶜ A B π
-    c-snd      : ∀ {A B π} → pure ⊑π π → L ⊢ RResolved (gen "snd") ⇐ (A * B) ⇒⟨ π ⟩ B ↝ sndᶜ A B π
-    c-terminal : ∀ {A π} → pure ⊑π π → L ⊢ RResolved (gen "terminal") ⇐ A ⇒⟨ π ⟩ Unit ↝ terminalᶜ A π
-    c-initial  : ∀ {A π} → pure ⊑π π → L ⊢ RResolved (gen "initial") ⇐ Void ⇒⟨ π ⟩ A ↝ initialᶜ A π
-    c-inl      : ∀ {A B π} → pure ⊑π π → L ⊢ RResolved (gen "inl") ⇐ A ⇒⟨ π ⟩ (A + B) ↝ inlᶜ A B π
-    c-inr      : ∀ {A B π} → pure ⊑π π → L ⊢ RResolved (gen "inr") ⇐ B ⇒⟨ π ⟩ (A + B) ↝ inrᶜ A B π
+    -- The generators as morphisms, at any grade.
+    c-id       : ∀ {T π} → L ⊢ RResolved (gen "id") ⇐ T ⇒⟨ π ⟩ T ↝ idᶜ T π
+    c-fst      : ∀ {A B π} → L ⊢ RResolved (gen "fst") ⇐ (A * B) ⇒⟨ π ⟩ A ↝ fstᶜ A B π
+    c-snd      : ∀ {A B π} → L ⊢ RResolved (gen "snd") ⇐ (A * B) ⇒⟨ π ⟩ B ↝ sndᶜ A B π
+    c-terminal : ∀ {A π} → L ⊢ RResolved (gen "terminal") ⇐ A ⇒⟨ π ⟩ Unit ↝ terminalᶜ A π
+    c-initial  : ∀ {A π} → L ⊢ RResolved (gen "initial") ⇐ Void ⇒⟨ π ⟩ A ↝ initialᶜ A π
+    c-inl      : ∀ {A B π} → L ⊢ RResolved (gen "inl") ⇐ A ⇒⟨ π ⟩ (A + B) ↝ inlᶜ A B π
+    c-inr      : ∀ {A B π} → L ⊢ RResolved (gen "inr") ⇐ B ⇒⟨ π ⟩ (A + B) ↝ inrᶜ A B π
 
     -- `compose f g`: `g`'s codomain from its domain, or `f`'s type synthesized.
     c-compose-g : ∀ {f g A B C π tf tg}
@@ -228,27 +228,27 @@ module _ {m : ℕ} (Δ : KCtx m) where
     c-pair : ∀ {f g A B C π tf tg}
            → L ⊢ f ⇐ A ⇒⟨ π ⟩ B ↝ tf → L ⊢ g ⇐ A ⇒⟨ π ⟩ C ↝ tg
            → L ⊢ RApp (RApp (RResolved (gen "pair")) f) g ⇐ A ⇒⟨ π ⟩ (B * C) ↝ pairᶜ A π tf tg
-    c-curry : ∀ {f A B C π₀ π t} → pure ⊑π π₀
-            → L ⊢ f ⇐ (A * B) ⇒⟨ π ⟩ C ↝ t
+    c-curry : ∀ {f A B C π₀ π t} → L ⊢ f ⇐ (A * B) ⇒⟨ π ⟩ C ↝ t
             → L ⊢ RApp (RResolved (gen "curry")) f ⇐ A ⇒⟨ π₀ ⟩ (B ⇒⟨ π ⟩ C) ↝ curryᶜ A B π₀ π t
-    c-cata : ∀ {alg F A π t} → pure ⊑π π → WFFun Δ F
+    c-cata : ∀ {alg F A π t} → WFFun Δ F
            → L ⊢ alg ⇐ ⟦ F ⟧F A ⇒⟨ π ⟩ A ↝ t
            → L ⊢ RApp (RResolved (gen "cata")) alg ⇐ μ F ⇒⟨ π ⟩ A ↝ cataᶜ F π t
-    c-ana : ∀ {c F A π₀ π t} → pure ⊑π π₀ → WFFun Δ F
+    -- `ana` into a stream: a coalgebra of a finite block at most, into
+    -- `ν F π`, built by an arrow that runs nothing more (D317).
+    c-ana : ∀ {c F A π₀ π t} → π₀ ⊑π act → π ⊑π act → WFFun Δ F
           → L ⊢ c ⇐ A ⇒⟨ π ⟩ ⟦ F ⟧F A ↝ t
           → L ⊢ RApp (RResolved (gen "ana")) c ⇐ A ⇒⟨ π₀ ⟩ ν F π ↝ anaᶜ F A π₀ t
+    -- `ana` into `Eff`: THE LOOP. Its round is a finite block that ends with
+    -- a `B` or the next state; `T∞ B` is the final coalgebra of `T (B + −)`
+    -- (D317).
+    c-loop : ∀ {c A B t}
+           → L ⊢ c ⇐ A ⇒⟨ act ⟩ (B + A) ↝ t
+           → L ⊢ RApp (RResolved (gen "ana")) c ⇐ A ⇒⟨ eff ⟩ B ↝ loopᶜ A t
 
     -- A synthesized type where a supertype is expected: its conversion.
     c-sub : ∀ {e A B t} → L ⊢ e ⇒ A ↝ t → A <: B → L ⊢ e ⇐ B ↝ coerce A B t
 
-    -- An operation of the signature also checks at its GUARD: one call
-    -- performs an event first (`eff⁺` is incomparable with `act`, so this is a
-    -- rule of its own, not a conversion).
-    c-sigop⁺ : ∀ {c a q π b} → NotGenerator c → (c ∶ arrow a (mk-kind q π) b) ∈ Σ → EffGrade π
-             → L ⊢ RResolved c ⇐ ⌜ a ⌝ ⇒[ mk-kind q eff⁺ ] ⌜ b ⌝ ↝ sigop c (arrow a (mk-kind q eff⁺) b)
-
-    c-lam : ∀ {x body A B q π t} → pure ⊑π π
-          → (L ▹ x ∶ A) ⊢ body ⇐ B ↝ t
+    c-lam : ∀ {x body A B q π t} → (L ▹ x ∶ A) ⊢ body ⇐ B ↝ t
           → L ⊢ RLam x body ⇐ A ⇒[ mk-kind q π ] B ↝ lam A q π t
     c-pair-lit : ∀ {a b A B ta tb} → L ⊢ a ⇐ A ↝ ta → L ⊢ b ⇐ B ↝ tb → L ⊢ RPair a b ⇐ A * B ↝ pair ta tb
 
@@ -281,23 +281,22 @@ module _ {m : ℕ} (Δ : KCtx m) where
            → (τ : TySub (arity (S !! d)) m) → Respects (kinds (S !! d)) Δ τ
            → sd ⟨ τ ⟩ ≡ A → sc ⟨ τ ⟩ ≡ B → π′ ⊑π π
            → L ⊢ RResolved c ⇐ A ⇒[ π ]↦ B ↝ coerce (A ⇒⟨ π′ ⟩ B) (A ⇒⟨ π ⟩ B) (ref d τ)
-    d-lam : ∀ {x body A B π t} → pure ⊑π π
-          → (L ▹ x ∶ A) ⊢ body ⇒ B ↝ t
+    d-lam : ∀ {x body A B π t} → (L ▹ x ∶ A) ⊢ body ⇒ B ↝ t
           → L ⊢ RLam x body ⇐ A ⇒[ π ]↦ B ↝ lam A Many π t
     d-compose : ∀ {f g A M B π tf tg}
               → L ⊢ g ⇐ A ⇒[ π ]↦ M ↝ tg → L ⊢ f ⇐ M ⇒[ π ]↦ B ↝ tf
               → L ⊢ RApp (RApp (RResolved (gen "compose")) f) g ⇐ A ⇒[ π ]↦ B ↝ composeᶜ A π tf tg
-    d-id       : ∀ {A π} → pure ⊑π π → L ⊢ RResolved (gen "id") ⇐ A ⇒[ π ]↦ A ↝ idᶜ A π
-    d-fst      : ∀ {A B π} → pure ⊑π π → L ⊢ RResolved (gen "fst") ⇐ (A * B) ⇒[ π ]↦ A ↝ fstᶜ A B π
-    d-snd      : ∀ {A B π} → pure ⊑π π → L ⊢ RResolved (gen "snd") ⇐ (A * B) ⇒[ π ]↦ B ↝ sndᶜ A B π
-    d-terminal : ∀ {A π} → pure ⊑π π → L ⊢ RResolved (gen "terminal") ⇐ A ⇒[ π ]↦ Unit ↝ terminalᶜ A π
-    d-initial  : ∀ {π} → pure ⊑π π → L ⊢ RResolved (gen "initial") ⇐ Void ⇒[ π ]↦ Void ↝ initialᶜ Void π
+    d-id       : ∀ {A π} → L ⊢ RResolved (gen "id") ⇐ A ⇒[ π ]↦ A ↝ idᶜ A π
+    d-fst      : ∀ {A B π} → L ⊢ RResolved (gen "fst") ⇐ (A * B) ⇒[ π ]↦ A ↝ fstᶜ A B π
+    d-snd      : ∀ {A B π} → L ⊢ RResolved (gen "snd") ⇐ (A * B) ⇒[ π ]↦ B ↝ sndᶜ A B π
+    d-terminal : ∀ {A π} → L ⊢ RResolved (gen "terminal") ⇐ A ⇒[ π ]↦ Unit ↝ terminalᶜ A π
+    d-initial  : ∀ {π} → L ⊢ RResolved (gen "initial") ⇐ Void ⇒[ π ]↦ Void ↝ initialᶜ Void π
     d-case : ∀ {f g A B C π tf tg}
            → L ⊢ f ⇐ A ⇒[ π ]↦ C ↝ tf → L ⊢ g ⇐ B ⇒[ π ]↦ C ↝ tg
            → L ⊢ RApp (RApp (RResolved (gen "case")) f) g ⇐ (A + B) ⇒[ π ]↦ C ↝ caseᶜ A B π tf tg
     d-pair : ∀ {f g A B C π tf tg}
            → L ⊢ f ⇐ A ⇒[ π ]↦ B ↝ tf → L ⊢ g ⇐ A ⇒[ π ]↦ C ↝ tg
            → L ⊢ RApp (RApp (RResolved (gen "pair")) f) g ⇐ A ⇒[ π ]↦ (B * C) ↝ pairᶜ A π tf tg
-    d-cata : ∀ {alg F A π t} → pure ⊑π π → WFFun Δ F
+    d-cata : ∀ {alg F A π t} → WFFun Δ F
            → L ⊢ alg ⇒ ⟦ F ⟧F A ⇒⟨ π ⟩ A ↝ t
            → L ⊢ RApp (RResolved (gen "cata")) alg ⇐ μ F ⇒[ π ]↦ A ↝ cataᶜ F π t

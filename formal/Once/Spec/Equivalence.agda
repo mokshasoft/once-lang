@@ -7,10 +7,11 @@
 --
 -- Two values of a type are the same when no finite observation tells them
 -- apart: base values are equal; functions take the same arguments to the same
--- computations; computations make the same calls with the same arguments,
--- continue the same way from every answer, and end with the same values; a
--- stream's first `n` layers agree. Every grade is observed through its
--- embedding into `T∞`. Infinite objects are never compared by `≡`.
+-- computations; computations, against every Interpretation, make the same
+-- first `n` calls and end the same way with the same values — or both go on
+-- forever without another call (D317); a stream's first `n` layers agree.
+-- Every grade is observed through its embedding into `T∞`; where a block of
+-- calls ends is not observed. Infinite objects are never compared by `≡`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -18,27 +19,35 @@ open import Once.Spec.Signature using (Signature)
 module Once.Spec.Equivalence (Σ : Signature) where
 
 open import Data.Empty using (⊥)
+open import Data.List using ([])
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (Purity; mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
-open import Once.Spec.Signature using (Layer; call)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Spec.Effect Σ using (M; T∞; Step; StepEq; toT∞; νM; module T∞; module νM)
-open T∞ using (force)
+open import Once.Spec.Effect Σ using (M; T∞; toT∞; νM; module νM)
 open νM using (outν)
+open import Once.Spec.Observation Σ using (Interp; History; End; returned; halted; cut; observe)
+open import Once.Spec.Delay using (_≈⟨_⟩_)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
 
--- A tree to depth `n`: its first `n` nodes agree.
+-- Two ends of runs: the same way, the values related.
+data EndRel {X : Set} (R : X → X → Set) : End X → End X → Set where
+  returned≈ : ∀ {x y} → R x y → EndRel R (returned x) (returned y)
+  halted≈   : EndRel R halted halted
+  cut≈      : EndRel R cut cut
+
+-- The same calls, and the same end.
+Outcome≈ : ∀ {X : Set} → (X → X → Set) → History × End X → History × End X → Set
+Outcome≈ R o o′ = proj₁ o ≡ proj₁ o′ × EndRel R (proj₂ o) (proj₂ o′)
+
+-- Two computations to depth `n`: against every Interpretation, their first
+-- `n` calls and their ends agree, or neither run gets that far.
 UpTo : ∀ {X : Set} → ℕ → (X → X → Set) → T∞ X → T∞ X → Set
-data NodeUpTo {X : Set} (n : ℕ) (R : X → X → Set) : Step X (T∞ X) → Step X (T∞ X) → Set where
-  done≈ : ∀ {x y} → R x y → NodeUpTo n R (Step.done x) (Step.done y)
-  node≈ : ∀ {o a k k′} → (∀ b → UpTo n R (k b) (k′ b)) → NodeUpTo n R (Step.node (call o a k)) (Step.node (call o a k′))
-UpTo zero    R m m′ = ⊤
-UpTo (suc n) R m m′ = NodeUpTo n R (force m) (force m′)
+UpTo n R m m′ = ∀ (ι : Interp) → observe ι [] m n ≈⟨ Outcome≈ R ⟩ observe ι [] m′ n
 
 -- One layer of a stream: equal constants, related recursive positions.
 LayerEq : ∀ (G : SFunctor) {X : Set} → (X → X → Set) → ⟦ G ⟧SF X → ⟦ G ⟧SF X → Set

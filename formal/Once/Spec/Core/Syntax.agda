@@ -19,7 +19,7 @@
 --   Unit, ×, +, Void    unit, pair, fst, snd, inl, inr, case, absurd
 --   μ F                 roll, fold                (initial algebra, its fold)
 --   ν F π               unfold, out               (final coalgebra, its unfold)
---   Eff                 iter                      (guarded iteration: a server)
+--   Eff                 iter                      (the loop: a server)
 --   subtyping           coerce
 --   numbers             lit, prim
 --   the signature Σ     sigop                     (a declared constant or operation)
@@ -131,7 +131,7 @@ data Tm {s} (S : Defs s) (m : ℕ) : ℕ → Set where
   fold    : ∀ {n} → Fun m → Tm S m n → Tm S m n → Tm S m n     -- fold F algebra target
   unfold  : ∀ {n} → Fun m → Tm S m n → Tm S m n → Tm S m n     -- unfold F coalgebra seed
   out     : ∀ {n} → Tm S m n → Tm S m n
-  iter    : ∀ {n} → Tm S m n → Tm S m n → Tm S m n             -- iter step seed
+  iter    : ∀ {n} → Tm S m n → Tm S m n → Tm S m n             -- iter round seed
   coerce  : ∀ {n} → Ty m → Ty m → Tm S m n → Tm S m n          -- coerce A B t, along A <: B
   lit     : ∀ {n} → Lit → Tm S m n
   prim    : ∀ {n} → Prim → Tm S m n → Tm S m n

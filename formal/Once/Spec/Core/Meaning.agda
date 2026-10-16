@@ -34,11 +34,11 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω; EffGrade; eg-act; eg-eff)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Ty; KCtx; ∅ₖ; TySub; _⟨_⟩; _⟨_⟩F; Respects; respects-∘; ⟨⟩-∘; μ; ν)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature
-  using (DeclType; constant; arrow; _∶_; Op; op; Effectful; e-act; e-g; e-eff; Layer; call; ⌜_⌝)
+  using (DeclType; constant; arrow; _∶_; Op; op; Effectful; e-act; e-eff; Layer; call; ⌜_⌝)
 open import Once.Spec.Context
   using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Numerics using (module TargetNum)
@@ -47,7 +47,7 @@ import Once.Spec.Word as Word
 open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Float.Arith as FA
 open import Once.Spec.Bool using (truth)
-open import Once.Spec.Effect Σ using (M; bind; fmap; bindᵍ; sub; T; T∞; returnT; return∞; T⁺; iter∞; performT; perform; perform⁺; module νM)
+open import Once.Spec.Effect Σ using (M; bind; fmap; bindᵍ; sub; T; T∞; returnT; return∞; loop; performT; perform; module νM)
 open νM using (outν)
 open import Once.Spec.Observation Σ using (Interp; module Interp)
 open Interp using (value)
@@ -118,20 +118,6 @@ module _ {m : ℕ} (σ : TySub m 0) where
   sigopᵛ c (arrow a (mk-kind Zero eff) b)  m ι = λ _ → perform (call (op m e-eff) tt (fromB σ b))
   sigopᵛ c (arrow a (mk-kind One  eff) b)  m ι = λ x → perform (call (op m e-eff) (toB σ a x) (fromB σ b))
   sigopᵛ c (arrow a (mk-kind Many eff) b)  m ι = λ x → perform (call (op m e-eff) (toB σ a x) (fromB σ b))
-  sigopᵛ c (arrow a (mk-kind Zero eff⁺) b) m ι = λ _ → perform⁺ (call (op m e-g) tt (fromB σ b))
-  sigopᵛ c (arrow a (mk-kind One  eff⁺) b) m ι = λ x → perform⁺ (call (op m e-g) (toB σ a x) (fromB σ b))
-  sigopᵛ c (arrow a (mk-kind Many eff⁺) b) m ι = λ x → perform⁺ (call (op m e-g) (toB σ a x) (fromB σ b))
-
-  -- An operation referenced at its guard: the same one call.
-  effectful : ∀ {π} → EffGrade π → Effectful π
-  effectful eg-act = e-act
-  effectful eg-eff = e-eff
-
-  sigop⁺ᵛ : ∀ (c : CanonicalName) a q {π} b → (c ∶ arrow a (mk-kind q π) b) ∈ Σ → EffGrade π
-          → ⟦ (⌜ a ⌝ Once.Spec.Type.⇒[ mk-kind q eff⁺ ] ⌜ b ⌝) ⟨ σ ⟩ ⟧ᵛ
-  sigop⁺ᵛ c a Zero b m g = λ _ → perform⁺ (call (op m (effectful g)) tt (fromB σ b))
-  sigop⁺ᵛ c a One  b m g = λ x → perform⁺ (call (op m (effectful g)) (toB σ a x) (fromB σ b))
-  sigop⁺ᵛ c a Many b m g = λ x → perform⁺ (call (op m (effectful g)) (toB σ a x) (fromB σ b))
 
   -- The arithmetic is the target's: words of its width (`+`, `-`, `*` wrap;
   -- `/`, `%` total; comparisons signed), floats of its format, correctly
@@ -210,24 +196,24 @@ module _ {m : ℕ} (σ : TySub m 0) where
 ⟦ ⊢absurd {π = π} d ⟧ ρ σ r γ = bind π (⟦ d ⟧ ρ σ r γ) ⊥-elim
 
 ⟦ ⊢roll {π = π} {F = F} wf d ⟧ ρ σ r γ = fmap π (λ l → inS (toL σ F (μ F) l)) (⟦ d ⟧ ρ σ r γ)
-⟦ ⊢fold {Ψa = Ψa} {Ψt} {π} {π₁} {π₂} {F} {A} e wf da dt ⟧ ρ σ r γ =
+⟦ ⊢fold {Ψa = Ψa} {Ψt} {π} {π₁} {π₂} {F} {A} wf da dt ⟧ ρ σ r γ =
   bindᵍ π₁ _ (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) γ)) λ alg →
   bindᵍ π₂ π (⟦ dt ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) γ)) λ v →
-  foldM π e (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v
+  foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v
 
-⟦ ⊢unfold {Ψc = Ψc} {Ψs} {π} {π₁} {π₂} {F} {A} wf dc da ⟧ ρ σ r γ =
+⟦ ⊢unfold {Ψc = Ψc} {Ψs} {π} {π₁} {π₂} {F} {A} g wf dc da ⟧ ρ σ r γ =
   bindᵍ π₁ π₂ (⟦ dc ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) γ)) λ c →
-  fmap π₂ (anaM π (code (F ⟨ σ ⟩F)) (λ x → fmap π (toL σ F A) (c x)))
+  fmap π₂ (anaM g (code (F ⟨ σ ⟩F)) (λ x → fmap π (toL σ F A) (c x)))
           (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) γ))
 ⟦ ⊢out {π = π} {π₁} {F} wf d ⟧ ρ σ r γ =
   bindᵍ π₁ π (⟦ d ⟧ ρ σ r γ) λ v → fmap π (fromL σ F (ν F π)) (outν v)
 
--- The server: the step is evaluated once, then the seed; the loop is guarded
--- iteration over the step.
+-- The server: the round is evaluated once, then the seed; the loop is the
+-- anamorphism over the round.
 ⟦ ⊢iter {Ψf = Ψf} {Ψs} {π₁} {π₂} d ds ⟧ ρ σ r γ =
   bindᵍ π₁ _ (⟦ d ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) γ)) λ f →
   bindᵍ π₂ eff (⟦ ds ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) γ)) λ a →
-  iter∞ (λ x → [ inj₁ , (λ k → inj₂ (k tt)) ]′ (f x)) a
+  loop f a
 
 ⟦ ⊢coerce {π = π} p d ⟧ ρ σ r γ = fmap π (conv σ p) (⟦ d ⟧ ρ σ r γ)
 
@@ -237,7 +223,6 @@ module _ {m : ℕ} (σ : TySub m 0) where
 ⟦ ⊢prim {π = π} p d ⟧ ρ σ r γ = fmap π (primᵛ σ p) (⟦ d ⟧ ρ σ r γ)
 
 ⟦ ⊢sigop {c = c} {t} m ⟧ ρ σ r γ = sigopᵛ σ c t m (interp ρ)
-⟦ ⊢sigop⁺ {c = c} {a} {q} {b = b} m g ⟧ ρ σ r γ = sigop⁺ᵛ σ c a q b m g
 
 ⟦ ⊢ref d τ rd ⟧ ρ σ r γ =
   subst ⟦_⟧ᵛ (sym (⟨⟩-∘ (type (S !! d)) τ σ)) (defs ρ d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r))

@@ -103,8 +103,6 @@ module Types {R RF : Set} (alg : TypeAlg R RF) where
     a-float : ∀ {r} → ParsesAtom (TWord "Float" ∷ r) aFloat r
     a-eff   : ∀ {ts₁ ts₂ r A B} → ParsesAtom ts₁ A ts₂ → ParsesAtom ts₂ B r → ParsesAtom (TWord "Eff" ∷ ts₁) (aEff A B) r
     a-act   : ∀ {ts₁ ts₂ r A B} → ParsesAtom ts₁ A ts₂ → ParsesAtom ts₂ B r → ParsesAtom (TWord "Act" ∷ ts₁) (aAct A B) r
-    -- `IO A` is `Eff Unit A`.
-    a-io    : ∀ {ts r A} → ParsesAtom ts A r → ParsesAtom (TWord "IO" ∷ ts) (aEff aUnit A) r
     a-mu    : ∀ {ts r F} → ParsesFunSum ts F r → ParsesAtom (TWord "Mu" ∷ ts) (aMu F) r
     a-nu    : ∀ {ts r F} → ParsesFunSum ts F r → ParsesAtom (TWord "Nu" ∷ ts) (aNu pure F) r
     a-nu-eff : ∀ {ts r F} → ParsesFunSum ts F (TRParen ∷ r)

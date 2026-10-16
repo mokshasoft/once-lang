@@ -8,10 +8,12 @@
 -- A program is a TELESCOPE of definitions over a signature Σ: each body is
 -- typed once, over its type variables, and may refer only to the definitions
 -- before it (there is no general recursion). One of them is the entry,
--- `main`, at `Eff Unit Unit`.
+-- `main`, declared at its own type and USED at `Eff Unit Unit` (D315): its
+-- type is a subtype of that, and the entry runs its conversion.
 --
 -- What it does, against an Interpretation of Σ, is the sequence of calls its
--- entry makes.
+-- entry makes — a `Delay`, since a run may go on forever without another
+-- call (D317).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -20,6 +22,8 @@ module Once.Spec.Core.Program (Σ : Signature) where
 
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; [])
+open import Once.Spec.Delay using (Delay)
+open import Once.Spec.Sub using (_<:_)
 open import Data.Nat using (ℕ; suc)
 open import Data.Unit using (⊤; tt)
 open import Once.Spec.Grade using (mk-kind; Many; pure; eff)
@@ -30,7 +34,7 @@ open import Once.Spec.Context using (∅; [])
 open import Once.Spec.Core.Syntax using (Defs; []; _▷_; _!!_; Schema; module Schema; schema; Tm)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Observation Σ using (Interp; events)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; conv)
 open import Once.Spec.Effect Σ using (T∞)
 import Once.Spec.Core.Typing as Typing
 import Once.Spec.Core.Meaning as Meaning
@@ -63,9 +67,9 @@ teleSem fmt ι (def tl sc body D) = record { defs = defs′ ; interp = ι }
 EffUU : Ty 0
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
--- The entry is a definition with no type variables at `Eff Unit Unit`.
+-- The entry is a definition with no type variables, usable at `Eff Unit Unit`.
 data Entry : Schema → Set where
-  entry : ∀ {Δ : KCtx 0} → Entry (schema 0 Δ EffUU)
+  entry : ∀ {Δ : KCtx 0} {A} → A <: EffUU → Entry (schema 0 Δ A)
 
 record Program : Set where
   field
@@ -83,8 +87,8 @@ noVars ()
 -- What a program does: the first `n` calls its entry makes, run at
 -- `Eff Unit Unit`, against `ι`.
 runEntry : ∀ {sc} → Entry sc → ((τ : TySub (arity sc) 0) → Respects (kinds sc) ∅ₖ τ → ⟦ type sc ⟨ τ ⟩ ⟧ᵛ) → T∞ ⊤
-runEntry entry v = v noVars (λ ()) tt
+runEntry (entry p) v = conv noVars p (v noVars (λ ())) tt
 
-behaviour : TargetNum → (p : Program) → Interp → ℕ → List Event
+behaviour : TargetNum → (p : Program) → Interp → ℕ → Delay (List Event)
 behaviour fmt p ι n =
   events ι [] (runEntry (isMain p) (Meaning.DefSem.defs (teleSem fmt ι (defs p)) (main p))) n

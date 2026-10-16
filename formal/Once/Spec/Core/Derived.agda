@@ -16,7 +16,7 @@ module Once.Spec.Core.Derived where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (zero; suc)
-open import Once.Spec.Grade using (Purity; pure; mk-kind; One; Many)
+open import Once.Spec.Grade using (Purity; pure; eff; mk-kind; One; Many)
 open import Once.Spec.Type using (Ty; Fun; Unit; Void; _*_; _+_; _⇒[_]_; ⟦_⟧F; μ; ν)
 open import Once.Spec.Core.Syntax
 
@@ -72,6 +72,10 @@ module _ {s} {S : Defs s} {m : ℕ} where
   -- `cata alg`: the algebra is evaluated once.
   cataᶜ : ∀ {n} → Fun m → Purity → Tm S m n → Tm S m n
   cataᶜ F π alg = let′ Many alg (lam (μ F) Many π (fold F v1 v0))
+
+  -- `ana round` into `Eff`: the loop; the round is evaluated once.
+  loopᶜ : ∀ {n} → Ty m → Tm S m n → Tm S m n
+  loopᶜ A c = let′ Many c (lam A Many eff (iter v1 v0))
 
   -- `ana coalg` into `ν F`: the stream stores the coalgebra.
   anaᶜ : ∀ {n} → Fun m → Ty m → Purity → Tm S m n → Tm S m n

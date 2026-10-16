@@ -12,35 +12,41 @@
 -- Interpretation's author provides it off-line; the compiler never sees one.
 --
 -- What a program DOES is the sequence of its calls against an
--- Interpretation; its first `n` are `events ι n`. That is the whole
--- observable: correctness of a compiled program is equality of these
--- sequences, at every depth, for every Interpretation.
+-- Interpretation; its first `n` are `events ι n`, a `Delay` (D317): they
+-- arrive once the run has made `n` calls or ended, and never if it goes on
+-- forever without another call. That is the whole observable: correctness
+-- of a compiled program is that these arrive at the same sequences, or both
+-- never arrive, at every depth, for every Interpretation.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
 
 module Once.Spec.Observation (Σ : Signature) where
 
-open import Data.List using (List; []; _∷_; _++_; [_])
+open import Data.List using (List; []; _∷_; _++_; [_]; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
+open import Data.Product using (_×_; _,_; proj₁; ∃-syntax)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
-open import Once.Spec.Grade using (mk-kind; pure; act; eff⁺; eff)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Once.Spec.Grade using (mk-kind; pure; act; eff)
 open import Once.Spec.Signature
   using (BTy; unit; void; int; float; _*_; _+_; ⟦_⟧ᵇ; DeclType; constant; arrow; _∶_; argAt;
          Op; module Op; arg; Layer; call; Event; eventOf)
 open Op using (ans)
-open import Once.Spec.Effect Σ using (T∞; Step; done; node; module T∞)
+open import Once.Spec.Effect Σ using (T; roll; done; node; T∞; module T∞)
 open T∞ using (force)
+open import Once.Spec.Delay using (Delay; module Delay; mapD; _⇓_)
+open Delay using (step)
 
 -- The declarations whose meaning is a value.
 Value : DeclType → Set
-Value (constant b)                = ⊤
+Value (constant b)                 = ⊤
 Value (arrow a (mk-kind q pure) b) = ⊤
 Value (arrow a (mk-kind q act) b)  = ⊥
-Value (arrow a (mk-kind q eff⁺) b) = ⊥
 Value (arrow a (mk-kind q eff) b)  = ⊥
 
 ⟦_⟧ᵈ : DeclType → Set
@@ -75,31 +81,45 @@ resume float   v k = just (k v)
 resume (a * b) v k = just (k v)
 resume (a + b) v k = just (k v)
 
--- The first `n` calls a computation makes against `ι`, after the history `h`.
-events     : ∀ {X} → Interp → History → T∞ X → ℕ → List Event
-stepEvents : ∀ {X} → Interp → History → Step X (T∞ X) → ℕ → List Event
-next       : ∀ {X} → Interp → History → Maybe (T∞ X) → ℕ → List Event
-events ι h m zero    = []
-events ι h m (suc n) = stepEvents ι h (force m) n
-stepEvents ι h (done x)            n = []
-stepEvents ι h (node (call o a k)) n =
-  eventOf o a ∷ next ι (h ++ [ eventOf o a ]) (resume (ans o) (answer ι o h a) k) n
-next ι h (just m) n = events ι h m n
-next ι h nothing  n = []
-
 ------------------------------------------------------------------------
--- A behaviour is a PREFIX FAMILY (D179): observing one call further only
--- extends what was observed, the `n`-th observation has at most `n` calls,
--- and one that stops short is complete.
+-- Observing a run
 ------------------------------------------------------------------------
 
-open import Data.List using (length)
-open import Data.Nat using (_≤_; _<_)
-open import Data.Product using (∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+-- How a run ends, as far as it is observed: with a value, halted by an
+-- operation that answers nothing, or cut where the observation stops.
+data End (X : Set) : Set where
+  returned : X → End X
+  halted   : End X
+  cut      : End X
 
-record PrefixFamily (tr : ℕ → List Event) : Set where
+-- The first `n` calls a computation makes against `ι`, after the history
+-- `h`, and how it ends. A block's end is one step of the delay: a run that
+-- goes on forever without another call never arrives.
+observe   : ∀ {X} → Interp → History → T∞ X → ℕ → Delay (History × End X)
+blockObs  : ∀ {X} → Interp → History → T (X ⊎ T∞ X) → ℕ → (History × End X) ⊎ Delay (History × End X)
+answerObs : ∀ {X} → Interp → History → Maybe (T (X ⊎ T∞ X)) → ℕ → (History × End X) ⊎ Delay (History × End X)
+step (observe ι h m n) = blockObs ι h (force m) n
+blockObs ι h t                          zero    = inj₁ (h , cut)
+blockObs ι h (roll (done (inj₁ x)))     (suc n) = inj₁ (h , returned x)
+blockObs ι h (roll (done (inj₂ m)))     (suc n) = inj₂ (observe ι h m (suc n))
+blockObs ι h (roll (node (call o a k))) (suc n) =
+  answerObs ι (h ++ [ eventOf o a ]) (resume (ans o) (answer ι o h a) k) n
+answerObs ι h nothing  n = inj₁ (h , halted)
+answerObs ι h (just t) n = blockObs ι h t n
+
+-- The calls alone.
+events : ∀ {X} → Interp → History → T∞ X → ℕ → Delay History
+events ι h m n = mapD proj₁ (observe ι h m n)
+
+------------------------------------------------------------------------
+-- A behaviour is a PREFIX FAMILY (D179): the `n`-th observation has at most
+-- `n` calls, observing one call further only extends what was observed (and
+-- arrives whenever the shorter one does not stop at the bound), and one that
+-- stops short is complete.
+------------------------------------------------------------------------
+
+record PrefixFamily (tr : ℕ → Delay History) : Set where
   field
-    bounded    : ∀ k → length (tr k) ≤ k
-    saturating : ∀ k → length (tr k) < k → tr (suc k) ≡ tr k
-    coherent   : ∀ k → ∃[ rest ] (tr (suc k) ≡ tr k ++ rest)
+    bounded    : ∀ k {h} → tr k ⇓ h → length h ≤ k
+    coherent   : ∀ k {h′} → tr (suc k) ⇓ h′ → ∃[ h ] ∃[ rest ] (tr k ⇓ h × h′ ≡ h ++ rest)
+    saturating : ∀ k {h} → tr k ⇓ h → length h < k → tr (suc k) ⇓ h

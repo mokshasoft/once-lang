@@ -6,29 +6,30 @@
 -- Once.Spec.Effect — what an effectful computation is.
 --
 -- One functor, `Step X Y = X + H_Σ Y`: the computation is done with a value,
--- or it makes one call and continues from the answer. Its fixed points are
--- the two monads of effects:
+-- or it makes one call and continues from the answer. Its initial algebra is
+-- a finite BLOCK of calls:
 --
---   T X  = μY. X + H_Σ Y   finite trees: finitely many events, then it
---                          returns (or halts) — the free monad;
---   T∞ X = νY. X + H_Σ Y   possibly infinite trees: each next event after
---                          finite work, and it need not stop — the free
---                          completely iterative monad.
+--   T X  = μY. X + H_Σ Y      finitely many events, then a value (or it
+--                             halts) — the free monad;
 --
--- Every node is an event or the end; there is no silent step, so every
--- computation is productive by the shape of the functor. Equality of `T∞`
--- trees is bisimilarity.
+-- and a computation that need not stop runs such blocks forever, each one
+-- ending with the result or with what to run next (D317):
 --
--- A GUARDED computation performs an event first: `T⁺ X = H_Σ (T∞ X)`, one
--- call, then anything (D311).
+--   T∞ X = νY. T (X + Y)      the coinductive resumption monad over `T`.
 --
--- A grade chooses the monad: `M pure = Id`, `M act = T`, `M eff⁺ = T⁺`,
--- `M eff = T∞`, with the monad morphisms along the order (`sub`).
+-- So programs and effects have one shape: finite folds inside the rounds of a
+-- loop, finite blocks inside `T∞`. A block may perform no event: a silent
+-- round is an empty block, observed as a step of `Delay` (`Spec.Observation`).
+-- Equality of `T∞` computations as trees is bisimilarity (`_≈_`), which sees
+-- where the blocks end; when two meanings are the same is decided by what
+-- they do (`Spec.Equivalence`).
 --
--- A SERVER is GUARDED ITERATION (`iter∞`): a step that either ends with a `B`
--- or performs an event first and then continues, with a `B` or the next
--- state. Every round performs an event, so its equation has a unique
--- solution in `T∞`.
+-- A grade chooses the monad: `M pure = Id`, `M act = T`, `M eff = T∞`, with
+-- the monad morphisms along the chain (`sub`).
+--
+-- THE LOOP (`loop`) is the anamorphism into `T∞ B`, the final coalgebra of
+-- `T (B + −)`: any round `A → T (B + A)` that either ends with a `B` or
+-- continues with the next state.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature; Layer; call)
@@ -38,11 +39,11 @@ module Once.Spec.Effect (Σ : Signature) where
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Grade using (Purity; pure; act; eff⁺; eff; _·p_; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-g; ⊑-ge; ⊑-eff)
+open import Once.Spec.Grade using (Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 
 ------------------------------------------------------------------------
--- The functor and its two fixed points
+-- Blocks: the free monad
 ------------------------------------------------------------------------
 
 data Step (X Y : Set) : Set where
@@ -52,15 +53,6 @@ data Step (X Y : Set) : Set where
 data T (X : Set) : Set where
   roll : Step X (T X) → T X
 
-record T∞ (X : Set) : Set where
-  coinductive
-  field force : Step X (T∞ X)
-open T∞
-
-------------------------------------------------------------------------
--- The monads
-------------------------------------------------------------------------
-
 returnT : ∀ {X} → X → T X
 returnT x = roll (done x)
 
@@ -69,52 +61,47 @@ _>>=T_ : ∀ {X Y} → T X → (X → T Y) → T Y
 roll (done x)              >>=T f = f x
 roll (node (call o a k))   >>=T f = roll (node (call o a (λ b → k b >>=T f)))
 
+mapT : ∀ {X Y} → (X → Y) → T X → T Y
+mapT f m = m >>=T λ x → returnT (f x)
+
+------------------------------------------------------------------------
+-- Blocks forever: the coinductive resumption monad
+------------------------------------------------------------------------
+
+record T∞ (X : Set) : Set where
+  coinductive
+  field force : T (X ⊎ T∞ X)
+open T∞
+
 return∞ : ∀ {X} → X → T∞ X
-force (return∞ x) = done x
+force (return∞ x) = returnT (inj₁ x)
 
-_>>=∞_   : ∀ {X Y} → T∞ X → (X → T∞ Y) → T∞ Y
-bindStep : ∀ {X Y} → Step X (T∞ X) → (X → T∞ Y) → Step Y (T∞ Y)
-force (m >>=∞ f) = bindStep (force m) f
-bindStep (done x)            f = force (f x)
-bindStep (node (call o a k)) f = node (call o a (λ b → k b >>=∞ f))
+-- Run the first block; at its result, the continuation's first block follows
+-- in the same block; at a block's end, continue.
+_>>=∞_    : ∀ {X Y} → T∞ X → (X → T∞ Y) → T∞ Y
+bindBlock : ∀ {X Y} → T (X ⊎ T∞ X) → (X → T∞ Y) → T (Y ⊎ T∞ Y)
+force (m >>=∞ f) = bindBlock (force m) f
+bindBlock (roll (done (inj₁ x)))     f = force (f x)
+bindBlock (roll (done (inj₂ m)))     f = roll (done (inj₂ (m >>=∞ f)))
+bindBlock (roll (node (call o a k))) f = roll (node (call o a (λ b → bindBlock (k b) f)))
 
--- Every finite tree is one: the monad morphism `T → T∞`.
+-- One block is a computation: the monad morphism `T → T∞`.
 embed : ∀ {X} → T X → T∞ X
-force (embed (roll (done x)))            = done x
-force (embed (roll (node (call o a k)))) = node (call o a (λ b → embed (k b)))
+force (embed m) = mapT inj₁ m
 
 ------------------------------------------------------------------------
--- Guarded computations: an event first
+-- Bisimilarity: the same blocks forever, equal values at the ends
 ------------------------------------------------------------------------
 
-data T⁺ (X : Set) : Set where
-  call⁺ : Layer Σ (T∞ X) → T⁺ X
-
-forget⁺ : ∀ {X} → T⁺ X → T∞ X
-force (forget⁺ (call⁺ l)) = node l
-
-infixl 1 _>>=⁺_
-_>>=⁺_ : ∀ {X Y} → T⁺ X → (X → T∞ Y) → T⁺ Y
-call⁺ (call o a k) >>=⁺ f = call⁺ (call o a (λ b → k b >>=∞ f))
-
--- A computation, then a guarded one: the guard comes before any return.
-_⁺=<<_ : ∀ {X Y} → T∞ X → (X → T⁺ Y) → T⁺ Y
-bindF⁺ : ∀ {X Y} → Step X (T∞ X) → (X → T⁺ Y) → T⁺ Y
-m ⁺=<< f = bindF⁺ (force m) f
-bindF⁺ (done x)            f = f x
-bindF⁺ (node (call o a k)) f = call⁺ (call o a (λ b → k b >>=∞ λ x → forget⁺ (f x)))
-
-------------------------------------------------------------------------
--- Bisimilarity: the same nodes forever, equal values at the leaves
-------------------------------------------------------------------------
-
-data StepEq {X Y Y′ : Set} (R : Y → Y′ → Set) : Step X Y → Step X Y′ → Set where
-  done≈ : ∀ {x} → StepEq R (done x) (done x)
-  node≈ : ∀ {o a k k′} → (∀ b → R (k b) (k′ b)) → StepEq R (node (call o a k)) (node (call o a k′))
+data BlockEq {X : Set} (R : T∞ X → T∞ X → Set) : T (X ⊎ T∞ X) → T (X ⊎ T∞ X) → Set where
+  return≈ : ∀ {x} → BlockEq R (roll (done (inj₁ x))) (roll (done (inj₁ x)))
+  next≈   : ∀ {m m′} → R m m′ → BlockEq R (roll (done (inj₂ m))) (roll (done (inj₂ m′)))
+  node≈   : ∀ {o a k k′} → (∀ b → BlockEq R (k b) (k′ b))
+          → BlockEq R (roll (node (call o a k))) (roll (node (call o a k′)))
 
 record _≈_ {X : Set} (m m′ : T∞ X) : Set where
   coinductive
-  field force≈ : StepEq _≈_ (force m) (force m′)
+  field force≈ : BlockEq _≈_ (force m) (force m′)
 open _≈_
 
 infix 4 _≈_
@@ -126,64 +113,50 @@ infix 4 _≈_
 M : Purity → Set → Set
 M pure X = X
 M act  X = T X
-M eff⁺ X = T⁺ X
 M eff  X = T∞ X
 
 bind : ∀ π {X Y} → M π X → (X → M π Y) → M π Y
 bind pure m f = f m
 bind act  m f = m >>=T f
-bind eff⁺ m f = m >>=⁺ λ x → forget⁺ (f x)
 bind eff  m f = m >>=∞ f
 
--- The monad morphisms along the order.
+-- The monad morphisms along the chain.
 sub : ∀ {π π′} → π ⊑π π′ → ∀ {X} → M π X → M π′ X
 sub ⊑-pure m = m
 sub ⊑-pa   m = returnT m
 sub ⊑-pe   m = return∞ m
 sub ⊑-act  m = m
 sub ⊑-ae   m = embed m
-sub ⊑-g    m = m
-sub ⊑-ge   m = forget⁺ m
 sub ⊑-eff  m = m
 
--- A grade with a unit (every grade but the guard) returns a value.
-return : ∀ {π} → pure ⊑π π → ∀ {X} → X → M π X
-return u x = sub u x
+return : ∀ π {X} → X → M π X
+return pure x = x
+return act  x = returnT x
+return eff  x = return∞ x
 
 fmap : ∀ π {X Y} → (X → Y) → M π X → M π Y
-fmap pure f m = f m
-fmap act  f m = m >>=T λ x → returnT (f x)
-fmap eff⁺ f m = m >>=⁺ λ x → return∞ (f x)
-fmap eff  f m = m >>=∞ λ x → return∞ (f x)
+fmap π f m = bind π m λ x → return π (f x)
 
 -- Every grade embeds into `T∞`: what a computation is observed as.
 toT∞ : ∀ π {X} → M π X → T∞ X
 toT∞ pure m = return∞ m
 toT∞ act  m = embed m
-toT∞ eff⁺ m = forget⁺ m
 toT∞ eff  m = m
 
--- Running a `π₁` computation, then a `π₂` one: the whole is at `π₁ ·p π₂`.
+-- Running a `π₁` computation, then a `π₂` one: the whole is at the join.
 bindᵍ : ∀ π₁ π₂ {X Y} → M π₁ X → (X → M π₂ Y) → M (π₁ ·p π₂) Y
 bindᵍ pure π₂   m f = f m
 bindᵍ act  pure m f = m >>=T λ x → returnT (f x)
 bindᵍ act  act  m f = m >>=T f
-bindᵍ act  eff⁺ m f = embed m ⁺=<< f
 bindᵍ act  eff  m f = embed m >>=∞ f
-bindᵍ eff⁺ pure m f = m >>=⁺ λ x → return∞ (f x)
-bindᵍ eff⁺ act  m f = m >>=⁺ λ x → embed (f x)
-bindᵍ eff⁺ eff⁺ m f = m >>=⁺ λ x → forget⁺ (f x)
-bindᵍ eff⁺ eff  m f = m >>=⁺ f
 bindᵍ eff  pure m f = m >>=∞ λ x → return∞ (f x)
 bindᵍ eff  act  m f = m >>=∞ λ x → embed (f x)
-bindᵍ eff  eff⁺ m f = m ⁺=<< f
 bindᵍ eff  eff  m f = m >>=∞ f
 
--- Equal computations: equal values and finite trees; bisimilar infinite ones.
+-- Equal computations as trees: equal values and blocks; bisimilar loops.
 EqM : ∀ π {X : Set} → M π X → M π X → Set
 EqM pure m m′ = m ≡ m′
 EqM act  m m′ = m ≡ m′
-EqM eff⁺ m m′ = forget⁺ m ≈ forget⁺ m′
 EqM eff  m m′ = m ≈ m′
 
 ------------------------------------------------------------------------
@@ -197,31 +170,22 @@ record νM (π : Purity) (F : SFunctor) : Set where
 open νM
 
 ------------------------------------------------------------------------
--- The server: guarded iteration
+-- Calls, and the loop
 ------------------------------------------------------------------------
 
--- Performing one call of an operation: the generic effect — in a computation
--- that returns, in one that need not, and guarded.
+-- Performing one call of an operation: the generic effect, as one block.
 performT : ∀ {A} → Layer Σ A → T A
 performT (call o a k) = roll (node (call o a (λ b → returnT (k b))))
 
 perform : ∀ {A} → Layer Σ A → T∞ A
-force (perform (call o a k)) = node (call o a (λ b → return∞ (k b)))
+perform l = embed (performT l)
 
-perform⁺ : ∀ {A} → Layer Σ A → T⁺ A
-perform⁺ (call o a k) = call⁺ (call o a (λ b → return∞ (k b)))
-
--- The unique solution of `iter∞ f a = [ return , (λ m → m >>= [ return , iter∞ f ]) ] (f a)`
--- (`Spec.Metatheory`): end at once with a `B`, or perform the guarded round
--- and continue from its result.
-iter∞     : ∀ {A B : Set} → (A → B ⊎ T⁺ (B ⊎ A)) → A → T∞ B
-iterStart : ∀ {A B : Set} → (A → B ⊎ T⁺ (B ⊎ A)) → B ⊎ T⁺ (B ⊎ A) → Step B (T∞ B)
-iterTree  : ∀ {A B : Set} → (A → B ⊎ T⁺ (B ⊎ A)) → T∞ (B ⊎ A) → T∞ B
-iterStep  : ∀ {A B : Set} → (A → B ⊎ T⁺ (B ⊎ A)) → Step (B ⊎ A) (T∞ (B ⊎ A)) → Step B (T∞ B)
-force (iter∞ f a) = iterStart f (f a)
-iterStart f (inj₁ b)                   = done b
-iterStart f (inj₂ (call⁺ (call o x k))) = node (call o x (λ r → iterTree f (k r)))
-force (iterTree f m) = iterStep f (force m)
-iterStep f (done (inj₁ b))     = done b
-iterStep f (done (inj₂ a))     = iterStart f (f a)
-iterStep f (node (call o x k)) = node (call o x (λ r → iterTree f (k r)))
+-- THE LOOP: the anamorphism into the final coalgebra of `T (B + −)`. Each
+-- round runs the block `c a`; where it ends with a `B` the loop returns it,
+-- where it ends with the next state the loop continues from it.
+loop      : ∀ {A B : Set} → (A → T (B ⊎ A)) → A → T∞ B
+loopBlock : ∀ {A B : Set} → (A → T (B ⊎ A)) → T (B ⊎ A) → T (B ⊎ T∞ B)
+force (loop c a) = loopBlock c (c a)
+loopBlock c (roll (done (inj₁ b)))     = returnT (inj₁ b)
+loopBlock c (roll (done (inj₂ a)))     = roll (done (inj₂ (loop c a)))
+loopBlock c (roll (node (call o x k))) = roll (node (call o x (λ r → loopBlock c (k r))))

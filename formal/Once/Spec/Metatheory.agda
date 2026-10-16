@@ -14,10 +14,10 @@
 --   * surface     — the surface judgment's modes agree: a synthesized type is
 --                   unique, the domain-given mode is exact and agrees with
 --                   synthesis;
---   * effects     — each grade's monad is a monad, the guard's without a
---                   unit (up to bisimilarity at `eff⁺`, `eff`); the morphisms
---                   along the order and into `T∞` are
---                   monad morphisms; the observation respects bisimilarity;
+--   * effects     — each grade's monad is a monad (up to bisimilarity at
+--                   `eff`); the morphisms along the chain and into `T∞` are
+--                   monad morphisms and compose (one lift per pair, P7); the
+--                   observation respects bisimilarity;
 --   * coherence   — a core term's meaning is a function of its judgment, not
 --                   of the derivation chosen for it;
 --   * term model  — substitution is typed, a pure `let` means its
@@ -25,11 +25,13 @@
 --   * Freyd       — a computation is central exactly when it is pure, and
 --                   only a pure one may be dropped;
 --   * recursion   — the fold is the unique algebra morphism, with fusion; the
---                   unfold's computation law; the server is the unique map
---                   into `T∞` its round determines;
+--                   unfold's computation law; the loop is the unique
+--                   coalgebra morphism into `T∞ B`, the final coalgebra of
+--                   `T (B + −)`, and is observed as its unrolling;
 --   * totality    — a behaviour is a prefix family; a definition cannot name
 --                   itself or a later one; a stream and a server are typed,
---                   and the server runs forever.
+--                   the server runs forever, and a silent loop is never
+--                   observed doing anything.
 ------------------------------------------------------------------------
 
 module Once.Spec.Metatheory where
@@ -39,14 +41,15 @@ open import Data.List using (List; []; length)
 open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
 open import Data.Nat using (ℕ)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; [_,_]′)
+open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Quantity; Purity; pure; act; eff⁺; eff; Many; mk-kind; _⊑π_; ⊑-pe; _·p_; positionGrade; Zero; One)
+open import Once.Spec.Grade using (Quantity; Purity; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; _⇒[_]_)
+open import Once.Spec.Delay using (_⇓_; _≈D_; _≈⟨_⟩_)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature using (Signature; Layer; call; Op; op; _∶_)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -118,24 +121,27 @@ record Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) 
 
 record Effects (Σ : Signature) : Set₁ where
   open Effect Σ
-  open Observation Σ using (Interp; History; events)
+  open Observation Σ using (Interp; History; observe; events)
   field
-    M-identityˡ : ∀ {π} (u : pure ⊑π π) {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bind π (return u x) k) (k x)
-    M-identityʳ : ∀ {π} (u : pure ⊑π π) {X : Set} (m : M π X) → EqM π (bind π m (return u)) m
+    M-identityˡ : ∀ π {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bind π (return π x) k) (k x)
+    M-identityʳ : ∀ π {X : Set} (m : M π X) → EqM π (bind π m (return π)) m
     M-assoc     : ∀ π {X Y Z : Set} (m : M π X) (f : X → M π Y) (g : Y → M π Z)
                 → EqM π (bind π (bind π m f) g) (bind π m (λ x → bind π (f x) g))
-    sub-return  : ∀ {π π′} (u : pure ⊑π π) (g : π ⊑π π′) (u′ : pure ⊑π π′) {X : Set} (x : X)
-                → EqM π′ (sub g (return u x)) (return u′ x)
+    sub-return  : ∀ {π π′} (g : π ⊑π π′) {X : Set} (x : X) → EqM π′ (sub g (return π x)) (return π′ x)
     sub-bind    : ∀ {π π′} (g : π ⊑π π′) {X Y : Set} (m : M π X) (k : X → M π Y)
                 → EqM π′ (sub g (bind π m k)) (bind π′ (sub g m) (λ x → sub g (k x)))
-    toT∞-return : ∀ {π} (u : pure ⊑π π) {X : Set} (x : X) → toT∞ π (return u x) ≈ return∞ x
+    -- the lifts compose: one lift from each grade to each larger one (P7)
+    sub-∘       : ∀ {π₁ π₂ π₃} (g : π₁ ⊑π π₂) (h : π₂ ⊑π π₃) (k : π₁ ⊑π π₃) {X : Set} (m : M π₁ X)
+                → EqM π₃ (sub h (sub g m)) (sub k m)
+    toT∞-sub    : ∀ {π π′} (g : π ⊑π π′) {X : Set} (m : M π X) → toT∞ π′ (sub g m) ≈ toT∞ π m
+    toT∞-return : ∀ π {X : Set} (x : X) → toT∞ π (return π x) ≈ return∞ x
     toT∞-bind   : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y)
                 → toT∞ π (bind π m k) ≈ (toT∞ π m >>=∞ λ x → toT∞ π (k x))
     toT∞-bindᵍ  : ∀ π₁ π₂ {X Y : Set} (m : M π₁ X) (k : X → M π₂ Y)
                 → toT∞ (π₁ ·p π₂) (bindᵍ π₁ π₂ m k) ≈ (toT∞ π₁ m >>=∞ λ x → toT∞ π₂ (k x))
     obs-≈       : ∀ (ι : Interp) (h : History) {X : Set} {m m′ : T∞ X}
-                → m ≈ m′ → ∀ n → events ι h m n ≡ events ι h m′ n
-    obs-return  : ∀ (ι : Interp) (h : History) {X : Set} (x : X) n → events ι h (return∞ x) n ≡ []
+                → m ≈ m′ → ∀ n → observe ι h m n ≈D observe ι h m′ n
+    obs-return  : ∀ (ι : Interp) (h : History) {X : Set} (x : X) n → events ι h (return∞ x) n ⇓ h
 
 ------------------------------------------------------------------------
 -- Coherence, and the term model
@@ -201,11 +207,12 @@ module _ {Σ Σ′ : Signature} (ι : Σ ⊆ Σ′) where
   liftOp : Op Σ → Op Σ′
   liftOp (op d e) = op (ι d) e
 
-  lift     : ∀ {X} → E.T∞ X → E′.T∞ X
-  liftStep : ∀ {X} → E.Step X (E.T∞ X) → E′.Step X (E′.T∞ X)
-  E′.T∞.force (lift m) = liftStep (E.T∞.force m)
-  liftStep (E.done x)            = E′.done x
-  liftStep (E.node (call o a k)) = E′.node (call (liftOp o) a (λ b → lift (k b)))
+  lift      : ∀ {X} → E.T∞ X → E′.T∞ X
+  liftBlock : ∀ {X} → E.T (X ⊎ E.T∞ X) → E′.T (X ⊎ E′.T∞ X)
+  E′.T∞.force (lift m) = liftBlock (E.T∞.force m)
+  liftBlock (E.roll (E.done (inj₁ x)))     = E′.roll (E′.done (inj₁ x))
+  liftBlock (E.roll (E.done (inj₂ m)))     = E′.roll (E′.done (inj₂ (lift m)))
+  liftBlock (E.roll (E.node (call o a k))) = E′.roll (E′.node (call (liftOp o) a (λ b → liftBlock (k b))))
 
 -- Two computations COMMUTE when running them in either order gives the same
 -- pair.
@@ -249,33 +256,37 @@ module _ (Σ : Signature) where
 
   record Recursion : Set₁ where
     open Domain Σ using (foldM; traverseM; anaM)
+    open Observation Σ using (Interp; History; observe)
     field
       -- the fold is the only map that commutes with the constructor
-      fold-unique : ∀ π (e : pure ⊑π π) (G : SFunctor) {X : Set} (alg : ⟦ G ⟧SF X → M π X) (h : μS G → M π X)
-                  → (∀ x → EqM π (h (inS x)) (bind π (traverseM π e G h x) alg))
-                  → ∀ v → EqM π (h v) (foldM π e G alg v)
+      fold-unique : ∀ π (G : SFunctor) {X : Set} (alg : ⟦ G ⟧SF X → M π X) (h : μS G → M π X)
+                  → (∀ x → EqM π (h (inS x)) (bind π (traverseM π G h x) alg))
+                  → ∀ v → EqM π (h v) (foldM π G alg v)
       -- fusion: a function that commutes with the algebras commutes with the
       -- folds. It is a pure function: a fold runs every child's fold before
       -- the layer's algebra, so a computation after the whole fold cannot be
       -- moved in between unless effects commute (over binary trees, `a a b b`
       -- is not `a b a b`).
-      fold-fusion : ∀ π (e : pure ⊑π π) (G : SFunctor) {X Y : Set} (alg : ⟦ G ⟧SF X → M π X) (alg′ : ⟦ G ⟧SF Y → M π Y)
+      fold-fusion : ∀ π (G : SFunctor) {X Y : Set} (alg : ⟦ G ⟧SF X → M π X) (alg′ : ⟦ G ⟧SF Y → M π Y)
                       (g : X → Y)
                   → (∀ l → EqM π (fmap π g (alg l)) (alg′ (sfmap G g l)))
-                  → ∀ v → EqM π (fmap π g (foldM π e G alg v)) (foldM π e G alg′ v)
+                  → ∀ v → EqM π (fmap π g (foldM π G alg v)) (foldM π G alg′ v)
       -- forcing an unfold runs the coalgebra and unfolds the rest
-      unfold-out  : ∀ π (G : SFunctor) {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
-                  → EqM π (νM.outν (anaM π G c x)) (fmap π (sfmap G (anaM π G c)) (c x))
-      -- THE SERVER, guarded iteration (D311): `iter∞ f` takes a step of `f` —
-      -- it ends at once with a value, or runs a round that begins with an
-      -- event, then stops with its answer or runs the next round …
-      iter-unfold : ∀ {A B : Set} (f : A → B ⊎ T⁺ (B ⊎ A)) (a : A)
-                  → iter∞ f a ≈ [ return∞ , (λ m → forget⁺ m >>=∞ [ return∞ , iter∞ f ]′) ]′ (f a)
-      -- … and it is the only map that does: a round that does not end begins
-      -- with an event, so the equation fixes the tree one event at a time
-      iter-unique : ∀ {A B : Set} (f : A → B ⊎ T⁺ (B ⊎ A)) (g : A → T∞ B)
-                  → (∀ a → g a ≈ [ return∞ , (λ m → forget⁺ m >>=∞ [ return∞ , g ]′) ]′ (f a))
-                  → ∀ a → g a ≈ iter∞ f a
+      unfold-out  : ∀ {π} (g : π ⊑π act) (G : SFunctor) {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
+                  → EqM π (νM.outν (anaM g G c x)) (fmap π (sfmap G (anaM g G c)) (c x))
+      -- THE LOOP (D317): a round runs the block `c a`, which ends with the
+      -- result or with where the next round starts …
+      loop-out    : ∀ {A B : Set} (c : A → T (B ⊎ A)) (a : A)
+                  → T∞.force (loop c a) ≡ mapT [ inj₁ , (λ a′ → inj₂ (loop c a′)) ]′ (c a)
+      -- … and it is the only map that does: `T∞ B` is the final coalgebra of
+      -- `T (B + −)`, and the loop its anamorphism
+      loop-unique : ∀ {A B : Set} (c : A → T (B ⊎ A)) (g : A → T∞ B)
+                  → (∀ a → BlockEq _≈_ (T∞.force (g a)) (mapT [ inj₁ , (λ a′ → inj₂ (g a′)) ]′ (c a)))
+                  → ∀ a → g a ≈ loop c a
+      -- where one round ends and the next begins is not observed: the loop
+      -- is its unrolling (P12)
+      loop-unroll : ∀ {A B : Set} (c : A → T (B ⊎ A)) (a : A) (ι : Interp) (h : History) n
+                  → observe ι h (loop c a) n ≈D observe ι h (embed (c a) >>=∞ [ return∞ , loop c ]′) n
 
 ------------------------------------------------------------------------
 -- Total and productive
@@ -297,19 +308,25 @@ record Totality : Set₁ where
     no-forward-reference : ∀ {Σ p} → ¬ Denotes [] forwardReference Σ p
     -- a stream that calls an operation in every layer is typed, and its
     -- first layer does call it
-    stream-typed : CoreTyping._⊩_⊢[_]_∷_!_ tickΣ [] ∅ₖ ∅ [] ticker (ν Id eff) pure
+    stream-typed : CoreTyping._⊩_⊢[_]_∷_!_ tickΣ [] ∅ₖ ∅ [] ticker (ν Id act) pure
     stream-emits : ∀ fmt (δ : Meaning.DefSem tickΣ fmt [])
                  → ∃[ o ] ∃[ a ] ∃[ k ]
-                   Effect.T∞.force
-                     (Meaning.⟦_⟧ tickΣ fmt [] (CoreTyping.⊢out Once.Spec.Type.wf-Id (CoreTyping.⊢sub-eff ⊑-pe stream-typed))
-                       δ noVars noResp tt)
-                   ≡ Effect.node (call o a k)
+                   Meaning.⟦_⟧ tickΣ fmt [] (CoreTyping.⊢out Once.Spec.Type.wf-Id stream-typed) δ noVars noResp tt
+                   ≡ Effect.roll (Effect.node (call o a k))
     -- a server is typed at `eff` …
     server-typed : CoreTyping._⊩_⊢[_]_∷_!_ echoΣ [] ∅ₖ ∅ [] echoServer Void eff
     -- … and runs forever: at depth `n` it has made `n` calls, at every
     -- Interpretation
     server-runs  : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) n
-                 → length (Observation.events echoΣ (Meaning.DefSem.interp δ) [] (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt) n) ≡ n
+                 → ∃[ h ] (Observation.events echoΣ (Meaning.DefSem.interp δ) []
+                             (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt) n ⇓ h
+                           × length h ≡ n)
+    -- a silent loop is typed, and is never observed doing anything: past
+    -- depth zero, what it does never arrives (D317)
+    silent-typed : CoreTyping._⊩_⊢[_]_∷_!_ [] [] ∅ₖ ∅ [] silentLoop Void eff
+    silent-never : ∀ fmt (δ : Meaning.DefSem [] fmt []) n h
+                 → ¬ (Observation.events [] (Meaning.DefSem.interp δ) []
+                        (Meaning.⟦_⟧ [] fmt [] silent-typed δ noVars noResp tt) (Data.Nat.suc n) ⇓ h)
 
 ------------------------------------------------------------------------
 -- All of it

@@ -33,7 +33,8 @@ import Once.Spec.Bool            -- truth values
 
 -- Effects, and what is observed.
 import Once.Spec.Signature       -- the operations Σ and their functor H_Σ
-import Once.Spec.Effect          -- T = μ(X + H_Σ), T∞ = ν(X + H_Σ), the grades' monads
+import Once.Spec.Effect          -- T = μ(X + H_Σ), T∞ = νY. T(X + Y), the grades' monads
+import Once.Spec.Delay           -- a value that may never arrive
 import Once.Spec.Observation     -- Interpretations, and a run's calls
 import Once.Spec.Polynomial      -- polynomial functors and their initial algebras
 import Once.Spec.Domain          -- the value of each type

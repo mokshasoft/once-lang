@@ -17,8 +17,9 @@
 --
 --     H_Σ X = Σ (o : operation) ⟦arg o⟧ × (⟦ans o⟧ → X)
 --
--- (`Layer`): one call and what to continue with from its answer. `T` and `T∞`
--- (`Spec.Effect`) are its free monad and its free completely iterative monad.
+-- (`Layer`): one call and what to continue with from its answer. `T`
+-- (`Spec.Effect`) is its free monad: finite blocks of calls; `T∞` repeats
+-- such blocks, possibly forever.
 ------------------------------------------------------------------------
 
 module Once.Spec.Signature where
@@ -30,7 +31,7 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
-open import Once.Spec.Grade using (ArrowKind; mk-kind; Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff)
+open import Once.Spec.Grade using (ArrowKind; mk-kind; Quantity; Zero; One; Many; Purity; pure; act; eff)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Type as T
@@ -125,7 +126,6 @@ WellFormedDecl : DeclType → Set
 WellFormedDecl (constant b)                 = NotEmpty b × b ≢ unit
 WellFormedDecl (arrow a (mk-kind q pure) b) = NotEmpty b × b ≢ unit
 WellFormedDecl (arrow a (mk-kind q act) b)  = EffCod b
-WellFormedDecl (arrow a (mk-kind q eff⁺) b) = EffCod b
 WellFormedDecl (arrow a (mk-kind q eff) b)  = EffCod b
 
 data WellFormed : Signature → Set where
@@ -144,7 +144,6 @@ argAt Many a = a
 
 data Effectful : Purity → Set where
   e-act : Effectful act
-  e-g   : Effectful eff⁺
   e-eff : Effectful eff
 
 -- An operation of Σ: one of its effectful arrows.

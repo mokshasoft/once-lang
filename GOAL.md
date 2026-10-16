@@ -43,33 +43,42 @@ it would make the mathematics harder.
 
 ## What a program is
 
-A program is `main : Eff Unit Unit`: it takes nothing and returns nothing. All
-it does is observable effects, in order — the operations of the
-**Interpretations** it is compiled against (the platform's primitives: a Linux
-system call, an seL4 IPC, …), each implemented by a SigOp. (The compiler also
-mints SigOps of its own, pure ones, as optimisations; they are not observable.)
-So **the correctness of a compiled program is exactly its trace of observable
-effects**: the binary emits the trace the source means. There is no other output
-to get right.
+A program is `main`: it takes nothing and returns nothing. All it does is
+observable effects, in order — the operations of the **Interpretations** it is
+compiled against (the platform's primitives: a Linux system call, an seL4 IPC,
+…), each implemented by a SigOp. (The compiler also mints SigOps of its own,
+pure ones, as optimisations; they are not observable.)
+
+So **what a program means is the sequence of observable effects it performs**,
+answered by the world — and nothing else: not its internal states, not how much
+work it does between two effects, not where it pauses. The sequence may be
+finite (the program ends, or halts) or infinite (a server), or it may stop
+growing while the program runs on without performing another effect.
+**The correctness of a compiled program is exactly this sequence**: against
+every world, the binary performs the effects the source means, in the same
+order. There is no other output to get right.
 
 ## What Once must be able to express
 
 Each item is guarded by a check that fails if the language loses it — in the
 Spec where possible, so a change that breaks it fails the formal build:
 
-- **A server, a REPL, any long-running interactive program.** Such a program is
-  an effectful stream, the final coalgebra of `T ∘ F`; its unfold takes an
-  effectful coalgebra `A → T (F A)`. Therefore `ana`'s coalgebra may be
-  effectful (D233, D273, D309).
+- **A server, a REPL, any long-running interactive program.** Such a program
+  may run forever, performing its effects round by round: each round is a
+  finite computation, and the server is the unfold of its round — the dual of
+  a fold over finite data. So `ana`'s coalgebra may be effectful.
 - **Structured recursion only.** Folds over finite data and unfolds of infinite
   data; no general recursion, no fixed-point combinator, no definition that
-  refers to itself (OCP-0003, D241, D242). Every pure computation terminates;
-  every layer of a stream is produced in finite time. A practical program does
-  not need Turing completeness: what it adds beyond structured recursion is
-  non-termination, non-productive streams and deadlock — almost always bugs
-  (OCP-0003). A server is not an exception: it is productive codata. What is
-  given up is rare (a self-interpreter needs a fuel parameter), and everything
-  is easier to prove.
+  refers to itself. Every pure computation terminates; every layer of a stream
+  and every round of a server is computed in finite time. A practical program
+  does not need Turing completeness: what it adds beyond structured recursion
+  is non-termination, non-productive streams and deadlock — almost always bugs.
+  What is given up is rare (a self-interpreter needs a fuel parameter), and
+  everything is easier to prove.
+- **Running on without effects is observable as nothing.** A server whose rounds
+  perform no effect performs no further effects: its meaning is the sequence so
+  far, and it is a correct program. It is almost always a bug, so the compiler
+  warns about it; the language does not forbid it.
 - **No exceptions.** Failure is a value (a sum) or an effect (a halt).
 - **Effects as arrows**, not built-in monads: what a computation may do is
   in its type, and a pure computation provably does nothing.
@@ -99,7 +108,7 @@ the residual ledger, to be removed.
 ### The end state: Once in Once, and the TCB0 bootstrap
 
 Once is to be **implemented in Once**, and its correctness established with
-**no trust in any code** — the TCB0 bootstrap (OCP-0004): a bootstrap tower
+**no trust in any code** — the TCB0 bootstrap: a bootstrap tower
 whose base level is checked by mathematics alone (a minimal categorical core
 and its normaliser, verified by hand-checkable traces), each level verifying
 the next, up to the full language and its compiler. Agda, MAlonzo and the
@@ -116,7 +125,7 @@ where nothing can discharge it.
    author.** Each SigOp of an Interpretation owes a contract; its author
    discharges it in Agda, by proof (seL4, connected to its refinement theorem)
    or by postulate (Linux, an unverified kernel). All Interpretations are equal
-   — none is built in, not Linux (D061). The compiler's proofs are
+   — none is built in, not Linux. The compiler's proofs are
    parameterised over an abstract Interpretation; they never prove one
    correct.
 2. **The compiler's compile time — building Once.** Agda checks the compiler's

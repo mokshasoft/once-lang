@@ -10,15 +10,17 @@
 --     definition: there is no general recursion, so neither is a program;
 --   * a stream that calls an operation in every layer, forever: the shape of
 --     every effectful stream;
---   * an echo server: guarded iteration whose every round reads a value and
---     writes it back; it never finishes.
+--   * an echo server: a loop whose every round reads a value and writes it
+--     back; it never finishes;
+--   * a silent loop: a loop whose round calls nothing — a correct program
+--     that is never observed doing anything (D317).
 ------------------------------------------------------------------------
 
 module Once.Spec.Examples where
 
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_)
-open import Once.Spec.Grade using (Many; mk-kind; pure; act; eff⁺; eff)
+open import Once.Spec.Grade using (Many; mk-kind; pure; act; eff)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Type using (Ty; Unit; Void; Int; Id)
 open import Once.Spec.Signature using (int; unit; arrow; _∶_; Signature)
@@ -39,21 +41,20 @@ forwardReference =
   mkModule (DTypeSig "g" PInt ∷ DFunDef "g" (RVar "f") ∷ DTypeSig "f" PInt ∷ DFunDef "f" (RInt (+ 0)) ∷ [])
 
 ------------------------------------------------------------------------
--- A stream: `unfold tick 0 : ν Id eff`, over one operation `tick : Int → Int`
+-- A stream: `unfold tick 0 : ν Id act`, over one operation `tick : Int → Int`
 ------------------------------------------------------------------------
 
 tick : CanonicalName
 tick = canonical ("tick" ∷ [])
 
 tickΣ : Signature
-tickΣ = (tick ∶ arrow int (mk-kind Many eff) int) ∷ []
+tickΣ = (tick ∶ arrow int (mk-kind Many act) int) ∷ []
 
 ticker : Tm [] 0 0
-ticker = unfold Id (sigop tick (arrow int (mk-kind Many eff) int)) (lit (lit-int (+ 0)))
+ticker = unfold Id (sigop tick (arrow int (mk-kind Many act) int)) (lit (lit-int (+ 0)))
 
 ------------------------------------------------------------------------
--- A server: echo, over `read : Unit → Int` and `write : Int → Unit`, both
--- declared at the guard `eff⁺`
+-- A server: echo, over `read : Unit → Int` and `write : Int → Unit`
 ------------------------------------------------------------------------
 
 readN writeN : CanonicalName
@@ -61,18 +62,26 @@ readN  = canonical ("read" ∷ [])
 writeN = canonical ("write" ∷ [])
 
 echoΣ : Signature
-echoΣ = (readN ∶ arrow unit (mk-kind Many eff⁺) int) ∷ (writeN ∶ arrow int (mk-kind Many eff⁺) unit) ∷ []
+echoΣ = (readN ∶ arrow unit (mk-kind Many act) int) ∷ (writeN ∶ arrow int (mk-kind Many act) unit) ∷ []
 
--- step = λ _ → inr (λ _ → inr (write (read ()))): never the pure exit; each
--- round reads, writes and loops.
-echoStep : Tm [] 0 0
-echoStep =
-  lam Unit Many pure
-    (inr Void
-      (lam Unit Many eff⁺
-        (inr Void (app (sigop writeN (arrow int (mk-kind Many eff⁺) unit))
-                       (app (sigop readN (arrow unit (mk-kind Many eff⁺) int)) unit)))))
+-- round = λ _ → inr (write (read ())): never the exit; each round reads,
+-- writes and continues.
+echoRound : Tm [] 0 0
+echoRound =
+  lam Unit Many act
+    (inr Void (app (sigop writeN (arrow int (mk-kind Many act) unit))
+                   (app (sigop readN (arrow unit (mk-kind Many act) int)) unit)))
 
--- The server: `iter step ()`.
+-- The server: `iter round ()`.
 echoServer : Tm [] 0 0
-echoServer = iter echoStep unit
+echoServer = iter echoRound unit
+
+------------------------------------------------------------------------
+-- A silent loop: `iter (λ _ → inr ()) ()`, over no operation
+------------------------------------------------------------------------
+
+silentRound : Tm [] 0 0
+silentRound = lam Unit Many act (inr Void unit)
+
+silentLoop : Tm [] 0 0
+silentLoop = iter silentRound unit
