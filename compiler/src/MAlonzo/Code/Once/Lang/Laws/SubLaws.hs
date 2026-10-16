@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Metatheory.SubLaws where
+module MAlonzo.Code.Once.Lang.Laws.SubLaws where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -22,29 +22,29 @@ import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Lang.Type.Sub
 
--- Once.Metatheory.SubLaws.⊑π-unique
-d_'8849'π'45'unique_14 ::
+-- Once.Lang.Laws.SubLaws.⊑π-unique
+d_'8849'π'45'unique_16 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8849'π'45'unique_14 = erased
--- Once.Metatheory.SubLaws.⊑π-trans
-d_'8849'π'45'trans_22 ::
+d_'8849'π'45'unique_16 = erased
+-- Once.Lang.Laws.SubLaws.⊑π-trans
+d_'8849'π'45'trans_24 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-d_'8849'π'45'trans_22 ~v0 ~v1 ~v2 v3 v4
-  = du_'8849'π'45'trans_22 v3 v4
-du_'8849'π'45'trans_22 ::
+d_'8849'π'45'trans_24 ~v0 ~v1 ~v2 v3 v4
+  = du_'8849'π'45'trans_24 v3 v4
+du_'8849'π'45'trans_24 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-du_'8849'π'45'trans_22 v0 v1
+du_'8849'π'45'trans_24 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> coe v1
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
@@ -64,23 +64,23 @@ du_'8849'π'45'trans_22 v0 v1
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
         -> coe seq (coe v1) (coe v0)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.SubLaws.<:-unique
-d_'60''58''45'unique_32 ::
+-- Once.Lang.Laws.SubLaws.<:-unique
+d_'60''58''45'unique_34 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'60''58''45'unique_32 = erased
--- Once.Metatheory.SubLaws.<:-trans
-d_'60''58''45'trans_84 ::
+d_'60''58''45'unique_34 = erased
+-- Once.Lang.Laws.SubLaws.<:-trans
+d_'60''58''45'trans_86 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30
-d_'60''58''45'trans_84 v0 v1 v2 v3 v4
+d_'60''58''45'trans_86 v0 v1 v2 v3 v4
   = case coe v3 of
       MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'void_34
         -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'void_34
@@ -98,11 +98,11 @@ d_'60''58''45'trans_84 v0 v1 v2 v3 v4
                                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v31 v32 v33
                                     -> coe
                                          MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_56
-                                         (d_'60''58''45'trans_84
+                                         (d_'60''58''45'trans_86
                                             (coe v31) (coe v18) (coe v15) (coe v28) (coe v12))
-                                         (d_'60''58''45'trans_84
+                                         (d_'60''58''45'trans_86
                                             (coe v17) (coe v20) (coe v33) (coe v13) (coe v29))
-                                         (coe du_'8849'π'45'trans_22 (coe v14) (coe v30))
+                                         (coe du_'8849'π'45'trans_24 (coe v14) (coe v30))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -118,9 +118,9 @@ d_'60''58''45'trans_84 v0 v1 v2 v3 v4
                                   MAlonzo.Code.Once.Lang.Type.C__'42'__24 v21 v22
                                     -> coe
                                          MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'prod_66
-                                         (d_'60''58''45'trans_84
+                                         (d_'60''58''45'trans_86
                                             (coe v11) (coe v13) (coe v21) (coe v9) (coe v19))
-                                         (d_'60''58''45'trans_84
+                                         (d_'60''58''45'trans_86
                                             (coe v12) (coe v14) (coe v22) (coe v10) (coe v20))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -137,9 +137,9 @@ d_'60''58''45'trans_84 v0 v1 v2 v3 v4
                                   MAlonzo.Code.Once.Lang.Type.C__'43'__26 v21 v22
                                     -> coe
                                          MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'sum_76
-                                         (d_'60''58''45'trans_84
+                                         (d_'60''58''45'trans_86
                                             (coe v11) (coe v13) (coe v21) (coe v9) (coe v19))
-                                         (d_'60''58''45'trans_84
+                                         (d_'60''58''45'trans_86
                                             (coe v12) (coe v14) (coe v22) (coe v10) (coe v20))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -151,7 +151,7 @@ d_'60''58''45'trans_84 v0 v1 v2 v3 v4
              MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'ν_88 v12
                -> coe
                     MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'ν_88
-                    (coe du_'8849'π'45'trans_22 (coe v8) (coe v12))
+                    (coe du_'8849'π'45'trans_24 (coe v8) (coe v12))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'rigid_94 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError

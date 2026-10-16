@@ -256,16 +256,16 @@ d_parseModule'45'total'45'at_426 v0
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
                  MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
-                 (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0))
+                 (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0))
                  (coe
                     MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                     (coe
-                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0)))
+                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0)))
                  (\ v1 v2 v3 ->
                     coe
                       MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                       (coe
-                         MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0)))) in
+                         MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0)))) in
     coe
       (let v2
              = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -273,16 +273,16 @@ d_parseModule'45'total'45'at_426 v0
                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                     (coe
                        MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
-                       (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0))
+                       (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0))
                        (coe
                           MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                           (coe
-                             MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0)))
+                             MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0)))
                        (\ v2 v3 v4 ->
                           coe
                             MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                             (coe
-                               MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032
+                               MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014
                                (coe v0))))) in
        coe
          (coe
@@ -307,16 +307,16 @@ du_parseStrict'45'sound_448 v0
                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                  (coe
                     MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
-                    (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0))
+                    (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0))
                     (coe
                        MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                        (coe
-                          MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0)))
+                          MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0)))
                     (\ v1 v2 v3 ->
                        coe
                          MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                          (coe
-                            MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032
+                            MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014
                             (coe v0))))) in
     coe
       (coe
@@ -377,7 +377,7 @@ du_goB_494 v0 v1 v2 v3
       seq (coe v2)
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-         (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0))
+         (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0))
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
             (coe
@@ -390,5 +390,5 @@ du_goB_494 v0 v1 v2 v3
                   (coe
                      du_sound'45'module_366
                      (coe
-                        MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0)))
+                        MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0)))
                   (coe v3)))))

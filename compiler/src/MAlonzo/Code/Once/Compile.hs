@@ -1093,7 +1093,7 @@ d_compileModule_738 v0 v1 v2
                  (coe
                     MAlonzo.Code.Once.Parser.Module.d_r_370
                     (coe
-                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v2)))) in
+                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v2)))) in
     coe
       (let v4
              = MAlonzo.Code.Once.Parser.d_extractFunctions_550
@@ -1998,20 +1998,20 @@ d_compile_1134 v0 v1 v2 v3 v4
                     (coe
                        MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                        (coe
-                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                           (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                           (coe (0 :: Integer)))
                        (coe
                           MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                           (coe
-                             MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                             MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                              (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                              (coe (0 :: Integer))))
                        (\ v5 v6 v7 ->
                           coe
                             MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                             (coe
-                               MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                               MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                                (coe (0 :: Integer)))))))
               (coe
@@ -2021,7 +2021,7 @@ d_compile_1134 v0 v1 v2 v3 v4
                     (coe
                        MAlonzo.Code.Once.Parser.Module.d_r_370
                        (coe
-                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                           (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                           (coe (0 :: Integer))))))
               (coe
@@ -2033,20 +2033,20 @@ d_compile_1134 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                           (coe
-                             MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                             MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                              (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                              (coe (0 :: Integer)))
                           (coe
                              MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                              (coe
-                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                 (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                                 (coe (0 :: Integer))))
                           (\ v5 v6 v7 ->
                              coe
                                MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                (coe
-                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                   (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v4)
                                   (coe (0 :: Integer)))))))) in
     coe

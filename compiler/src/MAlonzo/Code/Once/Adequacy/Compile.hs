@@ -82,7 +82,7 @@ d_compile'45'asm_6 v0 v1
                           (coe
                              MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                              (coe
-                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                    (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v1)))
@@ -90,7 +90,7 @@ d_compile'45'asm_6 v0 v1
                              (coe
                                 MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                 (coe
-                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                       (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v1)))
@@ -99,7 +99,7 @@ d_compile'45'asm_6 v0 v1
                                 coe
                                   MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                   (coe
-                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                         (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -112,7 +112,7 @@ d_compile'45'asm_6 v0 v1
                           (coe
                              MAlonzo.Code.Once.Parser.Module.d_r_370
                              (coe
-                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                    (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v1)))
@@ -126,7 +126,7 @@ d_compile'45'asm_6 v0 v1
                              (coe
                                 MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                                 (coe
-                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                       (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v1)))
@@ -134,7 +134,7 @@ d_compile'45'asm_6 v0 v1
                                 (coe
                                    MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                    (coe
-                                      MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                      MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                          (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -144,7 +144,7 @@ d_compile'45'asm_6 v0 v1
                                    coe
                                      MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                      (coe
-                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                            (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1716,7 +1716,7 @@ du_sound_1526 v0 v1
                              (coe
                                 MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                                 (coe
-                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                       (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v1)))
@@ -1724,7 +1724,7 @@ du_sound_1526 v0 v1
                                 (coe
                                    MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                    (coe
-                                      MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                      MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                          (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1734,7 +1734,7 @@ du_sound_1526 v0 v1
                                    coe
                                      MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                      (coe
-                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                            (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1747,7 +1747,7 @@ du_sound_1526 v0 v1
                              (coe
                                 MAlonzo.Code.Once.Parser.Module.d_r_370
                                 (coe
-                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                   MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                       (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52 (coe v1)))
@@ -1761,7 +1761,7 @@ du_sound_1526 v0 v1
                                 (coe
                                    MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                                    (coe
-                                      MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                      MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                          (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1770,7 +1770,7 @@ du_sound_1526 v0 v1
                                    (coe
                                       MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                       (coe
-                                         MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                         MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                             (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1780,7 +1780,7 @@ du_sound_1526 v0 v1
                                       coe
                                         MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                         (coe
-                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                            (coe
                                               MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                               (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1821,7 +1821,7 @@ du_sound_1526 v0 v1
                                                   (coe
                                                      MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                                                      (coe
-                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                         (coe
                                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                            (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1830,7 +1830,7 @@ du_sound_1526 v0 v1
                                                      (coe
                                                         MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                                         (coe
-                                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                            (coe
                                                               MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                               (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1840,7 +1840,7 @@ du_sound_1526 v0 v1
                                                         coe
                                                           MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                                           (coe
-                                                             MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                             MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                              (coe
                                                                 MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                 (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1853,7 +1853,7 @@ du_sound_1526 v0 v1
                                                   (coe
                                                      MAlonzo.Code.Once.Parser.Module.d_r_370
                                                      (coe
-                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                         (coe
                                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                            (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1868,7 +1868,7 @@ du_sound_1526 v0 v1
                                                      (coe
                                                         MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                                                         (coe
-                                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                           MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                            (coe
                                                               MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                               (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1877,7 +1877,7 @@ du_sound_1526 v0 v1
                                                         (coe
                                                            MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                                            (coe
-                                                              MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                              MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                               (coe
                                                                  MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                  (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1887,7 +1887,7 @@ du_sound_1526 v0 v1
                                                            coe
                                                              MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                                              (coe
-                                                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                 (coe
                                                                    MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                    (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1951,7 +1951,7 @@ du_sound_1526 v0 v1
                                                             (coe
                                                                MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                                                                (coe
-                                                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                      (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1960,7 +1960,7 @@ du_sound_1526 v0 v1
                                                                (coe
                                                                   MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                      (coe
                                                                         MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                         (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1970,7 +1970,7 @@ du_sound_1526 v0 v1
                                                                   coe
                                                                     MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                                                     (coe
-                                                                       MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                       MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                           (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1983,7 +1983,7 @@ du_sound_1526 v0 v1
                                                             (coe
                                                                MAlonzo.Code.Once.Parser.Module.d_r_370
                                                                (coe
-                                                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                  MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                      (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -1998,7 +1998,7 @@ du_sound_1526 v0 v1
                                                                (coe
                                                                   MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                     MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                      (coe
                                                                         MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                         (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -2007,7 +2007,7 @@ du_sound_1526 v0 v1
                                                                   (coe
                                                                      MAlonzo.Code.Once.Parser.Core.d_skipNewlines_10
                                                                      (coe
-                                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                        MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                         (coe
                                                                            MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                            (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
@@ -2017,7 +2017,7 @@ du_sound_1526 v0 v1
                                                                      coe
                                                                        MAlonzo.Code.Once.Parser.Module.du_skipNewlines'45''8804'_176
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_634
+                                                                          MAlonzo.Code.Once.Parser.Lexer.du_tokenize'45'WF_616
                                                                           (coe
                                                                              MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
                                                                              (MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52

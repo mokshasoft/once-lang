@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Metatheory.ModeAgreement where
+module MAlonzo.Code.Once.Lang.Laws.ModeAgreement where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -35,16 +35,16 @@ import qualified MAlonzo.Code.Once.Lang.Typing
 import qualified MAlonzo.Code.Once.Lang.Typing.Scope
 import qualified MAlonzo.Code.Once.Spec.Name
 
--- Once.Metatheory.ModeAgreement.just≢nothing
-d_just'8802'nothing_12 ::
+-- Once.Lang.Laws.ModeAgreement.just≢nothing
+d_just'8802'nothing_14 ::
   MAlonzo.Code.Agda.Primitive.T_Level_18 ->
   () ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_just'8802'nothing_12 = erased
--- Once.Metatheory.ModeAgreement.cod-≡
-d_cod'45''8801'_26 ::
+d_just'8802'nothing_14 = erased
+-- Once.Lang.Laws.ModeAgreement.cod-≡
+d_cod'45''8801'_28 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -53,157 +53,147 @@ d_cod'45''8801'_26 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_cod'45''8801'_26 = erased
--- Once.Metatheory.ModeAgreement.arith-not-cmp
-d_arith'45'not'45'cmp_30 ::
+d_cod'45''8801'_28 = erased
+-- Once.Lang.Laws.ModeAgreement.arith-not-cmp
+d_arith'45'not'45'cmp_32 ::
   MAlonzo.Code.Once.Lang.Syntax.T_BinOp_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_arith'45'not'45'cmp_30 = erased
--- Once.Metatheory.ModeAgreement.extractGroundF-irr
-d_extractGroundF'45'irr_38 ::
+d_arith'45'not'45'cmp_32 = erased
+-- Once.Lang.Laws.ModeAgreement.extractGroundF-irr
+d_extractGroundF'45'irr_40 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyFunctor_8 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_extractGroundF'45'irr_38 = erased
--- Once.Metatheory.ModeAgreement.extractGround-irr
-d_extractGround'45'irr_46 ::
+d_extractGroundF'45'irr_40 = erased
+-- Once.Lang.Laws.ModeAgreement.extractGround-irr
+d_extractGround'45'irr_48 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_extractGround'45'irr_46 = erased
--- Once.Metatheory.ModeAgreement.noinf-id
-d_noinf'45'id_174 ::
+d_extractGround'45'irr_48 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-id
+d_noinf'45'id_176 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'id_174 = erased
--- Once.Metatheory.ModeAgreement.noinf-fst
-d_noinf'45'fst_184 ::
+d_noinf'45'id_176 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-fst
+d_noinf'45'fst_186 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'fst_184 = erased
--- Once.Metatheory.ModeAgreement.noinf-snd
-d_noinf'45'snd_194 ::
+d_noinf'45'fst_186 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-snd
+d_noinf'45'snd_196 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'snd_194 = erased
--- Once.Metatheory.ModeAgreement.noinf-terminal
-d_noinf'45'terminal_204 ::
+d_noinf'45'snd_196 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-terminal
+d_noinf'45'terminal_206 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'terminal_204 = erased
--- Once.Metatheory.ModeAgreement.noinf-initial
-d_noinf'45'initial_214 ::
+d_noinf'45'terminal_206 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-initial
+d_noinf'45'initial_216 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'initial_214 = erased
--- Once.Metatheory.ModeAgreement.noinf-inl
-d_noinf'45'inl_224 ::
+d_noinf'45'initial_216 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-inl
+d_noinf'45'inl_226 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'inl_224 = erased
--- Once.Metatheory.ModeAgreement.noinf-inr
-d_noinf'45'inr_234 ::
+d_noinf'45'inl_226 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-inr
+d_noinf'45'inr_236 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'inr_234 = erased
--- Once.Metatheory.ModeAgreement.noinf-curry-app
-d_noinf'45'curry'45'app_246 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
-  MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
-  MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'curry'45'app_246 = erased
--- Once.Metatheory.ModeAgreement.noinf-cata-app
-d_noinf'45'cata'45'app_256 ::
+d_noinf'45'inr_236 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-curry-app
+d_noinf'45'curry'45'app_248 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'cata'45'app_256 = erased
--- Once.Metatheory.ModeAgreement.noinf-ana-app
-d_noinf'45'ana'45'app_266 ::
+d_noinf'45'curry'45'app_248 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-cata-app
+d_noinf'45'cata'45'app_258 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'ana'45'app_266 = erased
--- Once.Metatheory.ModeAgreement.noinf-In-app
-d_noinf'45'In'45'app_276 ::
+d_noinf'45'cata'45'app_258 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-ana-app
+d_noinf'45'ana'45'app_268 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'In'45'app_276 = erased
--- Once.Metatheory.ModeAgreement.noinf-inl-app
-d_noinf'45'inl'45'app_286 ::
+d_noinf'45'ana'45'app_268 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-In-app
+d_noinf'45'In'45'app_278 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'inl'45'app_286 = erased
--- Once.Metatheory.ModeAgreement.noinf-inr-app
-d_noinf'45'inr'45'app_296 ::
+d_noinf'45'In'45'app_278 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-inl-app
+d_noinf'45'inl'45'app_288 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'inr'45'app_296 = erased
--- Once.Metatheory.ModeAgreement.noinf-initial-app
-d_noinf'45'initial'45'app_306 ::
+d_noinf'45'inl'45'app_288 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-inr-app
+d_noinf'45'inr'45'app_298 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'initial'45'app_306 = erased
--- Once.Metatheory.ModeAgreement.noinf-compose
-d_noinf'45'compose_318 ::
+d_noinf'45'inr'45'app_298 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-initial-app
+d_noinf'45'initial'45'app_308 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'compose_318 = erased
--- Once.Metatheory.ModeAgreement.noinf-case
-d_noinf'45'case_330 ::
+d_noinf'45'initial'45'app_308 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-compose
+d_noinf'45'compose_320 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -211,9 +201,9 @@ d_noinf'45'case_330 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'case_330 = erased
--- Once.Metatheory.ModeAgreement.noinf-pair
-d_noinf'45'pair_342 ::
+d_noinf'45'compose_320 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-case
+d_noinf'45'case_332 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -221,9 +211,19 @@ d_noinf'45'pair_342 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_noinf'45'pair_342 = erased
--- Once.Metatheory.ModeAgreement.⇒-parts
-d_'8658''45'parts_356 ::
+d_noinf'45'case_332 = erased
+-- Once.Lang.Laws.ModeAgreement.noinf-pair
+d_noinf'45'pair_344 ::
+  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
+  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
+  MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
+d_noinf'45'pair_344 = erased
+-- Once.Lang.Laws.ModeAgreement.⇒-parts
+d_'8658''45'parts_358 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -232,13 +232,13 @@ d_'8658''45'parts_356 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_'8658''45'parts_356 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6
-  = du_'8658''45'parts_356
-du_'8658''45'parts_356 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_'8658''45'parts_356
+d_'8658''45'parts_358 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6
+  = du_'8658''45'parts_358
+du_'8658''45'parts_358 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_'8658''45'parts_358
   = coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased
--- Once.Metatheory.ModeAgreement.dpoly-det
-d_dpoly'45'det_382 ::
+-- Once.Lang.Laws.ModeAgreement.dpoly-det
+d_dpoly'45'det_384 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
@@ -261,9 +261,9 @@ d_dpoly'45'det_382 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_dpoly'45'det_382 = erased
--- Once.Metatheory.ModeAgreement.agree-ii
-d_agree'45'ii_492 ::
+d_dpoly'45'det_384 = erased
+-- Once.Lang.Laws.ModeAgreement.agree-ii
+d_agree'45'ii_494 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -273,9 +273,9 @@ d_agree'45'ii_492 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_agree'45'ii_492 v0 v1 v2 v3 ~v4 ~v5 v6 v7
-  = du_agree'45'ii_492 v0 v1 v2 v3 v6 v7
-du_agree'45'ii_492 ::
+d_agree'45'ii_494 v0 v1 v2 v3 ~v4 ~v5 v6 v7
+  = du_agree'45'ii_494 v0 v1 v2 v3 v6 v7
+du_agree'45'ii_494 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -283,7 +283,7 @@ du_agree'45'ii_492 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
+du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
   = case coe v4 of
       MAlonzo.Code.Once.Lang.Typing.C_t'45'int_30
         -> coe
@@ -572,12 +572,12 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                                   MAlonzo.Code.Once.Lang.Type.C__'42'__24 v28 v29
                                     -> let v30
                                              = coe
-                                                 du_agree'45'ii_492 (coe v0) (coe v15) (coe v17)
+                                                 du_agree'45'ii_494 (coe v0) (coe v15) (coe v17)
                                                  (coe v28) (coe v13) (coe v26) in
                                        coe
                                          (let v31
                                                 = coe
-                                                    du_agree'45'ii_492 (coe v0) (coe v16) (coe v18)
+                                                    du_agree'45'ii_494 (coe v0) (coe v16) (coe v18)
                                                     (coe v29) (coe v14) (coe v27) in
                                           coe
                                             (coe
@@ -601,7 +601,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                               (coe
-                                 du_agree'45'ii_492 (coe v0) (coe v11)
+                                 du_agree'45'ii_494 (coe v0) (coe v11)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v9) (coe v15)))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -617,14 +617,14 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'let_178 v24 v26 v27 v28 v29 v30
                       -> let v31
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v18) (coe v10) (coe v24)
+                                   du_agree'45'ii_494 (coe v0) (coe v18) (coe v10) (coe v24)
                                    (coe v15) (coe v29) in
                          coe
                            (coe
                               seq (coe v31)
                               (let v32
                                      = coe
-                                         du_agree'45'ii_492
+                                         du_agree'45'ii_494
                                          (coe
                                             MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                             (coe
@@ -671,7 +671,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'case_208 v34 v35 v37 v38 v39 v40 v41 v42 v43 v44
                       -> let v45
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v23)
+                                   du_agree'45'ii_494 (coe v0) (coe v23)
                                    (coe MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v12) (coe v13))
                                    (coe MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v34) (coe v35))
                                    (coe v20) (coe v42) in
@@ -680,7 +680,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                               seq (coe v45)
                               (let v46
                                      = coe
-                                         du_agree'45'ii_492
+                                         du_agree'45'ii_494
                                          (coe
                                             MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                             (coe
@@ -716,7 +716,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                                coe
                                  (let v47
                                         = coe
-                                            du_agree'45'ii_492
+                                            du_agree'45'ii_494
                                             (coe
                                                MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                                (coe
@@ -767,13 +767,13 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith_222 v22 v23 v25 v26
                       -> let v27
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v16)
+                                   du_agree'45'ii_494 (coe v0) (coe v16)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v25) in
                          coe
                            (let v28
                                   = coe
-                                      du_agree'45'ii_492 (coe v0) (coe v17)
+                                      du_agree'45'ii_494 (coe v0) (coe v17)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14)
                                       (coe v26) in
@@ -795,14 +795,14 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float_236 v22 v23 v25 v26
                       -> let v27
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v16)
+                                   du_agree'45'ii_494 (coe v0) (coe v16)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13)
                                    (coe v25) in
                          coe
                            (let v28
                                   = coe
-                                      du_agree'45'ii_492 (coe v0) (coe v17)
+                                      du_agree'45'ii_494 (coe v0) (coe v17)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14)
                                       (coe v26) in
@@ -822,13 +822,13 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float'45'il_250 v22 v23 v25 v26
                       -> let v27
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v16)
+                                   du_agree'45'ii_494 (coe v0) (coe v16)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v25) in
                          coe
                            (let v28
                                   = coe
-                                      du_agree'45'ii_492 (coe v0) (coe v17)
+                                      du_agree'45'ii_494 (coe v0) (coe v17)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14)
                                       (coe v26) in
@@ -848,14 +848,14 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float'45'ir_264 v22 v23 v25 v26
                       -> let v27
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v16)
+                                   du_agree'45'ii_494 (coe v0) (coe v16)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13)
                                    (coe v25) in
                          coe
                            (let v28
                                   = coe
-                                      du_agree'45'ii_492 (coe v0) (coe v17)
+                                      du_agree'45'ii_494 (coe v0) (coe v17)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14)
                                       (coe v26) in
@@ -877,13 +877,13 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'cmp_278 v22 v23 v25 v26
                       -> let v27
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v16)
+                                   du_agree'45'ii_494 (coe v0) (coe v16)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                    (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v25) in
                          coe
                            (let v28
                                   = coe
-                                      du_agree'45'ii_492 (coe v0) (coe v17)
+                                      du_agree'45'ii_494 (coe v0) (coe v17)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                       (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14)
                                       (coe v26) in
@@ -903,7 +903,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'id'45'app_288 v16 v17
                       -> let v18
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v12) (coe v2) (coe v3) (coe v10)
+                                   du_agree'45'ii_494 (coe v0) (coe v12) (coe v2) (coe v3) (coe v10)
                                    (coe v17) in
                          coe
                            (coe
@@ -918,7 +918,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'fst'45'app_300 v17 v18 v19
                       -> let v20
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v13)
+                                   du_agree'45'ii_494 (coe v0) (coe v13)
                                    (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v2) (coe v9))
                                    (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v3) (coe v17))
                                    (coe v11) (coe v19) in
@@ -935,7 +935,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'snd'45'app_312 v16 v18 v19
                       -> let v20
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v13)
+                                   du_agree'45'ii_494 (coe v0) (coe v13)
                                    (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v8) (coe v2))
                                    (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v16) (coe v3))
                                    (coe v11) (coe v19) in
@@ -952,7 +952,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'terminal'45'app_322 v15 v16 v17
                       -> let v18
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v12) (coe v8) (coe v15)
+                                   du_agree'45'ii_494 (coe v0) (coe v12) (coe v8) (coe v15)
                                    (coe v10) (coe v17) in
                          coe
                            (coe
@@ -967,7 +967,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_334 v16 v18 v19
                       -> let v20
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v13)
+                                   du_agree'45'ii_494 (coe v0) (coe v13)
                                    (coe
                                       MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                       (coe
@@ -1013,7 +1013,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                                                    MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v32 v33
                                                      -> let v34
                                                               = coe
-                                                                  du_agree'45'ii_492 (coe v0)
+                                                                  du_agree'45'ii_494 (coe v0)
                                                                   (coe v15)
                                                                   (coe
                                                                      MAlonzo.Code.Once.Lang.Type.C__'42'__24
@@ -1059,7 +1059,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'app'45'infer_362 v18 v20 v21 v23
                       -> let v24
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v15)
+                                   du_agree'45'ii_494 (coe v0) (coe v15)
                                    (coe
                                       MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 (coe v8)
                                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
@@ -1094,7 +1094,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v36 v37
                                                   -> let v38
                                                            = coe
-                                                               du_agree'45'ii_492 (coe v0) (coe v17)
+                                                               du_agree'45'ii_494 (coe v0) (coe v17)
                                                                (coe
                                                                   MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32
                                                                   (coe v8) (coe v22))
@@ -1123,7 +1123,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'app_396 v22 v24 v25 v26 v28 v29
                       -> let v30
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v17)
+                                   du_agree'45'ii_494 (coe v0) (coe v17)
                                    (coe
                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v9)
                                       (coe
@@ -1144,7 +1144,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'app'45'spine_432 v22 v24 v25 v27 v28
                       -> let v29
                                = coe
-                                   du_agree'45'di_558 (coe v0) (coe v17) (coe v3)
+                                   du_agree'45'di_560 (coe v0) (coe v17) (coe v3)
                                    (coe
                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v9)
                                       (coe
@@ -1187,7 +1187,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v40 v41
                                                   -> let v42
                                                            = coe
-                                                               du_agree'45'ii_492 (coe v0) (coe v18)
+                                                               du_agree'45'ii_494 (coe v0) (coe v18)
                                                                (coe
                                                                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                                   (coe v9)
@@ -1226,7 +1226,7 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'app_396 v21 v23 v24 v25 v27 v28
                       -> let v29
                                = coe
-                                   du_agree'45'di_558 (coe v0) (coe v16) (coe v2)
+                                   du_agree'45'di_560 (coe v0) (coe v16) (coe v2)
                                    (coe
                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v21)
                                       (coe
@@ -1255,14 +1255,14 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Typing.C_t'45'app'45'spine_432 v21 v23 v24 v26 v27
                       -> let v28
                                = coe
-                                   du_agree'45'ii_492 (coe v0) (coe v17) (coe v9) (coe v21)
+                                   du_agree'45'ii_494 (coe v0) (coe v17) (coe v9) (coe v21)
                                    (coe v14) (coe v26) in
                          coe
                            (coe
                               seq (coe v28)
                               (let v29
                                      = coe
-                                         du_agree'45'dd_576 (coe v0) (coe v16) (coe v9) (coe v2)
+                                         du_agree'45'dd_578 (coe v0) (coe v16) (coe v9) (coe v2)
                                          (coe v3) (coe v11) (coe v23) (coe v15) (coe v27) in
                                coe
                                  (coe
@@ -1272,8 +1272,8 @@ du_agree'45'ii_492 v0 v1 v2 v3 v4 v5
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.ModeAgreement.agree-cc
-d_agree'45'cc_504 ::
+-- Once.Lang.Laws.ModeAgreement.agree-cc
+d_agree'45'cc_506 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1282,9 +1282,9 @@ d_agree'45'cc_504 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'cc_504 = erased
--- Once.Metatheory.ModeAgreement.agree-ic
-d_agree'45'ic_518 ::
+d_agree'45'cc_506 = erased
+-- Once.Lang.Laws.ModeAgreement.agree-ic
+d_agree'45'ic_520 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1294,9 +1294,9 @@ d_agree'45'ic_518 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'ic_518 = erased
--- Once.Metatheory.ModeAgreement.agree-dc
-d_agree'45'dc_536 ::
+d_agree'45'ic_520 = erased
+-- Once.Lang.Laws.ModeAgreement.agree-dc
+d_agree'45'dc_538 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1308,9 +1308,9 @@ d_agree'45'dc_536 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_agree'45'dc_536 = erased
--- Once.Metatheory.ModeAgreement.agree-di
-d_agree'45'di_558 ::
+d_agree'45'dc_538 = erased
+-- Once.Lang.Laws.ModeAgreement.agree-di
+d_agree'45'di_560 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1322,9 +1322,9 @@ d_agree'45'di_558 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_agree'45'di_558 v0 v1 ~v2 v3 v4 ~v5 v6 v7 v8 v9
-  = du_agree'45'di_558 v0 v1 v3 v4 v6 v7 v8 v9
-du_agree'45'di_558 ::
+d_agree'45'di_560 v0 v1 ~v2 v3 v4 ~v5 v6 v7 v8 v9
+  = du_agree'45'di_560 v0 v1 v3 v4 v6 v7 v8 v9
+du_agree'45'di_560 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1334,12 +1334,12 @@ du_agree'45'di_558 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_agree'45'di_558 v0 v1 v2 v3 v4 v5 v6 v7
+du_agree'45'di_560 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v6 of
       MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v11 v14 v16 v17 v18
         -> let v19
                  = coe
-                     du_agree'45'ii_492 (coe v0) (coe v1)
+                     du_agree'45'ii_494 (coe v0) (coe v1)
                      (coe
                         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v11)
                         (coe
@@ -1380,8 +1380,8 @@ du_agree'45'di_558 v0 v1 v2 v3 v4 v5 v6 v7
       MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_972 v13 v14 v15 v16
         -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.ModeAgreement.agree-dd
-d_agree'45'dd_576 ::
+-- Once.Lang.Laws.ModeAgreement.agree-dd
+d_agree'45'dd_578 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1393,9 +1393,9 @@ d_agree'45'dd_576 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_agree'45'dd_576 v0 v1 v2 v3 v4 ~v5 v6 v7 v8 v9
-  = du_agree'45'dd_576 v0 v1 v2 v3 v4 v6 v7 v8 v9
-du_agree'45'dd_576 ::
+d_agree'45'dd_578 v0 v1 v2 v3 v4 ~v5 v6 v7 v8 v9
+  = du_agree'45'dd_578 v0 v1 v2 v3 v4 v6 v7 v8 v9
+du_agree'45'dd_578 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1406,12 +1406,12 @@ du_agree'45'dd_576 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_agree'45'dd_578 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v7 of
       MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v12 v15 v17 v18 v19
         -> let v20
                  = coe
-                     du_agree'45'di_558 (coe v0) (coe v1) (coe v4)
+                     du_agree'45'di_560 (coe v0) (coe v1) (coe v4)
                      (coe
                         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
                         (coe
@@ -1438,7 +1438,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v31 v34 v36 v37 v38
                        -> let v39
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v31)
                                        (coe
@@ -1474,7 +1474,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v33 v36 v38 v39 v40
                          -> let v41
                                   = coe
-                                      du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                      du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                       (coe
                                          MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                          (coe v33)
@@ -1525,7 +1525,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v22 v25 v27 v28 v29
                        -> let v30
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v22)
                                        (coe
@@ -1559,7 +1559,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v25 v28 v30 v31 v32
                          -> let v33
                                   = coe
-                                      du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                      du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                       (coe
                                          MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                          (coe v25)
@@ -1589,7 +1589,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_844 v27 v30 v31
                          -> let v32
                                   = coe
-                                      du_agree'45'ii_492
+                                      du_agree'45'ii_494
                                       (coe
                                          MAlonzo.Code.Once.Lang.Typing.Scope.d_extendNamedCtx_132
                                          (coe v0) (coe v20) (coe v2))
@@ -1606,7 +1606,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v23 v26 v28 v29 v30
                        -> let v31
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v23)
                                        (coe
@@ -1643,7 +1643,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v26 v29 v31 v32 v33
                                  -> let v34
                                           = coe
-                                              du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                              du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                  (coe v26)
@@ -1681,7 +1681,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v29 v32 v34 v35 v36
                                    -> let v37
                                             = coe
-                                                du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                                du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                                 (coe
                                                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                    (coe v29)
@@ -1714,7 +1714,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_864 v30 v33 v34 v35 v36
                                    -> let v37
                                             = coe
-                                                du_agree'45'dd_576 (coe v0) (coe v22) (coe v2)
+                                                du_agree'45'dd_578 (coe v0) (coe v22) (coe v2)
                                                 (coe v13) (coe v30) (coe v17) (coe v34) (coe v18)
                                                 (coe v35) in
                                       coe
@@ -1722,7 +1722,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                            seq (coe v37)
                                            (let v38
                                                   = coe
-                                                      du_agree'45'dd_576 (coe v0) (coe v25)
+                                                      du_agree'45'dd_578 (coe v0) (coe v25)
                                                       (coe v13) (coe v3) (coe v4) (coe v16)
                                                       (coe v33) (coe v19) (coe v36) in
                                             coe
@@ -1739,7 +1739,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
              MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v16 v19 v21 v22 v23
                -> let v24
                         = coe
-                            du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                            du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                             (coe
                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v16)
                                (coe
@@ -1772,7 +1772,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v17 v20 v22 v23 v24
                        -> let v25
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v17)
                                        (coe
@@ -1806,7 +1806,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v20 v23 v25 v26 v27
                          -> let v28
                                   = coe
-                                      du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                      du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                       (coe
                                          MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                          (coe v20)
@@ -1843,7 +1843,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v17 v20 v22 v23 v24
                        -> let v25
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v17)
                                        (coe
@@ -1877,7 +1877,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v20 v23 v25 v26 v27
                          -> let v28
                                   = coe
-                                      du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                      du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                       (coe
                                          MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                          (coe v20)
@@ -1913,7 +1913,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
              MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v16 v19 v21 v22 v23
                -> let v24
                         = coe
-                            du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                            du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                             (coe
                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v16)
                                (coe
@@ -1946,7 +1946,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
              MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v15 v18 v20 v21 v22
                -> let v23
                         = coe
-                            du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                            du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                             (coe
                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v15)
                                (coe
@@ -1980,7 +1980,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v23 v26 v28 v29 v30
                        -> let v31
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v23)
                                        (coe
@@ -2017,7 +2017,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v26 v29 v31 v32 v33
                                  -> let v34
                                           = coe
-                                              du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                              du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                  (coe v26)
@@ -2056,7 +2056,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v29 v32 v34 v35 v36
                                            -> let v37
                                                     = coe
-                                                        du_agree'45'di_558 (coe v0) (coe v1)
+                                                        du_agree'45'di_560 (coe v0) (coe v1)
                                                         (coe v3)
                                                         (coe
                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -2095,7 +2095,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                            MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v32 v35 v37 v38 v39
                                              -> let v40
                                                       = coe
-                                                          du_agree'45'di_558 (coe v0) (coe v1)
+                                                          du_agree'45'di_560 (coe v0) (coe v1)
                                                           (coe v3)
                                                           (coe
                                                              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -2129,13 +2129,13 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                            MAlonzo.Code.Once.Lang.Typing.C_d'45'case_936 v36 v37 v38 v39
                                              -> let v40
                                                       = coe
-                                                          du_agree'45'dd_576 (coe v0) (coe v25)
+                                                          du_agree'45'dd_578 (coe v0) (coe v25)
                                                           (coe v27) (coe v3) (coe v4) (coe v16)
                                                           (coe v36) (coe v18) (coe v38) in
                                                 coe
                                                   (let v41
                                                          = coe
-                                                             du_agree'45'dd_576 (coe v0) (coe v22)
+                                                             du_agree'45'dd_578 (coe v0) (coe v22)
                                                              (coe v28) (coe v3) (coe v4) (coe v17)
                                                              (coe v37) (coe v19) (coe v39) in
                                                    coe
@@ -2156,7 +2156,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v23 v26 v28 v29 v30
                        -> let v31
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v23)
                                        (coe
@@ -2193,7 +2193,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v26 v29 v31 v32 v33
                                  -> let v34
                                           = coe
-                                              du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                              du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                  (coe v26)
@@ -2232,7 +2232,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v29 v32 v34 v35 v36
                                            -> let v37
                                                     = coe
-                                                        du_agree'45'di_558 (coe v0) (coe v1)
+                                                        du_agree'45'di_560 (coe v0) (coe v1)
                                                         (coe v3)
                                                         (coe
                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -2271,7 +2271,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                            MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v32 v35 v37 v38 v39
                                              -> let v40
                                                       = coe
-                                                          du_agree'45'di_558 (coe v0) (coe v1)
+                                                          du_agree'45'di_560 (coe v0) (coe v1)
                                                           (coe v3)
                                                           (coe
                                                              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -2307,14 +2307,14 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                   MAlonzo.Code.Once.Lang.Type.C__'42'__24 v40 v41
                                                     -> let v42
                                                              = coe
-                                                                 du_agree'45'dd_576 (coe v0)
+                                                                 du_agree'45'dd_578 (coe v0)
                                                                  (coe v25) (coe v2) (coe v27)
                                                                  (coe v40) (coe v16) (coe v36)
                                                                  (coe v18) (coe v38) in
                                                        coe
                                                          (let v43
                                                                 = coe
-                                                                    du_agree'45'dd_576 (coe v0)
+                                                                    du_agree'45'dd_578 (coe v0)
                                                                     (coe v22) (coe v2) (coe v28)
                                                                     (coe v41) (coe v17) (coe v37)
                                                                     (coe v19) (coe v39) in
@@ -2337,7 +2337,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v21 v24 v26 v27 v28
                        -> let v29
                                 = coe
-                                    du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                    du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v21)
                                        (coe
@@ -2374,7 +2374,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v24 v27 v29 v30 v31
                                  -> let v32
                                           = coe
-                                              du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                              du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                  (coe v24)
@@ -2412,7 +2412,7 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v26 v29 v31 v32 v33
                                    -> let v34
                                             = coe
-                                                du_agree'45'di_558 (coe v0) (coe v1) (coe v3)
+                                                du_agree'45'di_560 (coe v0) (coe v1) (coe v3)
                                                 (coe
                                                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                    (coe v26)
@@ -2448,8 +2448,8 @@ du_agree'45'dd_576 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           _ -> coe v21)
                 _ -> coe v18)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.ModeAgreement.mode-agree-ic
-d_mode'45'agree'45'ic_2280 ::
+-- Once.Lang.Laws.ModeAgreement.mode-agree-ic
+d_mode'45'agree'45'ic_2282 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -2459,9 +2459,9 @@ d_mode'45'agree'45'ic_2280 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mode'45'agree'45'ic_2280 = erased
--- Once.Metatheory.ModeAgreement.mode-agree-dc
-d_mode'45'agree'45'dc_2298 ::
+d_mode'45'agree'45'ic_2282 = erased
+-- Once.Lang.Laws.ModeAgreement.mode-agree-dc
+d_mode'45'agree'45'dc_2300 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -2473,4 +2473,4 @@ d_mode'45'agree'45'dc_2298 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mode'45'agree'45'dc_2298 = erased
+d_mode'45'agree'45'dc_2300 = erased

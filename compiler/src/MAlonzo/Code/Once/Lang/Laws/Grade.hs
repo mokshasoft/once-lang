@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Metatheory.Grade where
+module MAlonzo.Code.Once.Lang.Laws.Grade where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -31,80 +31,80 @@ import qualified MAlonzo.Code.Relation.Binary.Structures
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
--- Once.Metatheory.Grade.+q-assoc
-d_'43'q'45'assoc_12 ::
+-- Once.Lang.Laws.Grade.+q-assoc
+d_'43'q'45'assoc_14 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'43'q'45'assoc_12 = erased
--- Once.Metatheory.Grade.+q-comm
-d_'43'q'45'comm_30 ::
+d_'43'q'45'assoc_14 = erased
+-- Once.Lang.Laws.Grade.+q-comm
+d_'43'q'45'comm_32 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'43'q'45'comm_30 = erased
--- Once.Metatheory.Grade.+q-identityˡ
-d_'43'q'45'identity'737'_34 ::
+d_'43'q'45'comm_32 = erased
+-- Once.Lang.Laws.Grade.+q-identityˡ
+d_'43'q'45'identity'737'_36 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'43'q'45'identity'737'_34 = erased
--- Once.Metatheory.Grade.+q-identityʳ
-d_'43'q'45'identity'691'_40 ::
+d_'43'q'45'identity'737'_36 = erased
+-- Once.Lang.Laws.Grade.+q-identityʳ
+d_'43'q'45'identity'691'_42 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'43'q'45'identity'691'_40 = erased
--- Once.Metatheory.Grade.*q-assoc
-d_'42'q'45'assoc_48 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'assoc_48 = erased
--- Once.Metatheory.Grade.*q-comm
-d_'42'q'45'comm_62 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'comm_62 = erased
--- Once.Metatheory.Grade.*q-identityˡ
-d_'42'q'45'identity'737'_66 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'identity'737'_66 = erased
--- Once.Metatheory.Grade.*q-identityʳ
-d_'42'q'45'identity'691'_70 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'identity'691'_70 = erased
--- Once.Metatheory.Grade.*q-zeroˡ
-d_'42'q'45'zero'737'_74 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'zero'737'_74 = erased
--- Once.Metatheory.Grade.*q-zeroʳ
-d_'42'q'45'zero'691'_80 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'zero'691'_80 = erased
--- Once.Metatheory.Grade.*q-distribʳ
-d_'42'q'45'distrib'691'_88 ::
+d_'43'q'45'identity'691'_42 = erased
+-- Once.Lang.Laws.Grade.*q-assoc
+d_'42'q'45'assoc_50 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'distrib'691'_88 = erased
--- Once.Metatheory.Grade.*q-distribˡ
-d_'42'q'45'distrib'737'_96 ::
+d_'42'q'45'assoc_50 = erased
+-- Once.Lang.Laws.Grade.*q-comm
+d_'42'q'45'comm_64 ::
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'42'q'45'comm_64 = erased
+-- Once.Lang.Laws.Grade.*q-identityˡ
+d_'42'q'45'identity'737'_68 ::
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'42'q'45'identity'737'_68 = erased
+-- Once.Lang.Laws.Grade.*q-identityʳ
+d_'42'q'45'identity'691'_72 ::
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'42'q'45'identity'691'_72 = erased
+-- Once.Lang.Laws.Grade.*q-zeroˡ
+d_'42'q'45'zero'737'_76 ::
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'42'q'45'zero'737'_76 = erased
+-- Once.Lang.Laws.Grade.*q-zeroʳ
+d_'42'q'45'zero'691'_82 ::
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'42'q'45'zero'691'_82 = erased
+-- Once.Lang.Laws.Grade.*q-distribʳ
+d_'42'q'45'distrib'691'_90 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'q'45'distrib'737'_96 = erased
--- Once.Metatheory.Grade.quantity-isCommutativeSemiring
-d_quantity'45'isCommutativeSemiring_116 ::
+d_'42'q'45'distrib'691'_90 = erased
+-- Once.Lang.Laws.Grade.*q-distribˡ
+d_'42'q'45'distrib'737'_98 ::
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'42'q'45'distrib'737'_98 = erased
+-- Once.Lang.Laws.Grade.quantity-isCommutativeSemiring
+d_quantity'45'isCommutativeSemiring_118 ::
   MAlonzo.Code.Algebra.Structures.T_IsCommutativeSemiring_1750
-d_quantity'45'isCommutativeSemiring_116
+d_quantity'45'isCommutativeSemiring_118
   = coe
       MAlonzo.Code.Algebra.Structures.C_constructor_1862
       (coe
@@ -130,28 +130,28 @@ d_quantity'45'isCommutativeSemiring_116
             (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased))
          (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased))
       erased
--- Once.Metatheory.Grade.⊔q-assoc
-d_'8852'q'45'assoc_124 ::
+-- Once.Lang.Laws.Grade.⊔q-assoc
+d_'8852'q'45'assoc_126 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8852'q'45'assoc_124 = erased
--- Once.Metatheory.Grade.⊔q-comm
-d_'8852'q'45'comm_142 ::
+d_'8852'q'45'assoc_126 = erased
+-- Once.Lang.Laws.Grade.⊔q-comm
+d_'8852'q'45'comm_144 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8852'q'45'comm_142 = erased
--- Once.Metatheory.Grade.⊔q-idem
-d_'8852'q'45'idem_146 ::
+d_'8852'q'45'comm_144 = erased
+-- Once.Lang.Laws.Grade.⊔q-idem
+d_'8852'q'45'idem_148 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8852'q'45'idem_146 = erased
--- Once.Metatheory.Grade.quantity-⊔-isCommutativeBand
-d_quantity'45''8852''45'isCommutativeBand_148 ::
+d_'8852'q'45'idem_148 = erased
+-- Once.Lang.Laws.Grade.quantity-⊔-isCommutativeBand
+d_quantity'45''8852''45'isCommutativeBand_150 ::
   MAlonzo.Code.Algebra.Structures.T_IsCommutativeBand_612
-d_quantity'45''8852''45'isCommutativeBand_148
+d_quantity'45''8852''45'isCommutativeBand_150
   = coe
       MAlonzo.Code.Algebra.Structures.C_constructor_660
       (coe
@@ -166,11 +166,11 @@ d_quantity'45''8852''45'isCommutativeBand_148
             erased)
          erased)
       erased
--- Once.Metatheory.Grade.≤q'-refl
-d_'8804'q'''45'refl_152 ::
+-- Once.Lang.Laws.Grade.≤q'-refl
+d_'8804'q'''45'refl_154 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162
-d_'8804'q'''45'refl_152 v0
+d_'8804'q'''45'refl_154 v0
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
         -> coe MAlonzo.Code.Once.Lang.Context.C_z'8804'z_164
@@ -179,21 +179,21 @@ d_'8804'q'''45'refl_152 v0
       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
         -> coe MAlonzo.Code.Once.Lang.Context.C_m'8804'm_174
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.≤q'-trans
-d_'8804'q'''45'trans_160 ::
+-- Once.Lang.Laws.Grade.≤q'-trans
+d_'8804'q'''45'trans_162 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162
-d_'8804'q'''45'trans_160 ~v0 ~v1 ~v2 v3 v4
-  = du_'8804'q'''45'trans_160 v3 v4
-du_'8804'q'''45'trans_160 ::
+d_'8804'q'''45'trans_162 ~v0 ~v1 ~v2 v3 v4
+  = du_'8804'q'''45'trans_162 v3 v4
+du_'8804'q'''45'trans_162 ::
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162
-du_'8804'q'''45'trans_160 v0 v1
+du_'8804'q'''45'trans_162 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Context.C_z'8804'z_164 -> coe v1
       MAlonzo.Code.Once.Lang.Context.C_z'8804'o_166
@@ -210,20 +210,20 @@ du_'8804'q'''45'trans_160 v0 v1
       MAlonzo.Code.Once.Lang.Context.C_m'8804'm_174
         -> coe seq (coe v1) (coe v0)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.≤q'-antisym
-d_'8804'q'''45'antisym_170 ::
+-- Once.Lang.Laws.Grade.≤q'-antisym
+d_'8804'q'''45'antisym_172 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804'q'''45'antisym_170 = erased
--- Once.Metatheory.Grade.≤q'-total
-d_'8804'q'''45'total_176 ::
+d_'8804'q'''45'antisym_172 = erased
+-- Once.Lang.Laws.Grade.≤q'-total
+d_'8804'q'''45'total_178 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_'8804'q'''45'total_176 v0 v1
+d_'8804'q'''45'total_178 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
         -> case coe v1 of
@@ -271,12 +271,12 @@ d_'8804'q'''45'total_176 v0 v1
                     (coe MAlonzo.Code.Once.Lang.Context.C_m'8804'm_174)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade._≤q'?_
-d__'8804'q'''63'__182 ::
+-- Once.Lang.Laws.Grade._≤q'?_
+d__'8804'q'''63'__184 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8804'q'''63'__182 v0 v1
+d__'8804'q'''63'__184 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
         -> case coe v1 of
@@ -345,10 +345,10 @@ d__'8804'q'''63'__182 v0 v1
                        (coe MAlonzo.Code.Once.Lang.Context.C_m'8804'm_174))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.quantity-≤-isDecTotalOrder
-d_quantity'45''8804''45'isDecTotalOrder_184 ::
+-- Once.Lang.Laws.Grade.quantity-≤-isDecTotalOrder
+d_quantity'45''8804''45'isDecTotalOrder_186 ::
   MAlonzo.Code.Relation.Binary.Structures.T_IsDecTotalOrder_546
-d_quantity'45''8804''45'isDecTotalOrder_184
+d_quantity'45''8804''45'isDecTotalOrder_186
   = coe
       MAlonzo.Code.Relation.Binary.Structures.C_constructor_618
       (coe
@@ -359,24 +359,24 @@ d_quantity'45''8804''45'isDecTotalOrder_184
                MAlonzo.Code.Relation.Binary.Structures.C_constructor_126
                (coe
                   MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties.du_isEquivalence_396)
-               (coe (\ v0 v1 v2 -> d_'8804'q'''45'refl_152 (coe v0)))
-               (\ v0 v1 v2 v3 v4 -> coe du_'8804'q'''45'trans_160 v3 v4))
+               (coe (\ v0 v1 v2 -> d_'8804'q'''45'refl_154 (coe v0)))
+               (\ v0 v1 v2 v3 v4 -> coe du_'8804'q'''45'trans_162 v3 v4))
             erased)
-         (coe d_'8804'q'''45'total_176))
+         (coe d_'8804'q'''45'total_178))
       (coe MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'q__8)
-      (coe d__'8804'q'''63'__182)
--- Once.Metatheory.Grade.≤q-sound
-d_'8804'q'45'sound_192 ::
+      (coe d__'8804'q'''63'__184)
+-- Once.Lang.Laws.Grade.≤q-sound
+d_'8804'q'45'sound_194 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162
-d_'8804'q'45'sound_192 v0 v1 ~v2 = du_'8804'q'45'sound_192 v0 v1
-du_'8804'q'45'sound_192 ::
+d_'8804'q'45'sound_194 v0 v1 ~v2 = du_'8804'q'45'sound_194 v0 v1
+du_'8804'q'45'sound_194 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162
-du_'8804'q'45'sound_192 v0 v1
+du_'8804'q'45'sound_194 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
         -> case coe v1 of
@@ -398,42 +398,42 @@ du_'8804'q'45'sound_192 v0 v1
         -> coe
              seq (coe v1) (coe MAlonzo.Code.Once.Lang.Context.C_m'8804'm_174)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.≤q-complete
-d_'8804'q'45'complete_198 ::
+-- Once.Lang.Laws.Grade.≤q-complete
+d_'8804'q'45'complete_200 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8804'q''__162 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804'q'45'complete_198 = erased
--- Once.Metatheory.Grade.⊔p-assoc
-d_'8852'p'45'assoc_206 ::
+d_'8804'q'45'complete_200 = erased
+-- Once.Lang.Laws.Grade.⊔p-assoc
+d_'8852'p'45'assoc_208 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8852'p'45'assoc_206 = erased
--- Once.Metatheory.Grade.⊔p-comm
-d_'8852'p'45'comm_212 ::
+d_'8852'p'45'assoc_208 = erased
+-- Once.Lang.Laws.Grade.⊔p-comm
+d_'8852'p'45'comm_214 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8852'p'45'comm_212 = erased
--- Once.Metatheory.Grade.⊔p-idem
-d_'8852'p'45'idem_216 ::
+d_'8852'p'45'comm_214 = erased
+-- Once.Lang.Laws.Grade.⊔p-idem
+d_'8852'p'45'idem_218 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8852'p'45'idem_216 = erased
--- Once.Metatheory.Grade.⊔p-zeroʳ
-d_'8852'p'45'zero'691'_220 ::
+d_'8852'p'45'idem_218 = erased
+-- Once.Lang.Laws.Grade.⊔p-zeroʳ
+d_'8852'p'45'zero'691'_222 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8852'p'45'zero'691'_220 = erased
--- Once.Metatheory.Grade.⊔p-upperˡ
-d_'8852'p'45'upper'737'_226 ::
+d_'8852'p'45'zero'691'_222 = erased
+-- Once.Lang.Laws.Grade.⊔p-upperˡ
+d_'8852'p'45'upper'737'_228 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-d_'8852'p'45'upper'737'_226 v0 v1
+d_'8852'p'45'upper'737'_228 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
         -> case coe v1 of
@@ -473,12 +473,12 @@ d_'8852'p'45'upper'737'_226 v0 v1
              seq (coe v1)
              (coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.⊔p-upperʳ
-d_'8852'p'45'upper'691'_232 ::
+-- Once.Lang.Laws.Grade.⊔p-upperʳ
+d_'8852'p'45'upper'691'_234 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-d_'8852'p'45'upper'691'_232 v0 v1
+d_'8852'p'45'upper'691'_234 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
         -> case coe v1 of
@@ -525,21 +525,21 @@ d_'8852'p'45'upper'691'_232 v0 v1
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.⊔p-least
-d_'8852'p'45'least_240 ::
+-- Once.Lang.Laws.Grade.⊔p-least
+d_'8852'p'45'least_242 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-d_'8852'p'45'least_240 ~v0 ~v1 ~v2 v3 v4
-  = du_'8852'p'45'least_240 v3 v4
-du_'8852'p'45'least_240 ::
+d_'8852'p'45'least_242 ~v0 ~v1 ~v2 v3 v4
+  = du_'8852'p'45'least_242 v3 v4
+du_'8852'p'45'least_242 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-du_'8852'p'45'least_240 v0 v1
+du_'8852'p'45'least_242 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10
         -> coe seq (coe v1) (coe v0)
@@ -576,20 +576,20 @@ du_'8852'p'45'least_240 v0 v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.·p-assoc
-d_'183'p'45'assoc_248 ::
+-- Once.Lang.Laws.Grade.·p-assoc
+d_'183'p'45'assoc_250 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'183'p'45'assoc_248 = erased
--- Once.Metatheory.Grade.·p-identityʳ
-d_'183'p'45'identity'691'_252 ::
+d_'183'p'45'assoc_250 = erased
+-- Once.Lang.Laws.Grade.·p-identityʳ
+d_'183'p'45'identity'691'_254 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'183'p'45'identity'691'_252 = erased
--- Once.Metatheory.Grade.·p-mono
-d_'183'p'45'mono_262 ::
+d_'183'p'45'identity'691'_254 = erased
+-- Once.Lang.Laws.Grade.·p-mono
+d_'183'p'45'mono_264 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
@@ -597,13 +597,13 @@ d_'183'p'45'mono_262 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-d_'183'p'45'mono_262 ~v0 ~v1 ~v2 ~v3 v4 v5
-  = du_'183'p'45'mono_262 v4 v5
-du_'183'p'45'mono_262 ::
+d_'183'p'45'mono_264 ~v0 ~v1 ~v2 ~v3 v4 v5
+  = du_'183'p'45'mono_264 v4 v5
+du_'183'p'45'mono_264 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8
-du_'183'p'45'mono_262 v0 v1
+du_'183'p'45'mono_264 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> coe v1
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
@@ -677,16 +677,16 @@ du_'183'p'45'mono_262 v0 v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Metatheory.Grade.·p-comm
-d_'183'p'45'comm_268 ::
+-- Once.Lang.Laws.Grade.·p-comm
+d_'183'p'45'comm_270 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'183'p'45'comm_268 = erased
--- Once.Metatheory.Grade.purity-isCommutativeMonoid
-d_purity'45'isCommutativeMonoid_270 ::
+d_'183'p'45'comm_270 = erased
+-- Once.Lang.Laws.Grade.purity-isCommutativeMonoid
+d_purity'45'isCommutativeMonoid_272 ::
   MAlonzo.Code.Algebra.Structures.T_IsCommutativeMonoid_764
-d_purity'45'isCommutativeMonoid_270
+d_purity'45'isCommutativeMonoid_272
   = coe
       MAlonzo.Code.Algebra.Structures.C_constructor_820
       (coe
@@ -701,10 +701,10 @@ d_purity'45'isCommutativeMonoid_270
             erased)
          (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased))
       erased
--- Once.Metatheory.Grade.purity-⊔-isCommutativeBand
-d_purity'45''8852''45'isCommutativeBand_274 ::
+-- Once.Lang.Laws.Grade.purity-⊔-isCommutativeBand
+d_purity'45''8852''45'isCommutativeBand_276 ::
   MAlonzo.Code.Algebra.Structures.T_IsCommutativeBand_612
-d_purity'45''8852''45'isCommutativeBand_274
+d_purity'45''8852''45'isCommutativeBand_276
   = coe
       MAlonzo.Code.Algebra.Structures.C_constructor_660
       (coe

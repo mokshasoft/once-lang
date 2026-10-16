@@ -60,7 +60,7 @@ d_parse_4 v0
                  (coe
                     MAlonzo.Code.Once.Parser.Module.d_r_370
                     (coe
-                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0)))) in
+                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0)))) in
     coe (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v1))
 -- Once.Parser.allTrailing
 d_allTrailing_18 ::
@@ -278,7 +278,7 @@ d_parseStrict_72 v0
       (coe
          MAlonzo.Code.Once.Parser.Module.d_parseModule_380
          (coe
-            MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1032 (coe v0)))
+            MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v0)))
 -- Once.Parser.extractAliases
 d_extractAliases_76 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
