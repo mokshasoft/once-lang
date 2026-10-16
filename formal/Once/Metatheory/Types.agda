@@ -11,7 +11,7 @@ module Once.Metatheory.Types where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade
-  using (Purity; pure; act; eff; mk-kind; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
+  using (fin; Purity; pure; act; eff; mk-kind; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
 open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 open import Once.Spec.Sub
 open import Once.Spec.Metatheory using (Types)
@@ -46,7 +46,7 @@ open import Once.Spec.Metatheory using (Types)
 <:-refl (A + B)      = sub-+ (<:-refl A) (<:-refl B)
 <:-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:-refl A) (<:-refl B) (⊑π-refl π)
 <:-refl (μ F)        = sub-μ
-<:-refl (ν F π)      = sub-ν (⊑π-refl π)
+<:-refl (ν F f)      = sub-ν (⊑π-refl (fin f))
 <:-refl Int          = sub-int
 <:-refl Float        = sub-float
 

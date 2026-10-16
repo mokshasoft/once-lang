@@ -1,25 +1,23 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Metatheory.Lawful — each grade with a unit (`pure ⊑π π`) is a
--- lawful monad up to its equality `EqM π`, packaged once so that the
--- recursion laws are proved once for all of them.
---
--- Not `--safe`: at `act` the equality is `≡` on finite trees, so binding
--- equal continuations is function extensionality (`Once.Postulates`).
+-- Once.Metatheory.Lawful — each grade is a lawful monad up to its equality
+-- `EqM π` (bisimilarity in `T∞`), packaged once so that the recursion laws
+-- are proved once for all of them.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.Lawful (Σ : Signature) where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Postulates using (extensionality)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Purity; pure; act; eff)
 open import Once.Spec.Effect Σ
 open import Once.Metatheory.Bisim Σ
-open import Once.Metatheory.Effects Σ using (T-idʳ; T-assoc)
+open import Once.Metatheory.Erase Σ using (toT∞-bind)
+open import Once.Metatheory.Effects Σ using (M-identityˡ; M-identityʳ; M-assoc)
 
 record Lawful (π : Purity) : Set₁ where
   field
@@ -34,23 +32,11 @@ record Lawful (π : Purity) : Set₁ where
                → EqM π (bind π (bind π m f) g) (bind π m (λ x → bind π (f x) g))
     fmap-bind : ∀ {X Y} (f : X → Y) (m : M π X) → EqM π (fmap π f m) (bind π m (λ x → return π (f x)))
 
-private
-  T-cong : ∀ {X Y} (m : T X) {f g : X → T Y} → (∀ x → f x ≡ g x) → (m >>=T f) ≡ (m >>=T g)
-  T-cong m h = cong (m >>=T_) (extensionality h)
-
+-- One equality at every grade (bisimilarity in `T∞`), so one proof.
 lawful : ∀ π → Lawful π
-lawful pure = record
-  { eq-refl = λ m → refl ; eq-sym = sym ; eq-trans = trans
-  ; bind-cong = λ { refl h → h _ }
-  ; bind-idˡ = λ x f → refl ; bind-idʳ = λ m → refl ; bind-assoc = λ m f g → refl
-  ; fmap-bind = λ f m → refl }
-lawful act = record
-  { eq-refl = λ m → refl ; eq-sym = sym ; eq-trans = trans
-  ; bind-cong = λ { {m = m} refl h → T-cong m h }
-  ; bind-idˡ = λ x f → refl ; bind-idʳ = T-idʳ ; bind-assoc = T-assoc
-  ; fmap-bind = λ f m → refl }
-lawful eff = record
-  { eq-refl = ≈-refl ; eq-sym = ≈-sym ; eq-trans = ≈-trans
-  ; bind-cong = ≈-bind
-  ; bind-idˡ = idˡ ; bind-idʳ = idʳ ; bind-assoc = assoc
-  ; fmap-bind = λ f m → ≈-refl _ }
+lawful π = record
+  { eq-refl = λ m → ≈-refl (toT∞ π m) ; eq-sym = ≈-sym ; eq-trans = ≈-trans
+  ; bind-cong = λ {_} {_} {m} {m′} {f} {g} p h →
+      ≈-trans (toT∞-bind π m f) (≈-trans (≈-bind p h) (≈-sym (toT∞-bind π m′ g)))
+  ; bind-idˡ = M-identityˡ π ; bind-idʳ = M-identityʳ π ; bind-assoc = M-assoc π
+  ; fmap-bind = λ f m → ≈-refl (toT∞ π (fmap π f m)) }

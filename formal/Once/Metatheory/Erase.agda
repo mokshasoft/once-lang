@@ -20,12 +20,11 @@ open import Once.Spec.Grade using (Purity; pure; act; eff; _·p_; _⊑π_; ⊑-p
 open import Once.Spec.Effect Σ
 open import Once.Metatheory.Bisim Σ
 
-open T∞ using (force)
-open _≈_ using (force≈)
+open _≈ν_ using (force≈)
 
 embed-bind  : ∀ {X Y} (m : T X) (k : X → T Y) → embed (m >>=T k) ≈ (embed m >>=∞ λ x → embed (k x))
 embed-bindB : ∀ {X Y} (m : T X) (k : X → T Y)
-            → BlockEq _≈_ (mapT inj₁ (m >>=T k)) (bindBlock (mapT inj₁ m) λ x → embed (k x))
+            → mapT inj₁ (m >>=T k) ≈B bindBlock (mapT inj₁ m) (λ x → embed (k x))
 force≈ (embed-bind m k) = embed-bindB m k
 embed-bindB (roll (done x))             k = ≈-reflB (mapT inj₁ (k x))
 embed-bindB (roll (node (call o a k′))) k = node≈ λ b → embed-bindB (k′ b) k
@@ -69,7 +68,6 @@ toT∞-sub ⊑-act  m = ≈-refl (embed m)
 toT∞-sub ⊑-ae   m = ≈-refl (embed m)
 toT∞-sub ⊑-eff  m = ≈-refl m
 
+-- Equal computations as trees are bisimilar in `T∞` (by definition, now).
 eqM→≈ : ∀ π {X : Set} {m m′ : M π X} → EqM π m m′ → toT∞ π m ≈ toT∞ π m′
-eqM→≈ pure {m = m} refl = ≈-refl (return∞ m)
-eqM→≈ act  {m = m} refl = ≈-refl (embed m)
-eqM→≈ eff  e = e
+eqM→≈ π e = e

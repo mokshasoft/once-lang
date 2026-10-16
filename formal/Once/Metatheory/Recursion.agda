@@ -1,3 +1,4 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
@@ -11,45 +12,40 @@
 -- (`fold-fusion`). Both at every grade (`Lawful`).
 --
 -- The unfold: forcing it runs the coalgebra and unfolds the rest
--- (`unfold-out`), at each grade a coalgebra may have.
+-- (`unfold-out`), at each finite grade; it is the only map that does
+-- (`unfold-unique`: every stream is a final coalgebra).
 --
--- The loop: its first block is the round's, ending at the loop of the next
--- state (`loop-out`); it is the only map that is (`loop-unique`: `T∞ B` is the
--- final coalgebra of `T (B + −)`); and it is observed as its unrolling
--- (`loop-unroll`): the two observations differ by one step of the delay at the
--- end of the first round.
---
--- Not `--safe`: `Lawful`'s `act` instance and the `act` unfold use function
--- extensionality (`Once.Postulates`).
+-- The loop is the unfold at `K B ⊕ Id`, and it is observed as its unrolling
+-- (`loop-unroll`): the two traces differ by one silent step at the end of the
+-- first round, after which they are the same trace.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.Recursion (Σ : Signature) where
 
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.List using ([])
-open import Data.Product using (_×_; _,_)
-import Data.Empty
+open import Data.List using (List; []; _∷_; _++_; [_])
+open import Data.Product using (∃-syntax; _×_; _,_)
 open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-open import Once.Postulates using (extensionality)
-open import Once.Spec.Grade using (Purity; pure; act; eff; _⊑π_; ⊑-pa; ⊑-act)
+open import Relation.Nullary using (Dec; yes; no)
+open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; Purity; pure; act; eff)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Domain Σ using (foldM; layerM; traverseM; anaM; anaP; mapP; anaA; treeA; mapA)
-open import Once.Spec.Signature using (BTy; ⟦_⟧ᵇ; void; unit; int; float; _*_; _+_; module Op)
-open import Once.Spec.Observation Σ using (Interp; module Interp; History; End; observe; blockObs; answerObs; resume)
-open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓; _≈D_)
+open import Once.Spec.Domain Σ using (foldM; layerM; traverseM)
+open import Once.Spec.Signature using (⟦_⟧ᵇ; Op; module Op; arg; NotEmpty; notEmpty?; Event; eventOf)
+open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted; Tr; module Tr; trace; blockD; after; EndRel; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
+open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓)
 open import Once.Spec.Metatheory using (Recursion)
 open import Once.Metatheory.Bisim Σ
 open import Once.Metatheory.Lawful Σ
 open import Once.Metatheory.Unfold Σ using (module Unfold)
+open import Once.Metatheory.Trace Σ using (reflStep)
 
-open T∞ using (force)
-open _≈_ using (force≈)
 open νM using (outν)
+open _≈ν_ using (force≈)
+open Op using (ans)
 
 ------------------------------------------------------------------------
 -- The fold
@@ -131,108 +127,122 @@ module Fold (π : Purity) (G : SFunctor) where
 module UnfoldEq (G : SFunctor) where
   open Unfold G
 
-  treeA≡ : ∀ {X} (c : X → T (⟦ G ⟧SF X)) (t : T (⟦ G ⟧SF X))
-         → treeA G c t ≡ (t >>=T λ l → returnT (sfmap G (anaA G c) l))
-  treeA≡ c (roll (done l))            = cong (λ z → roll (done z)) (mapA≡ c G l)
-  treeA≡ c (roll (node (call o a k))) =
-    cong (λ k → roll (node (call o a k))) (extensionality λ b → treeA≡ c (k b))
+  unfold-out : ∀ (f : Finite) {X : Set} (c : X → Mᶠ f (⟦ G ⟧SF X)) (x : X)
+             → EqM (fin f) (outν (ana f G c x)) (fmap (fin f) (sfmap G (ana f G c)) (c x))
+  unfold-out f c x = unfold-out≈ f c x
 
-  unfold-out : ∀ {π} (g : π ⊑π act) {X : Set} (c : X → M π (⟦ G ⟧SF X)) (x : X)
-             → EqM π (outν (anaM g G c x)) (fmap π (sfmap G (anaM g G c)) (c x))
-  unfold-out ⊑-pa  c x = mapP≡ c G (c x)
-  unfold-out ⊑-act c x = treeA≡ c (c x)
+-- Every stream is a final coalgebra: a coalgebra morphism into it is the
+-- unfold, up to bisimilarity.
+module Final (G : SFunctor) {X : Set} where
+  private
+    E : ∀ (f : Finite) → Mᶠ f (⟦ G ⟧SF (νM f G)) → Mᶠ f (⟦ G ⟧SF (νM f G)) → Set
+    E f = EqLayer f (LayerEq G _≈ν_)
 
+  module P (c : X → ⟦ G ⟧SF X) (g : X → νM pureᶠ G) (hyp : ∀ x → E pureᶠ (outν (g x)) (sfmap G g (c x))) where
+    up  : ∀ (v : νM pureᶠ G) (x : X) → v ≈ν g x → v ≈ν ana pureᶠ G c x
+    upL : ∀ (H : SFunctor) (s : ⟦ H ⟧SF (νM pureᶠ G)) (l : ⟦ H ⟧SF X) → LayerEq H _≈ν_ s (sfmap H g l)
+        → LayerEq H _≈ν_ s (mapP G H c l)
+    force≈ (up v x p) = upL G (outν v) (c x) (≈ν-transL G (force≈ p) (hyp x))
+    upL (SK B)     s        l        q = q
+    upL SId        s        l        q = up s l q
+    upL (H₁ S⊕ H₂) (inj₁ s) (inj₁ l) q = upL H₁ s l q
+    upL (H₁ S⊕ H₂) (inj₂ s) (inj₂ l) q = upL H₂ s l q
+    upL (H₁ S⊕ H₂) (inj₁ s) (inj₂ l) ()
+    upL (H₁ S⊕ H₂) (inj₂ s) (inj₁ l) ()
+    upL (H₁ S⊗ H₂) (s , s′) (l , l′) (q , q′) = upL H₁ s l q , upL H₂ s′ l′ q′
 
-module Loop {A B : Set} (c : A → T (B ⊎ A)) where
-  -- Where a round ends: with the result, or with the loop from the next state.
-  next : (A → T∞ B) → B ⊎ A → B ⊎ T∞ B
-  next g = [ inj₁ , (λ a′ → inj₂ (g a′)) ]′
+  module A (c : X → T (⟦ G ⟧SF X)) (g : X → νM actᶠ G)
+           (hyp : ∀ x → E actᶠ (outν (g x)) (c x >>=T λ l → returnT (sfmap G g l))) where
+    up  : ∀ (v : νM actᶠ G) (x : X) → v ≈ν g x → v ≈ν ana actᶠ G c x
+    upB : ∀ (s : T (⟦ G ⟧SF (νM actᶠ G))) (t : T (⟦ G ⟧SF X))
+        → BlockEq (LayerEq G _≈ν_) s (t >>=T λ l → returnT (sfmap G g l)) → BlockEq (LayerEq G _≈ν_) s (treeA G c t)
+    upL : ∀ (H : SFunctor) (s : ⟦ H ⟧SF (νM actᶠ G)) (l : ⟦ H ⟧SF X) → LayerEq H _≈ν_ s (sfmap H g l)
+        → LayerEq H _≈ν_ s (mapA G H c l)
+    force≈ (up v x p) = upB (outν v) (c x) (≈ν-transB {G = G} (force≈ p) (hyp x))
+    upB (roll (done l′)) (roll (done l)) (done≈ q) = done≈ (upL G l′ l q)
+    upB (roll (node (call o a k′))) (roll (node (call .o .a k))) (node≈ e) = node≈ λ b → upB (k′ b) (k b) (e b)
+    upB (roll (done l′)) (roll (node (call o a k))) ()
+    upB (roll (node (call o a k′))) (roll (done l)) ()
+    upL (SK B)     s        l        q = q
+    upL SId        s        l        q = up s l q
+    upL (H₁ S⊕ H₂) (inj₁ s) (inj₁ l) q = upL H₁ s l q
+    upL (H₁ S⊕ H₂) (inj₂ s) (inj₂ l) q = upL H₂ s l q
+    upL (H₁ S⊕ H₂) (inj₁ s) (inj₂ l) ()
+    upL (H₁ S⊕ H₂) (inj₂ s) (inj₁ l) ()
+    upL (H₁ S⊗ H₂) (s , s′) (l , l′) (q , q′) = upL H₁ s l q , upL H₂ s′ l′ q′
 
-  loopBlock≡ : ∀ (t : T (B ⊎ A)) → loopBlock c t ≡ mapT (next (loop c)) t
-  loopBlock≡ (roll (done (inj₁ b)))     = refl
-  loopBlock≡ (roll (done (inj₂ a)))     = refl
-  loopBlock≡ (roll (node (call o x k))) =
-    cong (λ k → roll (node (call o x k))) (extensionality λ r → loopBlock≡ (k r))
+  unfold-unique : ∀ (f : Finite) (c : X → Mᶠ f (⟦ G ⟧SF X)) (g : X → νM f G)
+                → (∀ x → EqLayer f (LayerEq G _≈ν_) (outν (g x)) (fmap (fin f) (sfmap G g) (c x)))
+                → ∀ x → g x ≈ν ana f G c x
+  unfold-unique pureᶠ c g hyp x = P.up c g hyp (g x) x (≈ν-refl (g x))
+  unfold-unique actᶠ  c g hyp x = A.up c g hyp (g x) x (≈ν-refl (g x))
 
-  loop-out : ∀ (a : A) → force (loop c a) ≡ mapT (next (loop c)) (c a)
-  loop-out a = loopBlock≡ (c a)
+------------------------------------------------------------------------
+-- The loop is observed as its unrolling
+------------------------------------------------------------------------
 
-  module Unique (g : A → T∞ B) (hyp : ∀ a → BlockEq _≈_ (force (g a)) (mapT (next g) (c a))) where
-    -- A computation bisimilar to `g a` is bisimilar to the loop from `a`.
-    up  : ∀ (m : T∞ B) (a : A) → m ≈ g a → m ≈ loop c a
-    upB : ∀ (s : T (B ⊎ T∞ B)) (t : T (B ⊎ A)) → BlockEq _≈_ s (mapT (next g) t) → BlockEq _≈_ s (loopBlock c t)
-    force≈ (up m a p) = upB (force m) (c a) (≈-transB (force≈ p) (hyp a))
-    upB s (roll (done (inj₁ b)))     p         = p
-    upB s (roll (done (inj₂ a′)))    (next≈ q) = next≈ (up _ a′ q)
-    upB s (roll (node (call o x k))) (node≈ e) = node≈ λ r → upB _ (k r) (e r)
+module Unroll {A B : Set} (c : A → T (B ⊎ A)) (w : World) where
+  open World w using (answer)
+  open Delay using (step)
+  open Tr using (next)
+  open _≈ᵗ⟨_⟩_ using (same)
 
-    loop-unique : ∀ a → g a ≈ loop c a
-    loop-unique a = up (g a) a (≈-refl (g a))
-
-  module Unroll (ι : Interp) where
-    open Interp ι using (answer)
-    open Delay using (step)
-
-    -- The unrolled loop runs the round's block, then the loop at once.
-    unrolled : A → T∞ B
-    unrolled a = embed (c a) >>=∞ [ return∞ , loop c ]′
-
+  private
+    G : SFunctor
+    G = SK B S⊕ SId
+    k : B ⊎ A → T∞ B
+    k = [ return∞ , loop c ]′
     S : Set
-    S = (History × End B) ⊎ Delay (History × End B)
+    S = End B ⊎ (Event × Tr B)
 
-    -- One step of the two observations: the same, or one extra step on the left.
-    data Rel : S → S → Set where
-      same  : ∀ {s} → Rel s s
-      extra : ∀ {d} → Rel (inj₂ d) (step d)
+  -- The loop's block and the unrolled one, for a round's block `t`.
+  L R′ : T (B ⊎ A) → T (B ⊎ T∞ B)
+  L t  = treeA G c t
+  R′ t = bindBlock (mapT inj₁ t) k
 
-    rel  : ∀ h cs (t : T (B ⊎ A)) n
-         → Rel (blockObs ι h cs (loopBlock c t) n) (blockObs ι h cs (bindBlock (mapT inj₁ t) [ return∞ , loop c ]′) n)
-    relA : ∀ h cs (b : BTy) v (k : ⟦ b ⟧ᵇ → T (B ⊎ A)) n
-         → Rel (answerObs ι h cs (resume b v (λ r → loopBlock c (k r))) n)
-               (answerObs ι h cs (resume b v (λ r → bindBlock (mapT inj₁ (k r)) [ return∞ , loop c ]′)) n)
-    rel h cs t                          zero    = same
-    rel h cs (roll (done (inj₁ b)))     (suc n) = same
-    rel h cs (roll (done (inj₂ a′)))    (suc n) = extra
-    rel h cs (roll (node (call o x k))) (suc n) = relA _ _ (Op.ans o) (answer o h x) k n
-    relA h cs void    v k n = same
-    relA h cs unit    v k n = rel h cs (k v) n
-    relA h cs int     v k n = rel h cs (k v) n
-    relA h cs float   v k n = rel h cs (k v) n
-    relA h cs (a * b) v k n = rel h cs (k v) n
-    relA h cs (a + b) v k n = rel h cs (k v) n
+  -- Their visible steps: the same, or the same call with the same rounds
+  -- to come.
+  data UStep : S → S → Set where
+    same≡ : ∀ {o} → UStep o o
+    call≈ : ∀ {h o a} {κ : ⟦ Op.ans o ⟧ᵇ → T (B ⊎ A)} (d : Dec (NotEmpty (ans o)))
+          → UStep (inj₂ (eventOf o a , after w h o a (λ b → L (κ b)) d)) (inj₂ (eventOf o a , after w h o a (λ b → R′ (κ b)) d))
 
-    private
-      sameStep : ∀ {d d′ : Delay (History × End B)} {o} → step d ≡ step d′ → d ⇓ o → d′ ⇓ o
-      sameStep p (now⇓ e)      = now⇓ (trans (sym p) e)
-      sameStep p (later⇓ e d⇓) = later⇓ (trans (sym p) e) d⇓
+  match : ∀ (h : History) (t : T (B ⊎ A)) o → blockD w h (L t) ⇓ o → ∃[ o′ ] (blockD w h (R′ t) ⇓ o′ × UStep o o′)
+  match h (roll (done (inj₁ b)))     o a = o , a , same≡
+  match h (roll (done (inj₂ a′)))    o (now⇓ ())
+  match h (roll (done (inj₂ a′)))    o (later⇓ refl a) = o , a , same≡
+  match h (roll (node (call oₒ x κ))) o (now⇓ refl) = _ , now⇓ refl , call≈ (notEmpty? (ans oₒ))
+  match h (roll (node (call oₒ x κ))) o (later⇓ () _)
 
-      inj₂-inj : ∀ {d d′ : Delay (History × End B)} → _≡_ {A = S} (inj₂ d) (inj₂ d′) → d ≡ d′
-      inj₂-inj refl = refl
+  match′ : ∀ (h : History) (t : T (B ⊎ A)) o′ → blockD w h (R′ t) ⇓ o′ → ∃[ o ] (blockD w h (L t) ⇓ o × UStep o o′)
+  match′ h (roll (done (inj₁ b)))     o′ a = o′ , a , same≡
+  match′ h (roll (done (inj₂ a′)))    o′ a = o′ , later⇓ refl a , same≡
+  match′ h (roll (node (call oₒ x κ))) o′ (now⇓ refl) = _ , now⇓ refl , call≈ (notEmpty? (ans oₒ))
+  match′ h (roll (node (call oₒ x κ))) o′ (later⇓ () _)
 
-      inj₂≢inj₁ : ∀ {d : Delay (History × End B)} {o} → _≡_ {A = S} (inj₂ d) (inj₁ o) → Data.Empty.⊥
-      inj₂≢inj₁ ()
+  roundsSim : ∀ (h : History) (o : Op Σ) (a : ⟦ arg o ⟧ᵇ) (κ : ⟦ Op.ans o ⟧ᵇ → T (B ⊎ A)) (d : Dec (NotEmpty (ans o)))
+            → after w h o a (λ b → L (κ b)) d ≈ᵗ⟨ _≡_ ⟩ after w h o a (λ b → R′ (κ b)) d
+  stepU : ∀ {o o′} → UStep o o′ → StepRel _≡_ _≈ᵗ⟨ _≡_ ⟩_ o o′
+  lift  : ∀ {d : Delay S} {o} → ∃[ o′ ] (d ⇓ o′ × UStep o o′) → ∃[ o′ ] (d ⇓ o′ × StepRel _≡_ _≈ᵗ⟨ _≡_ ⟩_ o o′)
+  lift′ : ∀ {d : Delay S} {o′} → ∃[ o ] (d ⇓ o × UStep o o′) → ∃[ o ] (d ⇓ o × StepRel _≡_ _≈ᵗ⟨ _≡_ ⟩_ o o′)
+  same (roundsSim h o a κ (yes p)) =
+      (λ o₁ a₁ → lift (match (h ++ [ eventOf o a ]) (κ (answer o h a p)) o₁ a₁))
+    , (λ o₁ a₁ → lift′ (match′ (h ++ [ eventOf o a ]) (κ (answer o h a p)) o₁ a₁))
+  same (roundsSim h o a κ (no _)) = (λ { _ (now⇓ refl) → _ , now⇓ refl , halted≈ ; _ (later⇓ () _) })
+                                  , (λ { _ (now⇓ refl) → _ , now⇓ refl , halted≈ ; _ (later⇓ () _) })
+  stepU {o} same≡ = reflStep (λ _ → refl) o
+  stepU (call≈ {h} {o} {a} {κ} d) = refl , roundsSim h o a κ d
+  lift (o′ , a , r) = o′ , a , stepU r
+  lift′ (o , a , r) = o , a , stepU r
 
-      fwd : ∀ {sL sR} {dL dR : Delay (History × End B)} {o} → Rel sL sR → step dL ≡ sL → step dR ≡ sR → dL ⇓ o → dR ⇓ o
-      fwd same eL eR d⇓ = sameStep (trans eL (sym eR)) d⇓
-      fwd extra eL eR (now⇓ e) = ⊥-elim (inj₂≢inj₁ (trans (sym eL) e))
-      fwd extra eL eR (later⇓ e d⇓) = sameStep (sym eR) (subst (_⇓ _) (sym (inj₂-inj (trans (sym eL) e))) d⇓)
-
-      bwd : ∀ {sL sR} {dL dR : Delay (History × End B)} {o} → Rel sL sR → step dL ≡ sL → step dR ≡ sR → dR ⇓ o → dL ⇓ o
-      bwd same eL eR d⇓ = sameStep (trans eR (sym eL)) d⇓
-      bwd extra eL eR d⇓ = later⇓ eL (sameStep eR d⇓)
-
-    loop-unroll : ∀ (a : A) (h : History) n → observe ι h (loop c a) n ≈D observe ι h (unrolled a) n
-    loop-unroll a h n =
-        (λ o d⇓ → o , fwd (rel h [] (c a) n) refl refl d⇓ , refl)
-      , (λ o d⇓ → o , bwd (rel h [] (c a) n) refl refl d⇓ , refl)
-
+  loop-unroll : ∀ (a : A) → trace w [] (loop c a) ≈ᵗ⟨ _≡_ ⟩ trace w [] (embed (c a) >>=∞ k)
+  same (loop-unroll a) = (λ o a₁ → lift (match [] (c a) o a₁)) , (λ o a₁ → lift′ (match′ [] (c a) o a₁))
 
 recursion : Recursion Σ
 recursion = record
-  { fold-unique = λ π G alg h hyp → Fold.Unique.unique π G alg h hyp
-  ; fold-fusion = λ π G alg alg′ g hyp → Fold.Fusion.fusion π G alg alg′ g hyp
-  ; unfold-out  = λ g G c x → UnfoldEq.unfold-out G g c x
-  ; loop-out    = λ c a → Loop.loop-out c a
-  ; loop-unique = λ c g hyp a → Loop.Unique.loop-unique c g hyp a
-  ; loop-unroll = λ c a ι h n → Loop.Unroll.loop-unroll c ι a h n
+  { fold-unique   = λ π G alg h hyp → Fold.Unique.unique π G alg h hyp
+  ; fold-fusion   = λ π G alg alg′ g hyp → Fold.Fusion.fusion π G alg alg′ g hyp
+  ; unfold-out    = λ f G c x → UnfoldEq.unfold-out G f c x
+  ; unfold-unique = λ f G c g hyp x → Final.unfold-unique G f c g hyp x
+  ; loop-unroll   = λ c a w → Unroll.loop-unroll c w a
   }

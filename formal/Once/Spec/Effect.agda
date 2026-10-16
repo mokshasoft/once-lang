@@ -79,27 +79,26 @@ open νM
 
 -- The unfold (anamorphism): each forced layer runs the coalgebra.
 ana : ∀ (f : Finite) (G : SFunctor) {X : Set} → (X → Mᶠ f (⟦ G ⟧SF X)) → X → νM f G
-private
-  anaP   : ∀ (G : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → X → νM pureᶠ G
-  mapP   : ∀ (G H : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM pureᶠ G)
-  outν (anaP G c x) = mapP G G c (c x)
-  mapP G (SK B)     c x        = x
-  mapP G SId        c x        = anaP G c x
-  mapP G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapP G H₁ c x)
-  mapP G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapP G H₂ c y)
-  mapP G (H₁ S⊗ H₂) c (x , y)  = mapP G H₁ c x , mapP G H₂ c y
+anaP   : ∀ (G : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → X → νM pureᶠ G
+mapP   : ∀ (G H : SFunctor) {X : Set} → (X → ⟦ G ⟧SF X) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM pureᶠ G)
+outν (anaP G c x) = mapP G G c (c x)
+mapP G (SK B)     c x        = x
+mapP G SId        c x        = anaP G c x
+mapP G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapP G H₁ c x)
+mapP G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapP G H₂ c y)
+mapP G (H₁ S⊗ H₂) c (x , y)  = mapP G H₁ c x , mapP G H₂ c y
 
-  anaA   : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → X → νM actᶠ G
-  treeA  : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → T (⟦ G ⟧SF X) → T (⟦ G ⟧SF (νM actᶠ G))
-  mapA   : ∀ (G H : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM actᶠ G)
-  outν (anaA G c x) = treeA G c (c x)
-  treeA G c (roll (done l))            = roll (done (mapA G G c l))
-  treeA G c (roll (node (call o a k))) = roll (node (call o a (λ b → treeA G c (k b))))
-  mapA G (SK B)     c x        = x
-  mapA G SId        c x        = anaA G c x
-  mapA G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapA G H₁ c x)
-  mapA G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapA G H₂ c y)
-  mapA G (H₁ S⊗ H₂) c (x , y)  = mapA G H₁ c x , mapA G H₂ c y
+anaA   : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → X → νM actᶠ G
+treeA  : ∀ (G : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → T (⟦ G ⟧SF X) → T (⟦ G ⟧SF (νM actᶠ G))
+mapA   : ∀ (G H : SFunctor) {X : Set} → (X → T (⟦ G ⟧SF X)) → ⟦ H ⟧SF X → ⟦ H ⟧SF (νM actᶠ G)
+outν (anaA G c x) = treeA G c (c x)
+treeA G c (roll (done l))            = roll (done (mapA G G c l))
+treeA G c (roll (node (call o a k))) = roll (node (call o a (λ b → treeA G c (k b))))
+mapA G (SK B)     c x        = x
+mapA G SId        c x        = anaA G c x
+mapA G (H₁ S⊕ H₂) c (inj₁ x) = inj₁ (mapA G H₁ c x)
+mapA G (H₁ S⊕ H₂) c (inj₂ y) = inj₂ (mapA G H₂ c y)
+mapA G (H₁ S⊗ H₂) c (x , y)  = mapA G H₁ c x , mapA G H₂ c y
 ana pureᶠ = anaP
 ana actᶠ  = anaA
 
