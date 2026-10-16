@@ -26,6 +26,8 @@ import Once.Metatheory.Surface as Surface
 import Once.Metatheory.Effects as Effects
 import Once.Metatheory.Inhabited as Inhabited
 import Once.Metatheory.Sameness as Sameness
+-- sameness of streams is the greatest fixed point of its one-layer step
+import Once.Metatheory.Coherence.StreamSame
 import Once.Metatheory.Coherence.Fundamental as Coherence
 import Once.Metatheory.TermModel as TermModel
 import Once.Metatheory.Freyd as Freyd
