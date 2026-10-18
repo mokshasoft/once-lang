@@ -43,7 +43,7 @@ module Once.Lang.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff; EffGrade; Finite; fin)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff; EffGrade; Finite; fin; act)
 open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
 open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
@@ -147,6 +147,15 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → WellFormedF F
        → Γ ⊢[ Ψ ] t ∷ ν-type F φ ! π₁
        → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F φ) ! π₁ ·p fin φ
+
+  -- THE LOOP (D317, D319): a server. Its round is a finite block (`act`) that
+  -- ends with the result or the next state; the loop runs it from the seed,
+  -- possibly forever, so it is `eff`. The round TERM is evaluated once, then
+  -- the seed (as `fold`'s algebra and `unfold`'s coalgebra).
+  ⊢iter : ∀ {n} {Γ : Ctx n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
+        → Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁
+        → Γ ⊢[ Ψs ] s ∷ A ! π₂
+        → Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p eff)
 
   -- D226: subtyping is a COERCION term (it has content: `Void <: B` is `¡`).
   ⊢coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B t}

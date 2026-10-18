@@ -34,7 +34,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Once.Postulates using (extensionality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst-sym-subst)
 
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; fin)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; fin; eff)
 open import Once.Lang.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Lang.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
@@ -318,6 +318,14 @@ ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} wf
                (λ clo → cong (fmapM π₂ _) (trans (ren-sem θ ds fmt δ _)
                                       (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (sym (sym E)) _ x)))))
   where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))
+ren-sem θ (⊢iter {Ψf = Ψf} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} df ds) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} (trans (ren-sem θ df fmt δ _)
+                      (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) (sym (sym E)) _ x)))
+               (λ f → bindCᵍ {π₂} {eff} (trans (ren-sem θ ds fmt δ _)
+                                      (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) (sym (sym E)) _ x)))
+                               (λ _ → refl)))
+  where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψf) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψf))
 ren-sem θ (⊢out {φ = φ} {π₁ = π₁} wf d) fmt δ x = bindCᵍ {π₁} {fin φ} (ren-sem θ d fmt δ x) (λ _ → refl)
 ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
 ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x

@@ -178,6 +178,7 @@ abs-⊢ Δ sg {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {φ = φ} {π₁ = π₁} {F =
 abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} (GT.⊢out {φ = φ} {π₁ = π₁} {F = F} {t = t} wf d) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] out (absTm Δ t) ∷ X ! π₁ T.·p fin φ) (sym (absTy-⟦⟧ Δ F (T.ν-type F φ)))
     (⊢out (abs-wf Δ wf) (abs-⊢ Δ sg d))
+abs-⊢ Δ sg (GT.⊢iter df ds) = ⊢iter (abs-⊢ Δ sg df) (abs-⊢ Δ sg ds)
 abs-⊢ Δ sg (GT.⊢coerce p d) = ⊢coerce (abs-<: Δ p) (abs-⊢ Δ sg d)
 abs-⊢ Δ sg GT.⊢lit-int   = ⊢lit-int
 abs-⊢ Δ sg GT.⊢lit-float = ⊢lit-float

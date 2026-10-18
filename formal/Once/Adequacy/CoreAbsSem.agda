@@ -114,6 +114,15 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
          → tr eΓ et eB (GT.⊢let de db) ≡ GT.⊢let (tr eΓ ee eA de) (tr eΓA eb eB′ db)
   tr-let {eΓ = refl} {refl} {refl} refl refl refl refl refl de db = refl
 
+  tr-iter : ∀ {Ψf Ψs π₁ π₂ A' A B' B} {f' f s' s : G.Tm n}
+              {eΓ : Γ' ≡ Γ} {et : G.iter f' s' ≡ G.iter f s} {eB : B' ≡ B}
+              (ef : f' ≡ f)
+              (eF : (A' T.⇒[ T.mk-kind T.Many T.act ] (B' T.+ A')) ≡ (A T.⇒[ T.mk-kind T.Many T.act ] (B T.+ A)))
+              (es : s' ≡ s) (eA : A' ≡ A)
+              (df : Γ' ⊢[ Ψf ] f' ∷ A' T.⇒[ T.mk-kind T.Many T.act ] (B' T.+ A') ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
+          → tr eΓ et eB (GT.⊢iter df ds) ≡ GT.⊢iter (tr eΓ ef eF df) (tr eΓ es eA ds)
+  tr-iter {eΓ = refl} {refl} {refl} refl refl refl refl df ds = refl
+
   tr-unit : ∀ {eΓ : Γ' ≡ Γ} {et : G.unit ≡ G.unit} {eA : T.Unit ≡ T.Unit} → tr eΓ et eA GT.⊢unit ≡ GT.⊢unit
   tr-unit {eΓ = refl} {refl} {refl} = refl
 
@@ -324,6 +333,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
   RT-id (GT.⊢lam le d) = trans (tr-lam _ _ _ (RT d)) (cong (GT.⊢lam le) (RT-id d))
   RT-id (GT.⊢app f x) = trans (tr-app _ _ _ _ (RT f) (RT x)) (cong₂ GT.⊢app (RT-id f) (RT-id x))
   RT-id (GT.⊢let e b) = trans (tr-let _ _ _ _ _ (RT e) (RT b)) (cong₂ GT.⊢let (RT-id e) (RT-id b))
+  RT-id (GT.⊢iter f s) = trans (tr-iter _ _ _ _ (RT f) (RT s)) (cong₂ GT.⊢iter (RT-id f) (RT-id s))
   RT-id GT.⊢unit = tr-unit
   RT-id (GT.⊢pair a b) = trans (tr-pair _ _ _ _ (RT a) (RT b)) (cong₂ GT.⊢pair (RT-id a) (RT-id b))
   RT-id (GT.⊢fst p) = trans (tr-fst _ _ (RT p)) (cong GT.⊢fst (RT-id p))

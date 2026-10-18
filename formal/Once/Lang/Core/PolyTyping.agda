@@ -34,7 +34,7 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Lang.Type as T
-open import Once.Lang.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff; EffGrade; Finite; fin)
+open import Once.Lang.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff; EffGrade; Finite; fin; act)
 open import Once.Lang.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Lang.Type.WellFormed using (IsConcrete)
 open import Once.Lang.Type.Honest using (HonestFFI)
@@ -235,6 +235,11 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
        → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν-type F φ ! π₁
        → Δ ⊩ Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧F (ν-type F φ) ! π₁ ·p fin φ
 
+  ⊢iter : ∀ {n} {Γ : PCtx m n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
+        → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁
+        → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
+        → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p eff)
+
   ⊢coerce : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A B t}
           → A <:ₚ B → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] coerce A B t ∷ B ! π
 
@@ -303,6 +308,7 @@ instantiate {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {φ = φ} {π₁ = π₁} {F =
 instantiate {Γ = Γ} {Ψ = Ψ} σ r (⊢out {φ = φ} {π₁ = π₁} {F = F} {t = t} wf d) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.out (t ⟪ σ ⟫ₜ) ∷ X ! π₁ ·p fin φ) (sym (⟦⟧F-⟪⟫ F (ν-type F φ) σ))
     (GT.⊢out (wf-⟪⟫ r wf) (instantiate σ r d))
+instantiate σ r (⊢iter df ds) = GT.⊢iter (instantiate σ r df) (instantiate σ r ds)
 instantiate σ r (⊢coerce p d) = GT.⊢coerce (<:ₚ-⟪⟫ σ p) (instantiate σ r d)
 instantiate σ r ⊢lit-int = GT.⊢lit-int
 instantiate σ r ⊢lit-float = GT.⊢lit-float

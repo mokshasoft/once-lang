@@ -52,7 +52,7 @@ open import Once.Lang.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; 
 import Once.TypeCheck.RigidSubst Δ τ r as RS
 open RS using (ρ̂; ρ̂F; ρ̂S; ρ̂-⟦⟧; ρ̂-wf; ρ̂-<:; ρ̂-rf; ρ̂-base; lookup-ρ̂)
 open import Once.Adequacy.CoreAbsSem S using (tr; tr-subst; tr-lam; tr-app; tr-let; tr-unit; tr-pair; tr-fst; tr-snd;
-  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sub-eff; tr-sub-use; tr-ref)
+  tr-inl; tr-inr; tr-case; tr-absurd; tr-roll; tr-fold; tr-unfold; tr-iter; tr-out; tr-coerce; tr-lit-int; tr-lit-float; tr-prim; tr-sigop; tr-sub-eff; tr-sub-use; tr-ref)
 open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
 
 ρ̂ₜ : ∀ {n} → G.Tm n → G.Tm n
@@ -97,6 +97,7 @@ module WithSG (sg : SigGround) where
       (ρ̂ᶜ x)
   ρ̂ᶜ {Γ = Γ} {Ψ = Ψ} (GT.⊢out {φ = π} {π₁ = π₁} {F = F} {t = t} wf d) =
     subst (λ X → ρ̂S Γ ⊢[ Ψ ] G.out (ρ̂ₜ t) ∷ X ! π₁ T.·p T.fin π) (sym (ρ̂-⟦⟧ F (ν-type F π))) (GT.⊢out (ρ̂-wf wf) (ρ̂ᶜ d))
+  ρ̂ᶜ (GT.⊢iter f x)    = GT.⊢iter (ρ̂ᶜ f) (ρ̂ᶜ x)
   ρ̂ᶜ (GT.⊢coerce p d)  = GT.⊢coerce (ρ̂-<: p) (ρ̂ᶜ d)
   ρ̂ᶜ GT.⊢lit-int       = GT.⊢lit-int
   ρ̂ᶜ GT.⊢lit-float     = GT.⊢lit-float
@@ -211,6 +212,7 @@ module WithSG (sg : SigGround) where
       (trans (tr-subst (sym (⟦⟧F-⟪⟫ (absF Δ F) (Ty.ν-type (absF Δ F) π) τ)) _)
         (close (ρ̂S-abs Γ) _ (sym (ρ̂-⟦⟧ F (ν-type F π)))
           (trans (tr-out refl refl refl (IA d)) (cong (GT.⊢out (ρ̂-wf wf)) (inst-abs d)))))
+  inst-abs (GT.⊢iter f x) = trans (tr-iter _ _ _ _ (IA f) (IA x)) (cong₂ GT.⊢iter (inst-abs f) (inst-abs x))
   inst-abs (GT.⊢coerce p d) = trans (tr-coerce refl refl refl (IA d)) (cong (GT.⊢coerce (ρ̂-<: p)) (inst-abs d))
   inst-abs GT.⊢lit-int   = tr-lit-int
   inst-abs GT.⊢lit-float = tr-lit-float
@@ -450,6 +452,10 @@ module WithSG (sg : SigGround) where
     H.trans (rmA (λ X → X) (sym (ρ̂-⟦⟧ F (ν-type F π))))
       (H.trans (≅1 _ _ (GT.⊢out (ρ̂-wf wf)) (U≡ θ Ψ) (T≡ θ t) (ρ̂ᶜ-ren θ d))
                (H.sym (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-⟦⟧ F (ν-type F π))))))
+  ρ̂ᶜ-ren θ (GT.⊢iter {Ψf = Ψf} {Ψs = Ψs} {f = f} {s = sd} df ds) =
+    H.trans (ρ̂ᶜ-sU (sym (trans (TH.thin-usage-+ᵘ θ (Many C.*ᵘ Ψf) Ψs) (cong (C._+ᵘ thin-usage θ Ψs) (TH.thin-usage-*ᵘ θ Many Ψf)))))
+      (H.trans (≅2 _ _ GT.⊢iter (U≡ θ Ψf) (T≡ θ f) (ρ̂ᶜ-ren θ df) (U≡ θ Ψs) (T≡ θ sd) (ρ̂ᶜ-ren θ ds))
+               (H.sym (rmU (sym (trans (TH.thin-usage-+ᵘ (ρ̂θ θ) (Many C.*ᵘ Ψf) Ψs) (cong (C._+ᵘ thin-usage (ρ̂θ θ) Ψs) (TH.thin-usage-*ᵘ (ρ̂θ θ) Many Ψf)))))))
   ρ̂ᶜ-ren θ (GT.⊢coerce {Ψ = Ψ} {t = t} p d) = ≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) (U≡ θ Ψ) (T≡ θ t) (ρ̂ᶜ-ren θ d)
   ρ̂ᶜ-ren θ GT.⊢lit-int   = H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ))) (H.sym (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))
   ρ̂ᶜ-ren θ GT.⊢lit-float = H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-zeroUsage θ))) (H.sym (rmU (sym (TH.thin-usage-zeroUsage (ρ̂θ θ)))))

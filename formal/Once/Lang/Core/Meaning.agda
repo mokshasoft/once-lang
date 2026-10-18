@@ -36,6 +36,7 @@ open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 open import Once.Lang.Type.Grade using (Zero; One; Many; eff; fin)
+open import Once.Lang.Iterative using (loop)
 open import Once.Lang.Context using (Ctx; Usage; _↾_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Lang.Graded using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
 open import Once.Lang.Type.WellFormed using (con-fun)
@@ -166,6 +167,11 @@ primSem p-i2f  fmt a       = FA.i2f (float-format fmt) (OnceWord.Width.toℤ (in
   bindᵍ π₁ π₂ (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) λ clo →
   fmapM π₂ (ana-semᵛ φ wf clo) (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ))
 ⟦ ⊢out {φ = φ} {π₁ = π₁} wf d ⟧ fmt ρ dγ = bindᵍ π₁ (fin φ) (⟦ d ⟧ fmt ρ dγ) (out-semᵛ φ wf)
+-- The server: the round is evaluated once, then the seed; the loop is the
+-- anamorphism over the round (`Lang.Iterative.loop`).
+⟦ ⊢iter {Γ = Γ} {Ψf = Ψf} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} df ds ⟧ fmt ρ dγ =
+  bindᵍ π₁ _ (⟦ df ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) dγ)) λ f →
+  bindᵍ π₂ eff (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) dγ)) λ a → loop f a
 ⟦ ⊢coerce {π = π} p d ⟧ fmt ρ dγ = fmapM π ⟦ p ⟧<:ᵛ (⟦ d ⟧ fmt ρ dγ)
 
 ⟦ ⊢lit-int {i = i} ⟧   fmt ρ dγ = OnceWord.Width.fromℤ (int-bits fmt) i
