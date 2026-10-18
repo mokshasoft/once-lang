@@ -304,7 +304,7 @@ TOBUILD=("${MAIN[@]:-}" "${CMP[@]:-}")
 echo "-- RED (deliberate negative results, NOT built): ${#RED[@]}"
 for f in "${RED[@]:-}"; do [ -n "$f" ] && echo "     $f"; done
 [ "$WITH_NEG" -eq 0 ] && echo "-- Negative/ SKIPPED (parked, not verified) — use --negative to build it"
-echo "-- BUILDING ${#TOBUILD[@]} module(s), sequentially (RTS-special first)"
+echo "-- BUILDING ${#TOBUILD[@]} module(s), sequentially, leaves first"
 
 # ★★ A MODULE WHOSE IMPORT FAILED IS NOT ATTEMPTED.  Checking it re-type-
 #   checks its closure up to the broken module and fails AGAIN — the most
@@ -329,27 +329,32 @@ declare -A BAD=()
 blocked=0; blockedl=()
 
 fail=0; failed=(); TIMES=(); CTIMES=(); unmeasured=()
+# Progress: `[n/N]` before each module, the sweep's elapsed time after it.
+NMOD=${#TOBUILD[@]}; nmod=0; SWEEP_T0=$SECONDS
+pos()   { printf '[%*d/%d]' "${#NMOD}" "$nmod" "$NMOD"; }
+total() { local s=$((SECONDS-SWEEP_T0)); printf '  (total %d:%02d:%02d)' $((s/3600)) $((s/60%60)) $((s%60)); }
 for rel in "${TOBUILD[@]:-}"; do
   [ -n "$rel" ] || continue
+  nmod=$((nmod+1))
   f="$BOOT/$rel"; tag="$(echo "${rel#DirectedHoTT/}" | tr '/' '.')"; tag="${tag%.agda}"
   by=""
   for d in $(grep -m1 "^$rel " "$DEPS" | cut -d' ' -f2-); do
     [ -n "${BAD[$d]:-}" ] && { by="${BAD[$d]}"; break; }
   done
   if [ -n "$by" ]; then
-    printf '   %-46s BLOCKED (by %s)\n' "$tag" "$by"
+    printf '   %s %-46s BLOCKED (by %s)\n' "$(pos)" "$tag" "$by"
     BAD[$rel]="$by"; blocked=$((blocked+1)); blockedl+=("$tag"); continue
   fi
   rts="-A64m"; note=""
   needs_c "$f" && { rts="-A64m -c"; note=" (compacting GC, per header)"; }
-  printf '   %-46s%s ' "$tag" "$note"
+  printf '   %s %-46s%s ' "$(pos)" "$tag" "$note"
   t0=$SECONDS
   if AGDA_RTS="$rts" "$CHECK" "$rel" >"$LOGDIR/$tag.log" 2>&1; then
     d=$((SECONDS-t0))
     case "$rel" in
-      DirectedHoTT/Comparison/*) CTIMES+=("$d $tag"); echo "ok  ${d}s  [comparison]" ;;
+      DirectedHoTT/Comparison/*) CTIMES+=("$d $tag"); echo "ok  ${d}s  [comparison]$(total)" ;;
       *) TIMES+=("$d $tag")
-         [ "$d" -ge 10 ] && echo "ok  ${d}s  <-- SLOW" || echo "ok  ${d}s" ;;
+         [ "$d" -ge 10 ] && echo "ok  ${d}s  <-- SLOW$(total)" || echo "ok  ${d}s$(total)" ;;
     esac
   else
     rc=$?
@@ -388,7 +393,7 @@ for rel in "${TOBUILD[@]:-}"; do
         AGDA_RTS="$next" "$CHECK" "$rel" >"$LOGDIR/$tag.log" 2>&1
         rc=$?
         if [ "$rc" = 0 ]; then
-          d=$((SECONDS-t0)); TIMES+=("$d $tag"); echo "ok ($next) ${d}s"; break
+          d=$((SECONDS-t0)); TIMES+=("$d $tag"); echo "ok ($next) ${d}s$(total)"; break
         fi
         [ "$rc" = 143 ] || break
       done
@@ -436,10 +441,10 @@ for rel in "${TOBUILD[@]:-}"; do
     #     baseline that no longer compiles is worse than none.
     case "$rel:$rc" in
       DirectedHoTT/Comparison/*:143)
-        echo "UNMEASURABLE(143) — benchmark did not fit; not a proof error"
+        echo "UNMEASURABLE(143) — benchmark did not fit; not a proof error$(total)"
         unmeasured+=("$tag"); continue ;;
     esac
-    [ "$rc" = 143 ] && echo "KILLED(143) — memory, NOT a proof error" || echo "FAIL($rc)"
+    [ "$rc" = 143 ] && echo "KILLED(143) — memory, NOT a proof error$(total)" || echo "FAIL($rc)$(total)"
     failed+=("$tag($rc)"); fail=$((fail+1)); BAD[$rel]="$tag"
   fi
 done
