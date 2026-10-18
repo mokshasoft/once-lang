@@ -174,7 +174,7 @@ entry updates the rule it changes here, in the same commit.
   grades: what a stream's layer is produced at. (D318, D317, D314 ← D313)
 - **A server is the anamorphism into `Eff`**: `T∞ B` is the stream
   `ν (K B ⊕ Id) act`, the final coalgebra of `T (B + −)`, so a loop is its
-  unfold: `ana round` at `A -> Eff A B`, the
+  unfold: `ana round` at `Eff A B`, the
   round any `Act A (B + A)` — a finite block that ends with a `B` or the next
   state (core `iter`, its own former only because `B` need not be
   first-order). No guard, no request functor, no new type; against `ν F f`
@@ -369,7 +369,7 @@ with the code:
 
 1. **D281** (`in-ν`'s own denotation) is stated over the IR denotation
    `evalᴰ`; how it reads against the current Spec meaning is not recorded.
-2. **D317**: the loop is spelled `ana` at `A -> Eff A B` (one name for both
+2. **D317**: the loop is spelled `ana` at `Eff A B` (one name for both
    anamorphisms, chosen by the expected type); a name of its own is the
    alternative.
 3. **D072**: the oracle's completeness is an open obligation.

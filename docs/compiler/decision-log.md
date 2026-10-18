@@ -18762,7 +18762,7 @@ a ∀∃ correctness statement), and resumptions (R). R keeps E's freedom withou
    `M pure = Id`, `M act = T`, `M eff = T∞` on the chain `pure ⊑ act ⊑ eff` (D314).
 2. **The loop is the anamorphism into `Eff`.** `T∞ B` is the final coalgebra of `T (B + −)`, so a loop is
    its unfold: a round `A → T (B + A)` — a finite effectful block, `Act A (B + A)` — that ends with a `B` or
-   with the next state. Core `iter round seed`; on the surface, `ana round` checked at `A -> Eff A B`, as
+   with the next state. Core `iter round seed`; on the surface, `ana round` checked at `Eff A B`, as
    `cata` takes any algebra. No `Req`, no `request`, no guard, no new type.
 3. **A round never contains a loop** (structured recursion): the coalgebra of a loop and of a stream's
    unfold is at most `act`. `ν F eff` stays a type (the end of `ν F act <: ν F eff`) but no unfold builds
