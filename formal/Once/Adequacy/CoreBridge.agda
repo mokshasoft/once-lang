@@ -123,7 +123,8 @@ private
               ≡ runProgram fmt (typedProgram-ef m ef mt hvm) (subst Impl (sym (typed-sig-ef m ef mt)) I) n
   core-ef m .(inj₂ _) mt (_ , mi) refl dist b I n =
     trans (cong (λ ι′ → runIRAt ι′ (tableOf-go (FB.bundle→compiled b) []) n) (sym (interp-subst (teleSig≡entrySig mt) I)))
-          (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _) n)
+          (TWm.agree-events (tableOf-go (FB.bundle→compiled b) []) (TR.toProgram Tele.[] TR.[] TR.[] TR.[] (λ ()) mt mi (λ k → k))
+             (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _)) n)
     where
       I′ = subst Impl (sym (teleSig≡entrySig mt)) I
       module TWm = TW fmt (teleSig mt) I′

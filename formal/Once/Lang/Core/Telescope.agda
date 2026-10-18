@@ -106,6 +106,8 @@ runEntry sc e f = subst EntrySem e f noVars noResp tt
 -- compiled against (plan 0.105, D061's three times: its author discharges `I`
 -- off-line), and read the first `n` events of that run — a tree of `T∞`
 -- (D312), so a server's run is as observable as one that returns.
+runCore : ∀ {Fs} → TargetNum → Program Fs → Impl Fs → M T.eff ⊤
+runCore fmt (program {sig = S} defs d e) I = runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d)
+
 runProgram : ∀ {Fs} → TargetNum → Program Fs → Impl Fs → ℕ → Data.List.List SigOpEvent
-runProgram {Fs} fmt (program {sig = S} defs d e) I n =
-  events∞ (interp Fs I) [] (runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d)) n
+runProgram {Fs} fmt P I n = events∞ (interp Fs I) [] (runCore fmt P I) n
