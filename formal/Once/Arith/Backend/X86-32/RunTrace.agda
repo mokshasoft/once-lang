@@ -19,6 +19,7 @@
 module Once.Arith.Backend.X86-32.RunTrace where
 
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (true)
 open import Data.String using (String)
 open import Data.Nat using (suc)
 open import Data.List using (List)
@@ -47,9 +48,15 @@ ret-past s = record s { pc = suc (pc s) }
 -- answer in the return register (`eax`, the `Output` role) and control
 -- returns past the `call`. `answer` is what the world answered, as a word
 -- (`CallAnswer.answer-at`), at the binary's log `h` before the call.
-ret-call : (List SigOpEvent → String → State → Word) → List SigOpEvent → String → State → State
-ret-call answer h lbl s = record (ret-past s) { regs = writeReg (regs s) eax (answer h lbl s) }
+-- D320: a call with NO answer (its answer type is empty: an `exit`, the Host's
+-- `leave`) does not return — the machine halts at it.
+ret-with : Maybe Word → State → State
+ret-with (just w) s = record (ret-past s) { regs = writeReg (regs s) eax w }
+ret-with nothing  s = record s { halted = true }
 
-module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent → String → State → Word) where
+ret-call : (List SigOpEvent → String → State → Maybe Word) → List SigOpEvent → String → State → State
+ret-call answer h lbl s = ret-with (answer h lbl s) s
+
+module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent → String → State → Maybe Word) where
   open Core.RunTrace State Program Instr (List XInstr)
     halted pc fetch execInstr matchCall (ret-call answer) (dispatch-arith val) public

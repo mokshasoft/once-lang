@@ -31,7 +31,7 @@ module Once.Arith.Backend.CallAnswer where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
-open import Data.Maybe using (Maybe; maybe′)
+open import Data.Maybe using (Maybe; just; nothing; maybe′)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Lang.Name using (showCanonical)
 open import Data.String using (String)
@@ -56,10 +56,13 @@ answer-word _     _ = 0
 -- What an external call a label is at a state resolves to, with its argument:
 -- an ANSWERING call (the world answers it, given the calls before it), or a
 -- PURE FFI call (plan 0.105: the interpretation's pure half, a fixed function —
--- no history, no event). An emitting or halting call resolves to `nothing`.
+-- no history, no event), or a HALTING call (its answer type is empty: it never
+-- returns — an `exit`, or the Host's `leave`, D320). An emitting call resolves
+-- to `nothing`.
 data ResolvedCall : Set where
   answering : (o : CallOp) → M.⟦ cdom o ⟧ → ResolvedCall
   pure-ffi  : (nm : CanonicalName) (A B : Type) → M.⟦ A ⟧ → ResolvedCall
+  halting   : ResolvedCall
 
 CallResolver : Set → Set
 CallResolver State = String → State → Maybe ResolvedCall
@@ -76,13 +79,15 @@ value-word : (ι : Interp) (k : Key) → M.⟦ kdom k ⟧ → Dec (k ∈ pures �
 value-word ι k a (yes p) = answer-word (kcod k) (pure ι k p a)
 value-word ι k a (no _)  = 0
 
-resolved-word : Interp → List SigOpEvent → ResolvedCall → ℕ
-resolved-word ι h (answering o a)     = answering-word ι h o a (callKey o ∈K? calls ι)
-resolved-word ι h (pure-ffi nm A B a) = value-word ι (key (showCanonical nm) A B) a (key (showCanonical nm) A B ∈K? pures ι)
+-- A halting call has no answer: the call does not return (D320).
+resolved-word : Interp → List SigOpEvent → ResolvedCall → Maybe ℕ
+resolved-word ι h (answering o a)     = just (answering-word ι h o a (callKey o ∈K? calls ι))
+resolved-word ι h (pure-ffi nm A B a) = just (value-word ι (key (showCanonical nm) A B) a (key (showCanonical nm) A B ∈K? pures ι))
+resolved-word ι h halting             = nothing
 
 -- What the world answers there, as the word the callee leaves behind; a label
--- that resolves to no value-returning call (an emitting or halting one) leaves
--- the sentinel.
+-- that resolves to no value-returning call (an emitting one) leaves the
+-- sentinel, and a halting call has no answer at all.
 answer-at : ∀ {State : Set} → Interp → CallResolver State
-          → List SigOpEvent → String → State → ℕ
-answer-at ι res h lbl s = maybe′ (resolved-word ι h) 0 (res lbl s)
+          → List SigOpEvent → String → State → Maybe ℕ
+answer-at ι res h lbl s = maybe′ (resolved-word ι h) (just 0) (res lbl s)

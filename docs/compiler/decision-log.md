@@ -18947,3 +18947,10 @@ cannot pick one.
 * Adequacy: the CPU interface's observable carries the end; `Denotation.Behavior` with it; the
   per-arch correspondences prove end agreement; the apex takes the Host's contract.
 * A Host's code lives outside the compiler, beside the Interpretations.
+* Refined (same day, implementing it): `leave` is the Host's, not an operation of the program's
+  signature, so it is never an event: the image ends `main` with a control instruction `c-leave`,
+  lowered to a call of the fixed symbol `once_60leave` (the symbol of the reserved name `0leave`; no
+  identifier starts with a digit). Reaching it is the machines' end `returned`; a call with no answer,
+  a fault, or a pc off the code is the end `halted`. The concrete model halts at a call with no answer
+  (the call resolver's `halting`); before, it returned past every call, `exit` included, which made the
+  external-call contract demand `false ≡ true` at every reachable `exit`.
