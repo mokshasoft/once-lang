@@ -840,6 +840,11 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
      the SigExtend line), the same for every family. ⬜ A segment
      generator would remove that frame. The Knot family itself stays: it
      is the target of `El-⌜F⌝` (851 generated lines in `Knot/Preds`).
+  6. ✅ the Knot side shares what the core shares: ONE `SynFam` instance
+     (`Predₘ`), one index `ixₚ`/`⊢ixₚ`, one NbE-decided index conversion
+     (`cJ₀ₚ`/`cJₚ`) for all four families. Each extra `module … = SynFam …`
+     was a separate instance (memory: parameterised-module-instances).
+     Knot/Preds 851 → 815 generated lines, 10 s / 0.7 GB.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes

@@ -5,7 +5,7 @@
 -- OCP-0009 · EXAMPLES — ★ THE CORE'S SIDE CONDITIONS ARE THE KNOT'S,
 -- normal form for normal form (PLAN-BIDI §3g, P6).
 --
--- `Examples/PredsCore`: the shared index `#PJ` is the Knot's `StkAₘ.J`,
+-- `Examples/PredsCore`: the shared index `#PJ` is the Knot's `Predₘ.J`,
 -- and each family's description applied to an open index has exactly the
 -- normal form of the Knot's generated one (`Knot/Preds.<F>F.DF`, whose
 -- fibre method is Agda-opaque, hence the `unfolding`).  Run by
@@ -34,7 +34,7 @@ open import DirectedHoTT.Algorithm.NbE (mkTbl P.Kc) using ( nbe )
 --   the concrete `Core₀.Kc`, applying the Knot's modules alone took 81 s /
 --   ~5 GB against 8 s here; its codes are syntax, so they reduce alike)
 import DirectedHoTT.Metatheory.Entries as Entries
-open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( module StkAₘ; module NNCF; module StkAF; module StkCF; module FlatF; ⌜StkA⌝; ⌜StkC⌝ )
+open import DirectedHoTT.Examples.Knot.Preds 𝒮 wf core using ( module Predₘ; module NNCF; module StkAF; module StkCF; module FlatF; ⌜StkA⌝; ⌜StkC⌝ )
 import DirectedHoTT.Lib.Syn 𝒮 (Defs.size 𝒮) (Entries.okᵂ 𝒮 wf) as LS
 
 private
@@ -65,7 +65,7 @@ opaque
   unfolding NNCF.FIBMₒ StkAF.FIBMₒ StkCF.FIBMₒ FlatF.FIBMₒ LS.SK LS.SD ⌜StkA⌝ ⌜StkC⌝
 
   -- ★ the shared index IS the Knot's
-  index-is-index : nbe 100000 (⟪_⟫ {Γ₂} P.#PJ) ≡ nbe 100000 (StkAₘ.J {Γ₂})
+  index-is-index : nbe 100000 (⟪_⟫ {Γ₂} P.#PJ) ≡ nbe 100000 (Predₘ.J {Γ₂})
   index-is-index = same _ _ refl
 
   -- ★ the core's description of NNC IS the Knot's (control: another index variable)

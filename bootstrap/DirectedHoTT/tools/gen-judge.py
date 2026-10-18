@@ -1522,7 +1522,7 @@ def gen_pred_con(P, h, prems):
         tel = "tι"
         for pr in reversed(prems):
             if pr[0] == "σ": tel = "tσ (⌜%s⌝ %s %s) tι" % (pr[1], xs[0], xs[1 + pr[2]])
-            else: tel = "tρ (ix%s %s %s) (%s)" % (P, dep(pr[1], xs[0]), xs[1 + pr[0]], tel)
+            else: tel = "tρ (ixₚ %s %s) (%s)" % (dep(pr[1], xs[0]), xs[1 + pr[0]], tel)
         return tel
     TV = "TV" + nm
     args = ["J"] + ["F%d" % i for i in range(n)]
@@ -1562,23 +1562,22 @@ def gen_pred_con(P, h, prems):
         o = "ok-ι"
         for pr in reversed(prems[t:]):
             if pr[0] == "σ": o = "ok-σ (⊢⌜%s⌝ dj d%s) ok-ι" % (pr[1], fv[pr[2]])
-            else: o = "ok-ρ (⊢ix%s %s d%s) (%s)" % (P, ddep(pr[1]), fv[pr[0]], o)
+            else: o = "ok-ρ (⊢ixₚ %s d%s) (%s)" % (ddep(pr[1]), fv[pr[0]], o)
         return "(%s)" % o
-    pay = "(⊢payι %sₘ.⊢J (%sF.⊢DF ⊢u₀) ⊢unit)" % (P, P)
+    pay = "(⊢payι Predₘ.⊢J (%sF.⊢DF ⊢u₀) ⊢unit)" % (P,)
     for t in reversed(range(len(prems))):
         pr = prems[t]
         if pr[0] == "σ":
-            pay = "(⊢payσ %sₘ.⊢J (%sF.⊢DF ⊢u₀) {a = e%d} {p = unit} %s de%d %s)" % (P, P, t, okv(t), t, pay)
+            pay = "(⊢payσ Predₘ.⊢J (%sF.⊢DF ⊢u₀) {a = e%d} {p = unit} %s de%d %s)" % (P, t, okv(t), t, pay)
         else:
-            pay = "(⊢payρ %sₘ.⊢J (%sF.⊢DF ⊢u₀) {r = r%d} {p = %s} %s dr%d %s)" % (P, P, t, rest(t + 1), okv(t), t, pay)
+            pay = "(⊢payρ Predₘ.⊢J (%sF.⊢DF ⊢u₀) {r = r%d} {p = %s} %s dr%d %s)" % (P, t, rest(t + 1), okv(t), t, pay)
     cn = "con" + nm
     L.append("%s : {Ξ : Ctx} {%s : RTm ⌊ Ξ ⌋} → %s" % (cn, " ".join(x for x, _ in hyps), "".join("Ξ ⊢ %s ∷ %s → " % (x, ty) for x, ty in hyps)))
     L.append("  Ξ ⊢ conₗ 0 %s ∷ K%s j %s" % (Pay, P, subj))
     L.append("%s {Ξ} {%s} %s =" % (cn, "} {".join(x for x, _ in hyps), " ".join("d" + x for x, _ in hyps)))
-    L.append("  ⊢conRowₖ {Ξ} {1} {0} {%sₘ.J} {%sF.DF unit} {ix%s j %s} {⌜ T%s unit j p unit ⌝ᵗ} {%s} {⌜ T%s unit j p unit ⌝ᵗ ∷ []} nth-z %sₘ.⊢J (%sF.⊢DF ⊢u₀) (⊢ix%s dj %s)" % (
-        P, P, P, subj, nm, Pay, nm, P, P, P, dsubj))
+    L.append("  ⊢conRowₖ {Ξ} {1} {0} {Predₘ.J} {%sF.DF unit} {ixₚ j %s} {⌜ T%s unit j p unit ⌝ᵗ} {%s} {⌜ T%s unit j p unit ⌝ᵗ ∷ []} nth-z Predₘ.⊢J (%sF.⊢DF ⊢u₀) (⊢ixₚ dj %s)" % (P, subj, nm, Pay, nm, P, dsubj))
     L.append("    (%sF.fibF {s = 1} {k = %d} {q = unit} {j = j} {p = p} {c = unit} (atᵍ 1) %s)" % (P, SIG[h][2], "(atʰ %d)" % (SIG[h][2])))
-    L.append("    (⊢tel %sₘ.⊢J (tok%s {qs = unit} {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))" % (P, nm))
+    L.append("    (⊢tel Predₘ.⊢J (tok%s {qs = unit} {c = unit} dj dp) ∷ᵈ []ᵈ) (⊢conv dPv (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ R)))))" % (nm,))
     L.append("  where")
     L.append("    p : RTm ⌊ Ξ ⌋")
     L.append("    p = %s" % p_)
@@ -1591,7 +1590,7 @@ def gen_pred_con(P, h, prems):
     L.append("    R = mono-by {Δ = ⌊ Ξ ⌋} {n = %d} {as = %s} {as' = %s} ⌜ %s ⌝ᵗ (%s-sub (σₗ (%s)) %s) (%s-sub (σₗ (%s)) %s) (%s)" % (
         len(args), "(%s)" % " ∷ ".join(srcs + ["[]"]), "(%s)" % " ∷ ".join(vals + ["[]"]), " ".join([TV] + vars_),
         TV, " ∷ ".join(srcs + ["[]"]), " ".join(vars_), TV, " ∷ ".join(vals + ["[]"]), " ".join(vars_), " ∷ʳ ".join(hs + ["[]ʳ"])))
-    L.append("    dPv : Ξ ⊢ %s ∷ El (dpay %sₘ.J (%sF.DF unit) ⌜ %s ⌝ᵗ)" % (Pay, P, P, " ".join([TV] + vals)))
+    L.append("    dPv : Ξ ⊢ %s ∷ El (dpay Predₘ.J (%sF.DF unit) ⌜ %s ⌝ᵗ)" % (Pay, P, " ".join([TV] + vals)))
     L.append("    dPv = %s" % pay)
     L.append("")
     return L
@@ -1628,19 +1627,36 @@ def emit_table(L, M, fam, none, S, entry):
 
 def gen_preds():
     L = [PHDR]
+    # ★ ONE `SynFam` instance for every side condition: they share the index
+    #   (codes at a depth) and the trivial convoy; a family is its rows
+    L.append("module Predₘ = SynFam KOK %s (λ {Δ} → ⌜Unit⌝ {Δ ∙}) (λ σ → refl) ⊢⌜Unit⌝" % PARGS["⌜Unit⌝"])
+    L.append("")
+    # the index of a recursive premise at depth `j + k`
+    L.append("ixₚ : RTm Δ → RTm Δ → RTm Δ")
+    L.append("ixₚ d c = Predₘ.ixJ (pair (tag 1) d) c unit")
+    L.append("")
+    L.append("⊢ixₚ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ixₚ d c ∷ El Predₘ.J")
+    L.append("⊢ixₚ dd dc = Predₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))")
+    L.append("")
+    if PCORE:
+        L += [
+            "-- ★ the core's shared index `#PJ` IS the Knot's: decided ONCE, closed, by NbE",
+            "opaque",
+            "  unfolding SK SD",
+            "",
+            "  cJ₀ₚ : ref PC.#PJ ≅ᶜ Predₘ.J {ε}",
+            "  cJ₀ₚ = byNbE _ _ tt",
+            "",
+            "private",
+            "  -- …in every context, at every signature containing the core",
+            "  cJₚ : ref PC.#PJ ≅ Predₘ.J {Δ}",
+            "  cJₚ = ctrn (lift≅ cJ₀ₚ) (≡→≅ (Predₘ.J-sub εsub))",
+            "",
+        ]
     for P, spec in PREDS.items():
         L.append("------------------------------------------------------------------------")
         L.append("-- ★ %s" % spec["doc"])
         L.append("------------------------------------------------------------------------")
-        L.append("")
-        L.append("module %sₘ = SynFam KOK %s (λ {Δ} → ⌜Unit⌝ {Δ ∙}) (λ σ → refl) ⊢⌜Unit⌝" % (P, PARGS["⌜Unit⌝"]))
-        L.append("")
-        # the index of a recursive premise at depth `j + k`
-        L.append("ix%s : RTm Δ → RTm Δ → RTm Δ" % P)
-        L.append("ix%s d c = %sₘ.ixJ (pair (tag 1) d) c unit" % (P, P))
-        L.append("")
-        L.append("⊢ix%s : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ix%s d c ∷ El %sₘ.J" % (P, P, P))
-        L.append("⊢ix%s dd dc = %sₘ.⊢ixJ (⊢ix (lt-s lt-z) dd) (⊢SK→IMu {sg = KSig} dc) (⊢conv ⊢unit (csymᵀ (credᵀ El-⌜Unit⌝)))" % (P, P))
         L.append("")
         for h, prems in spec["rows"].items():
             sh = shape_name(h)
@@ -1661,7 +1677,7 @@ def gen_preds():
                     tel = "tσ (⌜%s⌝ j %s) tι" % (pr[1], fld(pr[2]))
                 else:
                     f, kk = pr
-                    tel = "tρ (ix%s %s %s) (%s)" % (P, dep(kk), fld(f), tel)
+                    tel = "tρ (ixₚ %s %s) (%s)" % (dep(kk), fld(f), tel)
             L.append("T%s : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ" % nm)
             L.append("T%s qs j p c = %s" % (nm, tel))
             L.append("")
@@ -1672,7 +1688,7 @@ def gen_preds():
             else:
                 L.append("r%s = defRow T%s (λ σ qs j p c → refl)" % (nm, nm))
             L.append("")
-            L.append("ok%s : %sₘ.RowOK 1 %s r%s" % (nm, P, sh, nm))
+            L.append("ok%s : Predₘ.RowOK 1 %s r%s" % (nm, sh, nm))
             body = "ok-ι"
             def ftyping(f):
                 d = "dp"
@@ -1694,23 +1710,22 @@ def gen_preds():
                     fs[f][1], fs[f][2], fs[f][1], fs[f][2], shape_expr(fs[f + 1:]), d)
                 ddep = "dj"
                 for _ in range(k): ddep = "(⊢isuc %s)" % ddep
-                body = "ok-ρ (⊢ix%s %s %s) (%s)" % (P, ddep, ftyp, body)
-            L.append("tok%s : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV %s (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ %sₘ.J (T%s qs j p c)" % (nm, sh, P, nm))
+                body = "ok-ρ (⊢ixₚ %s %s) (%s)" % (ddep, ftyp, body)
+            L.append("tok%s : {Ξ : Ctx} {qs j p c : RTm ⌊ Ξ ⌋} → Ξ ⊢ j ∷ El ⌜Nat⌝ → Ξ ⊢ p ∷ PayV %s (pair (tag 1) j) (SI 2) (SD KSig) → TelOK Ξ Predₘ.J (T%s qs j p c)" % (nm, sh, nm))
             L.append("tok%s {Ξ} {qs} {j} {p} {c} dj dp = %s" % (nm, body))
             L.append("")
-            L.append("ok%s {Ξ} {qs} {j} {p} {c} dqs dj dp dc = ⊢rows {Ξ} {%sₘ.J} {1} {⌜ T%s qs j p c ⌝ᵗ ∷ []} %sₘ.⊢J (⊢tel {Ξ} {%sₘ.J} {T%s qs j p c} %sₘ.⊢J (tok%s {qs = qs} {c = c} dj dp) ∷ᵈ []ᵈ)" % (
-                nm, P, nm, P, P, nm, P, nm))
+            L.append("ok%s {Ξ} {qs} {j} {p} {c} dqs dj dp dc = ⊢rows {Ξ} {Predₘ.J} {1} {⌜ T%s qs j p c ⌝ᵗ ∷ []} Predₘ.⊢J (⊢tel {Ξ} {Predₘ.J} {T%s qs j p c} Predₘ.⊢J (tok%s {qs = qs} {c = c} dj dp) ∷ᵈ []ᵈ)" % (nm, nm, nm, nm))
             L.append("")
             PCONL.extend(gen_pred_con(P, h, prems))
         # the table
         L.append("%sNone : Row" % P)
         L.append("%sNone = record { R = λ qs j p c → rows [] ; R-sub = λ σ qs j p c → refl }" % P)
         L.append("")
-        emit_table(L, "%sₘ" % P, P, "%sNone" % P, 1, lambda h: ("r%s⊢%s" % (P, h), "ok%s⊢%s" % (P, h)) if h in spec["rows"] else None)
+        emit_table(L, "Predₘ", P, "%sNone" % P, 1, lambda h: ("r%s⊢%s" % (P, h), "ok%s⊢%s" % (P, h)) if h in spec["rows"] else None)
         L.append("")
         L.append("-- the predicate at a code `c : K 1 d`")
         L.append("K%s : RTm Δ → RTm Δ → RTy Δ" % P)
-        L.append("K%s d c = %sF.KF unit (ix%s d c)" % (P, P, P))
+        L.append("K%s d c = %sF.KF unit (ixₚ d c)" % (P, P))
         L.append("")
         if P in PCORE:
             L.extend(pred_core_code(P, PCORE[P]))
@@ -1718,13 +1733,13 @@ def gen_preds():
         L.append("-- ★ …and as a CODE (a premise of a higher stratum is a σ-field of it), OPAQUE")
         L.append("opaque")
         L.append("  ⌜%s⌝ : RTm Δ → RTm Δ → RTm Δ" % P)
-        L.append("  ⌜%s⌝ d c = ⌜IMu⌝ %sₘ.J (%sF.DF unit) (ix%s d c)" % (P, P, P, P))
+        L.append("  ⌜%s⌝ d c = ⌜IMu⌝ Predₘ.J (%sF.DF unit) (ixₚ d c)" % (P, P))
         L.append("")
         L.append("  ⊢⌜%s⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜%s⌝ d c ∷ U" % (P, P))
-        L.append("  ⊢⌜%s⌝ dd dc = ⊢⌜IMu⌝ %sₘ.⊢J (%sF.⊢DF ⊢u₀) (⊢ix%s dd dc)" % (P, P, P, P))
+        L.append("  ⊢⌜%s⌝ dd dc = ⊢⌜IMu⌝ Predₘ.⊢J (%sF.⊢DF ⊢u₀) (⊢ixₚ dd dc)" % (P, P))
         L.append("")
         L.append("  ⌜%s⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜%s⌝ d c) ≡ ⌜%s⌝ (subTm σ d) (subTm σ c)" % (P, P, P))
-        L.append("  ⌜%s⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ix%s (subTm σ d) (subTm σ c))) (%sₘ.J-sub σ) (%sF.DF-sub σ unit)" % (P, P, P, P))
+        L.append("  ⌜%s⌝-sub σ d c = cong₂ (λ I D → ⌜IMu⌝ I D (ixₚ (subTm σ d) (subTm σ c))) (Predₘ.J-sub σ) (%sF.DF-sub σ unit)" % (P, P))
         L.append("")
         L.append("  El-⌜%s⌝ : {d c : RTm Δ} → El (⌜%s⌝ d c) ≅ᵀ K%s d c" % (P, P, P))
         L.append("  El-⌜%s⌝ = credᵀ El-⌜IMu⌝" % P)
@@ -1734,27 +1749,21 @@ def gen_preds():
 def pred_core_code(P, D):
     """a side condition's code as a REFERENCE to the core's entries (P6):
     the template of `Knot/PwCore`, generic part in `Knot/CoreRef`"""
-    ix = "(ix%s d c)" % P
+    ix = "(ixₚ d c)"
     # the codes its σ-premises cite are opaque too: the comparison reads through them
     cited = sorted({pr[1] for prems in PREDS[P]["rows"].values() for pr in prems if pr[0] == "σ"})
     return [
         "-- ★ …and as a CODE: a REFERENCE to the core's entries (`Examples/PredsCore`:",
         "--   the shared index `#PJ`, the description `%s`), OPAQUE.  The core's" % D,
-        "--   index and description ARE the Knot's: decided ONCE, closed, by NbE.",
+        "--   description IS the Knot's: decided ONCE, closed, by NbE.",
         "opaque",
         "  unfolding %sF.FIBMₒ SK SD%s" % (P, "".join(" ⌜%s⌝" % q for q in cited)),
-        "",
-        "  cJ₀%s : ref PC.#PJ ≅ᶜ %sₘ.J {ε}" % (P, P),
-        "  cJ₀%s = byNbE _ _ tt" % P,
         "",
         "  cD₀%s : ref PC.%s ≅ᶜ %sF.DF {ε} unit" % (P, D, P),
         "  cD₀%s = byNbE _ _ tt" % P,
         "",
         "private",
         "  -- …in every context, at every signature containing the core",
-        "  cJ%s : ref PC.#PJ ≅ %sₘ.J {Δ}" % (P, P),
-        "  cJ%s = ctrn (lift≅ cJ₀%s) (≡→≅ (%sₘ.J-sub εsub))" % (P, P, P),
-        "",
         "  cD%s : ref PC.%s ≅ %sF.DF {Δ} unit" % (P, D, P),
         "  cD%s = ctrn (lift≅ cD₀%s) (≡→≅ (%sF.DF-sub εsub unit))" % (P, P, P),
         "",
@@ -1763,7 +1772,7 @@ def pred_core_code(P, D):
         "  ⌜%s⌝ d c = ⌜IMu⌝ (ref PC.#PJ) (ref PC.%s) %s" % (P, D, ix),
         "",
         "  ⊢⌜%s⌝ : {Ξ : Ctx} {d c : RTm ⌊ Ξ ⌋} → Ξ ⊢ d ∷ El ⌜Nat⌝ → Ξ ⊢ c ∷ K 1 d → Ξ ⊢ ⌜%s⌝ d c ∷ U" % (P, P),
-        "  ⊢⌜%s⌝ dd dc = ⊢⌜IMu⌝ (⊢core (below PC.#PJ tt)) (⊢core (below PC.%s tt)) (⊢conv (⊢ix%s dd dc) (cong≅ᵗ El ξ-El (csym cJ%s)))" % (P, D, P, P),
+        "  ⊢⌜%s⌝ dd dc = ⊢⌜IMu⌝ (⊢core (below PC.#PJ tt)) (⊢core (below PC.%s tt)) (⊢conv (⊢ixₚ dd dc) (cong≅ᵗ El ξ-El (csym cJₚ)))" % (P, D),
         "",
         "  ⌜%s⌝-sub : (σ : Sub Δ Θ) (d c : RTm Δ) → subTm σ (⌜%s⌝ d c) ≡ ⌜%s⌝ (subTm σ d) (subTm σ c)" % (P, P, P),
         "  ⌜%s⌝-sub σ d c = refl" % P,
@@ -1771,8 +1780,8 @@ def pred_core_code(P, D):
         "  El-⌜%s⌝ : {d c : RTm Δ} → El (⌜%s⌝ d c) ≅ᵀ K%s d c" % (P, P, P),
         "  El-⌜%s⌝ {d = d} {c} =" % P,
         "    ctrnᵀ (credᵀ El-⌜IMu⌝)",
-        "          (ctrnᵀ (cong≅ᵗ (λ x → IMu x (ref PC.%s) %s) ξ-IMuᴵ cJ%s)" % (D, ix, P),
-        "                 (cong≅ᵗ (λ x → IMu %sₘ.J x %s) ξ-IMuᴰ cD%s))" % (P, ix, P),
+        "          (ctrnᵀ (cong≅ᵗ (λ x → IMu x (ref PC.%s) %s) ξ-IMuᴵ cJₚ)" % (D, ix),
+        "                 (cong≅ᵗ (λ x → IMu Predₘ.J x %s) ξ-IMuᴰ cD%s))" % (ix, P),
         "",
     ]
 
@@ -2402,7 +2411,7 @@ def gen_preds_dec():
             binds = "".join(" (%s : %s)" % (a, fty(f)) for f, a in zip(fs, args))
             h1 = "d%s₁" % nm
             L.append("  %s : {Γ : Cx}%s {x : RTm ε} →" % (h1, binds))
-            L.append("       RowsDec %sₘ.J (%sF.DF unit) (⌜ T%s unit (dep Γ) %s unit ⌝ᵗ ∷ []) x → %s" % (P, P, nm, PP, res))
+            L.append("       RowsDec Predₘ.J (%sF.DF unit) (⌜ T%s unit (dep Γ) %s unit ⌝ᵗ ∷ []) x → %s" % (P, nm, PP, res))
             if not prems:
                 ctor = "refl" if fn is not None else NNC_CTORS[h]
                 body.append("  %s%s _ = %s" % (h1, "".join(" " + a for a in args), ctor))
@@ -2428,19 +2437,17 @@ def gen_preds_dec():
                 if pr[0] == "σ":
                     Q, i = pr[1], pr[2]
                     S = "⌜%s⌝ (dep Γ) %s" % (Q, qf(fs[i], args[i]))
-                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΣ %sₘ.J (%sF.DF unit) (%s) (lam dι) q → %s" % (h2, binds, P, P, S, res))
+                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΣ Predₘ.J (%sF.DF unit) (%s) (lam dι) q → %s" % (h2, binds, P, S, res))
                     body.append("  %s {Γ}%s (_ , (_ , (q , (nth-z , (_ , (dq , nq)))))) =" % (h1, "".join(" " + a for a in args)))
-                    body.append("    %s {Γ = Γ}%s (pay-σ {I = %sₘ.J} {D = (%sF.DF unit)} {C = %s} {S = %s} {f = lam dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (
-                        h2, "".join(" " + a for a in args), P, P, C, S, Rn, "".join(" " + a for a in args)))
+                    body.append("    %s {Γ = Γ}%s (pay-σ {I = Predₘ.J} {D = (%sF.DF unit)} {C = %s} {S = %s} {f = lam dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (h2, "".join(" " + a for a in args), P, C, S, Rn, "".join(" " + a for a in args)))
                     body.append("  %s%s (e , (_ , (_ , ((de , _) , (ne , _))))) = %s %s (⊢conv de El-⌜%s⌝) ne" % (
                         h2, "".join(" " + a for a in args), DEC[Q], args[i], Q))
                 else:
                     i, k = pr
-                    J = "ix%s %s %s" % (P, depv(k), qf(fs[i], args[i]))
-                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΡ %sₘ.J (%sF.DF unit) (%s) dι q → %s" % (h2, binds, P, P, J, res))
+                    J = "ixₚ %s %s" % (depv(k), qf(fs[i], args[i]))
+                    L.append("  %s : {Γ : Cx}%s {q : RTm ε} → PayΡ Predₘ.J (%sF.DF unit) (%s) dι q → %s" % (h2, binds, P, J, res))
                     body.append("  %s {Γ}%s (_ , (_ , (q , (nth-z , (_ , (dq , nq)))))) =" % (h1, "".join(" " + a for a in args)))
-                    body.append("    %s {Γ = Γ}%s (pay-ρ {I = %sₘ.J} {D = (%sF.DF unit)} {C = %s} {j = %s} {C' = dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (
-                        h2, "".join(" " + a for a in args), P, P, C, J, Rn, "".join(" " + a for a in args)))
+                    body.append("    %s {Γ = Γ}%s (pay-ρ {I = Predₘ.J} {D = (%sF.DF unit)} {C = %s} {j = %s} {C' = dι} (⊢conv dq (red→≅ᵀ (⟶ᵀ*-El (⟶*-dpayᶜ (%s {Γ = Γ}%s))))) done nq)" % (h2, "".join(" " + a for a in args), P, C, J, Rn, "".join(" " + a for a in args)))
                     rec = "%s %s dr nr" % (DEC[P], args[i])
                     out = rec if fn is not None else "%s (%s)" % (NNC_CTORS[h], rec)
                     body.append("  %s%s (r , (_ , (_ , ((dr , _) , (nr , _))))) = %s" % (h2, "".join(" " + a for a in args), out))
@@ -2463,8 +2470,7 @@ def gen_preds_dec():
             for f, a in reversed(list(zip(fs, args))): PP = "(%s ,ₚ %s)" % (qf(f, a), PP)
             nm = "%s⊢%s" % (P, h)
             L.append("%s {Γ} %s dx nrm =" % (dn, pat))
-            L.append("  d%s₁ {Γ = Γ}%s (rows-dec {I = %sₘ.J} {D = (%sF.DF unit)} {i = ix%s (dep Γ) (quoteTm %s)} {m = 1} {Cs = ⌜ T%s unit (dep Γ) %s unit ⌝ᵗ ∷ []}" % (
-                nm, "".join(" " + a for a in args), P, P, P, subjE, nm, PP))
+            L.append("  d%s₁ {Γ = Γ}%s (rows-dec {I = Predₘ.J} {D = (%sF.DF unit)} {i = ixₚ (dep Γ) (quoteTm %s)} {m = 1} {Cs = ⌜ T%s unit (dep Γ) %s unit ⌝ᵗ ∷ []}" % (nm, "".join(" " + a for a in args), P, subjE, nm, PP))
             L.append("    (%sF.fibF {s = 1} {k = %d} {j = dep Γ} {p = %s} {c = unit} (atᵍ 1) (atʰ %d)) dx nrm)" % (P, K, PP, K))
         L.append("")
     return L
