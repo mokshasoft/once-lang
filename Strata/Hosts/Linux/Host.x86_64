@@ -1,0 +1,21 @@
+# ======================================================================
+# The Linux Host — x86_64 (D320)
+#
+# A Host is how a platform runs a program: `enter ; main ; leave`. The
+# compiler calls `once_leave` when `main` returns and never knows which
+# Host it is linked with. Its contract: calling it ends the run, and that
+# end is observed as `returned`. On Linux the run ends with exit status 0.
+# (`enter` is the kernel's process start: the state `_start` needs.)
+# ======================================================================
+
+.equ SYS_exit_group, 231
+
+.text
+.global once_leave
+.type once_leave, @function
+once_leave:
+    movq    $SYS_exit_group, %rax
+    xorq    %rdi, %rdi              # status = 0
+    syscall
+    # Does not return
+.size once_leave, .-once_leave
