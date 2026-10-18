@@ -93,11 +93,11 @@ record Types : Set where
 ------------------------------------------------------------------------
 
 -- The names a reference may resolve to are distinct (D249, as a program's
--- `Denotes` requires): an operation of Σ has one type, definitions have their
--- own names, and none is named as an operation or a generator.
+-- `Denotes` requires): each entry of Σ is declared once, definitions have
+-- their own names, and none is named as an operation or a generator.
 record Distinct (Σ : Signature) {s} (nm : Fin s → CanonicalName) : Set where
   field
-    sig-unique  : ∀ {c t t′} → (c ∶ t) ∈ Σ → (c ∶ t′) ∈ Σ → t ≡ t′
+    one-name    : OneName Σ
     def-inj     : ∀ {d d′} → nm d ≡ nm d′ → d ≡ d′
     def-not-sig : ∀ d {t} → ¬ ((nm d ∶ t) ∈ Σ)
     def-not-gen : ∀ d → NotGenerator (nm d)
