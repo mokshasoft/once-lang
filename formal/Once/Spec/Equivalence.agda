@@ -39,7 +39,8 @@ open import Once.Spec.Type using (Type; var; Unit; Void; Int; Float; _*_; _+_; _
 open import Once.Spec.Polynomial using (SFunctor)
 open import Once.Spec.Effect Σ using (M; T∞; toT∞; νM; module νM; LayerEq)
 open νM using (outν)
-open import Once.Spec.Observation Σ using (World; trace; _≈ᵗ⟨_⟩_)
+open import Once.Spec.Observation Σ using (World; trace)
+open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
 
 -- Two computations, as every world observes them, their values related by `R`.

@@ -41,6 +41,7 @@ open import Once.Spec.Surface.Resolution using (ModuleMap)
 open import Once.Spec.Surface.Program using (Denotes)
 import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Observation as Observation
+open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 
 record Source : Set where
   field
@@ -100,9 +101,9 @@ Admissible : TargetNum → Typed → Set
 Admissible fmt tp = All (Word.Width.InRange (TargetNum.int-bits fmt)) (declLits (Module.decls (module′ tp)))
 
 -- What the program does, against an Interpretation of its signature.
-behaviour : TargetNum → (tp : Typed) → Observation.Interp (signature tp) → Observation.Tr (signature tp) ⊤
+behaviour : TargetNum → (tp : Typed) → Observation.Interp (signature tp) → Tr ⊤
 behaviour fmt tp = CoreProgram.behaviour (signature tp) fmt (program tp)
 
 -- The same behaviour: weakly bisimilar traces.
-SameBehaviour : ∀ {Σ} → Observation.Tr Σ ⊤ → Observation.Tr Σ ⊤ → Set
-SameBehaviour {Σ} t t′ = Observation._≈ᵗ⟨_⟩_ Σ t _≡_ t′
+SameBehaviour : Tr ⊤ → Tr ⊤ → Set
+SameBehaviour t t′ = t ≈ᵗ⟨ _≡_ ⟩ t′

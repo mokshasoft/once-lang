@@ -37,7 +37,8 @@ import Once.Spec.Bool            -- truth values
 import Once.Spec.Signature       -- the operations Σ and their functor H_Σ
 import Once.Spec.Effect          -- T = μ(X + H_Σ), streams, T∞ = νY. T(X + Y), the grades' monads
 import Once.Spec.Delay           -- a value that may never arrive
-import Once.Spec.Observation     -- the world, traces, weak bisimilarity
+import Once.Spec.Trace           -- traces and weak bisimilarity
+import Once.Spec.Observation     -- the world, and a computation's trace in it
 import Once.Spec.Polynomial      -- polynomial functors and their initial algebras
 import Once.Spec.Domain          -- the value of each type
 import Once.Spec.Equivalence     -- when two meanings are the same

@@ -69,6 +69,7 @@ open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Program using (Denotes)
 import Once.Spec.Effect as Effect
 import Once.Spec.Observation as Observation
+open import Once.Spec.Trace using (module Tr; _≈ᵗ⟨_⟩_; returned; Calls)
 import Once.Spec.Domain as Domain
 import Once.Spec.Equivalence as Equivalence
 import Once.Spec.Core.Typing as CoreTyping
@@ -126,7 +127,7 @@ record Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) 
 
 record Effects (Σ : Signature) : Set₁ where
   open Effect Σ
-  open Observation Σ using (World; History; trace; module Tr; _≈ᵗ⟨_⟩_; returned)
+  open Observation Σ using (World; History; trace)
   field
     M-identityˡ : ∀ π {X Y : Set} (x : X) (k : X → M π Y) → EqM π (bind π (return π x) k) (k x)
     M-identityʳ : ∀ π {X : Set} (m : M π X) → EqM π (bind π m (return π)) m
@@ -354,7 +355,7 @@ private
   noResp ()
 
 record Totality : Set₁ where
-  open Observation using (World; trace; Calls; module Tr)
+  open Observation using (World; trace)
   field
     -- no general recursion
     no-self-reference    : ∀ {Σ p} → ¬ Denotes [] selfReference Σ p
@@ -371,7 +372,7 @@ record Totality : Set₁ where
     -- … and runs forever: in every world it makes as many calls as asked
     server-runs  : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) (w : World echoΣ) n
                  → ∃[ vs ] (length vs ≡ n
-                            × Calls echoΣ (trace echoΣ w [] (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt)) vs)
+                            × Calls (trace echoΣ w [] (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt)) vs)
     -- a silent loop is typed, and is never observed doing anything: nothing
     -- of its trace ever arrives (D317)
     silent-typed : CoreTyping._⊩_⊢[_]_∷_!_ [] [] ∅ₖ ∅ [] silentLoop Void eff
