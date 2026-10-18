@@ -15,7 +15,8 @@
 -- `m` and then of `f` (`Once.Metatheory.RunLaws`).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Signature using (Signature; call; inhabitant; module Op)
+open import Once.Spec.Signature using (Signature; call; module Op)
+open import Once.Metatheory.Inhabitant using (inhabitant)
 
 module Once.Metatheory.Coherence.Relation (Σ : Signature) where
 
@@ -29,7 +30,8 @@ open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Observation Σ using (World; History; End; returned; halted; trace; EndRel; returned≈; halted≈)
+open import Once.Spec.Observation Σ using (World; History; trace)
+open import Once.Spec.Trace using (End; returned; halted; EndRel; returned≈; halted≈)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Equivalence Σ using (Observed)
 open import Once.Metatheory.Bisim Σ using (≈-sym)

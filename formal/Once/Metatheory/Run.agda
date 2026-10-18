@@ -28,8 +28,9 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Signature using (Event; eventOf; Op; module Op; arg; ⟦_⟧ᵇ; NotEmpty; notEmpty?)
 open Op using (ans)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted; Tr; module Tr; trace; blockD; after; Calls; none)
-import Once.Spec.Observation
+open import Once.Spec.Observation Σ using (World; module World; History; trace; blockD; after)
+open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; Calls; none)
+import Once.Spec.Trace
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
 open import Once.Metatheory.Trace Σ using (Obs; pre; preStep; bindD; bind⇓; bind⇓⁻; nowInv)
 
@@ -156,7 +157,7 @@ module _ (w : World) where
 
     toCalls : ∀ {X} {t : Tr X} {vs} → CallsD (next t) vs → Calls t vs
     toCalls noneD       = none
-    toCalls (callD p c) = Once.Spec.Observation.call p c
+    toCalls (callD p c) = Once.Spec.Trace.call p c
 
     callsB : ∀ {X h t n d} {e : Maybe (End X)} → RunB h t n d e → CallsD (blockD w h t) d
     callsA : ∀ {X h o a k D n d} {e : Maybe (End X)} → RunA h o a k D n d e → Calls (after w h o a k D) d

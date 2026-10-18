@@ -24,7 +24,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓; _≈⟨_⟩_)
-open import Once.Spec.Observation Σ using (End; returned; halted; Tr; module Tr; EndRel; returned≈; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; EndRel; returned≈; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
 
 open Delay using (step)
 open Tr using (next)

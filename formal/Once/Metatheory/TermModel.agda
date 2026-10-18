@@ -13,7 +13,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
-open import Once.Spec.Metatheory using (OneName)
+open import Once.Spec.Signature using (OneName)
 
 module Once.Metatheory.TermModel (Σ : Signature) (u : OneName Σ) where
 

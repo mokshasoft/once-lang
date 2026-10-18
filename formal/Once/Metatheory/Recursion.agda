@@ -35,7 +35,8 @@ open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_�
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (foldM; layerM; traverseM)
 open import Once.Spec.Signature using (⟦_⟧ᵇ; Op; module Op; arg; NotEmpty; notEmpty?; Event; eventOf)
-open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted; Tr; module Tr; trace; blockD; after; EndRel; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
+open import Once.Spec.Observation Σ using (World; module World; History; trace; blockD; after)
+open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; EndRel; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
 open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓)
 open import Once.Spec.Metatheory using (Recursion)
 open import Once.Metatheory.Bisim Σ

@@ -24,6 +24,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open Op using (ans)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Observation Σ
+open import Once.Spec.Trace
 open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓; _≈⟨_⟩_)
 open import Once.Metatheory.Bisim Σ using (_≈B_; return≈; next≈)
 open import Once.Spec.Signature using (⟦_⟧ᵇ; Event)

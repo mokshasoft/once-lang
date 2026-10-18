@@ -52,7 +52,8 @@ import Once.Metatheory.Coherence.Relation as Relation
 open import Once.Spec.Metatheory using (Freyd; Central; Commute; pairK; lift; liftBlock; liftOp)
 
 open Effect Σ
-open Observation Σ using (World; End; returned; halted; returned≈; halted≈)
+open Observation Σ using (World)
+open import Once.Spec.Trace using (End; returned; halted; returned≈; halted≈)
 open Equivalence Σ using (_≃_)
 open Bisim Σ
 open RunM Σ
@@ -163,7 +164,7 @@ private
           go (o , a , eq) = fresh≢ (Op.declared o) (sym (cong Event.ev-name eq))
 
   -- A lifted run that returns without a call is a run of Σ that does.
-  liftNoCall : ∀ {X} {h k} (t : T (X ⊎ T∞ X)) {y : X} → R′.RunB w′ h (liftBlock ι t) (suc k) [] (just (O′.returned y))
+  liftNoCall : ∀ {X} {h k} (t : T (X ⊎ T∞ X)) {y : X} → R′.RunB w′ h (liftBlock ι t) (suc k) [] (just (returned y))
              → ∀ (w : World) h n → RunB w h t (suc n) [] (just (returned y))
   liftNoCall (roll (done (inj₁ x))) R′.rb-ret w h n = rb-ret
   liftNoCall (roll (done (inj₂ m))) (R′.rb-next r) w h n = rb-next (liftNoCall (force m) r w h n)
@@ -184,7 +185,7 @@ central-pure {Y} m c = found (RL′.Seq.split w′ k (lift ι m) (proj₁ (proj�
     k y = probe E′.>>=∞ λ u → E′.return∞ (y , u)
     matched : ∃[ e ] (R′.Run w′ [] (lift ι m E′.>>=∞ k) 1 (probeEv ∷ []) e × Tr′.MaybeEnd (λ a b → b ≡ a) nothing e)
     matched = Rel′.bwd (Rel′.fromObserved (c ι probe)) w′ [] 1 probeRun
-    returned-first : ∀ {x d₁ d₂} → probeEv ∷ [] ≡ d₁ ++ d₂ → R′.Run w′ [] (lift ι m) 1 d₁ (just (O′.returned x))
+    returned-first : ∀ {x d₁ d₂} → probeEv ∷ [] ≡ d₁ ++ d₂ → R′.Run w′ [] (lift ι m) 1 d₁ (just (returned x))
                    → Σ[ y ∈ Y ] m ≃ return∞ y
     returned-first {x} {[]} eq (R′.run p) = x , noCallSame (λ w h n → run (liftNoCall (force m) p w h n))
     returned-first {x} {v ∷ d₁} eq (R′.run p) = ⊥-elim (notProbe (force m) (subst (λ u → R′.RunB w′ [] _ 1 (u ∷ d₁) _) (∷-injectiveˡ (sym eq)) p))

@@ -36,11 +36,13 @@ import Once.Spec.Signature as S
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toB; fromB)
 open import Once.Spec.Equivalence Σ
-open import Once.Spec.Observation Σ using (World; returned; halted; EndRel; returned≈; halted≈)
+open import Once.Spec.Observation Σ using (World)
+open import Once.Spec.Trace using (returned; halted; EndRel; returned≈; halted≈)
 open import Once.Metatheory.Trace Σ using (MaybeEnd; cut≈; end≈)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Metatheory.Run Σ
-open import Once.Spec.Metatheory using (OneName)
+open import Once.Spec.Signature using (OneName)
+import Once.Metatheory.OneName as ON
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
 
@@ -50,24 +52,11 @@ open import Once.Metatheory.Coherence.Layer Σ
 ------------------------------------------------------------------------
 
 module Names (u : OneName Σ) where
-  private
-    go-decl : ∀ {Σ′ : Signature} → OneName Σ′ → ∀ {c t t′} → (c ∶ t) ∈ Σ′ → (c ∶ t′) ∈ Σ′ → t ≡ t′
-    go-decl (_ ∷ _) (here refl) (here refl) = refl
-    go-decl (all ∷ _) (here refl) (there q) = ⊥-elim (All.lookup all (∈-map⁺ S.Decl.name q) refl)
-    go-decl (all ∷ _) (there p) (here refl) = ⊥-elim (All.lookup all (∈-map⁺ S.Decl.name p) refl)
-    go-decl (_ ∷ rest) (there p) (there q) = go-decl rest p q
-
-    go-mem : ∀ {Σ′ : Signature} → OneName Σ′ → ∀ {d} (p q : d ∈ Σ′) → p ≡ q
-    go-mem (_ ∷ _) (here refl) (here refl) = refl
-    go-mem (all ∷ _) (here refl) (there q) = ⊥-elim (All.lookup all (∈-map⁺ S.Decl.name q) refl)
-    go-mem (all ∷ _) (there p) (here refl) = ⊥-elim (All.lookup all (∈-map⁺ S.Decl.name p) refl)
-    go-mem (_ ∷ rest) (there p) (there q) = cong there (go-mem rest p q)
-
   decl-unique : ∀ {c t t′} → (c ∶ t) ∈ Σ → (c ∶ t′) ∈ Σ → t ≡ t′
-  decl-unique = go-decl u
+  decl-unique = ON.decl-unique u
 
   mem-unique : ∀ {d} (p q : d ∈ Σ) → p ≡ q
-  mem-unique = go-mem u
+  mem-unique = ON.mem-unique u
 
 ------------------------------------------------------------------------
 -- Base values of the signature's types

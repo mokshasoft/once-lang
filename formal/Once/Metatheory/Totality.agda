@@ -50,6 +50,7 @@ import Once.Spec.Grade
 open import Once.Spec.Examples
 import Once.Spec.Effect as Effect
 import Once.Spec.Observation as Observation
+open import Once.Spec.Trace using (Calls)
 import Once.Spec.Core.Typing as CoreTyping
 import Once.Spec.Core.Meaning as Meaning
 import Once.Spec.Surface.Typing as SurfaceTyping
@@ -211,5 +212,5 @@ totality = record
   }
   where
     calls : ∀ {fmt δ w n} → ∃[ d ] (RunM.Run echoΣ w [] (Runs.server fmt δ w) n d nothing × length d ≡ n)
-          → ∃[ vs ] (length vs ≡ n × Observation.Calls echoΣ (Observation.trace echoΣ w [] (Runs.server fmt δ w)) vs)
+          → ∃[ vs ] (length vs ≡ n × Calls (Observation.trace echoΣ w [] (Runs.server fmt δ w)) vs)
     calls {w = w} (d , r , eq) = d , eq , RunM.run-calls echoΣ w r

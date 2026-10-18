@@ -28,7 +28,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Signature using (Op; module Op; arg; ⟦_⟧ᵇ; NotEmpty; notEmpty?; eventOf)
 open Op using (ans)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted)
+open import Once.Spec.Observation Σ using (World; module World; History)
+open import Once.Spec.Trace using (End; returned; halted)
 open import Once.Metatheory.Run Σ
 open import Once.Metatheory.Bisim Σ using (_≈B_; return≈; next≈)
 

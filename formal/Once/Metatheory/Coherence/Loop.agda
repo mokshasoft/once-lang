@@ -32,7 +32,8 @@ open import Once.Spec.Signature using (eventOf; Op; module Op; arg; ⟦_⟧ᵇ; 
 open Op using (ans)
 open import Once.Spec.Polynomial using (SK; SId; _S⊕_)
 open import Once.Spec.Effect Σ
-open import Once.Spec.Observation Σ using (World; module World; History; End; returned; halted; EndRel; returned≈; halted≈)
+open import Once.Spec.Observation Σ using (World; module World; History)
+open import Once.Spec.Trace using (End; returned; halted; EndRel; returned≈; halted≈)
 open import Once.Spec.Type using (Type; _+_)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)

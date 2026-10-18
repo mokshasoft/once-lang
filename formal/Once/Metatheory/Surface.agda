@@ -47,6 +47,7 @@ open import Once.Spec.Surface.Typing Σ S nm
 open import Once.Spec.Metatheory using (Surface)
 
 open Distinct dist
+open import Once.Metatheory.OneName using (decl-unique)
 
 ------------------------------------------------------------------------
 -- Names
@@ -275,7 +276,7 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique s-unit-g      (s-sigop ng _)  = ⊥-elim (notGen unit∈ ng)
   synth-unique s-unit-g      (s-def d e _ _) = ⊥-elim (def-gen d unit∈ e)
   synth-unique (s-var p)     (s-var q)       = ∋-unique p q
-  synth-unique (s-sigop _ m₁) (s-sigop _ m₂) = cong ⌜_⌝ᵈ (sig-unique m₁ m₂)
+  synth-unique (s-sigop _ m₁) (s-sigop _ m₂) = cong ⌜_⌝ᵈ (decl-unique one-name m₁ m₂)
   synth-unique (s-sigop ng _) s-unit-g       = ⊥-elim (notGen unit∈ ng)
   synth-unique (s-sigop _ mem) (s-def d e _ _) = ⊥-elim (def-sig d e mem)
   synth-unique (s-def d e τ a0) (s-def d′ e′ τ′ _) = mono (def-inj (trans e (sym e′))) τ τ′ a0

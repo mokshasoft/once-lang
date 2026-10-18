@@ -22,7 +22,7 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Signature using (Signature; call)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Core.Syntax using (Defs)
-open import Once.Spec.Metatheory using (OneName)
+open import Once.Spec.Signature using (OneName)
 
 module Once.Metatheory.Coherence.Fundamental (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
