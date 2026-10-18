@@ -53,11 +53,17 @@ m ≃ m′ = Observed _≡_ m m′
 
 infix 4 _≃_
 
--- Two streams, to `n` layers: forcing them gives the same layer
--- computations, the streams at the recursive positions agreeing to `n - 1`.
+-- One layer of a relation `R` on streams: forcing them gives layer
+-- computations observed the same, with equal constants and `R` at the
+-- recursive positions.
+OneLayer : ∀ (f : Finite) (G : SFunctor) → (νM f G → νM f G → Set) → νM f G → νM f G → Set
+OneLayer f G R v w = Observed (LayerEq G R) (toT∞ (fin f) (outν v)) (toT∞ (fin f) (outν w))
+
+-- Two streams, to `n` layers: one layer, the streams at the recursive
+-- positions agreeing to `n - 1`.
 SameNu : ∀ (f : Finite) (G : SFunctor) → ℕ → νM f G → νM f G → Set
-SameNu f G zero    v w = ⊤
-SameNu f G (suc n) v w = Observed (LayerEq G (SameNu f G n)) (toT∞ (fin f) (outν v)) (toT∞ (fin f) (outν w))
+SameNu f G zero    = λ _ _ → ⊤
+SameNu f G (suc n) = OneLayer f G (SameNu f G n)
 
 -- Two streams: agreeing on every finite number of layers. It is the
 -- greatest relation that one layer preserves (`Spec.Metatheory.Sameness`).

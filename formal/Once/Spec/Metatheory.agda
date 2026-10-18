@@ -162,12 +162,7 @@ record Inhabited (Σ : Signature) : Set where
 record Sameness (Σ : Signature) : Set₁ where
   open Effect Σ using (M; bindᵍ; νM; module νM; toT∞; LayerEq)
   open Domain Σ using (⟦_⟧ᵛ)
-  open Equivalence Σ using (Same; SameM; Observed; SameStream)
-  -- One layer of a relation on streams: forcing gives layer computations
-  -- observed the same, with equal constants and the relation at the
-  -- recursive positions.
-  OneLayer : ∀ (f : Finite) (G : SFunctor) → (νM f G → νM f G → Set) → νM f G → νM f G → Set
-  OneLayer f G R v w = Observed (LayerEq G R) (toT∞ (fin f) (νM.outν v)) (toT∞ (fin f) (νM.outν w))
+  open Equivalence Σ using (Same; SameM; SameStream; OneLayer)
   field
     Same-sym   : ∀ (A : Type) {x y} → Same A x y → Same A y x
     Same-trans : ∀ (A : Type) {x y z} → Same A x y → Same A y z → Same A x z
