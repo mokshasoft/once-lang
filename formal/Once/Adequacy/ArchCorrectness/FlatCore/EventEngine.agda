@@ -35,6 +35,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _++_; drop)
+open import Once.Lang.Out using (Out; cut; stop; _▹_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
@@ -267,7 +268,7 @@ events-running-end : ∀ {hv : HeapView} (n : ℕ) (ev : RT.EvExtractor) (env : 
                        prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs
                    → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ nothing
-                   → Σ ℕ (λ M → RT.run-events ev env lg M (compile-trace prog) s ≡ [])
+                   → Σ ℕ (λ M → RT.run-events ev env lg M (compile-trace prog) s ≡ stop)
 events-running-end {hv} n ev env lg prog fs s cc wf h ftq =
   1 , RT.run-events-fetch-none ev env lg 0 (compile-trace prog) s cfetch-nothing
   where cfetch-nothing : mfetch (compile-trace prog) (xpc s) ≡ nothing
@@ -324,7 +325,7 @@ sigop-run-external : ∀ {hv : HeapView} ev env lg n prog fs s {A B} (si : SigOp
                    → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing
                    → RT.run-events ev env lg (suc n) (compile-trace prog) s
                        ≡ ev (once-symbol-path (SigOpInfo.name si)) s
-                         ++ RT.run-events ev env (lg ++ ev (once-symbol-path (SigOpInfo.name si)) s) n
+                         ▹ RT.run-events ev env (lg ++ ev (once-symbol-path (SigOpInfo.name si)) s) n
                               (compile-trace prog) (ret-call lg (once-symbol-path (SigOpInfo.name si)) s)
 sigop-run-external ev env lg n prog fs s si cc h ftq env-eq =
   RT.run-events-external ev env lg n (compile-trace prog) s
@@ -366,7 +367,7 @@ event-of-pure si fs eqe rewrite eqe = refl
 -- what an arch owes: the concrete machine emits nothing from here on.
 -- (at any log: a stuck machine makes no call, so what it has called is moot)
 StuckAt : RT.EvExtractor → RT.ArithEnv → List Instr → State → Set
-StuckAt ev env cprog s = ∀ (lg : List SigOpEvent) → Σ ℕ (λ M → RT.run-events ev env lg M cprog s ≡ [])
+StuckAt ev env cprog s = ∀ (lg : List SigOpEvent) → Σ ℕ (λ M → RT.run-events ev env lg M cprog s ≡ stop)
 
 record StuckSteps : Set₁ where
   field
@@ -421,10 +422,16 @@ stuck-result : ∀ ev env lg n prog fs s (i : AbstractInstr)
              → event-of i fs ≡ []
              → StuckAt ev env (compile-trace prog) s
              → Σ ℕ (λ M → RT.run-events ev env lg M (compile-trace prog) s
-                   ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
-stuck-result ev env lg n prog fs s i hpost ev-eq st =
-  proj₁ (st lg) , trans (proj₂ (st lg)) (sym (trans (cong (_++ flat-events n prog (flat-exec-instr i prog fs)) ev-eq)
-                           (flat-events-halted n prog (flat-exec-instr i prog fs) hpost)))
+                   ≡ event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs))
+-- (At no fuel the flat side shows nothing yet, and neither does the concrete
+-- one at none; with fuel, both have stopped.)
+stuck-result ev env lg zero    prog fs s i hpost ev-eq st =
+  0 , sym (cong (_▹ flat-events zero prog (flat-exec-instr i prog fs)) ev-eq)
+stuck-result ev env lg (suc n) prog fs s i hpost ev-eq st =
+  proj₁ (st lg) , trans (proj₂ (st lg)) (sym (trans (cong (_▹ flat-events (suc n) prog (flat-exec-instr i prog fs)) ev-eq)
+                           (flat-stop n (flat-exec-instr i prog fs) hpost)))
+  where flat-stop : ∀ n fs′ → halted (floc fs′) ≡ true → flat-events (suc n) prog fs′ ≡ stop
+        flat-stop n fs′ h rewrite h = refl
 
 ------------------------------------------------------------------------
 -- THE WHOLE SUPPLY, in one record — what an ARCH hands the dispatch.

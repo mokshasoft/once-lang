@@ -83,7 +83,7 @@ module Simp {FS : FrameSemantics} where
       ev-[] zero    .mov-to-output refl fs = refl
       ev-[] (suc n) i              ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (id {A})) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (id {A})) (entry-flat 0 s alloc cl)) ≡ []
       mach-[] f = flat-events-[] (emitted n l (id {A})) ev-[] f (entry-flat 0 s alloc cl)
 
       -- Denotation side: `evalᴰ id a = returnT a` emits nothing.
@@ -154,7 +154,7 @@ module Simp {FS : FrameSemantics} where
       ev-[] zero    i () fs
       ev-[] (suc n) i () fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (terminal {A})) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (terminal {A})) (entry-flat 0 s alloc cl)) ≡ []
       mach-[] f = flat-events-[] (emitted n l (terminal {A})) ev-[] f (entry-flat 0 s alloc cl)
 
       denot-[] : ∀ k → eventsAt s (evalᴰ (terminal {A}) x) ≡ []
@@ -353,7 +353,7 @@ module Simp {FS : FrameSemantics} where
       ev-[] zero    .mov-to-output refl fs = refl
       ev-[] (suc n) i              ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (out-μ wf)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (out-μ wf)) (entry-flat 0 s alloc cl)) ≡ []
       mach-[] f = flat-events-[] (emitted n l (out-μ wf)) ev-[] f (entry-flat 0 s alloc cl)
 
       denot-[] : ∀ k → eventsAt s (evalᴰ (out-μ wf) x) ≡ []
@@ -442,7 +442,7 @@ module Simp {FS : FrameSemantics} where
       ev-[] zero    .instr refl fs = refl
       ev-[] (suc n) i      ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (const fits-int v)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (const fits-int v)) (entry-flat 0 s alloc cl)) ≡ []
       mach-[] f = flat-events-[] (emitted n l (const fits-int v)) ev-[] f (entry-flat 0 s alloc cl)
 
       denot-[] : ∀ k → eventsAt s (evalᴰ (const fits-int v) x) ≡ []
@@ -474,7 +474,7 @@ module Simp {FS : FrameSemantics} where
       ev-[] zero    .instr refl fs = refl
       ev-[] (suc n) i      ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (const fits-float v)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (const fits-float v)) (entry-flat 0 s alloc cl)) ≡ []
       mach-[] f = flat-events-[] (emitted n l (const fits-float v)) ev-[] f (entry-flat 0 s alloc cl)
 
       denot-[] : ∀ k → eventsAt s (evalᴰ (const fits-float v) x) ≡ []

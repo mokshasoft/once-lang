@@ -432,8 +432,8 @@ entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (
 
 flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → ℕ → List SigOpEvent
 flat-trace-fam ioc brs ir lk n =
-  take n (flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0))
-                      (image ir) start-flat)
+  take n (proj₁ (flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0))
+                      (image ir) start-flat))
 
 -- D113/D115: at THIS target's NUMERICS, which is where `IRObsCorrectFlat`'s
 -- `evalᴰ` alias reads them from too, so the two sides mean one thing.
@@ -445,7 +445,7 @@ ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : L
 -- empty log (`entry-s`), so the depth-`n` observable is one `take n`.
 ir-flat-correct-fam ioc brs ir lk n =
   cong (take n)
-    (trans (trans (flat-events-steps (ValueRealized.run (entry-vr ir lk ioc brs n)) 0)
+    (trans (trans (cong proj₁ (flat-events-steps (ValueRealized.run (entry-vr ir lk ioc brs n)) 0))
                   (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir lk ioc brs n)))))
            (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs n)))
 

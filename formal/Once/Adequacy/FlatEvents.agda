@@ -54,7 +54,8 @@ import Once.CCC.Machine.FlatLog
 import Once.CCC.Machine.SMCore as SMC
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Product using (_×_)
+open import Data.Product using (_×_; proj₁)
+open import Once.Lang.Out using (Out; cut; stop; _▹_; ▹-assoc)
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}
@@ -77,25 +78,27 @@ module FlatEventTrace {FS : FrameSemantics} where
   event-of i fs = ev-of-loc i (floc fs)
 
   -- The SigOp-event trace, mirroring `exec-flat`'s fuel/fetch dispatch.
-  flat-events       : ℕ → AbstractTrace → FlatState → List SigOpEvent
-  flat-events-step  : Bool → ℕ → AbstractTrace → FlatState → List SigOpEvent
-  flat-events-fetch : Maybe AbstractInstr → ℕ → AbstractTrace → FlatState → List SigOpEvent
+  -- D320: the calls AND how the run ended (`Once.Lang.Out`): a halted machine
+  -- and a pc off the code end it (`halted`); running out of fuel says nothing.
+  flat-events       : ℕ → AbstractTrace → FlatState → Out
+  flat-events-step  : Bool → ℕ → AbstractTrace → FlatState → Out
+  flat-events-fetch : Maybe AbstractInstr → ℕ → AbstractTrace → FlatState → Out
 
-  flat-events zero    _    fs = []
+  flat-events zero    _    fs = cut
   flat-events (suc n) prog fs = flat-events-step (halted (floc fs)) n prog fs
 
-  flat-events-step true  _ _    fs = []
+  flat-events-step true  _ _    fs = stop
   flat-events-step false n prog fs = flat-events-fetch (fetch prog (fpc fs)) n prog fs
 
-  flat-events-fetch nothing  _ _    fs = []
+  flat-events-fetch nothing  _ _    fs = stop
   flat-events-fetch (just i) n prog fs =
-    event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs)
+    event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs)
 
   -- A HALTED flat state emits nothing, at any fuel — the abstract counterpart of
   -- `RunTraceCore.run-events-halted` / `-stuck`. Used by every "both machines
   -- stop here" correspondence case.
   flat-events-halted : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
-                     → halted (floc fs) ≡ true → flat-events n prog fs ≡ []
+                     → halted (floc fs) ≡ true → proj₁ (flat-events n prog fs) ≡ []
   flat-events-halted zero    prog fs _ = refl
   flat-events-halted (suc n) prog fs h rewrite h = refl
 
@@ -110,7 +113,7 @@ module FlatEventTrace {FS : FrameSemantics} where
 
   flat-events-[] : ∀ (prog : AbstractTrace)
                  → (∀ pc i → fetch prog pc ≡ just i → ∀ fs → event-of i fs ≡ [])
-                 → ∀ (fuel : ℕ) (fs : FlatState) → flat-events fuel prog fs ≡ []
+                 → ∀ (fuel : ℕ) (fs : FlatState) → proj₁ (flat-events fuel prog fs) ≡ []
   flat-events-[] prog H zero    fs = refl
   flat-events-[] prog H (suc n) fs with halted (floc fs)
   ... | true  = refl
@@ -164,12 +167,12 @@ module FlatEventTrace {FS : FrameSemantics} where
 
   flat-events-steps : ∀ {prog k fs fs'} (steps : FlatSteps prog k fs fs')
                     → ∀ b → flat-events (k + b) prog fs
-                              ≡ chain-events steps ++ flat-events b prog fs'
+                              ≡ chain-events steps ▹ flat-events b prog fs'
   flat-events-steps []                              b = refl
   flat-events-steps (_∷_ {fs = fs} {i = i} (h , f) rest) b
     rewrite h | f =
-      trans (cong (event-of i fs ++_) (flat-events-steps rest b))
-            (sym (++-assoc (event-of i fs) (chain-events rest) (flat-events b _ _)))
+      trans (cong (event-of i fs ▹_) (flat-events-steps rest b))
+            (sym (▹-assoc (event-of i fs) (chain-events rest) (flat-events b _ _)))
 
   -- `chain-events` is COMPOSITIONAL: the two lemmas that make it survive
   -- the way `FlatSteps` chains are actually built (`flat-step1` retypes a
@@ -274,7 +277,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   -- fuel — the run is over. (`flat-events`'s first dispatch returns `[]`.)
   flat-events-settled : ∀ (prog : AbstractTrace) (fs : FlatState) (r : ℕ)
                       → (halted (floc fs) ≡ true) ⊎ (fetch prog (fpc fs) ≡ nothing)
-                      → flat-events r prog fs ≡ []
+                      → proj₁ (flat-events r prog fs) ≡ []
   flat-events-settled prog fs zero    _        = refl
   flat-events-settled prog fs (suc r) (inj₁ h) rewrite h = refl
   flat-events-settled prog fs (suc r) (inj₂ f) with halted (floc fs)
@@ -288,9 +291,9 @@ module FlatEventTrace {FS : FrameSemantics} where
   -- events`) feed the chain-level relocation (`chain-events-relocate`).
   flat-events-reify : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
                         (rr : RunReified prog fs n)
-                    → flat-events n prog fs ≡ chain-events (RunReified.chain rr)
+                    → proj₁ (flat-events n prog fs) ≡ chain-events (RunReified.chain rr)
   flat-events-reify n prog fs (reified N r fs' ch st fsp) =
-    trans (cong (λ m → flat-events m prog fs) fsp)
-          (trans (flat-events-steps ch r)
+    trans (cong (λ m → proj₁ (flat-events m prog fs)) fsp)
+          (trans (cong proj₁ (flat-events-steps ch r))
                  (trans (cong (chain-events ch ++_) (flat-events-settled prog fs' r st))
                         (++-identityʳ (chain-events ch))))

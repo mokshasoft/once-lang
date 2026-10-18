@@ -293,9 +293,9 @@ Nof brs ir lk n =
 -- the concrete run of the program image under a block table, from the
 -- environment's state
 conc-run : List (String × RF.Payload) → IR Unit Unit → ℕ → List SigOpEvent
-conc-run bs ir M =
+conc-run bs ir M = proj₁ (
   RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env bs)
-    [] M (compile-trace (FFOr.image ir)) RS.initState
+    [] M (compile-trace (FFOr.image ir)) RS.initState)
 
 -- …and the fuel that run is observed at (D268: the budget reads the run)
 conc-budget : List (String × RF.Payload) → IR Unit Unit → ℕ → ℕ
@@ -311,7 +311,7 @@ postulate
   conc-fuel : ∀ (brs : FFOr.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
                 (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
       conc-run (C.blocks-riscv64 p) ir M
-      ≡ flat-events (suc (Nof brs ir lk n)) (FFOr.image ir) FFOr.start-flat →
+      ≡ proj₁ (flat-events (suc (Nof brs ir lk n)) (FFOr.image ir) FFOr.start-flat) →
       take n (conc-run (C.blocks-riscv64 p) ir (conc-budget (C.blocks-riscv64 p) ir n))
     ≡ take n (conc-run (C.blocks-riscv64 p) ir M)
 
@@ -324,7 +324,7 @@ conc-flat-sim :
   → ∀ (n : ℕ) → take n (conc-run (C.blocks-riscv64 p) ir (conc-budget (C.blocks-riscv64 p) ir n))
               ≡ at (FFOr.flat-main ir-obs-correct brs ir lk) n
 conc-flat-sim brs p ir lk img n =
-  trans (conc-fuel brs p ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+  trans (conc-fuel brs p ir lk n (proj₁ agree) (cong proj₁ (proj₂ agree))) (cong (λ o → take n (proj₁ o)) (proj₂ agree))
   where
     run₀ : RunAt (FFOr.image ir) FFOr.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl)
@@ -369,8 +369,8 @@ file-flat-riscv64 brs m F eq ir mi oq teq lk n =
   subst (λ G → at (run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))) n
                ≡ at (flat-riscv64 brs ir′ lk) n)
         (sym (file-is-emit riscv64 m F ir eq mi))
-        (trans (cong (λ cd → take n (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
-                                       (block-env (C.blocks-riscv64 p)) [] (step-budget-riscv64 (C.blocks-riscv64 p) cd RS.initState n) cd RS.initState))
+        (trans (cong (λ cd → take n (proj₁ (RTr.run-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64
+                                       (block-env (C.blocks-riscv64 p)) [] (step-budget-riscv64 (C.blocks-riscv64 p) cd RS.initState n) cd RS.initState)))
                      code-eq)
                (conc-flat-sim brs p ir′ lk img n))
   where

@@ -375,9 +375,9 @@ Nof brs ir lk n =
 -- the concrete run of the program image under a block table, from the
 -- environment's state
 conc-run : List (String × RF.Payload) → IR Unit Unit → ℕ → List SigOpEvent
-conc-run bs ir M =
+conc-run bs ir M = proj₁ (
   RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env bs)
-    [] M (compile-trace (FFOx.image ir)) X.initState
+    [] M (compile-trace (FFOx.image ir)) X.initState)
 
 -- …and the fuel that run is observed at (D268: the budget reads the run)
 conc-budget : List (String × RF.Payload) → IR Unit Unit → ℕ → ℕ
@@ -393,7 +393,7 @@ postulate
   conc-fuel : ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
                 (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
       conc-run (C.blocks-x86-32 p) ir M
-      ≡ flat-events (suc (Nof brs ir lk n)) (FFOx.image ir) FFOx.start-flat →
+      ≡ proj₁ (flat-events (suc (Nof brs ir lk n)) (FFOx.image ir) FFOx.start-flat) →
       take n (conc-run (C.blocks-x86-32 p) ir (conc-budget (C.blocks-x86-32 p) ir n))
     ≡ take n (conc-run (C.blocks-x86-32 p) ir M)
 
@@ -406,7 +406,7 @@ conc-flat-sim :
   → ∀ (n : ℕ) → take n (conc-run (C.blocks-x86-32 p) ir (conc-budget (C.blocks-x86-32 p) ir n))
               ≡ at (FFOx.flat-main ir-obs-correct brs ir lk) n
 conc-flat-sim brs p ir lk img n =
-  trans (conc-fuel brs p ir lk n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+  trans (conc-fuel brs p ir lk n (proj₁ agree) (cong proj₁ (proj₂ agree))) (cong (λ o → take n (proj₁ o)) (proj₂ agree))
   where
     run₀ : RunAt (FFOx.image ir) FFOx.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
@@ -451,8 +451,8 @@ file-flat-x86-32 brs m F eq ir mi oq teq lk n =
   subst (λ G → at (run-trace-x86-32 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))) n
                ≡ at (flat-x86-32 brs ir′ lk) n)
         (sym (file-is-emit x86-32 m F ir eq mi))
-        (trans (cong (λ cd → take n (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32
-                                       (block-env (C.blocks-x86-32 p)) [] (step-budget-x86-32 (C.blocks-x86-32 p) cd X.initState n) cd X.initState))
+        (trans (cong (λ cd → take n (proj₁ (RTx.run-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32
+                                       (block-env (C.blocks-x86-32 p)) [] (step-budget-x86-32 (C.blocks-x86-32 p) cd X.initState n) cd X.initState)))
                      code-eq)
                (conc-flat-sim brs p ir′ lk img n))
   where
