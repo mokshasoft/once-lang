@@ -16,7 +16,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; cong)
 open import Data.String using (String)
 
-open import Once.Denotation.Behavior using (Behavior; silent)
+open import Data.Unit using (⊤)
+open import Once.Spec.Trace using (Tr)
+open import Once.Adequacy.MachineTrace using (silentTr)
 open import Once.Lang.Trace using (Interp)
 
 -- Bytes
@@ -34,23 +36,17 @@ record ArchSemantics : Set₁ where
     -- the program hands it over: an OS loader OR a bare-metal reset handler with
     -- its linker script (Once targets both, so nothing here may assume an OS).
     -- It says exactly two things: pc is at the program's entry point (which is
-    -- why it takes the program), and `sp` is in a stack region. No syscalls, no
-    -- exit status: the observable is the SigOp trace. Stated over a program,
-    -- never over the compiler's output.
+    -- why it takes the program), and `sp` is in a stack region — the Host's
+    -- `enter` (D320). Stated over a program, never over the compiler's output.
     initialState : Program → State
     run          : Program → State → Maybe State
-    -- The OBSERVABLE: the step-indexed SigOp trace produced by executing
-    -- `prog` from `state` (Plan 0.44). `run-trace prog st n` is the trace
-    -- of SigOp invocations within `n` steps. This replaces the old
-    -- value-shaped `observe : Maybe State → Behavior` (a final-state →
-    -- exit-code projection, which structurally cannot yield a trace).
-    -- It will be DERIVED from `run`'s step semantics once the model
-    -- records SigOp invocations and continues (the emit-and-continue
-    -- machine); per-arch instances postulate it until then — a named gap
-    -- alongside `decode`/`assemble`.
-    -- Plan 0.105: at an interpretation — the world the binary runs in answers
-    -- its external calls (an input read differs between two worlds).
-    run-trace    : Interp → Program → State → Behavior
+    -- The OBSERVABLE (D320): the TRACE of executing `prog` from `state`
+    -- (`Spec.Trace.Tr ⊤`) — its calls, and how the run ends: `returned` at a
+    -- call of the Host's `leave` (the Host's contract), `halted` at a call with
+    -- no answer or a fault, or never. Read off the step semantics by
+    -- corecursion (`MachineTrace`), with no fuel. Plan 0.105: at an
+    -- interpretation — the world the binary runs in answers its external calls.
+    run-trace    : Interp → Program → State → Tr ⊤
     decode       : List Byte → Maybe Program
     -- Assembler: asm text → bytes. The per-arch GNU `as`.
     assemble     : String → List Byte
@@ -72,11 +68,11 @@ record ArchSemantics : Set₁ where
 
   -- Executing bytes: decode, then run (aux-style, so a rewrite of the decode
   -- reduces it).
-  exec-dec : Interp → Maybe Program → Behavior
-  exec-dec ι nothing     = silent
+  exec-dec : Interp → Maybe Program → Tr ⊤
+  exec-dec ι nothing     = silentTr
   exec-dec ι (just prog) = run-trace ι prog (initialState prog)
 
-  exec-bytes : Interp → List Byte → Behavior
+  exec-bytes : Interp → List Byte → Tr ⊤
   exec-bytes ι bytes = exec-dec ι (decode bytes)
 
   -- The assembled file runs its program.

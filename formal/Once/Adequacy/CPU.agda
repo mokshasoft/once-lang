@@ -14,9 +14,9 @@
 --      Downstream proofs work against this record so they're
 --      arch-generic.
 --
---   2. The bytes-level execution — `exec : Arch → Interp → List Byte → Behavior`.
+--   2. The bytes-level execution — `exec : Arch → Interp → List Byte → Tr ⊤`.
 --      Computed by dispatching on Arch, decoding bytes, running the
---      per-arch semantics, and projecting to Behavior.
+--      per-arch semantics, and reading off its trace.
 --
 -- The TRUST point per arch is the body of its `ArchSemantics` instance
 -- — specifically the `run` function (the per-arch ISA semantics).
@@ -29,7 +29,8 @@ module Once.Adequacy.CPU where
 
 open import Data.List using (List)
 
-open import Once.Denotation.Behavior        using (Behavior)
+open import Data.Unit using (⊤)
+open import Once.Spec.Trace using (Tr)
 open import Once.Lang.Trace      using (Interp)
 open import Once.Adequacy.CPU.Interface  -- re-export
 open import Once.Target.Arch
@@ -56,5 +57,5 @@ arch-semantics riscv64 = RiscV64-CPU.arch-semantics
 
 -- Plan 0.105: at an interpretation — the world that answers the binary's
 -- external calls.
-exec : Arch → Interp → List Byte → Behavior
+exec : Arch → Interp → List Byte → Tr ⊤
 exec arch ι bytes = ArchSemantics.exec-bytes (arch-semantics arch) ι bytes

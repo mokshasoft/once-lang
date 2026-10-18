@@ -17,7 +17,9 @@ open import Data.String using (String)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
 
-open import Once.Denotation.Behavior      using (Behavior)
+open import Data.Unit using (⊤)
+open import Once.Spec.Trace using (Tr)
+open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.Lang.Event using (SigOpEvent)
 open import Once.Lang.Trace using (Interp)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
@@ -46,14 +48,9 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 --   * `val-x86-32`        — the concrete XInstr arith interpreter (DEFINED).
 --   * `block-env`        — the arith-block table, read off the file (plan 0.107).
 --   * `ev-x86-32`         — label→SigOp resolution (inverse of symbol lowering).
---   * `step-budget-x86-32`— adequate fuel (event-count ↦ machine steps).
 ------------------------------------------------------------------------
 
 postulate
-  -- D268: the adequate fuel of THIS run — it reads the block table, the code
-  -- and the start state (a program-independent `ℕ → ℕ` cannot be adequate:
-  -- event-free prefixes are unboundedly long).
-  step-budget-x86-32 : List (String × RF.Payload) → X32S.Program → X32.State → ℕ → ℕ
   ev-x86-32        : String → X32.State → List SigOpEvent
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-x86-32` (the loaded binary's
@@ -69,20 +66,11 @@ block-env : List (String × RF.Payload) → String → Maybe (List XInstr)
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just (proj₁ p) else block-env bs s
 
-postulate
-  -- D268: what an adequate budget MEANS (`RunTraceCore.Adequate`) — a deeper
-  -- observation only adds events, and a short one is the whole run. Class
-  -- **axiom** of the CPU model, consistent: the step count to the n-th event
-  -- (or the run's end) is such a budget.
-  step-budget-x86-32-adequate :
-    ∀ (ι : Interp) (bs : List (String × RF.Payload)) (code : X32S.Program) (s : X32.State)
-    → RT.Adequate val-x86-32 (answer-at ι call-at-x86-32)
-        (RT.run-trace-fam val-x86-32 (answer-at ι call-at-x86-32) (step-budget-x86-32 bs code s) ev-x86-32 (block-env bs) code s)
-
-run-trace-x86-32 : Interp → RF.Image → X32.State → Behavior
+-- D320: the binary's TRACE — the machine read off step by step (`RT.δ`,
+-- `MachineTrace`): no fuel, so a run that never calls again never arrives.
+run-trace-x86-32 : Interp → RF.Image → X32.State → Tr ⊤
 run-trace-x86-32 ι P s =
-  RT.run-trace val-x86-32 (answer-at ι call-at-x86-32) (step-budget-x86-32 (RF.Image.blocks P) (RF.Image.code P) s) ev-x86-32 (block-env (RF.Image.blocks P)) (RF.Image.code P) s
-    (step-budget-x86-32-adequate ι (RF.Image.blocks P) (RF.Image.code P) s)
+  Machine.trace (RT.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   decode-x86-32 : List Byte → Maybe RF.Image

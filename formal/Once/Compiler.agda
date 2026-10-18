@@ -61,8 +61,9 @@ open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Correct using (CorrectCompiler)
-open import Once.Denotation.Behavior using (Source; Behavior)
-open Once.Denotation.Behavior.Behavior using (at)
+open import Once.Denotation.Behavior using (Source)
+open import Data.Unit using (⊤)
+open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
 -- wired-not-imported). Importing `Once.Adequacy.CPU` here pulls in the
 -- per-arch instance postulates; that is intentional and confined to
@@ -120,7 +121,8 @@ once-compiler b64 b32 brv = record
   { Arch     = Arch
   ; Source   = Source
   ; Bytes    = List Byte
-  ; Behavior = Behavior
+  -- D320: what a program does is its TRACE — its calls and how the run ended.
+  ; Behavior = Tr ⊤
   -- Plan 0.105 (D257, D061): an interpretation's declared signatures and an
   -- implementation of them in the compiler's contract form (`Once.Lang.Contract`).
   ; Signature      = ISig
@@ -140,9 +142,10 @@ once-compiler b64 b32 brv = record
   -- in the world those signatures and that implementation make.
   ; ⟦_⟧ˢ     = VC.⟦_⟧ᵈᴵ
   ; exec     = λ arch S I → VC.exec (interp S I) arch
-  -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
-  -- equality (Plan 0.44).
-  ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → at b₁ n ≡ at b₂ n
+  -- Behavioural equivalence = the Spec's `SameBehaviour`: weak bisimilarity
+  -- of traces (D317, D320) — the same calls, the same end, the production rate
+  -- unobserved.
+  ; _≈_      = λ b₁ b₂ → b₁ ≈ᵗ⟨ _≡_ ⟩ b₂
   -- Plan 0.48: `compile` carries the optimizer flag.
   ; compile  = VC.compile
   -- Plan 0.49: the two-conjunct (sound+trace / complete) relational claim.

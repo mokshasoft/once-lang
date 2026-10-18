@@ -54,6 +54,7 @@ open import Data.List using ([]; take; map)
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
 open import Once.Lang.Event using (toEvent)
+open import Once.Denotation.TraceTr using (endOf)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -69,7 +70,7 @@ open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
 open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
-open import Once.Adequacy.CPU.X86-64 using (call-at-x86-64; ev-x86-64; block-env; run-trace-x86-64; step-budget-x86-64; val-x86-64)
+open import Once.Adequacy.CPU.X86-64 using (call-at-x86-64; ev-x86-64; block-env; run-trace-x86-64; val-x86-64)
 import Once.CCC.Target.X86-64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
@@ -88,7 +89,7 @@ open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (x86-64)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
@@ -359,59 +360,6 @@ entry-like B = refl , refl , refl , refl , refl
         no-ptr Scratch loc ()
         no-ptr Count   loc ()
 
--- Plan 0.107: THE RUN, FROM THE ENVIRONMENT'S STATE. The program's start (pc 0)
--- is crossed by `events-agree-start` — its block is `block-step-c-start`, so the
--- prologue the old loader axiom absorbed is now a proved step — and the rest is
--- `events-agree`. The flat side is `FlatFromObs`'s run from `start-flat`.
-Nof : FFOx.BlockRunsT → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → ℕ → ℕ
-Nof brs ir lk n =
-  ValueRealized.steps
-    (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir (proj₁ lk)) brs n)) + 0
-
--- the concrete run of the program image under a block table, from the
--- environment's state
-conc-run : List (String × RF.Payload) → IR Unit Unit → ℕ → List SigOpEvent
-conc-run bs ir M = proj₁ (
-  RTx.run-events val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env bs)
-    [] M (compile-trace (FFOx.image ir)) X.initState)
-
--- …and the fuel that run is observed at (D268: the budget reads the run)
-conc-budget : List (String × RF.Payload) → IR Unit Unit → ℕ → ℕ
-conc-budget bs ir = step-budget-x86-64 bs (compile-trace (FFOx.image ir)) X.initState
-
-postulate
-  -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam
-  -- (D5), the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the
-  -- flat side: a fuel `M` that reproduces the adequate flat prefix agrees, on
-  -- its first `n` events, with the DESIGNED budget `step-budget-x86-64 n`.
-  -- Plan 0.107: over the FILE'S block table (`C.blocks-x86-64 p`), and from
-  -- the environment's state with the start ahead of it.
-  conc-fuel : ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
-                (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n M : ℕ) →
-      conc-run (C.blocks-x86-64 p) ir M
-      ≡ proj₁ (flat-events (suc (Nof brs ir lk n)) (FFOx.image ir) FFOx.start-flat) →
-      take n (conc-run (C.blocks-x86-64 p) ir (conc-budget (C.blocks-x86-64 p) ir n))
-    ≡ take n (conc-run (C.blocks-x86-64 p) ir M)
-
--- THE SIMULATION from the environment's state: the concrete run of the image
--- (under the file's block table) is the flat run of the program.
-conc-flat-sim :
-  ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
-    (lk : LinkedProgram (sig ι) (irProgram tbl ir))
-  → FFOx.image ir ≡ C.image-of p
-  → ∀ (n : ℕ) → take n (conc-run (C.blocks-x86-64 p) ir (conc-budget (C.blocks-x86-64 p) ir n))
-              ≡ at (FFOx.flat-main ir-obs-correct brs ir lk) n
-conc-flat-sim brs p ir lk img n =
-  trans (conc-fuel brs p ir lk n (proj₁ agree) (cong proj₁ (proj₂ agree))) (cong (λ o → take n (proj₁ o)) (proj₂ agree))
-  where
-    run₀ : RunAt (FFOx.image ir) FFOx.start-flat
-    run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
-    agree = events-agree-start (Nof brs ir lk n)
-              ev-x86-64 (block-env (C.blocks-x86-64 p))
-              (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
-              (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
-              refl refl refl refl refl
-
 -- D320: THE BINARY'S TRACE. The concrete run, followed to where the flat run
 -- ends (`FFOx.flat-ends`), ENDS there — `returned` at the Host's `leave`,
 -- `halted` at a call with no answer — so the concrete machine's trace is the
@@ -422,8 +370,7 @@ conc-tr :
   → FFOx.image ir ≡ C.image-of p
   → Machine.trace (RTx.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
                      (compile-trace (FFOx.image ir))) ([] , X.initState)
-    ≈ᵗ⟨ _≡_ ⟩ listTr (map toEvent (eventsAt (floc (FFOx.main-flat ir)) (evalᴰ ir tt)))
-                     (FFOx.end-of-res (resultAt (floc (FFOx.main-flat ir)) (evalᴰ ir tt)))
+    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-64) ι
 conc-tr brs p ir lk img =
   Machine.reaches-≈ (RTx.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
                        (compile-trace (FFOx.image ir)))
@@ -448,36 +395,28 @@ conc-tr brs p ir lk img =
 BlockRunsHyp-x86-64 : Set
 BlockRunsHyp-x86-64 = FFOx.BlockRunsT
 
-flat-x86-64 : BlockRunsHyp-x86-64 → (ir : IR Unit Unit) → LinkedProgram (sig ι) (irProgram tbl ir) → Behavior
-flat-x86-64 brs = FFOx.flat-main ir-obs-correct brs
-
-ir-flat-correct-x86-64 : ∀ (brs : BlockRunsHyp-x86-64) (ir : IR Unit Unit) (lk : LinkedProgram (sig ι) (irProgram tbl ir)) (n : ℕ)
-                     → at (flat-x86-64 brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics x86-64) ι) n
-ir-flat-correct-x86-64 brs = FFOx.ir-flat-correct-main ir-obs-correct brs
-
--- Plan 0.107: RUNNING THE FILE IS THE FLAT RUN OF THE PROGRAM IT WAS EMITTED
+-- Plan 0.107 / D320: RUNNING THE FILE HAS THE TRACE OF THE PROGRAM IT WAS EMITTED
 -- FROM — a theorem, over the file. The file is `emit` of the module's program
 -- (`file-is-emit`); its code is the lowering of the image (one walk, and the
 -- counter-threaded lowering agrees with the plain one on a nested-free image);
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
-file-flat-x86-64 :
+file-tr-x86-64 :
   ∀ (brs : BlockRunsHyp-x86-64) (m : P.Module) (F : RF.Image)
   → C.compileFileFromModule IR.Heap false x86-64 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
   → (oq : o ≡ C.entry-owner)
   → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
-  → ∀ (n : ℕ) → at (run-trace-x86-64 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))) n
-              ≡ at (flat-x86-64 brs (main (rewrite-program (irProgram (moduleTable m) ir))) lk) n
-file-flat-x86-64 brs m F eq ir mi oq teq lk n =
-  subst (λ G → at (run-trace-x86-64 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))) n
-               ≡ at (flat-x86-64 brs ir′ lk) n)
+  → run-trace-x86-64 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
+    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))) ⟧IRᵗ (arch-numerics x86-64) ι
+file-tr-x86-64 brs m F eq ir mi oq teq lk =
+  subst (λ G → run-trace-x86-64 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
+               ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
         (sym (file-is-emit x86-64 m F ir eq mi))
-        (trans (cong (λ cd → take n (proj₁ (RTx.run-events val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64
-                                       (block-env (C.blocks-x86-64 p)) [] (step-budget-x86-64 (C.blocks-x86-64 p) cd X.initState n) cd X.initState)))
-                     code-eq)
-               (conc-flat-sim brs p ir′ lk img n))
+        (subst (λ cd → Machine.trace (RTx.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p)) cd) ([] , X.initState)
+                       ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
+               (sym code-eq) (conc-tr brs p ir′ lk img))
   where
     p   = irProgram (moduleTable m) ir
     ir′ = main (rewrite-program p)

@@ -33,7 +33,9 @@ open import Data.Nat using (ℕ)
 import Data.Nat as ℕ
 open import Data.Product using (_×_)
 
-open import Once.Denotation.Behavior      using (Behavior)
+open import Data.Unit using (⊤)
+open import Once.Spec.Trace using (Tr)
+open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.Lang.Event using (SigOpEvent)
 open import Once.Lang.Trace using (Interp)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
@@ -72,7 +74,7 @@ open import Data.Maybe using (just; nothing)
 
 ------------------------------------------------------------------------
 -- run-trace-x86-64 — DERIVED (no longer an opaque observable postulate).
--- It is `RunTraceCore.run-trace` at the x86-64 telescope; its remaining
+-- It is the trace of `RunTraceMachine`'s step view at the x86-64 telescope; its remaining
 -- ingredients are the named gaps below — smaller and more honest than the
 -- monolithic observable they replace:
 --   * `val-x86-64`        — the concrete XInstr arith interpreter (step 4:
@@ -81,8 +83,6 @@ open import Data.Maybe using (just; nothing)
 --                           label ↦ which block), extracted from the program
 --                           (step 4: derive from `prog`'s emitted blocks).
 --   * `ev-x86-64`         — label→SigOp resolution: the honest boundary axiom.
---   * `step-budget-x86-64`— adequate fuel (event-count ↦ machine steps), the
---                           SAME honest gap `FlatFromObs.flat-trace` carries.
 ------------------------------------------------------------------------
 
 -- ── val-x86-64 — the concrete XInstr arith interpreter (Plan 0.54 rung B / B2.2).
@@ -160,10 +160,6 @@ val-x86-64 (XI.Xmov-farg d p)          s _ = path-load s p
 val-x86-64 (XI.Xmov-out src)          s _ = rd s src
 
 postulate
-  -- D268: the adequate fuel of THIS run — it reads the block table, the code
-  -- and the start state (a program-independent `ℕ → ℕ` cannot be adequate:
-  -- event-free prefixes are unboundedly long).
-  step-budget-x86-64 : List (String × RF.Payload) → X64S.Program → X64.State → ℕ → ℕ
   ev-x86-64        : String → X64.State → List SigOpEvent
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-x86-64` (the loaded binary's
@@ -179,20 +175,11 @@ block-env : List (String × RF.Payload) → String → Maybe (List XI.XInstr × 
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
 
-postulate
-  -- D268: what an adequate budget MEANS (`RunTraceCore.Adequate`) — a deeper
-  -- observation only adds events, and a short one is the whole run. Class
-  -- **axiom** of the CPU model, consistent: the step count to the n-th event
-  -- (or the run's end) is such a budget.
-  step-budget-x86-64-adequate :
-    ∀ (ι : Interp) (bs : List (String × RF.Payload)) (code : X64S.Program) (s : X64.State)
-    → RT.Adequate val-x86-64 (answer-at ι call-at-x86-64)
-        (RT.run-trace-fam val-x86-64 (answer-at ι call-at-x86-64) (step-budget-x86-64 bs code s) ev-x86-64 (block-env bs) code s)
-
-run-trace-x86-64 : Interp → RF.Image → X64.State → Behavior
+-- D320: the binary's TRACE — the machine read off step by step (`RT.δ`,
+-- `MachineTrace`): no fuel, so a run that never calls again never arrives.
+run-trace-x86-64 : Interp → RF.Image → X64.State → Tr ⊤
 run-trace-x86-64 ι P s =
-  RT.run-trace val-x86-64 (answer-at ι call-at-x86-64) (step-budget-x86-64 (RF.Image.blocks P) (RF.Image.code P) s) ev-x86-64 (block-env (RF.Image.blocks P)) (RF.Image.code P) s
-    (step-budget-x86-64-adequate ι (RF.Image.blocks P) (RF.Image.code P) s)
+  Machine.trace (RT.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the

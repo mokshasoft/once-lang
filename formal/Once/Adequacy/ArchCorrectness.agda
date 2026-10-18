@@ -127,38 +127,32 @@ BlockRunsHyp-riscv64 = (ι : Interp) (tbl : List IRFun) → RV.BlockRunsHyp-risc
 
 x86-64-correct : BlockRunsHyp-x86-64 → ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct brs ι = record
-  { flat-trace         = λ p lk → X64.flat-x86-64 ι (table p) (brs ι (table p)) (main p) lk
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  ; file-wf            = λ m F eq → FileWF.file-wf x86-64 m F eq
-  -- … and running it is the flat trace of the program it was emitted from.
-  ; file-trace-correct = λ m F eq ir mi ls n →
-      X64.file-flat-x86-64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
-  ; ir-flat-correct    = λ p lk → X64.ir-flat-correct-x86-64 ι (table p) (brs ι (table p)) (main p) lk
+  { file-wf            = λ m F eq → FileWF.file-wf x86-64 m F eq
+  -- … and running it has the trace of the program it was emitted from (D320).
+  ; file-tr = λ m F eq ir mi ls →
+      X64.file-tr-x86-64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
   }
 
 x86-32-correct : BlockRunsHyp-x86-32 → ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct brs ι = record
-  { flat-trace         = λ p lk → X32.flat-x86-32 ι (table p) (brs ι (table p)) (main p) lk
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  ; file-wf            = λ m F eq → FileWF.file-wf x86-32 m F eq
-  -- … and running it is the flat trace of the program it was emitted from.
-  ; file-trace-correct = λ m F eq ir mi ls n →
-      X32.file-flat-x86-32 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
-  ; ir-flat-correct    = λ p lk → X32.ir-flat-correct-x86-32 ι (table p) (brs ι (table p)) (main p) lk
+  { file-wf            = λ m F eq → FileWF.file-wf x86-32 m F eq
+  -- … and running it has the trace of the program it was emitted from (D320).
+  ; file-tr = λ m F eq ir mi ls →
+      X32.file-tr-x86-32 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
   }
 
 riscv64-correct : BlockRunsHyp-riscv64 → ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct brs ι = record
-  { flat-trace         = λ p lk → RV.flat-riscv64 ι (table p) (brs ι (table p)) (main p) lk
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  ; file-wf            = λ m F eq → FileWF.file-wf riscv64 m F eq
-  -- … and running it is the flat trace of the program it was emitted from.
-  ; file-trace-correct = λ m F eq ir mi ls n →
-      RV.file-flat-riscv64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)) n
-  ; ir-flat-correct    = λ p lk → RV.ir-flat-correct-riscv64 ι (table p) (brs ι (table p)) (main p) lk
+  { file-wf            = λ m F eq → FileWF.file-wf riscv64 m F eq
+  -- … and running it has the trace of the program it was emitted from (D320).
+  ; file-tr = λ m F eq ir mi ls →
+      RV.file-tr-riscv64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
   }
 
 arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64

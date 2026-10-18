@@ -35,7 +35,9 @@ open import Data.String using (String)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
 
-open import Once.Denotation.Behavior      using (Behavior)
+open import Data.Unit using (⊤)
+open import Once.Spec.Trace using (Tr)
+open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.Lang.Event using (SigOpEvent)
 open import Once.Lang.Trace using (Interp)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
@@ -60,14 +62,9 @@ open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 --                            recoverable from the compiled program.
 --   * `ev-riscv64`         — label→SigOp resolution (the inverse of the
 --                            per-arch symbol lowering; correctness = conc-flat-sim).
---   * `step-budget-riscv64`— adequate fuel (event-count ↦ machine steps).
 ------------------------------------------------------------------------
 
 postulate
-  -- D268: the adequate fuel of THIS run — it reads the block table, the code
-  -- and the start state (a program-independent `ℕ → ℕ` cannot be adequate:
-  -- event-free prefixes are unboundedly long).
-  step-budget-riscv64 : List (String × RF.Payload) → RVS.Program → RV.State → ℕ → ℕ
   ev-riscv64        : String → RV.State → List SigOpEvent
   -- plan 0.105: WHICH answering call a label is, and its argument — the same
   -- label→SigOp resolution boundary as `ev-riscv64` (the loaded binary's
@@ -81,21 +78,11 @@ block-env : List (String × RF.Payload) → String → Maybe RF.Payload
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
 
-postulate
-  -- D268: what an adequate budget MEANS (`RunTraceCore.Adequate`) — a deeper
-  -- observation only adds events, and a short one is the whole run. Class
-  -- **axiom** of the CPU model, consistent: the step count to the n-th event
-  -- (or the run's end) is such a budget.
-  step-budget-riscv64-adequate :
-    ∀ (ι : Interp) (bs : List (String × RF.Payload)) (code : RVS.Program) (s : RV.State)
-    → RT.Adequate val-riscv64 (answer-at ι call-at-riscv64)
-        (RT.run-trace-fam val-riscv64 (answer-at ι call-at-riscv64) (step-budget-riscv64 bs code s) ev-riscv64 (block-env bs) code s)
-
-run-trace-riscv64 : Interp → RF.Image → RV.State → Behavior
+-- D320: the binary's TRACE — the machine read off step by step (`RT.δ`,
+-- `MachineTrace`): no fuel, so a run that never calls again never arrives.
+run-trace-riscv64 : Interp → RF.Image → RV.State → Tr ⊤
 run-trace-riscv64 ι P s =
-  RT.run-trace val-riscv64 (answer-at ι call-at-riscv64) (step-budget-riscv64 (RF.Image.blocks P) (RF.Image.code P) s) ev-riscv64
-    (block-env (RF.Image.blocks P)) (RF.Image.code P) s
-    (step-budget-riscv64-adequate ι (RF.Image.blocks P) (RF.Image.code P) s)
+  Machine.trace (RT.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   -- The CPU's decoder (the ISA's encoding) — only ever used through

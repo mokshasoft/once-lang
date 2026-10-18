@@ -112,6 +112,7 @@ open AllocState using (next-slot)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Lang.Out using (_▹_)
+open import Once.Denotation.TraceTr using (endOf)
 open import Data.List using (length)
 open import Data.Unit using (⊤; tt)
 open import Data.Bool using (true; false)
@@ -481,25 +482,20 @@ private
             (trans (cong (fetch (emitted 0 0 ir ++ instr-ctrl c-leave ∷ [])) (sym (+-identityʳ (length (emitted 0 0 ir)))))
                    (fetch-++-right (emitted 0 0 ir) (instr-ctrl c-leave ∷ []) 0)))))
 
--- What the meaning says of a run's end.
-end-of-res : ∀ {X : Set} → Res X → End ⊤
-end-of-res (returns _) = returned tt
-end-of-res stopped     = halted-end
-
 flat-ends : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir))
           → flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs 0) + 2)) (image ir) start-flat
-            ≡ (eventsAt (floc (main-flat ir)) (evalᴰ ir tt) , just (end-of-res (resultAt (floc (main-flat ir)) (evalᴰ ir tt))))
+            ≡ (eventsAt (floc (main-flat ir)) (evalᴰ ir tt) , just (endOf (resultAt (floc (main-flat ir)) (evalᴰ ir tt))))
 flat-ends ioc brs ir lk =
   trans (flat-events-steps (ValueRealized.run vr) 2)
         (trans (cong₂ _▹_ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs 0))
                           (tail (resultAt s0 T) refl))
-               (cong (_, just (end-of-res (resultAt s0 T))) (++-identityʳ (eventsAt s0 T))))
+               (cong (_, just (endOf (resultAt s0 T))) (++-identityʳ (eventsAt s0 T))))
   where
     vr = entry-vr ir lk ioc brs 0
     s0 = floc (main-flat ir)
     T  = evalᴰ ir tt
     st = ValueRealized.settle vr
-    tail : ∀ (r : Res _) → resultAt s0 T ≡ r → flat-events 2 (image ir) st ≡ ([] , just (end-of-res r))
+    tail : ∀ (r : Res _) → resultAt s0 T ≡ r → flat-events 2 (image ir) st ≡ ([] , just (endOf r))
     tail (returns v) eq = done (ValueRealized.live vr (cong is-stopped eq)) (ValueRealized.at-end vr (cong is-stopped eq))
       where done : halted (floc st) ≡ false → fpc st ≡ length (emitted 0 0 ir) + 1
                  → flat-events 2 (image ir) st ≡ ([] , just (returned tt))
