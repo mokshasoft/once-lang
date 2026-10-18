@@ -101,7 +101,7 @@ ImpRef imps x A = lookupImport imps x ≡ just A
 -- Plan 0.105 / D274: an FFI reference (`realize` emits one for a qualified or
 -- resolved name): the generator of Σ it found.
 FFIRef : Imports → CanonicalName → Type → Set
-FFIRef sg c A = Σ Type (λ D → (lookupImport sg (showCanonical c) ≡ just D) × AtDecl D A)
+FFIRef sg c A = lookupImport sg (showCanonical c) ≡ just A
 
 PolyRef : PolyCtx → String → Type → Set
 PolyRef polys x A = Σ (PolyType × RawExpr × PolyCtx) (λ r → (lookupPolyPrefix polys x ≡ just r) × KindedInstance (proj₁ r) A)
@@ -183,8 +183,8 @@ realize-refs-i (t-float i f l p) = tt
 realize-refs-i t-unit            = tt
 realize-refs-i t-unit-var        = tt
 realize-refs-i (t-var-local {eV = svar i} _) = tt
-realize-refs-i (t-var-qualified lk conc) = _ , lk , at-decl
-realize-refs-i (t-var-resolved _ lk conc) = _ , lk , at-decl
+realize-refs-i (t-var-qualified lk conc) = lk
+realize-refs-i (t-var-resolved _ lk conc) = lk
 realize-refs-i (t-var-own _ lk conc) = lk
 realize-refs-i (t-var-import _ _ lk conc) = lk
 realize-refs-i (t-var-poly-instantiate-infer {schema = schema} {g = g} eL eI eP gr T≡) =
@@ -490,7 +490,7 @@ body-linked {σ = σ} {csc} {pre} inv x ty {body} cf ce =
          (LInv.tel-ok inv (C.declImps (C.CScope.ctele csc)) (LInv.iself inv))
          (<-wellFounded (length (C.cpolys csc))) uf 0 (realize D′)
          (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef (C.CScope.cimps csc)} {Pp = PolyRef (C.cpolys csc)} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef (C.cpolys csc)}
-                   (λ (D , r , a) → D , LInv.sig-ok inv r , a) (λ {x} {A} → LInv.imp-ok inv {x} {A}) (λ r → r) (realize D′) (realize-refs D′))))
+                   (LInv.sig-ok inv) (λ {x} {A} → LInv.imp-ok inv {x} {A}) (λ r → r) (realize D′) (realize-refs D′))))
   where D′ = sound-of (checkElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty) ce
         uf : Imports
         uf = (x , ty) ∷ C.CScope.cimps csc
@@ -544,7 +544,7 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Usage.[]} D fr inv = record
             (splice-at pre polys ac I uf fresh y A cr ce
               (resolve-refs pre polys I (LInv.tel-ok inv I ia) ac uf fresh (realize w)
                  (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef imps} {Pp = PolyRef polys} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef polys}
-                           (λ (D , r , a) → D , LInv.sig-ok inv r , a) (λ {x} {B} → LInv.imp-ok inv {x} {B}) (λ r → r) (realize w) (realize-refs w))))
+                           (LInv.sig-ok inv) (λ {x} {B} → LInv.imp-ok inv {x} {B}) (λ r → r) (realize w) (realize-refs w))))
       where
         D-A = inst-at scT (LInv.irf inv , LInv.irs inv) D ki
         cr  = checkElabV (ctxWithImportsAndPolys top polys) bd A

@@ -185,8 +185,6 @@ mutual
             → Ric a a′ → Ric b b′ → Ric (t-pair a b) (t-pair-lit-check a′ b′)
     ic-apply : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many T.pure ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many T.pure ] B′) * A′) ⨾ Ψ′}
              → Rii d d′ → Ric (t-apply-app-infer d) (t-apply-check d′)
-    -- D313: a generator inferred at its declaration and checked at its guard.
-    -- No conversion relates the two (`ModeSub._≼_`); every consumer refutes it.
 
   data Rdc : ∀ {ctx e A B B′ π Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → Set where
     dc-infer : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B) ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′}

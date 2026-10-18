@@ -114,10 +114,10 @@ mutual
   -- codomain.
   coh-cc (cc-gf {s = s} {df = df} {wf = wf} rdc ric) =
     gf-h (MS.sub-dom s₁) s s₁ (coh-ic ric s₁) (coh-dc rdc (MS.sub-dom s₁))
-    where s₁ = MS.≼-s (MS.ic-sub wf df) s
+    where s₁ = MS.ic-sub wf df
   coh-cc (cc-fg {s = s} {df = df} {wf = wf} rdc ric) =
     ≅-sym (gf-h (MS.sub-dom s₁) s s₁ (coh-ic ric s₁) (coh-dc rdc (MS.sub-dom s₁)))
-    where s₁ = MS.≼-s (MS.ic-sub wf df) s
+    where s₁ = MS.ic-sub wf df
   coh-cc (cc-ff {s = s} {s′ = s′} r₁ r₂) = comp-h (coerce-h s s′ (coh-ii r₁)) (coh-cc r₂)
   coh-cc (cc-copair r₁ r₂) = copair-h (coh-cc r₁) (coh-cc r₂)
   coh-cc (cc-fork r₁ r₂) = fork-h (coh-cc r₁) (coh-cc r₂)
@@ -145,7 +145,7 @@ mutual
   coh-dc : ∀ {ctx e A B B′ π Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′}
          → Rdc dd c → (p : B <: B′) → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (RD dd) ≅ RC c
   coh-dc (dc-infer {a = a} {g = g} {w = w} {c = c} r) p =
-    twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (MS.≼-g (MS.ic-sub w c) g) (coh-ic r (MS.≼-g (MS.ic-sub w c) g))
+    twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (MS.ic-sub w c) (coh-ic r (MS.ic-sub w c))
   coh-dc (dc-sub {p = sub-arr a₀ b₀ g₀} r) p = dcsub-h p a₀ b₀ g₀ (coh-di r a₀ g₀)
   coh-dc (dc-lam {q₁ = q₁} {≤p′ = ≤p′} r) p = lamc-h (T.≤q-Many q₁) ≤p′ p (coh-ic r p)
   coh-dc (dc-cg r₁ r₂) p = cg-h p (coh-dc r₂ p) (coh-dd r₁)
@@ -158,7 +158,7 @@ mutual
   coh-dc dc-initial p = ≅-of (≈-trans (coerce-uniq _ (sub-arr sub-void sub-void (⊑π-refl _)) _) (initial-coerce _))
   coh-dc (dc-case r₁ r₂) p = casec-h p (coh-dc r₁ p) (coh-dc r₂ p)
   coh-dc (dc-pair r₁ r₂) (sub-prod pb pc) = forkc-h pb pc (coh-dc r₁ pb) (coh-dc r₂ pc)
-  coh-dc (dc-cata {w = w} {w′ = w′} {a = a} {a′ = a′} r) p = catac-h w w′ p (MS.≼-same (MS.ic-sub a a′)) (coh-ic r (MS.≼-same (MS.ic-sub a a′)))
+  coh-dc (dc-cata {w = w} {w′ = w′} {a = a} {a′ = a′} r) p = catac-h w w′ p (MS.ic-sub a a′) (coh-ic r (MS.ic-sub a a′))
   coh-dc {ctx = ctx} (dc-poly {x = x} {p = q₀} {p′ = q₀′} {as = as} {ki = θ , e , _} {ki′ = θ′ , e′ , _} {gr = gr} {inc = inc}) p =
     polydc-h {ctx = ctx} {x = x} (trans (sym q₀) q₀′) as inc θ e θ′ e′ gr p
 

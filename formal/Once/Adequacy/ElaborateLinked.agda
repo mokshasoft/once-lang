@@ -203,14 +203,10 @@ Refs Ps Pc Pp (cata _ alg)        = Refs Ps Pc Pp alg
 Refs Ps Pc Pp (ana _ coalg)       = Refs Ps Pc Pp coalg
 
 -- A reference elaborates to a call (`refIR`); it is linked when the call is.
--- The type a generator's reference is used at: its declaration, so the call
+-- An FFI reference declared in the signatures, at its declared type: the call
 -- links against the declaration (`contractOf`).
-data AtDecl : Type → Type → Set where
-  at-decl  : ∀ {A} → AtDecl A A
-
--- An FFI reference declared in the signatures.
 DeclIn : ISig → CanonicalName → Type → Set
-DeclIn σ c A = Σ Type (λ D → ((showCanonical c , D) ∈ σ) × AtDecl D A)
+DeclIn σ c A = (showCanonical c , A) ∈ σ
 
 RefLinked : ISig → List IRFun → String → Type → Set
 RefLinked σ tbl x A = Linked σ tbl (refIR A (bare x))
@@ -363,11 +359,6 @@ sigOp-linked m name (con-base (base-Prod a b)) d = value-∈ d refl , tt
 sigOp-linked m name (con-base (base-Sum a b)) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-rigid) d = value-∈ d refl , tt
 
--- D313: a reference at its declaration, or at its guard (the same contract).
-sigOp-linked′ : ∀ {tbl} {n} {Γ : Ctx n} {A} (m : _) (name : CanonicalName) (conc : IsConcrete A)
-              → DeclIn σ name A → Linked σ tbl (elaborate {Γ = Γ} m (sigOp name conc))
-sigOp-linked′ m name conc (_ , d , at-decl) = sigOp-linked m name conc d
-
 ------------------------------------------------------------------------
 -- (D) THE LEMMA
 ------------------------------------------------------------------------
@@ -465,7 +456,7 @@ module _ {σ : ISig} (tbl : List IRFun) where
   elaborate-linked′ m {Γ = Γ} (ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
   elaborate-linked′ m {Γ = Γ} (eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
   elaborate-linked′ m {Γ = Γ} (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (sigOp name conc) r = sigOp-linked′ {Γ = Γ} m name conc r
+  elaborate-linked′ m {Γ = Γ} (sigOp name conc) r = sigOp-linked {Γ = Γ} m name conc r
   elaborate-linked′ m (closure name) r = r , tt
   elaborate-linked′ m (poly name _) r = r , tt
   elaborate-linked′ m (closed e) r = elaborate-linked′ m e r , tt

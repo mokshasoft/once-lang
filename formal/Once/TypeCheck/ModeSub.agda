@@ -9,7 +9,7 @@
 -- type half of the same fact: whenever a term both synthesizes `A` and checks
 -- at `B`, `A <: B`; and whenever it is domain-given at `A ↦ B` and checks at
 -- `A ⇒ B′`, `B <: B′`. Inference reports the least type, and the conversion is
--- the one `t-sub` would insert. The lemmas conclude `_≼_`.
+-- the one `t-sub` would insert.
 --
 -- The coherence proof (`Adequacy.Coherence`) needs the witness exactly where
 -- two derivations of one term take different routes: `t-app` against the
@@ -63,28 +63,6 @@ sub-dom (sub-arr a _ _) = a
 sub-cod : ∀ {A A′ B B′ : Type} {k k′} → (A ⇒[ k ] B) <: (A′ ⇒[ k′ ] B′) → B <: B′
 sub-cod (sub-arr _ b _) = b
 
--- What checking accepts beyond the inferred type: a supertype, componentwise
--- at a pair literal.
-infix 4 _≼_
-data _≼_ : Type → Type → Set where
-  ≼-sub   : ∀ {A B} → A <: B → A ≼ B
-  ≼-prod  : ∀ {A A′ B B′} → A ≼ A′ → B ≼ B′ → (A * B) ≼ (A′ * B′)
-
--- At arrows: the inferred grade below the checked one…
-≼-g : ∀ {A A′ B B′ q π₀ π} → (A ⇒[ T.mk-kind q π₀ ] B) ≼ (A′ ⇒[ T.mk-kind q π ] B′) → π₀ ⊑π π
-    → (A ⇒[ T.mk-kind q π₀ ] B) <: (A′ ⇒[ T.mk-kind q π ] B′)
-≼-g (≼-sub p) _ = p
-
--- …as does one grade on both sides…
-≼-same : ∀ {A A′ B B′ q π} → (A ⇒[ T.mk-kind q π ] B) ≼ (A′ ⇒[ T.mk-kind q π ] B′)
-       → (A ⇒[ T.mk-kind q π ] B) <: (A′ ⇒[ T.mk-kind q π ] B′)
-≼-same (≼-sub p) = p
-
--- …and a conversion of the inferred type to an arrow at the checked grade.
-≼-s : ∀ {D M M′ B B′ q π} → D ≼ (M′ ⇒[ T.mk-kind q π ] B′) → D <: (M ⇒[ T.mk-kind q π ] B)
-    → D <: (M′ ⇒[ T.mk-kind q π ] B′)
-≼-s (≼-sub p) _ = p
-
 -- A domain-given term that also synthesizes: its given domain is below the
 -- synthesized one (the spine's argument conversion).
 di-dom : ∀ {ctx : NamedCtx} {e : RawExpr} {X T₀ A B : Type} {π : T.Purity} {k : T.ArrowKind}
@@ -137,10 +115,10 @@ private
 
 mutual
   ic-sub : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-         → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → A ≼ B
-  ic-sub d (t-sub d′ p) = ≼-sub (sub-along (agree-ii d d′) p)
-  ic-sub (t-pair a b) (t-pair-lit-check a′ b′) = ≼-prod (ic-sub a a′) (ic-sub b b′)
-  ic-sub (t-apply-app-infer d) (t-apply-check d′) = ≼-sub (apply-sub (agree-ii d d′))
+         → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → A <: B
+  ic-sub d (t-sub d′ p) = sub-along (agree-ii d d′) p
+  ic-sub (t-pair a b) (t-pair-lit-check a′ b′) = sub-prod (ic-sub a a′) (ic-sub b b′)
+  ic-sub (t-apply-app-infer d) (t-apply-check d′) = apply-sub (agree-ii d d′)
   ic-sub (t-apply-eff-app-infer {g = T.eg-act} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   ic-sub (t-apply-eff-app-infer {g = T.eg-eff} d) (t-apply-check d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   ic-sub (t-app () _ _) (t-apply-check _)
@@ -172,25 +150,25 @@ mutual
 
   dc-sub : ∀ {ctx : NamedCtx} {e : RawExpr} {A B B′ : Type} {π : T.Purity}
              {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-         → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → B ≼ B′
-  dc-sub (d-infer w _ g) c = ≼-sub (sub-cod (≼-g (ic-sub w c) g))
+         → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → B <: B′
+  dc-sub (d-infer w _ g) c = sub-cod (ic-sub w c)
   {-# CATCHALL #-}
-  dc-sub dd (t-sub d p) = ≼-sub (di-cod (agree-di dd d) p)
+  dc-sub dd (t-sub d p) = di-cod (agree-di dd d) p
   dc-sub (d-lam b) (t-lam _ b′) = ic-sub b b′
   dc-sub (d-compose dg df) (t-compose-check-g dg′ df′) = cg-sub (proj₁ (agree-dd dg dg′)) df df′
-  dc-sub (d-compose dg df) (t-compose-check-f wf s dg′) = ≼-sub (di-cod (agree-di df wf) s)
-  dc-sub d-id t-id-check = ≼-sub (<:-refl _)
-  dc-sub d-fst t-fst-check = ≼-sub (<:-refl _)
-  dc-sub d-snd t-snd-check = ≼-sub (<:-refl _)
-  dc-sub d-terminal t-terminal-morph-check = ≼-sub (<:-refl _)
-  dc-sub d-initial t-initial-morph-check = ≼-sub sub-void
+  dc-sub (d-compose dg df) (t-compose-check-f wf s dg′) = di-cod (agree-di df wf) s
+  dc-sub d-id t-id-check = <:-refl _
+  dc-sub d-fst t-fst-check = <:-refl _
+  dc-sub d-snd t-snd-check = <:-refl _
+  dc-sub d-terminal t-terminal-morph-check = <:-refl _
+  dc-sub d-initial t-initial-morph-check = sub-void
   dc-sub (d-case df dg) (t-case-copair-check df′ dg′) = dc-sub df df′
-  dc-sub (d-pair df dg) (t-pair-morph-check df′ dg′) = ≼-prod (dc-sub df df′) (dc-sub dg dg′)
-  dc-sub (d-cata _ a) (t-cata-check _ a′) = ≼-sub (sub-cod (≼-same (ic-sub a a′)))
+  dc-sub (d-pair df dg) (t-pair-morph-check df′ dg′) = sub-prod (dc-sub df df′) (dc-sub dg dg′)
+  dc-sub (d-cata _ a) (t-cata-check _ a′) = sub-cod (ic-sub a a′)
   dc-sub (d-poly _ _ p _ as inc (θ , e , _) _) (t-var-poly-instantiate _ _ p′ _ (θ′ , e′ , _)) =
-    ≼-sub (poly-sub (trans (sym p) p′) as inc θ e θ′ e′)
+    (poly-sub (trans (sym p) p′) as inc θ e θ′ e′)
 
   -- The outer arm against the `g` route: its domain is the middle `g` determines.
   cg-sub : ∀ {ctx : NamedCtx} {e : RawExpr} {M M′ B B′ : Type} {π : T.Purity} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
-         → M ≡ M′ → ctx ⊢ᵈ e ∶ M ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (M′ ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → B ≼ B′
+         → M ≡ M′ → ctx ⊢ᵈ e ∶ M ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (M′ ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → B <: B′
   cg-sub refl df df′ = dc-sub df df′
