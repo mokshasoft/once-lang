@@ -35,7 +35,7 @@ data T_ParsesOpChars_8
 -- Once.Lang.Grammar.OpDecl.ParsesOpAfter
 d_ParsesOpAfter_36 a0 a1 a2 a3 = ()
 data T_ParsesOpAfter_36
-  = C_poa'45'sig_46 MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_376 |
+  = C_poa'45'sig_46 MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_370 |
     C_poa'45'fun_54 MAlonzo.Code.Once.Lang.Grammar.FunDef.T_ParsesFunDef_56
 -- Once.Lang.Grammar.OpDecl.ParsesOpDecl
 d_ParsesOpDecl_56 a0 a1 a2 = ()

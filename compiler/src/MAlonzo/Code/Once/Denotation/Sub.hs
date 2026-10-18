@@ -40,7 +40,7 @@ d_'10214'_'10215''60''58'_10 v0 v1 v2 v3
         -> case coe v0 of
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v14 v15 v16
                -> case coe v15 of
-                    MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v17 v18
+                    MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v17 v18
                       -> case coe v1 of
                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v19 v20 v21
                              -> case coe v17 of

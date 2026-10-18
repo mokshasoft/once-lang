@@ -37,10 +37,10 @@ data T_Ty_16
     C_Void_28 | C_Int_30 | C_Float_32 | C__'42'__34 T_Ty_16 T_Ty_16 |
     C__'43'__36 T_Ty_16 T_Ty_16 |
     C__'8658''91'_'93'__38 T_Ty_16
-                           MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 T_Ty_16 |
+                           MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_68 T_Ty_16 |
     C_μ'45'type_40 T_Fun_20 |
     C_ν'45'type_42 T_Fun_20
-                   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 |
+                   MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40 |
     C_rigid_44 MAlonzo.Code.Once.Lang.Type.T_TKind_10 Integer
 -- Once.Lang.Core.PolyTy.Fun
 d_Fun_20 a0 = ()

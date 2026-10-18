@@ -230,10 +230,10 @@ d__'8799'K__72 v0 v1
                        MAlonzo.Code.Data.String.Properties.d__'8799'__54 (coe v2)
                        (coe v5))
                     (coe
-                       MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__214 (coe v3)
+                       MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__216 (coe v3)
                        (coe v6))
                     (coe
-                       MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__214 (coe v4)
+                       MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__216 (coe v4)
                        (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -413,7 +413,7 @@ d_contractOf_144 v0 v1
       (case coe v1 of
          MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v3 v4 v5
            -> case coe v4 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v6 v7
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v6 v7
                   -> case coe v6 of
                        MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
                          -> case coe v7 of

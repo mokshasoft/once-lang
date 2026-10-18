@@ -95,7 +95,7 @@ d_coeIR_32 v0 v1 v2
         -> case coe v0 of
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v13 v14 v15
                -> case coe v14 of
-                    MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v16 v17
+                    MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v16 v17
                       -> case coe v1 of
                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v18 v19 v20
                              -> case coe v16 of

@@ -108,7 +108,7 @@ du_cfb'45'aux'45'doOpt_30 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_debruijn_122 (coe v0))
                              (coe v11) (coe v7)
                              (coe
-                                MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4238
+                                MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
                                 (coe v7) (coe v4) (coe v5)
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -125,7 +125,7 @@ du_cfb'45'aux'45'doOpt_30 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_debruijn_122 (coe v0))
                           (coe v11) (coe v7)
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4238
+                             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
                              (coe v7) (coe v4) (coe v5)
                              (coe
                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -176,7 +176,7 @@ du_cfb'45'doOpt_84 v0 v1 v2 v3 v4 v5 v6
          (coe MAlonzo.Code.Once.TypeCheck.Classify.d_tsig_338 (coe v1)))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
             (coe v1) (coe v2))
@@ -313,7 +313,7 @@ du_ce'45'doOpt_256 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Once.Compile.du_checkOK_368
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+                          MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
                           (coe
                              MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                              (coe MAlonzo.Code.Once.Compile.d_ctop_390 (coe v1))

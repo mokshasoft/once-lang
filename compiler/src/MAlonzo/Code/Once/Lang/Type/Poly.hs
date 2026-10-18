@@ -42,7 +42,7 @@ data T_PolyType_10
     C_PAct_32 T_PolyType_10 T_PolyType_10 |
     C_Pμ'45'type_34 T_PolyFunctor_8 |
     C_Pν'45'type_36 T_PolyFunctor_8
-                    MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 |
+                    MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40 |
     C_PInt_38 | C_PFloat_40 |
     C_PTVar_42 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.Lang.Type.Poly.GroundF
@@ -109,7 +109,7 @@ d_extractGround_88 v0 v1
                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                     (coe d_extractGround_88 (coe v2) (coe v5))
                     (coe
-                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 (coe v3)
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
                     (coe d_extractGround_88 (coe v4) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -120,7 +120,7 @@ d_extractGround_88 v0 v1
                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                     (coe d_extractGround_88 (coe v2) (coe v4))
                     (coe
-                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                     (coe d_extractGround_88 (coe v3) (coe v5))
@@ -132,7 +132,7 @@ d_extractGround_88 v0 v1
                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                     (coe d_extractGround_88 (coe v2) (coe v4))
                     (coe
-                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_36))
                     (coe d_extractGround_88 (coe v3) (coe v5))
@@ -172,7 +172,7 @@ d_substPoly_162 v0 v1
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
              (coe d_substPoly_162 (coe v0) (coe v2))
              (coe
-                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 (coe v3)
                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
              (coe d_substPoly_162 (coe v0) (coe v4))
       C_PEff_30 v2 v3
@@ -180,7 +180,7 @@ d_substPoly_162 v0 v1
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
              (coe d_substPoly_162 (coe v0) (coe v2))
              (coe
-                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
              (coe d_substPoly_162 (coe v0) (coe v3))
@@ -189,7 +189,7 @@ d_substPoly_162 v0 v1
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
              (coe d_substPoly_162 (coe v0) (coe v2))
              (coe
-                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_36))
              (coe d_substPoly_162 (coe v0) (coe v3))

@@ -332,7 +332,7 @@ du_AB_656 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v0)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_One_12) (coe v2))
       (coe v1)
 -- Once.Adequacy.CoerceFaithful._.arg
@@ -401,7 +401,7 @@ du_AB_716 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v0)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v2))
       (coe v1)
 -- Once.Adequacy.CoerceFaithful._.arg

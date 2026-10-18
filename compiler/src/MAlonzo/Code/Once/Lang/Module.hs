@@ -240,7 +240,7 @@ d_EffUU_148
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)

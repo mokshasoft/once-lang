@@ -117,7 +117,7 @@ du_spliceClosed_66 v0 v1 v2 v3 v4 v5 v6 v7
                     (coe
                        MAlonzo.Code.Once.Surface.Syntax.C_closed_410
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4238
+                          MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
                           (coe v2) (coe v4) (coe v0) (coe v1) (coe (0 :: Integer))
                           (coe
                              MAlonzo.Code.Once.Denotation.Realize.d_realize_20
@@ -169,7 +169,7 @@ du_polyVal_86 v0 v1 v2 v3 v4
                            du_spliceClosed_66 (coe v0) (coe v1) (coe v3) (coe v8) (coe v9)
                            (coe v2) (coe v0 v2)
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                                  (coe v0 v2) (coe v9))

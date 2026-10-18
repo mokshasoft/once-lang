@@ -107,13 +107,13 @@ du_compileFunBody'45'sound_96 v0 v1 v2 v3
          (coe
             du_compileFunBody'45'aux'45'success_36
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                   (coe v0) (coe v1))
                (coe v3) (coe v2))))
       (coe
-         MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2502
+         MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2432
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
             (coe v0) (coe v1))
@@ -381,7 +381,7 @@ du_ce'45'poly'45'sound_348 v0 v1 v2 v3 v4
   = coe
       du_step_532 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
          (coe du_ctx_526 (coe v1))
          (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v2))
          (coe

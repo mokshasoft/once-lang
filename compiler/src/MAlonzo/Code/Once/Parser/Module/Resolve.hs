@@ -422,7 +422,7 @@ d_pdn'45'go_240 v0 v1
            coe
              (case coe v2 of
                 MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_22 v5 v6
-                  -> let v7 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v6) in
+                  -> let v7 = MAlonzo.Code.Once.Type.d_isGround_96 (coe v6) in
                      coe
                        (case coe v7 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8
@@ -673,7 +673,19 @@ d_canonExpr_376 v0 v1 v2 v3
                                                     (coe v4)
                                                     (coe
                                                        MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
-                                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
+                                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                      -> coe
+                                           MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40
+                                           (coe
+                                              MAlonzo.Code.Once.Spec.Name.C_canonical_12
+                                              (coe
+                                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                 (coe v5)
+                                                 (coe
+                                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                    (coe v4)
+                                                    (coe
+                                                       MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
                                     _ -> MAlonzo.RTE.mazUnreachableError))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v4 -> coe v3
@@ -907,12 +919,9 @@ d_cls'45'canon_598 v0 v1 v2 v3 v4
                                      seq (coe v11)
                                      (let v12 = d_lookupImportAlias_94 (coe v2) (coe v8) in
                                       coe
-                                        (case coe v12 of
-                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
-                                             -> coe MAlonzo.Code.Once.Lang.Syntax.C_cls'45'res_88
-                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                                             -> coe MAlonzo.Code.Once.Lang.Syntax.C_cls'45'qual_84
-                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                        (coe
+                                           seq (coe v12)
+                                           (coe MAlonzo.Code.Once.Lang.Syntax.C_cls'45'res_88)))
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Syntax.C_cls'45'res_88

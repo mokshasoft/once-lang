@@ -84,7 +84,7 @@ du_abiT_158 v0 v1
       MAlonzo.Code.Once.Lang.Type.C__'43'__26 v2 v3 -> coe v1
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
         -> case coe v3 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v5 v6
+             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v5 v6
                -> coe
                     seq (coe v5)
                     (coe

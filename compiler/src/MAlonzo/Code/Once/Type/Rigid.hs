@@ -324,13 +324,13 @@ d_kindedInstance'63'_556 v0 v1
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
-           -> let v4 = MAlonzo.Code.Once.Type.Instance.d_θof_500 (coe v3) in
+           -> let v4 = MAlonzo.Code.Once.Type.Instance.d_θof_492 (coe v3) in
               coe
                 (let v5
                        = coe
                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                            (coe
-                              MAlonzo.Code.Once.Type.Instance.du_inst'45'sound_820 (coe v0)
+                              MAlonzo.Code.Once.Type.Instance.du_inst'45'sound_812 (coe v0)
                               (coe v1) (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                               (coe v3))
                            v3 erased in

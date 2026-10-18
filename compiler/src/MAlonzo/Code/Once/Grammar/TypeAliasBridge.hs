@@ -118,7 +118,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                  -> let v17
                                                                           = coe
-                                                                              MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_212
+                                                                              MAlonzo.Code.Once.Parser.TypeRelation.C_pp'45'mk_204
                                                                               v9 v7 v10 v16 in
                                                                     coe
                                                                       (let v18
@@ -136,7 +136,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                             -> let v24
                                                                                                      = coe
-                                                                                                         MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_244
+                                                                                                         MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_236
                                                                                                          v15
                                                                                                          v13
                                                                                                          v17
@@ -161,7 +161,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                        -> let v31
                                                                                                                                 = coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                                                                     v22
                                                                                                                                     v20
                                                                                                                                     v24
@@ -219,7 +219,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                            -> let v30
                                                                                                                                     = coe
-                                                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                                                                         v22
                                                                                                                                         v20
                                                                                                                                         v23
@@ -291,7 +291,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                 -> let v23
                                                                                                          = coe
-                                                                                                             MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_244
+                                                                                                             MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_236
                                                                                                              v15
                                                                                                              v13
                                                                                                              v16
@@ -316,7 +316,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                            -> let v30
                                                                                                                                     = coe
-                                                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                                                                        MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                                                                         v21
                                                                                                                                         v19
                                                                                                                                         v23
@@ -374,7 +374,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                -> let v29
                                                                                                                                         = coe
-                                                                                                                                            MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                                                                            MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                                                                             v21
                                                                                                                                             v19
                                                                                                                                             v22
@@ -449,7 +449,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                        -> let v23
                                                                                                                 = coe
-                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                                                     v15
                                                                                                                     v13
                                                                                                                     v16
@@ -517,7 +517,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                         -> let v17
                                                                                  = coe
-                                                                                     MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_244
+                                                                                     MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_236
                                                                                      v9 v7 v10
                                                                                      v16 in
                                                                            coe
@@ -537,7 +537,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                    -> let v24
                                                                                                             = coe
-                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                                                MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                                                 v15
                                                                                                                 v13
                                                                                                                 v17
@@ -592,7 +592,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                        -> let v23
                                                                                                                 = coe
-                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                                                    MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                                                     v15
                                                                                                                     v13
                                                                                                                     v16
@@ -659,7 +659,7 @@ du_sound'45'gtaWF_20 v0 v1 v2
                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                -> let v17
                                                                                         = coe
-                                                                                            MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_276
+                                                                                            MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268
                                                                                             v9 v7
                                                                                             v10
                                                                                             v16 in
@@ -746,7 +746,7 @@ du_complete'45'gtaWF_242 v0 v1 v2 v3
              MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_28 v11 v12 v13
                -> let v14
                         = coe
-                            MAlonzo.Code.Once.Grammar.ParserBridge.du_complete'45'typeWFraw_460
+                            MAlonzo.Code.Once.Grammar.ParserBridge.du_complete'45'typeWFraw_380
                             (coe
                                MAlonzo.Code.Once.Parser.Module.DeclTail.d_taDrop1_10 (coe v0))
                             (coe v13) (coe v2) (coe v10) in
@@ -758,7 +758,7 @@ du_complete'45'gtaWF_242 v0 v1 v2 v3
                               (coe
                                  MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
                                  (coe
-                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_452
+                                    MAlonzo.Code.Once.Parser.TypeRelation.d_ParsesType'45'shrinks_444
                                     (coe
                                        MAlonzo.Code.Once.Parser.Module.DeclTail.d_taDrop1_10
                                        (coe v0))

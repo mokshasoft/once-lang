@@ -268,7 +268,7 @@ du_apply'7580'_328 v0 v1
          (coe
             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v0)
             (coe
-               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
             (coe v1))
@@ -329,7 +329,7 @@ du_out'7580'_340 v0
       MAlonzo.Code.Once.Lang.Core.Syntax.C_lam_68
       (coe
          MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 (coe v0)
-         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
+         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_42))
       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34)
       (coe
@@ -664,7 +664,7 @@ du_applyEff'7580'_432 v0 v1 v2
          (coe
             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v1)
             (coe
-               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v0))
             (coe v2))
          (coe v1))
@@ -694,12 +694,12 @@ du_applyEff'7580'_432 v0 v1 v2
 d_outEff'7580'_442 ::
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
   Integer ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
 d_outEff'7580'_442 ~v0 ~v1 v2 v3 = du_outEff'7580'_442 v2 v3
 du_outEff'7580'_442 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
 du_outEff'7580'_442 v0 v1
@@ -711,7 +711,8 @@ du_outEff'7580'_442 v0 v1
       (coe
          MAlonzo.Code.Once.Lang.Core.Syntax.C_lam_68
          (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
-         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v0)
+         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+         (coe MAlonzo.Code.Once.Lang.Type.Grade.d_fin_46 (coe v0))
          (coe
             MAlonzo.Code.Once.Lang.Core.Syntax.C_out_98
             (coe

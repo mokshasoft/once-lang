@@ -676,16 +676,16 @@ du_arrow'45'sem'45'eff_172 v0 v1
 d_arrow'45'sem_178 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_68 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74
 d_arrow'45'sem_178 ~v0 v1 v2 = du_arrow'45'sem_178 v1 v2
 du_arrow'45'sem_178 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_68 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74
 du_arrow'45'sem_178 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v2 v3
+      MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v2 v3
         -> case coe v3 of
              MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
                -> coe MAlonzo.Code.Once.SigOp.Info.C_ffiV_82
@@ -705,7 +705,7 @@ du_arrow'45'sem_178 v0 v1
 d_arrow'45'info_188 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_68 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
@@ -714,7 +714,7 @@ d_arrow'45'info_188 ~v0 v1 v2 v3 v4 v5
   = du_arrow'45'info_188 v1 v2 v3 v4 v5
 du_arrow'45'info_188 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_68 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->

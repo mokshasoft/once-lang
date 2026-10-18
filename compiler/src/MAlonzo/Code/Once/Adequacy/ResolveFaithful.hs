@@ -67,7 +67,7 @@ d_σR_12 v0 v1 v2 v3 v4 v5
               (coe (0 :: Integer))
               (coe MAlonzo.Code.Once.Lang.Context.C_'8709'_8) (coe v7)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4238
+                 MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
                  (coe v7) (coe v2) (coe v3) (coe v4) (coe v5)
                  (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v6))
               (coe v0) (coe d_σ'8320'_10 (coe v0) (coe v1))

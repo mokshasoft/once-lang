@@ -76,11 +76,11 @@ d_ObsM_170 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
 d_ObsM_170 = erased
 -- Once.Lang.Equivalence.Same
-d_Same_328 ::
+d_Same_320 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
-d_Same_328 = erased
+d_Same_320 = erased
 -- Once.Lang.Equivalence.SameM
-d_SameM_342 ::
+d_SameM_334 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
-d_SameM_342 = erased
+d_SameM_334 = erased

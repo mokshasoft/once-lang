@@ -479,7 +479,11 @@ d_unify''_304 v0 v1 v2 v3
                 MAlonzo.Code.Once.Lang.Type.Poly.C_Pν'45'type_36 v7 v8
                   -> coe
                        MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-                       (coe MAlonzo.Code.Once.Type.d_purityEqBool_180 (coe v6) (coe v8))
+                       (coe
+                          MAlonzo.Code.Relation.Nullary.Decidable.Core.d_does_28
+                          (coe
+                             MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'f__10 (coe v6)
+                             (coe v8)))
                        (coe d_unifyF_308 (coe v0) (coe v1) (coe v5) (coe v7))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                 MAlonzo.Code.Once.Lang.Type.Poly.C_PTVar_42 v7
@@ -591,7 +595,7 @@ d_typeToPoly_570 v0
              (coe d_typeToPoly_570 (coe v1)) (coe d_typeToPoly_570 (coe v2))
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v1 v2 v3
         -> case coe v2 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v4 v5
+             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v4 v5
                -> case coe v5 of
                     MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
                       -> coe
@@ -2907,7 +2911,7 @@ d_groundOr_2168 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_groundOr_2168 v0
-  = let v1 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v0) in
+  = let v1 = MAlonzo.Code.Once.Type.d_isGround_96 (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v2

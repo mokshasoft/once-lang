@@ -41,7 +41,7 @@ data T_Expr_8
     C_effApp_68 MAlonzo.Code.Once.Lang.Context.T_Usage_46
                 MAlonzo.Code.Once.Lang.Context.T_Usage_46
                 MAlonzo.Code.Once.Lang.Type.T_Type_8
-                MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 T_Expr_8 T_Expr_8 |
+                MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_56 T_Expr_8 T_Expr_8 |
     C_pair_82 MAlonzo.Code.Once.Lang.Context.T_Usage_46
               MAlonzo.Code.Once.Lang.Context.T_Usage_46 T_Expr_8 T_Expr_8 |
     C_fst''_94 MAlonzo.Code.Once.Lang.Type.T_Type_8 T_Expr_8 |

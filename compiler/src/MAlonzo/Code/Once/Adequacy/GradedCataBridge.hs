@@ -130,7 +130,7 @@ du_z'45'rel'7501'_100 v0 v1 v2 v3 v4
         -> case coe v0 of
              MAlonzo.Code.Once.Lang.Type.C_K_12 v7
                -> coe
-                    MAlonzo.Code.Once.Adequacy.GradedRelation.du_injB'45'rel_504
+                    MAlonzo.Code.Once.Adequacy.GradedRelation.du_injB'45'rel_478
                     (coe v7) (coe v6) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.WellFormed.C_wf'45'Id_54 -> coe v4

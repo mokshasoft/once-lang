@@ -83,7 +83,7 @@ du_ar'45'bound_44 v0 v1 v2 v3
                        du_ar'45'kind_18 (coe v1) (coe v2)
                        (coe MAlonzo.Code.Data.Fin.Base.du_fromℕ'60'_52 (coe v2))
                        (coe
-                          MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'tk__192
+                          MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'tk__194
                           (coe v0 (coe MAlonzo.Code.Data.Fin.Base.du_fromℕ'60'_52 (coe v2)))
                           (coe v1)))
              else coe
@@ -250,7 +250,7 @@ du_base'45'ar'45'bound_300 v0 v1 v2
                     (coe
                        du_base'45'ar'45'kind_276
                        (coe
-                          MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'tk__192
+                          MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'tk__194
                           (coe v0 (coe MAlonzo.Code.Data.Fin.Base.du_fromℕ'60'_52 (coe v1)))
                           (coe MAlonzo.Code.Once.Lang.Type.C_k'45'base_40)))
              else coe

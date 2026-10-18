@@ -83,7 +83,7 @@ du_'60''58''8346''45'refl_532 v0
              (coe du_'60''58''8346''45'refl_532 (coe v2))
       MAlonzo.Code.Once.Lang.Core.PolyTy.C__'8658''91'_'93'__38 v1 v2 v3
         -> case coe v2 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v4 v5
+             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v4 v5
                -> coe
                     MAlonzo.Code.Once.Lang.Core.PolyTyping.C_sub'45'arr_680
                     (coe du_'60''58''8346''45'refl_532 (coe v1))
@@ -95,7 +95,8 @@ du_'60''58''8346''45'refl_532 v0
       MAlonzo.Code.Once.Lang.Core.PolyTy.C_ν'45'type_42 v1 v2
         -> coe
              MAlonzo.Code.Once.Lang.Core.PolyTyping.C_sub'45'ν_712
-             (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v2))
+             (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94
+                (coe MAlonzo.Code.Once.Lang.Type.Grade.d_fin_46 (coe v2)))
       MAlonzo.Code.Once.Lang.Core.PolyTy.C_rigid_44 v1 v2
         -> coe MAlonzo.Code.Once.Lang.Core.PolyTyping.C_sub'45'rigid_664
       _ -> MAlonzo.RTE.mazUnreachableError

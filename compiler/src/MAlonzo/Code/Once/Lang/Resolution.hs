@@ -63,7 +63,7 @@ data T_ResolvesExpr_98
     C_re'45'qual_128 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                      [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_FirstAt_18
                      T_ExpandsTo_50 |
-    C_re'45'qual'45'unknown_136 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 |
+    C_re'45'qual'45'path_136 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 |
     C_re'45'res_142 |
     C_re'45'app_154 T_ResolvesExpr_98 T_ResolvesExpr_98 |
     C_re'45'lam_164 T_ResolvesExpr_98 |

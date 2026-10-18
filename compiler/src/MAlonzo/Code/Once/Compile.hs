@@ -124,7 +124,7 @@ d_validateMain_10 v0
            -> case coe v2 of
                 MAlonzo.Code.Once.Lang.Type.C_Unit_20
                   -> case coe v3 of
-                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v5 v6
+                       MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v5 v6
                          -> case coe v5 of
                               MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                                 -> case coe v6 of
@@ -156,7 +156,7 @@ d_directCallIR_20 v0 v1
       (case coe v0 of
          MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v3 v4 v5
            -> case coe v4 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v6 v7
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v6 v7
                   -> case coe v6 of
                        MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
                          -> coe
@@ -299,7 +299,7 @@ du_compileFunBody'45'aux_70 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_debruijn_122 (coe v0))
                              (coe v11) (coe v7)
                              (coe
-                                MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4238
+                                MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
                                 (coe v7) (coe v4) (coe v5)
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -316,7 +316,7 @@ du_compileFunBody'45'aux_70 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_debruijn_122 (coe v0))
                           (coe v11) (coe v7)
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4238
+                             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
                              (coe v7) (coe v4) (coe v5)
                              (coe
                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -377,7 +377,7 @@ du_compileFunBody_120 v0 v1 v2 v3 v4 v5 v6
          (coe MAlonzo.Code.Once.TypeCheck.Classify.d_tsig_338 (coe v1)))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
             (coe v1) (coe v2))
@@ -556,7 +556,7 @@ d_inferType'45'validate_280 v0 v1 v2 v3
         -> let v5
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6212
                         (coe v0) (coe v1) (coe v4)) in
            coe
              (case coe v5 of
@@ -578,7 +578,7 @@ d_inferType_316 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6376
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6196
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                     (coe v0) (coe v1))
@@ -808,7 +808,7 @@ d_compileEntries_460 v0 v1 v2 v3
                     (coe
                        du_checkOK_368
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+                          MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
                           (coe
                              MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                              (coe d_ctop_390 (coe v2)) (coe d_cpolys_396 (coe v2)))
@@ -1149,7 +1149,7 @@ d_EffUU_790
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
@@ -1159,7 +1159,7 @@ d_isEffUU'63'_794 ::
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_isEffUU'63'_794 v0
   = let v1
-          = MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__214
+          = MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__216
               (coe v0) (coe d_EffUU_790) in
     coe
       (case coe v1 of
@@ -1948,7 +1948,7 @@ d_showPolyFunInfo_1118 v0
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
          (" : " :: Data.Text.Text)
-         (MAlonzo.Code.Once.Type.d_showPolyType_134
+         (MAlonzo.Code.Once.Type.d_showPolyType_132
             (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v0))))
 -- Once.Compile.showFunInfos
 d_showFunInfos_1122 ::

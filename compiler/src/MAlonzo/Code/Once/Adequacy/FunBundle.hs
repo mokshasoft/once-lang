@@ -58,7 +58,7 @@ d_EffUU_6
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
@@ -113,7 +113,7 @@ du_compileFunBody'45'ce_108 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Adequacy.AcceptSound.du_compileFunBody'45'aux'45'success_36
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
             (coe v0) (coe v1))
@@ -249,7 +249,7 @@ d_bundle'8594'typed_286 v0 v1 v2
                       -> coe
                            MAlonzo.Code.Once.Lang.Module.C_mono_76 v6 v7 v14
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2502
+                              MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2432
                               (coe d_ctxC_8 (coe v0))
                               (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v21)) (coe v6))
                            (d_bundle'8594'typed_286
@@ -276,7 +276,7 @@ d_bundle'8594'typed_286 v0 v1 v2
                       -> coe
                            MAlonzo.Code.Once.Lang.Module.C_poly_86 v6
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2502
+                              MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2432
                               (coe d_ctxC_8 (coe v0))
                               (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v14))
                               (coe
@@ -373,7 +373,7 @@ du_ce'45'bundleP_374 v0 v1 v2
                -> coe
                     du_cgb'45'poly_422 (coe v0) (coe v5) (coe v4) (coe v2)
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
+                       MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
                        (coe d_ctxC_8 (coe v0))
                        (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v5))
                        (coe

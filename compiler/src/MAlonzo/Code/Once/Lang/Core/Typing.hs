@@ -127,7 +127,7 @@ data T__'8866''91'_'93'_'8759'_'33'__248
                        MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48
                        T__'8866''91'_'93'_'8759'_'33'__248
                        T__'8866''91'_'93'_'8759'_'33'__248 |
-    C_'8866'out_540 MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32
+    C_'8866'out_540 MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40
                     MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32
                     MAlonzo.Code.Once.Lang.Type.T_Functor_6
                     MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48

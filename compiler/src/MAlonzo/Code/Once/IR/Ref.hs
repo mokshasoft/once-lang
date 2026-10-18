@@ -39,7 +39,7 @@ d_refIR_8 v0 v1
       (case coe v0 of
          MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v3 v4 v5
            -> case coe v4 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v6 v7
+                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v6 v7
                   -> case coe v6 of
                        MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
                          -> coe

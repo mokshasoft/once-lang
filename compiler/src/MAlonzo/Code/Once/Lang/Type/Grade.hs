@@ -87,9 +87,19 @@ d_'8804'q'45'Many_30 = erased
 -- Once.Lang.Type.Grade.Purity
 d_Purity_32 = ()
 data T_Purity_32 = C_pure_34 | C_act_36 | C_eff_38
+-- Once.Lang.Type.Grade.Finite
+d_Finite_40 = ()
+data T_Finite_40 = C_pure_42 | C_act_44
+-- Once.Lang.Type.Grade.fin
+d_fin_46 :: T_Finite_40 -> T_Purity_32
+d_fin_46 v0
+  = case coe v0 of
+      C_pure_42 -> coe C_pure_34
+      C_act_44 -> coe C_act_36
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade._⊔p_
-d__'8852'p__40 :: T_Purity_32 -> T_Purity_32 -> T_Purity_32
-d__'8852'p__40 v0 v1
+d__'8852'p__48 :: T_Purity_32 -> T_Purity_32 -> T_Purity_32
+d__'8852'p__48 v0 v1
   = case coe v0 of
       C_pure_34 -> coe v1
       C_act_36
@@ -101,8 +111,8 @@ d__'8852'p__40 v0 v1
       C_eff_38 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade._·p_
-d__'183'p__44 :: T_Purity_32 -> T_Purity_32 -> T_Purity_32
-d__'183'p__44 v0 v1
+d__'183'p__52 :: T_Purity_32 -> T_Purity_32 -> T_Purity_32
+d__'183'p__52 v0 v1
   = case coe v0 of
       C_pure_34 -> coe v1
       C_act_36
@@ -114,34 +124,34 @@ d__'183'p__44 v0 v1
       C_eff_38 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade.EffGrade
-d_EffGrade_48 a0 = ()
-data T_EffGrade_48 = C_eg'45'act_50 | C_eg'45'eff_52
+d_EffGrade_56 a0 = ()
+data T_EffGrade_56 = C_eg'45'act_58 | C_eg'45'eff_60
 -- Once.Lang.Type.Grade.positionGrade
-d_positionGrade_54 :: T_Quantity_8 -> T_Purity_32 -> T_Purity_32
-d_positionGrade_54 v0 v1
+d_positionGrade_62 :: T_Quantity_8 -> T_Purity_32 -> T_Purity_32
+d_positionGrade_62 v0 v1
   = case coe v0 of
       C_Zero_10 -> coe C_pure_34
       C_One_12 -> coe v1
       C_Many_14 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade.ArrowKind
-d_ArrowKind_60 = ()
-data T_ArrowKind_60 = C_mk'45'kind_70 T_Quantity_8 T_Purity_32
+d_ArrowKind_68 = ()
+data T_ArrowKind_68 = C_mk'45'kind_78 T_Quantity_8 T_Purity_32
 -- Once.Lang.Type.Grade.ArrowKind.quantity
-d_quantity_66 :: T_ArrowKind_60 -> T_Quantity_8
-d_quantity_66 v0
+d_quantity_74 :: T_ArrowKind_68 -> T_Quantity_8
+d_quantity_74 v0
   = case coe v0 of
-      C_mk'45'kind_70 v1 v2 -> coe v1
+      C_mk'45'kind_78 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade.ArrowKind.purity
-d_purity_68 :: T_ArrowKind_60 -> T_Purity_32
-d_purity_68 v0
+d_purity_76 :: T_ArrowKind_68 -> T_Purity_32
+d_purity_76 v0
   = case coe v0 of
-      C_mk'45'kind_70 v1 v2 -> coe v2
+      C_mk'45'kind_78 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade.pureK
-d_pureK_72 :: T_Quantity_8 -> T_ArrowKind_60
-d_pureK_72 v0 = coe C_mk'45'kind_70 (coe v0) (coe C_pure_34)
+d_pureK_80 :: T_Quantity_8 -> T_ArrowKind_68
+d_pureK_80 v0 = coe C_mk'45'kind_78 (coe v0) (coe C_pure_34)
 -- Once.Lang.Type.Grade.effK
-d_effK_76 :: T_ArrowKind_60
-d_effK_76 = coe C_mk'45'kind_70 (coe C_Many_14) (coe C_eff_38)
+d_effK_84 :: T_ArrowKind_68
+d_effK_84 = coe C_mk'45'kind_78 (coe C_Many_14) (coe C_eff_38)

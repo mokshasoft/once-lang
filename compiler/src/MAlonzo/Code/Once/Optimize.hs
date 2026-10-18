@@ -1118,7 +1118,7 @@ d_optimize'45'once'45'structural_1062 v0 v1 v2
         -> coe MAlonzo.Code.Once.IR.C_const_126 v4 v5
       MAlonzo.Code.Once.IR.C_SigOp_132 v3 v4 v5
         -> let v6
-                 = MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__214
+                 = MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__216
                      (coe v3) (coe MAlonzo.Code.Once.Lang.Type.C_Void_22) in
            coe
              (case coe v6 of

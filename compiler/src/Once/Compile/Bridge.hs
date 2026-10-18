@@ -137,7 +137,7 @@ fromMFunInfo fi = FunSig
 fromMPolyFunInfo :: MP.T_PolyFunInfo_116 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
   { polyFunSigName = agdaToText (MP.d_pfunName_124 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_134 (MP.d_pfunType_126 pfi))
+  , polyFunSigType = agdaToText (MT.d_showPolyType_132 (MP.d_pfunType_126 pfi))
   }
 
 fromMResult :: MC.T_CompileResult_1082 -> CompileResult

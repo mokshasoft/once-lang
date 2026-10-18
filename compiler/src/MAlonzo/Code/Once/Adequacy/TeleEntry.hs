@@ -151,7 +151,7 @@ du_abi'45'rel_104 v0 v1 v2
       MAlonzo.Code.Once.Lang.Type.C__'43'__26 v3 v4 -> coe v2
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v3 v4 v5
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v6 v7
+             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v6 v7
                -> coe
                     seq (coe v6)
                     (let v8 = coe du_returns'45'of_34 (coe v1) (coe v2) in
@@ -161,7 +161,7 @@ du_abi'45'rel_104 v0 v1 v2
                             -> case coe v10 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                    -> coe
-                                        MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'return_198
+                                        MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'return_172
                                         (coe v12)
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))

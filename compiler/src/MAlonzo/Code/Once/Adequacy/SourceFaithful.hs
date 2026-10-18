@@ -1996,7 +1996,7 @@ d_leF_2650 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_56 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178
@@ -2024,7 +2024,7 @@ d_leX_2652 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_56 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178
@@ -2066,7 +2066,7 @@ d_dγ''_2654 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_56 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> AgdaAny -> AgdaAny
 d_dγ''_2654 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 v12
@@ -2084,7 +2084,7 @@ d_inner_2656 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_56 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> MAlonzo.Code.Once.IR.T_IR_16
@@ -2127,7 +2127,7 @@ du_inner_2656 v0 v1 v2 v3 v4 v5 v6 v7 v8
                (coe
                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v4)
                   (coe
-                     MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+                     MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
                      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v6))
                   (coe v5))
                (coe v7))
@@ -2168,7 +2168,7 @@ d_body_2658 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_56 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> MAlonzo.Code.Once.IR.T_IR_16
@@ -2213,7 +2213,7 @@ d_liftFn'45'curry'45'reduce'45'effApp_2662 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_56 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

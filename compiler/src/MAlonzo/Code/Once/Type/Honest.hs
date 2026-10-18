@@ -264,7 +264,7 @@ d_honestCod'63''45'complete_156 v0 v1 v2
         -> coe d_dataCod'63''45'complete_126 (coe v0) (coe v1) (coe v2)
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v3 v4 v5
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v6 v7
+             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v6 v7
                -> coe d_honestCod'63''45'complete_156 (coe v7) (coe v5) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.C_Int_34
@@ -292,7 +292,7 @@ d_honest'63''45'complete_208 v0 v1
         -> coe d_notEmpty'63''45'complete_64 (coe v0) (coe v1)
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
         -> case coe v3 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v5 v6
+             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v5 v6
                -> coe d_honestCod'63''45'complete_156 (coe v6) (coe v4) (coe v1)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.C_Int_34

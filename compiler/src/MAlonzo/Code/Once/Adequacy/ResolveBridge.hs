@@ -547,7 +547,7 @@ d_resolves'45'complete_1046 v0 v1 v2 v3
                                            (d_expandPath'45'sound_512 (coe v10))
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                       -> coe
-                                           MAlonzo.Code.Once.Lang.Resolution.C_re'45'qual'45'unknown_136
+                                           MAlonzo.Code.Once.Lang.Resolution.C_re'45'qual'45'path_136
                                            (coe du_lookupAl'45'nothing_430 (coe v1) (coe v5))
                                     _ -> MAlonzo.RTE.mazUnreachableError))
                 _ -> MAlonzo.RTE.mazUnreachableError)

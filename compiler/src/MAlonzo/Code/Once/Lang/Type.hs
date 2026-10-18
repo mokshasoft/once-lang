@@ -34,10 +34,10 @@ data T_Type_8
   = C_Unit_20 | C_Void_22 | C__'42'__24 T_Type_8 T_Type_8 |
     C__'43'__26 T_Type_8 T_Type_8 |
     C__'8658''91'_'93'__28 T_Type_8
-                           MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_60 T_Type_8 |
+                           MAlonzo.Code.Once.Lang.Type.Grade.T_ArrowKind_68 T_Type_8 |
     C_μ'45'type_30 T_Functor_6 |
     C_ν'45'type_32 T_Functor_6
-                   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 |
+                   MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40 |
     C_Int_34 | C_Float_36 | C_rigid_38 T_TKind_10 Integer
 -- Once.Lang.Type.TKind
 d_TKind_10 = ()
@@ -48,7 +48,7 @@ d__'8888'__44 v0 v1
   = coe
       C__'8658''91'_'93'__28 (coe v0)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_One_12)
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
       (coe v1)
@@ -58,7 +58,7 @@ d__'8658'__50 v0 v1
   = coe
       C__'8658''91'_'93'__28 (coe v0)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
       (coe v1)
@@ -68,7 +68,7 @@ d__'8658''8320'__56 v0 v1
   = coe
       C__'8658''91'_'93'__28 (coe v0)
       (coe
-         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
+         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10)
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34))
       (coe v1)

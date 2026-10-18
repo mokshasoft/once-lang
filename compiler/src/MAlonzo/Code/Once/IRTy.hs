@@ -69,7 +69,7 @@ d_'8970'_'8971'_48 v0
       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v1 v2 v3
         -> coe
              d_eraseArrow_34
-             (coe MAlonzo.Code.Once.Lang.Type.Grade.d_quantity_66 (coe v2))
+             (coe MAlonzo.Code.Once.Lang.Type.Grade.d_quantity_74 (coe v2))
              (coe d_'8970'_'8971'_48 (coe v1)) (coe d_'8970'_'8971'_48 (coe v3))
       MAlonzo.Code.Once.Lang.Type.C_μ'45'type_30 v1
         -> coe C_μ'45'type_26 (coe d_eraseF_50 (coe v1))
@@ -878,7 +878,7 @@ d_'8968'_'8969'_574 v0
         -> coe
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
              (coe d_'8968'_'8969'_574 (coe v1))
-             (coe MAlonzo.Code.Once.Lang.Type.Grade.d_effK_76)
+             (coe MAlonzo.Code.Once.Lang.Type.Grade.d_effK_84)
              (coe d_'8968'_'8969'_574 (coe v2))
       C_μ'45'type_26 v1
         -> coe
@@ -888,7 +888,7 @@ d_'8968'_'8969'_574 v0
         -> coe
              MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32
              (coe d_'8968'_'8969'F_576 (coe v1))
-             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38)
+             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_44)
       C_Int_30 -> coe MAlonzo.Code.Once.Lang.Type.C_Int_34
       C_Float_32 -> coe MAlonzo.Code.Once.Lang.Type.C_Float_36
       _ -> MAlonzo.RTE.mazUnreachableError

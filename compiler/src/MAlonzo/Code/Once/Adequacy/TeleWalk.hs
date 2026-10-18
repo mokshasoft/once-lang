@@ -1432,7 +1432,7 @@ du_walk'45'mono_616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                 MAlonzo.Code.Data.String.Properties.d__'8799'__54 (coe v5)
                 (coe ("main" :: Data.Text.Text)))
              (coe
-                MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__214 (coe v8)
+                MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__216 (coe v8)
                 (coe MAlonzo.Code.Once.Lang.Module.d_EffUU_148))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.TeleWalk.walk-mono-d
