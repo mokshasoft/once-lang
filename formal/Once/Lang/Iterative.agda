@@ -3,28 +3,29 @@
 
 ------------------------------------------------------------------------
 -- Once.Lang.Iterative — SPEC. The computation domain of a program that
--- may RUN FOREVER (D311, plan 0.117 C1): the free COMPLETELY ITERATIVE monad
--- on the call/halt signature (Aczel–Adámek–Milius–Velebil).
+-- may RUN FOREVER: the coinductive RESUMPTION monad over the finite trees
+-- (D317, `Spec.Effect`'s `T∞`).
 --
 -- `T` (`TraceMonad`) is the INITIAL algebra of `Y ↦ X + Σ Y` — finite trees,
--- an effectful computation that returns. `T∞` is the FINAL coalgebra of the
--- SAME functor: the same three nodes (`ret`, `call`, `halt`), possibly
--- infinitely deep. There is NO silent step (no `Tau`): every node is either
--- the end or an observable event, so every `T∞` tree is PRODUCTIVE by the
--- shape of its functor, and its first `n` events are computed by a total
--- function of `n` (`events∞`, D058's observable).
+-- an effectful computation that returns (a BLOCK). `T∞ X = νY. T (X + Y)`: a
+-- run is a block that ends with the result or with the rest of the run. The
+-- end of a block is a SILENT step — what a loop's round that calls nothing
+-- is — so a run may go on forever without another call, and `T∞` has no
+-- total "first n events" observable: a run's observation is its TRACE
+-- (`Once.Denotation.TraceTr`), compared by weak bisimilarity (D317).
 --
--- Equality of `T∞` trees is BISIMILARITY (`TreeEq∞`), never `≡` (D201: no
+-- Equality of `T∞` runs is BISIMILARITY (`TreeEq∞`), never `≡` (D201: no
 -- bisimulation-to-equality axiom).
 ------------------------------------------------------------------------
 
 module Once.Lang.Iterative where
 
-open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; [_])
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Nat using (ℕ; zero; suc)
+open import Data.Product using (_,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
-
 open import Once.Spec.Word using (Carrier)
 import Once.Lang.Value Carrier Carrier as V
 open import Once.Lang.Event using (SigOpEvent)
@@ -34,108 +35,73 @@ open CallOp using (cdom; ccod)
 open HaltOp using (hdom)
 
 ------------------------------------------------------------------------
--- One layer, and the tree
+-- The run
 ------------------------------------------------------------------------
-
--- A layer of the tree with the rest at `R`: the three nodes of `T`.
-data T∞F (X R : Set) : Set where
-  ret∞  : X → T∞F X R
-  call∞ : (o : CallOp) → V.⟦ cdom o ⟧ → (V.⟦ ccod o ⟧ → R) → T∞F X R
-  halt∞ : (o : HaltOp) → V.⟦ hdom o ⟧ → T∞F X R
 
 record T∞ (X : Set) : Set where
   coinductive
-  field force : T∞F X (T∞ X)
-open T∞
+  field force : T (X ⊎ T∞ X)
+open T∞ public
 
 ------------------------------------------------------------------------
 -- The monad
 ------------------------------------------------------------------------
 
 return∞ : ∀ {X} → X → T∞ X
-force (return∞ x) = ret∞ x
+force (return∞ x) = ret (inj₁ x)
 
 infixl 1 _>>=∞_
-_>>=∞_ : ∀ {X Y} → T∞ X → (X → T∞ Y) → T∞ Y
-bind∞F : ∀ {X Y} → T∞F X (T∞ X) → (X → T∞ Y) → T∞F Y (T∞ Y)
-force (m >>=∞ k) = bind∞F (force m) k
-bind∞F (ret∞ x)      k = force (k x)
-bind∞F (call∞ o a c) k = call∞ o a (λ b → c b >>=∞ k)
-bind∞F (halt∞ o a)   k = halt∞ o a
+_>>=∞_    : ∀ {X Y} → T∞ X → (X → T∞ Y) → T∞ Y
+bindBlock : ∀ {X Y} → T (X ⊎ T∞ X) → (X → T∞ Y) → T (Y ⊎ T∞ Y)
+force (m >>=∞ k) = bindBlock (force m) k
+bindBlock (ret (inj₁ x)) k = force (k x)
+bindBlock (ret (inj₂ m)) k = ret (inj₂ (m >>=∞ k))
+bindBlock (call o a c)   k = call o a (λ b → bindBlock (c b) k)
+bindBlock (halt o a)     k = halt o a
 
 ------------------------------------------------------------------------
--- Every finite tree is one: `T ↪ T∞`, a monad morphism (up to `≈∞`).
+-- Every finite tree is one block: `T ↪ T∞`, a monad morphism (up to `≈∞`).
 ------------------------------------------------------------------------
+
+embedBlock : ∀ {X Y} → T X → T (X ⊎ Y)
+embedBlock (ret x)      = ret (inj₁ x)
+embedBlock (call o a k) = call o a (λ b → embedBlock (k b))
+embedBlock (halt o a)   = halt o a
 
 embed : ∀ {X} → T X → T∞ X
-force (embed (ret x))      = ret∞ x
-force (embed (call o a k)) = call∞ o a (λ b → embed (k b))
-force (embed (halt o a))   = halt∞ o a
+force (embed m) = embedBlock m
 
 ------------------------------------------------------------------------
--- Bisimilarity: the same nodes, layer by layer, forever; the values at the
--- leaves related by `R`.
+-- THE LOOP (D317): a round is a block that ends with the result or the next
+-- state; the loop is the anamorphism into `T∞`.
 ------------------------------------------------------------------------
 
-data NodeEq {X R R′ : Set} (Rx : X → X → Set) (Rr : R → R′ → Set) : T∞F X R → T∞F X R′ → Set where
-  ret≈∞  : ∀ {x y} → Rx x y → NodeEq Rx Rr (ret∞ x) (ret∞ y)
-  call≈∞ : ∀ {o a k k′} → (∀ b → Rr (k b) (k′ b)) → NodeEq Rx Rr (call∞ o a k) (call∞ o a k′)
-  halt≈∞ : ∀ {o a} → NodeEq Rx Rr (halt∞ o a) (halt∞ o a)
+loop      : ∀ {A B : Set} → (A → T (B ⊎ A)) → A → T∞ B
+loopBlock : ∀ {A B : Set} → (A → T (B ⊎ A)) → T (B ⊎ A) → T (B ⊎ T∞ B)
+force (loop c a) = loopBlock c (c a)
+loopBlock c (ret (inj₁ b)) = ret (inj₁ b)
+loopBlock c (ret (inj₂ a)) = ret (inj₂ (loop c a))
+loopBlock c (call o x k)   = call o x (λ v → loopBlock c (k v))
+loopBlock c (halt o x)     = halt o x
+
+------------------------------------------------------------------------
+-- Bisimilarity: the same blocks, step by step, forever; the results related
+-- by `R`.
+------------------------------------------------------------------------
+
+data BlockEq {Z : Set} (R : Z → Z → Set) : T Z → T Z → Set where
+  ret≈  : ∀ {z z′} → R z z′ → BlockEq R (ret z) (ret z′)
+  call≈ : ∀ {o a k k′} → (∀ b → BlockEq R (k b) (k′ b)) → BlockEq R (call o a k) (call o a k′)
+  halt≈ : ∀ {o a} → BlockEq R (halt o a) (halt o a)
+
+data StepEq {X Y : Set} (Rx : X → X → Set) (Ry : Y → Y → Set) : X ⊎ Y → X ⊎ Y → Set where
+  done≈ : ∀ {x x′} → Rx x x′ → StepEq Rx Ry (inj₁ x) (inj₁ x′)
+  next≈ : ∀ {y y′} → Ry y y′ → StepEq Rx Ry (inj₂ y) (inj₂ y′)
 
 record TreeEq∞ {X : Set} (Rx : X → X → Set) (m m′ : T∞ X) : Set where
   coinductive
-  field force≈ : NodeEq Rx (TreeEq∞ Rx) (force m) (force m′)
-open TreeEq∞
-
-------------------------------------------------------------------------
--- THE OBSERVABLE (D058): the first `n` events of a run against an
--- interpretation, from a history. Total in `n`: each event costs one, and
--- every node is an event or the end — there is nothing to wait on.
-------------------------------------------------------------------------
-
-events∞  : ∀ {X} → Interp → List SigOpEvent → T∞ X → ℕ → List SigOpEvent
-eventsF  : ∀ {X} → Interp → List SigOpEvent → T∞F X (T∞ X) → ℕ → List SigOpEvent
-eventsC  : ∀ {X} → Interp → List SigOpEvent → (o : CallOp) → V.⟦ cdom o ⟧ → (V.⟦ ccod o ⟧ → T∞ X)
-         → Maybe V.⟦ ccod o ⟧ → ℕ → List SigOpEvent
-events∞ ι h m zero    = []
-events∞ ι h m (suc n) = eventsF ι h (force m) n
-eventsF ι h (ret∞ x)      n = []
-eventsF ι h (halt∞ o a)   n = [ haltEvent o a ]
-eventsF ι h (call∞ o a k) n = eventsC ι h o a k (callAnswer ι h o a) n
-eventsC ι h o a k (just b) n = callEvent o a ∷ events∞ ι (h ++ [ callEvent o a ]) (k b) n
-eventsC ι h o a k nothing  n = [ haltEvent unlinkedOp tt ]
-
-------------------------------------------------------------------------
--- Streams whose layers may take forever to arrive (`ν-type F prod`): a
--- layer is a `T∞` computation — every event of it observable, none silent.
--- Mirrors `νᵈ` (`ValueDomain`), with `T∞` for `T`; D062's rule holds: the
--- maps are written by hand so each corecursive call sits under a copattern.
-------------------------------------------------------------------------
-
-open import Data.Product using (_,_)
-open import Data.Sum using (inj₁; inj₂)
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-
-record ν∞ (H : SFunctor) : Set where
-  coinductive
-  field force∞ : T∞ (⟦ H ⟧SF (ν∞ H))
-open ν∞
-
-ana∞     : ∀ (H : SFunctor) {A : Set} → (A → T∞ (⟦ H ⟧SF A)) → A → ν∞ H
-anaTree∞ : ∀ (H : SFunctor) {A : Set} → (A → T∞ (⟦ H ⟧SF A)) → T∞ (⟦ H ⟧SF A) → T∞ (⟦ H ⟧SF (ν∞ H))
-anaLayer∞ : ∀ (H : SFunctor) {A : Set} → (A → T∞ (⟦ H ⟧SF A))
-          → T∞F (⟦ H ⟧SF A) (T∞ (⟦ H ⟧SF A)) → T∞F (⟦ H ⟧SF (ν∞ H)) (T∞ (⟦ H ⟧SF (ν∞ H)))
-mapAna∞  : ∀ (H G : SFunctor) {A : Set} → (A → T∞ (⟦ H ⟧SF A)) → ⟦ G ⟧SF A → ⟦ G ⟧SF (ν∞ H)
-force∞ (ana∞ H c a) = anaTree∞ H c (c a)
-force (anaTree∞ H c m) = anaLayer∞ H c (force m)
-anaLayer∞ H c (ret∞ l)      = ret∞ (mapAna∞ H H c l)
-anaLayer∞ H c (call∞ o a k) = call∞ o a (λ b → anaTree∞ H c (k b))
-anaLayer∞ H c (halt∞ o a)   = halt∞ o a
-mapAna∞ H (SK B)     c x        = x
-mapAna∞ H SId        c a        = ana∞ H c a
-mapAna∞ H (G₁ S⊕ G₂) c (inj₁ x) = inj₁ (mapAna∞ H G₁ c x)
-mapAna∞ H (G₁ S⊕ G₂) c (inj₂ y) = inj₂ (mapAna∞ H G₂ c y)
-mapAna∞ H (G₁ S⊗ G₂) c (x , y)  = mapAna∞ H G₁ c x , mapAna∞ H G₂ c y
+  field force≈ : BlockEq (StepEq Rx (TreeEq∞ Rx)) (force m) (force m′)
+open TreeEq∞ public
 
 ------------------------------------------------------------------------
 -- The functor action, and sequencing a layer of computations (`seqF`'s twin).

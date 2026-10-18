@@ -35,7 +35,6 @@ open Schema using (arity; kinds; type)
 import Once.Lang.Core.PolyTyping as PT
 import Once.Lang.Core.Meaning as GM
 open import Once.Lang.Graded using (⟦_⟧ᵛ; M; toT∞)
-open import Once.Lang.Iterative using (events∞)
 
 ------------------------------------------------------------------------
 -- Telescopes
@@ -104,10 +103,6 @@ runEntry sc e f = subst EntrySem e f noVars noResp tt
 -- VALUE, here the suspension `Unit ⇒[eff] Unit`) in the telescope's
 -- environment, RELATIVE TO AN IMPLEMENTATION `I` of the signatures it is
 -- compiled against (plan 0.105, D061's three times: its author discharges `I`
--- off-line), and read the first `n` events of that run — a tree of `T∞`
--- (D312), so a server's run is as observable as one that returns.
+-- off-line): a run of `T∞` (D317), observed as its trace.
 runCore : ∀ {Fs} → TargetNum → Program Fs → Impl Fs → M T.eff ⊤
 runCore fmt (program {sig = S} defs d e) I = runEntry (S !! d) e (GM.defs (teleSem fmt I defs) d)
-
-runProgram : ∀ {Fs} → TargetNum → Program Fs → Impl Fs → ℕ → Data.List.List SigOpEvent
-runProgram {Fs} fmt P I n = events∞ (interp Fs I) [] (runCore fmt P I) n

@@ -31,11 +31,11 @@ open import Once.Lang.Event using (SigOpEvent; toEvent)
 open import Once.Lang.Res using (Res; stopped; returns)
 open import Once.Lang.Trace using (T; ret; call; halt; CallOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp; run; run-call)
 open CallOp using (cdom; ccod)
-open import Once.Lang.Iterative using (T∞; T∞F; ret∞; call∞; halt∞; module T∞)
-open T∞ using (force)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; rel∞-call; rel∞-halt)
+open import Once.Lang.Iterative using (T∞; force)
+open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; RelB; b-ret; b-tau; b-call; b-halt; block)
 open import Once.Spec.Trace using (End; returned; halted; Tr; _≈ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (Step; silent; emit; stop; listTr; module Machine)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 -- How a finite run ended.
 endOf : ∀ {X} → Res X → End ⊤
@@ -44,49 +44,49 @@ endOf stopped     = halted
 
 module _ (ι : Interp) where
 
+  -- A run is a block at a time: what the world has seen, and the block.
   Conf : Set → Set
-  Conf X = List SigOpEvent × T∞ X
+  Conf X = List SigOpEvent × T (X ⊎ T∞ X)
 
-  node   : ∀ {X} → List SigOpEvent → T∞F X (T∞ X) → Step (Conf X)
-  answer : ∀ {X} → List SigOpEvent → (o : CallOp) → V.⟦ cdom o ⟧ → (V.⟦ ccod o ⟧ → T∞ X)
+  answer : ∀ {X} → List SigOpEvent → (o : CallOp) → V.⟦ cdom o ⟧ → (V.⟦ ccod o ⟧ → T (X ⊎ T∞ X))
          → Maybe V.⟦ ccod o ⟧ → Step (Conf X)
 
-  -- One node a step.
+  -- One node a step; the end of a block that goes on is a silent one.
   δ∞ : ∀ {X} → Conf X → Step (Conf X)
-  δ∞ (h , m) = node h (force m)
-
-  node h (ret∞ x)      = stop [] (returned tt)
-  node h (halt∞ o a)   = stop [ toEvent (haltEvent o a) ] halted
-  node h (call∞ o a k) = answer h o a k (callAnswer ι h o a)
+  δ∞ (h , ret (inj₁ x)) = stop [] (returned tt)
+  δ∞ (h , ret (inj₂ m)) = silent (h , force m)
+  δ∞ (h , halt o a)     = stop [ toEvent (haltEvent o a) ] halted
+  δ∞ (h , call o a k)   = answer h o a k (callAnswer ι h o a)
   answer h o a k (just b) = emit [ toEvent (callEvent o a) ] (h ++ [ callEvent o a ] , k b)
   answer h o a k nothing  = stop [ toEvent (haltEvent unlinkedOp tt) ] halted
 
   -- The trace of a computation, from the calls made before it.
   trT∞ : ∀ {X} → List SigOpEvent → T∞ X → Tr ⊤
-  trT∞ {X} h m = Machine.trace (δ∞ {X}) (h , m)
+  trT∞ {X} h m = Machine.trace (δ∞ {X}) (h , force m)
 
   -- The trace of a finite run: its calls, then how it ended.
   runTr : ∀ {X} → List SigOpEvent → T X → Tr ⊤
   runTr h t = listTr (map toEvent (proj₁ (run ι h t))) (endOf (proj₂ (run ι h t)))
 
   module _ {X Y : Set} {R : X → Y → Set} where
-    open Machine (δ∞ {X}) using (Reaches; r-emit; r-stop; reaches-≈)
+    open Machine (δ∞ {X}) using (Reaches; r-silent; r-emit; r-stop; reaches-≈)
 
     private
-      reachC : ∀ h {m} o a {k : V.⟦ ccod o ⟧ → T∞ X} {k′ : V.⟦ ccod o ⟧ → T Y} (r : Maybe V.⟦ ccod o ⟧)
-             → δ∞ (h , m) ≡ answer h o a k r → (∀ b → RelT∞′ R (k b) (k′ b))
-             → Reaches (h , m) (map toEvent (proj₁ (run-call ι h o a k′ r))) (endOf (proj₂ (run-call ι h o a k′ r)))
+      reachC : ∀ h o a {k : V.⟦ ccod o ⟧ → T (X ⊎ T∞ X)} {k′ : V.⟦ ccod o ⟧ → T Y} (r : Maybe V.⟦ ccod o ⟧)
+             → δ∞ (h , call o a k) ≡ answer h o a k r → (∀ b → RelB R (k b) (k′ b))
+             → Reaches (h , call o a k) (map toEvent (proj₁ (run-call ι h o a k′ r))) (endOf (proj₂ (run-call ι h o a k′ r)))
 
-    -- A tree related to a finite one reaches the finite run's end, after its calls.
-    RelT∞′-reaches : ∀ h {m : T∞ X} {t : T Y} → RelT∞′ R m t
-                   → Reaches (h , m) (map toEvent (proj₁ (run ι h t))) (endOf (proj₂ (run ι h t)))
-    RelT∞′-reaches h (rel∞-ret e _)  = r-stop (cong (node h) e)
-    RelT∞′-reaches h (rel∞-halt e)   = r-stop (cong (node h) e)
-    RelT∞′-reaches h (rel∞-call {o = o} {a = a} e hk) = reachC h o a (callAnswer ι h o a) (cong (node h) e) hk
+    -- A block related to a finite tree reaches the finite run's end, after its calls.
+    RelB-reaches : ∀ h {l : T (X ⊎ T∞ X)} {t : T Y} → RelB R l t
+                 → Reaches (h , l) (map toEvent (proj₁ (run ι h t))) (endOf (proj₂ (run ι h t)))
+    RelB-reaches h (b-ret _)  = r-stop refl
+    RelB-reaches h (b-tau r)  = r-silent refl (RelB-reaches h r)
+    RelB-reaches h b-halt     = r-stop refl
+    RelB-reaches h (b-call {o = o} {a = a} hk) = reachC h o a (callAnswer ι h o a) refl hk
 
-    reachC h o a (just b) q hk = r-emit q (RelT∞′-reaches (h ++ [ callEvent o a ]) (hk b))
+    reachC h o a (just b) q hk = r-emit q (RelB-reaches (h ++ [ callEvent o a ]) (hk b))
     reachC h o a nothing  q hk = r-stop q
 
     -- …so its trace is the finite run's.
     RelT∞′-tr : ∀ h {m : T∞ X} {t : T Y} → RelT∞′ R m t → trT∞ h m ≈ᵗ⟨ _≡_ ⟩ runTr h t
-    RelT∞′-tr h r = reaches-≈ (RelT∞′-reaches h r)
+    RelT∞′-tr h r = reaches-≈ (RelB-reaches h (block r))

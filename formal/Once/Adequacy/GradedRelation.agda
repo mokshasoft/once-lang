@@ -40,10 +40,9 @@ open νᵈ using (forceᵈ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 open Once.Denotation.ValueDomainLaws._∼ᵈ_ using (force-∼)
 open import Once.Lang.Graded using (M; ⟦_⟧ᵛ; νᵖ; bindM; returnM; _>>=ᵖ_)
-open import Once.Lang.Iterative using (T∞; ν∞; return∞; ret∞; call∞; halt∞)
-open Once.Lang.Iterative.ν∞ using (force∞)
+open import Once.Lang.Iterative using (T∞; return∞)
 open Once.Lang.Iterative.T∞ using (force)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; rel∞-call; rel∞-halt; RelT∞′-bind; RelT∞′-≈)
+open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; RelT∞′-bind; RelT∞′-≈)
 open import Once.Lang.Trace using (call; halt; rel-call; rel-halt)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open Once.Lang.Graded.νᵖ using (forceᵖ)
@@ -150,12 +149,12 @@ RelGM-fmap : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t : T ⟦ A ⟧ᴰ} {f : ⟦ 
            → RelGM π B (fmapM π f m) (fmapT g t)
 RelGM-fmap pure {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
 RelGM-fmap act  {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
-RelGM-fmap eff  rm h = RelT∞′-bind rm (λ r → rel∞-ret refl (h r))
+RelGM-fmap eff  rm h = RelT∞′-bind rm (λ r → rel∞-ret (h r))
 
 RelGM-return : ∀ {π} (u : pure ⊑π π) {A} {x y} → RelGV A x y → RelGM π A (returnM u x) (returnT y)
 RelGM-return ⊑-pure {A} rv = RelGT-return {A} rv
 RelGM-return ⊑-pa   {A} rv = RelGT-return {A} rv
-RelGM-return ⊑-pe   {A} rv = rel∞-ret refl rv
+RelGM-return ⊑-pe   {A} rv = rel∞-ret rv
 
 ------------------------------------------------------------------------
 -- The FFI boundary. Contracts are first-order (plan 0.105), so at a base type
@@ -209,4 +208,4 @@ mutual
 RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
 RelGM-ret ⊑-pure r = r
 RelGM-ret ⊑-pa   r = r
-RelGM-ret ⊑-pe   (rel-ret r) = rel∞-ret refl r
+RelGM-ret ⊑-pe   (rel-ret r) = rel∞-ret r

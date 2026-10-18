@@ -73,9 +73,9 @@ open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
 open import Once.Lang.Core.PolyTy using (Sig)
-open import Once.Lang.Core.Telescope using (Tele; Program; runProgram; runCore; program; noKinds; noVars; noResp)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; RelT∞′-events)
-open import Once.Lang.Iterative using (events∞; T∞)
+open import Once.Lang.Core.Telescope using (Tele; Program; runCore; program; noKinds; noVars; noResp)
+open import Once.Denotation.TraceMonadInfLaws using (RelT∞′)
+open import Once.Lang.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Lang.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
 import Once.Lang.Core.Abstract as A
@@ -130,19 +130,11 @@ open import Once.Adequacy.TeleWalk.Invariant fmt Fs Ip hiding (φ; ι)
 -- (`MonoStep.relM`) relates the two, at the run of `Eff Unit Unit`.
 ------------------------------------------------------------------------
 
--- The run of the compiled program at a table.
-RunAt : List IRFun → ℕ → List SigOpEvent
-RunAt tbl n = projTrace ι (evalᴰ fmt (tableEnv fmt φ tbl) mainCall tt) n
-
 -- D320: the compiled program's tree at a table and the core program's run are
 -- RELATED — the same nodes, read off the finite one, with how each ended —
--- which gives both the calls at every depth (`agree-events`) and the traces
--- (`TraceTr.RelT∞′-tr`).
+-- which gives their traces (`TraceTr.RelT∞′-tr`).
 Agree : List IRFun → Program Fs → Set
 Agree tbl P = RelT∞′ (RelGV Once.Lang.Type.Unit) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) mainCall tt)
-
-agree-events : ∀ tbl P → Agree tbl P → ∀ n → RunAt tbl n ≡ runProgram fmt P Ip n
-agree-events tbl P a n = sym (RelT∞′-events ι [] a n)
 
 private
   K-subst : ∀ {A : Type} (P : Type → Set) (p : A ≡ A) (x : P A) → subst P p x ≡ x

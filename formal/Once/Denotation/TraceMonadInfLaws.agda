@@ -3,287 +3,103 @@
 
 ------------------------------------------------------------------------
 -- Once.Denotation.TraceMonadInfLaws — `T∞` is a monad up to bisimilarity,
--- `T` embeds into it as a monad morphism, and the embedding does not change
--- what a run observes (D311, plan 0.117 C1).
+-- `T` embeds into it, and a run is related to a FINITE tree (the IR's) when
+-- they make the same calls and end alike (D317).
 ------------------------------------------------------------------------
 
 module Once.Denotation.TraceMonadInfLaws where
 
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.List using (List; []; _∷_; _++_; [_]; take)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (proj₁)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
-
-open import Once.Lang.Event using (SigOpEvent)
-open import Once.Lang.Trace
-  using (T; ret; call; halt; _>>=T_; Interp; run; run-call; callAnswer; callEvent)
-open import Once.Lang.Equivalence using (TreeEq)
-import Once.Lang.Equivalence as TM
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Once.Lang.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.Lang.Iterative
-open T∞
-open TreeEq∞
 
 ------------------------------------------------------------------------
 -- Bisimilarity is reflexive and a congruence for bind
 ------------------------------------------------------------------------
 
-≈∞-refl : ∀ {X} {R : X → X → Set} → (∀ x → R x x) → (m : T∞ X) → TreeEq∞ R m m
-≈∞-reflF : ∀ {X} {R : X → X → Set} → (∀ x → R x x) → (l : T∞F X (T∞ X)) → NodeEq R (TreeEq∞ R) l l
-force≈ (≈∞-refl r m) = ≈∞-reflF r (force m)
-≈∞-reflF r (ret∞ x)      = ret≈∞ (r x)
-≈∞-reflF r (call∞ o a k) = call≈∞ (λ b → ≈∞-refl r (k b))
-≈∞-reflF r (halt∞ o a)   = halt≈∞
+≈∞-refl  : ∀ {X} {R : X → X → Set} → (∀ x → R x x) → (m : T∞ X) → TreeEq∞ R m m
+≈∞-reflB : ∀ {X} {R : X → X → Set} → (∀ x → R x x) → (l : T (X ⊎ T∞ X))
+         → BlockEq (StepEq R (TreeEq∞ R)) l l
+force≈ (≈∞-refl r m) = ≈∞-reflB r (force m)
+≈∞-reflB r (ret (inj₁ x)) = ret≈ (done≈ (r x))
+≈∞-reflB r (ret (inj₂ m)) = ret≈ (next≈ (≈∞-refl r m))
+≈∞-reflB r (call o a k)   = call≈ (λ b → ≈∞-reflB r (k b))
+≈∞-reflB r (halt o a)     = halt≈
 
--- The leaves of the first trees are related; the continuations take related
--- leaves to bisimilar trees: the binds are bisimilar.
-≈∞-bind : ∀ {X Y} {R : X → X → Set} {R′ : Y → Y → Set} {m m′ : T∞ X} {k k′ : X → T∞ Y}
-        → TreeEq∞ R m m′ → (∀ {x y} → R x y → TreeEq∞ R′ (k x) (k′ y))
-        → TreeEq∞ R′ (m >>=∞ k) (m′ >>=∞ k′)
-≈∞-bindF : ∀ {X Y} {R : X → X → Set} {R′ : Y → Y → Set} {l l′ : T∞F X (T∞ X)} {k k′ : X → T∞ Y}
-         → NodeEq R (TreeEq∞ R) l l′ → (∀ {x y} → R x y → TreeEq∞ R′ (k x) (k′ y))
-         → NodeEq R′ (TreeEq∞ R′) (bind∞F l k) (bind∞F l′ k′)
-force≈ (≈∞-bind h c) = ≈∞-bindF (force≈ h) c
-≈∞-bindF (ret≈∞ r)  c = force≈ (c r)
-≈∞-bindF (call≈∞ f) c = call≈∞ (λ b → ≈∞-bind (f b) c)
-≈∞-bindF halt≈∞     c = halt≈∞
+-- The results of the first runs are related; the continuations take related
+-- results to bisimilar runs: the binds are bisimilar.
+≈∞-bind  : ∀ {X Y} {R : X → X → Set} {R′ : Y → Y → Set} {m m′ : T∞ X} {k k′ : X → T∞ Y}
+         → TreeEq∞ R m m′ → (∀ {x y} → R x y → TreeEq∞ R′ (k x) (k′ y))
+         → TreeEq∞ R′ (m >>=∞ k) (m′ >>=∞ k′)
+≈∞-bindB : ∀ {X Y} {R : X → X → Set} {R′ : Y → Y → Set} {l l′ : T (X ⊎ T∞ X)} {k k′ : X → T∞ Y}
+         → BlockEq (StepEq R (TreeEq∞ R)) l l′ → (∀ {x y} → R x y → TreeEq∞ R′ (k x) (k′ y))
+         → BlockEq (StepEq R′ (TreeEq∞ R′)) (bindBlock l k) (bindBlock l′ k′)
+force≈ (≈∞-bind h c) = ≈∞-bindB (force≈ h) c
+≈∞-bindB (ret≈ (done≈ r)) c = force≈ (c r)
+≈∞-bindB (ret≈ (next≈ h)) c = ret≈ (next≈ (≈∞-bind h c))
+≈∞-bindB (call≈ f)        c = call≈ (λ b → ≈∞-bindB (f b) c)
+≈∞-bindB halt≈            c = halt≈
 
-------------------------------------------------------------------------
--- The embedding of the finite trees
-------------------------------------------------------------------------
-
--- Related finite trees embed to bisimilar ones.
-embed-≈ : ∀ {X} {R : X → X → Set} {m m′ : T X} → TreeEq R m m′ → TreeEq∞ R (embed m) (embed m′)
-force≈ (embed-≈ (TM.ret≈ r))  = ret≈∞ r
-force≈ (embed-≈ (TM.call≈ f)) = call≈∞ (λ b → embed-≈ (f b))
-force≈ (embed-≈ TM.halt≈)     = halt≈∞
-
--- It is a monad morphism: binding then embedding is embedding then binding.
-embed-bind : ∀ {X Y} (m : T X) (k : X → T Y)
-           → TreeEq∞ _≡_ (embed (m >>=T k)) (embed m >>=∞ λ x → embed (k x))
-force≈ (embed-bind (ret x) k)      = ≈∞-reflF (λ _ → refl) (force (embed (k x)))
-force≈ (embed-bind (call o a c) k) = call≈∞ (λ b → embed-bind (c b) k)
-force≈ (embed-bind (halt o a) k)   = halt≈∞
-
--- …and a run of the embedding observes the run of the tree: its first `n`
--- events are the first `n` the finite run makes.
-events∞-embed : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T X) (n : ℕ)
-              → events∞ ι h (embed m) n ≡ take n (proj₁ (run ι h m))
-events∞-call  : ∀ {X} (ι : Interp) (h : List SigOpEvent) o a (k : _ → T X) (r : Maybe _) (n : ℕ)
-              → eventsC ι h o a (λ b → embed (k b)) r n ≡ take (suc n) (proj₁ (run-call ι h o a k r))
-events∞-embed ι h m            zero    = refl
-events∞-embed ι h (ret x)      (suc n) = refl
-events∞-embed ι h (halt o a)   (suc zero)    = refl
-events∞-embed ι h (halt o a)   (suc (suc n)) = refl
-events∞-embed ι h (call o a k) (suc n) = events∞-call ι h o a k (callAnswer ι h o a) n
-events∞-call ι h o a k (just b) n = cong (callEvent o a ∷_) (events∞-embed ι (h ++ [ callEvent o a ]) (k b) n)
-events∞-call ι h o a k nothing  zero    = refl
-events∞-call ι h o a k nothing  (suc n) = refl
-
-------------------------------------------------------------------------
--- Rewriting a bisimilarity along bisimilarities of the trees: if `m₁ ≈ m₂`
--- and `m₁′ ≈ m₂′` as trees, a relation between `m₂`, `m₂′` is one between
--- `m₁`, `m₁′`. (What an equation is for `TreeEq`; `T∞` has bisimilarity
--- instead, D201.)
-------------------------------------------------------------------------
-
-≈∞-sym : ∀ {X} {m m′ : T∞ X} → TreeEq∞ _≡_ m m′ → TreeEq∞ _≡_ m′ m
-≈∞-symF : ∀ {X} {l l′ : T∞F X (T∞ X)} → NodeEq _≡_ (TreeEq∞ _≡_) l l′ → NodeEq _≡_ (TreeEq∞ _≡_) l′ l
-force≈ (≈∞-sym h) = ≈∞-symF (force≈ h)
-≈∞-symF (ret≈∞ refl) = ret≈∞ refl
-≈∞-symF (call≈∞ f)   = call≈∞ (λ b → ≈∞-sym (f b))
-≈∞-symF halt≈∞       = halt≈∞
-
-≈∞-rewrite : ∀ {X} {R : X → X → Set} {m₁ m₂ m₁′ m₂′ : T∞ X}
-           → TreeEq∞ _≡_ m₁ m₂ → TreeEq∞ _≡_ m₁′ m₂′ → TreeEq∞ R m₂ m₂′ → TreeEq∞ R m₁ m₁′
-≈∞-rewriteF : ∀ {X} {R : X → X → Set} {l₁ l₂ l₁′ l₂′ : T∞F X (T∞ X)}
-            → NodeEq _≡_ (TreeEq∞ _≡_) l₁ l₂ → NodeEq _≡_ (TreeEq∞ _≡_) l₁′ l₂′ → NodeEq R (TreeEq∞ R) l₂ l₂′
-            → NodeEq R (TreeEq∞ R) l₁ l₁′
-force≈ (≈∞-rewrite e e′ h) = ≈∞-rewriteF (force≈ e) (force≈ e′) (force≈ h)
-≈∞-rewriteF (ret≈∞ refl) (ret≈∞ refl) (ret≈∞ r)  = ret≈∞ r
-≈∞-rewriteF (call≈∞ f)   (call≈∞ f′)  (call≈∞ g) = call≈∞ (λ b → ≈∞-rewrite (f b) (f′ b) (g b))
-≈∞-rewriteF halt≈∞       halt≈∞       halt≈∞     = halt≈∞
-
--- Bisimilar trees with the leaves' relation weakened.
-≈∞-map : ∀ {X} {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {m m′} → TreeEq∞ R m m′ → TreeEq∞ R′ m m′
-≈∞-mapF : ∀ {X} {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {l l′ : T∞F X (T∞ X)}
-        → NodeEq R (TreeEq∞ R) l l′ → NodeEq R′ (TreeEq∞ R′) l l′
-force≈ (≈∞-map f h) = ≈∞-mapF f (force≈ h)
-≈∞-mapF f (ret≈∞ r)  = ret≈∞ (f r)
-≈∞-mapF f (call≈∞ g) = call≈∞ (λ b → ≈∞-map f (g b))
-≈∞-mapF f halt≈∞     = halt≈∞
-
-------------------------------------------------------------------------
--- The monad laws, up to bisimilarity.
-------------------------------------------------------------------------
-
-open import Once.Lang.Iterative using (return∞)
-
+-- Returning, then continuing, is continuing.
 ≈∞-idˡ : ∀ {X Y} (x : X) (k : X → T∞ Y) → TreeEq∞ _≡_ (return∞ x >>=∞ k) (k x)
-force≈ (≈∞-idˡ x k) = ≈∞-reflF (λ _ → refl) (force (k x))
-
-≈∞-idʳ : ∀ {X} (m : T∞ X) → TreeEq∞ _≡_ (m >>=∞ return∞) m
-≈∞-idʳF : ∀ {X} (l : T∞F X (T∞ X)) → NodeEq _≡_ (TreeEq∞ _≡_) (bind∞F l return∞) l
-force≈ (≈∞-idʳ m) = ≈∞-idʳF (force m)
-≈∞-idʳF (ret∞ x)      = ret≈∞ refl
-≈∞-idʳF (call∞ o a k) = call≈∞ (λ b → ≈∞-idʳ (k b))
-≈∞-idʳF (halt∞ o a)   = halt≈∞
-
-≈∞-assoc : ∀ {X Y Z} (m : T∞ X) (f : X → T∞ Y) (g : Y → T∞ Z)
-         → TreeEq∞ _≡_ ((m >>=∞ f) >>=∞ g) (m >>=∞ λ x → f x >>=∞ g)
-≈∞-assocF : ∀ {X Y Z} (l : T∞F X (T∞ X)) (f : X → T∞ Y) (g : Y → T∞ Z)
-          → NodeEq _≡_ (TreeEq∞ _≡_) (bind∞F (bind∞F l f) g) (bind∞F l λ x → f x >>=∞ g)
-force≈ (≈∞-assoc m f g) = ≈∞-assocF (force m) f g
-≈∞-assocF (ret∞ x)      f g = ≈∞-reflF (λ _ → refl) (bind∞F (force (f x)) g)
-≈∞-assocF (call∞ o a k) f g = call≈∞ (λ b → ≈∞-assoc (k b) f g)
-≈∞-assocF (halt∞ o a)   f g = halt≈∞
+force≈ (≈∞-idˡ x k) = ≈∞-reflB (λ _ → refl) (force (k x))
 
 ------------------------------------------------------------------------
--- A tree of `T∞` against a FINITE tree (the IR's, which is `T` until the
--- compiler runs forever too, plan 0.117 G): the same nodes, read off the
--- finite side, the leaves related by `R`. Inductive on the finite tree.
+-- A run against a FINITE tree (the IR's, which is `T` until the compiler
+-- runs forever too): the same calls, read off the finite side, and the
+-- results related by `R`; the run may take finitely many silent steps on the
+-- way (a loop's rounds that call nothing). Inductive, so an endless silent
+-- run is related to no finite tree.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
+data RelB {X Y : Set} (R : X → Y → Set) : T (X ⊎ T∞ X) → T Y → Set where
+  b-ret  : ∀ {x y} → R x y → RelB R (ret (inj₁ x)) (ret y)
+  b-tau  : ∀ {m t} → RelB R (force m) t → RelB R (ret (inj₂ m)) t
+  b-call : ∀ {o a k} {k′ : _ → T Y} → (∀ b → RelB R (k b) (k′ b)) → RelB R (call o a k) (call o a k′)
+  b-halt : ∀ {o a} → RelB R (halt o a) (halt o a)
 
-data RelT∞′ {X Y : Set} (R : X → Y → Set) : T∞ X → T Y → Set where
-  rel∞-ret  : ∀ {m x y} → force m ≡ ret∞ x → R x y → RelT∞′ R m (ret y)
-  rel∞-call : ∀ {m o a k} {k′ : _ → T Y} → force m ≡ call∞ o a k
-            → (∀ b → RelT∞′ R (k b) (k′ b)) → RelT∞′ R m (call o a k′)
-  rel∞-halt : ∀ {m o a} → force m ≡ halt∞ o a → RelT∞′ R m (halt o a)
+-- A run's relation is its first block's (a record, so the run is read off its type).
+record RelT∞′ {X Y : Set} (R : X → Y → Set) (m : T∞ X) (t : T Y) : Set where
+  constructor rel∞
+  field block : RelB R (force m) t
+open RelT∞′ public
 
--- Only the root's node matters.
-RelT∞′-force : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {t : T Y}
-             → force m ≡ force m′ → RelT∞′ R m′ t → RelT∞′ R m t
-RelT∞′-force e (rel∞-ret e′ r)  = rel∞-ret (trans e e′) r
-RelT∞′-force e (rel∞-call e′ h) = rel∞-call (trans e e′) h
-RelT∞′-force e (rel∞-halt e′)   = rel∞-halt (trans e e′)
+rel∞-ret : ∀ {X Y} {R : X → Y → Set} {x y} → R x y → RelT∞′ R (return∞ x) (ret y)
+rel∞-ret r = rel∞ (b-ret r)
+
+RelB-bind : ∀ {X Y X′ Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {l : T (X ⊎ T∞ X)} {t : T X′}
+              {k : X → T∞ Y} {g : X′ → T Y′}
+          → RelB R l t → (∀ {a b} → R a b → RelT∞′ R′ (k a) (g b))
+          → RelB R′ (bindBlock l k) (t >>=T g)
+RelB-bind (b-ret r)  c = block (c r)
+RelB-bind (b-tau h)  c = b-tau (RelB-bind h c)
+RelB-bind (b-call h) c = b-call (λ b → RelB-bind (h b) c)
+RelB-bind b-halt     c = b-halt
 
 RelT∞′-bind : ∀ {X Y X′ Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {m : T∞ X} {t : T X′}
                 {k : X → T∞ Y} {g : X′ → T Y′}
             → RelT∞′ R m t → (∀ {a b} → R a b → RelT∞′ R′ (k a) (g b))
             → RelT∞′ R′ (m >>=∞ k) (t >>=T g)
-RelT∞′-bind {m = m} {k = k} (rel∞-ret e r) c = RelT∞′-force (cong (λ l → bind∞F l k) e) (c r)
-RelT∞′-bind {m = m} {k = k} (rel∞-call e h) c =
-  rel∞-call (cong (λ l → bind∞F l k) e) (λ b → RelT∞′-bind (h b) c)
-RelT∞′-bind {m = m} {k = k} (rel∞-halt e) c = rel∞-halt (cong (λ l → bind∞F l k) e)
+RelT∞′-bind (rel∞ r) c = rel∞ (RelB-bind r c)
 
--- Bisimilar trees are related to the same finite tree.
-open import Data.Product using (Σ-syntax; _×_; _,_)
-
-private
-  ret-node : ∀ {X} {Q : T∞ X → T∞ X → Set} {l l′ : T∞F X (T∞ X)} {x}
-           → NodeEq _≡_ Q l l′ → l′ ≡ ret∞ x → l ≡ ret∞ x
-  ret-node (ret≈∞ refl) refl = refl
-
-  call-node : ∀ {X} {Q : T∞ X → T∞ X → Set} {l l′ : T∞F X (T∞ X)} {o a} {k : _ → T∞ X}
-            → NodeEq _≡_ Q l l′ → l′ ≡ call∞ o a k → Σ[ k₀ ∈ (_ → T∞ X) ] (l ≡ call∞ o a k₀ × (∀ b → Q (k₀ b) (k b)))
-  call-node (call≈∞ f) refl = _ , refl , f
-
-  halt-node : ∀ {X} {Q : T∞ X → T∞ X → Set} {l l′ : T∞F X (T∞ X)} {o a}
-            → NodeEq _≡_ Q l l′ → l′ ≡ halt∞ o a → l ≡ halt∞ o a
-  halt-node halt≈∞ refl = refl
+-- Bisimilar runs are related to the same finite tree.
+RelB-≈ : ∀ {X Y} {R : X → Y → Set} {l l′ : T (X ⊎ T∞ X)} {t : T Y}
+       → BlockEq (StepEq _≡_ (TreeEq∞ _≡_)) l l′ → RelB R l′ t → RelB R l t
+RelB-≈ (ret≈ (done≈ refl)) (b-ret r)  = b-ret r
+RelB-≈ (ret≈ (next≈ e))    (b-tau h)  = b-tau (RelB-≈ (force≈ e) h)
+RelB-≈ (call≈ f)           (b-call h) = b-call (λ b → RelB-≈ (f b) (h b))
+RelB-≈ halt≈               b-halt     = b-halt
 
 RelT∞′-≈ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {t : T Y}
          → TreeEq∞ _≡_ m m′ → RelT∞′ R m′ t → RelT∞′ R m t
-RelT∞′-≈call : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {o a} {k : _ → T∞ X} {k′ : _ → T Y}
-             → Σ[ k₀ ∈ (_ → T∞ X) ] (force m ≡ call∞ o a k₀ × (∀ b → TreeEq∞ _≡_ (k₀ b) (k b)))
-             → (∀ b → RelT∞′ R (k b) (k′ b)) → RelT∞′ R m (call o a k′)
-RelT∞′-≈ h (rel∞-ret e r)   = rel∞-ret (ret-node (force≈ h) e) r
-RelT∞′-≈ h (rel∞-call e hs) = RelT∞′-≈call (call-node (force≈ h) e) hs
-RelT∞′-≈ h (rel∞-halt e)    = rel∞-halt (halt-node (force≈ h) e)
-RelT∞′-≈call (k₀ , e , f) hs = rel∞-call e (λ b → RelT∞′-≈ (f b) (hs b))
+RelT∞′-≈ e (rel∞ r) = rel∞ (RelB-≈ (force≈ e) r)
 
--- A tree of `T∞` related to a finite tree makes the same calls under any
--- interpretation: its first `n` events are the finite run's.
-RelT∞′-events : ∀ {X Y} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) {m : T∞ X} {t : T Y}
-              → RelT∞′ R m t → ∀ n → events∞ ι h m n ≡ take n (proj₁ (run ι h t))
-RelT∞′-events-call : ∀ {X Y} {R : X → Y → Set} (ι : Interp) (h : List SigOpEvent) o a
-                       {k : _ → T∞ X} {k′ : _ → T Y} → (∀ b → RelT∞′ R (k b) (k′ b)) → (r : Maybe _) → ∀ n
-                   → eventsC ι h o a k r n ≡ take (suc n) (proj₁ (run-call ι h o a k′ r))
-RelT∞′-events ι h r zero = refl
-RelT∞′-events ι h (rel∞-ret e _) (suc n) rewrite e = refl
-RelT∞′-events ι h (rel∞-halt e)  (suc zero) rewrite e = refl
-RelT∞′-events ι h (rel∞-halt e)  (suc (suc n)) rewrite e = refl
-RelT∞′-events ι h (rel∞-call {o = o} {a = a} e hk) (suc n) rewrite e = RelT∞′-events-call ι h o a hk (callAnswer ι h o a) n
-RelT∞′-events-call ι h o a hk (just b) n = cong (callEvent o a ∷_) (RelT∞′-events ι (h ++ [ callEvent o a ]) (hk b) n)
-RelT∞′-events-call ι h o a hk nothing  zero    = refl
-RelT∞′-events-call ι h o a hk nothing  (suc n) = refl
+-- A finite tree's embedding is related to whatever the tree is related to.
+RelB-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelB R (embedBlock m) t
+RelB-embed (rel-ret r)  = b-ret r
+RelB-embed (rel-call h) = b-call (λ b → RelB-embed (h b))
+RelB-embed rel-halt     = b-halt
 
--- The observation is well-defined on bisimilarity classes (D201): bisimilar
--- trees make the same events at every depth.
-events∞-≈  : ∀ {X} (ι : Interp) (h : List SigOpEvent) {m m′ : T∞ X} → TreeEq∞ _≡_ m m′ → ∀ n → events∞ ι h m n ≡ events∞ ι h m′ n
-events∞-≈F : ∀ {X} (ι : Interp) (h : List SigOpEvent) {l l′ : T∞F X (T∞ X)} → NodeEq _≡_ (TreeEq∞ _≡_) l l′ → ∀ n → eventsF ι h l n ≡ eventsF ι h l′ n
-events∞-≈C : ∀ {X} (ι : Interp) (h : List SigOpEvent) o a {k k′ : _ → T∞ X} → (∀ b → TreeEq∞ _≡_ (k b) (k′ b))
-           → (r : Maybe _) → ∀ n → eventsC ι h o a k r n ≡ eventsC ι h o a k′ r n
-events∞-≈ ι h e zero    = refl
-events∞-≈ ι h e (suc n) = events∞-≈F ι h (force≈ e) n
-events∞-≈F ι h (ret≈∞ refl) n = refl
-events∞-≈F ι h halt≈∞ n = refl
-events∞-≈F ι h (call≈∞ {o = o} {a = a} f) n = events∞-≈C ι h o a f (callAnswer ι h o a) n
-events∞-≈C ι h o a f (just b) n = cong (callEvent o a ∷_) (events∞-≈ ι (h ++ [ callEvent o a ]) (f b) n)
-events∞-≈C ι h o a f nothing  n = refl
-
--- A finite relation, embedded.
 RelT∞′-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelT∞′ R (embed m) t
-RelT∞′-embed (rel-ret r)  = rel∞-ret refl r
-RelT∞′-embed (rel-call h) = rel∞-call refl (λ b → RelT∞′-embed (h b))
-RelT∞′-embed rel-halt     = rel∞-halt refl
-
-------------------------------------------------------------------------
--- THE OBSERVABLE IS A PREFIX FAMILY (D058, D179) for every tree of `T∞`:
--- observing one event further appends, the `n`-th observation has at most `n`
--- events, and one that has not filled its budget is finished. With no silent
--- node each observation is computed by recursion on `n` alone — so a server's
--- behaviour is defined at every depth, exactly as a returning program's.
-------------------------------------------------------------------------
-
-open import Data.Nat using (_≤_; _<_; z≤n; s≤s)
-open import Data.List using (length)
-open import Data.Product using (∃-syntax; _,_; proj₂)
-open import Once.Lang.Trace using (PrefixFamily; prefixFamily)
-
-events∞-bnd : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) n → length (events∞ ι h m n) ≤ n
-eventsF-bnd : ∀ {X} (ι : Interp) (h : List SigOpEvent) (l : T∞F X (T∞ X)) n → length (eventsF ι h l n) ≤ suc n
-eventsC-bnd : ∀ {X} (ι : Interp) h o a (k : _ → T∞ X) (r : Maybe _) n → length (eventsC ι h o a k r n) ≤ suc n
-events∞-bnd ι h m zero    = z≤n
-events∞-bnd ι h m (suc n) = eventsF-bnd ι h (force m) n
-eventsF-bnd ι h (ret∞ x)      n = z≤n
-eventsF-bnd ι h (halt∞ o a)   n = s≤s z≤n
-eventsF-bnd ι h (call∞ o a k) n = eventsC-bnd ι h o a k (callAnswer ι h o a) n
-eventsC-bnd ι h o a k (just b) n = s≤s (events∞-bnd ι (h ++ [ callEvent o a ]) (k b) n)
-eventsC-bnd ι h o a k nothing  n = s≤s z≤n
-
-events∞-coh : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) n
-            → ∃[ rest ] (events∞ ι h m (suc n) ≡ events∞ ι h m n ++ rest)
-eventsF-coh : ∀ {X} (ι : Interp) (h : List SigOpEvent) (l : T∞F X (T∞ X)) n
-            → ∃[ rest ] (eventsF ι h l (suc n) ≡ eventsF ι h l n ++ rest)
-eventsC-coh : ∀ {X} (ι : Interp) h o a (k : _ → T∞ X) (r : Maybe _) n
-            → ∃[ rest ] (eventsC ι h o a k r (suc n) ≡ eventsC ι h o a k r n ++ rest)
-events∞-coh ι h m zero    = _ , refl
-events∞-coh ι h m (suc n) = eventsF-coh ι h (force m) n
-eventsF-coh ι h (ret∞ x)      n = [] , refl
-eventsF-coh ι h (halt∞ o a)   n = [] , refl
-eventsF-coh ι h (call∞ o a k) n = eventsC-coh ι h o a k (callAnswer ι h o a) n
-eventsC-coh ι h o a k (just b) n =
-  proj₁ ih , cong (callEvent o a ∷_) (proj₂ ih)
-  where ih = events∞-coh ι (h ++ [ callEvent o a ]) (k b) n
-eventsC-coh ι h o a k nothing  n = [] , refl
-
-events∞-sat : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) n
-            → length (events∞ ι h m n) < n → events∞ ι h m (suc n) ≡ events∞ ι h m n
-eventsF-sat : ∀ {X} (ι : Interp) (h : List SigOpEvent) (l : T∞F X (T∞ X)) n
-            → length (eventsF ι h l n) < suc n → eventsF ι h l (suc n) ≡ eventsF ι h l n
-eventsC-sat : ∀ {X} (ι : Interp) h o a (k : _ → T∞ X) (r : Maybe _) n
-            → length (eventsC ι h o a k r n) < suc n → eventsC ι h o a k r (suc n) ≡ eventsC ι h o a k r n
-events∞-sat ι h m zero    ()
-events∞-sat ι h m (suc n) lt = eventsF-sat ι h (force m) n lt
-eventsF-sat ι h (ret∞ x)      n lt = refl
-eventsF-sat ι h (halt∞ o a)   n lt = refl
-eventsF-sat ι h (call∞ o a k) n lt = eventsC-sat ι h o a k (callAnswer ι h o a) n lt
-eventsC-sat ι h o a k (just b) n (s≤s lt) =
-  cong (callEvent o a ∷_) (events∞-sat ι (h ++ [ callEvent o a ]) (k b) n lt)
-eventsC-sat ι h o a k nothing  n lt = refl
-
-events∞-pf : ∀ {X} (ι : Interp) (h : List SigOpEvent) (m : T∞ X) → PrefixFamily (events∞ ι h m)
-events∞-pf ι h m = prefixFamily (events∞-bnd ι h m) (events∞-sat ι h m) (events∞-coh ι h m)
+RelT∞′-embed r = rel∞ (RelB-embed r)

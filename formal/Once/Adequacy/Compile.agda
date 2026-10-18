@@ -55,10 +55,9 @@ open import Once.Lang.Core.Telescope using (runCore)
 import Data.Unit
 open import Once.Lang.Trace using (PrefixFamily)
 open Once.Lang.Trace.PrefixFamily using (bnd; sat; coh)
-open import Once.Denotation.TraceMonadInfLaws using (events∞-pf)
 
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Lang.Core.Telescope using (runProgram; Program; program)
+open import Once.Lang.Core.Telescope using (Program; program)
 open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; ⟦_⟧IR; ⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 import Once.IR as IR
@@ -493,13 +492,11 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- D253: THE APEX MEANS THE CORE, and `main` is an entry like any other. A
   -- typed module IS a core program (`Spec.Core.Translate.toProgram`): every
   -- definition typed once, a reference meaning its entry, and the program
-  -- running its `main` entry (`runProgram`). Plan 0.105 (D257, D061): it runs
+  -- running its `main` entry (`runCore`). Plan 0.105 (D257, D061): it runs
   -- with an implementation `I` of the signatures the module is compiled
   -- against. The compiled program's `main` is the call of that entry, so the
-  -- telescope walk's per-entry invariant at `main` is the equation of the two
-  -- runs (`CoreBridge.program-core`), in the world those signatures and `I`
-  -- make. The trace family IS the core run, and its three laws (D179) are the
-  -- core run's own (`runProgram-pf`).
+  -- telescope walk's per-entry invariant at `main` relates the two runs
+  -- (`CoreBridge.program-core-tr`), in the world those signatures and `I` make.
   -- D320: the meaning is the core run's TRACE, in the world the module's
   -- signatures and `I` make — its calls, and how it ended.
   ⟦_⟧ᵈᴵ : Arch → (tp : Typed) → Impl (sigOfT tp) → Tr Data.Unit.⊤

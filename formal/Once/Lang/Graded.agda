@@ -18,7 +18,7 @@
 --
 -- `μ` and `ν` payloads are first-order (`WellFormedF` puts `K` only at base
 -- types), so no graded arrow occurs inside them: `μ` is `Val`'s data as in
--- `⟦_⟧ᴰ`, an effectful `ν` is `ν∞` (its layers are trees of `T∞`), and a pure `ν` is plain codata
+-- `⟦_⟧ᴰ`, an acting `ν` is `νᵈ` (its layers are trees of `T`), and a pure `ν` is plain codata
 -- (`νᵖ`, the final coalgebra in Set).
 ------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ open import Once.Lang.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Lang.FunctorMeaning using (translateF)
 open import Once.Lang.Trace using (T; returnT; _>>=T_; fmapT)
 open import Once.Lang.Stream using (νᵈ)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; ν∞; TreeEq∞)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; TreeEq∞)
 
 ------------------------------------------------------------------------
 -- The grade's monad.

@@ -119,7 +119,7 @@ open import Once.Lang.Polynomial using (⟦_⟧SF)
 open import Once.SigOp.Info using (semP; int-prim; mk-info')
 open import Once.Lang.Trace using (FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
-open import Once.Lang.Iterative using (TreeEq∞; ret≈∞; call≈∞; halt≈∞; return∞; embed)
+open import Once.Lang.Iterative using (TreeEq∞; ret≈; done≈; return∞; embed)
 open Once.Lang.Iterative.TreeEq∞ using (force≈)
 open import Once.Lang.Type using (isVoid?; isUnit?)
 import Once.Semantics.Machine as Val
@@ -340,7 +340,7 @@ val-rel ι s bC x p (no ¬p)  = ⊥-elim (¬p p)
 -- IR's call, embedded (the same decisions on the codomain).
 private
   ret-emb : ∀ {X} (x : X) → TreeEq∞ _≡_ (return∞ x) (embed (TM.ret x))
-  force≈ (ret-emb x) = ret≈∞ refl
+  force≈ (ret-emb x) = ret≈ (done≈ refl)
 
 
 -- …and so, mapped into the two value domains, related to it.
@@ -640,11 +640,11 @@ mutual
   RelGM-sub : ∀ {π π′ B B′} (g : π ⊑π π′) (b : B <: B′) {m : M π ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ}
             → RelGM π B m t → RelGM π′ B′ (subM g (fmapM π ⟦ b ⟧<:ᵛ m)) (fmapT ⟦ b ⟧<: t)
   RelGM-sub ⊑-pure b r = RelGT-sub b r
-  RelGM-sub ⊑-eff  b r = RelT∞′-bind r (λ rr → rel∞-ret refl (RelGV-sub b rr))
+  RelGM-sub ⊑-eff  b r = RelT∞′-bind r (λ rr → rel∞-ret (RelGV-sub b rr))
   RelGM-sub ⊑-act  b r = RelGT-sub b r
   RelGM-sub ⊑-pa   b r = RelGT-sub b r
   RelGM-sub ⊑-ae   b r = RelT∞′-embed (RelGT-sub b r)
-  RelGM-sub ⊑-pe   b (rel-ret rr) = rel∞-ret refl (RelGV-sub b rr)
+  RelGM-sub ⊑-pe   b (rel-ret rr) = rel∞-ret (RelGV-sub b rr)
 
 ------------------------------------------------------------------------
 -- Plan 0.103 phase 1c: the two DEFINITIONS environments related, entry by

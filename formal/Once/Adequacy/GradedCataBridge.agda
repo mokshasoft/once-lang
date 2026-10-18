@@ -91,14 +91,14 @@ seqF-relᵖ (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
 -- A layer of possibly infinite trees against a layer of finite ones (D311).
 seqF∞-rel : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set) {l : ⟦ G ⟧F (T∞ X)} {r : ⟦ G ⟧F (T Y)}
           → RelF G (RelT∞′ R) l r → RelT∞′ (RelF G R) (seqF∞ G l) (seqF G r)
-seqF∞-rel (K A)   R eq  = rel∞-ret refl eq
+seqF∞-rel (K A)   R eq  = rel∞-ret eq
 seqF∞-rel Id      R rel = rel
-seqF∞-rel (G ⊕ H) R {inj₁ x} {inj₁ y} rel = RelT∞′-bind (seqF∞-rel G R rel) (λ z → rel∞-ret refl z)
-seqF∞-rel (G ⊕ H) R {inj₂ x} {inj₂ y} rel = RelT∞′-bind (seqF∞-rel H R rel) (λ z → rel∞-ret refl z)
+seqF∞-rel (G ⊕ H) R {inj₁ x} {inj₁ y} rel = RelT∞′-bind (seqF∞-rel G R rel) (λ z → rel∞-ret z)
+seqF∞-rel (G ⊕ H) R {inj₂ x} {inj₂ y} rel = RelT∞′-bind (seqF∞-rel H R rel) (λ z → rel∞-ret z)
 seqF∞-rel (G ⊕ H) R {inj₁ _} {inj₂ _} ()
 seqF∞-rel (G ⊕ H) R {inj₂ _} {inj₁ _} ()
 seqF∞-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
-  RelT∞′-bind (seqF∞-rel G R rG) (λ ru → RelT∞′-bind (seqF∞-rel H R rH) (λ rv → rel∞-ret refl (ru , rv)))
+  RelT∞′-bind (seqF∞-rel G R rG) (λ ru → RelT∞′-bind (seqF∞-rel H R rH) (λ rv → rel∞-ret (ru , rv)))
 
 -- The algebra step at each grade.
 alg-step : ∀ {π : Purity} (u : pure ⊑π π) {F} {A : Type} (wfF : WellFormedF F)

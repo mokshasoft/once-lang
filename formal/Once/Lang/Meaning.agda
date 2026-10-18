@@ -30,7 +30,7 @@
 --   * PLAN 0.103 6a — THE PROGRAM MEANING IS THE CORE'S. A typed module IS a
 --     core program (`Once.Lang.Core.Translate.toProgram`: the module telescope,
 --     every definition typed once, a reference meaning its entry — D239, D243,
---     D246), and its meaning is `Once.Lang.Core.Telescope.runProgram`: its
+--     D246), and its meaning is `Once.Lang.Core.Telescope.runCore`: its
 --     `main` entry — an entry like any other (D253) — run in the telescope's
 --     environment. (The surface direct meaning
 --     `MainMeaning.meaningᵈ` is retired: it could not give a polymorphic
@@ -82,6 +82,6 @@ open import Once.Lang.GradedOps public
 open import Once.Lang.Core.Meaning public
   using ( ⟦_⟧ )
 open import Once.Lang.Core.Telescope public
-  using ( Program ; program ; runProgram ; Tele ; teleSem )
+  using ( Program ; program ; Tele ; teleSem )
 open import Once.Lang.Core.Translate public
   using ( toProgram ; toProgram₀ )

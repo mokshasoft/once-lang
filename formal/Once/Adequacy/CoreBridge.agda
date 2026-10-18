@@ -5,15 +5,15 @@
 -- Once.Adequacy.CoreBridge — plan 0.103 phase 6a: THE APEX MEANS THE CORE.
 --
 -- A typed module IS a core program (6c, `Spec.Core.Translate.toProgram`), and
--- its meaning is the core's (`Telescope.runProgram`): every definition typed
+-- its meaning is the core's (`Telescope.runCore`): every definition typed
 -- once, a reference meaning the entry (D239, D243, D246), and the program
 -- running its `main` entry (D253). This module proves the link between it and
 -- the compiled chain:
 --
 --   exec ≋ IR program (codegen)                      — proved (backend)
---        ≋ core `runProgram (typedProgram tp)`         — `program-core` (below)
+--        ≋ core `runCore (typedProgram tp)`            — `program-core-tr` (below)
 --
--- `program-core` is the telescope walk (`TeleWalk` over `ModTele`): each
+-- `program-core-tr` is the telescope walk (`TeleWalk` over `ModTele`): each
 -- compiled table entry means its core entry, by induction on the telescope
 -- (the 6b meaning bridge, clause by clause, at the telescope's environments;
 -- each linked telescope reference means the entry's instance, 6e). `main` is
@@ -44,7 +44,7 @@ open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Lang.Contract using (ISig; Impl)
 open import Once.Lang.Trace using (Interp; interp; pureHalf)
 open import Once.Lang.Program using (Typed)
-open import Once.Lang.Core.Telescope using (Program; runProgram; runCore)
+open import Once.Lang.Core.Telescope using (Program; runCore)
 import Once.Lang.Core.Translate as TR
 import Once.Lang.Core.Telescope as Tele
 import Once.Lang.Core.PolyTyping as PT
@@ -113,46 +113,6 @@ implFor tp I = subst Impl (sym (typed-sig tp)) I
 -- A world built from a transported implementation is the same world.
 interp-subst : ∀ {Σ₁ Σ₂ : ISig} (e : Σ₁ ≡ Σ₂) (I : Impl Σ₂) → interp Σ₁ (subst Impl (sym e) I) ≡ interp Σ₂ I
 interp-subst refl I = refl
-
-private
-  -- The compiled program's run, in a world.
-  runIRAt : Interp → List IRFun → ℕ → List SigOpEvent
-  runIRAt ι′ tbl n = projTrace ι′ (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) mainCall tt) n
-
-  core-ef : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-              {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
-            → (b : FB.FunBundle C.emptyCScope es) (I : Impl (moduleSig-ef ef)) (n : ℕ)
-            → runIRAt (interp (moduleSig-ef ef) I) (tableOf-go (FB.bundle→compiled b) []) n
-              ≡ runProgram fmt (typedProgram-ef m ef mt hvm) (subst Impl (sym (typed-sig-ef m ef mt)) I) n
-  core-ef m .(inj₂ _) mt (_ , mi) refl dist b I n =
-    trans (cong (λ ι′ → runIRAt ι′ (tableOf-go (FB.bundle→compiled b) []) n) (sym (interp-subst (teleSig≡entrySig mt) I)))
-          (TWm.agree-events (tableOf-go (FB.bundle→compiled b) []) (TR.toProgram Tele.[] TR.[] TR.[] TR.[] (λ ()) mt mi (λ k → k))
-             (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _)) n)
-    where
-      I′ = subst Impl (sym (teleSig≡entrySig mt)) I
-      module TWm = TW fmt (teleSig mt) I′
-      inv₀ : TWI.Inv fmt (teleSig mt) I′ C.emptyCScope Tele.[] TR.[] TR.[] TR.[] []
-      inv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
-
-------------------------------------------------------------------------
--- THE LINK: the compiled program means the core program.
-------------------------------------------------------------------------
-
--- Plan 0.105: for EVERY implementation `I` of the module's signatures: the
--- compiled program run in the world they make, and the core program run with `I`.
-program-core :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (I : Impl (moduleSig m))
-    (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) (n : ℕ)
-  → at (⟦ just (irProgram (moduleTable m) ir) ⟧IR fmt (interp (moduleSig m) I)) n
-    ≡ runProgram fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I) n
-program-core m mt hvm I ir mi n with FB.program-node m ir mi
-... | es , ef , b , ceq =
-  trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)
-        (core-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b I n)
-  where
-    ι = interp (moduleSig m) I
-    ir≡ : ir ≡ mainCall
-    ir≡ = FB.bundle-find-call b (trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi))
 
 ------------------------------------------------------------------------
 -- D320: THE SAME LINK, AS TRACES — calls and how each run ended. The walk's

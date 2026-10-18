@@ -43,9 +43,9 @@ open import Once.Adequacy.GradedRelation fmt
   using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; prjB-rel; module _∼ᵖᵈ_)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open import Once.Lang.Trace using (rel-call; rel-halt)
-open import Once.Lang.Iterative using (T∞; fmap∞; return∞; _>>=∞_; ana∞; anaTree∞; anaLayer∞; mapAna∞)
+open import Once.Lang.Iterative using (T∞; fmap∞; return∞; _>>=∞_)
 open Once.Lang.Iterative.T∞ using (force)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; rel∞-call; rel∞-halt; RelT∞′-bind; RelT∞′-≈)
+open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; RelT∞′-bind; RelT∞′-≈)
 open import Once.Lang.Trace using (call; halt)
 
 ------------------------------------------------------------------------

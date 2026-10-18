@@ -12,10 +12,10 @@
 --   * a pair componentwise, a sum by its side and its content;
 --   * an arrow by its results at arguments that are the same (at every depth);
 --   * a computation by its events, in order, and its result, to every finite
---     DEPTH `n`: its first `n` nodes — the same call with the same argument,
+--     DEPTH `n`: its first `n` blocks — the same call with the same argument,
 --     and equivalent continuations at every answer; or the same halt; or
---     equivalent results. Every grade's computation is read as a tree of the
---     completely iterative monad (`toT∞`, D311, D312), so a computation that
+--     equivalent results, or a next block. Every grade's computation is read
+--     as a run of the resumption monad (`toT∞`, D317), so a computation that
 --     runs forever is observed as one that returns: by its finite prefixes;
 --   * a stream (`ν`) to every finite DEPTH `n`: its first `n` layers.
 -- A meaning at `ν` is codata, so `≡` cannot compare two streams that behave
@@ -35,9 +35,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many)
 open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.Lang.Meaning using (T; M; ⟦_⟧ᵛ; toT∞)
-open import Once.Lang.Iterative using (T∞; NodeEq; ν∞)
+open import Once.Lang.Iterative using (T∞; StepEq)
 open Once.Lang.Iterative.T∞ using (force)
-open Once.Lang.Iterative.ν∞ using (force∞)
 open import Once.Lang.Trace using (ret; call; halt)
 open import Once.Lang.Graded using (νᵖ; module νᵖ)
 open import Once.Lang.Stream using (νᵈ; module νᵈ)
@@ -54,10 +53,10 @@ data TreeEq {X : Set} (R : X → X → Set) : T X → T X → Set where
   call≈ : ∀ {o a k k′} → (∀ b → TreeEq R (k b) (k′ b)) → TreeEq R (call o a k) (call o a k′)
   halt≈ : ∀ {o a} → TreeEq R (halt o a) (halt o a)
 
--- A tree of the completely iterative monad to depth `n`: its first `n` nodes.
+-- A run to depth `n`: its first `n` blocks, step by step.
 TreeEqN : ∀ {X : Set} → ℕ → (X → X → Set) → T∞ X → T∞ X → Set
 TreeEqN zero    R _ _  = ⊤
-TreeEqN (suc n) R m m′ = NodeEq R (TreeEqN n R) (force m) (force m′)
+TreeEqN (suc n) R m m′ = TreeEq (StepEq R (TreeEqN n R)) (force m) (force m′)
 
 ------------------------------------------------------------------------
 -- One layer of a stream: its constant parts (base values) equal, its
@@ -82,10 +81,6 @@ LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′
 νᵈ-upto H zero    _ _ = ⊤
 νᵈ-upto H (suc n) v w = TreeEq (LayerEq H (νᵈ-upto H n)) (forceᵈ v) (forceᵈ w)
 
-
-ν∞-upto : ∀ (H : SFunctor) → ℕ → ν∞ H → ν∞ H → Set
-ν∞-upto H zero    _ _ = ⊤
-ν∞-upto H (suc n) v w = TreeEqN (suc n) (LayerEq H (ν∞-upto H n)) (force∞ v) (force∞ w)
 
 ------------------------------------------------------------------------
 -- Values and computations of a type, observed to depth `n`.
