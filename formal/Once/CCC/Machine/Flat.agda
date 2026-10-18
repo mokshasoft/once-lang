@@ -954,6 +954,9 @@ module FlatMachine {FS : FrameSemantics} where
   -- does (the heap register is a target's concern; the abstract heap starts at
   -- its base by construction).
   flat-exec-instr (instr-ctrl (c-start b))               _    fs = do-thunk b fs
+  -- D320: the program leaves — the run is over, and over by the Host's `leave`.
+  flat-exec-instr (instr-ctrl c-leave)                   _    fs =
+    record fs { floc = record (floc fs) { halted = true ; left = true } }
   -- D245: a direct call enters the named function, as a closure call enters
   -- the body its closure names.
   flat-exec-instr (instr-ctrl (c-call-fn f))             prog fs = do-call-at (find-fn prog f) fs
@@ -1050,6 +1053,13 @@ module FlatMachine {FS : FrameSemantics} where
                             (record fs' { fpc = suc (fpc fs') })
   shifted-label d fs fs' (lo , al , pc , rt , lk , cl) =
     lo , al , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk , cl
+
+  -- D320: leaving changes only the location's two flags, alike on both sides.
+  shifted-leave : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
+                → Shifted d (record fs { floc = record (floc fs) { halted = true ; left = true } })
+                            (record fs' { floc = record (floc fs') { halted = true ; left = true } })
+  shifted-leave d fs fs' (lo , al , pc , rt , lk , cl) =
+    cong (λ L → record L { halted = true ; left = true }) lo , al , pc , rt , lk , cl
 
   shifted-thunk : ∀ (d b : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
                 → Shifted d (do-thunk b fs) (do-thunk b fs')
@@ -1217,6 +1227,7 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-ctrl (c-label _))               t₁ t₂ fs fs' _  _  sh = shifted-label d fs fs' sh
   shifted-instr d (instr-ctrl (c-entry _ b))             t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
   shifted-instr d (instr-ctrl (c-start b))               t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
+  shifted-instr d (instr-ctrl c-leave)                   t₁ t₂ fs fs' _  _  sh = shifted-leave d fs fs' sh
   shifted-instr d (instr-ctrl (c-call-fn f))             t₁ t₂ fs fs' _  fe sh =
     shifted-call-at d (find-fn (t₁ ++ t₂) f) (find-fn t₂ f) fs fs' sh (fe (e-fn f))
   shifted-instr d (instr-ctrl (c-ret _))                 t₁ t₂ fs fs' _  _  sh = shifted-ret d fs fs' sh
@@ -1271,6 +1282,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-label _))               t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-entry _ _))             t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-start _))               t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl c-leave)                   t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-call-fn _))             t t' fs ()
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-ret _))                 t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-jmp _))                 t t' fs ()
@@ -1353,6 +1365,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (instr-ctrl (c-label _))   t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-entry _ _)) t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-start _))   t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl c-leave)     t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-call-fn f)) t₁ t₂ fs _  fe =
     cong (λ mj → do-call-at mj fs) (fe (e-fn f))
   flat-exec-instr-prefix (instr-ctrl (c-ret _))     t₁ t₂ fs _  _  = refl
@@ -1428,6 +1441,7 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (instr-ctrl (c-label _))               = fv-pres (λ _ _ → refl)
   flinkView (instr-ctrl (c-entry ℓ bb))            = fv-thunk ℓ bb refl
   flinkView (instr-ctrl (c-start bb))              = fv-start bb refl
+  flinkView (instr-ctrl c-leave)                   = fv-pres (λ _ _ → refl)
   flinkView (instr-ctrl (c-call-fn f))             = fv-call-fn f refl
   flinkView (instr-ctrl (c-ret b))                 = fv-pres (λ _ fs → flink-do-ret (fret fs) fs)
   flinkView (instr-ctrl (c-jmp n))                 = fv-pres (λ prog fs → flink-do-jump (find-label prog n) fs)

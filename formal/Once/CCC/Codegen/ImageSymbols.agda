@@ -14,7 +14,8 @@
 -- file's well-formedness becomes a property of the image.
 --
 -- A `c-label` or a `c-entry` DEFINES a symbol; a jump, a branch, a direct call,
--- a code address, a SigOp call, and `_start`'s heap register REFERENCE one.
+-- a code address, a SigOp call, `_start`'s heap register and the Host's `leave`
+-- (D320) REFERENCE one.
 ------------------------------------------------------------------------
 
 module Once.CCC.Codegen.ImageSymbols where
@@ -30,7 +31,8 @@ open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; FlatCtrl;
          instr-ctrl; instr-sigop; instr-load-code-addr;
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-ret;
-         c-call-fn; c-start)
+         c-call-fn; c-start; c-leave)
+open import Once.Target.SymbolFresh using (host-leave-symbol)
 
 -- The runtime's one datum: the `.bss` heap `_start` points the heap register at.
 heap-symbol : String
@@ -45,6 +47,7 @@ ctrl-defs (c-branch-tag-zero _)     = []
 ctrl-defs (c-ret _)                 = []
 ctrl-defs (c-call-fn _)             = []
 ctrl-defs (c-start _)               = []
+ctrl-defs c-leave                   = []
 
 ctrl-refs : FlatCtrl → List String
 ctrl-refs (c-jmp n)                 = labelSym (once n) ∷ []
@@ -52,6 +55,8 @@ ctrl-refs (c-branch-scratch-zero n) = labelSym (once n) ∷ []
 ctrl-refs (c-branch-tag-zero n)     = labelSym (once n) ∷ []
 ctrl-refs (c-call-fn f)             = labelSym (callee (e-fn f)) ∷ []
 ctrl-refs (c-start _)               = heap-symbol ∷ []
+-- D320: the Host's `leave`.
+ctrl-refs c-leave                   = host-leave-symbol ∷ []
 ctrl-refs (c-label _)               = []
 ctrl-refs (c-entry _ _)             = []
 ctrl-refs (c-ret _)                 = []

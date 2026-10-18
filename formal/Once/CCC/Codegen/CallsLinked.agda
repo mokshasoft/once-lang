@@ -361,6 +361,6 @@ calls-blocks (Cata {F} _ alg) n l la = calls-blocks alg 0 l la
 ir-to-trace-lab-calls : ∀ {A B} (ir : IR A B) (l : ℕ) → Linked σ tbl ir → CLTrace (ir-to-trace-lab l ir)
 ir-to-trace-lab-calls ir l lk = ++⁺ (calls-trace' ir 0 l lk) (tt ∷ calls-blocks ir 0 l lk)
 
--- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
-ir-to-trace-top-calls : ∀ {A B} (ir : IR A B) (d : LabelId) → Linked σ tbl ir → CLTrace (link-top d (ir-to-unit ir))
-ir-to-trace-top-calls ir d lk = ++⁺ (calls-trace' ir 0 0 lk) (tt ∷ tt ∷ calls-blocks ir 0 0 lk)
+-- …and the OUTERMOST unit, linked with the program's leave (D320).
+ir-to-trace-top-calls : ∀ {A B} (ir : IR A B) → Linked σ tbl ir → CLTrace (link-top (ir-to-unit ir))
+ir-to-trace-top-calls ir lk = ++⁺ (calls-trace' ir 0 0 lk) (tt ∷ calls-blocks ir 0 0 lk)

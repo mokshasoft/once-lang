@@ -45,6 +45,8 @@ open import Data.Sum using (_⊎_)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Internal; External; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
+open import Once.Target.SymbolFresh using (host-leave-symbol; leave≢osp)
+open import Once.CCC.Machine.FlatLeft using (LeftFree; module LeftPres)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Lang.Event using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
@@ -167,14 +169,17 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     -- per-arch start lemma covers on its own; no step returns there
     -- (`RunWF.run-step-pc-pos`).
     inv-started : fpc fs ≡ 0 → ⊥
+    -- D320: the run has not left — `left` is set only by `c-leave`, after
+    -- which the machine is halted and the induction stops.
+    inv-left    : LocState.left (floc fs) ≡ false
 open FlatInv
 
 -- One flat step preserves it: each component by its own flat-machine theorem
 -- (no per-block-step obligation), and the run context by `reach-step`.
 flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-              → fetch prog (fpc fs) ≡ just i → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just i → halted (floc fs) ≡ false → LeftFree i
               → FlatInv ev env prog fs → FlatInv ev env prog (flat-exec-instr i prog fs)
-flat-inv-step i prog fs ftq h inv = record
+flat-inv-step i prog fs ftq h lf inv = record
   { inv-wf      = flat-wf-step i prog fs (inv-wf inv)
   ; inv-closure = cl-step i prog fs (inv-wf inv) (inv-closure inv)
   ; inv-regtag  = flat-regtag-step i prog fs (inv-regtag inv)
@@ -184,6 +189,7 @@ flat-inv-step i prog fs ftq h inv = record
                           (run-linked (inv-run inv))
                           (reach-step i fs (run-reach (inv-run inv)) ftq h)
   ; inv-started = run-step-pc-pos prog fs i (inv-run inv) ftq
+  ; inv-left    = trans (LeftPres.flat-exec-instr-left i lf prog fs) (inv-left inv)
   }
 
 ------------------------------------------------------------------------
@@ -299,6 +305,22 @@ sigop-concrete-fetch prog fs s si cc ftq =
          (mfetch-zero (sigop-call (once-symbol-path (SigOpInfo.name si)))
                       (compile-trace (drop (suc (fpc fs)) prog))))))))
 
+-- D320: …and at the program's LEAVE, its one call of the Host's symbol.
+leave-concrete-fetch : ∀ {hv : HeapView} prog fs s
+                     → CompiledCorr hv prog fs s
+                     → fetch prog (fpc fs) ≡ just (instr-ctrl c-leave)
+                     → mfetch (compile-trace prog) (xpc s) ≡ just (sigop-call host-leave-symbol)
+leave-concrete-fetch prog fs s cc ftq =
+  trans (cong (mfetch (compile-trace prog)) (pc-off cc))
+  (trans (fetch-drop (compile-trace prog) (blk-off prog (fpc fs)))
+  (trans (cong (λ z → mfetch z 0) (drop-compile prog (fpc fs)))
+  (trans (cong (λ z → mfetch (compile-trace z) 0)
+               (fetch-just-drop prog (fpc fs) (instr-ctrl c-leave) ftq))
+  (trans (cong (λ z → mfetch z 0) (ct-cons (instr-ctrl c-leave) (drop (suc (fpc fs)) prog)))
+  (trans (cong (λ z → mfetch (z ++ compile-trace (drop (suc (fpc fs)) prog)) 0) leave-lowering)
+         (mfetch-zero (sigop-call host-leave-symbol)
+                      (compile-trace (drop (suc (fpc fs)) prog))))))))
+
 -- ARITH (Pure) SigOp: the emitted call is fetched, matched, and dispatched to
 -- the arith block with NO event — mirroring `flat-events`' [] for a Pure SigOp.
 sigop-run-arith : ∀ {hv : HeapView} ev env lg n prog fs s {A B} (si : SigOpInfo A B) (pl : Payload)
@@ -314,6 +336,7 @@ sigop-run-arith ev env lg n prog fs s si pl cc h ftq env-eq =
     (trans (CFC.halt-eq (dataCorr cc)) h)
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
+    (λ q → leave≢osp (SigOpInfo.name si) (sym q))
     env-eq
 
 -- EXTERNAL SigOp: the same fetch and match, but the env has no block for the
@@ -334,6 +357,7 @@ sigop-run-external ev env lg n prog fs s si cc h ftq env-eq =
     (trans (CFC.halt-eq (dataCorr cc)) h)
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
+    (λ q → leave≢osp (SigOpInfo.name si) (sym q))
     env-eq
 
 -- A Pure SigOp emits no event (the extractor's Pure branch is []).
@@ -419,19 +443,20 @@ record StuckSteps : Set₁ where
 -- comes out of the concrete machine" IS the correspondence at this branch.
 stuck-result : ∀ ev env lg n prog fs s (i : AbstractInstr)
              → halted (floc (flat-exec-instr i prog fs)) ≡ true
+             → LocState.left (floc (flat-exec-instr i prog fs)) ≡ false
              → event-of i fs ≡ []
              → StuckAt ev env (compile-trace prog) s
              → Σ ℕ (λ M → RT.run-events ev env lg M (compile-trace prog) s
                    ≡ event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs))
 -- (At no fuel the flat side shows nothing yet, and neither does the concrete
 -- one at none; with fuel, both have stopped.)
-stuck-result ev env lg zero    prog fs s i hpost ev-eq st =
+stuck-result ev env lg zero    prog fs s i hpost lpost ev-eq st =
   0 , sym (cong (_▹ flat-events zero prog (flat-exec-instr i prog fs)) ev-eq)
-stuck-result ev env lg (suc n) prog fs s i hpost ev-eq st =
+stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
   proj₁ (st lg) , trans (proj₂ (st lg)) (sym (trans (cong (_▹ flat-events (suc n) prog (flat-exec-instr i prog fs)) ev-eq)
-                           (flat-stop n (flat-exec-instr i prog fs) hpost)))
-  where flat-stop : ∀ n fs′ → halted (floc fs′) ≡ true → flat-events (suc n) prog fs′ ≡ stop
-        flat-stop n fs′ h rewrite h = refl
+                           (flat-stop n (flat-exec-instr i prog fs) hpost lpost)))
+  where flat-stop : ∀ n fs′ → halted (floc fs′) ≡ true → LocState.left (floc fs′) ≡ false → flat-events (suc n) prog fs′ ≡ stop
+        flat-stop n fs′ h l rewrite h | l = refl
 
 ------------------------------------------------------------------------
 -- THE WHOLE SUPPLY, in one record — what an ARCH hands the dispatch.

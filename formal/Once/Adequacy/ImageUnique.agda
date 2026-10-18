@@ -94,6 +94,7 @@ idefs (instr-ctrl (c-branch-tag-zero _)) = refl
 idefs (instr-ctrl (c-ret _)) = refl
 idefs (instr-ctrl (c-call-fn _)) = refl
 idefs (instr-ctrl (c-start _)) = refl
+idefs (instr-ctrl c-leave) = refl
 idefs mov-to-output = refl
 idefs mov-to-input = refl
 idefs load-indirect = refl
@@ -136,6 +137,7 @@ idefl (instr-ctrl (c-branch-tag-zero _)) = []
 idefl (instr-ctrl (c-ret _)) = []
 idefl (instr-ctrl (c-call-fn _)) = []
 idefl (instr-ctrl (c-start _)) = []
+idefl (instr-ctrl c-leave) = []
 idefl mov-to-output = []
 idefl mov-to-input = []
 idefl load-indirect = []
@@ -178,6 +180,7 @@ ileft (instr-ctrl (c-branch-tag-zero _)) = refl
 ileft (instr-ctrl (c-ret _)) = refl
 ileft (instr-ctrl (c-call-fn _)) = refl
 ileft (instr-ctrl (c-start _)) = refl
+ileft (instr-ctrl c-leave) = refl
 ileft mov-to-output = refl
 ileft mov-to-input = refl
 ileft load-indirect = refl
@@ -219,6 +222,7 @@ iright (instr-ctrl (c-branch-tag-zero _)) = refl
 iright (instr-ctrl (c-ret _)) = refl
 iright (instr-ctrl (c-call-fn _)) = refl
 iright (instr-ctrl (c-start _)) = refl
+iright (instr-ctrl c-leave) = refl
 iright mov-to-output = refl
 iright mov-to-input = refl
 iright load-indirect = refl
@@ -328,7 +332,7 @@ open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n)
 open import Once.Denotation.Program using (IRFun; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fname)
-open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; top-done; program-image)
+open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; program-image)
 open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; fresh-above; clabs-++; nf)
 import Once.CCC.Codegen.CLabelsUnique as CLU
 import Once.CCC.Codegen.IRToTrace as IT
@@ -379,7 +383,7 @@ fns-fdefs l (e ∷ es) =
     fdefs-++ []       y = refl
     fdefs-++ (i ∷ is) y = trans (cong (fdef-of i ++_) (fdefs-++ is y)) (sym (++-assoc (fdef-of i) (fdefs is) (fdefs y)))
 
--- the program image: `_start`, `main`'s unit ending in the silent stop, the table
+-- the program image: `_start`, `main`'s unit ending in the leave (D320), the table
 image-cl : ∀ (o : CanonicalName) (q : IRProgram) → Dst (clabs (program-image o q))
 image-cl o q =
   subst Dst (sym eq)
@@ -392,21 +396,20 @@ image-cl o q =
     wT = proj₁ (proj₂ F) ; wB = proj₂ (proj₂ F)
     TL = CLU.TL o (main q) 0 0
     BL = CLU.BL o (main q) 0 0
-    dM : Dst (TL ++ (nM ∷ BL))
-    dM = dst-++ dT (fresh-above ≤-refl wB ∷ dB)
-           (Data.List.Relation.Unary.All.zipWith (λ (p , q′) → p ∷ q′)
-             (Data.List.Relation.Unary.All.map (λ {x} w eq → Data.Nat.Properties.<⇒≢ (proj₂ w) eq) wT , jTB))
-    wM : Win 0 (suc nM) (TL ++ (nM ∷ BL))
-    wM = All-++⁺ (win-weaken ≤-refl (n≤1+n nM) wT)
-                 ((Data.Nat.z≤n , n<1+n nM) ∷ win-weaken ≤-refl (n≤1+n nM) wB)
+    -- D320: the leave defines no label, so `main`'s unit is its trace's and
+    -- its blocks', as a function's is.
+    dM : Dst (TL ++ BL)
+    dM = CLU.frag-dst o (main q) 0 0
+    wM : Win 0 (suc nM) (TL ++ BL)
+    wM = All-++⁺ (win-weaken ≤-refl (n≤1+n nM) wT) (win-weaken ≤-refl (n≤1+n nM) wB)
     FS = fns-cl (suc nM) (table q)
-    eq : clabs (program-image o q) ≡ (TL ++ (nM ∷ BL)) ++ clabs (fns-image (suc nM) (table q))
-    eq = trans (clabs-++ (link-top (top-done o q) (IT.ir-to-unit o (main q))) _)
+    eq : clabs (program-image o q) ≡ (TL ++ BL) ++ clabs (fns-image (suc nM) (table q))
+    eq = trans (clabs-++ (link-top (IT.ir-to-unit o (main q))) _)
                (cong (_++ clabs (fns-image (suc nM) (table q))) (clabs-++ (LSc.trace-of o X) _))
 
 image-fdefs : ∀ (o : CanonicalName) (q : IRProgram) → fdefs (program-image o q) ≡ Data.List.map fname (table q)
 image-fdefs o q =
-  trans (fdefs-++′ (link-top (top-done o q) (IT.ir-to-unit o (main q))) _)
+  trans (fdefs-++′ (link-top (IT.ir-to-unit o (main q))) _)
         (cong (_++ fdefs (fns-image (suc (IT.ir-next-label o 0 (main q))) (table q)))
               (nf (LSc.trace-of o X) _ (proj₁ (CLU.frag-nf o (main q) 0 0)) (proj₂ (CLU.frag-nf o (main q) 0 0)))
          ∙ fns-fdefs (suc (IT.ir-next-label o 0 (main q))) (table q))
@@ -510,6 +513,7 @@ open import Once.Target.Symbol using (once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective
   using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; toList-mangle; ValidIdentChars)
 open import Once.CCC.Codegen.ImageSymbols using (heap-symbol)
+open import Once.Target.SymbolFresh using (letter≢osp)
 
 private
   hd : List Char → Char
@@ -531,59 +535,10 @@ private
   hd≢ : ∀ {s t : String} {a b : Char} → shd s ≡ a → shd t ≡ b → a ≢ b → s ≢ t
   hd≢ hs ht a≢b refl = a≢b (trans (sym hs) ht)
 
-  -- the decimal length prefix is never empty
-  map-nil : ∀ {A B : Set} (f : A → B) (xs : List A) → Data.List.map f xs ≡ [] → xs ≡ []
-  map-nil f []       _  = refl
-  map-nil f (_ ∷ _)  ()
 
-  cib-ne : ∀ (n : ℕ) → charsInBase 10 n ≢ []
-  cib-ne Data.Nat.zero    ()
-  cib-ne (Data.Nat.suc k) eq =
-    0≢s (trans (sym (cong Data.Digit.fromDigits ds≡[])) (proj₂ (toDigits 10 (Data.Nat.suc k))))
-    where
-      ds = proj₁ (toDigits 10 (Data.Nat.suc k))
-      rds≡[] : reverse ds ≡ []
-      rds≡[] = map-nil _ (reverse ds) eq
-      ds≡[] : ds ≡ []
-      ds≡[] = trans (sym (Data.List.Properties.reverse-involutive ds)) (cong reverse rds≡[])
-      0≢s : ∀ {m} → 0 ≢ Data.Nat.suc m
-      0≢s ()
-
-  cib-head-digit : ∀ (n : ℕ) (rest : List Char) → isDigit (hd (charsInBase 10 n ++ rest)) ≡ true
-  cib-head-digit n rest = go (charsInBase 10 n) refl (charsInBase-all-digits n)
-    where
-      go : ∀ (cs : List Char) → charsInBase 10 n ≡ cs → All (λ c → isDigit c ≡ true) cs → isDigit (hd (cs ++ rest)) ≡ true
-      go []      e _       = ⊥-elim (cib-ne n e)
-      go (c ∷ _) e (d ∷ _) = d
-
--- the heap is no canonical name's symbol
+-- the heap is no canonical name's symbol (`SymbolFresh`: the prefix, then a letter)
 heap≢osp : ∀ (cn : CanonicalName) → heap-symbol ≢ once-symbol-path cn
-heap≢osp cn eq = body (Once.Spec.Name.CanonicalName.parts cn) (trans (cong toList eq) (toList-osp cn))
-  where
-    toList-osp : ∀ (cn : CanonicalName) → toList (once-symbol-path cn)
-               ≡ 'o' ∷ 'n' ∷ 'c' ∷ 'e' ∷ '_' ∷ toList (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts cn)))
-    toList-osp cn = toList-++ once-prefix (join-us (Data.List.map mangle-component (Once.Spec.Name.CanonicalName.parts cn)))
-    body : ∀ (ps : List String) → toList heap-symbol ≡ 'o' ∷ 'n' ∷ 'c' ∷ 'e' ∷ '_' ∷ toList (join-us (Data.List.map mangle-component ps)) → ⊥
-    body [] ()
-    body (p ∷ ps) e = false≢true (trans (cong (λ z → isDigit (hd z)) (peel e)) (digitRHS ps))
-      where
-        ∷-inj : ∀ {a b : Char} {as bs : List Char} → a ∷ as ≡ b ∷ bs → as ≡ bs
-        ∷-inj refl = refl
-        peel : toList heap-symbol ≡ 'o' ∷ 'n' ∷ 'c' ∷ 'e' ∷ '_' ∷ toList (join-us (Data.List.map mangle-component (p ∷ ps)))
-             → toList "heap_base" ≡ toList (join-us (Data.List.map mangle-component (p ∷ ps)))
-        peel e = ∷-inj (∷-inj (∷-inj (∷-inj (∷-inj e))))
-        false≢true : false ≡ true → ⊥
-        false≢true ()
-        L = Data.List.length (zencL (toList p))
-        mangle-shape : toList (mangle-component p) ≡ charsInBase 10 L ++ zencL (toList p)
-        mangle-shape = toList-mangle p
-        digitRHS : ∀ (qs : List String) → isDigit (hd (toList (join-us (Data.List.map mangle-component (p ∷ qs))))) ≡ true
-        digitRHS []       = subst (λ z → isDigit (hd z) ≡ true) (sym mangle-shape) (cib-head-digit L (zencL (toList p)))
-        digitRHS (q ∷ qs) =
-          subst (λ z → isDigit (hd z) ≡ true)
-                (sym (trans (toList-++ (mangle-component p) R) (trans (cong (_++ toList R) mangle-shape) (++-assoc (charsInBase 10 L) _ (toList R)))))
-                (cib-head-digit L _)
-          where R = "_" ++ˢ join-us (Data.List.map mangle-component (q ∷ qs))
+heap≢osp = letter≢osp heap-symbol 'h' (toList "eap_base") refl refl
 
 -- an identifier's symbol is no arith block's (a block name has a `.`)
 own≢block : ∀ (x d : String) → ValidIdent x → once-symbol-own x ≢ once-symbol-own ("arith.block." ++ˢ d)

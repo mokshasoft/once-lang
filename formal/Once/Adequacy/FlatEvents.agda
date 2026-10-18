@@ -55,7 +55,7 @@ import Once.CCC.Machine.SMCore as SMC
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; proj₁)
-open import Once.Lang.Out using (Out; cut; stop; _▹_; ▹-assoc)
+open import Once.Lang.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}
@@ -79,7 +79,8 @@ module FlatEventTrace {FS : FrameSemantics} where
 
   -- The SigOp-event trace, mirroring `exec-flat`'s fuel/fetch dispatch.
   -- D320: the calls AND how the run ended (`Once.Lang.Out`): a halted machine
-  -- and a pc off the code end it (`halted`); running out of fuel says nothing.
+  -- ends it — `returned` if it left by the Host's `leave` (`c-leave`), `halted`
+  -- otherwise — and so does a pc off the code; running out of fuel says nothing.
   flat-events       : ℕ → AbstractTrace → FlatState → Out
   flat-events-step  : Bool → ℕ → AbstractTrace → FlatState → Out
   flat-events-fetch : Maybe AbstractInstr → ℕ → AbstractTrace → FlatState → Out
@@ -87,7 +88,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   flat-events zero    _    fs = cut
   flat-events (suc n) prog fs = flat-events-step (halted (floc fs)) n prog fs
 
-  flat-events-step true  _ _    fs = stop
+  flat-events-step true  _ _    fs = ended (end-of-left (LocState.left (floc fs)))
   flat-events-step false n prog fs = flat-events-fetch (fetch prog (fpc fs)) n prog fs
 
   flat-events-fetch nothing  _ _    fs = stop

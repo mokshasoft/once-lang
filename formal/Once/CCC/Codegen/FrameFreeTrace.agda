@@ -436,12 +436,12 @@ ir-to-trace-lab-frame-free ir hm l =
   ++⁺ (frame-free-trace' ir hm 0 l)
       (tt ∷ frame-free-blocks _ (frame-free-blocks' ir hm 0 l))
 
--- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
-ir-to-trace-top-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (d : LabelId)
-                           → FrameFreeTrace (link-top d (ir-to-unit ir))
-ir-to-trace-top-frame-free ir hm d =
+-- …and the OUTERMOST unit, linked with the program's leave (D320).
+ir-to-trace-top-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir)
+                           → FrameFreeTrace (link-top (ir-to-unit ir))
+ir-to-trace-top-frame-free ir hm =
   ++⁺ (frame-free-trace' ir hm 0 0)
-      (tt ∷ tt ∷ frame-free-blocks _ (frame-free-blocks' ir hm 0 0))
+      (tt ∷ frame-free-blocks _ (frame-free-blocks' ir hm 0 0))
 
 -- (`ir-to-trace-frame-free-deep` is GONE with the flip: `FrameFreeT` is the
 -- SEMANTIC predicate and an emitted trace no longer satisfies it — the markers

@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using ()
 open import Once.CCC.Machine.SMCore
-  using (readReg; Scratch; AbstractInstr; AbstractTrace; LocState; StoredValue; SV-Tag; SV-Ptr; SV-Lit; SV-Code; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret; load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; instr-loop; instr-case-on-tag; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc; lea-slot; lea-indexed; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; module MemOps; module AbstractExec; AllocState; module AllocState; module LocState)
+  using (readReg; Scratch; AbstractInstr; AbstractTrace; LocState; StoredValue; SV-Tag; SV-Ptr; SV-Lit; SV-Code; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-leave; c-call-fn; c-ret; load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; instr-loop; instr-case-on-tag; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc; lea-slot; lea-indexed; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; module MemOps; module AbstractExec; AllocState; module AllocState; module LocState)
 open AllocState using (next-slot; current-frame)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.Locations using (AtStack)
@@ -177,6 +177,7 @@ module CataNextSlot {FS : FrameSemantics} where
   -- update, so its side is `refl`).
   flat-keeps-next-slot prog fs (instr-ctrl (c-entry _ b)) _ = refl
   flat-keeps-next-slot prog fs (instr-ctrl (c-start b)) _ = refl
+  flat-keeps-next-slot prog fs (instr-ctrl c-leave) _ = refl
   flat-keeps-next-slot prog fs (instr-ctrl (c-ret b)) _
     with fret fs
   ... | []     = leave-frame-next-slot (falloc fs)

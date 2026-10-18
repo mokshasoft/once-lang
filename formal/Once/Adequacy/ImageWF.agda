@@ -44,7 +44,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.NodesOK using (SigLeaves; sigop-syms)
-open import Once.Compile using (moduleToIR; moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; block-syms; calls-of; externs-of; is-extern?)
+open import Once.Compile using (moduleToIR; moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; block-syms; calls-of; externs-of; prog-externs; is-extern?)
 open import Once.Parser.Module using ()
 open import Once.Parser.Module.Core using (Module)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
@@ -72,10 +72,11 @@ lib-defs m = heap-symbol ∷ adefs (lib-image (moduleTable m)) ++ block-syms (li
 Resolved : List String → List String → List String → Set
 Resolved defs ext refs = All (λ s → s ∈ defs ⊎ s ∈ ext) refs
 
--- What a program's SigOp may name: a symbol its file defines (its blocks), or an
--- interpretation symbol it calls (D274).
+-- What a program's code may name: a symbol its file defines (its blocks), or a
+-- symbol it calls that is defined elsewhere — an interpretation's (D274) or the
+-- Host's `leave` (D320).
 ProgG : Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → String → Set
-ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ externs-of (irProgram (moduleTable m) ir)
+ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ prog-externs (irProgram (moduleTable m) ir)
 
 ProgP : Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → ∀ {A B} → SigOpInfo A B → Set
 ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
@@ -99,7 +100,7 @@ private
       p = irProgram (moduleTable m) ir
       split : ∀ s → s ∈ calls-of (rewrite-program p) → _ → ProgG m ir s
       split s s∈ (yes b) = inj₁ (there (there (∈-++⁺ʳ (adefs (image-of p)) b)))
-      split s s∈ (no nb) = inj₂ (∈-filter⁺ (is-extern? p) s∈ nb)
+      split s s∈ (no nb) = inj₂ (there (∈-filter⁺ (is-extern? p) s∈ nb))
 
   table-ok : ∀ {G : String → Set} (es : List IRFun)
            → All G (Data.List.concatMap (λ e → leaf-syms (fbody e)) es)

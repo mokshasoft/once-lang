@@ -111,6 +111,7 @@ flat-same-frames : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatStat
                  → FrameFreeI i
                  → SameFrames (flat-exec-instr i prog fs) fs
 flat-same-frames (instr-ctrl (c-label m))               prog fs ff = mkSameFrames refl refl refl
+flat-same-frames (instr-ctrl c-leave)                   prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-ctrl (c-thunk m b))             prog fs ()
 flat-same-frames (instr-ctrl (c-ret b))                 prog fs ()
 flat-same-frames (instr-ctrl (c-jmp m))                 prog fs ff = sf-jump (find-label prog m) fs

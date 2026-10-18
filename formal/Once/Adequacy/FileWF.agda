@@ -43,7 +43,7 @@ open import Once.Adequacy.EmitFile using (file-is-emit; file-is-lib)
 open import Once.Adequacy.ImageWF
   using (prog-defs; lib-defs; Resolved)
 open import Once.Adequacy.ImageUnique using (prog-unique; lib-unique)
-open import Once.Adequacy.ImageValid using (prog-defs-valid; lib-defs-valid; externs-valid)
+open import Once.Adequacy.ImageValid using (prog-defs-valid; lib-defs-valid; externs-valid; prog-externs-valid)
 open import Once.Adequacy.ImageResolved using (prog-resolved; lib-resolved)
 open import Once.CCC.Codegen.ImageSymbols using (arefs)
 open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
@@ -86,7 +86,7 @@ module X8664W where
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
-    ; externs-valid = externs-valid (irProgram (C.moduleTable m) ir)
+    ; externs-valid = prog-externs-valid (irProgram (C.moduleTable m) ir)
     }
     where
       p = irProgram (C.moduleTable m) ir
@@ -142,7 +142,7 @@ module X8632W where
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
-    ; externs-valid = externs-valid (irProgram (C.moduleTable m) ir)
+    ; externs-valid = prog-externs-valid (irProgram (C.moduleTable m) ir)
     }
     where
       p = irProgram (C.moduleTable m) ir
@@ -198,7 +198,7 @@ module RiscV64W where
     ; resolved     = resolved-at defs≡ refs≡ (prog-resolved m ir mi)
     ; entry-in     = s≤s z≤n
     ; defs-valid    = subst (All AsmSym) (sym defs≡) (prog-defs-valid (irProgram (C.moduleTable m) ir))
-    ; externs-valid = externs-valid (irProgram (C.moduleTable m) ir)
+    ; externs-valid = prog-externs-valid (irProgram (C.moduleTable m) ir)
     }
     where
       p = irProgram (C.moduleTable m) ir

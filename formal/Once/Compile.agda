@@ -46,6 +46,7 @@ open import Once.IR
 open import Once.IRTy using (Unit; ⌊_⌋)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Target.Symbol using (once-symbol-path; once-symbol-own)
+open import Once.Target.SymbolFresh using (host-leave-symbol)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms)
 open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_; _∈_ to _∈ˢ_)
 open import Relation.Nullary.Decidable.Core using (¬?)
@@ -629,6 +630,10 @@ is-extern? p s = ¬? (s ∈ˢ? block-syms (program-blocks p))
 externs-of : IRProgram → List String
 externs-of p = DL.filter (is-extern? p) (calls-of (rewrite-program p))
 
+-- D320: a PROGRAM also calls the Host's `leave` (`c-leave`); a library does not.
+prog-externs : IRProgram → List String
+prog-externs p = host-leave-symbol ∷ externs-of p
+
 -- The entry unit's owner: a name no definition can have (an identifier cannot
 -- start with a digit), so its labels and symbol cannot clash.
 entry-owner : CanonicalName
@@ -637,8 +642,9 @@ entry-owner = bare "0entry"
 ------------------------------------------------------------------------
 -- The per-arch file: `code` IS the lowered program image, and `_start` is its
 -- first instruction — the image's `c-start` (the heap register, the outermost
--- frame); `main`'s unit ends in a silent stop. No syscall, no hand-written
--- runtime: the same on bare metal and under an OS (plan 0.107 §2½).
+-- frame); `main`'s unit ends where the program leaves — a call of the Host's
+-- `leave` (D320). No syscall, no hand-written runtime: what ending a run means
+-- is the Host's, linked beside the program, on bare metal as under an OS.
 ------------------------------------------------------------------------
 
 FileOf : Arch → Set
@@ -662,7 +668,7 @@ blocks-x86-64 p =
 
 emit-x86-64 : IRProgram → X64F.Image
 emit-x86-64 p =
-  X64F.mkImage (proj₂ (X64L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-64 p) (externs-of p)
+  X64F.mkImage (proj₂ (X64L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-64 p) (prog-externs p)
 
 -- the file's arith blocks: the program's, by symbol, once each
 blocks-x86-32 : IRProgram → List (String × X32F.Payload)
@@ -672,7 +678,7 @@ blocks-x86-32 p =
 
 emit-x86-32 : IRProgram → X32F.Image
 emit-x86-32 p =
-  X32F.mkImage (proj₂ (X32L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-32 p) (externs-of p)
+  X32F.mkImage (proj₂ (X32L.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-x86-32 p) (prog-externs p)
 
 -- the file's arith blocks: the program's, by symbol, once each
 blocks-riscv64 : IRProgram → List (String × RVF.Payload)
@@ -682,7 +688,7 @@ blocks-riscv64 p =
 
 emit-riscv64 : IRProgram → RVF.Image
 emit-riscv64 p =
-  RVF.mkImage (proj₂ (RVL.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-riscv64 p) (externs-of p)
+  RVF.mkImage (proj₂ (RVL.compile-trace-cnt entry-owner 0 (image-of p))) (just 0) (blocks-riscv64 p) (prog-externs p)
 
 emitProgram : (arch : Arch) → IRProgram → FileOf arch
 emitProgram x86-64  = emit-x86-64

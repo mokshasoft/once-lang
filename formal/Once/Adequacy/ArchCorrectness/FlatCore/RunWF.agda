@@ -96,7 +96,7 @@ open SlotBelow using (below)
 import Once.CCC.Codegen.SlotBudget as SB
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
-open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next; top-done)
+open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
 import Once.CCC.Codegen.CallsLinked as CLk
 open import Once.CCC.Codegen.CallOK using (CallOKI)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
@@ -160,7 +160,7 @@ private
   image-calls : ∀ {σ : ISig} (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram σ (irProgram tbl ir)
               → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
   image-calls tbl ir (lm , les) =
-    tt allL∷ ++⁺ (CLk.ir-to-trace-top-calls o tbl ir (top-done o (irProgram tbl ir)) lm) (fns-calls tbl _ tbl les)
+    tt allL∷ ++⁺ (CLk.ir-to-trace-top-calls o tbl ir lm) (fns-calls tbl _ tbl les)
 
   -- a linked call names an entry
   linked-any : ∀ (tbl : List IRFun) {f A B} → LinkedAt tbl f A B → Any (λ e → fname e ≡ f) tbl
@@ -202,7 +202,7 @@ emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CanonicalName) → Run
 emitted-call-fn-resolves prog fs f r ftq =
   ft-go-complete prog (e-fn f) 0
     (subst (Any (λ x → entry-of? x ≡ just (e-fn f))) (sym (run-emit r))
-           (Any++⁺ʳ (instr-ctrl (c-start (ir-stack-budget (run-ir r))) ∷ link-top (top-done o (irProgram (run-tbl r) (run-ir r))) (ir-to-unit (run-ir r))) (entries-in _ (run-tbl r) f (linked-any (run-tbl r) (proj₂ (proj₂ ok))))))
+           (Any++⁺ʳ (instr-ctrl (c-start (ir-stack-budget (run-ir r))) ∷ link-top (ir-to-unit (run-ir r))) (entries-in _ (run-tbl r) f (linked-any (run-tbl r) (proj₂ (proj₂ ok))))))
   where
     ok : CallOKI (run-tbl r) (instr-ctrl (c-call-fn f))
     ok = fetch-All (subst (AllL (CallOKI (run-tbl r))) (sym (run-emit r)) (image-calls (run-tbl r) (run-ir r) (run-linked r))) ftq
@@ -467,6 +467,7 @@ ff→seg-id : ∀ (i : AbstractInstr) → FrameFreeI i → is-id? (seg-action i)
 ff→seg-id (instr-ctrl (c-thunk _ _))          ()
 ff→seg-id (instr-ctrl (c-ret _))              ()
 ff→seg-id (instr-ctrl (c-label _))            _ = refl
+ff→seg-id (instr-ctrl c-leave)            _ = refl
 ff→seg-id (instr-ctrl (c-jmp _))              _ = refl
 ff→seg-id (instr-ctrl (c-branch-scratch-zero _)) _ = refl
 ff→seg-id (instr-ctrl (c-branch-tag-zero _))  _ = refl
@@ -667,6 +668,8 @@ data PcView (i : AbstractInstr) : Set where
   pv-ret   : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-ret bb) → PcView i
   -- plan 0.107: the program's START, which reserves the outermost frame.
   pv-start : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-start bb) → PcView i
+  -- D320: the program's LEAVE, which halts where it stands.
+  pv-leave : i ≡ instr-ctrl c-leave → PcView i
   -- D092: the call is the fifth kind. It moves BOTH stacks and lands the pc on
   -- a body entry, so it is neither frame-free nor a jump.
   pv-call  : i ≡ instr-call-closure → PcView i
@@ -676,6 +679,7 @@ data PcView (i : AbstractInstr) : Set where
 pcView : ∀ (i : AbstractInstr) → ImageI i → PcView i
 pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-ctrl (c-start bb))              _ = pv-start bb refl
+pcView (instr-ctrl c-leave)                   _ = pv-leave refl
 pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
   where go : ∀ prog fs → JumpPost (instr-ctrl (c-jmp m)) m prog fs
         go prog fs = mk (dj-aux (find-label prog m) fs)
@@ -964,6 +968,9 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
                     → seg-step i (seg-at prog (fpc fs'') B₀)
                       ≡ mkSeg bb (cur (seg-at prog (fpc fs'') B₀) ∷ saved (seg-at prog (fpc fs'') B₀))
             step-eq′ refl = refl
+        -- D320: THE LEAVE halts where it stands — frames, pc and returns as they were.
+        step (pv-leave ieq) = subst (λ z → SegWF prog 0 (flat-exec-instr z prog fs'')) (sym ieq)
+                                (mkSegWF (seg-cur ih) (seg-stack ih) (seg-entry ih))
         -- THE RETURN: `leave-frame` restores the caller's count and the pc goes
         -- to the popped return address. That those two BELONG TOGETHER is
         -- exactly `RetMatch`, which is what it was built for.
@@ -1310,6 +1317,7 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
           lab≢start (at-zero q _ (find-label-sound prog m q fq) (trans (sym e) z))
     step (pv-thunk ℓ bb refl) z = z≢s z
     step (pv-start bb refl)   z = z≢s z
+    step (pv-leave refl)      z = unmoved (λ b ()) refl z
     step (pv-ret bb refl) z = go (fret fs) refl (seg-stack (run-seg-wf prog fs r))
       where
         ret≢start : ∀ b → instr-ctrl (c-ret bb) ≡ instr-ctrl (c-start b) → ⊥

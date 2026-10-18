@@ -16,7 +16,8 @@ open import Data.List using (List; []; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Unit using (⊤)
+open import Data.Unit using (⊤; tt)
+open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Lang.Event using (SigOpEvent)
@@ -45,3 +46,9 @@ vs ▹ o = vs ++ proj₁ o , proj₂ o
 -- The run ended with no answer to give back: halted.
 stop : Out
 stop = ended Once.Spec.Trace.halted
+
+-- A halted machine's end, by whether it LEFT (D320: the Host's `leave` ended
+-- the run, which is `returned`) or stopped at a call with no answer or a fault.
+end-of-left : Bool → End ⊤
+end-of-left true  = Once.Spec.Trace.returned tt
+end-of-left false = Once.Spec.Trace.halted

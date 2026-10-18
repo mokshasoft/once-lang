@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rcx; rdi; rbp; rsp; r12; r14; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; ret; jmp; je; label; ud2; Program; slot-size; slots)
+  using (rax; rbx; rcx; rdi; rbp; rsp; r12; r14; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; ud2; Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -36,6 +36,7 @@ open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
+open import Once.Target.SymbolFresh using (host-leave-symbol)
 open import Once.CCC.Label using (once; callee)
 
 ------------------------------------------------------------------------
@@ -269,6 +270,8 @@ compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (r
 -- plan 0.107: `_start` — the heap register at the runtime's `.bss` heap, then
 -- the outermost frame (nothing called the program, so no return to spill).
 compile-abstract (instr-ctrl (c-start b))          = lea r15 (rip+sym "once_heap_base") ∷ sub (reg rsp) (imm (slots b)) ∷ []
+-- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
+compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.
 compile-abstract (instr-ctrl (c-call-fn f))        = call-l (callee (e-fn f)) ∷ []
 compile-abstract (instr-ctrl (c-ret b))            = add (reg rsp) (imm (slots b)) ∷ ret ∷ []

@@ -38,7 +38,7 @@ open import Once.CCC.Label using (callee; e-fn; labelSym)
 open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.SigOp.Compare using (cmp-of)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry; c-label; c-jmp; blocks-layout; link-top)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry; c-leave; blocks-layout; link-top)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; LinkedAt-at)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
@@ -48,14 +48,14 @@ import Once.CCC.Codegen.RefsClosed as RC
 import Once.CCC.Codegen.IRToTrace as IT
 import Once.CCC.Codegen.LabelScope as LS
 import Once.CCC.Codegen.SlotBudget as SB
-open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; top-done)
+open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Compile using (moduleToIR; moduleTable)
 open import Once.Parser.Module using ()
 open import Once.Parser.Module.Core using (Module)
-open import Once.Compile using (externs-of)
+open import Once.Compile using (externs-of; prog-externs)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Lang.Module using (moduleSig)
@@ -136,7 +136,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
   rp  = C.rewrite-program p
   eo  = C.entry-owner
   D   = prog-defs p
-  ext = externs-of (irProgram (moduleTable m) ir)
+  ext = prog-externs (irProgram (moduleTable m) ir)
   img = C.image-of p
 
   G : String → Set
@@ -156,8 +156,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
   X     = IT.ir-to-trace' eo 0 0 main′
   T     = LS.trace-of eo X
   L     = blocks-layout (SB.bodies-of eo X)
-  done  = top-done eo rp
-  LT    = link-top done (IT.ir-to-unit eo main′)
+  LT    = link-top (IT.ir-to-unit eo main′)
   FI    = fns-image (suc (IT.ir-next-label eo 0 main′)) (table rp)
 
   LT⊆ : ∀ {i} → i ∈ LT → i ∈ img
@@ -178,11 +177,12 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
 
     closes-LT : RC.Closes eo G D LT
     closes-LT =
-      RC.closes-++ eo G T (instr-ctrl (c-label done) ∷ instr-ctrl (c-jmp done) ∷ L) (proj₁ cl)
-        (inj₁ (d-img (LT⊆ (∈-++⁺ʳ T (here refl))) (here refl)) ∷ proj₂ cl)
+      RC.closes-++ eo G T (instr-ctrl c-leave ∷ L) (proj₁ cl)
+        -- D320: the leave calls the Host's symbol, an extern of every program
+        (inj₂ (inj₂ (here refl)) ∷ proj₂ cl)
       where
         cl = RC.close eo G main′ 0 0
-               (λ x → d-img (LT⊆ (RC.++-⊆ eo T L (∈-++⁺ˡ) (λ y → ∈-++⁺ʳ T (there (there y))) x)))
+               (λ x → d-img (LT⊆ (RC.++-⊆ eo T L (∈-++⁺ˡ) (λ y → ∈-++⁺ʳ T (there y)) x)))
                (nodes-from G call-G main′ (proj₁ lk) sl-main)
 
     closes-FI : ∀ (l : ℕ) (es : List IRFun)
@@ -207,7 +207,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
 
 -- THE THEOREM (was `ImageWF.prog-resolved`, a postulate).
 prog-resolved : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
-              → Resolved (prog-defs (irProgram (moduleTable m) ir)) (externs-of (irProgram (moduleTable m) ir))
+              → Resolved (prog-defs (irProgram (moduleTable m) ir)) (prog-externs (irProgram (moduleTable m) ir))
                          (arefs (C.image-of (irProgram (moduleTable m) ir)))
 prog-resolved m ir mi = Prog.resolved m ir mi (proj₁ (prog-sigops m ir mi)) (proj₂ (prog-sigops m ir mi))
 

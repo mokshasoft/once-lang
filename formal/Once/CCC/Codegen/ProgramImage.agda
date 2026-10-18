@@ -44,18 +44,13 @@ fns-image : ℕ → List IRFun → AbstractTrace
 fns-image l []       = []
 fns-image l (e ∷ es) = fn-image l e ++ fns-image (fn-next l e) es
 
--- Plan 0.107: the label the program's silent stop jumps to — `main`'s own NEXT
--- label (owner `o`, the index its unit leaves free), so it sits inside `main`'s
--- counter window and the table's entries start one past it.
-top-done : CanonicalName → IRProgram → LabelId
-top-done o p = mkLabelId o [] (IT.ir-next-label o 0 (main p))
-
 -- The whole program: THE START (`c-start`, pc 0: the heap register and the
--- outermost frame), then `main`'s unit (owned by `o`, at counter 0) ending in
--- the silent stop, then the table's entries after the stop's label.
+-- outermost frame), then `main`'s unit (owned by `o`, at counter 0) ending where
+-- the program leaves (`c-leave`, D320), then the table's entries, whose labels
+-- start one past `main`'s window.
 image-body : CanonicalName → IRProgram → AbstractTrace
 image-body o p =
-  link-top (top-done o p) (IT.ir-to-unit o (main p))
+  link-top (IT.ir-to-unit o (main p))
   ++ fns-image (suc (IT.ir-next-label o 0 (main p))) (table p)
 
 program-image : CanonicalName → IRProgram → AbstractTrace

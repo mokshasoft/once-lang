@@ -49,7 +49,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore
 open AllocState using (current-frame; next-heap-ref)
-open LocState using (heapMem; regs; stackMem; halted; ev-log)
+open LocState using (heapMem; regs; stackMem; halted; ev-log; left)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation)
 
@@ -705,8 +705,9 @@ module InstrPrimitives {FS : FrameSemantics} where
     heapMem s₁ ≡ heapMem s₂ →
     halted s₁ ≡ halted s₂ →
     ev-log s₁ ≡ ev-log s₂ →
+    left s₁ ≡ left s₂ →
     s₁ ≡ s₂
-  LocState-eq (mkLocState r₁ sm₁ hm₁ h₁ l₁) (mkLocState r₂ sm₂ hm₂ h₂ l₂) refl refl refl refl refl = refl
+  LocState-eq (mkLocState r₁ sm₁ hm₁ h₁ l₁ e₁) (mkLocState r₂ sm₂ hm₂ h₂ l₂ e₂) refl refl refl refl refl refl = refl
 
   exec-abstract-deterministic : ∀ (i : AbstractInstr) (s₁ s₂ : LocState FS)
     (alloc : AllocState {FS}) →
@@ -723,10 +724,11 @@ module InstrPrimitives {FS : FrameSemantics} where
     heapMem s₁ ≡ heapMem s₂ →
     -- The event logs agree (an answering SigOp reads it)
     ev-log s₁ ≡ ev-log s₂ →
+    left s₁ ≡ left s₂ →
     -- Then results are equal
     proj₁ (exec-abstract i s₁ alloc) ≡ proj₁ (exec-abstract i s₂ alloc)
-  exec-abstract-deterministic i s₁ s₂ alloc regs-eq halted-eq mem-eq stack-eq heap-eq log-eq =
-    cong (λ s → proj₁ (exec-abstract i s alloc)) (LocState-eq s₁ s₂ regs-eq stack-eq heap-eq halted-eq log-eq)
+  exec-abstract-deterministic i s₁ s₂ alloc regs-eq halted-eq mem-eq stack-eq heap-eq log-eq left-eq =
+    cong (λ s → proj₁ (exec-abstract i s alloc)) (LocState-eq s₁ s₂ regs-eq stack-eq heap-eq halted-eq log-eq left-eq)
 
   -- (D) FRAME PRESERVATION
   -- Instructions preserve current-frame (all instructions, no predicate needed!)

@@ -187,6 +187,7 @@ emittable-image (instr-ctrl (c-branch-tag-zero _)) e = e
 emittable-image (instr-ctrl (c-call-fn _)) e = e
 emittable-image (instr-ctrl (c-ret _)) e = e
 emittable-image (instr-ctrl (c-entry _ _)) e = e
+emittable-image (instr-ctrl c-leave) e = e
 emittable-image (instr-ctrl (c-start _)) ()
 
 -- …and the fence is WEAKER, so every consumer that only needs "no fossil"
@@ -205,6 +206,7 @@ frame-free-emittable (instr-ctrl (c-entry _ _)) ()
 frame-free-emittable (instr-ctrl (c-start _)) ()
 frame-free-emittable (instr-ctrl (c-call-fn _)) ()
 frame-free-emittable (instr-ctrl (c-ret _))     ()
+frame-free-emittable (instr-ctrl c-leave)                _ = tt
 frame-free-emittable (instr-ctrl (c-label _))            _ = tt
 frame-free-emittable (instr-ctrl (c-jmp _))              _ = tt
 frame-free-emittable (instr-ctrl (c-branch-scratch-zero _)) _ = tt

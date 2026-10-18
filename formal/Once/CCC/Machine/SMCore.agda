@@ -472,6 +472,10 @@ record LocState (FS : FrameSemantics) : Set where
     -- interpretation's answer GIVEN THE CALLS BEFORE IT, so the machine has to
     -- remember them, as the tree's `run` threads its history.
     ev-log : List SigOpEvent
+    -- D320: the run has LEFT — `main` returned and the Host's `leave` ended
+    -- it. Set by `c-leave` alone (with `halted`): a halted machine that has
+    -- not left halted at a call with no answer or a fault.
+    left : Bool
 
 open LocState
 
@@ -1136,6 +1140,10 @@ data FlatCtrl : Set where
   -- only runtime set-up there is, written in the machine, not beside it.
   -- Nothing calls the program, so unlike `c-entry` it spills no return.
   c-start               : ℕ → FlatCtrl
+  -- D320: THE PROGRAM LEAVES — where `main`'s unit returns, the run ends by the
+  -- Host's `leave` (`enter ; main ; leave`). The compiler never knows the Host:
+  -- every target lowers it to a call of the one fixed symbol the Host defines.
+  c-leave               : FlatCtrl
 
 -- A closure-body entry, the marker's original form (Plan 0.63, D082).
 pattern c-thunk ℓ b = c-entry (e-thunk ℓ) b
@@ -1371,14 +1379,15 @@ blocks-layout-++ (b ∷ bs) cs =
 link : CompUnit → AbstractTrace
 link u = entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ blocks-layout (blocks u)
 
--- Plan 0.107: THE OUTERMOST UNIT, linked. Nothing called the program, so there
--- is nothing to return to: where a body returns, the program STOPS SILENTLY — a
--- jump to itself, which emits nothing, on bare metal as under an OS. (Linked
+-- THE OUTERMOST UNIT, linked. Nothing called the program, so there is nothing
+-- to return to: where a body returns, the program LEAVES (D320) — the Host's
+-- `leave` ends the run, which is observed as `returned`. (Plan 0.107 stopped
+-- silently here, a jump to itself — observed as a run that never ends; linked
 -- with `c-ret`, the model said "halted" while the hardware returned into
 -- whatever word sat on the stack.)
-link-top : LabelId → CompUnit → AbstractTrace
-link-top done u =
-  entry u ++ instr-ctrl (c-label done) ∷ instr-ctrl (c-jmp done) ∷ blocks-layout (blocks u)
+link-top : CompUnit → AbstractTrace
+link-top u =
+  entry u ++ instr-ctrl c-leave ∷ blocks-layout (blocks u)
 
 ------------------------------------------------------------------------
 -- D168 / plan 0.89 Phase D1 — WHERE A BLOCK'S BODY SITS IN THE LINKED IMAGE.

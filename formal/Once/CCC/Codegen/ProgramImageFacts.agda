@@ -32,7 +32,7 @@ open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI; emittable-imag
 open import Once.CCC.Codegen.AllocMin o using (AllocMinI)
 
 open import Once.CCC.Codegen.ShapeTable using (heap-moded)
-open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next; top-done)
+open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
 open import Once.Denotation.Program using (IRFun; irProgram)
 open Once.Denotation.Program.IRFun using (fbody; fname)
 import Once.CCC.Codegen.FrameFreeTrace as FFT
@@ -75,7 +75,7 @@ fns-frame-free l (e ∷ es) =
 body-frame-free : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
                 → All EmittableI (image-body o (irProgram tbl ir))
 body-frame-free tbl ir =
-  ++⁺ (FFT.ir-to-trace-top-frame-free o ir (heap-moded ir) (top-done o (irProgram tbl ir)))
+  ++⁺ (FFT.ir-to-trace-top-frame-free o ir (heap-moded ir))
       (fns-frame-free (suc (IT.ir-next-label o 0 ir)) tbl)
 
 image-frame-free : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
@@ -94,7 +94,7 @@ fns-alloc-min l (e ∷ es) =
 image-alloc-min : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
                 → All AllocMinI (program-image o (irProgram tbl ir))
 image-alloc-min tbl ir =
-  tt ∷ ++⁺ (AM.ir-to-trace-top-alloc-min o ir (top-done o (irProgram tbl ir)))
+  tt ∷ ++⁺ (AM.ir-to-trace-top-alloc-min o ir)
            (fns-alloc-min (suc (IT.ir-next-label o 0 ir)) tbl)
 
 -- …and the SEGMENT in force. `main`'s unit leaves the state where it began
@@ -109,16 +109,15 @@ fns-slots B sv l (e ∷ es) =
                    (fns-slots B sv (fn-next l e) es))
 
 -- Plan 0.107: the run starts OUTSIDE every frame (nothing reserved); the start
--- pushes `main`'s reservation over it, and the stop never pops it.
+-- pushes `main`'s reservation over it, and the leave never pops it.
 image-slots : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
             → AllSeg (mkSeg 0 []) (program-image o (irProgram tbl ir))
 image-slots tbl ir =
   sb-none refl
-  ∷ allseg-++ (SB.ir-slots-below-top o ir d (0 ∷ []))
+  ∷ allseg-++ (SB.ir-slots-below-top o ir (0 ∷ []))
               (subst (λ z → AllSeg z (fns-image (suc (IT.ir-next-label o 0 ir)) tbl))
-                     (sym (SB.ir-seg-fold-top o ir d (0 ∷ [])))
+                     (sym (SB.ir-seg-fold-top o ir (0 ∷ [])))
                      (fns-slots (IT.ir-stack-budget o ir) (0 ∷ []) (suc (IT.ir-next-label o 0 ir)) tbl))
-  where d = top-done o (irProgram tbl ir)
 
 ------------------------------------------------------------------------
 -- A JUMP LANDS IN THE SEGMENT IT LEFT, over the whole image. Each unit's
@@ -154,14 +153,13 @@ image-agree : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
             → SegAgree (program-image o (irProgram tbl ir))
 image-agree tbl ir =
   segagree-pre (instr-ctrl (c-start (IT.ir-stack-budget o ir)) ∷ []) 0 0 (fns-next (suc L) tbl) (refl ∷ [])
-    (++⁺ (ls-weaken ≤-refl (fns-mono (suc L) tbl) (LS.linked-top-labels o ir d refl))
+    (++⁺ (ls-weaken ≤-refl (fns-mono (suc L) tbl) (LS.linked-top-labels o ir))
          (ls-weaken z≤n ≤-refl (fns-labels (suc L) tbl)))
     z≤n
-    (segagree-++ (link-top d (IT.ir-to-unit o ir)) (fns-image (suc L) tbl) 0 (suc L) (fns-next (suc L) tbl)
-                 (LS.linked-top-labels o ir d refl) (fns-labels (suc L) tbl)
-                 (LS.linked-top-agree o ir d refl) (fns-agree (suc L) tbl))
+    (segagree-++ (link-top (IT.ir-to-unit o ir)) (fns-image (suc L) tbl) 0 (suc L) (fns-next (suc L) tbl)
+                 (LS.linked-top-labels o ir) (fns-labels (suc L) tbl)
+                 (LS.linked-top-agree o ir) (fns-agree (suc L) tbl))
   where L = IT.ir-next-label o 0 ir
-        d = top-done o (irProgram tbl ir)
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS} using (find-label; find-label-lands; fetch)

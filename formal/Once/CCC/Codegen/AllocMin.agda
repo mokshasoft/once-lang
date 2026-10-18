@@ -407,9 +407,9 @@ ir-to-trace-alloc-min ir = alloc-min-at-frontier ir 0
 ir-to-trace-lab-alloc-min : ∀ {A B} (ir : IR A B) (l : ℕ) → AllocMinTrace (ir-to-trace-lab l ir)
 ir-to-trace-lab-alloc-min ir l = ++⁺ (alloc-min-trace' ir 0 l) (tt ∷ alloc-min-blocks ir 0 l)
 
--- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
-ir-to-trace-top-alloc-min : ∀ {A B} (ir : IR A B) (d : LabelId) → AllocMinTrace (link-top d (ir-to-unit ir))
-ir-to-trace-top-alloc-min ir d = ++⁺ (alloc-min-trace' ir 0 0) (tt ∷ tt ∷ alloc-min-blocks ir 0 0)
+-- …and the OUTERMOST unit, linked with the program's leave (D320).
+ir-to-trace-top-alloc-min : ∀ {A B} (ir : IR A B) → AllocMinTrace (link-top (ir-to-unit ir))
+ir-to-trace-top-alloc-min ir = ++⁺ (alloc-min-trace' ir 0 0) (tt ∷ alloc-min-blocks ir 0 0)
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS}

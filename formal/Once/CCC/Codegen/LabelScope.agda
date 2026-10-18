@@ -1981,16 +1981,14 @@ linked-labels-lab : ∀ {A B} (ir : IR A B) (l : ℕ)
 linked-labels-lab ir l =
   ++⁺ (labels-in ir 0 l) (li-none refl ∷ ScopeOK.bl-in (scope-ok ir 0 l))
 
--- Plan 0.107: the OUTERMOST unit, linked with the silent stop (`link-top`):
--- the stop pair `c-label d; c-jmp d` sits in its own window `[L, suc L)` just
--- above the unit's `[0, L)`, so it neither crosses the entry nor the blocks.
-top-pair-in : ∀ (d : LabelId) (L : ℕ) → idx d ≡ L
-            → LabelsIn L (suc L) (instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷ [])
-top-pair-in d L refl = li-lab refl ≤-refl ≤-refl ∷ li-lab refl ≤-refl ≤-refl ∷ []
+-- The OUTERMOST unit, linked with the program's leave (`link-top`, D320):
+-- `c-leave` names no label, so it sits in the window `[L, suc L)` just above
+-- the unit's `[0, L)` and neither crosses the entry nor the blocks.
+top-leave-in : ∀ (L : ℕ) → LabelsIn L (suc L) (instr-ctrl c-leave ∷ [])
+top-leave-in L = li-none refl ∷ []
 
-linked-top-agree : ∀ {A B} (ir : IR A B) (d : LabelId) → idx d ≡ label-of (ir-to-trace' 0 0 ir)
-                 → SegAgree (link-top d (ir-to-unit ir))
-linked-top-agree ir d eq =
+linked-top-agree : ∀ {A B} (ir : IR A B) → SegAgree (link-top (ir-to-unit ir))
+linked-top-agree ir =
   segagree-++ⁿ E (PAIR ++ BL)
     (nocross-++ʳ E PAIR BL (nocross-win E PAIR 0 L L (suc L) (labels-in ir 0 0) PI (inj₁ ≤-refl))
                  (ScopeOK.nc-eb S))
@@ -2005,14 +2003,14 @@ linked-top-agree ir d eq =
     L    = label-of T
     S    = scope-ok ir 0 0
     BL   = blocks-layout (bodies-of T)
-    PAIR = instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷ []
-    PI   = top-pair-in d L eq
+    PAIR = instr-ctrl c-leave ∷ []
+    PI   = top-leave-in L
 
-linked-top-labels : ∀ {A B} (ir : IR A B) (d : LabelId) → idx d ≡ label-of (ir-to-trace' 0 0 ir)
-                  → LabelsIn 0 (suc (label-of (ir-to-trace' 0 0 ir))) (link-top d (ir-to-unit ir))
-linked-top-labels ir d eq =
+linked-top-labels : ∀ {A B} (ir : IR A B)
+                  → LabelsIn 0 (suc (label-of (ir-to-trace' 0 0 ir))) (link-top (ir-to-unit ir))
+linked-top-labels ir =
   ++⁺ (ls-weaken ≤-refl (n≤1+n _) (labels-in ir 0 0))
-      (++⁺ (ls-weaken z≤n ≤-refl (top-pair-in d _ eq))
+      (++⁺ (ls-weaken z≤n ≤-refl (top-leave-in _))
            (ls-weaken ≤-refl (n≤1+n _) (ScopeOK.bl-in (scope-ok ir 0 0))))
 
 ------------------------------------------------------------------------

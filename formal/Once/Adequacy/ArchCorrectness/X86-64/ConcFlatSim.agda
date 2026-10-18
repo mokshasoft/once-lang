@@ -421,6 +421,7 @@ x86-64-traceloop = record
   ; dispatchArith = uncurry (dispatch-arith val-x86-64)
   ; ev-arch = ev-x86-64 ; ArithTable = x86-64-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
+  ; leave-lowering = refl
   ; nonhalt-noncall = nonhalt-noncall
   }
 

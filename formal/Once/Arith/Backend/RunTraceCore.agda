@@ -37,8 +37,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.Lang.Event using (SigOpEvent)
 open import Once.Denotation.Behavior using (Behavior; mkBehavior)
-open import Once.Lang.Out using (Out; cut; stop; _▹_)
-open import Data.Product using (proj₁)
+open import Once.Lang.Out using (Out; cut; stop; ended; _▹_)
+open import Once.Spec.Trace using (returned)
+open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Data.String using (_≟_)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Relation.Nullary.Decidable using (dec-no)
+open import Data.Unit using (tt)
+open import Data.Product using (proj₁; proj₂)
 
 ------------------------------------------------------------------------
 -- The generic machine telescope. `Payload` is the arch-specific arith
@@ -86,6 +92,7 @@ module RunTrace
   run-events       : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Out
   run-events-fetch : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Maybe Instr → Out
   run-events-instr : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Instr → Maybe String → Out
+  run-events-site  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → (lbl : String) → Dec (lbl ≡ host-leave-symbol) → Out
   run-events-call  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → String → Maybe Payload → Out
   run-events-exec  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Maybe State → Out
 
@@ -96,10 +103,14 @@ module RunTrace
   run-events-fetch ev env h n prog s nothing  = stop
   run-events-fetch ev env h n prog s (just i) = run-events-instr ev env h n prog s i (matchCall i)
 
-  -- arith/SigOp call: consult the arith-block table.
-  run-events-instr ev env h n prog s i (just lbl) = run-events-call ev env h n prog s lbl (env lbl)
+  -- a call: of the Host's `leave` (D320) — the run ends, `returned`; otherwise
+  -- an arith block or an external SigOp, by the arith-block table.
+  run-events-instr ev env h n prog s i (just lbl) = run-events-site ev env h n prog s lbl (lbl ≟ host-leave-symbol)
   -- ordinary instruction: execute, emit nothing.
   run-events-instr ev env h n prog s i nothing    = run-events-exec ev env h n prog s (execInstr prog s i)
+
+  run-events-site ev env h n prog s lbl (yes _) = ended (returned tt)
+  run-events-site ev env h n prog s lbl (no _)  = run-events-call ev env h n prog s lbl (env lbl)
 
   -- arith block: dispatch, NO event, continue.
   run-events-call ev env h n prog s lbl (just pl) =
@@ -183,8 +194,10 @@ module RunTrace
   ... | false with fetch prog (pc s) in eqf
   ...   | nothing = refl
   ...   | just i  with matchCall i in eqm
-  ...     | just lbl with H (pc s) i lbl eqf eqm
-  ...       | (pl , eqv) rewrite eqv = run-events-[] ev env prog H h n (dispatchArith pl s)
+  ...     | just lbl with lbl ≟ host-leave-symbol
+  ...       | yes _ = refl
+  ...       | no _ with H (pc s) i lbl eqf eqm
+  ...         | (pl , eqv) rewrite eqv = run-events-[] ev env prog H h n (dispatchArith pl s)
   run-events-[] ev env prog H h (suc n) s | false | just i | nothing with execInstr prog s i
   ...       | nothing  = refl
   ...       | just s'  = run-events-[] ev env prog H h n s'
@@ -245,16 +258,24 @@ module RunTrace
   -- advance to the dispatched post-state. (Pure ⇒ matches `flat-events`' `[]`.)
   run-events-arith : ∀ ev env h n prog s i lbl pl
                    → halted s ≡ false → fetch prog (pc s) ≡ just i
-                   → matchCall i ≡ just lbl → env lbl ≡ just pl
+                   → matchCall i ≡ just lbl → ¬ (lbl ≡ host-leave-symbol) → env lbl ≡ just pl
                    → run-events ev env h (suc n) prog s ≡ run-events ev env h n prog (dispatchArith pl s)
-  run-events-arith ev env h n prog s i lbl pl hs ft mc el
-    rewrite hs | ft | mc | el = refl
+  run-events-arith ev env h n prog s i lbl pl hs ft mc nl el
+    rewrite hs | ft | mc | dec-no (lbl ≟ host-leave-symbol) nl | el = refl
 
   -- EXTERNAL SigOp (`env lbl ≡ nothing`): emit its event `ev lbl s` and continue
   -- past the call. (Matches `flat-events`' `machine-event si` via the contract.)
   run-events-external : ∀ ev env h n prog s i lbl
                       → halted s ≡ false → fetch prog (pc s) ≡ just i
-                      → matchCall i ≡ just lbl → env lbl ≡ nothing
+                      → matchCall i ≡ just lbl → ¬ (lbl ≡ host-leave-symbol) → env lbl ≡ nothing
                       → run-events ev env h (suc n) prog s ≡ ev lbl s ▹ run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s)
-  run-events-external ev env h n prog s i lbl hs ft mc el
-    rewrite hs | ft | mc | el = refl
+  run-events-external ev env h n prog s i lbl hs ft mc nl el
+    rewrite hs | ft | mc | dec-no (lbl ≟ host-leave-symbol) nl | el = refl
+
+  -- THE HOST'S `leave` (D320): the run ends there, `returned`.
+  run-events-leave : ∀ ev env h n prog s i
+                   → halted s ≡ false → fetch prog (pc s) ≡ just i
+                   → matchCall i ≡ just host-leave-symbol
+                   → run-events ev env h (suc n) prog s ≡ ended (returned tt)
+  run-events-leave ev env h n prog s i hs ft mc
+    rewrite hs | ft | mc = refl

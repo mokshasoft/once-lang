@@ -41,7 +41,7 @@ open import Once.Target.AsmSymbol using (AsmSym)
 open import Once.Target.SymbolValid using (once-symbol-path-asm; once-symbol-own-asm; once-label-asm; callee-label-asm)
 open import Once.Arith.SigOp.Block using (block-name)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
-open import Once.Compile using (moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; dedup-go; dedup-blocks; block-symbol; block-syms; calls-of; externs-of; is-extern?)
+open import Once.Compile using (moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; dedup-go; dedup-blocks; block-symbol; block-syms; calls-of; externs-of; prog-externs; is-extern?)
 open import Once.Parser.Module using ()
 open import Once.Parser.Module.Core using (Module)
 open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
@@ -59,6 +59,7 @@ ctrl-defs-asm (c-branch-tag-zero _)     = []
 ctrl-defs-asm (c-ret _)                 = []
 ctrl-defs-asm (c-call-fn _)             = []
 ctrl-defs-asm (c-start _)               = []
+ctrl-defs-asm c-leave                   = []
 
 instr-defs-asm : ∀ (i : AbstractInstr) → All AsmSym (instr-defs i)
 instr-defs-asm (instr-ctrl c) = ctrl-defs-asm c
@@ -168,3 +169,7 @@ calls-asm q = ++⁺ (leaf-syms-all h (main q)) (tbl (table q))
 
 externs-valid : ∀ (p : IRProgram) → All AsmSym (externs-of p)
 externs-valid p = filter⁺ (is-extern? p) (calls-asm (rewrite-program p))
+
+-- D320: …and a program's, with the Host's `leave`.
+prog-externs-valid : ∀ (p : IRProgram) → All AsmSym (prog-externs p)
+prog-externs-valid p = (tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) ∷ externs-valid p

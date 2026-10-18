@@ -432,6 +432,7 @@ x86-32-traceloop = record
   ; dispatchArith = dispatch-arith val-x86-32
   ; ev-arch = ev-x86-32 ; ArithTable = x86-32-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
+  ; leave-lowering = refl
   ; nonhalt-noncall = nonhalt-noncall
   }
 

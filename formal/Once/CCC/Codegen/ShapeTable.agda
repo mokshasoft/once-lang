@@ -49,7 +49,7 @@ open import Once.IR using (IR; AllocMode; Heap; Stack;
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag; instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret)
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag; instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret; c-leave)
 open import Once.CCC.Label using (LabelId)
 open import Once.SigOp.Info using (SigOpInfo; EffectShape; Pure; effect)
 open import Once.Type using (FitsInReg; fits-in-reg?)
@@ -353,6 +353,7 @@ step-expect env st (instr-ctrl (c-label m)) = env m
 -- obligation against the caller's continuation).
 step-expect env st (instr-ctrl (c-entry m b)) = mkExpect e-any e-any []
 step-expect env st (instr-ctrl (c-start b)) = mkExpect e-any e-any []
+step-expect env st (instr-ctrl c-leave) = mkExpect e-any e-any []
 -- D245: a direct call, like a closure call, leaves no claim standing.
 step-expect env st (instr-ctrl (c-call-fn f)) = mkExpect e-any e-any []
 -- after a return the fall-through is dead, exactly as after `c-jmp`

@@ -609,6 +609,8 @@ flat-stack-ptr (instr-ctrl (c-entry m b))             prog fs ff wf =
   sp-thunk b fs wf
 flat-stack-ptr (instr-ctrl (c-start b))             prog fs ff wf =
   sp-thunk b fs wf
+flat-stack-ptr (instr-ctrl c-leave)                   prog fs ff wf =
+  record { sp-regs = sp-regs wf ; sp-heap = sp-heap wf ; sp-stack = sp-stack wf }
 flat-stack-ptr (instr-ctrl (c-call-fn f))             prog fs ff wf =
   sp-call-at (find-fn prog f) fs wf
 flat-stack-ptr (instr-ctrl (c-ret b))                 prog fs ff wf =

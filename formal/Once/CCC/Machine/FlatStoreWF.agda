@@ -193,6 +193,11 @@ wf-halt : ∀ {n ls} → StoreWF n ls → StoreWF n (record ls { halted = true }
 wf-halt wf = record { wf-regs = wf-regs wf ; wf-heap = wf-heap wf
                     ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
 
+-- leaving (D320) touches only the two flags.
+wf-leave : ∀ {n ls} → StoreWF n ls → StoreWF n (record ls { halted = true ; left = true })
+wf-leave wf = record { wf-regs = wf-regs wf ; wf-heap = wf-heap wf
+                     ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
+
 -- the SigOp shape: one register write AND a halt-flag update.
 -- (The SigOp step also extends the event log, which holds no pointer.)
 wf-write-reg-halt : ∀ {n ls} (x : AbstractReg) (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
@@ -674,6 +679,7 @@ cl-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState) → Fl
 cl-step (instr-ctrl (c-label m))               prog fs wf b = b
 cl-step (instr-ctrl (c-entry m bb))            prog fs wf b = b
 cl-step (instr-ctrl (c-start bb))            prog fs wf b = b
+cl-step (instr-ctrl c-leave)                  prog fs wf b = b
 cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-fn prog f) fs b
 cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
 cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
@@ -728,6 +734,7 @@ flat-wf-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
 flat-wf-step (instr-ctrl (c-label m))               prog fs wf = wf
 flat-wf-step (instr-ctrl (c-entry m b))             prog fs wf = wf-thunk b fs wf
 flat-wf-step (instr-ctrl (c-start b))             prog fs wf = wf-thunk b fs wf
+flat-wf-step (instr-ctrl c-leave)                   prog fs wf = wf-leave wf
 flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (find-fn prog f) fs wf
 flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf

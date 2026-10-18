@@ -316,6 +316,7 @@ riscv64-traceloop = record
   ; dispatchArith = uncurry (dispatch-arith val-riscv64)
   ; ev-arch = ev-riscv64 ; ArithTable = riscv64-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
+  ; leave-lowering = refl
   ; nonhalt-noncall = r-nonhalt-noncall
   }
 

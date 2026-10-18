@@ -174,6 +174,7 @@ headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _
 -- absorbs the difference — no core change, one longer list here.
 headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-start b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl c-leave) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-entry m b)) =
   hv-otherlabel m (addi sp sp (ℤ- (+ (slots b))) ∷ sd ra sp (slots b) ∷ []) refl refl
                 (λ _ _ _ → refl) (λ _ _ _ → refl)

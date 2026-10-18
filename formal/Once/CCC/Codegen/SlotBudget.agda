@@ -57,7 +57,7 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K;
 open import Once.Lang.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero)
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
@@ -993,28 +993,28 @@ ir-seg-fold-lab ir l sv =
                (ok-neu (segok-blocks {ir-stack-budget-from l ir} _ (blocks-below ir 0 l))
                        (pop-with sv (mkSeg (ir-stack-budget-from l ir) sv))))
 
--- Plan 0.107: THE OUTERMOST UNIT, linked with the SILENT STOP (`link-top`):
--- exactly `ir-slots-below-under`, except that the terminator is two
--- segment-idle instructions (`c-label`, `c-jmp`) instead of `c-ret`'s pop — so
--- the unit leaves the segment where it began.
-ir-slots-below-top : ∀ {A B} (ir : IR A B) (d : LabelId) (sv : List ℕ)
-                   → AllSeg (mkSeg (ir-stack-budget ir) sv) (link-top d (ir-to-unit ir))
-ir-slots-below-top ir d sv =
+-- THE OUTERMOST UNIT, linked with the program's LEAVE (`link-top`, D320):
+-- exactly `ir-slots-below-under`, except that the terminator is a
+-- segment-idle instruction (`c-leave`) instead of `c-ret`'s pop — so the unit
+-- leaves the segment where it began.
+ir-slots-below-top : ∀ {A B} (ir : IR A B) (sv : List ℕ)
+                   → AllSeg (mkSeg (ir-stack-budget ir) sv) (link-top (ir-to-unit ir))
+ir-slots-below-top ir sv =
   allseg-++ (ok-all (slots-below ir 0 0))
-    (subst (λ z → AllSeg z (instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷
+    (subst (λ z → AllSeg z (instr-ctrl c-leave ∷
                             blocks-layout (bodies-of (ir-to-trace' 0 0 ir))))
            (sym (ok-neu (slots-below ir 0 0) (mkSeg (ir-stack-budget ir) sv)))
-           (sb-none refl ∷ sb-none refl ∷ ok-all (segok-blocks _ (blocks-below ir 0 0))))
+           (sb-none refl ∷ ok-all (segok-blocks _ (blocks-below ir 0 0))))
 
-ir-seg-fold-top : ∀ {A B} (ir : IR A B) (d : LabelId) (sv : List ℕ)
-                → seg-fold (link-top d (ir-to-unit ir)) (mkSeg (ir-stack-budget ir) sv)
+ir-seg-fold-top : ∀ {A B} (ir : IR A B) (sv : List ℕ)
+                → seg-fold (link-top (ir-to-unit ir)) (mkSeg (ir-stack-budget ir) sv)
                   ≡ mkSeg (ir-stack-budget ir) sv
-ir-seg-fold-top ir d sv =
+ir-seg-fold-top ir sv =
   trans (seg-fold-++ (trace-of (ir-to-trace' 0 0 ir))
-                     (instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷
+                     (instr-ctrl c-leave ∷
                       blocks-layout (bodies-of (ir-to-trace' 0 0 ir)))
                      (mkSeg (ir-stack-budget ir) sv))
-        (trans (cong (seg-fold (instr-ctrl (c-label d) ∷ instr-ctrl (c-jmp d) ∷
+        (trans (cong (seg-fold (instr-ctrl c-leave ∷
                                 blocks-layout (bodies-of (ir-to-trace' 0 0 ir))))
                      (ok-neu (slots-below ir 0 0) (mkSeg (ir-stack-budget ir) sv)))
                (ok-neu (segok-blocks {ir-stack-budget ir} _ (blocks-below ir 0 0))

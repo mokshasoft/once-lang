@@ -407,7 +407,7 @@ conc-flat-sim brs p ir lk img n =
               ev-x86-64 (block-env (C.blocks-x86-64 p))
               (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
               (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
-              refl refl refl refl
+              refl refl refl refl refl
 
 -- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
 -- the per-program `ArchCorrect` (each program brings its own table).

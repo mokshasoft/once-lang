@@ -482,8 +482,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
     ++⁺ (ir-stable ir 0 l)
         (tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 l))
 
-  -- Plan 0.107: …and the OUTERMOST unit, linked with the silent stop.
-  ir-to-trace-top-slot-stable : ∀ {A B} (ir : IR A B) (d : LabelId) → AllSlotStable (link-top d (ir-to-unit ir))
-  ir-to-trace-top-slot-stable ir d =
+  -- …and the OUTERMOST unit, linked with the program's leave (D320).
+  ir-to-trace-top-slot-stable : ∀ {A B} (ir : IR A B) → AllSlotStable (link-top (ir-to-unit ir))
+  ir-to-trace-top-slot-stable ir =
     ++⁺ (ir-stable ir 0 0)
-        (tt ∷ᴬ tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 0))
+        (tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 0))

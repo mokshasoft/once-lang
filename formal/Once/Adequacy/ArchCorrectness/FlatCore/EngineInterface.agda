@@ -38,10 +38,11 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop; instr-ctrl; c-leave)
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Target.Symbol using (once-symbol-path)
+open import Once.Target.SymbolFresh using (host-leave-symbol)
 open import Once.Lang.Event using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 
@@ -165,6 +166,8 @@ record TraceLoop (E : Emitter) (M : Machine E) : Set₁ where
                    → compile-abstract (instr-sigop si)
                      ≡ sigop-call (once-symbol-path (SigOpInfo.name si)) ∷ []
     sigop-matchCall : ∀ lbl → matchCall (sigop-call lbl) ≡ just lbl
+    -- …and the program's leave (D320) to one call of the Host's symbol.
+    leave-lowering : compile-abstract (instr-ctrl c-leave) ≡ sigop-call host-leave-symbol ∷ []
     -- A step that leaves the machine RUNNING was not a `call-sym`:
     -- `execInstr (call-sym _)` always halts. One clause per instruction at the
     -- arch, and the only place the engine would need the instruction set.

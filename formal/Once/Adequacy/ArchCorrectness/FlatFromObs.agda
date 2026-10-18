@@ -93,7 +93,7 @@ open import Once.Denotation.BehaviorLaws using (behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Lang.Event using (SigOpEvent)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
-open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next; top-done)
+open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -107,7 +107,7 @@ open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (NoThunks; missBefore-from; blocks-at)
 open import Data.List using (_++_; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk; AllocState; mkAllocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk; AllocState; mkAllocState; module AllocState; c-leave)
 open AllocState using (next-slot)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
@@ -205,7 +205,7 @@ entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
 -- `slot < ir-stack-budget ir`, which is the emitter's own static invariant.
 entry-s : LocState FS
 -- plan 0.105: a program starts with nothing in its log.
-entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false []
+entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false
 
 -- All four preconditions now hold BY CONSTRUCTION.
 -- D155: the premise is `next-slot alloc ≤ n`, not an equation — the entry
@@ -298,21 +298,20 @@ entry-nh = refl
 -- …and `entry-blocks` is now a DEFINITION: the proved composition, transported
 -- across `link`'s own associativity
 -- (`entry ++ c-ret ∷ layout` vs `(entry ++ c-ret ∷ []) ++ layout`).
--- Plan 0.107: the image is the START, then `main`'s unit linked with the
--- silent stop, then the table. `main`'s code sits at pc 1, and its blocks
--- follow the stop pair; `top-noThunks` is the label-distinctness fact for
--- exactly that prefix.
+-- The image is the START, then `main`'s unit linked with the program's leave
+-- (D320), then the table. `main`'s code sits at pc 1, and its blocks follow
+-- the leave; `top-noThunks` is the label-distinctness fact for exactly that
+-- prefix.
 top-pre : (ir : IR Unit Unit) → AbstractTrace
 top-pre ir = instr-ctrl (c-start (ir-stack-budget ir)) ∷ emitted 0 0 ir
-             ++ instr-ctrl (c-label (top-done o (irProgram tbl ir)))
-             ∷ instr-ctrl (c-jmp (top-done o (irProgram tbl ir))) ∷ []
+             ++ instr-ctrl c-leave ∷ []
 
 main-blocks : (ir : IR Unit Unit)
             → BlocksAt (top-pre ir ++ blocks-layout (blocks 0 0 ir)) (blocks 0 0 ir)
 main-blocks ir =
   blocks-at (top-pre ir) (blocks 0 0 ir)
             (missBefore-from (top-pre ir) (blocks 0 0 ir)
-                             (Unique.top-noThunks {FS} ir (ir-stack-budget ir) (top-done o (irProgram tbl ir))))
+                             (Unique.top-noThunks {FS} ir (ir-stack-budget ir)))
 
 ------------------------------------------------------------------------
 -- D244/D245: THE PROGRAM IMAGE. `main`'s unit is its PREFIX and the table's
@@ -343,9 +342,7 @@ blocks-prefix t₁ t₂ ((lbl , b , t) ∷ bs) ((j , feq , sp) ∷ rest) =
 -- …so `main`'s code is found ONE PAST the start.
 private
   rest : IR Unit Unit → AbstractTrace
-  rest ir = instr-ctrl (c-label (top-done o (irProgram tbl ir)))
-            ∷ instr-ctrl (c-jmp (top-done o (irProgram tbl ir)))
-            ∷ blocks-layout (blocks 0 0 ir)
+  rest ir = instr-ctrl c-leave ∷ blocks-layout (blocks 0 0 ir)
 
   -- the image, re-associated so the blocks are a suffix of `top-pre`
   image-assoc : (ir : IR Unit Unit)
@@ -354,8 +351,7 @@ private
     cong (instr-ctrl (c-start (ir-stack-budget ir)) ∷_)
       (trans (cong (_++ fns-image (suc (ir-next-label 0 ir)) tbl)
                    (sym (++-assoc (emitted 0 0 ir)
-                                  (instr-ctrl (c-label (top-done o (irProgram tbl ir)))
-                                   ∷ instr-ctrl (c-jmp (top-done o (irProgram tbl ir))) ∷ [])
+                                  (instr-ctrl c-leave ∷ [])
                                   (blocks-layout (blocks 0 0 ir)))))
              refl)
 
@@ -388,7 +384,7 @@ fns-slot-stable l (e ∷ es) =
 
 image-slot-stable : (ir : IR Unit Unit) → AllSlotStable (image ir)
 image-slot-stable ir =
-  tt ∷ ++⁺ (CIS.CataIRSlotStable.ir-to-trace-top-slot-stable o {FS} ir (top-done o (irProgram tbl ir)))
+  tt ∷ ++⁺ (CIS.CataIRSlotStable.ir-to-trace-top-slot-stable o {FS} ir)
            (fns-slot-stable (suc (ir-next-label 0 ir)) tbl)
 
 -- Plan 0.107: THE RUN STARTS OUTSIDE EVERY FRAME (`entry-alloc 0`, pc 0) —
