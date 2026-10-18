@@ -7,22 +7,11 @@
 --
 -- Shared, arch-parametric construction of the per-arch `ArchCorrect` record.
 --
--- STEP-7 REWIRE (the first break in the decomposition from the COMPILER apex
--- `Once.Compiler.correct` = `VC.correctᵈ`): previously this module POSTULATED
--- `ir-flat-correct`, left `flat-trace` an abstract parameter, and DISCARDED the
--- `ir-obs-correct` it was handed (`flat-from-obs _ = …`) — so the whole
--- IR-observable theorem (and everything under it: the composition case, the
--- arith value work) was an island. Now:
---
---   * `flat-trace`       — DEFINED: `take n (flat-events (EF n) (ir-to-trace ir)
---                          entry)`, where the adequate fuel `EF n` is exactly the
---                          `∃[ f ]` witness `traces-agree` supplies at depth `n`
---                          (fuel counts machine STEPS, `n` counts EVENTS — which
---                          is why a naive `flat-events n` would be wrong).
---   * `ir-flat-correct`  — PROVED from `ir-obs-correct`'s `traces-agree`
---                          (`proj₂` of that same witness). NO LONGER A POSTULATE.
---   * `asm-trace-correct`— NAMED postulate (printer / loader faithfulness; the
---                          concrete-machine half = Plan 0.54 rung B).
+-- D320: what it provides is how the PROGRAM'S FLAT RUN ENDS (`flat-ends`): the
+-- start, `main`'s run (the entry witness `ir-obs-correct` supplies), and the
+-- program's leave — the meaning's calls and how its run ended. The concrete
+-- correspondence (`events-agree-start`) runs to exactly that point, and the
+-- binary's trace follows (`ArchCorrectness.<arch>.conc-tr`).
 --
 -- Residual introduced (narrow + named, replacing the opaque whole-statement
 -- postulate): the ENTRY STATE and its preconditions — `ArchCorrectness.agda`
@@ -89,7 +78,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.IR using (IR; Stack)
 open import Once.IRTy using (Unit)
 open import Once.Denotation.Behavior using (Behavior)
-open import Once.Denotation.BehaviorLaws using (behavior-by)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Lang.Event using (SigOpEvent)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
@@ -417,9 +405,8 @@ entry-witness ir ioc brs k =
       (in-unit refl) k
 
 ------------------------------------------------------------------------
--- `flat-main` — DEFINED. D159: the adequate fuel is the witness's OWN STEP
--- COUNT. D244: the machine runs the PROGRAM IMAGE, and the meaning is the
--- program's (`main` in its table's environment).
+-- The entry witness. D244: the machine runs the PROGRAM IMAGE, and the meaning
+-- is the program's (`main` in its table's environment).
 ------------------------------------------------------------------------
 
 IOC : Set
@@ -433,34 +420,6 @@ entry-vr : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → IOC
          → ValueRealized (image ir) 1 0 0 ir tt (floc (main-flat ir))
              (falloc (main-flat ir)) (SV-Tag 0) k
 entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir (proj₁ lk)) brs k)
-
-flat-trace-fam : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → ℕ → List SigOpEvent
-flat-trace-fam ioc brs ir lk n =
-  take n (proj₁ (flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs n) + 0))
-                      (image ir) start-flat))
-
--- D113/D115: at THIS target's NUMERICS, which is where `IRObsCorrectFlat`'s
--- `evalᴰ` alias reads them from too, so the two sides mean one thing.
-ir-flat-correct-fam : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (n : ℕ)
-                    → flat-trace-fam ioc brs ir lk n
-                      ≡ at (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)
-                              (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)) n
--- Plan 0.105: the witness's events are EXACTLY the program's run from the
--- empty log (`entry-s`), so the depth-`n` observable is one `take n`.
-ir-flat-correct-fam ioc brs ir lk n =
-  cong (take n)
-    (trans (trans (cong proj₁ (flat-events-steps (ValueRealized.run (entry-vr ir lk ioc brs n)) 0))
-                  (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir lk ioc brs n)))))
-           (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs n)))
-
--- …and THAT is what makes the machine's family a `Behavior`: it borrows the
--- three laws from the denotation it is proved equal to (`behavior-by`).
-flat-main : IOC → BlockRunsT → (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → Behavior
-flat-main ioc brs ir lk =
-  behavior-by (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS))
-              (flat-trace-fam ioc brs ir lk)
-              (λ n → sym (ir-flat-correct-fam ioc brs ir lk n))
-
 
 ------------------------------------------------------------------------
 -- D320: HOW THE PROGRAM'S FLAT RUN ENDS. The start, `main`'s run (the entry
@@ -504,10 +463,3 @@ flat-ends ioc brs ir lk =
       where done : halted (floc st) ≡ true × LocState.left (floc st) ≡ LocState.left s0
                  → flat-events 2 (image ir) st ≡ ([] , just halted-end)
             done (h , l) rewrite h | l = refl
-
-ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (n : ℕ)
-                     → at (flat-main ioc brs ir lk) n
-                       ≡ at (⟦ just (irProgram tbl ir) ⟧IR (arch-numerics arch) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)) n
-ir-flat-correct-main ioc brs ir lk n =
-  subst (λ F → at (flat-main ioc brs ir lk) n ≡ at (⟦ just (irProgram tbl ir) ⟧IR F (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)) n)
-        fmt-agree (ir-flat-correct-fam ioc brs ir lk n)

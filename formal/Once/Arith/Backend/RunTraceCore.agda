@@ -17,10 +17,9 @@
 --     its event `ev lbl s` and continue past the call (emit-and-continue);
 --   * any other instruction executes via `execInstr` and emits nothing.
 --
--- `run-trace` adapts the fuelled `run-events` (fuel counts machine STEPS) to a
--- `Behavior` (indexed by EVENT count) via an ABSTRACT `stepBudget : ℕ → ℕ` — the
--- adequate-fuel obligation, left abstract exactly as `FlatFromObs` leaves
--- `flat-trace` abstract, so the seam stays sound pending its discharge (Layer 2).
+-- D320: what a fuelled run shows is its calls and how it ended (`Once.Lang.Out`);
+-- the binary's TRACE is read off the same steps by corecursion, with no fuel
+-- (`RunTraceMachine`).
 ------------------------------------------------------------------------
 
 module Once.Arith.Backend.RunTraceCore where
@@ -28,15 +27,12 @@ module Once.Arith.Backend.RunTraceCore where
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
-open import Data.List using (List; []; _++_; take; length)
-open import Data.List.Properties using (length-take)
-open import Data.Nat.Properties using (m⊓n≤m)
+open import Data.List using (List; []; _++_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (Σ; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
 
 open import Once.Lang.Event using (SigOpEvent)
-open import Once.Denotation.Behavior using (Behavior; mkBehavior)
 open import Once.Lang.Out using (Out; cut; stop; ended; _▹_)
 open import Once.Spec.Trace using (returned)
 open import Once.Target.SymbolFresh using (host-leave-symbol)
@@ -122,52 +118,6 @@ module RunTrace
 
   run-events-exec ev env h n prog s nothing   = stop
   run-events-exec ev env h n prog s (just s') = run-events ev env h n prog s'
-
-  ----------------------------------------------------------------------
-  -- The `Behavior` adapter. `Behavior n` = the first `n` effectful SigOp
-  -- events; `run-events` produces the events within `stepBudget n` machine
-  -- STEPS. `stepBudget` (the adequate-fuel map) is abstract — the same honest
-  -- gap `FlatFromObs.flat-trace` carries.
-  ----------------------------------------------------------------------
-  run-trace-fam : (stepBudget : ℕ → ℕ) → EvExtractor → ArithEnv → Program → State
-                → ℕ → List SigOpEvent
-  run-trace-fam stepBudget ev env prog s n = take n (proj₁ (run-events ev env [] (stepBudget n) prog s))
-
-  -- D179: `Behavior` carries three laws, and on the CONCRETE machine two of
-  -- them are exactly the content of "`stepBudget` is adequate":
-  --
-  --   * `extends`   — a deeper observation only ADDS events, i.e. the machine
-  --                   run at `stepBudget (suc n)` steps extends the one at
-  --                   `stepBudget n`. (Needs `stepBudget` monotone AND
-  --                   `run-events` prefix-monotone in its fuel.)
-  --   * `saturates` — if fewer than `n` events came out, the budget was ENOUGH,
-  --                   so a deeper observation adds nothing.
-  --
-  -- `bounded` is free (a `take n` is at most `n` long), and is proved.
-  --
-  -- The two are NOT free: they are what an adequate budget MEANS, so `run-trace`
-  -- takes them as a premise (`Adequate`). D268: they were postulated here for
-  -- EVERY `stepBudget` — a non-monotone budget refutes `extends` on any
-  -- instance (a postulate of `⊥`). The per-arch instance states adequacy of ITS
-  -- budget, which reads the program it runs. Note this is the concrete machine
-  -- only: the abstract machine's family borrows its laws from the denotation
-  -- (`behavior-by` in `FlatFromObs`) and needs no assumption at all.
-  record Adequate (fam : ℕ → List SigOpEvent) : Set where
-    field
-      extends   : ∀ n → ∃[ rest ] (fam (suc n) ≡ fam n ++ rest)
-      saturates : ∀ n → length (fam n) < n → fam (suc n) ≡ fam n
-
-  run-trace : (stepBudget : ℕ → ℕ) (ev : EvExtractor) (env : ArithEnv) (prog : Program) (s : State)
-            → Adequate (run-trace-fam stepBudget ev env prog s) → Behavior
-  run-trace stepBudget ev env prog s ad =
-    mkBehavior (run-trace-fam stepBudget ev env prog s)
-               (Adequate.extends ad)
-               bnd
-               (Adequate.saturates ad)
-    where
-      bnd : ∀ n → length (run-trace-fam stepBudget ev env prog s n) ≤ n
-      bnd n = subst (_≤ n) (sym (length-take n (proj₁ (run-events ev env [] (stepBudget n) prog s))))
-                    (m⊓n≤m n (length (proj₁ (run-events ev env [] (stepBudget n) prog s))))
 
   ----------------------------------------------------------------------
   -- "No reachable external SigOp ⇒ empty trace" — the concrete analogue of the
