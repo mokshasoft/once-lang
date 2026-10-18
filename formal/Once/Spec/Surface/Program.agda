@@ -21,10 +21,9 @@
 module Once.Spec.Surface.Program where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (¬_)
-open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Maybe using (Maybe)
 open import Data.Nat using (ℕ; suc)
 open import Data.Product using (_×_; _,_; Σ-syntax)
@@ -37,7 +36,7 @@ open import Once.Spec.Type
   using (Ty; Fun; KCtx; base; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; Occurs; OccursF)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature
-  using (BTy; unit; void; int; float; DeclType; constant; value; operation; _∶_; Signature; WellFormed)
+  using (BTy; unit; void; int; float; DeclType; constant; value; operation; _∶_; Signature; WellFormed; OneName)
 import Once.Spec.Signature as BT
 open import Once.Spec.Context using (∅; [])
 open import Once.Spec.Core.Syntax using (Defs; []; _▷_; Schema; module Schema; schema; Tm)
@@ -240,6 +239,6 @@ record Denotes (mm : ModuleMap) (m : Module) (Σ : Signature) (p : CoreProgram.P
     distinct  : Injective _≡_ _≡_ names
     -- Every entry has its own name, operations included (D249): an operation
     -- of Σ is declared once, and no definition is named as one.
-    sig-distinct : Unique (map BT.Decl.name Σ)
+    sig-distinct : OneName Σ
     def-not-sig  : ∀ d {t} → ¬ ((names d ∶ t) ∈ Σ)
     entry     : names (CoreProgram.Program.main p) ≡ canonical ("main" ∷ [])

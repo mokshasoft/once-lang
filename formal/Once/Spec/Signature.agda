@@ -26,7 +26,8 @@
 module Once.Spec.Signature where
 
 open import Data.Empty using (⊥)
-open import Data.List using (List)
+open import Data.List using (List; map)
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
@@ -124,6 +125,10 @@ open Decl
 
 Signature : Set
 Signature = List Decl
+
+-- Each entry of Σ is declared once (D249): a name means one declaration.
+OneName : Signature → Set
+OneName Σ = Unique (map name Σ)
 
 -- A declaration's type.
 ⌜_⌝ᵈ : ∀ {m} → DeclType → T.Ty m

@@ -56,11 +56,8 @@ open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; _⇒[_]_)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Spec.Signature using (Signature; WellFormed; Layer; call; Op; op; _∶_)
+open import Once.Spec.Signature using (Signature; OneName; WellFormed; Layer; call; Op; op; _∶_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-import Data.List
-import Once.Spec.Signature
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⟨_⟩ᶜ)
 open import Once.Spec.Core.Syntax using (Defs; []; Tm; let′; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
@@ -94,11 +91,6 @@ record Types : Set where
 ------------------------------------------------------------------------
 -- The surface judgment's modes agree
 ------------------------------------------------------------------------
-
--- Each operation of Σ is declared once (D249): a reference to it means one
--- operation, whichever derivation types it.
-OneName : Signature → Set
-OneName Σ = Unique (Data.List.map Once.Spec.Signature.Decl.name Σ)
 
 -- The names a reference may resolve to are distinct (D249, as a program's
 -- `Denotes` requires): an operation of Σ has one type, definitions have their
