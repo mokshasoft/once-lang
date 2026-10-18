@@ -65,6 +65,10 @@ open import Data.Product using (proj₁)
 open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
 open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent)
+open import Once.Spec.Trace using (Tr)
+open import Once.Denotation.TraceTr using (runTr)
+open import Once.Adequacy.MachineTrace using (silentTr)
+open import Data.Unit using (⊤)
 -- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are
 -- recursive and a parameterised module stops reducing at a variable instance.
@@ -233,6 +237,12 @@ rewrite-program-linked p (lm , les) =
 -- A module with no `main` observes nothing, at every depth — the empty family,
 -- whose three laws are immediate.
 ⟦ nothing ⟧IR _ _ = silent
+
+-- D320: …and as a TRACE — the run's calls, then how it ended (`returned` or
+-- `halted`, `TraceTr.runTr`). A module with no `main` shows nothing, ever.
+⟦_⟧IRᵗ : Maybe IRProgram → TargetNum → Interp → Tr ⊤
+⟦ just p ⟧IRᵗ fmt ι = runTr ι [] (runIR fmt (pureHalf ι) p)
+⟦ nothing ⟧IRᵗ _ _ = silentTr
 
 -- D165, RESTATED AT THE MEANING (plan 0.103 6a″): the arith lifting preserves
 -- a program's denotation — `Adequacy.RewritePreserves.rewrite-program-preserves`.

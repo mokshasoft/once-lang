@@ -53,6 +53,10 @@ step (next (listTr (v ∷ vs) e)) = inj₁ (inj₂ (v , listTr vs e))
 never : ∀ {A : Set} → Delay A
 step never = inj₂ never
 
+-- The trace that never shows anything: no call, no end.
+silentTr : Tr ⊤
+next silentTr = never
+
 private
   S′ : Set
   S′ = End ⊤ ⊎ (Event × Tr ⊤)

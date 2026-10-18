@@ -44,13 +44,16 @@ open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Lang.Contract using (ISig; Impl)
 open import Once.Lang.Trace using (Interp; interp; pureHalf)
 open import Once.Lang.Program using (Typed)
-open import Once.Lang.Core.Telescope using (Program; runProgram)
+open import Once.Lang.Core.Telescope using (Program; runProgram; runCore)
 import Once.Lang.Core.Translate as TR
 import Once.Lang.Core.Telescope as Tele
 import Once.Lang.Core.PolyTyping as PT
 import Once.Lang.Core.Meaning as GM
 import Once.Denotation.Behavior
-open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IR; ⟦_⟧IRᵗ)
+open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
+open import Once.Denotation.TraceTr using (runTr; trT∞; RelT∞′-tr)
+open import Once.Metatheory.Trace using (WB-sym)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; mainCall; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB
 import Once.Denotation.Behavior
@@ -70,7 +73,7 @@ open import Data.List.Relation.Unary.All using ([])
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_)
-open import Data.Unit using (tt)
+open import Data.Unit using (⊤; tt)
 import Once.Parser
 import Once.Adequacy.NameClash as NC
 open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂; subst)
@@ -146,6 +149,51 @@ program-core m mt hvm I ir mi n with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   trans (cong₂ (λ tbl x → projTrace ι (evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) n) (cong tableOfResult ceq) ir≡)
         (core-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b I n)
+  where
+    ι = interp (moduleSig m) I
+    ir≡ : ir ≡ mainCall
+    ir≡ = FB.bundle-find-call b (trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi))
+
+------------------------------------------------------------------------
+-- D320: THE SAME LINK, AS TRACES — calls and how each run ended. The walk's
+-- relation (`TeleWalk.Agree`) relates the core run to the compiled tree node
+-- by node, so their traces are weakly bisimilar (`TraceTr.RelT∞′-tr`).
+------------------------------------------------------------------------
+
+private
+  -- the compiled program's trace, in a world
+  trIRAt : Interp → List IRFun → Tr ⊤
+  trIRAt ι′ tbl = runTr ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) mainCall tt)
+
+  core-ef-tr : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
+                 {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
+               → (b : FB.FunBundle C.emptyCScope es) (I : Impl (moduleSig-ef ef))
+               → trIRAt (interp (moduleSig-ef ef) I) (tableOf-go (FB.bundle→compiled b) [])
+                 ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (moduleSig-ef ef) I) [] (runCore fmt (typedProgram-ef m ef mt hvm) (subst Impl (sym (typed-sig-ef m ef mt)) I))
+  core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b I =
+    subst (λ ι′ → trIRAt ι′ (tableOf-go (FB.bundle→compiled b) []) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι′ [] (runCore fmt P I′))
+          (interp-subst (teleSig≡entrySig mt) I)
+          (WB-sym sym (RelT∞′-tr (interp (teleSig mt) I′) []
+             (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _))))
+    where
+      I′ = subst Impl (sym (teleSig≡entrySig mt)) I
+      P  = TR.toProgram Tele.[] TR.[] TR.[] TR.[] (λ ()) mt mi (λ k → k)
+      module TWm = TW fmt (teleSig mt) I′
+      inv₀ : TWI.Inv fmt (teleSig mt) I′ C.emptyCScope Tele.[] TR.[] TR.[] TR.[] []
+      inv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
+
+-- For EVERY implementation `I`: the compiled program's trace in the world it
+-- makes is the core program's.
+program-core-tr :
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (I : Impl (moduleSig m))
+    (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
+  → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (interp (moduleSig m) I)
+    ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (moduleSig m) I) [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I))
+program-core-tr m mt hvm I ir mi with FB.program-node m ir mi
+... | es , ef , b , ceq =
+  subst (λ t → runTr ι [] t ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I)))
+        (sym (cong₂ (λ tbl x → evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) (cong tableOfResult ceq) ir≡))
+        (core-ef-tr m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b I)
   where
     ι = interp (moduleSig m) I
     ir≡ : ir ≡ mainCall

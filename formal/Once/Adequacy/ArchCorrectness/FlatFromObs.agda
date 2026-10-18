@@ -111,6 +111,13 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; 
 open AllocState using (next-slot)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
+open import Once.Lang.Out using (_▹_)
+open import Data.List using (length)
+open import Data.Unit using (⊤; tt)
+open import Data.Bool using (true; false)
+open import Relation.Binary.PropositionalEquality using (cong₂)
+open import Once.Lang.Res using (Res; returns; stopped; is-stopped)
+open import Once.Spec.Trace using (End; returned) renaming (halted to halted-end)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Data.Nat.Properties using (+-identityʳ; +-comm)
@@ -129,8 +136,8 @@ import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 
-open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks)
-open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label; ft-go-prefix; FlatState; flat-exec-instr; floc; falloc)
+open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks; eventsAt; resultAt; evalᴰ)
+open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; fetch-++-right; fpc; find-label; ft-go-prefix; FlatState; flat-exec-instr; floc; falloc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -452,6 +459,55 @@ flat-main ioc brs ir lk =
   behavior-by (⟦ just (irProgram tbl ir) ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS))
               (flat-trace-fam ioc brs ir lk)
               (λ n → sym (ir-flat-correct-fam ioc brs ir lk n))
+
+
+------------------------------------------------------------------------
+-- D320: HOW THE PROGRAM'S FLAT RUN ENDS. The start, `main`'s run (the entry
+-- witness's chain), and then: if `main` returned, the image's `c-leave` — the
+-- run ends `returned`; if it stopped, the halted machine, which has not left
+-- (`ValueRealized.stops`) — `halted`. Either way, the meaning's calls and how
+-- it ended, at a fuel the witness names.
+------------------------------------------------------------------------
+
+private
+  -- the image's `c-leave` sits right after `main`'s code
+  leave-at : (ir : IR Unit Unit) → fetch (image ir) (length (emitted 0 0 ir) + 1) ≡ just (instr-ctrl c-leave)
+  leave-at ir =
+    subst (λ m → fetch (image ir) m ≡ just (instr-ctrl c-leave)) (+-comm 1 (length (emitted 0 0 ir)))
+      (subst (λ prog → fetch prog (suc (length (emitted 0 0 ir))) ≡ just (instr-ctrl c-leave)) (sym (image-assoc ir))
+        (fetch-++-left (top-pre ir ++ blocks-layout (blocks 0 0 ir)) (fns-image (suc (ir-next-label 0 ir)) tbl)
+                       (suc (length (emitted 0 0 ir))) (instr-ctrl c-leave)
+          (fetch-++-left (top-pre ir) (blocks-layout (blocks 0 0 ir)) (suc (length (emitted 0 0 ir))) (instr-ctrl c-leave)
+            (trans (cong (fetch (emitted 0 0 ir ++ instr-ctrl c-leave ∷ [])) (sym (+-identityʳ (length (emitted 0 0 ir)))))
+                   (fetch-++-right (emitted 0 0 ir) (instr-ctrl c-leave ∷ []) 0)))))
+
+-- What the meaning says of a run's end.
+end-of-res : ∀ {X : Set} → Res X → End ⊤
+end-of-res (returns _) = returned tt
+end-of-res stopped     = halted-end
+
+flat-ends : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir))
+          → flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs 0) + 2)) (image ir) start-flat
+            ≡ (eventsAt (floc (main-flat ir)) (evalᴰ ir tt) , just (end-of-res (resultAt (floc (main-flat ir)) (evalᴰ ir tt))))
+flat-ends ioc brs ir lk =
+  trans (flat-events-steps (ValueRealized.run vr) 2)
+        (trans (cong₂ _▹_ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs 0))
+                          (tail (resultAt s0 T) refl))
+               (cong (_, just (end-of-res (resultAt s0 T))) (++-identityʳ (eventsAt s0 T))))
+  where
+    vr = entry-vr ir lk ioc brs 0
+    s0 = floc (main-flat ir)
+    T  = evalᴰ ir tt
+    st = ValueRealized.settle vr
+    tail : ∀ (r : Res _) → resultAt s0 T ≡ r → flat-events 2 (image ir) st ≡ ([] , just (end-of-res r))
+    tail (returns v) eq = done (ValueRealized.live vr (cong is-stopped eq)) (ValueRealized.at-end vr (cong is-stopped eq))
+      where done : halted (floc st) ≡ false → fpc st ≡ length (emitted 0 0 ir) + 1
+                 → flat-events 2 (image ir) st ≡ ([] , just (returned tt))
+            done h p rewrite h | p | leave-at ir = refl
+    tail stopped eq = done (ValueRealized.stops vr (cong is-stopped eq))
+      where done : halted (floc st) ≡ true × LocState.left (floc st) ≡ LocState.left s0
+                 → flat-events 2 (image ir) st ≡ ([] , just halted-end)
+            done (h , l) rewrite h | l = refl
 
 ir-flat-correct-main : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (n : ℕ)
                      → at (flat-main ioc brs ir lk) n
