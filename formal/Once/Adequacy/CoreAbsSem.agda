@@ -124,13 +124,6 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
           → tr eΓ et eP (GT.⊢pair da db) ≡ GT.⊢pair (tr eΓ ea eA da) (tr eΓ eb eB db)
   tr-pair {eΓ = refl} {refl} {refl} refl refl refl refl da db = refl
 
-  tr-iter : ∀ {Ψf Ψs π₁ π₂ A' A B' B} {f' f s' s : G.Tm n}
-              {eΓ : Γ' ≡ Γ} {et : G.iter f' s' ≡ G.iter f s} {eB : B' ≡ B}
-              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind T.Many T.pure ] (B' T.+ (T.Unit T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A')))) ≡ (A T.⇒[ T.mk-kind T.Many T.pure ] (B T.+ (T.Unit T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B T.+ A)))))
-              (es : s' ≡ s) (eA : A' ≡ A)
-              (df : Γ' ⊢[ Ψf ] f' ∷ A' T.⇒[ T.mk-kind T.Many T.pure ] (B' T.+ (T.Unit T.⇒[ T.mk-kind T.Many T.eff⁺ ] (B' T.+ A'))) ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
-          → tr eΓ et eB (GT.⊢iter df ds) ≡ GT.⊢iter (tr eΓ ef eF df) (tr eΓ es eA ds)
-  tr-iter {eΓ = refl} {refl} {refl} refl refl refl refl df ds = refl
 
   tr-fst : ∀ {Ψ π A' A B' B} {p' p : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.fst p' ≡ G.fst p} {eA : A' ≡ A}
@@ -232,11 +225,6 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
            → tr eΓ et eA (GT.⊢sigop c k h g m) ≡ GT.⊢sigop c k h g m
   tr-sigop {eΓ = refl} {refl} {refl} = refl
 
-  tr-sigop⁺ : ∀ {A B q π c k e h g m} {eΓ : Γ' ≡ Γ}
-                {et : G.sigop c (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ≡ G.sigop c (A T.⇒[ T.mk-kind q T.eff⁺ ] B)}
-                {eA : (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ≡ (A T.⇒[ T.mk-kind q T.eff⁺ ] B)}
-            → tr eΓ et eA (GT.⊢sigop⁺ {π = π} c k e h g m) ≡ GT.⊢sigop⁺ c k e h g m
-  tr-sigop⁺ {eΓ = refl} {refl} {refl} = refl
 
   tr-sub-eff : ∀ {Ψ π π′ A' A} {t' t : G.Tm n} {g}
                  {eΓ : Γ' ≡ Γ} {et : t' ≡ t} {eA : A' ≡ A} (d : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
@@ -367,7 +355,6 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
             (trans (tr-subst (⟦⟧F-⟪⟫ (absF Δ F) (absTy Δ A) σ) _)
                    (trans (tr-isubst {r = r} (absTy-⟦⟧ Δ F A) _) (irr (RT k) (RT-id k))))
             (RT-id x))
-  RT-id (GT.⊢iter f x) = trans (tr-iter _ _ _ _ (RT f) (RT x)) (cong₂ GT.⊢iter (RT-id f) (RT-id x))
   RT-id (GT.⊢out {π = π} {F = F} wf d) =
     trans (tr-isubst {r = r} (sym (absTy-⟦⟧ Δ F (T.ν-type F π))) _)
       (trans (tr-subst (sym (⟦⟧F-⟪⟫ (absF Δ F) (Ty.ν-type (absF Δ F) π) σ)) _)
@@ -384,9 +371,6 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
                                     (trans (tr-isubst {r = r} (primDom-abs Δ p) _) (irr (RT d) (RT-id d)))))))
   RT-id (GT.⊢sigop {A = A} c k h g m) =
     trans (tr-isubst {r = r} (sym (absTy-ground Δ g)) _) (trans (tr-subst (sym (⌈⌉-⟪⟫ A σ)) _) tr-sigop)
-  RT-id (GT.⊢sigop⁺ {A = A} {B} {q} c k e h g@(rf-⇒ ga gb) m) =
-    trans (tr-isubst {r = r} (sym (absTy-ground Δ (rf-⇒ ga gb))) _)
-          (trans (tr-subst (sym (⌈⌉-⟪⟫ (A T.⇒[ T.mk-kind q T.eff⁺ ] B) σ)) _) tr-sigop⁺)
   RT-id (GT.⊢sub-eff g d) = trans (tr-sub-eff (RT d)) (cong (GT.⊢sub-eff g) (RT-id d))
   RT-id (GT.⊢sub-use p d) = trans (tr-sub-use (RT d)) (cong (GT.⊢sub-use p) (RT-id d))
   RT-id (GT.⊢ref d τ k) =

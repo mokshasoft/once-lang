@@ -262,7 +262,6 @@ mutual
     t-ana-check {u = u} (ρ̂-wf wf)
       (cong (λ X → ρ̂ A ⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir dc)
   subst-c′ ir (t-sub d p)           = t-sub (subst-i′ ir d) (ρ̂-<: p)
-  subst-c′ ir (t-var-resolved-guard ng li e c) = guard-rf (proj₂ ir li) ng li e c
   subst-c′ ir (t-lam {u = u} le d)          = t-lam {u = u} le (subst-c′ ir d)
   subst-c′ ir (t-pair-lit-check a b) = t-pair-lit-check (subst-c′ ir a) (subst-c′ ir b)
   subst-c′ ir (t-In-app-check {F = F} wf d) =
@@ -273,13 +272,6 @@ mutual
   subst-c′ ir (t-initial-app-check d) = t-initial-app-check (subst-c′ ir d)
   subst-c′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate {x = x} {schema = sch} ln li lp ng ki) =
     t-var-poly-instantiate (lk-nothing x Γ D ln) li lp ng (ρ̂-ki {sch} ki)
-
-  -- D313: the guard's arrow is rigid-free because the declared one is.
-  guard-rf : ∀ {n Γ D imps polys sg cn A B q π} → RigidFree (A ⇒[ mk-kind q π ] B) → NotGenerator cn
-           → lookupImport sg (showCanonical cn) ≡ just (A ⇒[ mk-kind q π ] B)
-           → EffGrade π → IsConcrete (A ⇒[ mk-kind q π ] B)
-           → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg ⊢ᶜ RResolved cn ∶ ρ̂ (A ⇒[ mk-kind q eff⁺ ] B) ⨾ Surface.zeroUsage
-  guard-rf (rf-⇒ ga gb) ng li e c = sym (ρ̂-rf (rf-⇒ ga gb)) ⇝ᶜ t-var-resolved-guard ng li e c
 
   subst-d′ : ∀ {n Γ D imps polys sg e A π B Ψ} → TopRF imps sg
            → mkCtx n Γ D imps polys sg ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ

@@ -552,8 +552,6 @@ elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero pure ] Cod)} name (con-
   curry (SigOp (value-info name base-Unit cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero eff ] Cod)} name (con-fun bDom cCod)) =
   curry (SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod) ∘ snd)
-elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero eff⁺ ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info (mk-kind Zero eff⁺) name base-Unit cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero act ] Cod)} name (con-fun bDom cCod)) =
   curry (SigOp (arrow-info (mk-kind Zero act) name base-Unit cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod)) =

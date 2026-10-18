@@ -41,15 +41,13 @@ open import Once.Lang.Trace using (T; ret; call; halt; returnT; fmapT)
 open import Once.Lang.Stream using (νᵈ; anaᵈ; seqF; module νᵈ)
 open νᵈ using (forceᵈ)
 open import Once.Lang.Iterative
-  using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; ν∞; ana∞)
+  using (T∞; T∞F; ret∞; call∞; halt∞; return∞; fmap∞; seqF∞; ν∞; ana∞; embed)
 open Once.Lang.Iterative.T∞ using (force)
 open Once.Lang.Iterative.ν∞ using (force∞)
 open import Once.Lang.Trace using (callOp; haltOp)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Lang.Graded
-open import Once.Lang.Guarded using (T⁺; call⁺; halt⁺; fmap⁺; forget⁺; ν⁺; ana⁺)
-open Once.Lang.Guarded.ν⁺ using (force⁺)
 open Once.Lang.Graded.νᵖ using (forceᵖ)
 
 ------------------------------------------------------------------------
@@ -59,7 +57,6 @@ open Once.Lang.Graded.νᵖ using (forceᵖ)
 fmapM : ∀ π {X Y} → (X → Y) → M π X → M π Y
 fmapM pure f m = f m
 fmapM act  f m = fmapT f m
-fmapM eff⁺ f m = fmap⁺ f m
 fmapM eff  f m = fmap∞ f m
 
 ------------------------------------------------------------------------
@@ -105,8 +102,7 @@ cf⁻¹ᵛ C (wf-Prod f g) (x , y)  = cf⁻¹ᵛ C f x , cf⁻¹ᵛ C g y
 
 -- Sequence a layer of grade-`π` computations (at `pure`, there is nothing to
 -- run). It needs the grade's UNIT — a layer with no recursive position runs
--- nothing — so it is defined at the grades that have one (`pure ⊑π π`; not
--- at the guard `eff⁺`, D311).
+-- nothing — so it is defined at the grades that have one (`pure ⊑π π`).
 seqM : ∀ {π} → pure ⊑π π → (G : Functor) {X : Set} → ⟦ G ⟧F (M π X) → M π (⟦ G ⟧F X)
 seqM ⊑-pure G x = x
 seqM ⊑-pa   G x = seqF G x
@@ -200,37 +196,13 @@ ana-semᵛ {F} {A} pure wf clo a =
   anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a
 ana-semᵛ {F} {A} act wf clo a =
   anaᵈ (translateF Carrier Carrier F) (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
-ana-semᵛ {F} {A} eff⁺ wf clo a =
-  ana⁺ (translateF Carrier Carrier F) (λ a′ → fmap⁺ (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 ana-semᵛ {F} {A} eff wf clo a =
   ana∞ (translateF Carrier Carrier F) (λ a′ → fmap∞ (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 
 out-semᵛ : ∀ π {F} → WellFormedF F → ⟦ ν-type F π ⟧ᵛ → M π ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᵛ
 out-semᵛ pure {F} wf v = cf⁻¹ᵛ (ν-type F pure) wf (coerce-ν-out wf _ (forceᵖ v))
 out-semᵛ act  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F act) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
-out-semᵛ eff⁺ {F} wf v = fmap⁺ (λ layer → cf⁻¹ᵛ (ν-type F eff⁺) wf (coerce-ν-out wf _ layer)) (force⁺ v)
 out-semᵛ eff  {F} wf v = fmap∞ (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (coerce-ν-out wf _ layer)) (force∞ v)
-
--- `eff⁺ ⊑ eff` at ν: a stream whose layers begin with an event is one whose
--- layers are trees (D311).
-embν⁺     : ∀ {H} → ν⁺ H → ν∞ H
-embRoot⁺  : ∀ (H : SFunctor) → T⁺ (⟦ H ⟧SF (ν⁺ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
-embTree⁺  : ∀ (H : SFunctor) → T∞ (⟦ H ⟧SF (ν⁺ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
-embLayer⁺ : ∀ (H : SFunctor) → T∞F (⟦ H ⟧SF (ν⁺ H)) (T∞ (⟦ H ⟧SF (ν⁺ H)))
-          → T∞F (⟦ H ⟧SF (ν∞ H)) (T∞ (⟦ H ⟧SF (ν∞ H)))
-mapEmbν⁺  : ∀ (H G : SFunctor) → ⟦ G ⟧SF (ν⁺ H) → ⟦ G ⟧SF (ν∞ H)
-force∞ (embν⁺ {H} v) = embRoot⁺ H (force⁺ v)
-force (embRoot⁺ H (call⁺ o a k)) = call∞ o a (λ b → embTree⁺ H (k b))
-force (embRoot⁺ H (halt⁺ o a))   = halt∞ o a
-force (embTree⁺ H m) = embLayer⁺ H (force m)
-embLayer⁺ H (ret∞ l)      = ret∞ (mapEmbν⁺ H H l)
-embLayer⁺ H (call∞ o a k) = call∞ o a (λ b → embTree⁺ H (k b))
-embLayer⁺ H (halt∞ o a)   = halt∞ o a
-mapEmbν⁺ H (SK B)     x        = x
-mapEmbν⁺ H SId        x        = embν⁺ x
-mapEmbν⁺ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν⁺ H G₁ x)
-mapEmbν⁺ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν⁺ H G₂ y)
-mapEmbν⁺ H (G₁ S⊗ G₂) (x , y)  = mapEmbν⁺ H G₁ x , mapEmbν⁺ H G₂ y
 
 ------------------------------------------------------------------------
 -- Subtyping coercions (D226), graded.
@@ -254,28 +226,20 @@ mapEmbν⁺ H (G₁ S⊗ G₂) (x , y)  = mapEmbν⁺ H G₁ x , mapEmbν⁺ H G
 ⟦ sub-ν ⊑-act  ⟧<:ᵛ x = x
 ⟦ sub-ν ⊑-pa   ⟧<:ᵛ x = embνᵃ x
 ⟦ sub-ν ⊑-ae   ⟧<:ᵛ x = embν∞ᵈ x
-⟦ sub-ν ⊑-g    ⟧<:ᵛ x = x
-⟦ sub-ν ⊑-ge   ⟧<:ᵛ x = embν⁺ x
 ⟦ sub-rigid ⟧<:ᵛ x = x
 
 ------------------------------------------------------------------------
 -- An FFI reference (`⊢sigop`), plan 0.105. A PURE contract is the
 -- interpretation's pure half at its argument — a value, so a pure reference is
 -- referentially transparent by its type. An effectful arrow's application is
--- the GENERIC EFFECT (`opCall⁺`): a call the interpretation answers, an
--- emitted event, or a halt — read at the arrow's grade (`forget⁺` at `eff`).
+-- the GENERIC EFFECT (`opCallᵀ`): a call the interpretation answers, an
+-- emitted event, or a halt — a finite block, embedded into `T∞` at `eff`.
 -- Contracts are
 -- first-order (`IsConcrete`), so both sides cross by the base conversions.
 ------------------------------------------------------------------------
 
--- A foreign operation's call, GUARDED (D311): the generic effect — its root is
--- the call (or the halt). The form `arrow-sem-eff` decides, read as `T⁺`.
-opCall⁺ : ∀ {A B} → CanonicalName → IsBaseType A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T⁺ Val.⟦ B ⟧
-opCall⁺ {A} cn bA (yes refl) _          x = halt⁺ (haltOp cn A bA) x
-opCall⁺ {A} cn bA (no _)     (yes refl) x = call⁺ (callOp cn A bA Unit) x (λ _ → return∞ tt)
-opCall⁺ {A} {B} cn bA (no _) (no _)     x = call⁺ (callOp cn A bA B) x return∞
-
--- …and as a finite tree (`act`, D313): the same call, which returns or halts.
+-- A foreign operation's call (the generic effect), a finite tree (`act`, D313):
+-- the call, which returns or halts. The form `arrow-sem-eff` decides.
 opCallᵀ : ∀ {A B} → CanonicalName → IsBaseType A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T Val.⟦ B ⟧
 opCallᵀ {A} cn bA (yes refl) _          x = halt (haltOp cn A bA) x
 opCallᵀ {A} cn bA (no _)     (yes refl) x = call (callOp cn A bA Unit) x (λ _ → ret tt)
@@ -293,33 +257,19 @@ sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m 
   λ _ → injB bCod (valueOf I (key (showCanonical cn) Unit Cod) (value-∈ m refl) tt)
 -- An effectful erased arrow is a CALL with the erased slot `tt` (D250).
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero eff} bDom bCod) m =
-  λ _ → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt))
+  λ _ → embed (fmapT (injB bCod) (opCallᵀ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One pure} bDom bCod) m =
   λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many pure} bDom bCod) m =
   λ a → injB bCod (valueOf I (key (showCanonical cn) Dom Cod) (value-∈ m refl) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff} bDom bCod) m =
-  λ a → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
+  λ a → embed (fmapT (injB bCod) (opCallᵀ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff} bDom bCod) m =
-  λ a → forget⁺ (fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
+  λ a → embed (fmapT (injB bCod) (opCallᵀ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a)))
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero act} bDom bCod) m =
   λ _ → fmapT (injB bCod) (opCallᵀ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt)
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One act} bDom bCod) m =
   λ a → fmapT (injB bCod) (opCallᵀ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
 sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many act} bDom bCod) m =
   λ a → fmapT (injB bCod) (opCallᵀ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
-sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero eff⁺} bDom bCod) m =
-  λ _ → fmap⁺ (injB bCod) (opCall⁺ cn base-Unit (isVoid? Cod) (isUnit? Cod) tt)
-sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One eff⁺} bDom bCod) m =
-  λ a → fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
-sigOpRefᵛ fmt Σ I cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many eff⁺} bDom bCod) m =
-  λ a → fmap⁺ (injB bCod) (opCall⁺ cn bDom (isVoid? Cod) (isUnit? Cod) (prjB bDom a))
 
--- D313 (plan 0.117 F3a): an effectful FFI operation referenced at its GUARD —
--- the generic effect, a call (or a halt) first; what `sigOpRefᵛ` gives it at
--- `eff⁺`, without the declaration (an effectful contract reads none).
-sigOpGuardᵛ : ∀ {A B} (cn : CanonicalName) → IsBaseType A → IsBaseType B → (q : Quantity)
-            → ⟦ A ⇒[ mk-kind q eff⁺ ] B ⟧ᵛ
-sigOpGuardᵛ {B = B} cn bA bB Zero = λ _ → fmap⁺ (injB bB) (opCall⁺ cn base-Unit (isVoid? B) (isUnit? B) tt)
-sigOpGuardᵛ {B = B} cn bA bB One  = λ a → fmap⁺ (injB bB) (opCall⁺ cn bA (isVoid? B) (isUnit? B) (prjB bA a))
-sigOpGuardᵛ {B = B} cn bA bB Many = λ a → fmap⁺ (injB bB) (opCall⁺ cn bA (isVoid? B) (isUnit? B) (prjB bA a))

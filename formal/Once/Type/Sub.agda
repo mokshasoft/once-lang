@@ -12,10 +12,10 @@ module Once.Type.Sub where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind)
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind)
 open import Once.Lang.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Lang.Type.Sub
-  using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+  using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Lang.Type.DecEq using (_≟q_)
 open import Once.Lang.Type.DecEq using (_≟F_; _≟T_)
 
@@ -26,19 +26,12 @@ open import Once.Lang.Type.DecEq using (_≟F_; _≟T_)
 _⊑π?_ : (π π′ : Purity) → Dec (π ⊑π π′)
 pure ⊑π? pure = yes ⊑-pure
 pure ⊑π? act = yes ⊑-pa
-pure ⊑π? eff⁺ = no λ ()
 pure ⊑π? eff = yes ⊑-pe
 act ⊑π? pure = no λ ()
 act ⊑π? act = yes ⊑-act
-act ⊑π? eff⁺ = no λ ()
 act ⊑π? eff = yes ⊑-ae
-eff⁺ ⊑π? pure = no λ ()
-eff⁺ ⊑π? act = no λ ()
-eff⁺ ⊑π? eff⁺ = yes ⊑-g
-eff⁺ ⊑π? eff = yes ⊑-ge
 eff ⊑π? pure = no λ ()
 eff ⊑π? act = no λ ()
-eff ⊑π? eff⁺ = no λ ()
 eff ⊑π? eff = yes ⊑-eff
 
 ------------------------------------------------------------------------

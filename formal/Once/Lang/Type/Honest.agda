@@ -68,16 +68,14 @@ NotSingleton (rigid _ _)  = ⊥
 DataCod : Purity → Type → Set
 DataCod pure B = NotEmpty B
 DataCod eff  B = NotEmpty B × NotSingleton B
-DataCod eff⁺ B = NotEmpty B × NotSingleton B
 DataCod act  B = NotEmpty B × NotSingleton B
 
 -- An effectful grade of one call: the codomain may be `Unit` (it emits) or
 -- `Void` (it halts). A foreign operation is ONE call at every effectful
--- grade: at `act` a one-node tree of `T` (D313), at `eff` of `T∞` (D312), at
--- the guard `eff⁺` the generic effect itself (D311).
+-- grade: at `act` a one-node tree of `T` (D313), at `eff` its embedding into
+-- `T∞` (D317).
 Effectful : Purity → Set
 Effectful eff  = ⊤
-Effectful eff⁺ = ⊤
 Effectful act  = ⊤
 Effectful pure = ⊥
 
@@ -114,12 +112,10 @@ HonestFFI (rigid _ _)             = ⊥   -- D243: an FFI signature is ground
 isEff? : (π : Purity) → Maybe (π ≡ eff)
 isEff? pure = nothing
 isEff? eff  = just refl
-isEff? eff⁺ = nothing
 isEff? act  = nothing
 
 effectful? : (π : Purity) → Maybe (Effectful π)
 effectful? eff  = just tt
-effectful? eff⁺ = just tt
 effectful? act  = just tt
 effectful? pure = nothing
 
@@ -161,7 +157,6 @@ notSingleton? (rigid _ _)  = nothing
 dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
 dataCod? pure B = notEmpty? B
 dataCod? eff  B = both (notEmpty? B) (notSingleton? B)
-dataCod? eff⁺ B = both (notEmpty? B) (notSingleton? B)
 dataCod? act  B = both (notEmpty? B) (notSingleton? B)
 
 honestCod? : (π : Purity) (B : Type) → Maybe (HonestCod π B)

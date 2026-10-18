@@ -287,8 +287,8 @@ given-infer ctx e A π (success (A′ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.m
 {-# CATCHALL #-}
 given-infer ctx e A π (success T Ψ eE d fr , w) = failure ComposeMiddleUndetermined , tt
 
--- D311: a rule that builds a VALUE at an arrow's grade needs the grade's unit
--- (`pure ⊑π π`); the guard `eff⁺` has none. Decided once, here.
+-- A rule that builds a VALUE at an arrow's grade needs the grade's unit
+-- (`pure ⊑π π`). Decided once, here.
 withUnit : ∀ {R : Set} → R → (π : Once.Lang.Type.Grade.Purity) → (Once.Lang.Type.Grade.pure ⊑π π → R) → R
 withUnit-aux : ∀ {R : Set} {π} → R → Dec (Once.Lang.Type.Grade.pure ⊑π π) → (Once.Lang.Type.Grade.pure ⊑π π → R) → R
 withUnit-aux r (yes u) k = k u
@@ -503,9 +503,6 @@ inspectWellFormedF F with wellFormedF? F in eq
 ... | nothing  = wfv-no eq
 
 
-
-
-
 -- | Look up a variable by name and return its de Bruijn indexed expression
 --
 -- Priority order:
@@ -609,7 +606,6 @@ asFun (success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Typ
 asFun (success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.eff ] B))
 asFun (success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.eff ] B))
 -- D311: no surface application of a `prod` arrow yet (plan 0.117 F).
-asFun (success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B) _ _ _ _) = notFun (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B))
 asFun (success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] B) Ψ se d f)                       = isEff Once.Lang.Type.Grade.act Once.Lang.Type.Grade.eg-act A B Ψ se d f
 asFun (success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.act ] B) _ _ _ _) = notFun (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.act ] B))
 asFun (success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.act ] B) _ _ _ _) = notFun (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.act ] B))
@@ -921,7 +917,6 @@ inferElabV-RVar-poly-aux ctx x eL eI =
   inferElabV-RVar-poly-lookup-aux ctx x eL eI (lookupPoly (NamedCtx.polys ctx) x) refl
 
 
-
 -- Not mutually recursive with the block below: these never call back into
 -- it, so they stand outside it (its positivity and termination graphs span
 -- only what actually recurses).
@@ -991,7 +986,6 @@ inferOutGo ctx arg F Once.Lang.Type.Grade.act Ψ argE d fr w (just wfF) eqW =
     (suc d) fr
   , t-Out-eff-app-infer {g = Once.Lang.Type.Grade.eg-act} wfF refl w
 -- D311: no surface `Out` of a `prod` stream yet (plan 0.117 F).
-inferOutGo ctx arg F Once.Lang.Type.Grade.eff⁺ Ψ argE d fr w (just wfF) eqW = failure (BuiltinTypeMismatch "Out") , tt
 
 inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → ctx ⊢ᵢ arg ∶ T ⨾ Ψ → NuView T
@@ -1052,7 +1046,6 @@ inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Lang.Type.Grade.act B A') w
   , t-apply-eff-app-infer {g = Once.Lang.Type.Grade.eg-act} w
 ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
 -- D311: no surface application of a `prod` closure yet (plan 0.117 F).
-inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Lang.Type.Grade.eff⁺ B A') = failure (BuiltinTypeMismatch "apply") , tt
 inferApplyAt ctx arg Ψ argE d fr w apply-other = failure (BuiltinTypeMismatch "apply") , tt
 
 inferApplyOn : (ctx : NamedCtx) (arg : RawExpr) → VerifiedInferResult ctx arg
@@ -1343,11 +1336,8 @@ ext-resolved-sem eff  (yes refl) _          = haltsV refl
 ext-resolved-sem eff  (no _)     (yes refl) = emitsV refl
 ext-resolved-sem eff  (no _)     (no _)     = callsV
 -- D311: a foreign operation at `prod` is one call, as at `eff` (`arrow-sem`).
-ext-resolved-sem eff⁺ (yes refl) _          = haltsV refl
 ext-resolved-sem act (yes refl) _          = haltsV refl
-ext-resolved-sem eff⁺ (no _)     (yes refl) = emitsV refl
 ext-resolved-sem act (no _)     (yes refl) = emitsV refl
-ext-resolved-sem eff⁺ (no _)     (no _)     = callsV
 ext-resolved-sem act (no _)     (no _)     = callsV
 
 ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
@@ -1791,50 +1781,6 @@ inferElabV-RResolved-dispatch ctx cn gv-inl      = failure (UnboundVariable "inl
 inferElabV-RResolved-dispatch ctx cn gv-inr      = failure (UnboundVariable "inr") , tt
 inferElabV-RResolved-dispatch ctx cn (gv-other ng) = inferElabV-RResolved-aux ctx cn ng _ refl
 
--- D313 (plan 0.117 F3a): a generator of Σ declared at an effectful arrow also
--- checks at its GUARD (`t-var-resolved-guard`). Tried only after subsumption
--- fails — the declared arrow is never below its guard, so the two never
--- overlap — and failing with subsumption's own error.
-guardConc : ∀ {A B : Type} {k k′ : Once.Lang.Type.Grade.ArrowKind}
-          → IsConcrete (A Once.Lang.Type.⇒[ k ] B) → IsConcrete (A Once.Lang.Type.⇒[ k′ ] B)
-guardConc (con-fun bA bB) = con-fun bA bB
-
-guardRef-eq : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (T T′ : Type)
-              {A B : Type} {q : Once.Lang.Type.Grade.Quantity} {π : Once.Lang.Type.Grade.Purity} → Once.Lang.Type.Grade.EffGrade π
-            → lookupImport (NamedCtx.sig ctx) (showCanonical cn)
-                ≡ just (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q π ] B)
-            → Dec (T ≡ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B))
-            → (mc : Maybe (IsConcrete (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q π ] B)))
-            → VerifiedCheckResult ctx (Raw.RResolved cn) T
-guardRef-eq ctx cn ng _ T′ g eq (yes refl) (just k) =
-  success _ (Surface.sigOp cn (guardConc k)) 0 0 , t-var-resolved-guard ng eq g k
-guardRef-eq ctx cn ng T T′ g eq (yes refl) nothing = failure (TypeMismatch T T′) , tt
-guardRef-eq ctx cn ng T T′ g eq (no _) _ = failure (TypeMismatch T T′) , tt
-
-guardRefV : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (T T′ : Type)
-          → (lhs : Maybe Type) → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ lhs
-          → VerifiedCheckResult ctx (Raw.RResolved cn) T
-guardRefV ctx cn ng T T′ (just (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.act ] B)) eq =
-  guardRef-eq ctx cn ng T T′ Once.Lang.Type.Grade.eg-act eq (T ≟T (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B))
-    (isConcrete? (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.act ] B))
-guardRefV ctx cn ng T T′ (just (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff ] B)) eq =
-  guardRef-eq ctx cn ng T T′ Once.Lang.Type.Grade.eg-eff eq (T ≟T (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B))
-    (isConcrete? (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff ] B))
-{-# CATCHALL #-}
-guardRefV ctx cn ng T T′ _ _ = failure (TypeMismatch T T′) , tt
-
-guardOrSubsume-dec : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn
-                     → ∀ {Ψ : Surface.Usage (NamedCtx.size ctx)} (T T′ : Type)
-                   → SExpr (NamedCtx.debruijn ctx) Ψ T′ → (depth fresh : ℕ)
-                   → ctx ⊢ᵢ Raw.RResolved cn ∶ T′ ⨾ Ψ → Dec (T′ <: T) → VerifiedCheckResult ctx (Raw.RResolved cn) T
-guardOrSubsume-dec ctx cn ng T T′ eE depth fresh w (yes p) = success _ (Surface.coerce p eE) depth fresh , t-sub w p
-guardOrSubsume-dec ctx cn ng T T′ eE depth fresh w (no _)  = guardRefV ctx cn ng T T′ _ refl
-
-guardOrSubsume : ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (T : Type)
-               → VerifiedInferResult ctx (Raw.RResolved cn) → VerifiedCheckResult ctx (Raw.RResolved cn) T
-guardOrSubsume ctx cn ng T (failure err , _) = failure err , tt
-guardOrSubsume ctx cn ng T (success T′ Ψ eE d fr , w) = guardOrSubsume-dec ctx cn ng T T′ eE d fr w (T′ <:? T)
-
 checkElabV-RResolved-dispatch :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) (T : Type) → GenView cn
   → VerifiedInferResult ctx (Raw.RResolved cn)
@@ -1854,7 +1800,7 @@ checkElabV-RResolved-dispatch ctx _ T gv-inl rInfV =
 checkElabV-RResolved-dispatch ctx _ T gv-inr rInfV =
   checkElabV-RVar-bbc-inr-aux ctx T rInfV
 checkElabV-RResolved-dispatch ctx cn T gv-unit  rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
-checkElabV-RResolved-dispatch ctx cn T (gv-other ng) rInfV = guardOrSubsume ctx cn ng T rInfV
+checkElabV-RResolved-dispatch ctx cn T (gv-other ng) rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
 
 checkElabV-RVar-bbc-other-aux :
   ∀ (ctx : NamedCtx) (x : String) (T : Type)
@@ -2681,7 +2627,6 @@ mutual
           success (Unit Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] B) _ (Surface.effApp {g = Once.Lang.Type.Grade.eg-act} fE xE) (df ⊔ dx) fx , t-effApp {g = Once.Lang.Type.Grade.eg-act} eqAH wF wX
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.eff ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.eff ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.eff ] B)) , tt
-  inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.act ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.act ] B)) , tt
   inferElabV-RApp-other-aux ctx f x nothing eqAH | success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.act ] B) _ _ _ _ , _ = failure (NotFunction (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.act ] B)) , tt
 
@@ -2820,7 +2765,6 @@ mutual
   ... | r = embedOrSubsume ctx (Raw.RPair a b) T r
 
 
-
 inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 -- Literals
 -- inferElab as projection of the verified version.
@@ -2870,11 +2814,8 @@ checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-k
 checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.pure ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 {-# CATCHALL #-}
 checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind _ Once.Lang.Type.Grade.eff ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.eff⁺ ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.act ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.eff⁺ ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.One Once.Lang.Type.Grade.act ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
-checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.eff⁺ ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((_ Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Lang.Type.μ-type _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
 checkApply ctx arg T | success ((Once.Lang.Type.ν-type _ _) Once.Lang.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt

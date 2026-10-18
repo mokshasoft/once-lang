@@ -203,13 +203,10 @@ Refs Ps Pc Pp (cata _ alg)        = Refs Ps Pc Pp alg
 Refs Ps Pc Pp (ana _ coalg)       = Refs Ps Pc Pp coalg
 
 -- A reference elaborates to a call (`refIR`); it is linked when the call is.
--- D313: the type a generator's reference is used at — its declaration, or the
--- guard of its declared effectful arrow (`t-var-resolved-guard`). Both have
--- one contract (`contractOf`), so the call links against the declaration.
+-- The type a generator's reference is used at: its declaration, so the call
+-- links against the declaration (`contractOf`).
 data AtDecl : Type → Type → Set where
   at-decl  : ∀ {A} → AtDecl A A
-  at-guard : ∀ {A B q π} → Ty.EffGrade π
-           → AtDecl (A SpecTy.⇒[ mk-kind q π ] B) (A SpecTy.⇒[ mk-kind q Ty.eff⁺ ] B)
 
 -- An FFI reference declared in the signatures.
 DeclIn : ISig → CanonicalName → Type → Set
@@ -352,16 +349,10 @@ sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff} bDom c
   eff-decl (arrow-info (mk-kind One Ty.eff) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Many Ty.eff) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {B = Cod} {k = mk-kind Zero Ty.eff⁺} bDom cCod) d =
-  eff-decl (arrow-info (mk-kind Zero Ty.eff⁺) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {B = Cod} {k = mk-kind Zero Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Zero Ty.act) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff⁺} bDom cCod) d =
-  eff-decl (arrow-info (mk-kind One Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind One Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff⁺} bDom cCod) d =
-  eff-decl (arrow-info (mk-kind Many Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Many Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOp-linked m name (con-base base-Unit) d = value-∈ d refl , tt
@@ -376,18 +367,6 @@ sigOp-linked m name (con-base base-rigid) d = value-∈ d refl , tt
 sigOp-linked′ : ∀ {tbl} {n} {Γ : Ctx n} {A} (m : _) (name : CanonicalName) (conc : IsConcrete A)
               → DeclIn σ name A → Linked σ tbl (elaborate {Γ = Γ} m (sigOp name conc))
 sigOp-linked′ m name conc (_ , d , at-decl) = sigOp-linked m name conc d
-sigOp-linked′ m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Ty.eff⁺} bDom cCod) (_ , d , at-guard Ty.eg-act) =
-  eff-decl (arrow-info (mk-kind Zero Ty.eff⁺) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked′ m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Ty.eff⁺} bDom cCod) (_ , d , at-guard Ty.eg-eff) =
-  eff-decl (arrow-info (mk-kind Zero Ty.eff⁺) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked′ m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff⁺} bDom cCod) (_ , d , at-guard Ty.eg-act) =
-  eff-decl (arrow-info (mk-kind One Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked′ m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff⁺} bDom cCod) (_ , d , at-guard Ty.eg-eff) =
-  eff-decl (arrow-info (mk-kind One Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked′ m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff⁺} bDom cCod) (_ , d , at-guard Ty.eg-act) =
-  eff-decl (arrow-info (mk-kind Many Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked′ m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff⁺} bDom cCod) (_ , d , at-guard Ty.eg-eff) =
-  eff-decl (arrow-info (mk-kind Many Ty.eff⁺) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 
 ------------------------------------------------------------------------
 -- (D) THE LEMMA

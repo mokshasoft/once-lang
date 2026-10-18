@@ -24,15 +24,12 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind; Zero; One; Many)
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many)
 open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
-open import Once.Lang.Guarded using (ν⁺; T⁺; call⁺; halt⁺; forget⁺)
-open Once.Lang.Guarded.ν⁺ using (force⁺)
-open import Once.Denotation.GuardedLaws using (forget-bind⁺)
 open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
-open import Once.Lang.GradedOps using (fmapM; embν⁺; embRoot⁺; embTree⁺; embLayer⁺; mapEmbν⁺; prjB; injB; embν; mapEmbν; embνᵃ; mapEmbνᵃ; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ)
+open import Once.Lang.GradedOps using (fmapM; prjB; injB; embν; mapEmbν; embνᵃ; mapEmbνᵃ; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ)
 open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
@@ -66,15 +63,6 @@ record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᵈ F) : Set where
 
 open _∼ᵖᵈ_
 
--- A stream whose layers begin with an event (`ν-type F eff⁺`, D311) against the
--- Kleisli one: each forced layer's tree, forgotten, is related to it.
-record _∼⁺ᵈ_ {F : SFunctor} (x : ν⁺ F) (y : νᵈ F) : Set where
-  coinductive
-  field
-    force-∼⁺ᵈ : RelT∞′ (⟦ F ⟧SF-rel (_∼⁺ᵈ_ {F})) (forget⁺ (force⁺ x)) (forceᵈ y)
-
-open _∼⁺ᵈ_
-
 -- An effectful stream (`ν-type F eff`, layers in `T∞`, D312) against the
 -- Kleisli one: each forced layer's tree is related to the finite one.
 record _∼∞ᵈ_ {F : SFunctor} (x : ν∞ F) (y : νᵈ F) : Set where
@@ -96,7 +84,6 @@ RelGT : ∀ (A : Type) → T ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
 RelGM : ∀ (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
 RelGM pure A m t = RelGT A (returnT m) t
 RelGM act  A m t = RelGT A m t
-RelGM eff⁺ A m t = RelT∞′ (RelGV A) (forget⁺ m) t
 RelGM eff  A m t = RelT∞′ (RelGV A) m t
 
 -- Plan 0.105: related computations are related TREES (`RelT′`).
@@ -110,7 +97,6 @@ RelGV (μ-type F)  x y = x ≡ y
 RelGV (ν-type F pure) x y = x ∼ᵖᵈ y
 RelGV (ν-type F act)  x y = x ∼ᵈ y
 RelGV (ν-type F eff)  x y = x ∼∞ᵈ y
-RelGV (ν-type F eff⁺) x y = x ∼⁺ᵈ y
 RelGV (rigid _ _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
 RelGV (A + B) (inj₁ a₁) (inj₁ a₂) = RelGV A a₁ a₂
@@ -165,11 +151,8 @@ RelGM-bind : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : �
 RelGM-bind pure {A} {B} {m} {t₂} {k} {g} = RelGᵖ-bind {A} {B} {m} {t₂} {k} {g}
 RelGM-bind act  {A} {B} {m} {t₂} {k} {g} = RelGT-bind {A} {B} {m} {t₂} {k} {g}
 RelGM-bind eff  {A} {B} {m} {t₂} {k} {g} = RelT∞′-bind
-RelGM-bind eff⁺ {A} {B} {m} {t₂} {k} {g} rm rk =
-  RelT∞′-≈ (forget-bind⁺ m (λ x → forget⁺ (k x))) (RelT∞′-bind rm rk)
 
--- The graded map: both sides map their result along related functions. No
--- unit needed — at `eff⁺` the map keeps the root event.
+-- The graded map: both sides map their result along related functions.
 RelGM-fmap : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t : T ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
            → RelGM π A m t
            → (∀ {a b} → RelGV A a b → RelGV B (f a) (g b))
@@ -177,8 +160,6 @@ RelGM-fmap : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t : T ⟦ A ⟧ᴰ} {f : ⟦ 
 RelGM-fmap pure {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
 RelGM-fmap act  {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
 RelGM-fmap eff  rm h = RelT∞′-bind rm (λ r → rel∞-ret refl (h r))
-RelGM-fmap eff⁺ {A} {B} {m} {t} {f} rm h =
-  RelT∞′-≈ (forget-bind⁺ m (λ x → return∞ (f x))) (RelT∞′-bind rm (λ r → rel∞-ret refl (h r)))
 
 RelGM-return : ∀ {π} (u : pure ⊑π π) {A} {x y} → RelGV A x y → RelGM π A (returnM u x) (returnT y)
 RelGM-return ⊑-pure {A} rv = RelGT-return {A} rv
@@ -281,38 +262,6 @@ mutual
   mapEmbν∞ᵈ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
   mapEmbν∞ᵈ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbν∞ᵈ-∼ H G₁ r₁ , mapEmbν∞ᵈ-∼ H G₂ r₂
 
--- `eff⁺ ⊑ eff` at ν (D311 C2): forgetting that each layer begins with an
--- event keeps the stream related to the Kleisli one.
-mutual
-  embν⁺-∼ : ∀ {H : SFunctor} {x : ν⁺ H} {y : νᵈ H} → x ∼⁺ᵈ y → embν⁺ x ∼∞ᵈ y
-  force-∼∞ᵈ (embν⁺-∼ {H} {x} r) = embRoot⁺-∼ H (force⁺ x) (force-∼⁺ᵈ r)
-
-  embRoot⁺-∼ : ∀ (H : SFunctor) (m : T⁺ (⟦ H ⟧SF (ν⁺ H))) {m′ : T (⟦ H ⟧SF (νᵈ H))}
-             → RelT∞′ (⟦ H ⟧SF-rel (_∼⁺ᵈ_ {H})) (forget⁺ m) m′
-             → RelT∞′ (⟦ H ⟧SF-rel (_∼∞ᵈ_ {H})) (embRoot⁺ H m) m′
-  embRoot⁺-∼ H (call⁺ o a k) (rel∞-call refl f) = rel∞-call refl (λ b → embTree⁺-∼ H (f b))
-  embRoot⁺-∼ H (halt⁺ o a)   (rel∞-halt refl)   = rel∞-halt refl
-  embRoot⁺-∼ H (call⁺ o a k) (rel∞-ret () _)
-  embRoot⁺-∼ H (call⁺ o a k) (rel∞-halt ())
-  embRoot⁺-∼ H (halt⁺ o a)   (rel∞-ret () _)
-  embRoot⁺-∼ H (halt⁺ o a)   (rel∞-call () _)
-
-  embTree⁺-∼ : ∀ (H : SFunctor) {m : T∞ (⟦ H ⟧SF (ν⁺ H))} {m′ : T (⟦ H ⟧SF (νᵈ H))}
-             → RelT∞′ (⟦ H ⟧SF-rel (_∼⁺ᵈ_ {H})) m m′
-             → RelT∞′ (⟦ H ⟧SF-rel (_∼∞ᵈ_ {H})) (embTree⁺ H m) m′
-  embTree⁺-∼ H (rel∞-ret e rr) = rel∞-ret (cong (embLayer⁺ H) e) (mapEmbν⁺-∼ H H rr)
-  embTree⁺-∼ H (rel∞-call e f) = rel∞-call (cong (embLayer⁺ H) e) (λ b → embTree⁺-∼ H (f b))
-  embTree⁺-∼ H (rel∞-halt e)   = rel∞-halt (cong (embLayer⁺ H) e)
-
-  mapEmbν⁺-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (ν⁺ H)} {l′ : ⟦ G ⟧SF (νᵈ H)}
-             → ⟦ G ⟧SF-rel (_∼⁺ᵈ_ {H}) l l′ → ⟦ G ⟧SF-rel (_∼∞ᵈ_ {H}) (mapEmbν⁺ H G l) l′
-  mapEmbν⁺-∼ H (SK B)     r = r
-  mapEmbν⁺-∼ H SId        r = embν⁺-∼ r
-  mapEmbν⁺-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = mapEmbν⁺-∼ H G₁ r
-  mapEmbν⁺-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = mapEmbν⁺-∼ H G₂ r
-  mapEmbν⁺-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-  mapEmbν⁺-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-  mapEmbν⁺-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbν⁺-∼ H G₁ r₁ , mapEmbν⁺-∼ H G₂ r₂
 
 -- A pure meaning, embedded at any grade (what a lambda's body is, D250).
 RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t

@@ -97,10 +97,6 @@ contractOf c (A ⇒[ mk-kind Many Ty.eff ]  B) = contract-eff c A B (isVoid? B) 
 contractOf c (A ⇒[ mk-kind Zero Ty.act ] B) = contract-eff c UnitT B (isVoid? B) (isUnit? B)
 contractOf c (A ⇒[ mk-kind One  Ty.act ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
 contractOf c (A ⇒[ mk-kind Many Ty.act ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
--- D311: an operation at the guard `eff⁺` is the generic effect — one call.
-contractOf c (A ⇒[ mk-kind Zero Ty.eff⁺ ] B) = contract-eff c UnitT B (isVoid? B) (isUnit? B)
-contractOf c (A ⇒[ mk-kind One  Ty.eff⁺ ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
-contractOf c (A ⇒[ mk-kind Many Ty.eff⁺ ] B) = contract-eff c A B (isVoid? B) (isUnit? B)
 {-# CATCHALL #-}
 contractOf c T                            = value (key c UnitT T)
 
@@ -119,8 +115,6 @@ valueKeys []            = []
 valueKeys ((c , T) ∷ Σ) = value-step (contractOf c T) (valueKeys Σ)
 answerKeys []            = []
 answerKeys ((c , T) ∷ Σ) = answer-step (contractOf c T) (answerKeys Σ)
-
-
 
 
 ------------------------------------------------------------------------

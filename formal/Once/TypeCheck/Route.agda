@@ -178,9 +178,6 @@ mutual
       → Rcc {ctx} (t-var-poly-instantiate {x = x} {T = A} {schema = s} {body = b} {prefix = pr} ln li p g k)
                   (t-var-poly-instantiate {schema = s′} {body = b′} {prefix = pr′} ln′ li′ p′ g′ k′)
     -- D313: a generator at its guard, twice.
-    cc-guard : ∀ {cn A₁ B₁ q π π′ n n′ l l′ g g′ c c′}
-      → Rcc {ctx} (t-var-resolved-guard {cn = cn} {A = A₁} {B = B₁} {q = q} {π = π} n l g c)
-                  (t-var-resolved-guard {π = π′} n′ l′ g′ c′)
 
   data Ric : ∀ {ctx e A B Ψ Ψ′} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → Set where
     ic-sub : ∀ {Ψ Ψ′ p} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → Ric d (t-sub {B = B} d′ p)
@@ -190,9 +187,6 @@ mutual
              → Rii d d′ → Ric (t-apply-app-infer d) (t-apply-check d′)
     -- D313: a generator inferred at its declaration and checked at its guard.
     -- No conversion relates the two (`ModeSub._≼_`); every consumer refutes it.
-    ic-guard : ∀ {cn T₁ A₁ B₁ q π n n′ c c′ g} {l : Once.Lang.Typing.Scope.lookupImport (NamedCtx.sig ctx) (Once.Lang.Name.showCanonical cn) Relation.Binary.PropositionalEquality.≡ Data.Maybe.just T₁}
-                 {l′ : Once.Lang.Typing.Scope.lookupImport (NamedCtx.sig ctx) (Once.Lang.Name.showCanonical cn) Relation.Binary.PropositionalEquality.≡ Data.Maybe.just (A₁ ⇒[ T.mk-kind q π ] B₁)}
-      → Ric {ctx} (t-var-resolved {cn = cn} {T = T₁} n l c) (t-var-resolved-guard n′ l′ g c′)
 
   data Rdc : ∀ {ctx e A B B′ π Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → Set where
     dc-infer : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B) ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′}

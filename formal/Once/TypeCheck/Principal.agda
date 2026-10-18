@@ -230,7 +230,6 @@ mutual
   typeToPoly (a ⇒[ mk-kind _ eff ] b) = nothing
   typeToPoly (a ⇒[ mk-kind Zero act ] b) = nothing
   typeToPoly (a ⇒[ mk-kind One act ] b) = nothing
-  typeToPoly (a ⇒[ mk-kind _ eff⁺ ] b) = nothing
   typeToPoly (μ-type F) with functorToPoly F
   ... | just G  = just (Pμ-type G)
   ... | nothing = nothing

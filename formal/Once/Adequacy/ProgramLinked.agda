@@ -177,7 +177,6 @@ realize-refs (t-inl-app-check d)     = tt , realize-refs d
 realize-refs (t-inr-app-check d)     = tt , realize-refs d
 realize-refs (t-initial-app-check d) = tt , realize-refs d
 realize-refs (t-var-poly-instantiate eL eI eP ¬g ki) = _ , eP , ki
-realize-refs (t-var-resolved-guard _ lk g (con-fun _ _)) = _ , lk , at-guard g
 
 realize-refs-i (t-int n)         = tt
 realize-refs-i (t-float i f l p) = tt

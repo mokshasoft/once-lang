@@ -361,8 +361,6 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff) name base-Unit bCod) tt)
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.eff⁺ ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff⁺) name base-Unit bCod) tt)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.act ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
   returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.act) name base-Unit bCod) tt)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =

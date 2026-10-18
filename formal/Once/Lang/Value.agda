@@ -104,9 +104,6 @@ open Once.Lang.Polynomial.νS using (unfoldS)
 ⟦ A ⇒[ mk-kind One  act ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind Many eff ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind Many act ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
-⟦ A ⇒[ mk-kind Zero eff⁺ ] B ⟧ᵍ = ⟦ Unit ⟧ → Res ⟦ B ⟧ᵍ
-⟦ A ⇒[ mk-kind One  eff⁺ ] B ⟧ᵍ = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
-⟦ A ⇒[ mk-kind Many eff⁺ ] B ⟧ᵍ = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A * B ⟧ᵍ = ⟦ A ⟧ᵍ × ⟦ B ⟧ᵍ
 ⟦ A + B ⟧ᵍ = ⟦ A ⟧ᵍ ⊎ ⟦ B ⟧ᵍ
 -- First-order: no arrow inside, so the machine value.
@@ -128,9 +125,6 @@ eraseᵍ {A ⇒[ mk-kind One  eff ] B}  f = λ x → mapRes eraseᵍ (f x)
 eraseᵍ {A ⇒[ mk-kind One  act ] B}  f = λ x → mapRes eraseᵍ (f x)
 eraseᵍ {A ⇒[ mk-kind Many eff ] B}  f = λ x → mapRes eraseᵍ (f x)
 eraseᵍ {A ⇒[ mk-kind Many act ] B}  f = λ x → mapRes eraseᵍ (f x)
-eraseᵍ {A ⇒[ mk-kind Zero eff⁺ ] B} f = λ u → mapRes eraseᵍ (f u)
-eraseᵍ {A ⇒[ mk-kind One  eff⁺ ] B} f = λ x → mapRes eraseᵍ (f x)
-eraseᵍ {A ⇒[ mk-kind Many eff⁺ ] B} f = λ x → mapRes eraseᵍ (f x)
 eraseᵍ {A * B} (a , b) = eraseᵍ a , eraseᵍ b
 eraseᵍ {A + B} (inj₁ a) = inj₁ (eraseᵍ a)
 eraseᵍ {A + B} (inj₂ b) = inj₂ (eraseᵍ b)

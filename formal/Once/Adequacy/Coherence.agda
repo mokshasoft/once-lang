@@ -59,14 +59,6 @@ private
   RD = realize-d
 
 
--- D313: a generator's declared arrow is never below its guard.
-private
-  guard-absurd : ∀ {D A B : Type} {q : T.Quantity} {π : T.Purity}
-               → just D ≡ just (A ⇒[ T.mk-kind q π ] B) → T.EffGrade π
-               → D <: (A ⇒[ T.mk-kind q T.eff⁺ ] B) → ⊥
-  guard-absurd refl T.eg-act (sub-arr _ _ ())
-  guard-absurd refl T.eg-eff (sub-arr _ _ ())
-
 mutual
   coh-ii : ∀ {ctx e A A′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → RI d ≅ RI d′
   coh-ii ii-int = ≅-refl
@@ -118,8 +110,8 @@ mutual
   coh-cc cc-inl = ≅-refl
   coh-cc cc-inr = ≅-refl
   coh-cc (cc-gg r₁ r₂) = comp-h (coh-cc r₂) (coh-dd r₁)
-  -- D313: the middle conversion is the domain half of `f`'s (whose grade
-  -- evidence `s` rules out the guard), not read off `g`'s codomain.
+  -- The middle conversion is the domain half of `f`'s, not read off `g`'s
+  -- codomain.
   coh-cc (cc-gf {s = s} {df = df} {wf = wf} rdc ric) =
     gf-h (MS.sub-dom s₁) s s₁ (coh-ic ric s₁) (coh-dc rdc (MS.sub-dom s₁))
     where s₁ = MS.≼-s (MS.ic-sub wf df) s
@@ -140,8 +132,6 @@ mutual
   coh-cc (cc-inr-app {d = d} {d′ = d′} r) = inrapp-h {d = d} {d′ = d′} (coh-cc r)
   coh-cc (cc-initial-app {d = d} {d′ = d′} r) = initapp-h {d = d} {d′ = d′} (coh-cc r)
   coh-cc cc-poly = ≅-refl
-  coh-cc (cc-guard {c = con-fun bA bB} {c′ = con-fun bA′ bB′})
-    rewrite IsBaseType-irrelevant bA bA′ | IsBaseType-irrelevant bB bB′ = ≅-refl
 
   -- A checked term means its inferred meaning, converted.
   coh-ic : ∀ {ctx e A B Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ B ⨾ Ψ′} → Ric d c → (p : A <: B)
@@ -149,7 +139,6 @@ mutual
   coh-ic (ic-sub {p = p′} r) p = coerce-h p p′ (coh-ii r)
   coh-ic (ic-pair r₁ r₂) (sub-prod pa pb) = pairc-h pa pb (coh-ic r₁ pa) (coh-ic r₂ pb)
   coh-ic (ic-apply {d = d} {d′ = d′} r) p = applyic-h {d = d} {d′ = d′} p refl (coh-ii r)
-  coh-ic (ic-guard {g = g} {l = l} {l′ = l′}) p = ⊥-elim (guard-absurd (trans (sym l) l′) g p)
 
   -- A term checked at an arrow from its given domain means its domain-given
   -- meaning, its codomain converted.

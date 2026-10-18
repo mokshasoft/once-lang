@@ -143,7 +143,6 @@ env-subst₂ {Γ = Γ} u v refl w x = EA.restrict-≡ {Γ = Γ} u v w x
 diag-bind : ∀ π {X Y : Set} (m : M π X) (k : X → M π Y) → subM (·p-diag π) (bindᵍ π π m k) ≡ bindM π m k
 diag-bind Once.Lang.Type.Grade.pure m k = refl
 diag-bind Once.Lang.Type.Grade.eff  m k = refl
-diag-bind Once.Lang.Type.Grade.eff⁺ m k = refl
 diag-bind Once.Lang.Type.Grade.act  m k = refl
 
 module Comb {δ : GM.DefSem} where
@@ -397,7 +396,6 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-initial-morph-check {π = π}) dγ = extensionality λ ()
   bridge-c V ag (t-inl-morph-check {u = u}) dγ = refl
   bridge-c V ag (t-inr-morph-check {u = u}) dγ = refl
-  bridge-c V ag (t-var-resolved-guard _ _ _ (con-fun _ _)) dγ = refl
   bridge-c V ag (t-compose-check-g dg df) dγ =
     trans (bindC (bridge-c V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.compose-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)) dγ))
@@ -442,7 +440,6 @@ module _ {δ : GM.DefSem} where
                  (λ y → Comb.apply-sem {δ = δ} {Γ = NamedCtx.debruijn ctx} {A = A} {B = B} y) (proj₂ (elabᵢ V dp)) dγ))
   bridge-c V ag (t-var-poly-instantiate _ _ lp ng ki) dγ =
     trans (Agree.agree-inst ag lp ng ki) (refSem-⊢ (inst V lp ng ki) dγ)
-
 
 
   bridge-i V ag (t-int n) dγ = refl

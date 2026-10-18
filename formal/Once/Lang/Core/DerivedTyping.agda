@@ -30,7 +30,7 @@ open import Once.Lang.Core.Syntax S
 open import Once.Lang.Core.Typing S
 open import Once.Lang.Core.Derived S
 
--- A variable at any grade with a unit (D311: not at the guard `eff⁺`).
+-- A variable at any grade (with its unit).
 ⊢var′ : ∀ {n} {Γ : Ctx n} (i : Fin n) {π : Purity} → pure ⊑π π → Γ ⊢[ singleUse i One ] var i ∷ Once.Lang.Context.lookup Γ i ! π
 ⊢var′ i u = ⊢sub-eff u (⊢var i)
 
@@ -38,7 +38,7 @@ open import Once.Lang.Core.Derived S
 -- The closed combinators: at zero usage, at any grade of their arrow that has
 -- a unit (`pure ⊑π π`). The body is computed purely and then embedded at the
 -- arrow's grade (the unit, once, outermost), so its meaning is the grade's
--- `returnM` of a value. None is at the guard `eff⁺`: none performs an event.
+-- `returnM` of a value.
 ------------------------------------------------------------------------
 
 ⊢idᶜ : ∀ {n} {Γ : Ctx n} {A : Type} {π : Purity} → pure ⊑π π → Γ ⊢[ zeroUsage ] idᶜ A π ∷ A ⇒[ mk-kind Many π ] A ! pure

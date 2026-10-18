@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Once.Lang.Type.Grade
-  using (Quantity; Zero; One; Many; Purity; pure; act; eff⁺; eff; ArrowKind; mk-kind)
+  using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind)
 open import Once.Lang.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any;
          Functor; K; Id; _⊕_; _⊗_)
@@ -46,7 +46,6 @@ showQuantity Many = "ω"
 showPurity : Purity → String
 showPurity pure = "pure"
 showPurity eff  = "eff"
-showPurity eff⁺ = "eff⁺"
 showPurity act  = "act"
 
 
@@ -123,12 +122,10 @@ mutual
   showType (A + B) = "(" ++ showType A ++ " + " ++ showType B ++ ")"
   showType (A ⇒[ mk-kind q pure ] B) = "(" ++ showType A ++ " " ++ showQuantity q ++ "→ " ++ showType B ++ ")"
   showType (A ⇒[ mk-kind _ eff ] B)  = "Eff " ++ showType A ++ " " ++ showType B
-  showType (A ⇒[ mk-kind _ eff⁺ ] B) = "Eff⁺ " ++ showType A ++ " " ++ showType B
   showType (A ⇒[ mk-kind _ act ] B) = "Act " ++ showType A ++ " " ++ showType B
   showType (μ-type F) = "μ " ++ showFunctor F
   showType (ν-type F pure) = "ν " ++ showFunctor F
   showType (ν-type F eff)  = "ν (Eff " ++ showFunctor F ++ ")"
-  showType (ν-type F eff⁺) = "ν (Eff⁺ " ++ showFunctor F ++ ")"
   showType (ν-type F act) = "ν (Act " ++ showFunctor F ++ ")"
   showType Int = "Int"
   showType Float = "Float"
@@ -197,7 +194,6 @@ mutual
   showPolyType (Pμ-type F)      = "μ " ++ showPolyFunctor F
   showPolyType (Pν-type F pure) = "ν " ++ showPolyFunctor F
   showPolyType (Pν-type F eff)  = "ν (Eff " ++ showPolyFunctor F ++ ")"
-  showPolyType (Pν-type F eff⁺) = "ν (Eff⁺ " ++ showPolyFunctor F ++ ")"
   showPolyType (Pν-type F act) = "ν (Act " ++ showPolyFunctor F ++ ")"
   showPolyType PInt             = "Int"
   showPolyType PFloat           = "Float"
@@ -218,7 +214,6 @@ mutual
 purityEqBool : Purity → Purity → Bool
 purityEqBool pure pure = true
 purityEqBool eff  eff  = true
-purityEqBool eff⁺ eff⁺ = true
 purityEqBool act  act  = true
 {-# CATCHALL #-}
 purityEqBool _    _    = false

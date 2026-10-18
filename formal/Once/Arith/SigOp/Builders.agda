@@ -24,7 +24,7 @@ module Once.Arith.SigOp.Builders where
 import Data.Integer as ℤ
 import Data.Nat as ℕ
 
-open import Once.Lang.Type.Grade using (ArrowKind; mk-kind; pure; act; eff; eff⁺)
+open import Once.Lang.Type.Grade using (ArrowKind; mk-kind; pure; act; eff)
 open import Once.Lang.Type using (Unit; Void; Int; _*_; _+_; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
@@ -232,8 +232,7 @@ arrow-sem-eff (no _)     (no _)     = callsV
 arrow-sem : ∀ {A B} → ArrowKind → SigOpSem A B
 arrow-sem     (mk-kind _ pure) = ffiV
 arrow-sem {B = B} (mk-kind _ eff) = arrow-sem-eff (isVoid? B) (isUnit? B)
--- D311, D313: a foreign operation at the guard or at `act` is one call.
-arrow-sem {B = B} (mk-kind _ eff⁺) = arrow-sem-eff (isVoid? B) (isUnit? B)
+-- D313: a foreign operation at `act` is one call, as at `eff`.
 arrow-sem {B = B} (mk-kind _ act)  = arrow-sem-eff (isVoid? B) (isUnit? B)
 
 arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B

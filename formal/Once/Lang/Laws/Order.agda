@@ -15,11 +15,10 @@ module Once.Lang.Laws.Order where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; isEquivalence)
 open import Relation.Binary.Structures using (IsPartialOrder)
-open import Once.Lang.Type.Grade using (Purity; pure; eff; mk-kind; eff⁺)
+open import Once.Lang.Type.Grade using (Purity; pure; eff; mk-kind)
 open import Once.Lang.Type using (Type; _*_; _+_)
 open import Once.Lang.Type.Sub
-  using ( _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge
-        ; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid )
+  using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Lang.Context
   using (Usage; []; _∷_; _⊑ᵘ_; ⊑[]; _⊑∷_; ⊑ᵘ-refl; ⊑ᵘ-trans)
 open import Once.Lang.Laws.SubLaws using (⊑π-trans; <:-trans)
@@ -34,7 +33,6 @@ open import Once.Lang.Laws.Grade using (≤q'-antisym)
 ⊑π-antisym ⊑-pure _ = refl
 ⊑π-antisym ⊑-eff _ = refl
 ⊑π-antisym ⊑-act _ = refl
-⊑π-antisym ⊑-g _ = refl
 
 purity-⊑-isPartialOrder : IsPartialOrder _≡_ _⊑π_
 purity-⊑-isPartialOrder = record

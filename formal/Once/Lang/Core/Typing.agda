@@ -43,7 +43,7 @@ module Once.Lang.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff⁺; eff; EffGrade)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff; EffGrade)
 open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
 open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
@@ -126,8 +126,7 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
         → Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧T (μ-type F) ! π
         → Γ ⊢[ Ψ ] roll F t ∷ μ-type F ! π
   -- The algebra's grade has a UNIT (`pure ⊑π π`): a fold traverses each
-  -- layer, and a layer with no recursive position runs nothing (D311: not at
-  -- the guard `eff⁺`; a guarded algebra folds at `eff`).
+  -- layer, and a layer with no recursive position runs nothing.
   ⊢fold : ∀ {n} {Γ : Ctx n} {Ψa Ψt : Usage n} {π π₁ π₂ : Purity} {F : Functor} {A alg t}
         → pure ⊑π π → WellFormedF F
         → Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! π₁
@@ -147,16 +146,6 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
        → WellFormedF F
        → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁
        → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F π) ! π₁ ·p π
-
-  -- D311, D312: GUARDED ITERATION with the standard guard. The step is a
-  -- pure choice: end at once with a `B`, or a suspended computation that
-  -- performs an event before it answers (`eff⁺`) — so the loop is productive
-  -- however long it runs, and may run forever (`eff`). As `fold`'s algebra,
-  -- the step is evaluated once and applied per round.
-  ⊢iter : ∀ {n} {Γ : Ctx n} {Ψf Ψs : Usage n} {π₁ π₂ : Purity} {A B f s}
-        → Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many pure ] (B + (Unit ⇒[ mk-kind Many eff⁺ ] (B + A))) ! π₁
-        → Γ ⊢[ Ψs ] s ∷ A ! π₂
-        → Γ ⊢[ (Many *ᵘ Ψf) +ᵘ Ψs ] iter f s ∷ B ! π₁ ·p (π₂ ·p eff)
 
   -- D226: subtyping is a COERCION term (it has content: `Void <: B` is `¡`).
   ⊢coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B t}
@@ -180,16 +169,6 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A → RigidFree A
          → (showCanonical c ,ᵈ A) ∈ sigOf S
          → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! pure
-
-  -- D313 (plan 0.117 F3a): an effectful FFI operation is ONE call, so it is
-  -- also a GUARDED arrow — referenced at its declared arrow's guard (`eff⁺`);
-  -- `eff⁺ ⊑ act/eff` recovers the declared type. Its meaning is the generic
-  -- effect, which is what the declared reference means too.
-  ⊢sigop⁺ : ∀ {n} {Γ : Ctx n} {A B : Type} {q : Quantity} {π : Purity} (c : CanonicalName)
-          → IsConcrete (A ⇒[ mk-kind q π ] B) → EffGrade π
-          → HonestFFI (A ⇒[ mk-kind q π ] B) → RigidFree (A ⇒[ mk-kind q π ] B)
-          → (showCanonical c ,ᵈ (A ⇒[ mk-kind q π ] B)) ∈ sigOf S
-          → Γ ⊢[ zeroUsage ] sigop c (A ⇒[ mk-kind q eff⁺ ] B) ∷ (A ⇒[ mk-kind q eff⁺ ] B) ! pure
 
   -- Plan 0.103 phase 4: a definition at a kind-respecting ground instance of
   -- its schema. Closed and pure (a definition is a value of its type).

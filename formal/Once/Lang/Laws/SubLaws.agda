@@ -11,7 +11,7 @@ module Once.Lang.Laws.SubLaws where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind)
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind)
 open import Once.Lang.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Lang.Type.DecEq using (_≟q_)
 open import Once.Lang.Type.DecEq using (_≟F_; _≟T_)
@@ -25,8 +25,6 @@ open import Once.Type.Sub
 ⊑π-unique ⊑-act ⊑-act = refl
 ⊑π-unique ⊑-pa ⊑-pa = refl
 ⊑π-unique ⊑-ae ⊑-ae = refl
-⊑π-unique ⊑-g ⊑-g = refl
-⊑π-unique ⊑-ge ⊑-ge = refl
 
 ⊑π-trans : ∀ {π₁ π₂ π₃} → π₁ ⊑π π₂ → π₂ ⊑π π₃ → π₁ ⊑π π₃
 ⊑π-trans ⊑-pure ⊑-pure = ⊑-pure
@@ -39,9 +37,6 @@ open import Once.Type.Sub
 ⊑π-trans ⊑-pa ⊑-act = ⊑-pa
 ⊑π-trans ⊑-pa ⊑-ae = ⊑-pe
 ⊑π-trans ⊑-ae ⊑-eff = ⊑-ae
-⊑π-trans ⊑-g ⊑-g = ⊑-g
-⊑π-trans ⊑-g ⊑-ge = ⊑-ge
-⊑π-trans ⊑-ge ⊑-eff = ⊑-ge
 
 <:-unique : ∀ {A B} (p q : A <: B) → p ≡ q
 

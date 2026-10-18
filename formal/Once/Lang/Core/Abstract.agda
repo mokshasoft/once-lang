@@ -175,7 +175,6 @@ abs-⊢ Δ sg {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {π = π} {π₁ = π₁} {F =
     (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψc ] absTm Δ c ∷ absTy Δ A ⇒[ mk-kind Many π ] X ! π₁)
            (absTy-⟦⟧ Δ F A) (abs-⊢ Δ sg k))
     (abs-⊢ Δ sg x)
-abs-⊢ Δ sg (GT.⊢iter f x) = ⊢iter (abs-⊢ Δ sg f) (abs-⊢ Δ sg x)
 abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} (GT.⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] out (absTm Δ t) ∷ X ! π₁ T.·p π) (sym (absTy-⟦⟧ Δ F (T.ν-type F π)))
     (⊢out (abs-wf Δ wf) (abs-⊢ Δ sg d))
@@ -187,9 +186,6 @@ abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} {π = π} (GT.⊢prim {t = t} p d) =
     (⊢prim p (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] absTm Δ t ∷ X ! π) (primDom-abs Δ p) (abs-⊢ Δ sg d)))
 abs-⊢ Δ sg {Γ = Γ} (GT.⊢sigop {A = A} c k h g m) =
   subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] sigop c A ∷ X ! T.pure) (sym (absTy-ground Δ g)) (⊢sigop c k h g m)
-abs-⊢ Δ sg {Γ = Γ} (GT.⊢sigop⁺ {A = A} {B} {q} c k e h g@(rf-⇒ ga gb) m) =
-  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ C.zeroUsage ] sigop c (A T.⇒[ T.mk-kind q T.eff⁺ ] B) ∷ X ! T.pure)
-        (sym (absTy-ground Δ (rf-⇒ ga gb))) (⊢sigop⁺ c k e h g m)
 abs-⊢ Δ sg (GT.⊢sub-eff g d) = ⊢sub-eff g (abs-⊢ Δ sg d)
 abs-⊢ Δ sg (GT.⊢sub-use p d) = ⊢sub-use p (abs-⊢ Δ sg d)
 abs-⊢ Δ sg {Γ = Γ} (GT.⊢ref d τ r) =

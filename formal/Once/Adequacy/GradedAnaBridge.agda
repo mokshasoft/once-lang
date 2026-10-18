@@ -24,7 +24,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Type.Grade using (mk-kind; Many; Purity; pure; act; eff⁺; eff)
+open import Once.Lang.Type.Grade using (mk-kind; Many; Purity; pure; act; eff)
 open import Once.Lang.Type using (Type; Functor; ⟦_⟧T; ν-type; _⇒[_]_)
 open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Lang.FunctorMeaning using (translateF)
@@ -40,12 +40,9 @@ open import Once.Lang.Graded using (⟦_⟧ᵛ; returnM)
 open import Once.Denotation.GradedDomainLaws using (bindM-idˡ)
 open import Once.Lang.GradedOps using (cfᵛ; anaᵖ; mapAnaᵖ; ana-semᵛ)
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; prjB-rel; module _∼ᵖᵈ_; _∼∞ᵈ_; module _∼∞ᵈ_; _∼⁺ᵈ_; module _∼⁺ᵈ_)
+  using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; prjB-rel; module _∼ᵖᵈ_; _∼∞ᵈ_; module _∼∞ᵈ_)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼∞ᵈ_ using (force-∼∞ᵈ)
-open _∼⁺ᵈ_ using (force-∼⁺ᵈ)
-open import Once.Lang.Guarded using (T⁺; call⁺; halt⁺; forget⁺; fmap⁺; ana⁺; anaRoot⁺; anaTree⁺; anaLayer⁺; mapAna⁺)
-open import Once.Denotation.GuardedLaws using (forget-bind⁺)
 open import Once.Lang.Trace using (rel-call; rel-halt)
 open import Once.Lang.Iterative using (T∞; fmap∞; return∞; _>>=∞_; ana∞; anaTree∞; anaLayer∞; mapAna∞)
 open Once.Lang.Iterative.T∞ using (force)
@@ -108,36 +105,6 @@ module _ (H : SFunctor) {X Y : Set} {R : X → Y → Set}
   mapAna∞-∼ (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
   mapAna∞-∼ (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
   mapAna∞-∼ (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapAna∞-∼ G₁ r₁ , mapAna∞-∼ G₂ r₂
-
--- A stream whose layers begin with an event against the Kleisli one (D311):
--- the forgotten root is a call or a halt, and the rest is `T∞`'s.
-module _ (H : SFunctor) {X Y : Set} {R : X → Y → Set}
-         {c₁ : X → T⁺ (⟦ H ⟧SF X)} {c₂ : Y → T (⟦ H ⟧SF Y)}
-         (cr : ∀ {x y} → R x y → RelT∞′ (⟦ H ⟧SF-rel R) (forget⁺ (c₁ x)) (c₂ y)) where
-  ana⁺-∼    : ∀ {a b} → R a b → ana⁺ H c₁ a ∼⁺ᵈ anaᵈ H c₂ b
-  root⁺-∼   : ∀ (m : T⁺ (⟦ H ⟧SF X)) {t : T (⟦ H ⟧SF Y)} → RelT∞′ (⟦ H ⟧SF-rel R) (forget⁺ m) t
-            → RelT∞′ (⟦ H ⟧SF-rel (_∼⁺ᵈ_ {H})) (forget⁺ (anaRoot⁺ H c₁ m)) (anaTree H c₂ t)
-  tree⁺-∼   : ∀ {m : T∞ (⟦ H ⟧SF X)} {t : T (⟦ H ⟧SF Y)} → RelT∞′ (⟦ H ⟧SF-rel R) m t
-            → RelT∞′ (⟦ H ⟧SF-rel (_∼⁺ᵈ_ {H})) (anaTree⁺ H c₁ m) (anaTree H c₂ t)
-  mapAna⁺-∼ : ∀ (G : SFunctor) {x : ⟦ G ⟧SF X} {y : ⟦ G ⟧SF Y} → ⟦ G ⟧SF-rel R x y
-            → ⟦ G ⟧SF-rel (_∼⁺ᵈ_ {H}) (mapAna⁺ H G c₁ x) (mapAnaᵈ H G c₂ y)
-  force-∼⁺ᵈ (ana⁺-∼ {a} r) = root⁺-∼ (c₁ a) (cr r)
-  root⁺-∼ (call⁺ o a k) (rel∞-call refl h) = rel∞-call refl (λ b → tree⁺-∼ (h b))
-  root⁺-∼ (halt⁺ o a)   (rel∞-halt refl)   = rel∞-halt refl
-  root⁺-∼ (call⁺ o a k) (rel∞-ret () _)
-  root⁺-∼ (call⁺ o a k) (rel∞-halt ())
-  root⁺-∼ (halt⁺ o a)   (rel∞-ret () _)
-  root⁺-∼ (halt⁺ o a)   (rel∞-call () _)
-  tree⁺-∼ (rel∞-ret e rr) = rel∞-ret (cong (anaLayer⁺ H c₁) e) (mapAna⁺-∼ H rr)
-  tree⁺-∼ (rel∞-call e h) = rel∞-call (cong (anaLayer⁺ H c₁) e) (λ b → tree⁺-∼ (h b))
-  tree⁺-∼ (rel∞-halt e)   = rel∞-halt (cong (anaLayer⁺ H c₁) e)
-  mapAna⁺-∼ (SK B)     rel = rel
-  mapAna⁺-∼ SId        rel = ana⁺-∼ rel
-  mapAna⁺-∼ (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} rel = mapAna⁺-∼ G₁ rel
-  mapAna⁺-∼ (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} rel = mapAna⁺-∼ G₂ rel
-  mapAna⁺-∼ (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-  mapAna⁺-∼ (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-  mapAna⁺-∼ (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapAna⁺-∼ G₁ r₁ , mapAna⁺-∼ G₂ r₂
 
 ------------------------------------------------------------------------
 -- The coalgebra's layer, read into the S-functor on both sides.
@@ -215,18 +182,6 @@ ana-bridgeᵍ act {A} {F} wfF c₁ cT rc {a} {b} rab = anaᵈ-∼ H cr rab
       where
         kr = RelGT-bind {A = A ⇒[ mk-kind Many act ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A} {t₁ = returnT c₁} {t₂ = cT} {f = λ clo → clo x} {g = λ clo → clo y}
                         rc (λ rfg → rfg r)
-ana-bridgeᵍ eff⁺ {A} {F} wfF c₁ (ret c₂) (rel-ret rfg) {a} {b} rab = ana⁺-∼ H cr rab
-  where
-    H = translateF Carrier Carrier F
-    cr : ∀ {x y} → RelGV A x y
-       → RelT∞′ (⟦ H ⟧SF-rel (RelGV A))
-           (forget⁺ (fmap⁺ (λ l → coerce-ν-in F _ (cfᵛ A wfF l)) (c₁ x)))
-           (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (fmapT (coerce-functor-D wfF A) (c₂ y)))
-    cr {x} {y} r =
-      RelT∞′-≈ (forget-bind⁺ (c₁ x) (λ l → return∞ (coerce-ν-in F _ (cfᵛ A wfF l))))
-        (subst (RelT∞′ (⟦ H ⟧SF-rel (RelGV A)) (forget⁺ (c₁ x) >>=∞ λ l → return∞ (coerce-ν-in F _ (cfᵛ A wfF l))))
-               (sym (fmapT-∘ (coerce-ν-in F ⟦ A ⟧ᴰ) (coerce-functor-D wfF A) (c₂ y)))
-               (RelT∞′-bind (rfg r) (λ rl → rel∞-ret refl (in-relᵍ wfF rl))))
 ana-bridgeᵍ eff {A} {F} wfF c₁ (ret c₂) (rel-ret rfg) {a} {b} rab = ana∞-∼ H cr rab
   where
     H = translateF Carrier Carrier F

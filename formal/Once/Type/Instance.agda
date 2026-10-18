@@ -83,7 +83,6 @@ mutual
   inst-ok θ (Pμ-type F) s c = instF-ok θ F s c
   inst-ok θ (Pν-type F pure) s c = instF-ok θ F s c
   inst-ok θ (Pν-type F eff)  s c = instF-ok θ F s c
-  inst-ok θ (Pν-type F eff⁺) s c = instF-ok θ F s c
   inst-ok θ (Pν-type F act) s c = instF-ok θ F s c
 
   instF-ok : ∀ θ (F : PolyFunctor) s → Consistent θ s → Matches θ (instantiateFunctor F (substPolyF θ F) s)
@@ -217,7 +216,6 @@ mutual
   ... | no _ with eq
   ...   | ()
   inst-sound (A P⇒[ q ] B) (a ⇒[ mk-kind q′ eff ] b) s ()
-  inst-sound (A P⇒[ q ] B) (a ⇒[ mk-kind q′ eff⁺ ] b) s ()
   inst-sound (A P⇒[ q ] B) Unit s ()
   inst-sound (A P⇒[ q ] B) Void s ()
   inst-sound (A P⇒[ q ] B) Int s ()
@@ -232,12 +230,6 @@ mutual
   inst-sound (PAct A B) (a ⇒[ mk-kind Zero act ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind One eff ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind One act ] b) s ()
-  inst-sound (PEff A B) (a ⇒[ mk-kind Zero eff⁺ ] b) s ()
-  inst-sound (PAct A B) (a ⇒[ mk-kind Zero eff⁺ ] b) s ()
-  inst-sound (PEff A B) (a ⇒[ mk-kind One eff⁺ ] b) s ()
-  inst-sound (PAct A B) (a ⇒[ mk-kind One eff⁺ ] b) s ()
-  inst-sound (PEff A B) (a ⇒[ mk-kind Many eff⁺ ] b) s ()
-  inst-sound (PAct A B) (a ⇒[ mk-kind Many eff⁺ ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind Zero pure ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind Zero pure ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind One pure ] b) s ()
@@ -289,19 +281,6 @@ mutual
   inst-sound (Pν-type F eff) (_ ⇒[ _ ] _) s ()
   inst-sound (Pν-type F pure) (μ-type _) s ()
   inst-sound (Pν-type F eff) (μ-type _) s ()
-  inst-sound (Pν-type F eff⁺) (ν-type f eff⁺) s eq = map-sound (λ g → ν-type g eff⁺) (instF-sound F f s eq)
-  inst-sound (Pν-type F pure) (ν-type f eff⁺) s ()
-  inst-sound (Pν-type F eff) (ν-type f eff⁺) s ()
-  inst-sound (Pν-type F eff⁺) (ν-type f pure) s ()
-  inst-sound (Pν-type F eff⁺) (ν-type f eff) s ()
-  inst-sound (Pν-type F eff⁺) Unit s ()
-  inst-sound (Pν-type F eff⁺) Void s ()
-  inst-sound (Pν-type F eff⁺) Int s ()
-  inst-sound (Pν-type F eff⁺) Float s ()
-  inst-sound (Pν-type F eff⁺) (_ * _) s ()
-  inst-sound (Pν-type F eff⁺) (_ + _) s ()
-  inst-sound (Pν-type F eff⁺) (_ ⇒[ _ ] _) s ()
-  inst-sound (Pν-type F eff⁺) (μ-type _) s ()
   inst-sound (A P⇒[ q ] B) (a ⇒[ mk-kind q′ act ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind Zero act ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind Zero eff ] b) s ()
@@ -322,8 +301,6 @@ mutual
   inst-sound (Pν-type F act) (_ + _) s ()
   inst-sound (Pν-type F act) (_ ⇒[ _ ] _) s ()
   inst-sound (Pν-type F act) (μ-type _) s ()
-  inst-sound (Pν-type F act) (ν-type f eff⁺) s ()
-  inst-sound (Pν-type F eff⁺) (ν-type f act) s ()
 
   instF-sound : ∀ (F : PolyFunctor) (f : Functor) (s : Subst) {s′} → instantiateFunctor F f s ≡ just s′
     → Extends s′ s × (∀ s″ → Extends s″ s′ → substPolyF (θof s″) F ≡ f)

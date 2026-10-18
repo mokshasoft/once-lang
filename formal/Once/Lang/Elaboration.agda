@@ -42,7 +42,7 @@ open import Data.String using (String; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Lang.Type.Grade using (mk-kind; Many; pure; ≤q-Many; eff⁺; EffGrade)
+open import Once.Lang.Type.Grade using (mk-kind; Many; pure; ≤q-Many; EffGrade)
 open import Once.Lang.Type using (Type; Int; Float; _*_; _⇒[_]_)
 open import Once.Lang.Type.Poly using (Ground; extractGround)
 open import Once.Lang.Type.Instance using (KindedInstance)
@@ -155,13 +155,6 @@ refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] 
 sigE : (c : Once.Spec.Name.CanonicalName) → IsConcrete A → Declared (Once.Lang.Name.showCanonical c) A → Elab Γ zeroUsage A
 sigE {A = A} c k (declared h g m) = sigop c A , ⊢sigop c k h g m
 
--- D313: a generator at its guard — the same SigOp at the declared arrow's
--- `eff⁺` instance.
-sigE⁺ : ∀ {q π} (c : Once.Spec.Name.CanonicalName) → IsConcrete (A ⇒[ mk-kind q π ] B) → EffGrade π
-      → Declared (Once.Lang.Name.showCanonical c) (A ⇒[ mk-kind q π ] B)
-      → Elab Γ zeroUsage (A ⇒[ mk-kind q eff⁺ ] B)
-sigE⁺ {A = A} {B = B} {q = q} c k e (declared h g m) = sigop c (A ⇒[ mk-kind q eff⁺ ] B) , ⊢sigop⁺ c k e h g m
-
 -- A definition's reference is the entry, at its instance.
 importE : ∀ {x} → ImportAt x A → Elab Γ zeroUsage A
 importE (def d i) = refE d i
@@ -197,7 +190,6 @@ elabᶜ V (t-curry-check {u = u} df)  = lift1 (curryᶜ _ _ _ _) (⊢curryᶜ u)
 elabᶜ V (t-cata-check {u = u} wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ u wf) (elabᶜ V dalg)
 elabᶜ V (t-ana-check {u = u} wf dc) = lift1 (anaᶜ _ _ _) (⊢anaᶜ u wf) (elabᶜ V dc)
 elabᶜ V (t-sub d p)                 = coerceE p (elabᵢ V d)
-elabᶜ V (t-var-resolved-guard {cn = cn} _ lk e k) = sigE⁺ cn k e (declares V lk)
 elabᶜ V (t-lam {u = u} ≤p d)        = let (b , ⊢b) = elabᶜ V d in lam _ _ _ b , ⊢lam ≤p (⊢sub-eff u ⊢b)
 elabᶜ V (t-pair-lit-check da db)    = lift2 pair ⊢pair (elabᶜ V da) (elabᶜ V db)
 elabᶜ V (t-In-app-check wf d)       = appC (⊢inᶜ wf) (elabᶜ V d)

@@ -111,17 +111,12 @@ ren-⊢ {Δ = Δ} θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {F = F} {c = c} {s = sd}
   subst (λ U → Δ ⊢[ U ] unfold F (ren (thin-var θ) c) (ren (thin-var θ) sd) ∷ _ ! _)
     (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))))
     (⊢unfold wf (ren-⊢ θ dc) (ren-⊢ θ ds))
-ren-⊢ {Δ = Δ} θ (⊢iter {Ψf = Ψf} {Ψs = Ψs} {f = f} {s = sd} df ds) =
-  subst (λ U → Δ ⊢[ U ] iter (ren (thin-var θ) f) (ren (thin-var θ) sd) ∷ _ ! _)
-    (sym (trans (thin-usage-+ᵘ θ (Many *ᵘ Ψf) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψf))))
-    (⊢iter (ren-⊢ θ df) (ren-⊢ θ ds))
 ren-⊢ θ (⊢out wf d) = ⊢out wf (ren-⊢ θ d)
 ren-⊢ θ (⊢coerce p d) = ⊢coerce p (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ ⊢lit-int   = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) ⊢lit-int
 ren-⊢ {Δ = Δ} θ ⊢lit-float = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) ⊢lit-float
 ren-⊢ θ (⊢prim p d) = ⊢prim p (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢sigop c k h g m) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g m)
-ren-⊢ {Δ = Δ} θ (⊢sigop⁺ c k e h g m) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢sigop⁺ c k e h g m)
 ren-⊢ θ (⊢sub-eff g d) = ⊢sub-eff g (ren-⊢ θ d)
 ren-⊢ θ (⊢sub-use p d) = ⊢sub-use (thin-usage-⊑ᵘ θ p) (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢ref d τ r) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) (⊢ref d τ r)

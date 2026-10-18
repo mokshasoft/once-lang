@@ -35,7 +35,7 @@
 --   Void                 absurd
 --   μ F                  roll (In), fold (the non-dependent eliminator)
 --   ν F                  unfold (ana), out (Out)
---   running forever      iter (guarded iteration of a step that performs an event, D311)
+--   running forever      iter (the loop; its typing comes with plan 0.119 D5)
 --   subtyping            coerce (a term converted along `A <: B`, D226)
 --   base types           lit, prim (the arithmetic SigOps, saturated)
 --   FFI                  sigop (a declared constant with a contract, D061/D071)

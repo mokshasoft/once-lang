@@ -27,7 +27,6 @@ qS LG.Many = SG.Many
 πS : LG.Purity → SG.Purity
 πS LG.pure = SG.pure
 πS LG.act  = SG.act
-πS LG.eff⁺ = SG.eff⁺
 πS LG.eff  = SG.eff
 
 kS : LG.ArrowKind → SG.ArrowKind
@@ -77,7 +76,6 @@ toPolyGF : LT.Functor → SS.PolyFunctor
 arrowG   : LG.Purity → LG.Quantity → SS.PolyType → SS.PolyType → SS.PolyType
 arrowG LG.pure q A B = A SS.P⇒[ qS q ] B
 arrowG LG.act  q A B = SS.PAct A B
-arrowG LG.eff⁺ q A B = SS.PEff A B
 arrowG LG.eff  q A B = SS.PEff A B
 toPolyG LT.Unit                        = SS.PUnit
 toPolyG LT.Void                        = SS.PVoid

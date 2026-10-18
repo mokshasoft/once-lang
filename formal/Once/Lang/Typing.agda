@@ -732,21 +732,6 @@ mutual
           → A <: B
           → ctx ⊢ᶜ e ∶ B ⨾ Ψ
 
-    -- D313 (plan 0.117 F3a): a reference to a GENERATOR of Σ — a foreign
-    -- operation — declared at an effectful arrow also checks at its GUARD:
-    -- one call performs an event first. Inference still reports the declared
-    -- type (`t-var-resolved`); `eff⁺` is incomparable with `act`, so this is a
-    -- rule of its own, not a conversion. It elaborates to core `⊢sigop⁺`.
-    t-var-resolved-guard : ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type}
-                             {q : Quantity} {π : Once.Lang.Type.Grade.Purity}
-                         → NotGenerator cn
-                         → lookupImport (NamedCtx.sig ctx) (showCanonical cn)
-                             ≡ just (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q π ] B)
-                         → Once.Lang.Type.Grade.EffGrade π
-                         → IsConcrete (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q π ] B)
-                         → ctx ⊢ᶜ RResolved cn ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.eff⁺ ] B)
-                                 ⨾ zeroUsage
-
     -- D226: GRADE-POLY (D069's principle — the grade is real only where an
     -- effect is introduced, and abstraction introduces none; the body's effects
     -- live on the arrows it returns). Before 0.99 a lambda was typed `pure` and
@@ -966,5 +951,4 @@ ctx ⊢ e ∶ A ⨾ Ψ = ctx ⊢ᵢ e ∶ A ⨾ Ψ
 Typed : (ctx : NamedCtx) → RawExpr → Type
       → Surface.Usage (NamedCtx.size ctx) → Set
 Typed ctx e A Ψ = ctx ⊢ e ∶ A ⨾ Ψ
-
 

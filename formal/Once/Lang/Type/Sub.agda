@@ -27,15 +27,14 @@
 
 module Once.Lang.Type.Sub where
 
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff⁺; eff; mk-kind; _·p_)
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; _·p_)
 open import Once.Lang.Type
   using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 
 infix 4 _⊑π_ _<:_
 
--- The effect order: the line `pure ⊑ act ⊑ eff` and the guard `eff⁺ ⊑ eff`
--- (D311–D313), one derivation per pair. `pure` and `eff⁺` are
--- incomparable.
+-- The effect order: the chain `pure ⊑ act ⊑ eff` (D314), one derivation per
+-- pair.
 data _⊑π_ : Purity → Purity → Set where
   ⊑-pure : pure ⊑π pure
   ⊑-eff  : eff  ⊑π eff
@@ -43,19 +42,12 @@ data _⊑π_ : Purity → Purity → Set where
   ⊑-act  : act  ⊑π act
   ⊑-pa   : pure ⊑π act
   ⊑-ae   : act  ⊑π eff
-  ⊑-g    : eff⁺ ⊑π eff⁺
-  ⊑-ge   : eff⁺ ⊑π eff
 
--- A grade with a UNIT: a value is a computation at it (`pure ⊑π π`). Every
--- grade but the guard.
-
--- Running a grade twice stays within it (D311: on today's grades the
--- product is idempotent). What a rule with one grade for two sequenced parts
+-- Running a grade twice stays within it (the product is idempotent). What a rule with one grade for two sequenced parts
 -- reads its product as.
 ·p-diag : ∀ π → (π ·p π) ⊑π π
 ·p-diag pure = ⊑-pure
 ·p-diag act  = ⊑-act
-·p-diag eff⁺ = ⊑-g
 ·p-diag eff  = ⊑-eff
 
 data _<:_ : Type → Type → Set where
@@ -76,7 +68,6 @@ data _<:_ : Type → Type → Set where
 ⊑π-refl : ∀ π → π ⊑π π
 ⊑π-refl pure = ⊑-pure
 ⊑π-refl act = ⊑-act
-⊑π-refl eff⁺ = ⊑-g
 ⊑π-refl eff = ⊑-eff
 
 <:-refl : ∀ A → A <: A

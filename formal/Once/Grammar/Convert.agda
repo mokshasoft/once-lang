@@ -163,9 +163,6 @@ mutual
   typeToGType (T.ν-type F T.act) with functorToGFunctor F
   ... | just gf = just (G.GNuAct gf)
   ... | nothing = nothing
-  -- D311: the guard `eff⁺` is never written.
-  typeToGType (_ T.⇒[ T.mk-kind _ T.eff⁺ ] _) = nothing
-  typeToGType (T.ν-type F T.eff⁺) = nothing
 
   -- | Convert an internal `Functor` to a grammar-level functor.
   -- Fails iff a constant `K t` holds a non-expressible `t` (e.g. ν).
@@ -235,8 +232,6 @@ typeToGType-gtypeToType (T.ν-type F T.pure) .(G.GNu gf) refl | just gf
 typeToGType-gtypeToType (T.ν-type F T.act) g eq with functorToGFunctor F in eqF
 typeToGType-gtypeToType (T.ν-type F T.act) .(G.GNuAct gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
-typeToGType-gtypeToType (_ T.⇒[ T.mk-kind _ T.eff⁺ ] _) _ ()
-typeToGType-gtypeToType (T.ν-type F T.eff⁺) _ ()
 
 functorToGFunctor-gfunctorToFunctor (T.K t) g eq with typeToGType t in eqt
 functorToGFunctor-gfunctorToFunctor (T.K t) .(G.GFK gt) refl | just gt

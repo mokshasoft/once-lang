@@ -9,8 +9,8 @@
 --   * `⊔q` is a semilattice (the usage of a case), and the order relation
 --     `_≤q'_` is a decidable total order whose Boolean form is `_≤q_`;
 --   * effect `(Purity, ·p, pure)` is a commutative monoid ordered by `_⊑π_`
---     (sequencing, D311), and `⊔p` its join — a semilattice with top `eff`
---     and no bottom (`pure` and the guard `eff⁺` meet nowhere).
+--     (sequencing, D311), and `⊔p` its join — a semilattice with top `eff`;
+--     on the chain (D314) sequencing is the join.
 --
 -- The carriers are finite, so every law is proved by exhausting the cases.
 -- The structures are record VALUES; whether the Agda code later resolves them
@@ -28,9 +28,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; isEquivale
 open import Relation.Binary.Structures using (IsDecTotalOrder)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Lang.Type.Grade
-  using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; act; eff⁺; eff; _⊔p_; _·p_)
+  using (Quantity; Zero; One; Many; _+q_; _*q_; _⊔q_; _≤q_; Purity; pure; act; eff; _⊔p_; _·p_)
 open import Once.Lang.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
-open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; ⊑-g; ⊑-ge)
+open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Lang.Type.DecEq using (_≟q_)
 
 ------------------------------------------------------------------------
@@ -278,142 +278,82 @@ quantity-≤-isDecTotalOrder = record
 ≤q-complete m≤m = refl
 
 ------------------------------------------------------------------------
--- Effect: pure ≤ act ≤ eff with the guard eff⁺ ≤ eff (D311–D313). The carrier
+-- Effect: the chain pure ≤ act ≤ eff (D314). The carrier
 -- is finite, so every law is by exhausting the cases.
 ------------------------------------------------------------------------
 
 ⊔p-assoc : ∀ a b c → (a ⊔p b) ⊔p c ≡ a ⊔p (b ⊔p c)
 ⊔p-assoc pure pure pure = refl
 ⊔p-assoc pure pure act = refl
-⊔p-assoc pure pure eff⁺ = refl
 ⊔p-assoc pure pure eff = refl
 ⊔p-assoc pure act pure = refl
 ⊔p-assoc pure act act = refl
-⊔p-assoc pure act eff⁺ = refl
 ⊔p-assoc pure act eff = refl
-⊔p-assoc pure eff⁺ pure = refl
-⊔p-assoc pure eff⁺ act = refl
-⊔p-assoc pure eff⁺ eff⁺ = refl
-⊔p-assoc pure eff⁺ eff = refl
 ⊔p-assoc pure eff pure = refl
 ⊔p-assoc pure eff act = refl
-⊔p-assoc pure eff eff⁺ = refl
 ⊔p-assoc pure eff eff = refl
 ⊔p-assoc act pure pure = refl
 ⊔p-assoc act pure act = refl
-⊔p-assoc act pure eff⁺ = refl
 ⊔p-assoc act pure eff = refl
 ⊔p-assoc act act pure = refl
 ⊔p-assoc act act act = refl
-⊔p-assoc act act eff⁺ = refl
 ⊔p-assoc act act eff = refl
-⊔p-assoc act eff⁺ pure = refl
-⊔p-assoc act eff⁺ act = refl
-⊔p-assoc act eff⁺ eff⁺ = refl
-⊔p-assoc act eff⁺ eff = refl
 ⊔p-assoc act eff pure = refl
 ⊔p-assoc act eff act = refl
-⊔p-assoc act eff eff⁺ = refl
 ⊔p-assoc act eff eff = refl
-⊔p-assoc eff⁺ pure pure = refl
-⊔p-assoc eff⁺ pure act = refl
-⊔p-assoc eff⁺ pure eff⁺ = refl
-⊔p-assoc eff⁺ pure eff = refl
-⊔p-assoc eff⁺ act pure = refl
-⊔p-assoc eff⁺ act act = refl
-⊔p-assoc eff⁺ act eff⁺ = refl
-⊔p-assoc eff⁺ act eff = refl
-⊔p-assoc eff⁺ eff⁺ pure = refl
-⊔p-assoc eff⁺ eff⁺ act = refl
-⊔p-assoc eff⁺ eff⁺ eff⁺ = refl
-⊔p-assoc eff⁺ eff⁺ eff = refl
-⊔p-assoc eff⁺ eff pure = refl
-⊔p-assoc eff⁺ eff act = refl
-⊔p-assoc eff⁺ eff eff⁺ = refl
-⊔p-assoc eff⁺ eff eff = refl
 ⊔p-assoc eff pure pure = refl
 ⊔p-assoc eff pure act = refl
-⊔p-assoc eff pure eff⁺ = refl
 ⊔p-assoc eff pure eff = refl
 ⊔p-assoc eff act pure = refl
 ⊔p-assoc eff act act = refl
-⊔p-assoc eff act eff⁺ = refl
 ⊔p-assoc eff act eff = refl
-⊔p-assoc eff eff⁺ pure = refl
-⊔p-assoc eff eff⁺ act = refl
-⊔p-assoc eff eff⁺ eff⁺ = refl
-⊔p-assoc eff eff⁺ eff = refl
 ⊔p-assoc eff eff pure = refl
 ⊔p-assoc eff eff act = refl
-⊔p-assoc eff eff eff⁺ = refl
 ⊔p-assoc eff eff eff = refl
 
 ⊔p-comm : ∀ a b → a ⊔p b ≡ b ⊔p a
 ⊔p-comm pure pure = refl
 ⊔p-comm pure act = refl
-⊔p-comm pure eff⁺ = refl
 ⊔p-comm pure eff = refl
 ⊔p-comm act pure = refl
 ⊔p-comm act act = refl
-⊔p-comm act eff⁺ = refl
 ⊔p-comm act eff = refl
-⊔p-comm eff⁺ pure = refl
-⊔p-comm eff⁺ act = refl
-⊔p-comm eff⁺ eff⁺ = refl
-⊔p-comm eff⁺ eff = refl
 ⊔p-comm eff pure = refl
 ⊔p-comm eff act = refl
-⊔p-comm eff eff⁺ = refl
 ⊔p-comm eff eff = refl
 
 ⊔p-idem : ∀ a → a ⊔p a ≡ a
 ⊔p-idem pure = refl
 ⊔p-idem act = refl
-⊔p-idem eff⁺ = refl
 ⊔p-idem eff = refl
 
 -- `eff` is the top of the order: every arm meets at it.
 ⊔p-zeroʳ : ∀ a → a ⊔p eff ≡ eff
 ⊔p-zeroʳ pure = refl
 ⊔p-zeroʳ act = refl
-⊔p-zeroʳ eff⁺ = refl
 ⊔p-zeroʳ eff = refl
 
 -- `⊔p` is the join of `_⊑π_`: an upper bound, and the least one.
 ⊔p-upperˡ : ∀ a b → a ⊑π (a ⊔p b)
 ⊔p-upperˡ pure pure = ⊑-pure
 ⊔p-upperˡ pure act = ⊑-pa
-⊔p-upperˡ pure eff⁺ = ⊑-pe
 ⊔p-upperˡ pure eff = ⊑-pe
 ⊔p-upperˡ act pure = ⊑-act
 ⊔p-upperˡ act act = ⊑-act
-⊔p-upperˡ act eff⁺ = ⊑-ae
 ⊔p-upperˡ act eff = ⊑-ae
-⊔p-upperˡ eff⁺ pure = ⊑-ge
-⊔p-upperˡ eff⁺ act = ⊑-ge
-⊔p-upperˡ eff⁺ eff⁺ = ⊑-g
-⊔p-upperˡ eff⁺ eff = ⊑-ge
 ⊔p-upperˡ eff pure = ⊑-eff
 ⊔p-upperˡ eff act = ⊑-eff
-⊔p-upperˡ eff eff⁺ = ⊑-eff
 ⊔p-upperˡ eff eff = ⊑-eff
 
 ⊔p-upperʳ : ∀ a b → b ⊑π (a ⊔p b)
 ⊔p-upperʳ pure pure = ⊑-pure
 ⊔p-upperʳ pure act = ⊑-act
-⊔p-upperʳ pure eff⁺ = ⊑-ge
 ⊔p-upperʳ pure eff = ⊑-eff
 ⊔p-upperʳ act pure = ⊑-pa
 ⊔p-upperʳ act act = ⊑-act
-⊔p-upperʳ act eff⁺ = ⊑-ge
 ⊔p-upperʳ act eff = ⊑-eff
-⊔p-upperʳ eff⁺ pure = ⊑-pe
-⊔p-upperʳ eff⁺ act = ⊑-ae
-⊔p-upperʳ eff⁺ eff⁺ = ⊑-g
-⊔p-upperʳ eff⁺ eff = ⊑-eff
 ⊔p-upperʳ eff pure = ⊑-pe
 ⊔p-upperʳ eff act = ⊑-ae
-⊔p-upperʳ eff eff⁺ = ⊑-ge
 ⊔p-upperʳ eff eff = ⊑-eff
 
 ⊔p-least : ∀ {a b c} → a ⊑π c → b ⊑π c → (a ⊔p b) ⊑π c
@@ -421,11 +361,9 @@ quantity-≤-isDecTotalOrder = record
 ⊔p-least ⊑-eff ⊑-eff = ⊑-eff
 ⊔p-least ⊑-eff ⊑-pe = ⊑-eff
 ⊔p-least ⊑-eff ⊑-ae = ⊑-eff
-⊔p-least ⊑-eff ⊑-ge = ⊑-eff
 ⊔p-least ⊑-pe ⊑-eff = ⊑-eff
 ⊔p-least ⊑-pe ⊑-pe = ⊑-pe
 ⊔p-least ⊑-pe ⊑-ae = ⊑-ae
-⊔p-least ⊑-pe ⊑-ge = ⊑-eff
 ⊔p-least ⊑-act ⊑-act = ⊑-act
 ⊔p-least ⊑-act ⊑-pa = ⊑-act
 ⊔p-least ⊑-pa ⊑-act = ⊑-act
@@ -433,84 +371,40 @@ quantity-≤-isDecTotalOrder = record
 ⊔p-least ⊑-ae ⊑-eff = ⊑-eff
 ⊔p-least ⊑-ae ⊑-pe = ⊑-ae
 ⊔p-least ⊑-ae ⊑-ae = ⊑-ae
-⊔p-least ⊑-ae ⊑-ge = ⊑-eff
-⊔p-least ⊑-g ⊑-g = ⊑-g
-⊔p-least ⊑-ge ⊑-eff = ⊑-eff
-⊔p-least ⊑-ge ⊑-pe = ⊑-eff
-⊔p-least ⊑-ge ⊑-ae = ⊑-eff
-⊔p-least ⊑-ge ⊑-ge = ⊑-ge
 
 -- The sequencing monoid (D311): `pure` the unit, associative.
 ·p-assoc : ∀ a b c → (a ·p b) ·p c ≡ a ·p (b ·p c)
 ·p-assoc pure pure pure = refl
 ·p-assoc pure pure act = refl
-·p-assoc pure pure eff⁺ = refl
 ·p-assoc pure pure eff = refl
 ·p-assoc pure act pure = refl
 ·p-assoc pure act act = refl
-·p-assoc pure act eff⁺ = refl
 ·p-assoc pure act eff = refl
-·p-assoc pure eff⁺ pure = refl
-·p-assoc pure eff⁺ act = refl
-·p-assoc pure eff⁺ eff⁺ = refl
-·p-assoc pure eff⁺ eff = refl
 ·p-assoc pure eff pure = refl
 ·p-assoc pure eff act = refl
-·p-assoc pure eff eff⁺ = refl
 ·p-assoc pure eff eff = refl
 ·p-assoc act pure pure = refl
 ·p-assoc act pure act = refl
-·p-assoc act pure eff⁺ = refl
 ·p-assoc act pure eff = refl
 ·p-assoc act act pure = refl
 ·p-assoc act act act = refl
-·p-assoc act act eff⁺ = refl
 ·p-assoc act act eff = refl
-·p-assoc act eff⁺ pure = refl
-·p-assoc act eff⁺ act = refl
-·p-assoc act eff⁺ eff⁺ = refl
-·p-assoc act eff⁺ eff = refl
 ·p-assoc act eff pure = refl
 ·p-assoc act eff act = refl
-·p-assoc act eff eff⁺ = refl
 ·p-assoc act eff eff = refl
-·p-assoc eff⁺ pure pure = refl
-·p-assoc eff⁺ pure act = refl
-·p-assoc eff⁺ pure eff⁺ = refl
-·p-assoc eff⁺ pure eff = refl
-·p-assoc eff⁺ act pure = refl
-·p-assoc eff⁺ act act = refl
-·p-assoc eff⁺ act eff⁺ = refl
-·p-assoc eff⁺ act eff = refl
-·p-assoc eff⁺ eff⁺ pure = refl
-·p-assoc eff⁺ eff⁺ act = refl
-·p-assoc eff⁺ eff⁺ eff⁺ = refl
-·p-assoc eff⁺ eff⁺ eff = refl
-·p-assoc eff⁺ eff pure = refl
-·p-assoc eff⁺ eff act = refl
-·p-assoc eff⁺ eff eff⁺ = refl
-·p-assoc eff⁺ eff eff = refl
 ·p-assoc eff pure pure = refl
 ·p-assoc eff pure act = refl
-·p-assoc eff pure eff⁺ = refl
 ·p-assoc eff pure eff = refl
 ·p-assoc eff act pure = refl
 ·p-assoc eff act act = refl
-·p-assoc eff act eff⁺ = refl
 ·p-assoc eff act eff = refl
-·p-assoc eff eff⁺ pure = refl
-·p-assoc eff eff⁺ act = refl
-·p-assoc eff eff⁺ eff⁺ = refl
-·p-assoc eff eff⁺ eff = refl
 ·p-assoc eff eff pure = refl
 ·p-assoc eff eff act = refl
-·p-assoc eff eff eff⁺ = refl
 ·p-assoc eff eff eff = refl
 
 ·p-identityʳ : ∀ a → a ·p pure ≡ a
 ·p-identityʳ pure = refl
 ·p-identityʳ act = refl
-·p-identityʳ eff⁺ = refl
 ·p-identityʳ eff = refl
 
 -- …and monotone in both arguments: the order is compatible (an ordered monoid).
@@ -521,81 +415,46 @@ quantity-≤-isDecTotalOrder = record
 ·p-mono ⊑-pure ⊑-act = ⊑-act
 ·p-mono ⊑-pure ⊑-pa = ⊑-pa
 ·p-mono ⊑-pure ⊑-ae = ⊑-ae
-·p-mono ⊑-pure ⊑-g = ⊑-g
-·p-mono ⊑-pure ⊑-ge = ⊑-ge
 ·p-mono ⊑-eff ⊑-pure = ⊑-eff
 ·p-mono ⊑-eff ⊑-eff = ⊑-eff
 ·p-mono ⊑-eff ⊑-pe = ⊑-eff
 ·p-mono ⊑-eff ⊑-act = ⊑-eff
 ·p-mono ⊑-eff ⊑-pa = ⊑-eff
 ·p-mono ⊑-eff ⊑-ae = ⊑-eff
-·p-mono ⊑-eff ⊑-g = ⊑-g
-·p-mono ⊑-eff ⊑-ge = ⊑-ge
 ·p-mono ⊑-pe ⊑-pure = ⊑-pe
 ·p-mono ⊑-pe ⊑-eff = ⊑-eff
 ·p-mono ⊑-pe ⊑-pe = ⊑-pe
 ·p-mono ⊑-pe ⊑-act = ⊑-ae
 ·p-mono ⊑-pe ⊑-pa = ⊑-pe
 ·p-mono ⊑-pe ⊑-ae = ⊑-ae
-·p-mono ⊑-pe ⊑-g = ⊑-g
-·p-mono ⊑-pe ⊑-ge = ⊑-ge
 ·p-mono ⊑-act ⊑-pure = ⊑-act
 ·p-mono ⊑-act ⊑-eff = ⊑-eff
 ·p-mono ⊑-act ⊑-pe = ⊑-ae
 ·p-mono ⊑-act ⊑-act = ⊑-act
 ·p-mono ⊑-act ⊑-pa = ⊑-act
 ·p-mono ⊑-act ⊑-ae = ⊑-ae
-·p-mono ⊑-act ⊑-g = ⊑-g
-·p-mono ⊑-act ⊑-ge = ⊑-ge
 ·p-mono ⊑-pa ⊑-pure = ⊑-pa
 ·p-mono ⊑-pa ⊑-eff = ⊑-eff
 ·p-mono ⊑-pa ⊑-pe = ⊑-pe
 ·p-mono ⊑-pa ⊑-act = ⊑-act
 ·p-mono ⊑-pa ⊑-pa = ⊑-pa
 ·p-mono ⊑-pa ⊑-ae = ⊑-ae
-·p-mono ⊑-pa ⊑-g = ⊑-g
-·p-mono ⊑-pa ⊑-ge = ⊑-ge
 ·p-mono ⊑-ae ⊑-pure = ⊑-ae
 ·p-mono ⊑-ae ⊑-eff = ⊑-eff
 ·p-mono ⊑-ae ⊑-pe = ⊑-ae
 ·p-mono ⊑-ae ⊑-act = ⊑-ae
 ·p-mono ⊑-ae ⊑-pa = ⊑-ae
 ·p-mono ⊑-ae ⊑-ae = ⊑-ae
-·p-mono ⊑-ae ⊑-g = ⊑-g
-·p-mono ⊑-ae ⊑-ge = ⊑-ge
-·p-mono ⊑-g ⊑-pure = ⊑-g
-·p-mono ⊑-g ⊑-eff = ⊑-g
-·p-mono ⊑-g ⊑-pe = ⊑-g
-·p-mono ⊑-g ⊑-act = ⊑-g
-·p-mono ⊑-g ⊑-pa = ⊑-g
-·p-mono ⊑-g ⊑-ae = ⊑-g
-·p-mono ⊑-g ⊑-g = ⊑-g
-·p-mono ⊑-g ⊑-ge = ⊑-g
-·p-mono ⊑-ge ⊑-pure = ⊑-ge
-·p-mono ⊑-ge ⊑-eff = ⊑-ge
-·p-mono ⊑-ge ⊑-pe = ⊑-ge
-·p-mono ⊑-ge ⊑-act = ⊑-ge
-·p-mono ⊑-ge ⊑-pa = ⊑-ge
-·p-mono ⊑-ge ⊑-ae = ⊑-ge
-·p-mono ⊑-ge ⊑-g = ⊑-g
-·p-mono ⊑-ge ⊑-ge = ⊑-ge
 
 ·p-comm : ∀ a b → a ·p b ≡ b ·p a
 ·p-comm pure pure = refl
 ·p-comm pure act = refl
-·p-comm pure eff⁺ = refl
 ·p-comm pure eff = refl
 ·p-comm act pure = refl
 ·p-comm act act = refl
-·p-comm act eff⁺ = refl
 ·p-comm act eff = refl
-·p-comm eff⁺ pure = refl
-·p-comm eff⁺ act = refl
-·p-comm eff⁺ eff⁺ = refl
-·p-comm eff⁺ eff = refl
 ·p-comm eff pure = refl
 ·p-comm eff act = refl
-·p-comm eff eff⁺ = refl
 ·p-comm eff eff = refl
 
 -- The grades under sequencing are a commutative monoid with unit `pure`
@@ -609,8 +468,7 @@ purity-isCommutativeMonoid = record
     ; identity = (λ _ → refl) , ·p-identityʳ }
   ; comm = ·p-comm }
 
--- The join is a semilattice (a commutative band), without a unit: `pure`
--- and `eff⁺` have no common lower bound.
+-- The join is a semilattice (a commutative band).
 purity-⊔-isCommutativeBand : Structures.IsCommutativeBand {A = Purity} _≡_ _⊔p_
 purity-⊔-isCommutativeBand = record
   { isBand = record
@@ -619,5 +477,4 @@ purity-⊔-isCommutativeBand = record
       ; assoc = ⊔p-assoc }
     ; idem = ⊔p-idem }
   ; comm = ⊔p-comm }
-
 
