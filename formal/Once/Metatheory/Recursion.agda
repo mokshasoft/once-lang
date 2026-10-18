@@ -42,7 +42,7 @@ open import Once.Spec.Metatheory using (Recursion)
 open import Once.Metatheory.Bisim Σ
 open import Once.Metatheory.Lawful Σ
 open import Once.Metatheory.Unfold Σ using (module Unfold)
-open import Once.Metatheory.Trace Σ using (reflStep)
+open import Once.Metatheory.Trace using (reflStep)
 
 open νM using (outν)
 open _≈ν_ using (force≈)

@@ -37,7 +37,7 @@ open import Once.Spec.Trace using (End; returned; halted; EndRel; returned≈; h
 open import Once.Spec.Type using (Type; _+_)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)
-open import Once.Metatheory.Trace Σ using (MaybeEnd; cut≈; end≈)
+open import Once.Metatheory.Trace using (MaybeEnd; cut≈; end≈)
 open import Once.Metatheory.Run Σ
 open import Once.Metatheory.RunLaws Σ using (Stops; halts; cuts)
 open import Once.Metatheory.Coherence.Relation Σ using (Sim; Related; related; fwd; bwd; Related-flip; Related-mono)

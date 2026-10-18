@@ -11,9 +11,9 @@
 -- evidence, and the corecursive call sits directly under the pair.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Signature using (Signature; Event)
+open import Once.Spec.Signature using (Event)
 
-module Once.Metatheory.Trace (Σ : Signature) where
+module Once.Metatheory.Trace where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_)

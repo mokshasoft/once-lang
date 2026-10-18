@@ -58,7 +58,7 @@ open Equivalence Σ using (_≃_)
 open Bisim Σ
 open RunM Σ
 open RunLaws Σ using (run-det; run-det-calls; module Seq)
-open Trace Σ using (MaybeEnd; cut≈; end≈)
+open Trace using (MaybeEnd; cut≈; end≈)
 open Relation Σ
 
 open νM using (outν)
@@ -135,7 +135,7 @@ private
   module R′ = RunM Σ′
   module RL′ = RunLaws Σ′
   module Rel′ = Relation Σ′
-  module Tr′ = Trace Σ′
+  module Tr′ = Trace
 
   probeOp : Op Σ′
   probeOp = op (here refl)

@@ -38,7 +38,7 @@ open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toB; fromB)
 open import Once.Spec.Equivalence Σ
 open import Once.Spec.Observation Σ using (World)
 open import Once.Spec.Trace using (returned; halted; EndRel; returned≈; halted≈)
-open import Once.Metatheory.Trace Σ using (MaybeEnd; cut≈; end≈)
+open import Once.Metatheory.Trace using (MaybeEnd; cut≈; end≈)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Metatheory.Run Σ
 open import Once.Spec.Signature using (OneName)

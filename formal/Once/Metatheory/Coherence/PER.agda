@@ -24,7 +24,7 @@ open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
 open import Once.Spec.Equivalence Σ
-open import Once.Metatheory.Trace Σ using (WB-sym; WB-trans)
+open import Once.Metatheory.Trace using (WB-sym; WB-trans)
 
 open νM using (outν)
 

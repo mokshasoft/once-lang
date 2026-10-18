@@ -32,7 +32,7 @@ open import Once.Spec.Observation Σ using (World; module World; History; trace;
 open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; Calls; none)
 import Once.Spec.Trace
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
-open import Once.Metatheory.Trace Σ using (Obs; pre; preStep; bindD; bind⇓; bind⇓⁻; nowInv)
+open import Once.Metatheory.Trace using (Obs; pre; preStep; bindD; bind⇓; bind⇓⁻; nowInv)
 
 open Delay using (step)
 open Tr using (next)

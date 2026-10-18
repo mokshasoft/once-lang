@@ -37,7 +37,7 @@ open import Once.Spec.Equivalence Σ using (Observed)
 open import Once.Metatheory.Bisim Σ using (≈-sym)
 open import Once.Metatheory.Run Σ
 open import Once.Metatheory.RunLaws Σ
-open import Once.Metatheory.Trace Σ using (MaybeEnd; cut≈; end≈; ObsR; Depth; fromDepth; toDepth)
+open import Once.Metatheory.Trace using (MaybeEnd; cut≈; end≈; ObsR; Depth; fromDepth; toDepth)
 
 ------------------------------------------------------------------------
 -- A world: answer whenever an answer exists
