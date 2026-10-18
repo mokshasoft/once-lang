@@ -117,27 +117,7 @@ checkElab-fallback-RUnit {ctx} with Unit <:? Unit
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Unit))
 
--- RQualified: inferElab ≡ success ⇒ checkElab at the same type ≡ success.
-checkElab-fallback-RQualified :
-  ∀ {ctx : NamedCtx} {τ : Type} (name alias : String) (T : Type)
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
-    {d f : ℕ}
-  → inferElab ctx (Raw.RQualified name alias) ≡ success T Ψ eE d f
-  → T <: τ
-  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RQualified name alias) τ ≡ success Ψ eE' d' f')))
-checkElab-fallback-RQualified {ctx} {τ} name alias T eqInf sb
-  with inferElabV ctx (Raw.RQualified name alias)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-fallback-RQualified {ctx} {τ} name alias T eqInf sb
-  | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T <:? τ
-...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq sb)
-
--- RResolved (Plan 0.50): same generic fallback as RQualified.
+-- RResolved (Plan 0.50): the generic fallback.
 checkElab-fallback-RResolved :
   ∀ {ctx : NamedCtx} {τ : Type} (cn : CanonicalName) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

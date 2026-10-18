@@ -121,12 +121,6 @@ mutual
                 → lookupLocal ctx x ≡ just (A , Ψ , eV)
                 → ctx ⊢ᵢ RVar x ∶ A ⨾ Ψ
 
-    -- D274: a qualified reference names a GENERATOR of the signature Σ.
-    t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
-                    → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T
-                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
-                    → ctx ⊢ᵢ RQualified name alias ∶ T ⨾ zeroUsage
-
     -- Plan 0.50: a qualified ref RESOLVED to its canonical identity. `canon`
     -- (Resolve.agda) rewrites `RQualified name alias` → `RResolved cn` and
     -- retags the imported signatures so the import table is keyed by the

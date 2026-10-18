@@ -85,7 +85,7 @@ open import Once.Lang.Typing
          t-initial-app-check; t-app-spine;
          t-var-poly-instantiate;
          t-var-poly-instantiate-infer; d-poly;
-         t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
+         t-int; t-float; t-unit; t-unit-var; t-var-local;
          t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp)
@@ -155,7 +155,7 @@ svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 sigOpValᴰ : ∀ {B} → TargetNum → FFIAnswers → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
 sigOpValᴰ fmt φ si = fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt)
 
--- An EXTERNAL sigop reference (`t-var-qualified/resolved/import`). At an ARROW
+-- An EXTERNAL sigop reference (`t-var-resolved/import`). At an ARROW
 -- type the reference is a first-order function POINTER whose effect fires on
 -- APPLICATION (`arrow-info` respects the arrow's `Purity`). Split on the
 -- WITNESS (not `A`'s shape) so `con-base` reduces at an abstract base `A`.
@@ -206,9 +206,7 @@ record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
     -- its declared signatures and their implementation…
     world   : Interp
     -- …which declare every generator of the signature Σ in scope (D274): what a
-    -- qualified or resolved reference names.
-    decl-qual : ∀ {name alias T} → lookupImport sg (alias ++ "." ++ name) ≡ just T
-              → (alias ++ "." ++ name , T) ∈ sig world
+    -- resolved reference names.
     decl-res  : ∀ {cn T} → lookupImport sg (showCanonical cn) ≡ just T
               → (showCanonical cn , T) ∈ sig world
 open Meanings
@@ -314,8 +312,6 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- Plan 0.105 (D257 amendment 2): a qualified or resolved reference names a
 -- SigOp the program is compiled against — its meaning is that declaration's
 -- implementation (`decl-*`: the world declares it).
-⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} lk conc) fmt ρ dγ =
-  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) (bare (alias ++ "." ++ name)) conc (decl-qual ρ {name = name} {alias = alias} lk)
 -- D274: a resolved reference names a generator of Σ — own or not, its meaning
 -- is that declaration's implementation.
 ⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ lk conc) fmt ρ dγ =

@@ -27,7 +27,8 @@ open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArr
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; Starts; starts; GradeToken; g0; g1; gw)
 import Once.Parser.Token as P
 open import Once.Parser.Generic.Relation using (TyAlg; module Gen; adG; adA; adD; ArrowDir; arrowDir; drop1; drop2)
-open import Once.Adequacy.SpecGrammar.Tokens using (forget; step; peel)
+open import Once.Adequacy.SpecLexing using (forget)
+open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads
   using (star-false→; star-false←; star-true; plus-false→; plus-false←; plus-true; ArrowView; arrow-view;
          av-g1; av-g0; av-gw; av-a; av-r; av-d; ic0; ic1; icw)

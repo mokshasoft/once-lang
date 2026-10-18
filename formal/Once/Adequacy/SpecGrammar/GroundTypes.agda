@@ -27,7 +27,8 @@ import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
 import Once.Parser.Token as P
 open import Once.Parser.TypeRelation
-open import Once.Adequacy.SpecGrammar.Tokens using (forget; step; peel)
+open import Once.Adequacy.SpecLexing using (forget)
+open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads
   using (notStar→TStar; notStar←; notPlus→TPlus; notPlus←;
          notArrow→TArrow; notArrow→TCaret0; notArrow→TCaret1; notArrow→TCaretW; notArrow←)

@@ -240,8 +240,6 @@ mutual
   agree-ii (t-var-own n _ _) (t-var-resolved _ l _) = ⊥-elim (just≢nothing (trans (sym l) n))
   {-# CATCHALL #-}
   agree-ii (t-var-resolved _ l _) (t-var-own n _ _) = ⊥-elim (just≢nothing (trans (sym l) n))
-  agree-ii (t-var-qualified l _) (t-var-qualified l′ _) with trans (sym l) l′
-  ... | refl = refl , refl
   agree-ii (t-var-local l) (t-var-local l′) with trans (sym l) l′
   ... | refl = refl , refl
   agree-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))

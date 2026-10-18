@@ -339,17 +339,6 @@ module _ {ctx : NamedCtx} where
   own-h {ns = ns} {ns′} {c} {c′} l l′ = own-go {ns = ns} {ns′} {c} {c′} (trans (sym l) l′) l l′
 
   private
-    qualified-go : ∀ {nm al T T′} (eT : just T ≡ just T′) (l : lookupImport (NamedCtx.sig ctx) (al Data.String.++ "." Data.String.++ nm) ≡ just T)
-                     (l′ : lookupImport (NamedCtx.sig ctx) (al Data.String.++ "." Data.String.++ nm) ≡ just T′) (c : IsConcrete T) (c′ : IsConcrete T′)
-                 → RI (t-var-qualified {ctx = ctx} {name = nm} {alias = al} l c) ≅ RI (t-var-qualified {ctx = ctx} {name = nm} {alias = al} l′ c′)
-    qualified-go refl l l′ c c′ rewrite IsConcrete-irrelevant c c′ = ≅-refl
-
-  qualified-h : ∀ {nm al T T′} (l : lookupImport (NamedCtx.sig ctx) (al Data.String.++ "." Data.String.++ nm) ≡ just T) (c : IsConcrete T)
-                  (l′ : lookupImport (NamedCtx.sig ctx) (al Data.String.++ "." Data.String.++ nm) ≡ just T′) (c′ : IsConcrete T′)
-              → RI (t-var-qualified {ctx = ctx} {name = nm} {alias = al} l c) ≅ RI (t-var-qualified {ctx = ctx} {name = nm} {alias = al} l′ c′)
-  qualified-h {nm = nm} {al = al} l c l′ c′ = qualified-go {nm = nm} {al = al} (trans (sym l) l′) l l′ c c′
-
-  private
     local-go : ∀ {x A A′} {Ψ Ψ′ : U} {eV eV′} (eq : just (A , Ψ , eV) ≡ just (A′ , Ψ′ , eV′))
                  (l : lookupLocal ctx x ≡ just (A , Ψ , eV)) (l′ : lookupLocal ctx x ≡ just (A′ , Ψ′ , eV′))
              → RI (t-var-local {ctx = ctx} l) ≅ RI (t-var-local {ctx = ctx} l′)

@@ -272,7 +272,7 @@ canonExpr bound um am (RQualified name alias) with alias ≟ "this"
 ... | yes _ = RResolved (canonical (name ∷ []))
 ... | no  _ with lookupImportAlias am alias
 ...   | just path = RResolved (canonical (expandPath path ++L (name ∷ [])))
-...   | nothing   = RQualified name alias
+...   | nothing   = RResolved (canonical (alias ∷ name ∷ []))   -- an unknown alias is a path of one component
 canonExpr bound um am (RVar x)            = canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x
 canonExpr bound um am (RResolved cn)      = RResolved cn
 canonExpr bound um am (RApp f x)          = RApp (canonExpr bound um am f) (canonExpr bound um am x)
@@ -293,8 +293,8 @@ canonExpr bound um am (RAna F c)          = RAna F (canonExpr bound um am c)
 -- | D126: resolution PRESERVES the closed-lift side condition. It has to —
 -- otherwise a derivation using the lift would not survive `canonExpr`. The two
 -- shape-CHANGING cases are the interesting ones, and both land back in the set:
--- a bare `RVar` becomes `RResolved` (or stays), and `RQualified` becomes
--- `RResolved` (or stays).
+-- a bare `RVar` becomes `RResolved` (or stays), and `RQualified` always
+-- becomes `RResolved`.
 cls-canon : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
               {e : RawExpr}
           → ClosedLiftShape e → ClosedLiftShape (canonExpr bound um am e)
@@ -308,7 +308,7 @@ cls-canon bound um am (cls-qual {a = alias}) with alias ≟ "this"
 ... | yes _ = cls-res
 ... | no  _ with lookupImportAlias am alias
 ...   | just _  = cls-res
-...   | nothing = cls-qual
+...   | nothing = cls-res
 cls-canon bound um am cls-res   = cls-res
 cls-canon bound um am cls-let   = cls-let
 cls-canon bound um am cls-destr = cls-destr

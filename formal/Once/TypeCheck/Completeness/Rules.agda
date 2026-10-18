@@ -45,7 +45,7 @@ open import Once.Lang.Name using (showCanonical)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
-open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RQualified-aux; inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
+open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
 import Once.Lang.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
@@ -103,81 +103,9 @@ infer-complete-RVar-unit :
 infer-complete-RVar-unit = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
--- Single-lookup completeness: qualified imports, local vars, imports.
+-- Single-lookup completeness: local vars, imports.
 ------------------------------------------------------------------------
 
-infer-complete-RQualified :
-  ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
-  → lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T
-  → IsConcrete T  -- Plan 0.58: FFI reference is concrete
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
--- Plan 0.36: `inferElabV-RQualified-aux` splits on the looked-up type (a
--- `Many`-arrow → `lift-morphism (SigOp …)`, else `sigOp`), so the aux no
--- longer reduces for an abstract `T`. `go` mirrors the split over `T`'s
--- shape so the reduction is determined in each branch; the proof term is
--- uniform (`cong proj₁ (helper _ eq')`) — only the elaborated surface expr
--- differs, and it is existentially bound.
--- Plan 0.58: the aux now also splits on `isBaseType? A`/`isConcrete? B` (the
--- concreteness guard); the carried `IsConcrete T` witness forces those
--- deciders to `just` via completeness (`rewrite`), so the success branch fires.
-infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
-  where
-    open Once.TypeCheck.ElaborateProofs using ()
-    helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
-           → inferElabV-RQualified-aux ctx name alias
-               (lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
-             ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
-    helper _ refl = refl
-    -- Drive the de-withed arrow / value auxes to their concreteness `just` branch.
-    helperArr : ∀ {A B} {π : T.Purity}
-              → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name)
-                        ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
-              → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
-                (mcB : Maybe (IsBaseType B)) (eqc : isBaseType? B ≡ mcB)
-              → inferElabV-RQualified-arrow-aux ctx name alias eq' (isBaseType? A) refl (isBaseType? B) refl
-                ≡ inferElabV-RQualified-arrow-aux ctx name alias eq' mbA eqb mcB eqc
-    helperArr _ _ refl _ refl = refl
-    helperVal : ∀ {ty}
-              → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just ty)
-              → (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
-              → inferElabV-RQualified-value-aux ctx name alias ty eq' (isConcrete? ty) refl
-                ≡ inferElabV-RQualified-value-aux ctx name alias ty eq' mc eqc
-    helperVal _ _ refl = refl
-    go : ∀ (T' : Type) → IsConcrete T'
-       → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just T')
-       → ∃[ eE ] ∃[ d ] ∃[ f ]
-           inferElab ctx (RQualified name alias) ≡ success T' zeroUsage eE d f
-    go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
-      trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperArr eq' _ (proj₂ (isBaseType?-complete bA))
-                                      _ (proj₂ (isBaseType?-complete cB))))
-    go (A ⇒[ T.mk-kind One  π ] B) conc' eq' = _ , _ , _ ,
-      trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go (A ⇒[ T.mk-kind Zero π ] B) conc' eq' = _ , _ , _ ,
-      trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go Unit          _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go Void          _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go Int           _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go Float         _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go (T.rigid T.k-base _) _ eq' = _ , _ , _ ,
-      cong proj₁ (helper _ eq')
-    go (T.rigid T.k-any _) (con-base ()) eq'
-    go (A * B) conc' eq' = _ , _ , _ ,
-      trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go (A + B) conc' eq' = _ , _ , _ ,
-      trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))
-    go (T.μ-type F)  (con-base ()) eq'
-    go (T.ν-type F _)  (con-base ()) eq'
 
 -- Plan 0.50: resolved-ref completeness, keyed by `showCanonical cn`.
 -- D136: the elaborator DISPATCHES on `classifyGen cn` first, so the proof has

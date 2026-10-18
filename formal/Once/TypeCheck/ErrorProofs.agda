@@ -130,24 +130,12 @@ inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
                → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Int ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Int ctx arg refl = refl
+-- The resolver reads every `name@alias`, so an unresolved one is unbound.
 qualified-not-found-is-UnboundQualified :
   ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
-  → lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ nothing
   → inferElab ctx (RQualified name alias) ≡ failure err
   → err ≡ UnboundQualified name alias
-qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqOuter =
-  go (trans (sym (cong proj₁ (helper _ eqLookup))) eqOuter)
-  where
-    open Once.TypeCheck.Elaborate using (inferElabV-RQualified-aux)
-    helper : ∀ (lhs : Maybe Type)
-           → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs)
-           → inferElabV-RQualified-aux ctx name alias
-               (lookupImport (Classify.NamedCtx.sig ctx) (alias ++ "." ++ name)) refl
-             ≡ inferElabV-RQualified-aux ctx name alias lhs eq'
-    helper _ refl = refl
-    go : ∀ {err} → failure (UnboundQualified name alias) ≡ failure err
-       → err ≡ UnboundQualified name alias
-    go refl = refl
+qualified-not-found-is-UnboundQualified ctx name alias refl = refl
 fst-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'

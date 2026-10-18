@@ -51,7 +51,7 @@ open import Data.String using (String)
 open import Once.Lang.Typing
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; returnᵖ)
-open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
+open Once.Denotation.Meaning.Meanings using (decl-res; defs; entries; world)
 open import Once.Lang.GradedOps using (fmapM; sigOpRefᵛ; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ)
 import Once.Lang.Core.Meaning S as GM
 open import Once.Lang.Elaboration S using (Views; View; ImportAt; Declared; def; InstanceOf; elabᶜ; elabᵢ; elabᵈ; Elab; subE)
@@ -82,11 +82,8 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
                    ≡ refSem δ (ground V lp g)
     agree-import : ∀ {x U} (lk : lookupImport imps x ≡ just U)
                  → impAt imps x (entries ρ) lk ≡ impSem δ (imported V lk)
-    -- a qualified or resolved reference names a generator of Σ: both meanings
-    -- read the same declaration in the same world.
-    agree-qualified : ∀ {name alias U} (lk : lookupImport sg (alias ++ "." ++ name) ≡ just U) (k : IsConcrete U)
-                    → sigOpRefᵛ fmt (sigOf S) (GM.impl δ) (bare (alias ++ "." ++ name)) k (Declared.member (declares V lk))
-                      ≡ sigOpRefᵛ fmt (sig (world ρ)) (impl (world ρ)) (bare (alias ++ "." ++ name)) k (decl-qual ρ {name = name} {alias = alias} lk)
+    -- a resolved reference names a generator of Σ: both meanings read the same
+    -- declaration in the same world.
     agree-resolved : ∀ {cn U} (lk : lookupImport sg (showCanonical cn) ≡ just U) (k : IsConcrete U)
                    → sigOpRefᵛ fmt (sigOf S) (GM.impl δ) cn k (Declared.member (declares V lk))
                      ≡ sigOpRefᵛ fmt (sig (world ρ)) (impl (world ρ)) cn k (decl-res ρ {cn = cn} lk)
@@ -447,7 +444,6 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag t-unit dγ = refl
   bridge-i V ag t-unit-var dγ = refl
   bridge-i V ag (t-var-local {eV = Once.Lang.Context.svar i} _) dγ = refl
-  bridge-i V ag (t-var-qualified {name = name} {alias = alias} lk k) dγ = sym (Agree.agree-qualified ag {name = name} {alias = alias} lk k)
   bridge-i V ag (t-var-resolved {cn = cn} _ lk k) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
   bridge-i V ag (t-var-own _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
   bridge-i V ag (t-var-import _ _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)

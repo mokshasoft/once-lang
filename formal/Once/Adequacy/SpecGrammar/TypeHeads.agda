@@ -25,7 +25,7 @@ import Once.Parser.Token as P
 open import Once.Lang.Type.Grade using (Zero; One; Many)
 open import Once.Parser.Generic.Relation using (isStar; isPlus; arrowDir; adG; adA; adR; adD; ArrowDir)
 open import Once.Parser.TypeRelation using (NotStar; NotStarPlus; NotArrowOrGrade)
-open import Once.Adequacy.SpecGrammar.Tokens using (forget)
+open import Once.Adequacy.SpecLexing using (forget)
 
 private
   F : List P.Token → List Token

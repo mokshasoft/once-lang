@@ -81,7 +81,7 @@ open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   d-terminal; d-initial; d-case; d-pair; d-cata; _⊢ᵈ_∶_⇒[_]↦_⨾_;
   t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check;
-  t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-qualified;
+  t-int; t-float; t-unit; t-unit-var; t-var-local;
   t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp;
@@ -93,7 +93,7 @@ open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bi
 open import Once.Lang.Environment using (lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0) renaming (env0 to env0ᵛ)
 open import Once.Lang.Graded using (⟦_⟧ᵛ; M; _>>=ᵖ_; returnM; bindM; subM)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; DefMeanings; ImpMeanings; MeaningsOf; EnvRun; sigOpValᴰ; sigOpRefᴰ)
-open Once.Denotation.Meaning.Meanings using (decl-qual; decl-res; defs; entries; world)
+open Once.Denotation.Meaning.Meanings using (decl-res; defs; entries; world)
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr; liftFn-apply; liftFn-eff-apply; liftFn-curry-fst)
 import Once.IR as IR
@@ -745,8 +745,6 @@ bridge-i {ctx = ctx} (t-var-local {eV = svar i} _) re er =
   rel-ret (rel-lookupUsed (NamedCtx.debruijn ctx) i (un↾ re))
 
 -- Named value references — the sigop-reference leaf (dispatch on result type).
-bridge-i {ctx = ctx} (t-var-qualified {name = name} {alias = alias} {T = A} lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
-  sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-qual ρ {name = name} {alias = alias} lk) dγ₂ (proj₂ (proj₂ er))
 -- D274: a resolved reference names a generator of Σ — the sigop-reference leaf.
 bridge-i {ctx = ctx} (t-var-resolved {cn = cn} {T = A} _ lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
   sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-res ρ {cn = cn} lk) dγ₂ (proj₂ (proj₂ er))

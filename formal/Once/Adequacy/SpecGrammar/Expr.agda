@@ -38,7 +38,8 @@ import Once.Parser.Token as P
 open import Once.Parser.ExprRelation as E
   hiding (ParsesExpr; ParsesCompTail; ParsesCmp; ParsesAdd; ParsesAddTail; ParsesMul; ParsesMulTail; ParsesUnary;
           ParsesApp; ParsesAppTail; ParsesAtomExpr; ParsesLamParams; ParsesParenCont)
-open import Once.Adequacy.SpecGrammar.Tokens using (forget; back; isLit; step; peel; peels; NonLits; []; _∷_; stepInt; stepFloat)
+open import Once.Adequacy.SpecLexing using (forget)
+open import Once.Adequacy.SpecGrammar.Tokens using (back; isLit; step; peel; peels; NonLits; []; _∷_; stepInt; stepFloat)
 open import Data.Bool using (false)
 import Once.Parser.TypeRelation
 open import Once.Adequacy.SpecGrammar.ExprHeads

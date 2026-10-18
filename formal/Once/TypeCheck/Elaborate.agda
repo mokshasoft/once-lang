@@ -1238,82 +1238,10 @@ inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS {C₁ = C₁
 ... | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE) (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
 ... | no _     = failure CaseBranchMismatch , tt
 
--- An EXTERNAL arrow's contract (plan 0.105): the SAME builder the meaning
--- reads (`arrow-info`). A `pure` arrow is a pure FFI contract (`ffiV`, the
--- interpretation's value); an `eff` one HALTS into `Void`, EMITS into `Unit`,
--- and otherwise ANSWERS (`callsV`, a call the interpretation answers) — the
--- codomain decides (D225), no name-keyed table. First-order: both sides base.
-ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity
-               → IsBaseType A → IsBaseType B → SigOpInfo A B
-ext-arrow-info ctx alias name π bA bB = arrow-info (Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π) (bare (alias ++ "." ++ name)) bA bB
-
--- Plan 0.58: the arrow-value case DE-WITHES the concreteness decision
--- (`isBaseType? A`/`isConcrete? B`) into explicit Maybe args + equations, so
--- the Completeness proof can drive it to the `success` branch (mirroring the
--- lookup de-with above). Without this the `with` is opaque to external proofs.
-inferElabV-RQualified-arrow-aux :
-  ∀ (ctx : NamedCtx) (name alias : String) {A B : Type} {π : Once.Lang.Type.Grade.Purity}
-  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name)
-      ≡ just (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B)
-  → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
-  → (mcB : Maybe (IsBaseType B)) → isBaseType? B ≡ mcB
-  → VerifiedInferResult ctx (Raw.RQualified name alias)
--- Concreteness-driven arrow value emission (de-withed for Completeness).
-inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just bA) _ (just cB) _ =
-  success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B) _
-    (Surface.lift-morphism {π = π} (IR.SigOp (ext-arrow-info ctx alias name π bA cB)))
-    0 0
-  , t-var-qualified eq (con-fun bA cB)
-inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq nothing _ _ _ =
-  failure (NonConcreteSigOpType (alias ++ "." ++ name)
-            (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B)) , tt
-inferElabV-RQualified-arrow-aux ctx name alias {A} {B} {π} eq (just _) _ nothing _ =
-  failure (NonConcreteSigOpType (alias ++ "." ++ name)
-            (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B)) , tt
-
--- Non-arrow-Many value refs: DE-WITH the single `isConcrete? ty` decision.
-inferElabV-RQualified-value-aux :
-  ∀ (ctx : NamedCtx) (name alias : String) (ty : Type)
-  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ just ty
-  → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
-  → VerifiedInferResult ctx (Raw.RQualified name alias)
-inferElabV-RQualified-value-aux ctx name alias ty eq (just conc) _ =
-  success ty _ (Surface.sigOp (bare (alias ++ "." ++ name)) conc) 0 0
-  , t-var-qualified eq conc
-inferElabV-RQualified-value-aux ctx name alias ty eq nothing _ =
-  failure (NonConcreteSigOpType (alias ++ "." ++ name) ty) , tt
-
--- Aux helpers that take the lookup result + equation as explicit args,
--- so external proofs can pattern-match on the Maybe and supply the eq
--- without `with...in` opacity.
-inferElabV-RQualified-aux :
-  ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
-  → lookupImport (NamedCtx.sig ctx) (alias ++ "." ++ name) ≡ lhs
-  → VerifiedInferResult ctx (Raw.RQualified name alias)
--- Aux helper bodies (placed after all main mutual members so that the
--- `... | pat` continuations of inferElabV/checkElabV clauses don't
--- conflict with the aux's own clauses).
--- A qualified ref `name@alias` is ALWAYS genuinely external (from an
--- import, never a local userFn). Used as a value at a `Many`-arrow type it
--- IS the external `SigOp (generic-info name)`; emit it as `lift-morphism`
--- so `extract-morph`/`extract-morph-eff` recover it BY CONSTRUCTION and the
--- eff `case`/`compose` fuse the algebra to a DIRECT morphism (no apply, no
--- effApp suspension). The distinguisher the laundering bug lacked: internal
--- `seven` is unqualified → stays `sigOp` → resolver → closure; only genuine
--- externals become `lift-morphism (SigOp …)`.
-inferElabV-RQualified-aux ctx name alias
-  (just (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B)) eq =
-  inferElabV-RQualified-arrow-aux ctx name alias eq (isBaseType? A) refl (isBaseType? B) refl
-{-# CATCHALL #-}
-inferElabV-RQualified-aux ctx name alias (just ty) eq =
-  inferElabV-RQualified-value-aux ctx name alias ty eq (isConcrete? ty) refl
-inferElabV-RQualified-aux ctx name alias nothing _ =
-  failure (UnboundQualified name alias) , tt
-
 -- Plan 0.50: resolved external ref. The canonical name `cn` is carried
 -- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
 -- realize/elaborator/trace/codegen names agree by construction. Mirrors
--- `ext-arrow-info`/`inferElabV-RQualified-aux` but keyed by `cn`.
+-- `arrow-info`, keyed by `cn`.
 -- De-withed (so the realize-agrees masquerade can fold it): the two
 -- codomain decisions are explicit args.
 --
@@ -2363,8 +2291,9 @@ mutual
   -- dispatch).
   ----------------------------------------------------------------------
 
-  inferElabV ctx (Raw.RQualified name alias) =
-    inferElabV-RQualified-aux ctx name alias _ refl
+  -- The resolver reads every `name@alias` (an unknown alias as a path of one
+  -- component), so an unresolved one is never well typed.
+  inferElabV ctx (Raw.RQualified name alias) = failure (UnboundQualified name alias) , tt
 
   -- D136: ONE clause, routed through the `GenView`. Concrete
   -- `RResolved (gen "g")` clauses here would stop `checkElabV`/`inferElabV`

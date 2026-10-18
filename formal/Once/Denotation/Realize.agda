@@ -48,7 +48,7 @@ open import Once.Lang.Typing
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
          t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float;
-         t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-own;
+         t-unit; t-unit-var; t-var-local; t-var-resolved; t-var-own;
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
@@ -142,7 +142,6 @@ realize-infer (t-float i f l p) = float (decimalOf i f l)
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit
 realize-infer (t-var-local {eV = eV} _) = svar→expr eV
-realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (bare (alias ++ "." ++ name)) conc
 -- Plan 0.50: a resolved ref carries its canonical identity directly — the
 -- reference elaboration reads it with NO String render, so it agrees with
 -- the elaborator's `SigOpInfo.name` by construction.

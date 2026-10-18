@@ -35,7 +35,7 @@ open import Once.Parser.Module.FunDef.Params using (SepK; skEq; skWord; skStop; 
 open import Once.Parser.Module.OpName using (OpTok; otClose; otChar; otNone; opTokClass)
 open import Once.Parser using (allTrailing)
 open import Once.Parser.Module using (parseDeclB)
-open import Once.Adequacy.SpecGrammar.Tokens using (forget)
+open import Once.Adequacy.SpecLexing using (forget)
 
 private
   F : List P.Token → List Token

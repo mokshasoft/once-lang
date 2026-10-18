@@ -132,17 +132,17 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
                                      (RResolved (canonical (name ∷ [])))
 
   -- `name@A` at a known alias is that module's path; at an unknown alias it is
-  -- left alone (the typing rules then have nothing to look it up by).
+  -- read as a path of ONE component, `A.name` (the Spec's `r-qual-path`).
   re-qual : ∀ {bound name alias path path'}
           → alias ≢ "this"
           → FirstAt alias path am → ExpandsTo path path'
           → ResolvesExpr um am bound (RQualified name alias)
                                      (RResolved (canonical (path' ++ (name ∷ []))))
-  re-qual-unknown : ∀ {bound name alias}
-                  → alias ≢ "this"
-                  → Absent alias am
-                  → ResolvesExpr um am bound (RQualified name alias)
-                                             (RQualified name alias)
+  re-qual-path : ∀ {bound name alias}
+               → alias ≢ "this"
+               → Absent alias am
+               → ResolvesExpr um am bound (RQualified name alias)
+                                          (RResolved (canonical (alias ∷ name ∷ [])))
 
   -- Already resolved: the identity. This is what makes `name@this` and every
   -- compiler-generated reference a fixed point.

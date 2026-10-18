@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.Spec.Surface.Lexing using (Token)
 open Token
 import Once.Parser.Token as P
-open import Once.Adequacy.SpecLexing using (forget) public
+open import Once.Adequacy.SpecLexing using (forget)
 
 -- A forgotten list that is a cons.
 data ConsView (u : Token) (us : List Token) : List P.Token → Set where

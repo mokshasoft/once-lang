@@ -274,7 +274,6 @@ record VerifiedTypeChecker : Set₁ where
 
     tc-err-qualified-unbound :
       ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
-      → lookupImport (Classify.NamedCtx.sig ctx) (alias Data.String.++ "." Data.String.++ name) ≡ nothing
       → tcInfer ctx (RQualified name alias) ≡ failure err
       → err ≡ (UnboundQualified name alias)
 
@@ -597,13 +596,6 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RResolved (gen "unit")) ≡ success Once.Lang.Type.Unit Surface.zeroUsage eE d f
-
-    tcInfer-complete-RQualified :
-      ∀ (ctx : NamedCtx) (name alias : String) (T : Type)
-      → lookupImport (Classify.NamedCtx.sig ctx) (alias Data.String.++ "." Data.String.++ name) ≡ just T
-      → IsConcrete T
-      → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RQualified name alias) ≡ success T Surface.zeroUsage eE d f
 
     -- RPair: both subs infer → outer succeeds.
     tcInfer-complete-RPair :
@@ -958,8 +950,6 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RInt         = λ ctx n → CmpR.infer-complete-RInt {ctx = ctx} n
   ; tcInfer-complete-RUnit        = λ ctx → CmpR.infer-complete-RUnit {ctx = ctx}
   ; tcInfer-complete-RVar-unit    = λ ctx → CmpR.infer-complete-RVar-unit {ctx = ctx}
-  ; tcInfer-complete-RQualified   = λ ctx name alias T eq conc →
-                                     CmpR.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq conc
   ; tcInfer-complete-RPair        = λ ctx → CmpR.infer-complete-RPair
   ; tcInfer-complete-RUnaryOp-neg = λ ctx → CmpR.infer-complete-RUnaryOp-neg
   ; tcInfer-complete-RAnnot       = λ ctx → CmpR.infer-complete-RAnnot

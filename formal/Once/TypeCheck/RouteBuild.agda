@@ -156,7 +156,6 @@ mutual
   route-ii (t-var-own n _ _) (t-var-resolved _ l _) = ⊥-elim (just≢nothing (trans (sym l) n))
   {-# CATCHALL #-}
   route-ii (t-var-resolved _ l _) (t-var-own n _ _) = ⊥-elim (just≢nothing (trans (sym l) n))
-  route-ii (t-var-qualified _ _) (t-var-qualified _ _) = ii-qualified
   route-ii (t-var-local _) (t-var-local _) = ii-local
   route-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
   route-ii (t-var-local l) (t-var-poly-instantiate-infer ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))

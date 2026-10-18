@@ -183,7 +183,6 @@ realize-refs-i (t-float i f l p) = tt
 realize-refs-i t-unit            = tt
 realize-refs-i t-unit-var        = tt
 realize-refs-i (t-var-local {eV = svar i} _) = tt
-realize-refs-i (t-var-qualified lk conc) = lk
 realize-refs-i (t-var-resolved _ lk conc) = lk
 realize-refs-i (t-var-own _ lk conc) = lk
 realize-refs-i (t-var-import _ _ lk conc) = lk

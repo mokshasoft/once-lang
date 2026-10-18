@@ -62,8 +62,8 @@ import Once.Parser.Module.OpName
 import Once.Parser.TypeRelation
 import Once.Parser.ExprRelation
 import Once.Parser.Generic.PolyInst
-open import Once.Adequacy.SpecLexing using (toNew; toOld)
-open import Once.Adequacy.SpecGrammar.Tokens using (forget; step; peel; peels; []; _∷_)
+open import Once.Adequacy.SpecLexing using (toNew; toOld; forget)
+open import Once.Adequacy.SpecGrammar.Tokens using (step; peel; peels; []; _∷_)
 open import Once.Adequacy.SpecGrammar.DeclHeads
 open import Once.Adequacy.SpecGrammar.ExprHeads using (StrHead; str-head)
 open import Once.Adequacy.SpecGrammar.Expr using (Emb; e-lam; expr→; expr←)

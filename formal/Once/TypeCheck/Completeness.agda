@@ -265,7 +265,6 @@ given-infer-route (t-float _ _ _ _) A π _ = refl
 given-infer-route t-unit A π _ = refl
 given-infer-route t-unit-var A π _ = refl
 given-infer-route {ctx} (t-var-local {x = x} _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
-given-infer-route (t-var-qualified _ _) A π _ = refl
 given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π _ =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
 given-infer-route {ctx} (t-var-own {x = x} _ _ _) A π _ =
@@ -425,7 +424,7 @@ infer-complete-RApp-spine {ctx} f x {X} {B} eqAH eqF eqX eqG
 ------------------------------------------------------------------------
 
 open Once.TypeCheck.ElaborateProofs
-  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer; checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic)
+  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -624,9 +623,6 @@ mutual
   iFromInferSub {ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-local eqLocal)
     in checkElab-fallback-RVar {ctx} x T eqI sb
-  iFromInferSub {ctx} (t-var-qualified {name = n} {alias = a} {T = T} eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp conc)
-    in checkElab-fallback-RQualified {ctx} n a T eqI sb
   iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc)
     in checkElab-fallback-RResolved {ctx} cn T eqI sb
@@ -734,8 +730,6 @@ mutual
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
   infer-complete {ctx} (t-var-local {x = x} eqLocal) =
     infer-complete-RVar-local {ctx} x eqLocal
-  infer-complete {ctx} (t-var-qualified {name = name} {alias = alias} eqImp conc) =
-    infer-complete-RQualified {ctx} {name} {alias} eqImp conc
   infer-complete {ctx} (t-var-resolved {cn = cn} ng eqImp conc) =
     infer-complete-RResolved {ctx} {cn} ng eqImp conc
   infer-complete {ctx} (t-var-own ns eqImp conc) =

@@ -89,7 +89,6 @@ module _ (δ : GM.DefSem) where
   envOf : ∀ {sg imps ps} → SigSig (sigOf S) sg → ImpSig S imps → TeleSig S ps → Meanings (C.buildPolyCtx ps) imps sg
   envOf ss is ts = meanings (defEnv ts) (impEnv is) (interp (sigOf S) (GM.impl δ))
     (λ lk → Declared.member (sigView {S = S} ss lk))
-    (λ lk → Declared.member (sigView {S = S} ss lk))
 
   -- THE AGREEMENT, by construction.
   agree : ∀ {sg imps ps} (ss : SigSig (sigOf S) sg) (is : ImpSig S imps) (ts : TeleSig S ps)
@@ -98,7 +97,6 @@ module _ (δ : GM.DefSem) where
     { agree-inst      = λ lp ng ki → agree-def ts lp ki
     ; agree-ground    = λ {x} {sc} lp g → agree-def ts lp (ground-kinded sc g)
     ; agree-import    = λ lk → agree-imp is lk
-    ; agree-qualified = λ lk k → refl
     ; agree-resolved  = λ lk k → refl
     ; agree-world     = refl
     }

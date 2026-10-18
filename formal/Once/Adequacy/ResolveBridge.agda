@@ -203,7 +203,7 @@ resolves-sound um am bound _ _ (re-this {name = n}) with "this" ≟ "this"
 resolves-sound um am bound _ _ (re-qual {alias = a} a≢ fa ex) with a ≟ "this"
 ... | yes e = ⊥-elim (a≢ e)
 ... | no  _ rewrite lookupAl-complete am a _ fa | expandPath-complete _ _ ex = refl
-resolves-sound um am bound _ _ (re-qual-unknown {alias = a} a≢ ab) with a ≟ "this"
+resolves-sound um am bound _ _ (re-qual-path {alias = a} a≢ ab) with a ≟ "this"
 ... | yes e = ⊥-elim (a≢ e)
 ... | no  _ rewrite lookupAl-absent am a ab = refl
 resolves-sound um am bound _ _ re-res = refl
@@ -246,7 +246,7 @@ resolves-complete um am bound (RQualified n a) with a ≟ "this"
 ... | yes refl = re-this
 ... | no a≢ with lookupImportAlias am a in ea
 ...   | just p  = re-qual a≢ (lookupAl-sound am a p ea) (expandPath-sound p)
-...   | nothing = re-qual-unknown a≢ (lookupAl-nothing am a ea)
+...   | nothing = re-qual-path a≢ (lookupAl-nothing am a ea)
 resolves-complete um am bound (RResolved cn) = re-res
 resolves-complete um am bound (RApp f a) =
   re-app (resolves-complete um am bound f) (resolves-complete um am bound a)

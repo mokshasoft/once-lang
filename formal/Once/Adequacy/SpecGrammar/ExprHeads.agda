@@ -34,7 +34,7 @@ open NotAtomStart
 open AppArgOk
 open NotTWord
 open NotQualPrefix
-open import Once.Adequacy.SpecGrammar.Tokens using (forget)
+open import Once.Adequacy.SpecLexing using (forget)
 
 private
   F : List P.Token → List Token

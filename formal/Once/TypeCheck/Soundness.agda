@@ -257,11 +257,8 @@ sound-RPair ctx a b IHa IHb eq | failure _ , _ with eq
 ... | ()
 
 ------------------------------------------------------------------------
--- Soundness for RQualified
---
--- No recursion — a `RQualified` either resolves in the imports table
--- or fails. We case-split on the lookup result and either apply
--- `t-var-qualified` (success) or close with an absurd pattern (failure).
+-- Soundness for RQualified: vacuous — the checker never accepts an
+-- unresolved qualified name (the resolver reads every one).
 ------------------------------------------------------------------------
 
 -- Bundle wrapping `lookupImport` calls (single-shot, no IH involved).
@@ -277,12 +274,7 @@ sound-RQualified :
     {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → inferElab ctx (RQualified name alias) ≡ success A Ψ eE d f
   → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
-sound-RQualified ctx name alias eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RQualified name alias)
-... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
-sound-RQualified ctx name alias eq | failure _ , _ with eq
-... | ()
+sound-RQualified ctx name alias ()
 
 ------------------------------------------------------------------------
 -- Soundness for RVar
