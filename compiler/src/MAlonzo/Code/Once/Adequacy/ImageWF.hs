@@ -161,7 +161,7 @@ d_prog'45'defs_28 v0
             MAlonzo.Code.Data.List.Base.du__'43''43'__32
             (coe
                MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_38
-               (coe MAlonzo.Code.Once.Compile.d_image'45'of_966 (coe v0)))
+               (coe MAlonzo.Code.Once.Compile.d_image'45'of_970 (coe v0)))
             (coe
                MAlonzo.Code.Once.Compile.d_block'45'syms_932
                (coe MAlonzo.Code.Once.Compile.d_program'45'blocks_898 (coe v0)))))
@@ -178,12 +178,12 @@ d_lib'45'defs_32 v0
          (coe
             MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_38
             (coe
-               MAlonzo.Code.Once.Compile.d_lib'45'image_1010
+               MAlonzo.Code.Once.Compile.d_lib'45'image_1014
                (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))))
          (coe
             MAlonzo.Code.Once.Compile.d_block'45'syms_932
             (coe
-               MAlonzo.Code.Once.Compile.d_lib'45'blocks_1018
+               MAlonzo.Code.Once.Compile.d_lib'45'blocks_1022
                (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0)))))
 -- Once.Adequacy.ImageWF.Resolved
 d_Resolved_36 ::
@@ -274,7 +274,7 @@ du_split_84 v0 v1 v2 v3
                                     MAlonzo.Code.Data.List.Membership.Propositional.Properties.du_'8712''45''43''43''8314''691'_200
                                     (MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_38
                                        (coe
-                                          MAlonzo.Code.Once.Compile.d_image'45'of_966
+                                          MAlonzo.Code.Once.Compile.d_image'45'of_970
                                           (coe d_p_80 (coe v0) (coe v1))))
                                     (MAlonzo.Code.Once.Compile.d_block'45'syms_932
                                        (coe
@@ -287,14 +287,16 @@ du_split_84 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
                        (coe
-                          MAlonzo.Code.Data.List.Membership.Propositional.Properties.du_'8712''45'filter'8314'_510
-                          (MAlonzo.Code.Once.Compile.d_is'45'extern'63'_948
-                             (coe d_p_80 (coe v0) (coe v1)))
-                          (MAlonzo.Code.Once.Compile.d_calls'45'of_938
-                             (coe
-                                MAlonzo.Code.Once.Compile.d_rewrite'45'program_894
-                                (coe d_p_80 (coe v0) (coe v1))))
-                          v2 erased))
+                          MAlonzo.Code.Data.List.Relation.Unary.Any.C_there_54
+                          (coe
+                             MAlonzo.Code.Data.List.Membership.Propositional.Properties.du_'8712''45'filter'8314'_510
+                             (MAlonzo.Code.Once.Compile.d_is'45'extern'63'_948
+                                (coe d_p_80 (coe v0) (coe v1)))
+                             (MAlonzo.Code.Once.Compile.d_calls'45'of_938
+                                (coe
+                                   MAlonzo.Code.Once.Compile.d_rewrite'45'program_894
+                                   (coe d_p_80 (coe v0) (coe v1))))
+                             v2 erased)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ImageWF.table-ok
 d_table'45'ok_112 ::

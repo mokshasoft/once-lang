@@ -107,7 +107,7 @@ du_compileFunBody'45'sound_96 v0 v1 v2 v3
          (coe
             du_compileFunBody'45'aux'45'success_36
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6656
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                   (coe v0) (coe v1))
@@ -327,7 +327,7 @@ du_ce'45'prim'45'sound_322 v0 v1 v2 v3 v4 v5
         -> coe
              du_conc_440 (coe v0) (coe v1) (coe v2) (coe v3) (coe v6)
              (coe MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63'_52 (coe v6))
-             (coe MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_206 (coe v6))
+             (coe MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_202 (coe v6))
              (coe MAlonzo.Code.Once.Type.Rigid.d_rigidFree'63'_676 (coe v6))
              (coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -381,7 +381,7 @@ du_ce'45'poly'45'sound_348 v0 v1 v2 v3 v4
   = coe
       du_step_532 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6656
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6384
          (coe du_ctx_526 (coe v1))
          (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v2))
          (coe

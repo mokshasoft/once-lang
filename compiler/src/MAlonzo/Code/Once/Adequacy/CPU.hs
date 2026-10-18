@@ -22,8 +22,8 @@ import qualified MAlonzo.Code.Once.Adequacy.CPU.Interface
 import qualified MAlonzo.Code.Once.Adequacy.CPU.RiscV64
 import qualified MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32
 import qualified MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64
-import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Spec.Trace
 import qualified MAlonzo.Code.Once.Target.Arch
 
 -- Once.Adequacy.CPU.arch-semantics
@@ -34,20 +34,20 @@ d_arch'45'semantics_6 v0
   = case coe v0 of
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arch'45'semantics_426
+             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arch'45'semantics_414
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32.d_arch'45'semantics_50
+             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32.d_arch'45'semantics_38
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_arch'45'semantics_50
+             MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_arch'45'semantics_38
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.exec
 d_exec_8 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
+  MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_exec_8 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.d_exec'45'bytes_72

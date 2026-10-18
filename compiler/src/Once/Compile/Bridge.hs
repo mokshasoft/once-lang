@@ -104,10 +104,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_1070
-toMStage Parse = MC.C_Parse_1072
-toMStage Check = MC.C_Check_1074
-toMStage Build = MC.C_Build_1076
+toMStage :: Stage -> MC.T_Stage_1074
+toMStage Parse = MC.C_Parse_1076
+toMStage Check = MC.C_Check_1078
+toMStage Build = MC.C_Build_1080
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -137,15 +137,15 @@ fromMFunInfo fi = FunSig
 fromMPolyFunInfo :: MP.T_PolyFunInfo_116 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
   { polyFunSigName = agdaToText (MP.d_pfunName_124 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_140 (MP.d_pfunType_126 pfi))
+  , polyFunSigType = agdaToText (MT.d_showPolyType_134 (MP.d_pfunType_126 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_1078 -> CompileResult
-fromMResult (MC.C_Parsed_1080 fis pfis) =
+fromMResult :: MC.T_CompileResult_1082 -> CompileResult
+fromMResult (MC.C_Parsed_1084 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_1082 _)  = Checked
-fromMResult (MC.C_Built_1084 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_1086 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_1086 _)  = Checked
+fromMResult (MC.C_Built_1088 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_1090 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -153,7 +153,7 @@ fromMResult (MC.C_Error_1086 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_1134 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_1138 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline

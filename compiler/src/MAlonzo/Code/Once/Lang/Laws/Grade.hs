@@ -441,9 +441,7 @@ d_'8852'p'45'upper'737'_228 v0 v1
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10
              MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
@@ -452,23 +450,10 @@ d_'8852'p'45'upper'737'_228 v0 v1
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16
              MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-        -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-             MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
         -> coe
              seq (coe v1)
              (coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12)
@@ -486,9 +471,7 @@ d_'8852'p'45'upper'691'_234 v0 v1
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10
              MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
@@ -497,31 +480,16 @@ d_'8852'p'45'upper'691'_234 v0 v1
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18
              MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
+      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
              MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
-        -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
-             MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -545,14 +513,7 @@ du_'8852'p'45'least_242 v0 v1
         -> coe seq (coe v1) (coe v0)
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
         -> coe seq (coe v1) (coe v0)
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
-        -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
-             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14 -> coe v1
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16
         -> coe seq (coe v1) (coe v0)
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> coe v1
@@ -561,19 +522,6 @@ du_'8852'p'45'least_242 v0 v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12 -> coe v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14 -> coe v0
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22
-        -> coe seq (coe v1) (coe v0)
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-        -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20
-               -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Laws.Grade.·p-assoc
@@ -607,16 +555,7 @@ du_'183'p'45'mono_264 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> coe v1
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12
-        -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
-             _ -> MAlonzo.RTE.mazUnreachableError
+        -> coe seq (coe v1) (coe v0)
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> coe v0
@@ -626,8 +565,6 @@ du_'183'p'45'mono_264 v0 v1
                -> coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> coe v0
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16
         -> case coe v1 of
@@ -638,8 +575,6 @@ du_'183'p'45'mono_264 v0 v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16 -> coe v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> coe v0
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18
         -> case coe v1 of
@@ -649,8 +584,6 @@ du_'183'p'45'mono_264 v0 v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16 -> coe v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> coe v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20
         -> case coe v1 of
@@ -660,21 +593,6 @@ du_'183'p'45'mono_264 v0 v1
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16 -> coe v0
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> coe v0
              MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22
-        -> coe seq (coe v1) (coe v0)
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24
-        -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'eff_12 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'act_16 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ae_20 -> coe v0
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'g_22 -> coe v1
-             MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'ge_24 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Laws.Grade.·p-comm

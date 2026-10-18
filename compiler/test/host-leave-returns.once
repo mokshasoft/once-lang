@@ -1,0 +1,12 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D320: a program whose `main` RETURNS, without calling `exit`, ends by the
+-- Host's `leave` (`enter ; main ; leave`): on Linux the run ends with status 0.
+-- Before D320 the image ended `main` in a silent self-jump and the binary never
+-- terminated.
+--
+-- Expected: exit code 0.
+
+main : Eff Unit Unit
+main = \u -> u

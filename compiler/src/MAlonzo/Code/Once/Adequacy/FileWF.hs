@@ -58,7 +58,7 @@ d_image'45'frame'45'free_10 ::
 d_image'45'frame'45'free_10
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImageFacts.d_image'45'frame'45'free_76
-      (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_958)
+      (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_962)
 -- Once.Adequacy.FileWF.map-fst
 d_map'45'fst_24 ::
   () ->
@@ -77,8 +77,8 @@ d_prog'45'nn_40 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Machine.NoNested.d_no'45'nested'45'of'45'all_22
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_42
-         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_958)
+         MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_36
+         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_962)
          (coe
             MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
             (coe
@@ -92,7 +92,7 @@ d_prog'45'nn_40 v0 v1
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v1)))))
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ProgramImageFacts.d_image'45'frame'45'free_76
-         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_958)
+         (coe MAlonzo.Code.Once.Compile.d_entry'45'owner_962)
          (coe
             MAlonzo.Code.Once.Compile.d_rewrite'45'table_888
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0)))
@@ -164,10 +164,10 @@ du_prog'45'wf_76 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1474
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1328
          (coe v0) (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_412
+         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_410
          (coe v0) (coe v1))
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
@@ -179,7 +179,7 @@ du_prog'45'wf_76 v0 v1
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
             (coe v1)))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_prog'45'externs'45'valid_254
          (coe
             MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
@@ -212,7 +212,7 @@ du_G_90 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_Image_12
 du_G_90 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_emitProgram_1008
+      MAlonzo.Code.Once.Compile.d_emitProgram_1012
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8)
       (coe du_p_88 (coe v0) (coe v1))
 -- Once.Adequacy.FileWF.X8664W._.code≡
@@ -249,10 +249,10 @@ du_lib'45'wf_102 v0
   = coe
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1384
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_648 v0)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_646 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
@@ -260,7 +260,7 @@ du_lib'45'wf_102 v0
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
          (coe
-            MAlonzo.Code.Once.Compile.d_lib'45'program_1014
+            MAlonzo.Code.Once.Compile.d_lib'45'program_1018
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))))
 -- Once.Adequacy.FileWF.X8664W._.G
 d_G_112 ::
@@ -273,7 +273,7 @@ du_G_112 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_Image_12
 du_G_112 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_emitLibrary_1024
+      MAlonzo.Code.Once.Compile.d_emitLibrary_1028
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8)
       (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
 -- Once.Adequacy.FileWF.X8664W._.code≡
@@ -343,10 +343,10 @@ du_prog'45'wf_154 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1474
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1328
          (coe v0) (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_412
+         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_410
          (coe v0) (coe v1))
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
@@ -358,7 +358,7 @@ du_prog'45'wf_154 v0 v1
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
             (coe v1)))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_prog'45'externs'45'valid_254
          (coe
             MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
@@ -391,7 +391,7 @@ du_G_168 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12
 du_G_168 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_emitProgram_1008
+      MAlonzo.Code.Once.Compile.d_emitProgram_1012
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10)
       (coe du_p_166 (coe v0) (coe v1))
 -- Once.Adequacy.FileWF.X8632W._.code≡
@@ -428,10 +428,10 @@ du_lib'45'wf_180 v0
   = coe
       MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1384
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_648 v0)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_646 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
@@ -439,7 +439,7 @@ du_lib'45'wf_180 v0
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
          (coe
-            MAlonzo.Code.Once.Compile.d_lib'45'program_1014
+            MAlonzo.Code.Once.Compile.d_lib'45'program_1018
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))))
 -- Once.Adequacy.FileWF.X8632W._.G
 d_G_190 ::
@@ -452,7 +452,7 @@ du_G_190 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12
 du_G_190 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_emitLibrary_1024
+      MAlonzo.Code.Once.Compile.d_emitLibrary_1028
       (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10)
       (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
 -- Once.Adequacy.FileWF.X8632W._.code≡
@@ -522,10 +522,10 @@ du_prog'45'wf_232 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Target.RiscV64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1474
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_prog'45'unique_1328
          (coe v0) (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_412
+         MAlonzo.Code.Once.Adequacy.ImageResolved.du_prog'45'resolved_410
          (coe v0) (coe v1))
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
@@ -537,7 +537,7 @@ du_prog'45'wf_232 v0 v1
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
             (coe v1)))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
+         MAlonzo.Code.Once.Adequacy.ImageValid.d_prog'45'externs'45'valid_254
          (coe
             MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
@@ -570,7 +570,7 @@ du_G_246 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12
 du_G_246 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_emitProgram_1008
+      MAlonzo.Code.Once.Compile.d_emitProgram_1012
       (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12)
       (coe du_p_244 (coe v0) (coe v1))
 -- Once.Adequacy.FileWF.RiscV64W._.code≡
@@ -607,10 +607,10 @@ du_lib'45'wf_258 v0
   = coe
       MAlonzo.Code.Once.CCC.Target.RiscV64.File.C_constructor_162
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1530
+         MAlonzo.Code.Once.Adequacy.ImageUnique.d_lib'45'unique_1384
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_648 v0)
+         MAlonzo.Code.Once.Adequacy.ImageResolved.d_lib'45'resolved_646 v0)
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_lib'45'defs'45'valid_196
@@ -618,7 +618,7 @@ du_lib'45'wf_258 v0
       (coe
          MAlonzo.Code.Once.Adequacy.ImageValid.d_externs'45'valid_248
          (coe
-            MAlonzo.Code.Once.Compile.d_lib'45'program_1014
+            MAlonzo.Code.Once.Compile.d_lib'45'program_1018
             (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))))
 -- Once.Adequacy.FileWF.RiscV64W._.G
 d_G_268 ::
@@ -631,7 +631,7 @@ du_G_268 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12
 du_G_268 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_emitLibrary_1024
+      MAlonzo.Code.Once.Compile.d_emitLibrary_1028
       (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12)
       (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
 -- Once.Adequacy.FileWF.RiscV64W._.code≡

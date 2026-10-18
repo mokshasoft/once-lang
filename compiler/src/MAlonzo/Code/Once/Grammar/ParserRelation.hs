@@ -73,7 +73,7 @@ d_toType_8 v0 v1
                     (coe
                        MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                     (coe d_toType_8 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.Printer.C_c'45'act_120 v4 v5

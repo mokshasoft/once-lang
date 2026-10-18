@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Maybe.Base
 import qualified MAlonzo.Code.Once.Lang.Contract
@@ -39,32 +40,32 @@ d_coerce'45'base'45'to'45'full_10 ::
   AgdaAny -> AgdaAny
 d_coerce'45'base'45'to'45'full_10
   = coe
-      MAlonzo.Code.Once.Lang.Value.du_coerce'45'base'45'to'45'full_440
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'base'45'to'45'full_404
 -- Once.Arith.Backend.CallAnswer.M.coerce-full-to-base
 d_coerce'45'full'45'to'45'base_12 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'full'45'to'45'base_12
   = coe
-      MAlonzo.Code.Once.Lang.Value.du_coerce'45'full'45'to'45'base_408
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'full'45'to'45'base_372
 -- Once.Arith.Backend.CallAnswer.M.coerce-functor
 d_coerce'45'functor_14 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'functor_14 v0 v1 v2
-  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'functor_282 v0 v2
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'functor_246 v0 v2
 -- Once.Arith.Backend.CallAnswer.M.coerce-functor⁻¹
 d_coerce'45'functor'8315''185'_16 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_coerce'45'functor'8315''185'_16 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Lang.Value.du_coerce'45'functor'8315''185'_324 v0
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'functor'8315''185'_288 v0
       v2
 -- Once.Arith.Backend.CallAnswer.M.coerce-μ-in
 d_coerce'45'μ'45'in_18 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'μ'45'in_18 v0 v1 v2
-  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'μ'45'in_472 v0 v2
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'μ'45'in_436 v0 v2
 -- Once.Arith.Backend.CallAnswer.M.coerce-μ-out
 d_coerce'45'μ'45'out_20 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -72,30 +73,30 @@ d_coerce'45'μ'45'out_20 ::
   () -> AgdaAny -> AgdaAny
 d_coerce'45'μ'45'out_20 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Lang.Value.du_coerce'45'μ'45'out_514 v0 v1 v3
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'μ'45'out_478 v0 v1 v3
 -- Once.Arith.Backend.CallAnswer.M.coerce-ν-in
 d_coerce'45'ν'45'in_22 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'in_22
-  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578
 -- Once.Arith.Backend.CallAnswer.M.coerce-ν-out
 d_coerce'45'ν'45'out_24 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'out_24
-  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'out_620
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'out_584
 -- Once.Arith.Backend.CallAnswer.M.eraseᵍ
 d_erase'7501'_26 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny
 d_erase'7501'_26
-  = coe MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116
+  = coe MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
 -- Once.Arith.Backend.CallAnswer.M.sem-CoIn
 d_sem'45'CoIn_28 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_νS_98
 d_sem'45'CoIn_28
-  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'CoIn_634
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'CoIn_598
 -- Once.Arith.Backend.CallAnswer.M.sem-CoOut
 d_sem'45'CoOut_30 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -103,19 +104,19 @@ d_sem'45'CoOut_30 ::
   MAlonzo.Code.Once.Lang.Polynomial.T_νS_98 ->
   MAlonzo.Code.Once.Lang.Res.T_Res_8
 d_sem'45'CoOut_30
-  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'CoOut_624
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'CoOut_588
 -- Once.Arith.Backend.CallAnswer.M.sem-In
 d_sem'45'In_32 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_μS_82
-d_sem'45'In_32 = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'In_554
+d_sem'45'In_32 = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'In_518
 -- Once.Arith.Backend.CallAnswer.M.sem-Out
 d_sem'45'Out_34 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
 d_sem'45'Out_34
-  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'Out_562
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'Out_526
 -- Once.Arith.Backend.CallAnswer.M.sem-ana
 d_sem'45'ana_36 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -123,7 +124,7 @@ d_sem'45'ana_36 ::
   (AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_νS_98
 d_sem'45'ana_36 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'ana_644 v0 v2 v3
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'ana_608 v0 v2 v3
 -- Once.Arith.Backend.CallAnswer.M.sem-cata
 d_sem'45'cata_38 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -132,13 +133,13 @@ d_sem'45'cata_38 ::
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
 d_sem'45'cata_38 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'cata_574 v0 v1 v3
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'cata_538 v0 v1 v3
 -- Once.Arith.Backend.CallAnswer.M.sem-fmap
 d_sem'45'fmap_40 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   () -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
 d_sem'45'fmap_40 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'fmap_368 v0 v3 v4
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'fmap_332 v0 v3 v4
 -- Once.Arith.Backend.CallAnswer.M.sem-para
 d_sem'45'para_42 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -147,7 +148,7 @@ d_sem'45'para_42 ::
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
 d_sem'45'para_42 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'para_590 v0 v1 v3 v4
+  = coe MAlonzo.Code.Once.Lang.Value.du_sem'45'para_554 v0 v1 v3 v4
 -- Once.Arith.Backend.CallAnswer.M.semAnaLayer
 d_semAnaLayer_44 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -156,7 +157,7 @@ d_semAnaLayer_44 ::
   MAlonzo.Code.Once.Lang.Res.T_Res_8 ->
   MAlonzo.Code.Once.Lang.Res.T_Res_8
 d_semAnaLayer_44 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Lang.Value.du_semAnaLayer_650 v0 v2 v3
+  = coe MAlonzo.Code.Once.Lang.Value.du_semAnaLayer_614 v0 v2 v3
 -- Once.Arith.Backend.CallAnswer.M.sfmapSemAna
 d_sfmapSemAna_46 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -165,7 +166,7 @@ d_sfmapSemAna_46 ::
   (AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
   AgdaAny -> AgdaAny
 d_sfmapSemAna_46 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Lang.Value.du_sfmapSemAna_658 v0 v1 v3 v4
+  = coe MAlonzo.Code.Once.Lang.Value.du_sfmapSemAna_622 v0 v1 v3 v4
 -- Once.Arith.Backend.CallAnswer.M.⟦_⟧
 d_'10214'_'10215'_48 :: MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()
 d_'10214'_'10215'_48 = erased
@@ -201,18 +202,19 @@ data T_ResolvedCall_66
   = C_answering_70 MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 AgdaAny |
     C_pure'45'ffi_78 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
                      MAlonzo.Code.Once.Lang.Type.T_Type_8
-                     MAlonzo.Code.Once.Lang.Type.T_Type_8 AgdaAny
+                     MAlonzo.Code.Once.Lang.Type.T_Type_8 AgdaAny |
+    C_halting_80
 -- Once.Arith.Backend.CallAnswer.CallResolver
-d_CallResolver_80 :: () -> ()
-d_CallResolver_80 = erased
+d_CallResolver_82 :: () -> ()
+d_CallResolver_82 = erased
 -- Once.Arith.Backend.CallAnswer.answering-word
-d_answering'45'word_88 ::
+d_answering'45'word_90 ::
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
   MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 ->
   AgdaAny ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 -> Integer
-d_answering'45'word_88 v0 v1 v2 v3 v4
+d_answering'45'word_90 v0 v1 v2 v3 v4
   = case coe v4 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
         -> if coe v5
@@ -226,12 +228,12 @@ d_answering'45'word_88 v0 v1 v2 v3 v4
              else coe seq (coe v6) (coe (0 :: Integer))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.CallAnswer.value-word
-d_value'45'word_112 ::
+d_value'45'word_114 ::
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.Lang.Contract.T_Key_56 ->
   AgdaAny ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 -> Integer
-d_value'45'word_112 v0 v1 v2 v3
+d_value'45'word_114 v0 v1 v2 v3
   = case coe v3 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v4 v5
         -> if coe v4
@@ -245,53 +247,62 @@ d_value'45'word_112 v0 v1 v2 v3
              else coe seq (coe v5) (coe (0 :: Integer))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.CallAnswer.resolved-word
-d_resolved'45'word_128 ::
+d_resolved'45'word_130 ::
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  T_ResolvedCall_66 -> Integer
-d_resolved'45'word_128 v0 v1 v2
+  T_ResolvedCall_66 -> Maybe Integer
+d_resolved'45'word_130 v0 v1 v2
   = case coe v2 of
       C_answering_70 v3 v4
         -> coe
-             d_answering'45'word_88 (coe v0) (coe v1) (coe v3) (coe v4)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe
-                MAlonzo.Code.Once.Lang.Contract.d__'8712'K'63'__108
-                (MAlonzo.Code.Once.Lang.Trace.d_callKey_178 (coe v3))
-                (MAlonzo.Code.Once.Lang.Trace.d_calls_194 (coe v0)))
+                d_answering'45'word_90 (coe v0) (coe v1) (coe v3) (coe v4)
+                (coe
+                   MAlonzo.Code.Once.Lang.Contract.d__'8712'K'63'__108
+                   (MAlonzo.Code.Once.Lang.Trace.d_callKey_178 (coe v3))
+                   (MAlonzo.Code.Once.Lang.Trace.d_calls_194 (coe v0))))
       C_pure'45'ffi_78 v3 v4 v5 v6
         -> coe
-             d_value'45'word_112 (coe v0)
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe
-                MAlonzo.Code.Once.Lang.Contract.C_key_70
-                (coe MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v3))
-                (coe v4) (coe v5))
-             (coe v6)
-             (coe
-                MAlonzo.Code.Once.Lang.Contract.d__'8712'K'63'__108
+                d_value'45'word_114 (coe v0)
                 (coe
                    MAlonzo.Code.Once.Lang.Contract.C_key_70
                    (coe MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v3))
                    (coe v4) (coe v5))
-                (MAlonzo.Code.Once.Lang.Trace.d_pures_196 (coe v0)))
+                (coe v6)
+                (coe
+                   MAlonzo.Code.Once.Lang.Contract.d__'8712'K'63'__108
+                   (coe
+                      MAlonzo.Code.Once.Lang.Contract.C_key_70
+                      (coe MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v3))
+                      (coe v4) (coe v5))
+                   (MAlonzo.Code.Once.Lang.Trace.d_pures_196 (coe v0))))
+      C_halting_80 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.CallAnswer.answer-at
-d_answer'45'at_152 ::
+d_answer'45'at_158 ::
   () ->
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny -> Maybe T_ResolvedCall_66) ->
   [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny -> Integer
-d_answer'45'at_152 ~v0 v1 v2 v3 v4 v5
-  = du_answer'45'at_152 v1 v2 v3 v4 v5
-du_answer'45'at_152 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  AgdaAny -> Maybe Integer
+d_answer'45'at_158 ~v0 v1 v2 v3 v4 v5
+  = du_answer'45'at_158 v1 v2 v3 v4 v5
+du_answer'45'at_158 ::
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny -> Maybe T_ResolvedCall_66) ->
   [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny -> Integer
-du_answer'45'at_152 v0 v1 v2 v3 v4
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  AgdaAny -> Maybe Integer
+du_answer'45'at_158 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Data.Maybe.Base.du_maybe'8242'_44
-      (d_resolved'45'word_128 (coe v0) (coe v2)) (0 :: Integer)
+      (d_resolved'45'word_130 (coe v0) (coe v2))
+      (coe
+         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))
       (coe v1 v3 v4)

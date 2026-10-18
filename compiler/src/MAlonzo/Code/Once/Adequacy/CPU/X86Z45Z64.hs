@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
+import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
@@ -28,8 +29,9 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Product.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Adequacy.CPU.Interface
+import qualified MAlonzo.Code.Once.Adequacy.MachineTrace
 import qualified MAlonzo.Code.Once.Arith.Backend.CallAnswer
-import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceCore
+import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceMachine
 import qualified MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch
 import qualified MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit
 import qualified MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace
@@ -38,11 +40,11 @@ import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
-import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Lang.Trace
 import qualified MAlonzo.Code.Once.Spec.Float.Arith
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
+import qualified MAlonzo.Code.Once.Spec.Trace
 import qualified MAlonzo.Code.Once.Spec.Word
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 import qualified MAlonzo.Code.Once.Word
@@ -741,24 +743,20 @@ du_val'45'x86'45'64_214 v0 v1
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_76 v2
         -> coe d_rd_176 (coe v1) (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.CPU.X86-64.step-budget-x86-64
-d_step'45'budget'45'x86'45'64_384
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.step-budget-x86-64"
 -- Once.Adequacy.CPU.X86-64.ev-x86-64
-d_ev'45'x86'45'64_386
+d_ev'45'x86'45'64_384
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.ev-x86-64"
 -- Once.Adequacy.CPU.X86-64.call-at-x86-64
-d_call'45'at'45'x86'45'64_388
+d_call'45'at'45'x86'45'64_386
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.call-at-x86-64"
 -- Once.Adequacy.CPU.X86-64.block-env
-d_block'45'env_390 ::
+d_block'45'env_388 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_block'45'env_390 v0 v1
+d_block'45'env_388 v0 v1
   = case coe v0 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       (:) v2 v3
@@ -770,80 +768,70 @@ d_block'45'env_390 v0 v1
                        MAlonzo.Code.Data.String.Properties.d__'61''61'__86 (coe v4)
                        (coe v1))
                     (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v5))
-                    (coe d_block'45'env_390 (coe v3) (coe v1))
+                    (coe d_block'45'env_388 (coe v3) (coe v1))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.CPU.X86-64.step-budget-x86-64-adequate
-d_step'45'budget'45'x86'45'64'45'adequate_408
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.step-budget-x86-64-adequate"
 -- Once.Adequacy.CPU.X86-64.run-trace-x86-64
-d_run'45'trace'45'x86'45'64_410 ::
+d_run'45'trace'45'x86'45'64_398 ::
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_Image_12 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_384 ->
-  MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
-d_run'45'trace'45'x86'45'64_410 v0 v1 v2
+  MAlonzo.Code.Once.Spec.Trace.T_Tr_18
+d_run'45'trace'45'x86'45'64_398 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_234
+      MAlonzo.Code.Once.Adequacy.MachineTrace.du_trace_80
       (coe
-         (\ v3 ->
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_halted_404
-              (coe v3)))
-      (coe
-         (\ v3 ->
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_pc_402
-              (coe v3)))
-      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_fetch_778)
-      (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_execInstr_510)
-      (coe
-         MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace.d_matchCall_10)
-      (coe
-         MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace.d_ret'45'call_18
+         MAlonzo.Code.Once.Arith.Backend.RunTraceMachine.du_δ_92
          (coe
-            MAlonzo.Code.Once.Arith.Backend.CallAnswer.du_answer'45'at_152
-            (coe v0) (coe d_call'45'at'45'x86'45'64_388)))
-      (coe
-         MAlonzo.Code.Data.Product.Base.du_uncurry_244
-         (\ v3 v4 v5 ->
-            coe
-              MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch.du_dispatch'45'arith_18
-              (\ v6 v7 v8 -> coe du_val'45'x86'45'64_214 v6 v7) v3 v5))
-      (coe
-         d_step'45'budget'45'x86'45'64_384
-         (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_blocks_26 (coe v1))
-         (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_code_22 (coe v1))
-         v2)
-      (coe d_ev'45'x86'45'64_386)
-      (coe
-         d_block'45'env_390
+            (\ v3 ->
+               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_halted_404
+                 (coe v3)))
          (coe
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_blocks_26 (coe v1)))
+            (\ v3 ->
+               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_pc_402
+                 (coe v3)))
+         (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_fetch_778)
+         (coe
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_execInstr_510)
+         (coe
+            MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace.d_matchCall_10)
+         (coe
+            MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace.d_ret'45'call_26
+            (coe
+               MAlonzo.Code.Once.Arith.Backend.CallAnswer.du_answer'45'at_158
+               (coe v0) (coe d_call'45'at'45'x86'45'64_386)))
+         (coe
+            MAlonzo.Code.Data.Product.Base.du_uncurry_244
+            (\ v3 v4 v5 ->
+               coe
+                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch.du_dispatch'45'arith_18
+                 (\ v6 v7 v8 -> coe du_val'45'x86'45'64_214 v6 v7) v3 v5))
+         (coe d_ev'45'x86'45'64_384)
+         (coe
+            d_block'45'env_388
+            (coe
+               MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_blocks_26 (coe v1)))
+         (coe
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_code_22 (coe v1)))
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_code_22 (coe v1))
-      (coe v2)
-      (coe
-         d_step'45'budget'45'x86'45'64'45'adequate_408 v0
-         (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_blocks_26 (coe v1))
-         (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_code_22 (coe v1))
-         v2)
+         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v2))
 -- Once.Adequacy.CPU.X86-64.decode-x86-64
-d_decode'45'x86'45'64_418
+d_decode'45'x86'45'64_406
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.decode-x86-64"
 -- Once.Adequacy.CPU.X86-64.assemble-x86-64
-d_assemble'45'x86'45'64_420
+d_assemble'45'x86'45'64_408
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.assemble-x86-64"
 -- Once.Adequacy.CPU.X86-64.as-faithful-x86-64
-d_as'45'faithful'45'x86'45'64_424
+d_as'45'faithful'45'x86'45'64_412
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.as-faithful-x86-64"
 -- Once.Adequacy.CPU.X86-64.arch-semantics
-d_arch'45'semantics_426 ::
+d_arch'45'semantics_414 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
-d_arch'45'semantics_426
+d_arch'45'semantics_414
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_90
       (\ v0 ->
@@ -855,6 +843,6 @@ d_arch'45'semantics_426
          coe
            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_822
            (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_code_22 (coe v0)))
-      d_run'45'trace'45'x86'45'64_410 d_decode'45'x86'45'64_418
-      d_assemble'45'x86'45'64_420
+      d_run'45'trace'45'x86'45'64_398 d_decode'45'x86'45'64_406
+      d_assemble'45'x86'45'64_408
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_print_84 (\ v0 -> v0)

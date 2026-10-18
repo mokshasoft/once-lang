@@ -161,7 +161,7 @@ du_abi'45'rel_104 v0 v1 v2
                             -> case coe v10 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                    -> coe
-                                        MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'return_230
+                                        MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'return_198
                                         (coe v12)
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))

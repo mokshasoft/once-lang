@@ -37,7 +37,7 @@ d_EffUU_6
       (coe
          MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
 -- Once.Adequacy.MainIRForm.validateMain-EffUU
 d_validateMain'45'EffUU_10 ::

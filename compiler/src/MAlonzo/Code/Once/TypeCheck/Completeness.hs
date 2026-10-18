@@ -32,7 +32,6 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Functor.Decide
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Lang.Context
 import qualified MAlonzo.Code.Once.Lang.Syntax
@@ -244,7 +243,7 @@ du_at'45'π_410 v0 v1 v2 v3 v4 v5 v6
                               (case coe v11 of
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v12
                                    -> let v13
-                                            = MAlonzo.Code.Once.Type.Instance.d_θof_508 (coe v12) in
+                                            = MAlonzo.Code.Once.Type.Instance.d_θof_500 (coe v12) in
                                       coe
                                         (let v14
                                                = MAlonzo.Code.Once.Type.Rigid.d_allBase'63'_492
@@ -274,10 +273,10 @@ du_at'45'π_410 v0 v1 v2 v3 v4 v5 v6
                                                                         MAlonzo.Code.Once.Lang.Type.Poly.d_substPoly_162
                                                                         (coe v6) (coe v5)))
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_56
-                                                                     (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_102
+                                                                     MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+                                                                     (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98
                                                                         (coe v1))
-                                                                     (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_102
+                                                                     (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98
                                                                         (coe
                                                                            MAlonzo.Code.Once.Lang.Type.Poly.d_substPoly_162
                                                                            (coe v6) (coe v5)))
@@ -322,10 +321,10 @@ du_at'45'π_410 v0 v1 v2 v3 v4 v5 v6
                                                                                           (coe v6)
                                                                                           (coe v5)))
                                                                                     (coe
-                                                                                       MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_56
-                                                                                       (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_102
+                                                                                       MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+                                                                                       (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98
                                                                                           (coe v1))
-                                                                                       (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_102
+                                                                                       (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98
                                                                                           (coe
                                                                                              MAlonzo.Code.Once.Lang.Type.Poly.d_substPoly_162
                                                                                              (coe
@@ -414,12 +413,12 @@ du_at'45'm_654 v0 v1 v2 v3 v4 v5 v6 v7 v8
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
-                  MAlonzo.Code.Once.Type.Instance.du_instantiate'45'sound_2038
+                  MAlonzo.Code.Once.Type.Instance.du_instantiate'45'sound_1878
                   (coe v5) (coe v1)
                   (coe
                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.Type.Instance.du_instantiate'45'complete_462
+                        MAlonzo.Code.Once.Type.Instance.du_instantiate'45'complete_454
                         (coe v5)
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v8)
@@ -438,12 +437,12 @@ du_at'45'm_654 v0 v1 v2 v3 v4 v5 v6 v7 v8
                   (coe
                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.Type.Instance.du_instantiate'45'sound_2038
+                        MAlonzo.Code.Once.Type.Instance.du_instantiate'45'sound_1878
                         (coe v5) (coe v1)
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                            (coe
-                              MAlonzo.Code.Once.Type.Instance.du_instantiate'45'complete_462
+                              MAlonzo.Code.Once.Type.Instance.du_instantiate'45'complete_454
                               (coe v5)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v8)
@@ -464,12 +463,12 @@ du_at'45'm_654 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                            (coe
-                              MAlonzo.Code.Once.Type.Instance.du_instantiate'45'sound_2038
+                              MAlonzo.Code.Once.Type.Instance.du_instantiate'45'sound_1878
                               (coe v5) (coe v1)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe
-                                    MAlonzo.Code.Once.Type.Instance.du_instantiate'45'complete_462
+                                    MAlonzo.Code.Once.Type.Instance.du_instantiate'45'complete_454
                                     (coe v5)
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v8)
@@ -564,7 +563,7 @@ du_from'45'arrow_762 v0 v1 v2 v3 v4 v5 v6
                               seq (coe v11)
                               (coe
                                  du_at'45'm_654 (coe v0) (coe v1) (coe v2)
-                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40)
+                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38)
                                  (coe MAlonzo.Code.Once.Lang.Type.Poly.C_PEff_30 (coe v3) (coe v4))
                                  (coe v3) (coe v4)
                                  (coe MAlonzo.Code.Once.Lang.Type.Poly.C_as'45'eff_298) (coe v6))
@@ -721,7 +720,7 @@ d_given'45'infer'45'complete_1464 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_given'45'infer'45'complete_1464 ~v0 ~v1 v2 v3 v4 v5 v6 ~v7 ~v8
@@ -772,9 +771,9 @@ du_given'45'infer'45'complete_1464 v0 v1 v2 v3 v4 v5
                                                                              (coe v4))
                                                                           (coe v2))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_56
+                                                                          MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
                                                                           v17
-                                                                          (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_102
+                                                                          (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98
                                                                              (coe v2))
                                                                           v20)
                                                                        v10)
@@ -900,7 +899,7 @@ d_compose'45'f'45'complete_1646 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_compose'45'f'45'complete_1646 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9 ~v10
@@ -919,7 +918,7 @@ du_compose'45'f'45'complete_1646 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_compose'45'f'45'complete_1646 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = let v9
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6648
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6376
               (coe v0) (coe v1) in
     coe
       (case coe v9 of
@@ -948,7 +947,7 @@ du_compose'45'f'45'complete_1646 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v20
                                           -> let v21
                                                    = coe
-                                                       MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+                                                       MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
                                                        (coe v0) (coe v2)
                                                        (coe
                                                           MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -1024,7 +1023,7 @@ d_compose'45'g'45'complete_1824 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_compose'45'g'45'complete_1824 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 ~v10
@@ -1049,7 +1048,7 @@ du_compose'45'g'45'complete_1824 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
              MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_258 v12 v13 v14 v15 v16
                -> let v17
                         = coe
-                            MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+                            MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
                             (coe v0) (coe v1)
                             (coe
                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
@@ -1120,7 +1119,7 @@ du_infer'45'complete'45'RApp'45'spine_2074 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'spine_2074 v0 v1 v2
   = let v3
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6648
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6376
               (coe v0) (coe v1) in
     coe
       (case coe v3 of
@@ -1128,7 +1127,7 @@ du_infer'45'complete'45'RApp'45'spine_2074 v0 v1 v2
            -> coe
                 seq (coe v4)
                 (let v6
-                       = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6648
+                       = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6376
                            (coe v0) (coe v2) in
                  coe
                    (case coe v6 of
@@ -1136,7 +1135,7 @@ du_infer'45'complete'45'RApp'45'spine_2074 v0 v1 v2
                         -> case coe v7 of
                              MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_88 v9 v10 v11 v12 v13
                                -> let v14
-                                        = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                        = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                             (coe v0) (coe v1) (coe v9)
                                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) in
                                   coe
@@ -1178,7 +1177,7 @@ d_checkElab'45'fallback'45'RVar_2190 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_checkElab'45'fallback'45'RVar_2190 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7
                                      ~v8 ~v9
@@ -1192,7 +1191,7 @@ du_checkElab'45'fallback'45'RVar_2190 ::
 du_checkElab'45'fallback'45'RVar_2190 v0 v1 v2 v3
   = let v4
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RVar'45'lookup'45'aux_4944
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RVar'45'lookup'45'aux_4898
               (coe v0) (coe v2)
               (coe
                  MAlonzo.Code.Once.Lang.Typing.Scope.d_lookupLocal'45'go_162
@@ -1259,7 +1258,7 @@ du_completeness'45'gap'45'inl'45'app'45'check'45'eq_2272 ::
 du_completeness'45'gap'45'inl'45'app'45'check'45'eq_2272 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
               (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of
@@ -1300,7 +1299,7 @@ du_completeness'45'gap'45'inr'45'app'45'check'45'eq_2320 ::
 du_completeness'45'gap'45'inr'45'app'45'check'45'eq_2320 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
               (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of
@@ -1340,7 +1339,7 @@ du_completeness'45'gap'45'initial'45'app'45'check'45'eq_2366 ::
 du_completeness'45'gap'45'initial'45'app'45'check'45'eq_2366 v0 v1
   = let v2
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
               (coe v0) (coe v1) (coe MAlonzo.Code.Once.Lang.Type.C_Void_22) in
     coe
       (case coe v2 of
@@ -1368,398 +1367,8 @@ d_checkElabV'45'RResolved'45'J_2396 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_checkElabV'45'RResolved'45'J_2396 = erased
--- Once.TypeCheck.Completeness.¬decl<:guard
-d_'172'decl'60''58'guard_2412 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
-  MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_'172'decl'60''58'guard_2412 = erased
--- Once.TypeCheck.Completeness.gos-dec
-d_gos'45'dec_2436 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
-  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  (MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
-   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_gos'45'dec_2436 = erased
--- Once.TypeCheck.Completeness.gos
-d_gos_2474 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
-  Integer ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
-   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_gos_2474 = erased
--- Once.TypeCheck.Completeness.grv-J
-d_grv'45'J_2500 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  Maybe MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_grv'45'J_2500 = erased
--- Once.TypeCheck.Completeness.gre
-d_gre_2538 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Maybe MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_gre_2538 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11 ~v12
-           ~v13 ~v14
-  = du_gre_2538 v1 v11
-du_gre_2538 ::
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_gre_2538 v0 v1
-  = coe
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384 v0 v1) erased
--- Once.TypeCheck.Completeness.gdec
-d_gdec_2574 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_gdec_2574 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10 v11 ~v12
-  = du_gdec_2574 v1 v10 v11
-du_gdec_2574 ::
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_gdec_2574 v0 v1 v2
-  = case coe v2 of
-      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4
-        -> if coe v3
-             then coe seq (coe v4) (coe du_gre_2538 (coe v0) (coe v1))
-             else coe
-                    seq (coe v4) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.TypeCheck.Completeness.guard-view
-d_guard'45'view_2620 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_GenView_618 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_guard'45'view_2620 ~v0 v1 v2 v3 v4 ~v5 v6 ~v7 v8 ~v9 v10 v11
-  = du_guard'45'view_2620 v1 v2 v3 v4 v6 v8 v10 v11
-du_guard'45'view_2620 ::
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.TypeCheck.Classify.T_GenView_618 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_guard'45'view_2620 v0 v1 v2 v3 v4 v5 v6 v7
-  = case coe v4 of
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'id_620
-        -> coe
-             seq (coe v5) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'fst_622
-        -> case coe v5 of
-             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v10 v11
-               -> coe
-                    seq (coe v11) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'snd_624
-        -> case coe v5 of
-             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v10 v11
-               -> case coe v11 of
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v14 v15
-                      -> coe
-                           seq (coe v15) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'terminal_626
-        -> case coe v5 of
-             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v10 v11
-               -> case coe v11 of
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v14 v15
-                      -> case coe v15 of
-                           MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v18 v19
-                             -> coe
-                                  seq (coe v19) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'initial_628
-        -> case coe v5 of
-             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v10 v11
-               -> case coe v11 of
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v14 v15
-                      -> case coe v15 of
-                           MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v18 v19
-                             -> case coe v19 of
-                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v22 v23
-                                    -> coe
-                                         seq (coe v23)
-                                         (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-                                  _ -> MAlonzo.RTE.mazUnreachableError
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'inl_630
-        -> case coe v5 of
-             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v10 v11
-               -> case coe v11 of
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v14 v15
-                      -> case coe v15 of
-                           MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v18 v19
-                             -> case coe v19 of
-                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v22 v23
-                                    -> case coe v23 of
-                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v26 v27
-                                           -> coe
-                                                seq (coe v27)
-                                                (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-                                         _ -> MAlonzo.RTE.mazUnreachableError
-                                  _ -> MAlonzo.RTE.mazUnreachableError
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'inr_632
-        -> case coe v5 of
-             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v10 v11
-               -> case coe v11 of
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v14 v15
-                      -> case coe v15 of
-                           MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v18 v19
-                             -> case coe v19 of
-                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v22 v23
-                                    -> case coe v23 of
-                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v26 v27
-                                           -> case coe v27 of
-                                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v30 v31
-                                                  -> coe
-                                                       seq (coe v31)
-                                                       (coe
-                                                          MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-                                                _ -> MAlonzo.RTE.mazUnreachableError
-                                         _ -> MAlonzo.RTE.mazUnreachableError
-                                  _ -> MAlonzo.RTE.mazUnreachableError
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'unit_634
-        -> case coe v5 of
-             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v10 v11
-               -> case coe v11 of
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v14 v15
-                      -> case coe v15 of
-                           MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v18 v19
-                             -> case coe v19 of
-                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v22 v23
-                                    -> case coe v23 of
-                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v26 v27
-                                           -> case coe v27 of
-                                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v30 v31
-                                                  -> case coe v31 of
-                                                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 v34 v35
-                                                         -> coe
-                                                              seq (coe v35)
-                                                              (coe
-                                                                 MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)
-                                                       _ -> MAlonzo.RTE.mazUnreachableError
-                                                _ -> MAlonzo.RTE.mazUnreachableError
-                                         _ -> MAlonzo.RTE.mazUnreachableError
-                                  _ -> MAlonzo.RTE.mazUnreachableError
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'other_638 v9
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe
-                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                (coe
-                   du_body_2670 (coe v0) (coe v1) (coe v2) (coe v3) (coe v7)
-                   (coe v6)))
-             (coe
-                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
-                (coe
-                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
-                   erased))
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.TypeCheck.Completeness._.body
-d_body_2670 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_body_2670 ~v0 v1 v2 v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11 v12
-  = du_body_2670 v1 v2 v3 v4 v11 v12
-du_body_2670 ::
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_body_2670 v0 v1 v2 v3 v4 v5
-  = case coe v5 of
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eg'45'act_50
-        -> coe
-             du_gdec_2574 (coe v0)
-             (coe
-                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                (coe
-                   MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63''45'complete_152
-                   (coe
-                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v1)
-                      (coe
-                         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
-                         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_36))
-                      (coe v2))
-                   (coe v4)))
-             (coe
-                MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__214
-                (coe
-                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v1)
-                   (coe
-                      MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
-                      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38))
-                   (coe v2))
-                (coe
-                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v1)
-                   (coe
-                      MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
-                      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38))
-                   (coe v2)))
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eg'45'eff_52
-        -> coe
-             du_gdec_2574 (coe v0)
-             (coe
-                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                (coe
-                   MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63''45'complete_152
-                   (coe
-                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v1)
-                      (coe
-                         MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
-                         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
-                      (coe v2))
-                   (coe v4)))
-             (coe
-                MAlonzo.Code.Once.Lang.Type.DecEq.d__'8799'T__214
-                (coe
-                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v1)
-                   (coe
-                      MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
-                      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38))
-                   (coe v2))
-                (coe
-                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v1)
-                   (coe
-                      MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 (coe v3)
-                      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38))
-                   (coe v2)))
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.TypeCheck.Completeness.check-complete-RResolved-guard
-d_check'45'complete'45'RResolved'45'guard_2698 ::
-  MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_check'45'complete'45'RResolved'45'guard_2698 ~v0 v1 v2 v3 v4 ~v5
-                                               v6 ~v7 v8 v9
-  = du_check'45'complete'45'RResolved'45'guard_2698
-      v1 v2 v3 v4 v6 v8 v9
-du_check'45'complete'45'RResolved'45'guard_2698 ::
-  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_EffGrade_48 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_check'45'complete'45'RResolved'45'guard_2698 v0 v1 v2 v3 v4 v5
-                                                v6
-  = coe
-      du_guard'45'view_2620 (coe v0) (coe v1) (coe v2) (coe v3)
-      (coe
-         MAlonzo.Code.Once.TypeCheck.Classify.d_classifyGen_670 (coe v0))
-      (coe v4) (coe v5) (coe v6)
 -- Once.TypeCheck.Completeness.caseGo-success
-d_caseGo'45'success_2748 ::
+d_caseGo'45'success_2442 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -1780,13 +1389,13 @@ d_caseGo'45'success_2748 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_caseGo'45'success_2748 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
+d_caseGo'45'success_2442 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                          ~v10 ~v11 ~v12 v13 v14 v15 ~v16 ~v17 ~v18
-  = du_caseGo'45'success_2748 v13 v14 v15
-du_caseGo'45'success_2748 ::
+  = du_caseGo'45'success_2442 v13 v14 v15
+du_caseGo'45'success_2442 ::
   Integer ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_caseGo'45'success_2748 v0 v1 v2
+du_caseGo'45'success_2442 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
@@ -1794,30 +1403,30 @@ du_caseGo'45'success_2748 v0 v1 v2
          (coe MAlonzo.Code.Data.Nat.Base.d__'8852'__208 (coe v0) (coe v2)))
       (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) erased)
 -- Once.TypeCheck.Completeness.check-completeV
-d_check'45'completeV_2778 ::
+d_check'45'completeV_2472 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_check'45'completeV_2778 v0 v1 v2 ~v3 v4
-  = du_check'45'completeV_2778 v0 v1 v2 v4
-du_check'45'completeV_2778 ::
+d_check'45'completeV_2472 v0 v1 v2 ~v3 v4
+  = du_check'45'completeV_2472 v0 v1 v2 v4
+du_check'45'completeV_2472 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_check'45'completeV_2778 v0 v1 v2 v3
+du_check'45'completeV_2472 v0 v1 v2 v3
   = let v4
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
               (coe v0) (coe v1) (coe v2) in
     coe
       (let v5
              = coe
-                 du_check'45'complete_2954 (coe v0) (coe v1) (coe v2) (coe v3) in
+                 du_check'45'complete_2648 (coe v0) (coe v1) (coe v2) (coe v3) in
        coe
          (case coe v4 of
             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
@@ -1841,26 +1450,26 @@ du_check'45'completeV_2778 v0 v1 v2 v3
                    _ -> MAlonzo.RTE.mazUnreachableError
             _ -> MAlonzo.RTE.mazUnreachableError))
 -- Once.TypeCheck.Completeness.iFromInferSub
-d_iFromInferSub_2796 ::
+d_iFromInferSub_2490 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_iFromInferSub_2796 v0 v1 v2 v3 ~v4 v5
-  = du_iFromInferSub_2796 v0 v1 v2 v3 v5
-du_iFromInferSub_2796 ::
+d_iFromInferSub_2490 v0 v1 v2 v3 ~v4 v5
+  = du_iFromInferSub_2490 v0 v1 v2 v3 v5
+du_iFromInferSub_2490 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_iFromInferSub_2796 v0 v1 v2 v3 v4
+du_iFromInferSub_2490 v0 v1 v2 v3 v4
   = case coe v4 of
       MAlonzo.Code.Once.Lang.Typing.C_t'45'int_30
         -> case coe v1 of
@@ -1981,13 +1590,13 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                       -> coe
                            (\ v18 ->
                               case coe v18 of
-                                MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'prod_66 v23 v24
+                                MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'prod_62 v23 v24
                                   -> case coe v3 of
                                        MAlonzo.Code.Once.Lang.Type.C__'42'__24 v25 v26
                                          -> let v27
                                                   = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                       (coe
-                                                         du_iFromInferSub_2796 v0 v14 v16 v25 v12
+                                                         du_iFromInferSub_2490 v0 v14 v16 v25 v12
                                                          v23) in
                                             coe
                                               (let v28
@@ -1995,23 +1604,23 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                                          (coe
                                                             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                             (coe
-                                                               du_iFromInferSub_2796 v0 v14 v16 v25
+                                                               du_iFromInferSub_2490 v0 v14 v16 v25
                                                                v12 v23)) in
                                                coe
                                                  (coe
-                                                    du_pair'45'lit'45'reduce_2854 (coe v10)
+                                                    du_pair'45'lit'45'reduce_2548 (coe v10)
                                                     (coe v11) (coe v27) (coe v28)
                                                     (coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                        (coe
-                                                          du_iFromInferSub_2796 v0 v15 v17 v26 v13
+                                                          du_iFromInferSub_2490 v0 v15 v17 v26 v13
                                                           v24))
                                                     (coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                        (coe
                                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                           (coe
-                                                             du_iFromInferSub_2796 v0 v15 v17 v26
+                                                             du_iFromInferSub_2490 v0 v15 v17 v26
                                                              v13 v24)))
                                                     (coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2020,7 +1629,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                                           (coe
                                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                              (coe
-                                                                du_iFromInferSub_2796 v0 v15 v17 v26
+                                                                du_iFromInferSub_2490 v0 v15 v17 v26
                                                                 v13 v24))))))
                                        _ -> MAlonzo.RTE.mazUnreachableError
                                 _ -> MAlonzo.RTE.mazUnreachableError)
@@ -2160,7 +1769,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                          (coe
                             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                             (coe
-                               du_infer'45'complete_2886 (coe v0) (coe v12)
+                               du_infer'45'complete_2580 (coe v0) (coe v12)
                                (coe
                                   MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                   (coe
@@ -2177,7 +1786,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                             (coe
                                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                (coe
-                                  du_infer'45'complete_2886 (coe v0) (coe v12)
+                                  du_infer'45'complete_2580 (coe v0) (coe v12)
                                   (coe
                                      MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                      (coe
@@ -2196,7 +1805,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                (coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                   (coe
-                                     du_infer'45'complete_2886 (coe v0) (coe v12)
+                                     du_infer'45'complete_2580 (coe v0) (coe v12)
                                      (coe
                                         MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                         (coe
@@ -2225,7 +1834,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                           (coe
-                                             du_infer'45'complete_2886 (coe v0) (coe v14)
+                                             du_infer'45'complete_2580 (coe v0) (coe v14)
                                              (coe
                                                 MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                 (coe
@@ -2245,7 +1854,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                           (coe
                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                              (coe
-                                                du_infer'45'complete_2886 (coe v0) (coe v14)
+                                                du_infer'45'complete_2580 (coe v0) (coe v14)
                                                 (coe
                                                    MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                    (coe
@@ -2267,7 +1876,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                              (coe
                                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                 (coe
-                                                   du_infer'45'complete_2886 (coe v0) (coe v14)
+                                                   du_infer'45'complete_2580 (coe v0) (coe v14)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                       (coe
@@ -2291,7 +1900,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                           (coe
-                                             du_infer'45'complete_2886 (coe v0) (coe v14)
+                                             du_infer'45'complete_2580 (coe v0) (coe v14)
                                              (coe
                                                 MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                 (coe
@@ -2302,7 +1911,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                                       (coe
                                                          MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                                                       (coe
-                                                         MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                                                         MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                                                    (coe v17))
                                                 (coe v7))
                                              (coe v12)))
@@ -2311,7 +1920,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                           (coe
                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                              (coe
-                                                du_infer'45'complete_2886 (coe v0) (coe v14)
+                                                du_infer'45'complete_2580 (coe v0) (coe v14)
                                                 (coe
                                                    MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                    (coe
@@ -2322,7 +1931,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                                          (coe
                                                             MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                                                          (coe
-                                                            MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                                                            MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                                                       (coe v17))
                                                    (coe v7))
                                                 (coe v12))))
@@ -2333,7 +1942,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                              (coe
                                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                 (coe
-                                                   du_infer'45'complete_2886 (coe v0) (coe v14)
+                                                   du_infer'45'complete_2580 (coe v0) (coe v14)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                       (coe
@@ -2344,7 +1953,7 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
                                                             (coe
                                                                MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                                                             (coe
-                                                               MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                                                               MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                                                          (coe v17))
                                                       (coe v7))
                                                    (coe v12))))))
@@ -2436,32 +2045,32 @@ du_iFromInferSub_2796 v0 v1 v2 v3 v4
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Completeness.check-completeV-from-infer
-d_check'45'completeV'45'from'45'infer_2816 ::
+d_check'45'completeV'45'from'45'infer_2510 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_check'45'completeV'45'from'45'infer_2816 v0 v1 v2 v3 ~v4 v5 v6
-  = du_check'45'completeV'45'from'45'infer_2816 v0 v1 v2 v3 v5 v6
-du_check'45'completeV'45'from'45'infer_2816 ::
+d_check'45'completeV'45'from'45'infer_2510 v0 v1 v2 v3 ~v4 v5 v6
+  = du_check'45'completeV'45'from'45'infer_2510 v0 v1 v2 v3 v5 v6
+du_check'45'completeV'45'from'45'infer_2510 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_check'45'completeV'45'from'45'infer_2816 v0 v1 v2 v3 v4 v5
+du_check'45'completeV'45'from'45'infer_2510 v0 v1 v2 v3 v4 v5
   = let v6
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
               (coe v0) (coe v1) (coe v3) in
     coe
-      (let v7 = coe du_iFromInferSub_2796 v0 v1 v2 v3 v4 v5 in
+      (let v7 = coe du_iFromInferSub_2490 v0 v1 v2 v3 v4 v5 in
        coe
          (case coe v6 of
             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
@@ -2485,7 +2094,7 @@ du_check'45'completeV'45'from'45'infer_2816 v0 v1 v2 v3 v4 v5
                    _ -> MAlonzo.RTE.mazUnreachableError
             _ -> MAlonzo.RTE.mazUnreachableError))
 -- Once.TypeCheck.Completeness.pair-lit-reduce
-d_pair'45'lit'45'reduce_2854 ::
+d_pair'45'lit'45'reduce_2548 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -2504,17 +2113,17 @@ d_pair'45'lit'45'reduce_2854 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_pair'45'lit'45'reduce_2854 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 ~v9
+d_pair'45'lit'45'reduce_2548 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 ~v9
                              ~v10 v11 v12 v13 ~v14 ~v15 ~v16
-  = du_pair'45'lit'45'reduce_2854 v5 v6 v7 v8 v11 v12 v13
-du_pair'45'lit'45'reduce_2854 ::
+  = du_pair'45'lit'45'reduce_2548 v5 v6 v7 v8 v11 v12 v13
+du_pair'45'lit'45'reduce_2548 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_pair'45'lit'45'reduce_2854 v0 v1 v2 v3 v4 v5 v6
+du_pair'45'lit'45'reduce_2548 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe MAlonzo.Code.Once.Surface.Syntax.C_pair_82 v0 v1 v2 v4)
@@ -2523,41 +2132,41 @@ du_pair'45'lit'45'reduce_2854 v0 v1 v2 v3 v4 v5 v6
          (coe MAlonzo.Code.Data.Nat.Base.d__'8852'__208 (coe v3) (coe v5))
          (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6) erased))
 -- Once.TypeCheck.Completeness.iFromInfer
-d_iFromInfer_2870 ::
+d_iFromInfer_2564 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_iFromInfer_2870 v0 v1 v2 ~v3 v4 = du_iFromInfer_2870 v0 v1 v2 v4
-du_iFromInfer_2870 ::
+d_iFromInfer_2564 v0 v1 v2 ~v3 v4 = du_iFromInfer_2564 v0 v1 v2 v4
+du_iFromInfer_2564 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_iFromInfer_2870 v0 v1 v2 v3
+du_iFromInfer_2564 v0 v1 v2 v3
   = coe
-      du_iFromInferSub_2796 v0 v1 v2 v2 v3
-      (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_102 (coe v2))
+      du_iFromInferSub_2490 v0 v1 v2 v2 v3
+      (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v2))
 -- Once.TypeCheck.Completeness.infer-complete
-d_infer'45'complete_2886 ::
+d_infer'45'complete_2580 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_infer'45'complete_2886 v0 v1 v2 ~v3 v4
-  = du_infer'45'complete_2886 v0 v1 v2 v4
-du_infer'45'complete_2886 ::
+d_infer'45'complete_2580 v0 v1 v2 ~v3 v4
+  = du_infer'45'complete_2580 v0 v1 v2 v4
+du_infer'45'complete_2580 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_infer'45'complete_2886 v0 v1 v2 v3
+du_infer'45'complete_2580 v0 v1 v2 v3
   = case coe v3 of
       MAlonzo.Code.Once.Lang.Typing.C_t'45'int_30
         -> case coe v1 of
@@ -2696,26 +2305,26 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v14)
+                          du_infer'45'complete_2580 (coe v0) (coe v14)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v15)
+                          du_infer'45'complete_2580 (coe v0) (coe v15)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v14)
+                             du_infer'45'complete_2580 (coe v0) (coe v14)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v15)
+                             du_infer'45'complete_2580 (coe v0) (coe v15)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2724,7 +2333,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v15)
+                                du_infer'45'complete_2580 (coe v0) (coe v15)
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float_236 v8 v9 v11 v12
@@ -2736,26 +2345,26 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v14)
+                          du_infer'45'complete_2580 (coe v0) (coe v14)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v15)
+                          du_infer'45'complete_2580 (coe v0) (coe v15)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v14)
+                             du_infer'45'complete_2580 (coe v0) (coe v14)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v15)
+                             du_infer'45'complete_2580 (coe v0) (coe v15)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2764,7 +2373,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v15)
+                                du_infer'45'complete_2580 (coe v0) (coe v15)
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float'45'il_250 v8 v9 v11 v12
@@ -2776,26 +2385,26 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v14)
+                          du_infer'45'complete_2580 (coe v0) (coe v14)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v15)
+                          du_infer'45'complete_2580 (coe v0) (coe v15)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v14)
+                             du_infer'45'complete_2580 (coe v0) (coe v14)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v15)
+                             du_infer'45'complete_2580 (coe v0) (coe v15)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2804,7 +2413,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v15)
+                                du_infer'45'complete_2580 (coe v0) (coe v15)
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float'45'ir_264 v8 v9 v11 v12
@@ -2816,26 +2425,26 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v14)
+                          du_infer'45'complete_2580 (coe v0) (coe v14)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v15)
+                          du_infer'45'complete_2580 (coe v0) (coe v15)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v14)
+                             du_infer'45'complete_2580 (coe v0) (coe v14)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v15)
+                             du_infer'45'complete_2580 (coe v0) (coe v15)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2844,7 +2453,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v15)
+                                du_infer'45'complete_2580 (coe v0) (coe v15)
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'cmp_278 v8 v9 v11 v12
@@ -2856,26 +2465,26 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v14)
+                          du_infer'45'complete_2580 (coe v0) (coe v14)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v15)
+                          du_infer'45'complete_2580 (coe v0) (coe v15)
                           (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v14)
+                             du_infer'45'complete_2580 (coe v0) (coe v14)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v15)
+                             du_infer'45'complete_2580 (coe v0) (coe v15)
                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2884,7 +2493,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v15)
+                                du_infer'45'complete_2580 (coe v0) (coe v15)
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'id'45'app_288 v7 v8
@@ -2903,7 +2512,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v11)
+                          du_infer'45'complete_2580 (coe v0) (coe v11)
                           (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v2) (coe v7))
                           (coe v9)))
                     (coe
@@ -2911,7 +2520,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v11)
+                             du_infer'45'complete_2580 (coe v0) (coe v11)
                              (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v2) (coe v7))
                              (coe v9))))
                     (coe
@@ -2921,7 +2530,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v11)
+                                du_infer'45'complete_2580 (coe v0) (coe v11)
                                 (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v2) (coe v7))
                                 (coe v9)))))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2934,7 +2543,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v11)
+                          du_infer'45'complete_2580 (coe v0) (coe v11)
                           (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v6) (coe v2))
                           (coe v9)))
                     (coe
@@ -2942,7 +2551,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v11)
+                             du_infer'45'complete_2580 (coe v0) (coe v11)
                              (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v6) (coe v2))
                              (coe v9))))
                     (coe
@@ -2952,7 +2561,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v11)
+                                du_infer'45'complete_2580 (coe v0) (coe v11)
                                 (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v6) (coe v2))
                                 (coe v9)))))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2972,7 +2581,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v11)
+                          du_infer'45'complete_2580 (coe v0) (coe v11)
                           (coe
                              MAlonzo.Code.Once.Lang.Type.C__'42'__24
                              (coe
@@ -2989,7 +2598,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v11)
+                             du_infer'45'complete_2580 (coe v0) (coe v11)
                              (coe
                                 MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                 (coe
@@ -3008,7 +2617,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v11)
+                                du_infer'45'complete_2580 (coe v0) (coe v11)
                                 (coe
                                    MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                    (coe
@@ -3034,7 +2643,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                      (coe
-                                        du_infer'45'complete_2886 (coe v0) (coe v13)
+                                        du_infer'45'complete_2580 (coe v0) (coe v13)
                                         (coe
                                            MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                            (coe
@@ -3052,7 +2661,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                         (coe
-                                           du_infer'45'complete_2886 (coe v0) (coe v13)
+                                           du_infer'45'complete_2580 (coe v0) (coe v13)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                               (coe
@@ -3074,7 +2683,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                            (coe
-                                              du_infer'45'complete_2886 (coe v0) (coe v13)
+                                              du_infer'45'complete_2580 (coe v0) (coe v13)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                  (coe
@@ -3096,7 +2705,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                      (coe
-                                        du_infer'45'complete_2886 (coe v0) (coe v13)
+                                        du_infer'45'complete_2580 (coe v0) (coe v13)
                                         (coe
                                            MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                            (coe
@@ -3105,7 +2714,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
                                                  (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                                               (coe v16))
                                            (coe v6))
                                         (coe v11)))
@@ -3114,7 +2723,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                         (coe
-                                           du_infer'45'complete_2886 (coe v0) (coe v13)
+                                           du_infer'45'complete_2580 (coe v0) (coe v13)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                               (coe
@@ -3125,7 +2734,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                                     (coe
                                                        MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                                                     (coe
-                                                       MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                                                       MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                                                  (coe v16))
                                               (coe v6))
                                            (coe v11))))
@@ -3136,7 +2745,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                            (coe
-                                              du_infer'45'complete_2886 (coe v0) (coe v13)
+                                              du_infer'45'complete_2580 (coe v0) (coe v13)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                                  (coe
@@ -3147,7 +2756,7 @@ du_infer'45'complete_2886 v0 v1 v2 v3
                                                        (coe
                                                           MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                                                        (coe
-                                                          MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                                                          MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                                                     (coe v16))
                                                  (coe v6))
                                               (coe v11)))))
@@ -3200,11 +2809,11 @@ du_infer'45'complete_2886 v0 v1 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v14 v15
                -> coe
-                    du_spine'45'complete_2908 (coe v0) (coe v14) (coe v15) (coe v13)
+                    du_spine'45'complete_2602 (coe v0) (coe v14) (coe v15) (coe v13)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Completeness.spine-complete
-d_spine'45'complete_2908 ::
+d_spine'45'complete_2602 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -3216,32 +2825,32 @@ d_spine'45'complete_2908 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_spine'45'complete_2908 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9
-  = du_spine'45'complete_2908 v0 v1 v2 v9
-du_spine'45'complete_2908 ::
+d_spine'45'complete_2602 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9
+  = du_spine'45'complete_2602 v0 v1 v2 v9
+du_spine'45'complete_2602 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_spine'45'complete_2908 v0 v1 v2 v3
+du_spine'45'complete_2602 v0 v1 v2 v3
   = case coe v3 of
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v7 v10 v12 v13 v14
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_786 v7 v10 v12 v13 v14
         -> coe
              seq (coe v14)
              (coe
                 MAlonzo.Code.Once.TypeCheck.Completeness.Rules.du_infer'45'complete'45'RApp'45'generic_2182
                 (coe v0) (coe v1) (coe v2) (coe v7)
                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14))
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_824 v9 v10 v11 v12 v13 v14 v19 v20 v21 v22
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_810 v9 v10 v11 v12 v13 v14 v19 v20 v21 v22
         -> coe
              du_infer'45'complete'45'RApp'45'spine_2074 (coe v0) (coe v1)
              (coe v2)
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_844 v9 v12 v13
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_830 v9 v12 v13
         -> coe
              du_infer'45'complete'45'RApp'45'spine_2074 (coe v0) (coe v1)
              (coe v2)
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_864 v8 v11 v12 v13 v14
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_850 v8 v11 v12 v13 v14
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v15 v16
                -> case coe v15 of
@@ -3268,7 +2877,7 @@ du_spine'45'complete_2908 v0 v1 v2 v3
                            (coe v2)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'case_936 v11 v12 v13 v14
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'case_922 v11 v12 v13 v14
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v15 v16
                -> case coe v15 of
@@ -3295,7 +2904,7 @@ du_spine'45'complete_2908 v0 v1 v2 v3
                            (coe v2)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'pair_956 v11 v12 v13 v14
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'pair_942 v11 v12 v13 v14
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v15 v16
                -> case coe v15 of
@@ -3322,7 +2931,7 @@ du_spine'45'complete_2908 v0 v1 v2 v3
                            (coe v2)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_972 v9 v10 v11 v12
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_958 v9 v10 v11 v12
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v13 v14
                -> coe
@@ -3345,7 +2954,7 @@ du_spine'45'complete_2908 v0 v1 v2 v3
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Completeness.given-complete
-d_given'45'complete_2928 ::
+d_given'45'complete_2622 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -3354,9 +2963,9 @@ d_given'45'complete_2928 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_given'45'complete_2928 v0 v1 v2 v3 v4 ~v5 v6
-  = du_given'45'complete_2928 v0 v1 v2 v3 v4 v6
-du_given'45'complete_2928 ::
+d_given'45'complete_2622 v0 v1 v2 v3 v4 ~v5 v6
+  = du_given'45'complete_2622 v0 v1 v2 v3 v4 v6
+du_given'45'complete_2622 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -3364,16 +2973,16 @@ du_given'45'complete_2928 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
+du_given'45'complete_2622 v0 v1 v2 v3 v4 v5
   = case coe v5 of
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_800 v9 v12 v14 v15 v16
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_786 v9 v12 v14 v15 v16
         -> coe
              du_given'45'infer'45'complete_1464 (coe v2) (coe v9) (coe v3)
              (coe v4) (coe v12)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6648 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6376 (coe v0)
                 (coe v1))
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_824 v11 v12 v13 v14 v15 v16 v21 v22 v23 v24
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_810 v11 v12 v13 v14 v15 v16 v21 v22 v23 v24
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RVar_36 v25
                -> case coe v23 of
@@ -3385,11 +2994,11 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                               (coe v14) (coe v21) (coe v26))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_844 v11 v14 v15
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_830 v11 v14 v15
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 v16 v17
                -> let v18
-                        = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6648
+                        = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6376
                             (coe
                                MAlonzo.Code.Once.Lang.Typing.Scope.d_extendNamedCtx_132 (coe v0)
                                (coe v16) (coe v2))
@@ -3397,7 +3006,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                   coe
                     (let v19
                            = coe
-                               du_infer'45'complete_2886
+                               du_infer'45'complete_2580
                                (coe
                                   MAlonzo.Code.Once.Lang.Typing.Scope.d_extendNamedCtx_132 (coe v0)
                                   (coe v16) (coe v2))
@@ -3416,7 +3025,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                                         -> coe
                                                              seq (coe v33)
                                                              (let v34
-                                                                    = MAlonzo.Code.Once.TypeCheck.Elaborate.d_decideLeq_1312
+                                                                    = MAlonzo.Code.Once.TypeCheck.Elaborate.d_decideLeq_1306
                                                                         (coe v28)
                                                                         (coe
                                                                            MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) in
@@ -3460,18 +3069,18 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_864 v10 v13 v14 v15 v16
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_850 v10 v13 v14 v15 v16
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v17 v18
                -> case coe v17 of
                     MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v19 v20
                       -> let v21
-                               = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                               = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                    (coe v0) (coe v18) (coe v2) (coe v4) in
                          coe
                            (let v22
                                   = coe
-                                      du_given'45'complete_2928 (coe v0) (coe v18) (coe v2)
+                                      du_given'45'complete_2622 (coe v0) (coe v18) (coe v2)
                                       (coe v10) (coe v4) (coe v15) in
                             coe
                               (case coe v21 of
@@ -3485,13 +3094,13 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                                         -> case coe v33 of
                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v34 v35
                                                                -> let v36
-                                                                        = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                                                        = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                                                             (coe v0) (coe v20)
                                                                             (coe v25) (coe v4) in
                                                                   coe
                                                                     (let v37
                                                                            = coe
-                                                                               du_given'45'complete_2928
+                                                                               du_given'45'complete_2622
                                                                                (coe v0) (coe v20)
                                                                                (coe v25) (coe v3)
                                                                                (coe v4) (coe v16) in
@@ -3548,7 +3157,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                  _ -> MAlonzo.RTE.mazUnreachableError))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'id_874 v9
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'id_860 v9
         -> coe
              MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_withUnit'45'elim_2636
              (coe v9)
@@ -3564,7 +3173,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                            erased))))
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'fst_886 v10
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'fst_872 v10
         -> coe
              MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_withUnit'45'elim_2636
              (coe v10)
@@ -3580,7 +3189,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                            erased))))
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'snd_898 v10
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'snd_884 v10
         -> coe
              MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_withUnit'45'elim_2636
              (coe v10)
@@ -3596,7 +3205,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                            erased))))
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'terminal_908 v9
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'terminal_894 v9
         -> coe
              MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_withUnit'45'elim_2636
              (coe v9)
@@ -3612,7 +3221,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                            erased))))
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'initial_916 v8
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'initial_902 v8
         -> coe
              MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_withUnit'45'elim_2636
              (coe v8)
@@ -3628,7 +3237,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                            erased))))
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'case_936 v13 v14 v15 v16
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'case_922 v13 v14 v15 v16
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v17 v18
                -> case coe v17 of
@@ -3636,12 +3245,12 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                       -> case coe v2 of
                            MAlonzo.Code.Once.Lang.Type.C__'43'__26 v21 v22
                              -> let v23
-                                      = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                      = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                           (coe v0) (coe v20) (coe v21) (coe v4) in
                                 coe
                                   (let v24
                                          = coe
-                                             du_given'45'complete_2928 (coe v0) (coe v20) (coe v21)
+                                             du_given'45'complete_2622 (coe v0) (coe v20) (coe v21)
                                              (coe v3) (coe v4) (coe v15) in
                                    coe
                                      (case coe v23 of
@@ -3655,7 +3264,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                                                -> case coe v35 of
                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v36 v37
                                                                       -> let v38
-                                                                               = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                                                               = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                                                                    (coe v0)
                                                                                    (coe v18)
                                                                                    (coe v22)
@@ -3663,7 +3272,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                                                          coe
                                                                            (let v39
                                                                                   = coe
-                                                                                      du_given'45'complete_2928
+                                                                                      du_given'45'complete_2622
                                                                                       (coe v0)
                                                                                       (coe v18)
                                                                                       (coe v22)
@@ -3747,7 +3356,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'pair_956 v13 v14 v15 v16
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'pair_942 v13 v14 v15 v16
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v17 v18
                -> case coe v17 of
@@ -3755,12 +3364,12 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                       -> case coe v3 of
                            MAlonzo.Code.Once.Lang.Type.C__'42'__24 v21 v22
                              -> let v23
-                                      = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                      = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                           (coe v0) (coe v20) (coe v2) (coe v4) in
                                 coe
                                   (let v24
                                          = coe
-                                             du_given'45'complete_2928 (coe v0) (coe v20) (coe v2)
+                                             du_given'45'complete_2622 (coe v0) (coe v20) (coe v2)
                                              (coe v21) (coe v4) (coe v15) in
                                    coe
                                      (case coe v23 of
@@ -3774,7 +3383,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                                                -> case coe v35 of
                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v36 v37
                                                                       -> let v38
-                                                                               = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                                                               = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                                                                    (coe v0)
                                                                                    (coe v18)
                                                                                    (coe v2)
@@ -3782,7 +3391,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                                                                          coe
                                                                            (let v39
                                                                                   = coe
-                                                                                      du_given'45'complete_2928
+                                                                                      du_given'45'complete_2622
                                                                                       (coe v0)
                                                                                       (coe v18)
                                                                                       (coe v2)
@@ -3843,7 +3452,7 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_972 v11 v12 v13 v14
+      MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_958 v11 v12 v13 v14
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v15 v16
                -> case coe v2 of
@@ -3852,38 +3461,38 @@ du_given'45'complete_2928 v0 v1 v2 v3 v4 v5
                            du_given'45'cata'45'complete_1552 (coe v17) (coe v3) (coe v4)
                            (coe v13) (coe v12)
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6648 (coe v0)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6376 (coe v0)
                               (coe v16))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Completeness.nothing≢just
-d_nothing'8802'just_2938 ::
+d_nothing'8802'just_2632 ::
   MAlonzo.Code.Agda.Primitive.T_Level_18 ->
   () ->
   AgdaAny ->
   () -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
-d_nothing'8802'just_2938 ~v0 ~v1 ~v2 ~v3 ~v4
-  = du_nothing'8802'just_2938
-du_nothing'8802'just_2938 :: AgdaAny
-du_nothing'8802'just_2938 = MAlonzo.RTE.mazUnreachableError
+d_nothing'8802'just_2632 ~v0 ~v1 ~v2 ~v3 ~v4
+  = du_nothing'8802'just_2632
+du_nothing'8802'just_2632 :: AgdaAny
+du_nothing'8802'just_2632 = MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Completeness.check-complete
-d_check'45'complete_2954 ::
+d_check'45'complete_2648 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_check'45'complete_2954 v0 v1 v2 ~v3 v4
-  = du_check'45'complete_2954 v0 v1 v2 v4
-du_check'45'complete_2954 ::
+d_check'45'complete_2648 v0 v1 v2 ~v3 v4
+  = du_check'45'complete_2648 v0 v1 v2 v4
+du_check'45'complete_2648 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_check'45'complete_2954 v0 v1 v2 v3
+du_check'45'complete_2648 v0 v1 v2 v3
   = case coe v3 of
       MAlonzo.Code.Once.Lang.Typing.C_t'45'id'45'check_442 v7
         -> case coe v2 of
@@ -3944,12 +3553,12 @@ du_check'45'complete_2954 v0 v1 v2 v3
                              -> case coe v20 of
                                   MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v22 v23
                                     -> let v24
-                                             = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                             = MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                                  (coe v0) (coe v16) (coe v19) (coe v23) in
                                        coe
                                          (let v25
                                                 = coe
-                                                    du_given'45'complete_2928 (coe v0) (coe v16)
+                                                    du_given'45'complete_2622 (coe v0) (coe v16)
                                                     (coe v19) (coe v8) (coe v23) (coe v13) in
                                           coe
                                             (case coe v24 of
@@ -3964,7 +3573,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v37 v38
                                                                              -> let v39
                                                                                       = coe
-                                                                                          MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6664
+                                                                                          MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6392
                                                                                           (coe v0)
                                                                                           (coe v18)
                                                                                           (coe
@@ -3982,7 +3591,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                                 coe
                                                                                   (let v40
                                                                                          = coe
-                                                                                             du_check'45'complete_2954
+                                                                                             du_check'45'complete_2648
                                                                                              (coe
                                                                                                 v0)
                                                                                              (coe
@@ -4072,7 +3681,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                          (coe v19) (coe v22) (coe v8) (coe v24) (coe v10) (coe v26)
                                          (coe v12)
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6492
+                                            MAlonzo.Code.Once.TypeCheck.Elaborate.d_elabGivenV_6220
                                             (coe v0) (coe v19) (coe v22) (coe v26))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -4098,7 +3707,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                           v11 v12
                                                           (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                              (coe
-                                                                du_check'45'completeV_2778 (coe v0)
+                                                                du_check'45'completeV_2472 (coe v0)
                                                                 (coe v18)
                                                                 (coe
                                                                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4112,7 +3721,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                 (coe v13)))
                                                           (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                              (coe
-                                                                du_check'45'completeV_2778 (coe v0)
+                                                                du_check'45'completeV_2472 (coe v0)
                                                                 (coe v16)
                                                                 (coe
                                                                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4129,13 +3738,13 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                           (coe
                                                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                              (coe
-                                                                du_caseGo'45'success_2748
+                                                                du_caseGo'45'success_2442
                                                                 (coe
                                                                    MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                    (coe
                                                                       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                       (coe
-                                                                         du_check'45'completeV_2778
+                                                                         du_check'45'completeV_2472
                                                                          (coe v0) (coe v18)
                                                                          (coe
                                                                             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4154,7 +3763,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                       (coe
                                                                          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                          (coe
-                                                                            du_check'45'completeV_2778
+                                                                            du_check'45'completeV_2472
                                                                             (coe v0) (coe v18)
                                                                             (coe
                                                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4171,7 +3780,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                    (coe
                                                                       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                       (coe
-                                                                         du_check'45'completeV_2778
+                                                                         du_check'45'completeV_2472
                                                                          (coe v0) (coe v16)
                                                                          (coe
                                                                             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4190,13 +3799,13 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                 (coe
                                                                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                    (coe
-                                                                      du_caseGo'45'success_2748
+                                                                      du_caseGo'45'success_2442
                                                                       (coe
                                                                          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                          (coe
                                                                             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                             (coe
-                                                                               du_check'45'completeV_2778
+                                                                               du_check'45'completeV_2472
                                                                                (coe v0) (coe v18)
                                                                                (coe
                                                                                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4215,7 +3824,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                             (coe
                                                                                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                                (coe
-                                                                                  du_check'45'completeV_2778
+                                                                                  du_check'45'completeV_2472
                                                                                   (coe v0) (coe v18)
                                                                                   (coe
                                                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4232,7 +3841,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                          (coe
                                                                             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                             (coe
-                                                                               du_check'45'completeV_2778
+                                                                               du_check'45'completeV_2472
                                                                                (coe v0) (coe v16)
                                                                                (coe
                                                                                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4249,7 +3858,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                   -> let v26
                                                            = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                (coe
-                                                                  du_check'45'complete_2954 (coe v0)
+                                                                  du_check'45'complete_2648 (coe v0)
                                                                   (coe v18)
                                                                   (coe
                                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4267,7 +3876,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                      (coe
-                                                                        du_check'45'complete_2954
+                                                                        du_check'45'complete_2648
                                                                         (coe v0) (coe v18)
                                                                         (coe
                                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4287,7 +3896,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                         (coe
                                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                            (coe
-                                                                              du_check'45'complete_2954
+                                                                              du_check'45'complete_2648
                                                                               (coe v0) (coe v18)
                                                                               (coe
                                                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4307,7 +3916,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                    v11 v12 v26
                                                                    (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                       (coe
-                                                                         du_check'45'complete_2954
+                                                                         du_check'45'complete_2648
                                                                          (coe v0) (coe v16)
                                                                          (coe
                                                                             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4331,7 +3940,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                             (coe
                                                                                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                                (coe
-                                                                                  du_check'45'complete_2954
+                                                                                  du_check'45'complete_2648
                                                                                   (coe v0) (coe v16)
                                                                                   (coe
                                                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4346,11 +3955,11 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                    (coe
                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                       (coe v28) erased)))))
-                                                MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
+                                                MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                                                   -> let v26
                                                            = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                (coe
-                                                                  du_check'45'complete_2954 (coe v0)
+                                                                  du_check'45'complete_2648 (coe v0)
                                                                   (coe v18)
                                                                   (coe
                                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4368,7 +3977,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                      (coe
-                                                                        du_check'45'complete_2954
+                                                                        du_check'45'complete_2648
                                                                         (coe v0) (coe v18)
                                                                         (coe
                                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4388,7 +3997,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                         (coe
                                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                            (coe
-                                                                              du_check'45'complete_2954
+                                                                              du_check'45'complete_2648
                                                                               (coe v0) (coe v18)
                                                                               (coe
                                                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4408,7 +4017,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                    v11 v12 v26
                                                                    (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                       (coe
-                                                                         du_check'45'complete_2954
+                                                                         du_check'45'complete_2648
                                                                          (coe v0) (coe v16)
                                                                          (coe
                                                                             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4432,108 +4041,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                             (coe
                                                                                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                                (coe
-                                                                                  du_check'45'complete_2954
-                                                                                  (coe v0) (coe v16)
-                                                                                  (coe
-                                                                                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
-                                                                                     (coe v23)
-                                                                                     (coe
-                                                                                        MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
-                                                                                        (coe
-                                                                                           MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                                                                        (coe v25))
-                                                                                     (coe v21))
-                                                                                  (coe v14))))))
-                                                                   (coe
-                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                      (coe v28) erased)))))
-                                                MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
-                                                  -> let v26
-                                                           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                                               (coe
-                                                                  du_check'45'complete_2954 (coe v0)
-                                                                  (coe v18)
-                                                                  (coe
-                                                                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
-                                                                     (coe v22)
-                                                                     (coe
-                                                                        MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
-                                                                        (coe
-                                                                           MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                                                        (coe v25))
-                                                                     (coe v21))
-                                                                  (coe v13)) in
-                                                     coe
-                                                       (let v27
-                                                              = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                                                  (coe
-                                                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                                     (coe
-                                                                        du_check'45'complete_2954
-                                                                        (coe v0) (coe v18)
-                                                                        (coe
-                                                                           MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
-                                                                           (coe v22)
-                                                                           (coe
-                                                                              MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
-                                                                              (coe
-                                                                                 MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                                                              (coe v25))
-                                                                           (coe v21))
-                                                                        (coe v13))) in
-                                                        coe
-                                                          (let v28
-                                                                 = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                                                     (coe
-                                                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                                        (coe
-                                                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                                           (coe
-                                                                              du_check'45'complete_2954
-                                                                              (coe v0) (coe v18)
-                                                                              (coe
-                                                                                 MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
-                                                                                 (coe v22)
-                                                                                 (coe
-                                                                                    MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
-                                                                                    (coe
-                                                                                       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                                                                    (coe v25))
-                                                                                 (coe v21))
-                                                                              (coe v13)))) in
-                                                           coe
-                                                             (coe
-                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                (coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_copair''_470
-                                                                   v11 v12 v26
-                                                                   (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                                                      (coe
-                                                                         du_check'45'complete_2954
-                                                                         (coe v0) (coe v16)
-                                                                         (coe
-                                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
-                                                                            (coe v23)
-                                                                            (coe
-                                                                               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
-                                                                               (coe
-                                                                                  MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                                                               (coe v25))
-                                                                            (coe v21))
-                                                                         (coe v14))))
-                                                                (coe
-                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                                                   (coe
-                                                                      addInt (coe (1 :: Integer))
-                                                                      (coe
-                                                                         MAlonzo.Code.Data.Nat.Base.d__'8852'__208
-                                                                         (coe v27)
-                                                                         (coe
-                                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                                                            (coe
-                                                                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                                               (coe
-                                                                                  du_check'45'complete_2954
+                                                                                  du_check'45'complete_2648
                                                                                   (coe v0) (coe v16)
                                                                                   (coe
                                                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4568,7 +4076,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                            -> let v26
                                                     = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                         (coe
-                                                           du_check'45'complete_2954 (coe v0)
+                                                           du_check'45'complete_2648 (coe v0)
                                                            (coe v18)
                                                            (coe
                                                               MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4586,7 +4094,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                            (coe
                                                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                               (coe
-                                                                 du_check'45'complete_2954 (coe v0)
+                                                                 du_check'45'complete_2648 (coe v0)
                                                                  (coe v18)
                                                                  (coe
                                                                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4606,7 +4114,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                          v11 v12 v26
                                                          (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                             (coe
-                                                               du_check'45'complete_2954 (coe v0)
+                                                               du_check'45'complete_2648 (coe v0)
                                                                (coe v16)
                                                                (coe
                                                                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4630,7 +4138,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                      (coe
-                                                                        du_check'45'complete_2954
+                                                                        du_check'45'complete_2648
                                                                         (coe v0) (coe v16)
                                                                         (coe
                                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4651,7 +4159,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                      (coe
-                                                                        du_check'45'complete_2954
+                                                                        du_check'45'complete_2648
                                                                         (coe v0) (coe v16)
                                                                         (coe
                                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4681,7 +4189,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                     -> let v24
                                              = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                  (coe
-                                                    du_check'45'complete_2954 (coe v0) (coe v15)
+                                                    du_check'45'complete_2648 (coe v0) (coe v15)
                                                     (coe
                                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                        (coe
@@ -4700,7 +4208,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                     (coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                        (coe
-                                                          du_check'45'complete_2954 (coe v0)
+                                                          du_check'45'complete_2648 (coe v0)
                                                           (coe v15)
                                                           (coe
                                                              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4722,7 +4230,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                           (coe
                                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                              (coe
-                                                                du_check'45'complete_2954 (coe v0)
+                                                                du_check'45'complete_2648 (coe v0)
                                                                 (coe v15)
                                                                 (coe
                                                                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4778,7 +4286,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                   MAlonzo.Code.Once.Surface.Syntax.C_cata_520 v9 v11
                                                   (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                      (coe
-                                                        du_check'45'complete_2954 (coe v0) (coe v14)
+                                                        du_check'45'complete_2648 (coe v0) (coe v14)
                                                         (coe
                                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                            (coe
@@ -4800,7 +4308,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                         (coe
                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                            (coe
-                                                              du_check'45'complete_2954 (coe v0)
+                                                              du_check'45'complete_2648 (coe v0)
                                                               (coe v14)
                                                               (coe
                                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4823,7 +4331,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                            (coe
                                                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                               (coe
-                                                                 du_check'45'complete_2954 (coe v0)
+                                                                 du_check'45'complete_2648 (coe v0)
                                                                  (coe v14)
                                                                  (coe
                                                                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4852,7 +4360,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                              -> let v21
                                       = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                           (coe
-                                             du_check'45'complete_2954 (coe v0) (coe v15)
+                                             du_check'45'complete_2648 (coe v0) (coe v15)
                                              (coe
                                                 MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                 (coe v16)
@@ -4870,7 +4378,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                              (coe
                                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                 (coe
-                                                   du_check'45'complete_2954 (coe v0) (coe v15)
+                                                   du_check'45'complete_2648 (coe v0) (coe v15)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                       (coe v16)
@@ -4891,7 +4399,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                       (coe
-                                                         du_check'45'complete_2954 (coe v0)
+                                                         du_check'45'complete_2648 (coe v0)
                                                          (coe v15)
                                                          (coe
                                                             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -4921,21 +4429,8 @@ du_check'45'complete_2954 v0 v1 v2 v3
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_660 v6 v9 v10
-        -> coe du_iFromInferSub_2796 v0 v1 v6 v2 v9 v10
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved'45'guard_674 v9 v10 v12 v13
-        -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v14
-               -> case coe v2 of
-                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v15 v16 v17
-                      -> case coe v16 of
-                           MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70 v18 v19
-                             -> coe
-                                  du_check'45'complete'45'RResolved'45'guard_2698 (coe v14)
-                                  (coe v15) (coe v17) (coe v18) (coe v10) (coe v12) (coe v13)
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'lam_696 v10 v13 v15
+        -> coe du_iFromInferSub_2490 v0 v1 v6 v2 v9 v10
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'lam_682 v10 v13 v15
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 v16 v17
                -> case coe v2 of
@@ -4949,7 +4444,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'pair'45'lit'45'check_712 v9 v10 v11 v12
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'pair'45'lit'45'check_698 v9 v10 v11 v12
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RPair_48 v13 v14
                -> case coe v2 of
@@ -4957,7 +4452,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                       -> let v17
                                = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                    (coe
-                                      du_check'45'complete_2954 (coe v0) (coe v13) (coe v15)
+                                      du_check'45'complete_2648 (coe v0) (coe v13) (coe v15)
                                       (coe v11)) in
                          coe
                            (let v18
@@ -4965,23 +4460,23 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                          (coe
-                                            du_check'45'complete_2954 (coe v0) (coe v13) (coe v15)
+                                            du_check'45'complete_2648 (coe v0) (coe v13) (coe v15)
                                             (coe v11))) in
                             coe
                               (coe
-                                 du_pair'45'lit'45'reduce_2854 (coe v9) (coe v10) (coe v17)
+                                 du_pair'45'lit'45'reduce_2548 (coe v9) (coe v10) (coe v17)
                                  (coe v18)
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                     (coe
-                                       du_check'45'complete_2954 (coe v0) (coe v14) (coe v16)
+                                       du_check'45'complete_2648 (coe v0) (coe v14) (coe v16)
                                        (coe v12)))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                        (coe
-                                          du_check'45'complete_2954 (coe v0) (coe v14) (coe v16)
+                                          du_check'45'complete_2648 (coe v0) (coe v14) (coe v16)
                                           (coe v12))))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -4990,11 +4485,11 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                           (coe
-                                             du_check'45'complete_2954 (coe v0) (coe v14) (coe v16)
+                                             du_check'45'complete_2648 (coe v0) (coe v14) (coe v16)
                                              (coe v12)))))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'In'45'app'45'check_722 v7 v8 v9
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'In'45'app'45'check_708 v7 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v10 v11
                -> case coe v2 of
@@ -5004,7 +4499,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                            (coe v0) (coe v11) (coe v12) (coe v8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'check_734 v6 v8 v9
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'check_720 v6 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v10 v11
                -> coe
@@ -5013,7 +4508,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          du_infer'45'complete_2886 (coe v0) (coe v11)
+                          du_infer'45'complete_2580 (coe v0) (coe v11)
                           (coe
                              MAlonzo.Code.Once.Lang.Type.C__'42'__24
                              (coe
@@ -5030,7 +4525,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             du_infer'45'complete_2886 (coe v0) (coe v11)
+                             du_infer'45'complete_2580 (coe v0) (coe v11)
                              (coe
                                 MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                 (coe
@@ -5049,7 +4544,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                du_infer'45'complete_2886 (coe v0) (coe v11)
+                                du_infer'45'complete_2580 (coe v0) (coe v11)
                                 (coe
                                    MAlonzo.Code.Once.Lang.Type.C__'42'__24
                                    (coe
@@ -5062,7 +4557,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                                    (coe v6))
                                 (coe v9)))))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'inl'45'app'45'check_746 v8 v9
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'inl'45'app'45'check_732 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v10 v11
                -> case coe v2 of
@@ -5072,7 +4567,7 @@ du_check'45'complete_2954 v0 v1 v2 v3
                            (coe v11) (coe v12)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'inr'45'app'45'check_758 v8 v9
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'inr'45'app'45'check_744 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v10 v11
                -> case coe v2 of
@@ -5082,14 +4577,14 @@ du_check'45'complete_2954 v0 v1 v2 v3
                            (coe v11) (coe v13)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'initial'45'app'45'check_768 v7 v8
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'initial'45'app'45'check_754 v7 v8
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RApp_42 v9 v10
                -> coe
                     du_completeness'45'gap'45'initial'45'app'45'check'45'eq_2366
                     (coe v0) (coe v10)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_782 v7 v8 v9 v14
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_768 v7 v8 v9 v14
         -> case coe v1 of
              MAlonzo.Code.Once.Lang.Syntax.C_RVar_36 v15
                -> coe

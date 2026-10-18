@@ -846,7 +846,7 @@ du_fM_510 ::
   AgdaAny -> AgdaAny
 du_fM_510 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578
       (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
          (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v0)))
       erased
@@ -880,7 +880,7 @@ du_fI_514 ::
   AgdaAny -> AgdaAny
 du_fI_514 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614
+      MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578
       (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576
          (coe MAlonzo.Code.Once.IRTy.d_eraseF_50 (coe v0)))
       erased

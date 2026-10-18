@@ -21,8 +21,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Once.Denotation.Behavior
+import qualified MAlonzo.Code.Once.Adequacy.MachineTrace
 import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Spec.Trace
 
 -- Once.Adequacy.CPU.Interface.Byte
 d_Byte_8 :: ()
@@ -33,8 +34,7 @@ data T_ArchSemantics_10
   = C_constructor_90 (AgdaAny -> AgdaAny)
                      (AgdaAny -> AgdaAny -> Maybe AgdaAny)
                      (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-                      AgdaAny ->
-                      AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6)
+                      AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Spec.Trace.T_Tr_18)
                      ([MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe AgdaAny)
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       [MAlonzo.Code.Data.Fin.Base.T_Fin_10])
@@ -63,8 +63,7 @@ d_run_44 v0
 d_run'45'trace_46 ::
   T_ArchSemantics_10 ->
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  AgdaAny ->
-  AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
+  AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_run'45'trace_46 v0
   = case coe v0 of
       C_constructor_90 v3 v4 v5 v6 v7 v9 v10 -> coe v5
@@ -116,20 +115,20 @@ d_as'45'faithful_62 = erased
 d_exec'45'dec_64 ::
   T_ArchSemantics_10 ->
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  Maybe AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
+  Maybe AgdaAny -> MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_exec'45'dec_64 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe d_run'45'trace_46 v0 v1 v3 (coe d_initialState_42 v0 v3)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe MAlonzo.Code.Once.Denotation.Behavior.d_silent_42
+        -> coe MAlonzo.Code.Once.Adequacy.MachineTrace.d_silentTr_34
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-bytes
 d_exec'45'bytes_72 ::
   T_ArchSemantics_10 ->
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
-  MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
+  MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_exec'45'bytes_72 v0 v1 v2
   = coe d_exec'45'dec_64 (coe v0) (coe v1) (coe d_decode_48 v0 v2)
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-print

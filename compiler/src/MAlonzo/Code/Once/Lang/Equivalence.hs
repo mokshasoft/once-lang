@@ -18,7 +18,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.Lang.Graded
-import qualified MAlonzo.Code.Once.Lang.Guarded
 import qualified MAlonzo.Code.Once.Lang.Iterative
 import qualified MAlonzo.Code.Once.Lang.Polynomial
 import qualified MAlonzo.Code.Once.Lang.Stream
@@ -48,8 +47,8 @@ d_LayerEq_58 = erased
 d_ν'7510''45'upto_122 ::
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   Integer ->
-  MAlonzo.Code.Once.Lang.Graded.T_ν'7510'_244 ->
-  MAlonzo.Code.Once.Lang.Graded.T_ν'7510'_244 -> ()
+  MAlonzo.Code.Once.Lang.Graded.T_ν'7510'_198 ->
+  MAlonzo.Code.Once.Lang.Graded.T_ν'7510'_198 -> ()
 d_ν'7510''45'upto_122 = erased
 -- Once.Lang.Equivalence.νᵈ-upto
 d_ν'7496''45'upto_136 ::
@@ -58,37 +57,30 @@ d_ν'7496''45'upto_136 ::
   MAlonzo.Code.Once.Lang.Stream.T_ν'7496'_14 ->
   MAlonzo.Code.Once.Lang.Stream.T_ν'7496'_14 -> ()
 d_ν'7496''45'upto_136 = erased
--- Once.Lang.Equivalence.ν⁺-upto
-d_ν'8314''45'upto_150 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  Integer ->
-  MAlonzo.Code.Once.Lang.Guarded.T_ν'8314'_164 ->
-  MAlonzo.Code.Once.Lang.Guarded.T_ν'8314'_164 -> ()
-d_ν'8314''45'upto_150 = erased
 -- Once.Lang.Equivalence.ν∞-upto
-d_ν'8734''45'upto_164 ::
+d_ν'8734''45'upto_150 ::
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Iterative.T_ν'8734'_304 ->
   MAlonzo.Code.Once.Lang.Iterative.T_ν'8734'_304 -> ()
-d_ν'8734''45'upto_164 = erased
+d_ν'8734''45'upto_150 = erased
 -- Once.Lang.Equivalence.Obs
-d_Obs_178 ::
+d_Obs_164 ::
   Integer ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
-d_Obs_178 = erased
+d_Obs_164 = erased
 -- Once.Lang.Equivalence.ObsM
-d_ObsM_184 ::
+d_ObsM_170 ::
   Integer ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
-d_ObsM_184 = erased
+d_ObsM_170 = erased
 -- Once.Lang.Equivalence.Same
-d_Same_350 ::
+d_Same_328 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
-d_Same_350 = erased
+d_Same_328 = erased
 -- Once.Lang.Equivalence.SameM
-d_SameM_364 ::
+d_SameM_342 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
-d_SameM_364 = erased
+d_SameM_342 = erased

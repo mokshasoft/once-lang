@@ -21,7 +21,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.GradedRelation
-import qualified MAlonzo.Code.Once.Denotation.GuardedLaws
 import qualified MAlonzo.Code.Once.Denotation.TraceMonadInfLaws
 import qualified MAlonzo.Code.Once.Denotation.TraceMonadLaws
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
@@ -29,7 +28,6 @@ import qualified MAlonzo.Code.Once.Denotation.ValueDomainLaws
 import qualified MAlonzo.Code.Once.Lang.FunctorMeaning
 import qualified MAlonzo.Code.Once.Lang.Graded
 import qualified MAlonzo.Code.Once.Lang.GradedOps
-import qualified MAlonzo.Code.Once.Lang.Guarded
 import qualified MAlonzo.Code.Once.Lang.Iterative
 import qualified MAlonzo.Code.Once.Lang.Polynomial
 import qualified MAlonzo.Code.Once.Lang.Stream
@@ -42,48 +40,38 @@ import qualified MAlonzo.Code.Once.Spec.Numerics
 
 -- Once.Adequacy.GradedAnaBridge._._∼ᵖᵈ_
 d__'8764''7510''7496'__10 a0 a1 a2 a3 = ()
--- Once.Adequacy.GradedAnaBridge._._∼⁺ᵈ_
-d__'8764''8314''7496'__14 a0 a1 a2 a3 = ()
 -- Once.Adequacy.GradedAnaBridge._._∼∞ᵈ_
-d__'8764''8734''7496'__18 a0 a1 a2 a3 = ()
+d__'8764''8734''7496'__14 a0 a1 a2 a3 = ()
 -- Once.Adequacy.GradedAnaBridge._.RelGT
-d_RelGT_24 ::
+d_RelGT_20 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 -> ()
-d_RelGT_24 = erased
+d_RelGT_20 = erased
 -- Once.Adequacy.GradedAnaBridge._.RelGV
-d_RelGV_28 ::
+d_RelGV_24 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny -> ()
-d_RelGV_28 = erased
+d_RelGV_24 = erased
 -- Once.Adequacy.GradedAnaBridge._._∼ᵖᵈ_.force-∼ᵖᵈ
-d_force'45''8764''7510''7496'_34 ::
+d_force'45''8764''7510''7496'_30 ::
   MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''7510''7496'__14 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-d_force'45''8764''7510''7496'_34 v0
+d_force'45''8764''7510''7496'_30 v0
   = coe
       MAlonzo.Code.Once.Adequacy.GradedRelation.d_force'45''8764''7510''7496'_24
       (coe v0)
--- Once.Adequacy.GradedAnaBridge._._∼⁺ᵈ_.force-∼⁺ᵈ
-d_force'45''8764''8314''7496'_38 ::
-  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8314''7496'__34 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-d_force'45''8764''8314''7496'_38 v0
-  = coe
-      MAlonzo.Code.Once.Adequacy.GradedRelation.d_force'45''8764''8314''7496'_44
-      (coe v0)
 -- Once.Adequacy.GradedAnaBridge._._∼∞ᵈ_.force-∼∞ᵈ
-d_force'45''8764''8734''7496'_42 ::
-  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8734''7496'__54 ->
+d_force'45''8764''8734''7496'_34 ::
+  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8734''7496'__34 ->
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-d_force'45''8764''8734''7496'_42 v0
+d_force'45''8764''8734''7496'_34 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.GradedRelation.d_force'45''8764''8734''7496'_64
+      MAlonzo.Code.Once.Adequacy.GradedRelation.d_force'45''8764''8734''7496'_44
       (coe v0)
 -- Once.Adequacy.GradedAnaBridge.anaᵖ-∼
-d_ana'7510''45''8764'_62 ::
+d_ana'7510''45''8764'_54 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   () ->
@@ -98,9 +86,9 @@ d_ana'7510''45''8764'_62 ::
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''7510''7496'__14
-d_ana'7510''45''8764'_62 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
-  = du_ana'7510''45''8764'_62 v0 v1 v5 v6 v7 v8 v9 v10
-du_ana'7510''45''8764'_62 ::
+d_ana'7510''45''8764'_54 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
+  = du_ana'7510''45''8764'_54 v0 v1 v5 v6 v7 v8 v9 v10
+du_ana'7510''45''8764'_54 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> AgdaAny) ->
@@ -112,14 +100,14 @@ du_ana'7510''45''8764'_62 ::
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''7510''7496'__14
-du_ana'7510''45''8764'_62 v0 v1 v2 v3 v4 v5 v6 v7
+du_ana'7510''45''8764'_54 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.Adequacy.GradedRelation.C_constructor_26
       (coe
-         du_anaTree'7510'_82 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+         du_anaTree'7510'_74 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
          (coe v2 v5) (coe v3 v6) (coe v4 v5 v6 v7))
 -- Once.Adequacy.GradedAnaBridge.anaTreeᵖ
-d_anaTree'7510'_82 ::
+d_anaTree'7510'_74 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   () ->
@@ -134,9 +122,9 @@ d_anaTree'7510'_82 ::
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-d_anaTree'7510'_82 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
-  = du_anaTree'7510'_82 v0 v1 v5 v6 v7 v8 v9 v10
-du_anaTree'7510'_82 ::
+d_anaTree'7510'_74 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
+  = du_anaTree'7510'_74 v0 v1 v5 v6 v7 v8 v9 v10
+du_anaTree'7510'_74 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> AgdaAny) ->
@@ -148,7 +136,7 @@ du_anaTree'7510'_82 ::
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-du_anaTree'7510'_82 v0 v1 v2 v3 v4 v5 v6 v7
+du_anaTree'7510'_74 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v7 of
       MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554 v10
         -> case coe v6 of
@@ -156,12 +144,12 @@ du_anaTree'7510'_82 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe
                     MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554
                     (coe
-                       du_mapAna'7510''45''8764'_104 (coe v0) (coe v1) (coe v1) (coe v2)
+                       du_mapAna'7510''45''8764'_96 (coe v0) (coe v1) (coe v1) (coe v2)
                        (coe v3) (coe v4) (coe v5) (coe v11) (coe v10))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.GradedAnaBridge.mapAnaᵖ-∼
-d_mapAna'7510''45''8764'_104 ::
+d_mapAna'7510''45''8764'_96 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
@@ -174,10 +162,10 @@ d_mapAna'7510''45''8764'_104 ::
    AgdaAny ->
    AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542) ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-d_mapAna'7510''45''8764'_104 v0 v1 v2 ~v3 ~v4 ~v5 v6 v7 v8 v9 v10
-                             v11
-  = du_mapAna'7510''45''8764'_104 v0 v1 v2 v6 v7 v8 v9 v10 v11
-du_mapAna'7510''45''8764'_104 ::
+d_mapAna'7510''45''8764'_96 v0 v1 v2 ~v3 ~v4 ~v5 v6 v7 v8 v9 v10
+                            v11
+  = du_mapAna'7510''45''8764'_96 v0 v1 v2 v6 v7 v8 v9 v10 v11
+du_mapAna'7510''45''8764'_96 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
@@ -187,12 +175,12 @@ du_mapAna'7510''45''8764'_104 ::
    AgdaAny ->
    AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542) ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-du_mapAna'7510''45''8764'_104 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_mapAna'7510''45''8764'_96 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v2 of
       MAlonzo.Code.Once.Lang.Polynomial.C_SK_8 -> coe v8
       MAlonzo.Code.Once.Lang.Polynomial.C_SId_10
         -> coe
-             du_ana'7510''45''8764'_62 (coe v0) (coe v1) (coe v3) (coe v4)
+             du_ana'7510''45''8764'_54 (coe v0) (coe v1) (coe v3) (coe v4)
              (coe v5) (coe v6) (coe v7) (coe v8)
       MAlonzo.Code.Once.Lang.Polynomial.C__S'8853'__12 v9 v10
         -> case coe v6 of
@@ -200,14 +188,14 @@ du_mapAna'7510''45''8764'_104 v0 v1 v2 v3 v4 v5 v6 v7 v8
                -> case coe v7 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
                       -> coe
-                           du_mapAna'7510''45''8764'_104 (coe v0) (coe v1) (coe v9) (coe v3)
+                           du_mapAna'7510''45''8764'_96 (coe v0) (coe v1) (coe v9) (coe v3)
                            (coe v4) (coe v5) (coe v11) (coe v12) (coe v8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v11
                -> case coe v7 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v12
                       -> coe
-                           du_mapAna'7510''45''8764'_104 (coe v0) (coe v1) (coe v10) (coe v3)
+                           du_mapAna'7510''45''8764'_96 (coe v0) (coe v1) (coe v10) (coe v3)
                            (coe v4) (coe v5) (coe v11) (coe v12) (coe v8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -221,17 +209,17 @@ du_mapAna'7510''45''8764'_104 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              -> coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                   (coe
-                                     du_mapAna'7510''45''8764'_104 (coe v0) (coe v1) (coe v9)
+                                     du_mapAna'7510''45''8764'_96 (coe v0) (coe v1) (coe v9)
                                      (coe v3) (coe v4) (coe v5) (coe v11) (coe v13) (coe v15))
                                   (coe
-                                     du_mapAna'7510''45''8764'_104 (coe v0) (coe v1) (coe v10)
+                                     du_mapAna'7510''45''8764'_96 (coe v0) (coe v1) (coe v10)
                                      (coe v3) (coe v4) (coe v5) (coe v12) (coe v14) (coe v16))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.GradedAnaBridge._.ana∞-∼
-d_ana'8734''45''8764'_206 ::
+d_ana'8734''45''8764'_198 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   () ->
@@ -246,10 +234,10 @@ d_ana'8734''45''8764'_206 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8734''7496'__54
-d_ana'8734''45''8764'_206 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
-  = du_ana'8734''45''8764'_206 v0 v1 v5 v6 v7 v8 v9 v10
-du_ana'8734''45''8764'_206 ::
+  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8734''7496'__34
+d_ana'8734''45''8764'_198 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
+  = du_ana'8734''45''8764'_198 v0 v1 v5 v6 v7 v8 v9 v10
+du_ana'8734''45''8764'_198 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_78) ->
@@ -261,15 +249,15 @@ du_ana'8734''45''8764'_206 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny ->
-  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8734''7496'__54
-du_ana'8734''45''8764'_206 v0 v1 v2 v3 v4 v5 v6 v7
+  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8734''7496'__34
+du_ana'8734''45''8764'_198 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.GradedRelation.C_constructor_66
+      MAlonzo.Code.Once.Adequacy.GradedRelation.C_constructor_46
       (coe
-         du_tree'8734''45''8764'_212 (coe v0) (coe v1) (coe v2) (coe v3)
+         du_tree'8734''45''8764'_204 (coe v0) (coe v1) (coe v2) (coe v3)
          (coe v4) (coe v3 v6) (coe v4 v5 v6 v7))
 -- Once.Adequacy.GradedAnaBridge._.tree∞-∼
-d_tree'8734''45''8764'_212 ::
+d_tree'8734''45''8764'_204 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   () ->
@@ -285,9 +273,9 @@ d_tree'8734''45''8764'_212 ::
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504 ->
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-d_tree'8734''45''8764'_212 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 ~v8 v9 v10
-  = du_tree'8734''45''8764'_212 v0 v1 v5 v6 v7 v9 v10
-du_tree'8734''45''8764'_212 ::
+d_tree'8734''45''8764'_204 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 ~v8 v9 v10
+  = du_tree'8734''45''8764'_204 v0 v1 v5 v6 v7 v9 v10
+du_tree'8734''45''8764'_204 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_78) ->
@@ -299,7 +287,7 @@ du_tree'8734''45''8764'_212 ::
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504 ->
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-du_tree'8734''45''8764'_212 v0 v1 v2 v3 v4 v5 v6
+du_tree'8734''45''8764'_204 v0 v1 v2 v3 v4 v5 v6
   = case coe v6 of
       MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'ret_518 v8 v11
         -> case coe v5 of
@@ -310,7 +298,7 @@ du_tree'8734''45''8764'_212 v0 v1 v2 v3 v4 v5 v6
                        MAlonzo.Code.Once.Lang.Iterative.du_mapAna'8734'_338 (coe v1)
                        (coe v1) (coe v2) (coe v8))
                     (coe
-                       du_mapAna'8734''45''8764'_220 (coe v0) (coe v1) (coe v2) (coe v3)
+                       du_mapAna'8734''45''8764'_212 (coe v0) (coe v1) (coe v2) (coe v3)
                        (coe v4) (coe v1) (coe v8) (coe v12) (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'call_532 v10 v13
@@ -324,7 +312,7 @@ du_tree'8734''45''8764'_212 v0 v1 v2 v3 v4 v5 v6
                          (coe v2) (coe v10 v17))
                     (\ v17 ->
                        coe
-                         du_tree'8734''45''8764'_212 (coe v0) (coe v1) (coe v2) (coe v3)
+                         du_tree'8734''45''8764'_204 (coe v0) (coe v1) (coe v2) (coe v3)
                          (coe v4) (coe v16 v17) (coe v13 v17))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'halt_540
@@ -332,7 +320,7 @@ du_tree'8734''45''8764'_212 v0 v1 v2 v3 v4 v5 v6
              MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'halt_540
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.GradedAnaBridge._.mapAna∞-∼
-d_mapAna'8734''45''8764'_220 ::
+d_mapAna'8734''45''8764'_212 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   () ->
@@ -346,10 +334,10 @@ d_mapAna'8734''45''8764'_220 ::
    MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-d_mapAna'8734''45''8764'_220 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
+d_mapAna'8734''45''8764'_212 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
                              v11
-  = du_mapAna'8734''45''8764'_220 v0 v1 v5 v6 v7 v8 v9 v10 v11
-du_mapAna'8734''45''8764'_220 ::
+  = du_mapAna'8734''45''8764'_212 v0 v1 v5 v6 v7 v8 v9 v10 v11
+du_mapAna'8734''45''8764'_212 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_78) ->
@@ -360,12 +348,12 @@ du_mapAna'8734''45''8764'_220 ::
    MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-du_mapAna'8734''45''8764'_220 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_mapAna'8734''45''8764'_212 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v5 of
       MAlonzo.Code.Once.Lang.Polynomial.C_SK_8 -> coe v8
       MAlonzo.Code.Once.Lang.Polynomial.C_SId_10
         -> coe
-             du_ana'8734''45''8764'_206 (coe v0) (coe v1) (coe v2) (coe v3)
+             du_ana'8734''45''8764'_198 (coe v0) (coe v1) (coe v2) (coe v3)
              (coe v4) (coe v6) (coe v7) (coe v8)
       MAlonzo.Code.Once.Lang.Polynomial.C__S'8853'__12 v9 v10
         -> case coe v6 of
@@ -373,14 +361,14 @@ du_mapAna'8734''45''8764'_220 v0 v1 v2 v3 v4 v5 v6 v7 v8
                -> case coe v7 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
                       -> coe
-                           du_mapAna'8734''45''8764'_220 (coe v0) (coe v1) (coe v2) (coe v3)
+                           du_mapAna'8734''45''8764'_212 (coe v0) (coe v1) (coe v2) (coe v3)
                            (coe v4) (coe v9) (coe v11) (coe v12) (coe v8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v11
                -> case coe v7 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v12
                       -> coe
-                           du_mapAna'8734''45''8764'_220 (coe v0) (coe v1) (coe v2) (coe v3)
+                           du_mapAna'8734''45''8764'_212 (coe v0) (coe v1) (coe v2) (coe v3)
                            (coe v4) (coe v10) (coe v11) (coe v12) (coe v8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -394,259 +382,29 @@ du_mapAna'8734''45''8764'_220 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              -> coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                   (coe
-                                     du_mapAna'8734''45''8764'_220 (coe v0) (coe v1) (coe v2)
+                                     du_mapAna'8734''45''8764'_212 (coe v0) (coe v1) (coe v2)
                                      (coe v3) (coe v4) (coe v9) (coe v11) (coe v13) (coe v15))
                                   (coe
-                                     du_mapAna'8734''45''8764'_220 (coe v0) (coe v1) (coe v2)
-                                     (coe v3) (coe v4) (coe v10) (coe v12) (coe v14) (coe v16))
-                           _ -> MAlonzo.RTE.mazUnreachableError
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.GradedAnaBridge._.ana⁺-∼
-d_ana'8314''45''8764'_296 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny ->
-  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8314''7496'__34
-d_ana'8314''45''8764'_296 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
-  = du_ana'8314''45''8764'_296 v0 v1 v5 v6 v7 v8 v9 v10
-du_ana'8314''45''8764'_296 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny ->
-  MAlonzo.Code.Once.Adequacy.GradedRelation.T__'8764''8314''7496'__34
-du_ana'8314''45''8764'_296 v0 v1 v2 v3 v4 v5 v6 v7
-  = coe
-      MAlonzo.Code.Once.Adequacy.GradedRelation.C_constructor_46
-      (coe
-         du_root'8314''45''8764'_302 (coe v0) (coe v1) (coe v2) (coe v3)
-         (coe v4) (coe v2 v5) (coe v3 v6) (coe v4 v5 v6 v7))
--- Once.Adequacy.GradedAnaBridge._.root⁺-∼
-d_root'8314''45''8764'_302 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-d_root'8314''45''8764'_302 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
-  = du_root'8314''45''8764'_302 v0 v1 v5 v6 v7 v8 v9 v10
-du_root'8314''45''8764'_302 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-du_root'8314''45''8764'_302 v0 v1 v2 v3 v4 v5 v6 v7
-  = case coe v5 of
-      MAlonzo.Code.Once.Lang.Guarded.C_call'8314'_64 v8 v9 v10
-        -> case coe v7 of
-             MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'call_532 v14 v17
-               -> case coe v6 of
-                    MAlonzo.Code.Once.Lang.Trace.C_call_118 v18 v19 v20
-                      -> coe
-                           MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'call_532
-                           (\ v21 ->
-                              coe
-                                MAlonzo.Code.Once.Lang.Guarded.du_anaTree'8314'_190 (coe v1)
-                                (coe v2) (coe v10 v21))
-                           (\ v21 ->
-                              coe
-                                du_tree'8314''45''8764'_308 (coe v0) (coe v1) (coe v2) (coe v3)
-                                (coe v4) (coe v20 v21) (coe v17 v21))
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Guarded.C_halt'8314'_68 v8 v9
-        -> coe
-             seq (coe v7)
-             (coe
-                MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'halt_540)
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.GradedAnaBridge._.tree⁺-∼
-d_tree'8314''45''8764'_308 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_78 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-d_tree'8314''45''8764'_308 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 ~v8 v9 v10
-  = du_tree'8314''45''8764'_308 v0 v1 v5 v6 v7 v9 v10
-du_tree'8314''45''8764'_308 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504 ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-du_tree'8314''45''8764'_308 v0 v1 v2 v3 v4 v5 v6
-  = case coe v6 of
-      MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'ret_518 v8 v11
-        -> case coe v5 of
-             MAlonzo.Code.Once.Lang.Trace.C_ret_114 v12
-               -> coe
-                    MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'ret_518
-                    (coe
-                       MAlonzo.Code.Once.Lang.Guarded.du_mapAna'8314'_204 (coe v1)
-                       (coe v1) (coe v2) (coe v8))
-                    (coe
-                       du_mapAna'8314''45''8764'_316 (coe v0) (coe v1) (coe v2) (coe v3)
-                       (coe v4) (coe v1) (coe v8) (coe v12) (coe v11))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'call_532 v10 v13
-        -> case coe v5 of
-             MAlonzo.Code.Once.Lang.Trace.C_call_118 v14 v15 v16
-               -> coe
-                    MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'call_532
-                    (\ v17 ->
-                       coe
-                         MAlonzo.Code.Once.Lang.Guarded.du_anaTree'8314'_190 (coe v1)
-                         (coe v2) (coe v10 v17))
-                    (\ v17 ->
-                       coe
-                         du_tree'8314''45''8764'_308 (coe v0) (coe v1) (coe v2) (coe v3)
-                         (coe v4) (coe v16 v17) (coe v13 v17))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'halt_540
-        -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'halt_540
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.GradedAnaBridge._.mapAna⁺-∼
-d_mapAna'8314''45''8764'_316 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () ->
-  () ->
-  (AgdaAny -> AgdaAny -> ()) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-d_mapAna'8314''45''8764'_316 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 v10
-                             v11
-  = du_mapAna'8314''45''8764'_316 v0 v1 v5 v6 v7 v8 v9 v10 v11
-du_mapAna'8314''45''8764'_316 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-du_mapAna'8314''45''8764'_316 v0 v1 v2 v3 v4 v5 v6 v7 v8
-  = case coe v5 of
-      MAlonzo.Code.Once.Lang.Polynomial.C_SK_8 -> coe v8
-      MAlonzo.Code.Once.Lang.Polynomial.C_SId_10
-        -> coe
-             du_ana'8314''45''8764'_296 (coe v0) (coe v1) (coe v2) (coe v3)
-             (coe v4) (coe v6) (coe v7) (coe v8)
-      MAlonzo.Code.Once.Lang.Polynomial.C__S'8853'__12 v9 v10
-        -> case coe v6 of
-             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v11
-               -> case coe v7 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
-                      -> coe
-                           du_mapAna'8314''45''8764'_316 (coe v0) (coe v1) (coe v2) (coe v3)
-                           (coe v4) (coe v9) (coe v11) (coe v12) (coe v8)
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v11
-               -> case coe v7 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v12
-                      -> coe
-                           du_mapAna'8314''45''8764'_316 (coe v0) (coe v1) (coe v2) (coe v3)
-                           (coe v4) (coe v10) (coe v11) (coe v12) (coe v8)
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Polynomial.C__S'8855'__14 v9 v10
-        -> case coe v6 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-               -> case coe v7 of
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
-                      -> case coe v8 of
-                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
-                             -> coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                  (coe
-                                     du_mapAna'8314''45''8764'_316 (coe v0) (coe v1) (coe v2)
-                                     (coe v3) (coe v4) (coe v9) (coe v11) (coe v13) (coe v15))
-                                  (coe
-                                     du_mapAna'8314''45''8764'_316 (coe v0) (coe v1) (coe v2)
+                                     du_mapAna'8734''45''8764'_212 (coe v0) (coe v1) (coe v2)
                                      (coe v3) (coe v4) (coe v10) (coe v12) (coe v14) (coe v16))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.GradedAnaBridge.in-relᵍ
-d_in'45'rel'7501'_412 ::
+d_in'45'rel'7501'_272 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-d_in'45'rel'7501'_412 ~v0 ~v1 v2 v3 v4 v5 v6
-  = du_in'45'rel'7501'_412 v2 v3 v4 v5 v6
-du_in'45'rel'7501'_412 ::
+d_in'45'rel'7501'_272 ~v0 ~v1 v2 v3 v4 v5 v6
+  = du_in'45'rel'7501'_272 v2 v3 v4 v5 v6
+du_in'45'rel'7501'_272 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-du_in'45'rel'7501'_412 v0 v1 v2 v3 v4
+du_in'45'rel'7501'_272 v0 v1 v2 v3 v4
   = case coe v1 of
       MAlonzo.Code.Once.Lang.Type.WellFormed.C_wf'45'K_52 v6 -> erased
       MAlonzo.Code.Once.Lang.Type.WellFormed.C_wf'45'Id_54 -> coe v4
@@ -658,14 +416,14 @@ du_in'45'rel'7501'_412 v0 v1 v2 v3 v4
                       -> case coe v3 of
                            MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
                              -> coe
-                                  du_in'45'rel'7501'_412 (coe v9) (coe v7) (coe v11) (coe v12)
+                                  du_in'45'rel'7501'_272 (coe v9) (coe v7) (coe v11) (coe v12)
                                   (coe v4)
                            _ -> MAlonzo.RTE.mazUnreachableError
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v11
                       -> case coe v3 of
                            MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v12
                              -> coe
-                                  du_in'45'rel'7501'_412 (coe v10) (coe v8) (coe v11) (coe v12)
+                                  du_in'45'rel'7501'_272 (coe v10) (coe v8) (coe v11) (coe v12)
                                   (coe v4)
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -682,10 +440,10 @@ du_in'45'rel'7501'_412 v0 v1 v2 v3 v4
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                          (coe
-                                            du_in'45'rel'7501'_412 (coe v9) (coe v7) (coe v11)
+                                            du_in'45'rel'7501'_272 (coe v9) (coe v7) (coe v11)
                                             (coe v13) (coe v15))
                                          (coe
-                                            du_in'45'rel'7501'_412 (coe v10) (coe v8) (coe v12)
+                                            du_in'45'rel'7501'_272 (coe v10) (coe v8) (coe v12)
                                             (coe v14) (coe v16))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -693,7 +451,7 @@ du_in'45'rel'7501'_412 v0 v1 v2 v3 v4
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.GradedAnaBridge.in-relᵍ-T
-d_in'45'rel'7501''45'T_468 ::
+d_in'45'rel'7501''45'T_328 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -704,27 +462,27 @@ d_in'45'rel'7501''45'T_468 ::
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-d_in'45'rel'7501''45'T_468 ~v0 ~v1 v2 v3 ~v4 ~v5 v6 v7 v8
-  = du_in'45'rel'7501''45'T_468 v2 v3 v6 v7 v8
-du_in'45'rel'7501''45'T_468 ::
+d_in'45'rel'7501''45'T_328 ~v0 ~v1 v2 v3 ~v4 ~v5 v6 v7 v8
+  = du_in'45'rel'7501''45'T_328 v2 v3 v6 v7 v8
+du_in'45'rel'7501''45'T_328 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-du_in'45'rel'7501''45'T_468 v0 v1 v2 v3 v4
+du_in'45'rel'7501''45'T_328 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Denotation.TraceMonadLaws.du_RelT'8242''45'fmap_350
       (coe v2) (coe v3)
       (coe
          (\ v5 v6 v7 ->
             coe
-              du_in'45'rel'7501'_412 (coe v0) (coe v1) (coe v5) (coe v6)
+              du_in'45'rel'7501'_272 (coe v0) (coe v1) (coe v5) (coe v6)
               (coe v7)))
       (coe v4)
 -- Once.Adequacy.GradedAnaBridge.anaSD
-d_anaSD_500 ::
+d_anaSD_360 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -732,13 +490,13 @@ d_anaSD_500 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Stream.T_ν'7496'_14
-d_anaSD_500 ~v0 ~v1 v2 v3 ~v4 v5 = du_anaSD_500 v2 v3 v5
-du_anaSD_500 ::
+d_anaSD_360 ~v0 ~v1 v2 v3 ~v4 v5 = du_anaSD_360 v2 v3 v5
+du_anaSD_360 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Stream.T_ν'7496'_14
-du_anaSD_500 v0 v1 v2
+du_anaSD_360 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Lang.Stream.du_anaF'7496'_168 (coe v0)
       (coe
@@ -752,7 +510,7 @@ du_anaSD_500 v0 v1 v2
                  MAlonzo.Code.Once.Lang.Trace.du__'62''62''61'T__132 (coe v2)
                  (coe (\ v4 -> coe v4 v3)))))
 -- Once.Adequacy.GradedAnaBridge.ana-bridgeᵍ
-d_ana'45'bridge'7501'_532 ::
+d_ana'45'bridge'7501'_392 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -762,9 +520,9 @@ d_ana'45'bridge'7501'_532 ::
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-d_ana'45'bridge'7501'_532 v0 v1 ~v2 v3 v4 v5 v6 v7 v8 v9 v10
-  = du_ana'45'bridge'7501'_532 v0 v1 v3 v4 v5 v6 v7 v8 v9 v10
-du_ana'45'bridge'7501'_532 ::
+d_ana'45'bridge'7501'_392 v0 v1 ~v2 v3 v4 v5 v6 v7 v8 v9 v10
+  = du_ana'45'bridge'7501'_392 v0 v1 v3 v4 v5 v6 v7 v8 v9 v10
+du_ana'45'bridge'7501'_392 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -773,24 +531,24 @@ du_ana'45'bridge'7501'_532 ::
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+du_ana'45'bridge'7501'_392 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v1 of
       MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
         -> coe
-             du_ana'7510''45''8764'_62 (coe v0) (coe du_H_556 (coe v2))
+             du_ana'7510''45''8764'_54 (coe v0) (coe du_H_416 (coe v2))
              (coe
                 (\ v10 ->
                    coe
-                     MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2 erased
+                     MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v2 erased
                      (coe
-                        MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v2) (coe v3)
+                        MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_158 (coe v2) (coe v3)
                         (coe v4 v10))))
              (coe
                 (\ v10 ->
                    coe
                      MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                      (coe
-                        MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2 erased)
+                        MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v2 erased)
                      (coe
                         MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                         (coe
@@ -799,12 +557,12 @@ du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                         (coe
                            MAlonzo.Code.Once.Lang.Trace.du__'62''62''61'T__132 (coe v5)
                            (coe (\ v11 -> coe v11 v10))))))
-             (coe du_cr_564 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+             (coe du_cr_424 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
              (coe v7) (coe v8) (coe v9)
       MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
         -> coe
              MAlonzo.Code.Once.Denotation.ValueDomainLaws.du_ana'7496''45''8764'_152
-             (coe du_H_608 (coe v2))
+             (coe du_H_468 (coe v2))
              (coe
                 (\ v10 ->
                    coe
@@ -812,9 +570,9 @@ du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                      (coe
                         (\ v11 ->
                            coe
-                             MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2 erased
+                             MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v2 erased
                              (coe
-                                MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v2) (coe v3)
+                                MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_158 (coe v2) (coe v3)
                                 (coe v11))))
                      (coe v4 v10)))
              (coe
@@ -822,7 +580,7 @@ du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                    coe
                      MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                      (coe
-                        MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2 erased)
+                        MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v2 erased)
                      (coe
                         MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                         (coe
@@ -831,52 +589,15 @@ du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                         (coe
                            MAlonzo.Code.Once.Lang.Trace.du__'62''62''61'T__132 (coe v5)
                            (coe (\ v11 -> coe v11 v10))))))
-             (coe du_cr_618 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
+             (coe du_cr_478 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
              (coe v7) (coe v8) (coe v9)
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
+      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
         -> case coe v5 of
              MAlonzo.Code.Once.Lang.Trace.C_ret_114 v10
                -> case coe v6 of
                     MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554 v13
                       -> coe
-                           du_ana'8314''45''8764'_296 (coe v0) (coe du_H_662 (coe v2))
-                           (coe
-                              (\ v14 ->
-                                 coe
-                                   MAlonzo.Code.Once.Lang.Guarded.du_fmap'8314'_154
-                                   (coe
-                                      (\ v15 ->
-                                         coe
-                                           MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2
-                                           erased
-                                           (coe
-                                              MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162
-                                              (coe v2) (coe v3) (coe v15))))
-                                   (coe v4 v14)))
-                           (coe
-                              (\ v14 ->
-                                 coe
-                                   MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
-                                   (coe
-                                      MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2
-                                      erased)
-                                   (coe
-                                      MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
-                                      (coe
-                                         MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_232
-                                         (coe v2) (coe v3))
-                                      (coe v10 v14))))
-                           (coe du_cr_670 (coe v2) (coe v3) (coe v4) (coe v10) (coe v13))
-                           (coe v7) (coe v8) (coe v9)
-                    _ -> MAlonzo.RTE.mazUnreachableError
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
-        -> case coe v5 of
-             MAlonzo.Code.Once.Lang.Trace.C_ret_114 v10
-               -> case coe v6 of
-                    MAlonzo.Code.Once.Lang.Trace.C_rel'45'ret_554 v13
-                      -> coe
-                           du_ana'8734''45''8764'_206 (coe v0) (coe du_H_706 (coe v2))
+                           du_ana'8734''45''8764'_198 (coe v0) (coe du_H_522 (coe v2))
                            (coe
                               (\ v14 ->
                                  coe
@@ -884,10 +605,10 @@ du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    (coe
                                       (\ v15 ->
                                          coe
-                                           MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2
+                                           MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v2
                                            erased
                                            (coe
-                                              MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162
+                                              MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_158
                                               (coe v2) (coe v3) (coe v15))))
                                    (coe v4 v14)))
                            (coe
@@ -895,7 +616,7 @@ du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  coe
                                    MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                                    (coe
-                                      MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v2
+                                      MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v2
                                       erased)
                                    (coe
                                       MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
@@ -903,13 +624,13 @@ du_ana'45'bridge'7501'_532 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                          MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_232
                                          (coe v2) (coe v3))
                                       (coe v10 v14))))
-                           (coe du_cr_714 (coe v2) (coe v3) (coe v10) (coe v13)) (coe v7)
+                           (coe du_cr_530 (coe v2) (coe v3) (coe v10) (coe v13)) (coe v7)
                            (coe v8) (coe v9)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.GradedAnaBridge._.H
-d_H_556 ::
+d_H_416 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -920,15 +641,15 @@ d_H_556 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-d_H_556 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 = du_H_556 v2
-du_H_556 ::
+d_H_416 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 = du_H_416 v2
+du_H_416 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-du_H_556 v0
+du_H_416 v0
   = coe
       MAlonzo.Code.Once.Lang.FunctorMeaning.du_translateF_56 (coe v0)
 -- Once.Adequacy.GradedAnaBridge._.cr
-d_cr_564 ::
+d_cr_424 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -941,9 +662,9 @@ d_cr_564 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-d_cr_564 ~v0 ~v1 v2 v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
-  = du_cr_564 v2 v3 v4 v5 v6 v10 v11 v12
-du_cr_564 ::
+d_cr_424 ~v0 ~v1 v2 v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
+  = du_cr_424 v2 v3 v4 v5 v6 v10 v11 v12
+du_cr_424 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> AgdaAny) ->
@@ -951,17 +672,17 @@ du_cr_564 ::
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-du_cr_564 v0 v1 v2 v3 v4 v5 v6 v7
+du_cr_424 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      du_in'45'rel'7501''45'T_468 (coe v0) (coe v1)
+      du_in'45'rel'7501''45'T_328 (coe v0) (coe v1)
       (coe MAlonzo.Code.Once.Lang.Trace.C_ret_114 (coe v2 v5))
       (coe
          MAlonzo.Code.Once.Lang.Trace.du__'62''62''61'T__132 (coe v3)
          (coe (\ v8 -> coe v8 v6)))
       (coe
-         du_kr_576 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7))
+         du_kr_436 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7))
 -- Once.Adequacy.GradedAnaBridge._._.kr
-d_kr_576 ::
+d_kr_436 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -974,21 +695,21 @@ d_kr_576 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-d_kr_576 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
-  = du_kr_576 v4 v5 v6 v10 v11 v12
-du_kr_576 ::
+d_kr_436 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
+  = du_kr_436 v4 v5 v6 v10 v11 v12
+du_kr_436 ::
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-du_kr_576 v0 v1 v2 v3 v4 v5
+du_kr_436 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'bind_250
+      MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'bind_218
       (coe MAlonzo.Code.Once.Lang.Trace.du_returnT_126 v0) (coe v1)
       (coe v2) (coe (\ v6 v7 v8 -> coe v8 v3 v4 v5))
 -- Once.Adequacy.GradedAnaBridge._.H
-d_H_608 ::
+d_H_468 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -999,15 +720,15 @@ d_H_608 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-d_H_608 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 = du_H_608 v2
-du_H_608 ::
+d_H_468 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 = du_H_468 v2
+du_H_468 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-du_H_608 v0
+du_H_468 v0
   = coe
       MAlonzo.Code.Once.Lang.FunctorMeaning.du_translateF_56 (coe v0)
 -- Once.Adequacy.GradedAnaBridge._.cr
-d_cr_618 ::
+d_cr_478 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -1020,9 +741,9 @@ d_cr_618 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-d_cr_618 ~v0 ~v1 v2 v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
-  = du_cr_618 v2 v3 v4 v5 v6 v10 v11 v12
-du_cr_618 ::
+d_cr_478 ~v0 ~v1 v2 v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
+  = du_cr_478 v2 v3 v4 v5 v6 v10 v11 v12
+du_cr_478 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
@@ -1030,9 +751,9 @@ du_cr_618 ::
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-du_cr_618 v0 v1 v2 v3 v4 v5 v6 v7
+du_cr_478 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      du_in'45'rel'7501''45'T_468 (coe v0) (coe v1)
+      du_in'45'rel'7501''45'T_328 (coe v0) (coe v1)
       (coe
          MAlonzo.Code.Once.Lang.Trace.du__'62''62''61'T__132
          (coe MAlonzo.Code.Once.Lang.Trace.du_returnT_126 v2)
@@ -1041,9 +762,9 @@ du_cr_618 v0 v1 v2 v3 v4 v5 v6 v7
          MAlonzo.Code.Once.Lang.Trace.du__'62''62''61'T__132 (coe v3)
          (coe (\ v8 -> coe v8 v6)))
       (coe
-         du_kr_630 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7))
+         du_kr_490 (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v7))
 -- Once.Adequacy.GradedAnaBridge._._.kr
-d_kr_630 ::
+d_kr_490 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -1056,139 +777,21 @@ d_kr_630 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-d_kr_630 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
-  = du_kr_630 v4 v5 v6 v10 v11 v12
-du_kr_630 ::
+d_kr_490 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
+  = du_kr_490 v4 v5 v6 v10 v11 v12
+du_kr_490 ::
   (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
   MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
   MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542 ->
   AgdaAny ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_RelT'8242'_542
-du_kr_630 v0 v1 v2 v3 v4 v5
+du_kr_490 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'bind_250
+      MAlonzo.Code.Once.Adequacy.GradedRelation.du_RelGT'45'bind_218
       (coe MAlonzo.Code.Once.Lang.Trace.du_returnT_126 v0) (coe v1)
       (coe v2) (coe (\ v6 v7 v8 -> coe v8 v3 v4 v5))
 -- Once.Adequacy.GradedAnaBridge._.H
-d_H_662 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-d_H_662 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 = du_H_662 v2
-du_H_662 ::
-  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-du_H_662 v0
-  = coe
-      MAlonzo.Code.Once.Lang.FunctorMeaning.du_translateF_56 (coe v0)
--- Once.Adequacy.GradedAnaBridge._.cr
-d_cr_670 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-d_cr_670 ~v0 ~v1 v2 v3 v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
-  = du_cr_670 v2 v3 v4 v5 v6 v10 v11 v12
-du_cr_670 ::
-  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Guarded.T_T'8314'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny ->
-   AgdaAny ->
-   AgdaAny ->
-   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504) ->
-  AgdaAny ->
-  AgdaAny ->
-  AgdaAny ->
-  MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-du_cr_670 v0 v1 v2 v3 v4 v5 v6 v7
-  = coe
-      MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.du_RelT'8734''8242''45''8776'_694
-      (coe
-         MAlonzo.Code.Once.Lang.Guarded.du_forget'8314'_86
-         (coe
-            MAlonzo.Code.Once.Lang.Guarded.du_fmap'8314'_154
-            (coe
-               (\ v8 ->
-                  coe
-                    MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased
-                    (coe
-                       MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v0) (coe v1)
-                       (coe v8))))
-            (coe v2 v5)))
-      (coe
-         MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
-         (coe
-            MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased)
-         (coe
-            MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
-            (coe
-               MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_232
-               (coe v0) (coe v1))
-            (coe v3 v6)))
-      (coe
-         MAlonzo.Code.Once.Denotation.GuardedLaws.du_forget'45'bind'8314'_14
-         (coe v2 v5)
-         (coe
-            (\ v8 ->
-               coe
-                 MAlonzo.Code.Once.Lang.Iterative.du_return'8734'_90
-                 (coe
-                    MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased
-                    (coe
-                       MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v0) (coe v1)
-                       (coe v8))))))
-      (coe
-         MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.du_RelT'8734''8242''45'bind_596
-         (coe v3 v6)
-         (coe
-            (\ v8 ->
-               coe
-                 MAlonzo.Code.Once.Lang.Iterative.du_return'8734'_90
-                 (coe
-                    MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased
-                    (coe
-                       MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v0) (coe v1)
-                       (coe v8)))))
-         (coe v4 v5 v6 v7)
-         (coe
-            (\ v8 v9 v10 ->
-               coe
-                 MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'ret_518
-                 (coe
-                    MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased
-                    (coe
-                       MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v0) (coe v1)
-                       (coe v8)))
-                 (coe
-                    du_in'45'rel'7501'_412 (coe v0) (coe v1) (coe v8) (coe v9)
-                    (coe v10)))))
--- Once.Adequacy.GradedAnaBridge._.H
-d_H_706 ::
+d_H_522 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -1202,15 +805,15 @@ d_H_706 ::
   AgdaAny ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-d_H_706 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 = du_H_706 v2
-du_H_706 ::
+d_H_522 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 = du_H_522 v2
+du_H_522 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6
-du_H_706 v0
+du_H_522 v0
   = coe
       MAlonzo.Code.Once.Lang.FunctorMeaning.du_translateF_56 (coe v0)
 -- Once.Adequacy.GradedAnaBridge._.cr
-d_cr_714 ::
+d_cr_530 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
@@ -1228,9 +831,9 @@ d_cr_714 ::
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-d_cr_714 ~v0 ~v1 v2 v3 ~v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
-  = du_cr_714 v2 v3 v5 v6 v10 v11 v12
-du_cr_714 ::
+d_cr_530 ~v0 ~v1 v2 v3 ~v4 v5 v6 ~v7 ~v8 ~v9 v10 v11 v12
+  = du_cr_530 v2 v3 v5 v6 v10 v11 v12
+du_cr_530 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 ->
   (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
@@ -1242,7 +845,7 @@ du_cr_714 ::
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelT'8734''8242'_504
-du_cr_714 v0 v1 v2 v3 v4 v5 v6
+du_cr_530 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.du_RelT'8734''8242''45'bind_596
       (coe v2 v5)
@@ -1251,9 +854,9 @@ du_cr_714 v0 v1 v2 v3 v4 v5 v6
             coe
               MAlonzo.Code.Once.Lang.Iterative.du_return'8734'_90
               (coe
-                 MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased
+                 MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v0 erased
                  (coe
-                    MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v0) (coe v1)
+                    MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_158 (coe v0) (coe v1)
                     (coe v7)))))
       (coe v3 v4 v5 v6)
       (coe
@@ -1261,10 +864,10 @@ du_cr_714 v0 v1 v2 v3 v4 v5 v6
             coe
               MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.C_rel'8734''45'ret_518
               (coe
-                 MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased
+                 MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v0 erased
                  (coe
-                    MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_162 (coe v0) (coe v1)
+                    MAlonzo.Code.Once.Lang.GradedOps.du_cf'7515'_158 (coe v0) (coe v1)
                     (coe v7)))
               (coe
-                 du_in'45'rel'7501'_412 (coe v0) (coe v1) (coe v7) (coe v8)
+                 du_in'45'rel'7501'_272 (coe v0) (coe v1) (coe v7) (coe v8)
                  (coe v9))))

@@ -1801,7 +1801,7 @@ du_bin'45'case_1202 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                           (coe
                                              MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14)
                                           (coe
-                                             MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116
+                                             MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
                                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                              (coe
                                                 MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v4 v0
@@ -2136,7 +2136,7 @@ du_neg_1526 v0 v1 v2 v3 v4 v5 v6 v7
                              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                              (coe MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14)
                              (coe
-                                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116
+                                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                                 (coe
                                    MAlonzo.Code.Once.Arith.Prim.du_primSem_238
@@ -2828,7 +2828,7 @@ du_fbin'45'case_1894 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                           (coe
                                              MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Float_16)
                                           (coe
-                                             MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116
+                                             MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
                                              (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                                              (coe
                                                 MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v4 v0
@@ -3164,7 +3164,7 @@ du_conv_2198 v0 v1 v2 v3 v4 v5 v6 v7
                              (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                              (coe MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Float_16)
                              (coe
-                                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116
+                                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                                 (coe
                                    MAlonzo.Code.Once.Arith.Prim.du_primSem_238

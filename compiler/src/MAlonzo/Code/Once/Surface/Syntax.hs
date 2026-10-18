@@ -94,7 +94,7 @@ data T_Expr_8
     C_ne_364 MAlonzo.Code.Once.Lang.Context.T_Usage_46
              MAlonzo.Code.Once.Lang.Context.T_Usage_46 T_Expr_8 T_Expr_8 |
     C_coerce_376 MAlonzo.Code.Once.Lang.Type.T_Type_8
-                 MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__30 T_Expr_8 |
+                 MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 T_Expr_8 |
     C_sigOp_384 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
                 MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 |
     C_closure_392 MAlonzo.Code.Agda.Builtin.String.T_String_6 |

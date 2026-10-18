@@ -322,7 +322,7 @@ du_P_502 v0 v1
          (coe
             MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-            (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+            (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
          (coe v1))
       (coe v0)
 -- Once.Adequacy.LiftFnReduce.liftFn-curry-fst

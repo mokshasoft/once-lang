@@ -77,33 +77,32 @@ data T_Rcc_82
     C_cc'45'In_1046 T_Rcc_82 | C_cc'45'apply_1056 T_Rii_70 |
     C_cc'45'inl'45'app_1066 T_Rcc_82 |
     C_cc'45'inr'45'app_1076 T_Rcc_82 |
-    C_cc'45'initial'45'app_1086 T_Rcc_82 | C_cc'45'poly_1122 |
-    C_cc'45'guard_1152
+    C_cc'45'initial'45'app_1086 T_Rcc_82 | C_cc'45'poly_1122
 -- Once.TypeCheck.Route.Ric
 d_Ric_96 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 data T_Ric_96
-  = C_ic'45'sub_1164 T_Rii_70 | C_ic'45'pair_1182 T_Ric_96 T_Ric_96 |
-    C_ic'45'apply_1192 T_Rii_70 | C_ic'45'guard_1220
+  = C_ic'45'sub_1134 T_Rii_70 | C_ic'45'pair_1152 T_Ric_96 T_Ric_96 |
+    C_ic'45'apply_1162 T_Rii_70
 -- Once.TypeCheck.Route.Rdc
 d_Rdc_114 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
 data T_Rdc_114
-  = C_dc'45'infer_1234 T_Ric_96 | C_dc'45'sub_1246 T_Rdi_138 |
-    C_dc'45'lam_1268 T_Ric_96 | C_dc'45'cg_1286 T_Rdd_156 T_Rdc_114 |
-    C_dc'45'cf_1306 T_Rdi_138 T_Rdc_114 | C_dc'45'id_1312 |
-    C_dc'45'fst_1318 | C_dc'45'snd_1324 | C_dc'45'terminal_1330 |
-    C_dc'45'initial_1336 | C_dc'45'case_1354 T_Rdc_114 T_Rdc_114 |
-    C_dc'45'pair_1372 T_Rdc_114 T_Rdc_114 |
-    C_dc'45'cata_1392 T_Ric_96 | C_dc'45'poly_1438
+  = C_dc'45'infer_1176 T_Ric_96 | C_dc'45'sub_1188 T_Rdi_138 |
+    C_dc'45'lam_1210 T_Ric_96 | C_dc'45'cg_1228 T_Rdd_156 T_Rdc_114 |
+    C_dc'45'cf_1248 T_Rdi_138 T_Rdc_114 | C_dc'45'id_1254 |
+    C_dc'45'fst_1260 | C_dc'45'snd_1266 | C_dc'45'terminal_1272 |
+    C_dc'45'initial_1278 | C_dc'45'case_1296 T_Rdc_114 T_Rdc_114 |
+    C_dc'45'pair_1314 T_Rdc_114 T_Rdc_114 |
+    C_dc'45'cata_1334 T_Ric_96 | C_dc'45'poly_1380
 -- Once.TypeCheck.Route.Rdi
 d_Rdi_138 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 = ()
-newtype T_Rdi_138 = C_di'45'infer_1452 T_Rii_70
+newtype T_Rdi_138 = C_di'45'infer_1394 T_Rii_70
 -- Once.TypeCheck.Route.Rdd
 d_Rdd_156 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
 data T_Rdd_156
-  = C_dd'45'infer'45'l_1466 T_Rdi_138 |
-    C_dd'45'infer'45'r_1480 T_Rdi_138 | C_dd'45'lam_1500 T_Rii_70 |
-    C_dd'45'compose_1518 T_Rdd_156 T_Rdd_156 | C_dd'45'id_1524 |
-    C_dd'45'fst_1530 | C_dd'45'snd_1536 | C_dd'45'terminal_1542 |
-    C_dd'45'initial_1548 | C_dd'45'case_1566 T_Rdd_156 T_Rdd_156 |
-    C_dd'45'pair_1584 T_Rdd_156 T_Rdd_156 |
-    C_dd'45'cata_1604 T_Rii_70 | C_dd'45'poly_1660
+  = C_dd'45'infer'45'l_1408 T_Rdi_138 |
+    C_dd'45'infer'45'r_1422 T_Rdi_138 | C_dd'45'lam_1442 T_Rii_70 |
+    C_dd'45'compose_1460 T_Rdd_156 T_Rdd_156 | C_dd'45'id_1466 |
+    C_dd'45'fst_1472 | C_dd'45'snd_1478 | C_dd'45'terminal_1484 |
+    C_dd'45'initial_1490 | C_dd'45'case_1508 T_Rdd_156 T_Rdd_156 |
+    C_dd'45'pair_1526 T_Rdd_156 T_Rdd_156 |
+    C_dd'45'cata_1546 T_Rii_70 | C_dd'45'poly_1602

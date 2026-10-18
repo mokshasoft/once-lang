@@ -186,3 +186,10 @@ d_rewrite'45'program'45'preserves_456 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_rewrite'45'program'45'preserves_456 = erased
+-- Once.Adequacy.RewritePreserves.rewrite-program-tree
+d_rewrite'45'program'45'tree_478 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_rewrite'45'program'45'tree_478 = erased

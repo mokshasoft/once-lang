@@ -53,11 +53,11 @@ du_ppB'45'go_18 v0 v1
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Parser.Generic.Relation.du_typeShrink_748
+                             MAlonzo.Code.Once.Parser.Generic.Relation.du_typeShrink_730
                              (coe MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118)
                              (coe v0) (coe v4)
                              (coe
-                                MAlonzo.Code.Once.Parser.Generic.Sound.du_sound'45'type_410
+                                MAlonzo.Code.Once.Parser.Generic.Sound.du_sound'45'type_404
                                 (coe MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118)
                                 (coe v0)))))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -71,6 +71,6 @@ d_parsePolyTypeB_34 v0
   = coe
       du_ppB'45'go_18 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.Generic.Parser.d_typeP_130
+         MAlonzo.Code.Once.Parser.Generic.Parser.d_typeP_128
          (coe MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118)
          (coe v0))

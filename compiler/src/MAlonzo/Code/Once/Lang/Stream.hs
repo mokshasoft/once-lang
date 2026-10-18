@@ -29,7 +29,7 @@ import qualified MAlonzo.Code.Once.Lang.Value
 d_coerce'45'ν'45'in_8 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'in_8
-  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614
+  = coe MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578
 -- Once.Lang.Stream._.⟦_⟧F
 d_'10214'_'10215'F_10 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> ()
@@ -199,5 +199,5 @@ du_anaF'7496'_168 v0 v1
             coe
               MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
               (coe
-                 MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614 v0 erased)
+                 MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578 v0 erased)
               (coe v1 v2)))

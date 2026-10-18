@@ -262,7 +262,7 @@ d_arrowSchema'63'_596 v0
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40)
+                      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38)
                       (coe MAlonzo.Code.Once.Lang.Type.Poly.C_as'45'eff_298))))
       MAlonzo.Code.Once.Lang.Type.Poly.C_PAct_32 v1 v2
         -> coe

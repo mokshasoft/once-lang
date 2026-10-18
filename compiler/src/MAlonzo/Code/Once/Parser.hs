@@ -448,7 +448,7 @@ d_projectSig_166 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_projectSig_166 v0 v1 v2
-  = let v3 = MAlonzo.Code.Once.Type.d_isGround_104 (coe v2) in
+  = let v3 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v2) in
     coe
       (case coe v3 of
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
@@ -460,7 +460,7 @@ d_projectSig_166 v0 v1 v2
                       MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88 (coe v2)
                       (coe v4)))
                 (coe
-                   MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_206
+                   MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_202
                    (coe
                       MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
                       (coe
@@ -481,7 +481,7 @@ d_projectSig_166 v0 v1 v2
                          ("`: " :: Data.Text.Text)
                          (coe
                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                            (MAlonzo.Code.Once.Type.d_showPolyType_140 (coe v2))
+                            (MAlonzo.Code.Once.Type.d_showPolyType_134 (coe v2))
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                (" \8212 primitives and type aliases must be ground. "
@@ -549,7 +549,7 @@ d_extractFunctions'45'go_216 v0 v1 v2
            coe
              (case coe v3 of
                 MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_22 v6 v7
-                  -> let v8 = MAlonzo.Code.Once.Type.d_isGround_104 (coe v7) in
+                  -> let v8 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v7) in
                      coe
                        (case coe v8 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v9
@@ -691,7 +691,7 @@ d_extractFunctions'45'go_216 v0 v1 v2
                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_26 v6 v7 v8
                   -> case coe v7 of
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
-                         -> let v10 = MAlonzo.Code.Once.Type.d_isGround_104 (coe v8) in
+                         -> let v10 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v8) in
                             coe
                               (let v11
                                      = coe
@@ -712,7 +712,7 @@ d_extractFunctions'45'go_216 v0 v1 v2
                                                          MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
                                                          (coe v8) (coe v12)))
                                                    (coe
-                                                      MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_206
+                                                      MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_202
                                                       (coe
                                                          MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                          (coe v0)
@@ -768,7 +768,7 @@ d_extractFunctions'45'go_216 v0 v1 v2
                                                     ("`: " :: Data.Text.Text)
                                                     (coe
                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                       (MAlonzo.Code.Once.Type.d_showPolyType_140
+                                                       (MAlonzo.Code.Once.Type.d_showPolyType_134
                                                           (coe v8))
                                                        (coe
                                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -785,7 +785,7 @@ d_extractFunctions'45'go_216 v0 v1 v2
                                                               Data.Text.Text)))))))
                                     _ -> MAlonzo.RTE.mazUnreachableError))
                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                         -> let v9 = MAlonzo.Code.Once.Type.d_isGround_104 (coe v8) in
+                         -> let v9 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v8) in
                             coe
                               (case coe v9 of
                                  MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v10
@@ -799,7 +799,7 @@ d_extractFunctions'45'go_216 v0 v1 v2
                                                       MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
                                                       (coe v8) (coe v10)))
                                                 (coe
-                                                   MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_206
+                                                   MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_202
                                                    (coe
                                                       MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                       (coe v0)
@@ -840,7 +840,7 @@ d_extractFunctions'45'go_216 v0 v1 v2
                                                  ("`: " :: Data.Text.Text)
                                                  (coe
                                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                    (MAlonzo.Code.Once.Type.d_showPolyType_140
+                                                    (MAlonzo.Code.Once.Type.d_showPolyType_134
                                                        (coe v8))
                                                     (coe
                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -888,17 +888,17 @@ d_extractFunctions'45'sigless_220 v0 v1 v2 v3 v4
                                 (coe
                                    MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
                                    (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                   (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                                   (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                                 (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)))
                           (coe v2) (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)))
              else coe
                     seq (coe v6)
                     (let v7
-                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2208
+                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2204
                                (coe
-                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2186
+                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2182
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1426
+                                     MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1422
                                      (coe
                                         MAlonzo.Code.Data.List.Base.du__'43''43'__32
                                         (coe
@@ -910,7 +910,7 @@ d_extractFunctions'45'sigless_220 v0 v1 v2 v3 v4
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Classify.d_emptyCtx_330)))
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Principal.d_projSchemas_986
+                                        MAlonzo.Code.Once.TypeCheck.Principal.d_projSchemas_982
                                         (coe
                                            MAlonzo.Code.Once.Lang.Typing.Scope.d_polys_126
                                            (coe

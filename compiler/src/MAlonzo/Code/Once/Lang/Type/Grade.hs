@@ -86,33 +86,19 @@ d_'8804'q'45'Many_30 ::
 d_'8804'q'45'Many_30 = erased
 -- Once.Lang.Type.Grade.Purity
 d_Purity_32 = ()
-data T_Purity_32 = C_pure_34 | C_act_36 | C_eff'8314'_38 | C_eff_40
+data T_Purity_32 = C_pure_34 | C_act_36 | C_eff_38
 -- Once.Lang.Type.Grade._⊔p_
-d__'8852'p__42 :: T_Purity_32 -> T_Purity_32 -> T_Purity_32
-d__'8852'p__42 v0 v1
+d__'8852'p__40 :: T_Purity_32 -> T_Purity_32 -> T_Purity_32
+d__'8852'p__40 v0 v1
   = case coe v0 of
-      C_pure_34
-        -> case coe v1 of
-             C_pure_34 -> coe v1
-             C_act_36 -> coe v1
-             C_eff'8314'_38 -> coe C_eff_40
-             C_eff_40 -> coe v1
-             _ -> MAlonzo.RTE.mazUnreachableError
+      C_pure_34 -> coe v1
       C_act_36
         -> case coe v1 of
              C_pure_34 -> coe v0
              C_act_36 -> coe v1
-             C_eff'8314'_38 -> coe C_eff_40
-             C_eff_40 -> coe v1
+             C_eff_38 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_eff'8314'_38
-        -> case coe v1 of
-             C_pure_34 -> coe C_eff_40
-             C_act_36 -> coe C_eff_40
-             C_eff'8314'_38 -> coe v1
-             C_eff_40 -> coe v1
-             _ -> MAlonzo.RTE.mazUnreachableError
-      C_eff_40 -> coe v0
+      C_eff_38 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade._·p_
 d__'183'p__44 :: T_Purity_32 -> T_Purity_32 -> T_Purity_32
@@ -123,17 +109,9 @@ d__'183'p__44 v0 v1
         -> case coe v1 of
              C_pure_34 -> coe v0
              C_act_36 -> coe v1
-             C_eff'8314'_38 -> coe v1
-             C_eff_40 -> coe v1
+             C_eff_38 -> coe v1
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_eff'8314'_38 -> coe v0
-      C_eff_40
-        -> case coe v1 of
-             C_pure_34 -> coe v0
-             C_act_36 -> coe v0
-             C_eff'8314'_38 -> coe v1
-             C_eff_40 -> coe v1
-             _ -> MAlonzo.RTE.mazUnreachableError
+      C_eff_38 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Type.Grade.EffGrade
 d_EffGrade_48 a0 = ()
@@ -166,4 +144,4 @@ d_pureK_72 :: T_Quantity_8 -> T_ArrowKind_60
 d_pureK_72 v0 = coe C_mk'45'kind_70 (coe v0) (coe C_pure_34)
 -- Once.Lang.Type.Grade.effK
 d_effK_76 :: T_ArrowKind_60
-d_effK_76 = coe C_mk'45'kind_70 (coe C_Many_14) (coe C_eff_40)
+d_effK_76 = coe C_mk'45'kind_70 (coe C_Many_14) (coe C_eff_38)

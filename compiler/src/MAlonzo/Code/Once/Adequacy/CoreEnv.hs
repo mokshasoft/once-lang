@@ -45,7 +45,7 @@ import qualified MAlonzo.Code.Once.Spec.Numerics
 d_DefSem_16 a0 a1 a2 a3 = ()
 -- Once.Adequacy.CoreEnv.GM.DefSem.defs
 d_defs_34 ::
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8) ->
@@ -54,13 +54,13 @@ d_defs_34 ::
    MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8) ->
   AgdaAny
 d_defs_34 v0
-  = coe MAlonzo.Code.Once.Lang.Core.Meaning.d_defs_378 (coe v0)
+  = coe MAlonzo.Code.Once.Lang.Core.Meaning.d_defs_370 (coe v0)
 -- Once.Adequacy.CoreEnv.GM.DefSem.impl
 d_impl_36 ::
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
-  MAlonzo.Code.Once.Lang.Contract.T_Impl_260
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
+  MAlonzo.Code.Once.Lang.Contract.T_Impl_242
 d_impl_36 v0
-  = coe MAlonzo.Code.Once.Lang.Core.Meaning.d_impl_380 (coe v0)
+  = coe MAlonzo.Code.Once.Lang.Core.Meaning.d_impl_372 (coe v0)
 -- Once.Adequacy.CoreEnv._.Agree
 d_Agree_54 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 = ()
 -- Once.Adequacy.CoreEnv._.impSem
@@ -69,16 +69,16 @@ d_impSem_58 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Elaboration.T_ImportAt_494 -> AgdaAny
+  MAlonzo.Code.Once.Lang.Elaboration.T_ImportAt_486 -> AgdaAny
 d_impSem_58 ~v0 ~v1 ~v2 ~v3 = du_impSem_58
 du_impSem_58 ::
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Elaboration.T_ImportAt_494 -> AgdaAny
+  MAlonzo.Code.Once.Lang.Elaboration.T_ImportAt_486 -> AgdaAny
 du_impSem_58 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Adequacy.CoreMeaningBridge.du_impSem_120 v0 v3
@@ -88,13 +88,13 @@ d_refSem_60 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> AgdaAny
 d_refSem_60 ~v0 ~v1 ~v2 ~v3 = du_refSem_60
 du_refSem_60 ::
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> AgdaAny
@@ -162,12 +162,12 @@ d_impEnv_84 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_ImpSig_84 -> AgdaAny
 d_impEnv_84 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 = du_impEnv_84 v4 v5 v6
 du_impEnv_84 ::
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_ImpSig_84 -> AgdaAny
 du_impEnv_84 v0 v1 v2
@@ -182,7 +182,7 @@ du_impEnv_84 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.Adequacy.CoreMeaningBridge.du_refSem_100 (coe v0)
                        (coe v6)
-                       (coe MAlonzo.Code.Once.Lang.Core.Translate.du_mono'45'inst_258))
+                       (coe MAlonzo.Code.Once.Lang.Core.Translate.du_mono'45'inst_256))
                     (coe du_impEnv_84 (coe v0) (coe v10) (coe v8))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -192,12 +192,12 @@ d_defEnv_94 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_116] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_TeleSig_110 -> AgdaAny
 d_defEnv_94 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 = du_defEnv_94 v4 v5 v6
 du_defEnv_94 ::
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_116] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_TeleSig_110 -> AgdaAny
 du_defEnv_94 v0 v1 v2
@@ -215,7 +215,7 @@ du_defEnv_94 v0 v1 v2
                             MAlonzo.Code.Once.Adequacy.CoreMeaningBridge.du_refSem_100 (coe v0)
                             (coe v5)
                             (coe
-                               MAlonzo.Code.Once.Lang.Core.Translate.du_poly'45'inst_276
+                               MAlonzo.Code.Once.Lang.Core.Translate.du_poly'45'inst_274
                                (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v8)) (coe v11))))
                     (coe du_defEnv_94 (coe v0) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -226,7 +226,7 @@ d_agree'45'imp_118 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_ImpSig_84 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -240,7 +240,7 @@ d_agree'45'def_210 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_116] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_TeleSig_110 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -258,39 +258,39 @@ d_envOf_308 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_116] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_SigSig_64 ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_ImpSig_84 ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_TeleSig_110 ->
-  MAlonzo.Code.Once.Denotation.Meaning.T_Meanings_310
+  MAlonzo.Code.Once.Denotation.Meaning.T_Meanings_294
 d_envOf_308 ~v0 v1 ~v2 ~v3 v4 v5 v6 v7 v8 v9 v10
   = du_envOf_308 v1 v4 v5 v6 v7 v8 v9 v10
 du_envOf_308 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_116] ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_SigSig_64 ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_ImpSig_84 ->
   MAlonzo.Code.Once.Lang.Core.Translate.T_TeleSig_110 ->
-  MAlonzo.Code.Once.Denotation.Meaning.T_Meanings_310
+  MAlonzo.Code.Once.Denotation.Meaning.T_Meanings_294
 du_envOf_308 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Denotation.Meaning.C_meanings_358
+      MAlonzo.Code.Once.Denotation.Meaning.C_meanings_342
       (coe du_defEnv_94 (coe v1) (coe v4) (coe v7))
       (coe du_impEnv_84 (coe v1) (coe v3) (coe v6))
       (coe
          MAlonzo.Code.Once.Lang.Trace.C_interp_192 (coe v0)
-         (coe MAlonzo.Code.Once.Lang.Core.Meaning.d_impl_380 (coe v1)))
+         (coe MAlonzo.Code.Once.Lang.Core.Meaning.d_impl_372 (coe v1)))
       (coe
          (\ v8 v9 v10 v11 ->
-            MAlonzo.Code.Once.Lang.Elaboration.d_member_486
+            MAlonzo.Code.Once.Lang.Elaboration.d_member_478
               (coe
-                 MAlonzo.Code.Once.Lang.Core.Translate.du_sigAt_378 (coe v2)
+                 MAlonzo.Code.Once.Lang.Core.Translate.du_sigAt_376 (coe v2)
                  (coe v5)
                  (coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20 v9
@@ -299,9 +299,9 @@ du_envOf_308 v0 v1 v2 v3 v4 v5 v6 v7
                        ("." :: Data.Text.Text) v8)))))
       (coe
          (\ v8 v9 v10 ->
-            MAlonzo.Code.Once.Lang.Elaboration.d_member_486
+            MAlonzo.Code.Once.Lang.Elaboration.d_member_478
               (coe
-                 MAlonzo.Code.Once.Lang.Core.Translate.du_sigAt_378 (coe v2)
+                 MAlonzo.Code.Once.Lang.Core.Translate.du_sigAt_376 (coe v2)
                  (coe v5)
                  (coe MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v8)))))
 -- Once.Adequacy.CoreEnv._.agree
@@ -310,7 +310,7 @@ d_agree_332 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
-  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_364 ->
+  MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_356 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_116] ->

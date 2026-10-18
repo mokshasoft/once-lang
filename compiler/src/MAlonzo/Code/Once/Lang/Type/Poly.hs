@@ -122,7 +122,7 @@ d_extractGround_88 v0 v1
                     (coe
                        MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                       (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
                     (coe d_extractGround_88 (coe v3) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       C_PAct_32 v2 v3
@@ -182,7 +182,7 @@ d_substPoly_162 v0 v1
              (coe
                 MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_70
                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40))
+                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
              (coe d_substPoly_162 (coe v0) (coe v3))
       C_PAct_32 v2 v3
         -> coe

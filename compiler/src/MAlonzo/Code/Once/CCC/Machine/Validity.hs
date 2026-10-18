@@ -51,7 +51,7 @@ du_readLoc_28 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 du_readLoc_28
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_662
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_666
 -- Once.CCC.Machine.Validity.ReadLocEq.readLoc-stack-heap-eq
 d_readLoc'45'stack'45'heap'45'eq_66 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

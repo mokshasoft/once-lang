@@ -888,7 +888,7 @@ d_'8968'_'8969'_574 v0
         -> coe
              MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32
              (coe d_'8968'_'8969'F_576 (coe v1))
-             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40)
+             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38)
       C_Int_30 -> coe MAlonzo.Code.Once.Lang.Type.C_Int_34
       C_Float_32 -> coe MAlonzo.Code.Once.Lang.Type.C_Float_36
       _ -> MAlonzo.RTE.mazUnreachableError

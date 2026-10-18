@@ -87,7 +87,7 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
         -> coe
              MAlonzo.Code.Once.Lang.Trace.C_ret_114
              (coe
-                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116 (coe v3)
+                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104 (coe v3)
                 (coe v7 v0 v6))
       MAlonzo.Code.Once.SigOp.Info.C_ffiV_82
         -> coe
@@ -128,7 +128,7 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
         -> coe
              MAlonzo.Code.Once.Lang.Trace.C_ret_114
              (coe
-                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_116 (coe v3)
+                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104 (coe v3)
                 (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v7 v0 v6))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.DenotTrace.sigOpT
@@ -245,7 +245,7 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Once.Lang.Trace.du_returnT_126
                     (coe
-                       MAlonzo.Code.Once.Lang.Value.du_sem'45'In_554
+                       MAlonzo.Code.Once.Lang.Value.du_sem'45'In_518
                        (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576 (coe v8))
                        (coe
                           MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_232
@@ -267,7 +267,7 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                           MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20 (coe v8)
                           (coe v7))
                        (coe
-                          MAlonzo.Code.Once.Lang.Value.du_sem'45'Out_562
+                          MAlonzo.Code.Once.Lang.Value.du_sem'45'Out_526
                           (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576 (coe v8))
                           (coe
                              MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20 (coe v8)
@@ -280,7 +280,7 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                -> case coe v12 of
                     MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v13
                       -> coe
-                           MAlonzo.Code.Once.Lang.Value.du_sem'45'cata_574
+                           MAlonzo.Code.Once.Lang.Value.du_sem'45'cata_538
                            (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576 (coe v13))
                            (MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
                               (coe v13) (coe v7))
@@ -304,7 +304,7 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                                MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20 (coe v8)
                                (coe v7))
                             (coe
-                               MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'out_620
+                               MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'out_584
                                (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576 (coe v8))
                                (MAlonzo.Code.Once.IRTy.WF.d_wf'45''8968''8969'_20
                                   (coe v8) (coe v7))
@@ -319,7 +319,7 @@ d_eval'7472'_120 v0 v1 v2 v3 v4 v5
                     (coe
                        MAlonzo.Code.Once.Lang.Stream.du_in'45'ν'7496'_26
                        (coe
-                          MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_614
+                          MAlonzo.Code.Once.Lang.Value.du_coerce'45'ν'45'in_578
                           (MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_576 (coe v8)) erased
                           (coe
                              MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_232

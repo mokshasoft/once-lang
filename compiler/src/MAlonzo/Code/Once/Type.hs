@@ -52,9 +52,7 @@ d_showPurity_6 v0
         -> coe ("pure" :: Data.Text.Text)
       MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
         -> coe ("act" :: Data.Text.Text)
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-        -> coe ("eff\8314" :: Data.Text.Text)
-      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+      MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
         -> coe ("eff" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.showArrowKind
@@ -192,17 +190,7 @@ d_showType_34 v0
                               (coe
                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                  (" " :: Data.Text.Text) (d_showType_34 (coe v3))))
-                    MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-                      -> coe
-                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                           ("Eff\8314 " :: Data.Text.Text)
-                           (coe
-                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                              (d_showType_34 (coe v1))
-                              (coe
-                                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                 (" " :: Data.Text.Text) (d_showType_34 (coe v3))))
-                    MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+                    MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                       -> coe
                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
                            ("Eff " :: Data.Text.Text)
@@ -231,14 +219,7 @@ d_showType_34 v0
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
                        (d_showFunctor_36 (coe v1)) (")" :: Data.Text.Text))
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe
-                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                    ("\957 (Eff\8314 " :: Data.Text.Text)
-                    (coe
-                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showFunctor_36 (coe v1)) (")" :: Data.Text.Text))
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("\957 (Eff " :: Data.Text.Text)
@@ -306,18 +287,18 @@ d_showFunctor_36 v0
                       (d_showFunctor_36 (coe v2)) (")" :: Data.Text.Text))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.both-ground
-d_both'45'ground_92 ::
+d_both'45'ground_86 ::
   () ->
   () ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_both'45'ground_92 ~v0 ~v1 v2 v3 = du_both'45'ground_92 v2 v3
-du_both'45'ground_92 ::
+d_both'45'ground_86 ~v0 ~v1 v2 v3 = du_both'45'ground_86 v2 v3
+du_both'45'ground_86 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-du_both'45'ground_92 v0 v1
+du_both'45'ground_86 v0 v1
   = case coe v0 of
       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v2
         -> case coe v1 of
@@ -338,31 +319,31 @@ du_both'45'ground_92 v0 v1
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.isGroundF
-d_isGroundF_100 ::
+d_isGroundF_94 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyFunctor_8 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_isGroundF_100 v0
+d_isGroundF_94 v0
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Poly.C_PK_12 v1
-        -> coe d_isGround_104 (coe v1)
+        -> coe d_isGround_98 (coe v1)
       MAlonzo.Code.Once.Lang.Type.Poly.C_PId_14
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'8853'__16 v1 v2
         -> coe
-             du_both'45'ground_92 (coe d_isGroundF_100 (coe v1))
-             (coe d_isGroundF_100 (coe v2))
+             du_both'45'ground_86 (coe d_isGroundF_94 (coe v1))
+             (coe d_isGroundF_94 (coe v2))
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'8855'__18 v1 v2
         -> coe
-             du_both'45'ground_92 (coe d_isGroundF_100 (coe v1))
-             (coe d_isGroundF_100 (coe v2))
+             du_both'45'ground_86 (coe d_isGroundF_94 (coe v1))
+             (coe d_isGroundF_94 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.isGround
-d_isGround_104 ::
+d_isGround_98 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_isGround_104 v0
+d_isGround_98 v0
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Poly.C_PUnit_20
         -> coe
@@ -374,28 +355,28 @@ d_isGround_104 v0
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'42'__24 v1 v2
         -> coe
-             du_both'45'ground_92 (coe d_isGround_104 (coe v1))
-             (coe d_isGround_104 (coe v2))
+             du_both'45'ground_86 (coe d_isGround_98 (coe v1))
+             (coe d_isGround_98 (coe v2))
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'43'__26 v1 v2
         -> coe
-             du_both'45'ground_92 (coe d_isGround_104 (coe v1))
-             (coe d_isGround_104 (coe v2))
+             du_both'45'ground_86 (coe d_isGround_98 (coe v1))
+             (coe d_isGround_98 (coe v2))
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'8658''91'_'93'__28 v1 v2 v3
         -> coe
-             du_both'45'ground_92 (coe d_isGround_104 (coe v1))
-             (coe d_isGround_104 (coe v3))
+             du_both'45'ground_86 (coe d_isGround_98 (coe v1))
+             (coe d_isGround_98 (coe v3))
       MAlonzo.Code.Once.Lang.Type.Poly.C_PEff_30 v1 v2
         -> coe
-             du_both'45'ground_92 (coe d_isGround_104 (coe v1))
-             (coe d_isGround_104 (coe v2))
+             du_both'45'ground_86 (coe d_isGround_98 (coe v1))
+             (coe d_isGround_98 (coe v2))
       MAlonzo.Code.Once.Lang.Type.Poly.C_PAct_32 v1 v2
         -> coe
-             du_both'45'ground_92 (coe d_isGround_104 (coe v1))
-             (coe d_isGround_104 (coe v2))
+             du_both'45'ground_86 (coe d_isGround_98 (coe v1))
+             (coe d_isGround_98 (coe v2))
       MAlonzo.Code.Once.Lang.Type.Poly.C_Pμ'45'type_34 v1
-        -> coe d_isGroundF_100 (coe v1)
+        -> coe d_isGroundF_94 (coe v1)
       MAlonzo.Code.Once.Lang.Type.Poly.C_Pν'45'type_36 v1 v2
-        -> coe d_isGroundF_100 (coe v1)
+        -> coe d_isGroundF_94 (coe v1)
       MAlonzo.Code.Once.Lang.Type.Poly.C_PInt_38
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
@@ -410,10 +391,10 @@ d_isGround_104 v0
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.showPolyType
-d_showPolyType_140 ::
+d_showPolyType_134 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showPolyType_140 v0
+d_showPolyType_134 v0
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Poly.C_PUnit_20
         -> coe ("Unit" :: Data.Text.Text)
@@ -425,33 +406,33 @@ d_showPolyType_140 v0
              ("(" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyType_140 (coe v1))
+                (d_showPolyType_134 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" * " :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (d_showPolyType_140 (coe v2)) (")" :: Data.Text.Text))))
+                      (d_showPolyType_134 (coe v2)) (")" :: Data.Text.Text))))
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'43'__26 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("(" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyType_140 (coe v1))
+                (d_showPolyType_134 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" + " :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (d_showPolyType_140 (coe v2)) (")" :: Data.Text.Text))))
+                      (d_showPolyType_134 (coe v2)) (")" :: Data.Text.Text))))
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'8658''91'_'93'__28 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("(" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyType_140 (coe v1))
+                (d_showPolyType_134 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" " :: Data.Text.Text)
@@ -463,58 +444,51 @@ d_showPolyType_140 v0
                          ("\8594 " :: Data.Text.Text)
                          (coe
                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                            (d_showPolyType_140 (coe v3)) (")" :: Data.Text.Text))))))
+                            (d_showPolyType_134 (coe v3)) (")" :: Data.Text.Text))))))
       MAlonzo.Code.Once.Lang.Type.Poly.C_PEff_30 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Eff " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyType_140 (coe v1))
+                (d_showPolyType_134 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (" " :: Data.Text.Text) (d_showPolyType_140 (coe v2))))
+                   (" " :: Data.Text.Text) (d_showPolyType_134 (coe v2))))
       MAlonzo.Code.Once.Lang.Type.Poly.C_PAct_32 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Act " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyType_140 (coe v1))
+                (d_showPolyType_134 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (" " :: Data.Text.Text) (d_showPolyType_140 (coe v2))))
+                   (" " :: Data.Text.Text) (d_showPolyType_134 (coe v2))))
       MAlonzo.Code.Once.Lang.Type.Poly.C_Pμ'45'type_34 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("\956 " :: Data.Text.Text) (d_showPolyFunctor_142 (coe v1))
+             ("\956 " :: Data.Text.Text) (d_showPolyFunctor_136 (coe v1))
       MAlonzo.Code.Once.Lang.Type.Poly.C_Pν'45'type_36 v1 v2
         -> case coe v2 of
              MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                    ("\957 " :: Data.Text.Text) (d_showPolyFunctor_142 (coe v1))
+                    ("\957 " :: Data.Text.Text) (d_showPolyFunctor_136 (coe v1))
              MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("\957 (Act " :: Data.Text.Text)
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showPolyFunctor_142 (coe v1)) (")" :: Data.Text.Text))
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-               -> coe
-                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                    ("\957 (Eff\8314 " :: Data.Text.Text)
-                    (coe
-                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showPolyFunctor_142 (coe v1)) (")" :: Data.Text.Text))
-             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+                       (d_showPolyFunctor_136 (coe v1)) (")" :: Data.Text.Text))
+             MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                -> coe
                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                     ("\957 (Eff " :: Data.Text.Text)
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showPolyFunctor_142 (coe v1)) (")" :: Data.Text.Text))
+                       (d_showPolyFunctor_136 (coe v1)) (")" :: Data.Text.Text))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Poly.C_PInt_38
         -> coe ("Int" :: Data.Text.Text)
@@ -523,10 +497,10 @@ d_showPolyType_140 v0
       MAlonzo.Code.Once.Lang.Type.Poly.C_PTVar_42 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.showPolyFunctor
-d_showPolyFunctor_142 ::
+d_showPolyFunctor_136 ::
   MAlonzo.Code.Once.Lang.Type.Poly.T_PolyFunctor_8 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showPolyFunctor_142 v0
+d_showPolyFunctor_136 v0
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.Poly.C_PK_12 v1
         -> coe
@@ -534,7 +508,7 @@ d_showPolyFunctor_142 v0
              ("(K " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyType_140 (coe v1)) (")" :: Data.Text.Text))
+                (d_showPolyType_134 (coe v1)) (")" :: Data.Text.Text))
       MAlonzo.Code.Once.Lang.Type.Poly.C_PId_14
         -> coe ("Id" :: Data.Text.Text)
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'8853'__16 v1 v2
@@ -543,32 +517,32 @@ d_showPolyFunctor_142 v0
              ("(" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyFunctor_142 (coe v1))
+                (d_showPolyFunctor_136 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" \8853 " :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (d_showPolyFunctor_142 (coe v2)) (")" :: Data.Text.Text))))
+                      (d_showPolyFunctor_136 (coe v2)) (")" :: Data.Text.Text))))
       MAlonzo.Code.Once.Lang.Type.Poly.C__P'8855'__18 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("(" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showPolyFunctor_142 (coe v1))
+                (d_showPolyFunctor_136 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" \8855 " :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (d_showPolyFunctor_142 (coe v2)) (")" :: Data.Text.Text))))
+                      (d_showPolyFunctor_136 (coe v2)) (")" :: Data.Text.Text))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Type.purityEqBool
-d_purityEqBool_188 ::
+d_purityEqBool_180 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 -> Bool
-d_purityEqBool_188 v0 v1
+d_purityEqBool_180 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
@@ -582,14 +556,9 @@ d_purityEqBool_188 v0 v1
                 MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v2
-         MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
+         MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
            -> case coe v1 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_eff'8314'_38
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v2
-         MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
-           -> case coe v1 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_eff_40
+                MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v2
          _ -> MAlonzo.RTE.mazUnreachableError)

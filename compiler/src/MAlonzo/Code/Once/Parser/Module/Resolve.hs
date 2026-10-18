@@ -422,7 +422,7 @@ d_pdn'45'go_240 v0 v1
            coe
              (case coe v2 of
                 MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_22 v5 v6
-                  -> let v7 = MAlonzo.Code.Once.Type.d_isGround_104 (coe v6) in
+                  -> let v7 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v6) in
                      coe
                        (case coe v7 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8
@@ -491,11 +491,11 @@ d_pdn'45'sigless_244 v0 v1 v2 v3
              else coe
                     seq (coe v5)
                     (let v6
-                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2208
+                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2204
                                (coe
-                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2186
+                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2182
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1426
+                                     MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1422
                                      (coe
                                         MAlonzo.Code.Data.List.Base.du__'43''43'__32
                                         (coe
@@ -507,7 +507,7 @@ d_pdn'45'sigless_244 v0 v1 v2 v3
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Classify.d_emptyCtx_330)))
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Principal.d_projSchemas_986
+                                        MAlonzo.Code.Once.TypeCheck.Principal.d_projSchemas_982
                                         (coe
                                            MAlonzo.Code.Once.Lang.Typing.Scope.d_polys_126
                                            (coe

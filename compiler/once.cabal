@@ -313,15 +313,25 @@ library
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
       MAlonzo.Code.Once.CanonicalName
       MAlonzo.Code.Once.Compile
+      MAlonzo.Code.Once.Adequacy.MachineTrace
+      MAlonzo.Code.Once.Arith.Backend.RunTraceMachine
+      MAlonzo.Code.Once.CCC.Machine.FlatLeft
+      MAlonzo.Code.Once.Denotation.TraceTr
+      MAlonzo.Code.Once.Lang.Out
+      MAlonzo.Code.Once.Metatheory.Trace
+      MAlonzo.Code.Once.Spec.Delay
+      MAlonzo.Code.Once.Spec.Grade
+      MAlonzo.Code.Once.Spec.Signature
+      MAlonzo.Code.Once.Spec.Trace
+      MAlonzo.Code.Once.Spec.Type
+      MAlonzo.Code.Once.Target.SymbolFresh
       MAlonzo.Code.Once.Compiler
       MAlonzo.Code.Once.Denotation.Admissible
       MAlonzo.Code.Once.Denotation.Behavior
-      MAlonzo.Code.Once.Denotation.BehaviorLaws
       MAlonzo.Code.Once.Denotation.DefEnv
       MAlonzo.Code.Once.Denotation.DenotTrace
       MAlonzo.Code.Once.Denotation.EnvAlgebraV
       MAlonzo.Code.Once.Denotation.GradedDomainLaws
-      MAlonzo.Code.Once.Denotation.GuardedLaws
       MAlonzo.Code.Once.Denotation.Meaning
       MAlonzo.Code.Once.Denotation.Phase
       MAlonzo.Code.Once.Denotation.Program
@@ -393,7 +403,6 @@ library
       MAlonzo.Code.Once.Lang.Grammar.OpDecl
       MAlonzo.Code.Once.Lang.Grammar.Signature
       MAlonzo.Code.Once.Lang.Grammar.TypeAlias
-      MAlonzo.Code.Once.Lang.Guarded
       MAlonzo.Code.Once.Lang.Iterative
       MAlonzo.Code.Once.Lang.Laws.CoreRenameSem
       MAlonzo.Code.Once.Lang.Laws.Grade
