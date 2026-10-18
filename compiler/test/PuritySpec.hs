@@ -27,7 +27,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
       assertBool "Should reject a pure signature that emits" (isLeft r)
 
   , testCase "effectful FFI arrow into Unit is accepted" $ do
-      r <- checkLib [ "signature beep : Eff Int Unit" ]
+      r <- checkLib [ "signature beep : Act Int Unit" ]
       r @?= Right ()
 
   , testCase "pure FFI arrow into Void is rejected (a Void-returning SigOp halts)" $ do
@@ -38,11 +38,11 @@ purityTests = testGroup "Purity (pure emits nothing)"
   -- be WRITTEN `Void`, a singleton one `Unit` (a skeleton): `Void * Int` would be
   -- an answering contract with no possible answer.
   , testCase "effectful FFI arrow into an empty codomain other than Void is rejected" $ do
-      r <- checkLib [ "signature stop2 : Eff Int (Void * Int)" ]
+      r <- checkLib [ "signature stop2 : Act Int (Void * Int)" ]
       assertBool "Should reject an empty codomain not written Void" (isLeft r)
 
   , testCase "effectful FFI arrow into a singleton codomain other than Unit is rejected" $ do
-      r <- checkLib [ "signature beep2 : Eff Int (Unit * Unit)" ]
+      r <- checkLib [ "signature beep2 : Act Int (Unit * Unit)" ]
       assertBool "Should reject a singleton codomain not written Unit" (isLeft r)
 
   , testCase "pure FFI arrow into an empty codomain is rejected" $ do
@@ -51,7 +51,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
 
   , testCase "effectful FFI arrow into a sum with an empty summand is accepted" $ do
       -- `Int + Void` is neither empty nor a singleton: an answering contract.
-      r <- checkLib [ "signature pick : Eff Int (Int + Void)" ]
+      r <- checkLib [ "signature pick : Act Int (Int + Void)" ]
       r @?= Right ()
 
   , testCase "base-typed FFI constant of type Unit is rejected (its reference is a call)" $ do
@@ -74,7 +74,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (Act (K Int))"
-        , "mkNu = ana (compose (\\_ -> 7) emitA@E)"
+        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         , ""
         , "peek : Nu (K Int) -> Int"
         , "peek v = Out v"
@@ -97,20 +97,16 @@ purityTests = testGroup "Purity (pure emits nothing)"
         ]
       assertBool "Should reject an effectful coalgebra at a pure stream type" (isLeft r)
 
-  , testCase "an eff coalgebra builds no stream" $ do
-      -- D318 item 13: a ν's grade is finite. `emit` is `Eff` (it need not
-      -- return), so a layer that runs it is not a finite block of calls, and
-      -- there is no `Nu (Eff …)` to put it in.
+  , testCase "an Eff signature is rejected" $ do
+      -- D318 item 5: an operation is declared at `Act` and used at `Eff` by
+      -- subtyping; `Eff` in a declaration is not a declaration type.
       r <- checkLib
-        [ "import I.Test.Emit as E"
+        [ "signature tock : Eff Int Unit"
         , ""
-        , "mkNu : Int -> Nu (Act (K Int))"
-        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
-        , ""
-        , "run : Eff Unit Int"
-        , "run = Out (mkNu 3)"
+        , "run : Act Int Unit"
+        , "run x = tock x"
         ]
-      assertBool "Should reject an eff coalgebra at an acting stream type" (isLeft r)
+      assertBool "Should reject an Eff signature" (isLeft r)
 
   , testCase "forcing an acting stream is an acting suspension" $ do
       -- The honest twin: `Out` on `Nu (Act F)` is `Act Unit (F …)`.
@@ -118,7 +114,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (Act (K Int))"
-        , "mkNu = ana (compose (\\_ -> 7) emitA@E)"
+        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         , ""
         , "run : Act Unit Int"
         , "run = Out (mkNu 3)"

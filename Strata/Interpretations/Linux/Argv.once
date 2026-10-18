@@ -11,9 +11,9 @@
 ------------------------------------------------------------------------
 
 -- | Get the number of command-line arguments (argc)
-signature argc : Eff Unit Int
+signature argc : Act Unit Int
 
 -- | Get argument at index 1 (first user argument), parsed as integer.
 -- Returns 0 if no argument or parse fails.
 -- Convenience for benchmarks that take N as first argument.
-signature argn : Eff Unit Int
+signature argn : Act Unit Int

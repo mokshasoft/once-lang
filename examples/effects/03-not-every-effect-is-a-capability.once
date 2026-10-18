@@ -15,9 +15,9 @@
 -- is the authority-bearing subset. Whether non-capability effects share the
 -- same grade or get a separate one is an open question in the OCP.)
 
-signature putLine : Eff (String Utf8) Unit   -- external resource
-signature get     : Eff Unit Nat             -- pure state, in-language
-signature put     : Eff Nat Unit             -- pure state, in-language
+signature putLine : Act (String Utf8) Unit   -- external resource
+signature get     : Act Unit Nat             -- pure state, in-language
+signature put     : Act Nat Unit             -- pure state, in-language
 
 -- Policy: only the external operation needs authority.
 require putLine : {Console}

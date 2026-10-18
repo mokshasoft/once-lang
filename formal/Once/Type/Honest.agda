@@ -78,7 +78,7 @@ effectful?-complete act  tt = tt , refl
 honestCod?-complete : ∀ (π : Purity) (B : Type) → HonestCod π B → ∃[ h ] honestCod? π B ≡ just h
 honestCod?-complete π Unit                    h    = effectful?-complete π h
 honestCod?-complete π Void                    h    = effectful?-complete π h
-honestCod?-complete π (A ⇒[ mk-kind q π′ ] B) h    = honestCod?-complete π′ B h
+honestCod?-complete π (_ ⇒[ _ ] _)            ()
 honestCod?-complete π (A * B)                 h    = dataCod?-complete π (A * B) h
 honestCod?-complete π (A + B)                 h    = dataCod?-complete π (A + B) h
 honestCod?-complete π (μ-type _)              ()
@@ -90,7 +90,11 @@ honestCod?-complete π (rigid _ _)             ()
 honest?-complete : ∀ {T : Type} → HonestFFI T → ∃[ h ] honest? T ≡ just h
 honest?-complete {Unit} ()
 honest?-complete {Void} ()
-honest?-complete {A ⇒[ mk-kind q π ] B} h = honestCod?-complete π B h
+honest?-complete {A ⇒[ mk-kind q    pure ] B} h = honestCod?-complete pure B h
+honest?-complete {A ⇒[ mk-kind Many act  ] B} h = honestCod?-complete act B h
+honest?-complete {A ⇒[ mk-kind Zero act  ] B} ()
+honest?-complete {A ⇒[ mk-kind One  act  ] B} ()
+honest?-complete {A ⇒[ mk-kind q    eff  ] B} ()
 honest?-complete {A * B}      h  = notEmpty?-complete (A * B) h
 honest?-complete {A + B}      h  = notEmpty?-complete (A + B) h
 honest?-complete {μ-type _}   ()

@@ -28,10 +28,10 @@ stderr = 2
 ------------------------------------------------------------------------
 
 -- | Write a single character to stdout
-signature putc : Eff Int Unit
+signature putc : Act Int Unit
 
 -- | Flush stdout
-signature flush : Eff Unit Unit
+signature flush : Act Unit Unit
 
 ------------------------------------------------------------------------
 -- Input Operations (D032: All I/O is effectful)
@@ -39,7 +39,7 @@ signature flush : Eff Unit Unit
 
 -- | Read a single character from stdin
 -- Returns -1 on EOF
-signature getc : Eff Unit Int
+signature getc : Act Unit Int
 
 ------------------------------------------------------------------------
 -- File Reading Helpers (D032: All I/O is effectful)

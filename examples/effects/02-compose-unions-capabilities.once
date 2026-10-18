@@ -9,9 +9,9 @@
 -- capability grade rides along silently and is combined by JOIN (union). `arr`
 -- lifts a pure function, contributing the empty set.
 
-signature getLine : Eff Unit (String Utf8)
-signature putLine : Eff (String Utf8) Unit
-signature readEnv : Eff (String Utf8) (String Utf8)
+signature getLine : Act Unit (String Utf8)
+signature putLine : Act (String Utf8) Unit
+signature readEnv : Act (String Utf8) (String Utf8)
 
 -- Policy (orthogonal, deployment-owned):
 require getLine, putLine : {Console}

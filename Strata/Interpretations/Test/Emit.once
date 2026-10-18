@@ -17,7 +17,7 @@
 -- The byte-writing implementation already existed, in a duplicate strata root
 -- used by `TraceSpec` alone; this is that implementation, promoted to be the
 -- only one.
-signature emit : Eff Int Unit
+signature emit : Act Int Unit
 
 -- | The same for a `Float`, and observable for the same reason.
 --
@@ -34,9 +34,4 @@ signature emit : Eff Int Unit
 -- showing through: at the machine level an `Int` argument and a `Float` argument
 -- are both one machine word. What differs is the SOURCE type, and hence what the
 -- word MEANS — `42` against `0x3FE0000000000000` for `0.5` at binary64.
-signature emitF : Eff Float Unit
-
--- | `emit` at the TERMINATING grade (D313): the same write, declared as an
--- operation that returns. D318: a ν's grade is finite, so a stream's coalgebra
--- is `act` — this is the observable operation one can run.
-signature emitA : Act Int Unit
+signature emitF : Act Float Unit

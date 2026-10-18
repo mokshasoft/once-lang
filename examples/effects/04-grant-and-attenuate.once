@@ -11,8 +11,8 @@
 -- flows meet at the grant site. A program type-checks only when every needed
 -- capability has been discharged from root.
 
-signature putLine  : Eff (String Utf8) Unit
-signature readFile : Eff (String Utf8) (String Utf8)
+signature putLine  : Act (String Utf8) Unit
+signature readFile : Act (String Utf8) (String Utf8)
 
 require putLine  : {Console}
 require readFile : {FileRead}        -- the weaker file capability

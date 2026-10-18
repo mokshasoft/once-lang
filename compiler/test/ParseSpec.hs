@@ -105,7 +105,7 @@ validSyntaxTests = testGroup "Valid syntax"
       -- External primitives are declared with `signature` (the old
       -- `primitive` keyword was removed).
       let source = T.unlines
-            [ "signature exit : Eff Int Unit"
+            [ "signature exit : Act Int Unit"
             ]
       result <- parseSource source
       assertParsed result ["exit : Eff Int Unit"]
@@ -114,7 +114,7 @@ validSyntaxTests = testGroup "Valid syntax"
       -- Plan 0.98 E / D226: an external op that never returns is typed by its
       -- CODOMAIN -- `Void` -- not by an annotation.
       let source = T.unlines
-            [ "signature ex : Eff Int Void"
+            [ "signature ex : Act Int Void"
             ]
       result <- parseSource source
       assertParsedContains result "ex : Eff Int Void"
@@ -123,7 +123,7 @@ validSyntaxTests = testGroup "Valid syntax"
       -- `! halts` / `! emits` were deleted with the SigEffect table (plan 0.98 E):
       -- the codomain says it, so the annotation is no longer syntax.
       let source = T.unlines
-            [ "signature ex : Eff Int Unit ! halts"
+            [ "signature ex : Act Int Unit ! halts"
             ]
       result <- parseSource source
       assertParseError result
@@ -131,7 +131,7 @@ validSyntaxTests = testGroup "Valid syntax"
   , testCase "the emits annotation is gone too" $ do
       -- Plan 0.113 D (audit leftover): both annotations were deleted together.
       let source = T.unlines
-            [ "signature ex : Eff Int Unit ! emits"
+            [ "signature ex : Act Int Unit ! emits"
             ]
       result <- parseSource source
       assertParseError result

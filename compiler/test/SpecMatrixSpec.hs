@@ -126,7 +126,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
   , testGroup "signatures extend Σ (D274, D249)"
       [ testCase "an own signature can be referenced" $ do
           r <- checkLib
-            [ "signature tick : Eff Unit Unit"
+            [ "signature tick : Act Unit Unit"
             , ""
             , "g : Eff Unit Unit"
             , "g = tick"

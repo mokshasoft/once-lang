@@ -12,7 +12,7 @@
 -- carry different capability policies in different deployments.
 
 -- The operation: plain Eff, no capability annotation anywhere.
-signature putLine : Eff (String Utf8) Unit
+signature putLine : Act (String Utf8) Unit
 
 -- The capability policy: a SEPARATE artifact (a deployment choice), independent
 -- of which interpretation actually provides `putLine`.

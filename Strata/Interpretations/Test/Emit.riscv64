@@ -61,27 +61,3 @@ emitF:
     li      a0, 0
     ret
 .size emitF, .-emitF
-
-# `emitA : Act Int Unit` — `emit` at the TERMINATING grade (D313): the same
-# write, declared as an operation that returns. A stream's layer may run it
-# (D318: a ν's grade is finite, so its coalgebra is `act`, never `eff`).
-.global emitA
-.type emitA, @function
-emitA:
-    addi    sp, sp, -32
-    sd      a1, 0(sp)
-    sd      a2, 8(sp)
-    sd      a7, 16(sp)
-    sd      t0, 24(sp)          # the whole machine word, little-endian
-    li      a0, 1               # fd = stdout
-    addi    a1, sp, 24          # buf
-    li      a2, 8               # count (the whole word)
-    li      a7, 64              # SYS_write
-    ecall
-    ld      a1, 0(sp)
-    ld      a2, 8(sp)
-    ld      a7, 16(sp)
-    addi    sp, sp, 32
-    li      a0, 0               # return Unit (0)
-    ret
-.size emitA, .-emitA

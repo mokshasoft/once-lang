@@ -12,9 +12,9 @@
 -- you annotate only to assert a budget, and the compiler confirms the inferred
 -- set fits within it. There is no ambient authority.
 
-signature putLine : Eff (String Utf8) Unit
-signature get     : Eff Unit Nat
-signature put     : Eff Nat Unit
+signature putLine : Act (String Utf8) Unit
+signature get     : Act Unit Nat
+signature put     : Act Nat Unit
 
 require putLine : {Console}        -- Console is a capability
 -- get / put: plain State effect, no capability

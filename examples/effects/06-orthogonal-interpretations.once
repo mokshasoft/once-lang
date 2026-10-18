@@ -11,8 +11,8 @@
 -- a pure test — only the interpretation (who implements the op) changes. The
 -- capability grade, inferred and checked, is identical in every case.
 
-signature putLine  : Eff (String Utf8) Unit
-signature readFile : Eff (String Utf8) (String Utf8)
+signature putLine  : Act (String Utf8) Unit
+signature readFile : Act (String Utf8) (String Utf8)
 
 -- Orthogonal policy — authored once, reused under every interpretation below.
 require putLine  : {Console}

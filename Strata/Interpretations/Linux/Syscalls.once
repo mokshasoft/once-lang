@@ -14,28 +14,28 @@
 ------------------------------------------------------------------------
 
 -- | Exit the process with code 0
-signature exit0 : Eff Unit Void
+signature exit0 : Act Unit Void
 
 -- | Exit the process with given code
-signature exit : Eff Int Void
+signature exit : Act Int Void
 
 -- | Get current process ID
-signature getpid : Eff Unit Int
+signature getpid : Act Unit Int
 
 -- | Get parent process ID
-signature getppid : Eff Unit Int
+signature getppid : Act Unit Int
 
 -- | Get user ID
-signature getuid : Eff Unit Int
+signature getuid : Act Unit Int
 
 -- | Get effective user ID
-signature geteuid : Eff Unit Int
+signature geteuid : Act Unit Int
 
 -- | Get group ID
-signature getgid : Eff Unit Int
+signature getgid : Act Unit Int
 
 -- | Get effective group ID
-signature getegid : Eff Unit Int
+signature getegid : Act Unit Int
 
 ------------------------------------------------------------------------
 -- File Descriptors (D032: All syscalls are effectful)
@@ -45,13 +45,13 @@ signature getegid : Eff Unit Int
 -- fd: 0 = stdin, 1 = stdout, 2 = stderr
 
 -- | Close file descriptor
-signature fd_close : Eff Int Int
+signature fd_close : Act Int Int
 
 -- | Duplicate file descriptor
-signature fd_dup : Eff Int Int
+signature fd_dup : Act Int Int
 
 -- | Duplicate file descriptor to specific number
-signature fd_dup2 : Eff (Int * Int) Int
+signature fd_dup2 : Act (Int * Int) Int
 
 ------------------------------------------------------------------------
 -- File Operations (D032: All syscalls are effectful)
@@ -62,10 +62,10 @@ signature fd_dup2 : Eff (Int * Int) Int
 -- O_CREAT = 64, O_TRUNC = 512, O_APPEND = 1024
 
 -- | Change file permissions by file descriptor
-signature fchmod : Eff (Int * Int) Int
+signature fchmod : Act (Int * Int) Int
 
 -- | Truncate file by file descriptor
-signature ftruncate : Eff (Int * Int) Int
+signature ftruncate : Act (Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Directory Operations (D032: All syscalls are effectful)
@@ -78,20 +78,20 @@ signature ftruncate : Eff (Int * Int) Int
 -- | Seek flags: SEEK_SET = 0, SEEK_CUR = 1, SEEK_END = 2
 
 -- | Seek to position in file, returns new position
-signature lseek : Eff (Int * Int * Int) Int
+signature lseek : Act (Int * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Time (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Get current time in seconds since epoch
-signature time : Eff Unit Int
+signature time : Act Unit Int
 
 -- | Sleep for specified seconds
-signature sleep : Eff Int Int
+signature sleep : Act Int Int
 
 -- | Sleep for specified microseconds
-signature usleep : Eff Int Int
+signature usleep : Act Int Int
 
 ------------------------------------------------------------------------
 -- Environment (D032: All syscalls are effectful)
@@ -109,13 +109,13 @@ signature usleep : Eff Int Int
 -- SIGHUP=1, SIGINT=2, SIGQUIT=3, SIGKILL=9, SIGTERM=15, etc.
 
 -- | Send signal to process
-signature kill : Eff (Int * Int) Int
+signature kill : Act (Int * Int) Int
 
 -- | Raise signal in current process
-signature raise : Eff Int Int
+signature raise : Act Int Int
 
 -- | Pause until signal received
-signature pause : Eff Unit Int
+signature pause : Act Unit Int
 
 ------------------------------------------------------------------------
 -- Pipe and IPC (D032: All syscalls are effectful)
@@ -129,13 +129,13 @@ signature pause : Eff Unit Int
 -- | Socket types: SOCK_STREAM=1, SOCK_DGRAM=2
 
 -- | Create socket
-signature socket : Eff (Int * Int * Int) Int
+signature socket : Act (Int * Int * Int) Int
 
 -- | Listen for connections
-signature listen : Eff (Int * Int) Int
+signature listen : Act (Int * Int) Int
 
 -- | Shutdown socket
-signature shutdown : Eff (Int * Int) Int
+signature shutdown : Act (Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Polling (D032: All syscalls are effectful)
@@ -158,4 +158,4 @@ signature shutdown : Eff (Int * Int) Int
 -- CLONE_PARENT = 0x8000     Share parent
 
 -- | Get thread ID
-signature gettid : Eff Unit Int
+signature gettid : Act Unit Int

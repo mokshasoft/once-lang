@@ -85,32 +85,3 @@ emitF:
     xorq    %rax, %rax          # return Unit (0)
     ret
 .size emitF, .-emitF
-
-# `emitA : Act Int Unit` — `emit` at the TERMINATING grade (D313): the same
-# write, declared as an operation that returns. A stream's layer may run it
-# (D318: a ν's grade is finite, so its coalgebra is `act`, never `eff`).
-.align 16
-.global emitA
-.type emitA, @function
-emitA:
-    pushq   %rdi                # Input1 — the argument, and must survive
-    pushq   %rsi
-    pushq   %rdx
-    pushq   %rcx                # clobbered by `syscall`
-    pushq   %r11                # likewise
-    subq    $16, %rsp
-    movq    %rdi, (%rsp)        # the WHOLE machine word, little-endian
-    movq    %rsp, %rsi          # rsi = buffer
-    movq    $1, %rdi            # rdi = fd (stdout)
-    movq    $8, %rdx            # rdx = count (the whole word)
-    movq    $1, %rax            # rax = SYS_write
-    syscall
-    addq    $16, %rsp
-    popq    %r11
-    popq    %rcx
-    popq    %rdx
-    popq    %rsi
-    popq    %rdi
-    xorq    %rax, %rax          # return Unit (0)
-    ret
-.size emitA, .-emitA

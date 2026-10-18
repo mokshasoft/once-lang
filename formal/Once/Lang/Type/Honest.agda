@@ -9,8 +9,9 @@
 -- returning `Void` HALTS. So an FFI arrow into `Unit`/`Void` must be
 -- effectful, and a bare constant of type `Unit`/`Void` — a nullary effect,
 -- whose every REFERENCE would emit — is not a declaration at all: effects live
--- on arrows (D032), so it is written `Eff Unit Unit`. A curried declaration is
--- honest when its innermost Unit/Void-returning arrow is.
+-- on arrows (D032), so it is written `Act Unit Unit`. D318 item 5: a declaration
+-- is FIRST ORDER — a constant, a pure function, or an operation declared at
+-- `Act` (used at `Eff` by subtyping); an `Eff` or a curried declaration is not.
 ------------------------------------------------------------------------
 
 module Once.Lang.Type.Honest where
@@ -83,7 +84,7 @@ Effectful pure = ⊥
 HonestCod : Purity → Type → Set
 HonestCod π Unit                       = Effectful π
 HonestCod π Void                       = Effectful π
-HonestCod π (A ⇒[ mk-kind q π′ ] B)    = HonestCod π′ B
+HonestCod π (_ ⇒[ _ ] _)               = ⊥   -- D318: first order
 HonestCod π (A * B)                    = DataCod π (A * B)
 HonestCod π (A + B)                    = DataCod π (A + B)
 HonestCod π (μ-type _)                 = ⊥   -- B2: not first-order data
@@ -96,7 +97,11 @@ HonestCod π (rigid _ _)                = ⊥   -- D243: an FFI signature is gro
 HonestFFI : Type → Set
 HonestFFI Unit                    = ⊥
 HonestFFI Void                    = ⊥
-HonestFFI (A ⇒[ mk-kind q π ] B)  = HonestCod π B
+HonestFFI (A ⇒[ mk-kind q    pure ] B) = HonestCod pure B
+HonestFFI (A ⇒[ mk-kind Many act  ] B) = HonestCod act B   -- D318: an operation, at `Act`
+HonestFFI (A ⇒[ mk-kind Zero act  ] B) = ⊥
+HonestFFI (A ⇒[ mk-kind One  act  ] B) = ⊥
+HonestFFI (A ⇒[ mk-kind q    eff  ] B) = ⊥
 HonestFFI (A * B)                 = NotEmpty (A * B)
 HonestFFI (A + B)                 = NotEmpty (A + B)
 HonestFFI (μ-type _)              = ⊥
@@ -162,7 +167,7 @@ dataCod? act  B = both (notEmpty? B) (notSingleton? B)
 honestCod? : (π : Purity) (B : Type) → Maybe (HonestCod π B)
 honestCod? π Unit                     = effectful? π
 honestCod? π Void                     = effectful? π
-honestCod? π (A ⇒[ mk-kind q π′ ] B)  = honestCod? π′ B
+honestCod? π (_ ⇒[ _ ] _)             = nothing
 honestCod? π (A * B)                  = dataCod? π (A * B)
 honestCod? π (A + B)                  = dataCod? π (A + B)
 honestCod? π (μ-type _)               = nothing
@@ -174,7 +179,11 @@ honestCod? π (rigid _ _)              = nothing
 honest? : (T : Type) → Maybe (HonestFFI T)
 honest? Unit                    = nothing
 honest? Void                    = nothing
-honest? (A ⇒[ mk-kind q π ] B)  = honestCod? π B
+honest? (A ⇒[ mk-kind q    pure ] B) = honestCod? pure B
+honest? (A ⇒[ mk-kind Many act  ] B) = honestCod? act B
+honest? (A ⇒[ mk-kind Zero act  ] B) = nothing
+honest? (A ⇒[ mk-kind One  act  ] B) = nothing
+honest? (A ⇒[ mk-kind q    eff  ] B) = nothing
 honest? (A * B)                 = notEmpty? (A * B)
 honest? (A + B)                 = notEmpty? (A + B)
 honest? (μ-type _)              = nothing
