@@ -18899,3 +18899,51 @@ premise). **Relates**: D317, D318, plan-ref (`origin/plan-ref`, PLAN-REF).
 * Spec: Trace (new), Observation, Equivalence, Signature, Core.Program, Surface.Program, Source,
   Metatheory, the root.
 * Metatheory: green (`Once.Metatheory`); `Once.Metatheory.OneName` holds `decl-unique`/`mem-unique`.
+
+## D320 — HOW A RUN ENDS ON A PLATFORM: THE HOST (2026-10-18)
+
+**Decided by the user, 2026-10-18** (plan 0.119 §7 D4's decision point, in discussion). **Supersedes**:
+D262's silent stop (`main` ends in `c-label done; c-jmp done`). **Amends**: D262's environment contract
+(`initialState`). **Relates**: D317/D318/D319 (a trace observes its end), D302 (honest assumptions are
+hypotheses), D061 (Interpretations are outside the compiler), D315 (`main` may return).
+
+### Problem
+The Spec's behaviour `Tr ⊤` observes how a run ends: `returned`, `halted`, or silent forever. Since
+D315 a `main` that ends (`Act Unit Unit`) is legal and its trace ends `returned tt`. The image ends
+`main` in a silent self-jump, which is observed as silent forever: a returning program and a server
+that goes silent would be the same binary behaviour. Once targets bare metal, every OS and VMs, and
+what "a program has ended" means differs per platform (Linux: `exit_group`; FreeRTOS: the task is
+deleted; seL4: the thread is suspended; bare metal: a stop; a VM: `main` returns), so the compiler
+cannot pick one.
+
+### Decision
+1. **The Spec is unchanged.** It says THAT a run returned, halted, or went on forever, never how a
+   platform realizes it.
+2. **A Host is how a platform runs a program**: a record with `enter` and `leave`; a run is
+   `enter ; main ; leave`, where `main : Eff Unit Unit` and `leave : Eff Unit Void` — an action that
+   never answers. The Host CLOSES the program: a `main` that may return becomes a run that never does.
+   (The name is chosen for what it is; `crt0` is a C library's name for one Host.)
+3. **The compiler is Host-agnostic.** When `main` returns, the image calls `leave` through one fixed
+   external symbol; it never knows what `leave` does. The Host is chosen at link time, like an
+   Interpretation's per-arch code, so one compiled program runs under any Host.
+4. **The Host's contract is a named hypothesis of the apex** (D302), with a model for each Host:
+   `enter` — the machine state at the start is what the compiler's proved start (`c-start`, D262)
+   requires; `leave` — calling it ends the run, and that end is observed as `returned`.
+5. **The three ends.** No explicit exit: `main` returns, `leave` runs, the trace ends `returned`. An
+   explicit `exit@S n` is an ordinary operation whose answer type is empty: the run halts there, `leave`
+   is never reached, the trace is the exit event and then `halted`. A server never reaches `leave`:
+   silent forever, or calls forever.
+6. **The machine's observable gains the end**: the trusted interface observes the calls AND whether
+   the run reached `leave` (`returned`) or made a call whose answer type is empty (`halted`); each
+   architecture's simulation proves the binary ends as the source does, and plan 0.120's `fromDepth`
+   turns the depth agreement into the Spec's weak bisimilarity at the apex.
+7. **First Host: Linux** (`leave` = `exit_group(0)`), per architecture. Further Hosts (BSD, seL4,
+   FreeRTOS, bare metal, a VM) are further instances of the same contract and need nothing from the
+   compiler.
+
+### Consequences
+* Codegen: the silent stop becomes a call to `leave`; the per-arch lowering and the file's externs
+  name the symbol.
+* Adequacy: the CPU interface's observable carries the end; `Denotation.Behavior` with it; the
+  per-arch correspondences prove end agreement; the apex takes the Host's contract.
+* A Host's code lives outside the compiler, beside the Interpretations.

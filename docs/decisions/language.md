@@ -42,6 +42,13 @@ entry updates the rule it changes here, in the same commit.
   two behaviours are the same when they are weakly bisimilar: the next call or
   end arrives in both or in neither, the same call, the rests again the same.
   The production rate is not observed. (D318 ← D317, D179, D058)
+- **A Host runs a program**: `enter ; main ; leave`, with `leave : Eff Unit
+  Void`. The Spec says only THAT a run returned, halted or went on; the Host
+  says how a platform does it (Linux `exit_group(0)`, a bare-metal stop, a
+  deleted task). The compiler calls `leave` when `main` returns and never
+  knows which Host it runs under; the Host is chosen at link time and its
+  contract is a hypothesis of the apex. An explicit `exit` is an ordinary
+  operation into `Void`: the run halts and never reaches `leave`. (D320)
 - **The observable is Spec**: an event records the operation's canonical name,
   its domain and the argument as a typed value. (D114)
 
@@ -355,7 +362,8 @@ entry updates the rule it changes here, in the same commit.
   the apex carries models showing the hypotheses satisfiable. Facts about our
   own code are proved. (D302 ← D087)
 - **Trust only `as`**: the one trusted translation is the assembler's; the
-  emitted code is the verified image, and `_start` is proved code. A
+  emitted code is the verified image, and `_start` is proved code; how the
+  run ends is the Host's `leave` (D320). A
   toolchain axiom may never certify compiler logic. (D262 ← D165, D161, D261)
 - **Agda, extracted with MAlonzo**, is the current proof vehicle — scaffolding
   toward Once in Once and the TCB0 bootstrap. (D022, D036, GOAL.md)
