@@ -38,7 +38,7 @@ open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
-open import Once.Lang.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; act; eff)
+open import Once.Lang.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; act; eff; Finite; fin)
 open import Once.Denotation.TraceMonadInfLaws using (RelT∞′-embed; RelT∞′; RelT∞′-bind; rel∞-ret; RelT∞′-≈; ≈∞-bind; ≈∞-refl)
 open import Once.Lang.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
 open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
@@ -107,9 +107,8 @@ open import Once.Lang.Name using (showCanonical)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; RelGM-fmap; prjB-rel; injB-rel; embν-∼; module _∼ᵖᵈ_; module _∼∞ᵈ_; embνᵃ-∼; embν∞ᵈ-∼)
+  using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; RelGM-fmap; prjB-rel; injB-rel; module _∼ᵖᵈ_; embνᵃ-∼)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
-open _∼∞ᵈ_ using (force-∼∞ᵈ)
 open import Once.Lang.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCallᵀ)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
@@ -509,10 +508,10 @@ out-relᵍ (wf-Sum wfF wfG) {x = inj₂ _} {y = inj₁ _} ()
 out-relᵍ (wf-Prod wfF wfG) {x = _ , _} {y = _ , _} (rF , rG) =
   out-relᵍ wfF rF , out-relᵍ wfG rG
 
-out-app-bridge : ∀ {F : Functor} {π : Purity} {wfF : WellFormedF F}
+out-app-bridge : ∀ {F : Functor} {π : Finite} {wfF : WellFormedF F}
                    {vᴸ : ⟦ ν-type F π ⟧ᵛ} {vᴿ : ⟦ ν-type F π ⟧ᴰ}
                → RelGV (ν-type F π) vᴸ vᴿ
-               → RelGM π (⟦ F ⟧T (ν-type F π)) (out-semᵛ π wfF vᴸ)
+               → RelGM (fin π) (⟦ F ⟧T (ν-type F π)) (out-semᵛ π wfF vᴸ)
                       (liftFn fmt (calls σ) {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF) vᴿ)
 -- Plan 0.105: the IR's `Out` IS `out-sem` (`liftFn-Out`), so the bridge is
 -- the bisimulation's force relation mapped by the `Out` coercions.
@@ -533,10 +532,6 @@ out-app-bridge {F} {act} {wfF} {vᴸ} {vᴿ} rel =
           {g = λ l → cf⁻¹ᵛ (ν-type F act) wfF (coerce-ν-out wfF _ l)}
           {g′ = λ layer → coerce-functor⁻¹-D wfF (ν-type F act) (coerce-ν-out wfF _ layer)}
           (λ x y r → out-relᵍ {A = ν-type F act} wfF r) (force-∼ rel))
-out-app-bridge {F} {eff} {wfF} {vᴸ} {vᴿ} rel =
-  subst (RelT∞′ (RelGV (⟦ F ⟧T (ν-type F eff))) (out-semᵛ eff wfF vᴸ))
-        (sym (liftFn-Out {π = eff} wfF vᴿ))
-        (RelT∞′-bind (force-∼∞ᵈ rel) (λ r → rel∞-ret refl (out-relᵍ {A = ν-type F eff} wfF r)))
 -- D311 C2: a stream whose layers begin with an event — the forgotten root
 -- against the Kleisli force, mapped by the `Out` coercions.
 
@@ -616,8 +611,8 @@ bind2-rel {A = A} {B = B} {C = C} h h' r₁ r₂ hrel =
 -- D250: the Spec side converts by `⟦_⟧<:ᵛ`, the Kleisli side by `⟦_⟧<:`. At
 -- an arrow the Spec's result is also SUBEFFECTED (`subM g`): a pure result
 -- embedded at `eff` is a silent return, which is what the relation at `pure`
--- already said of the Kleisli side. At ν the embedding of a pure stream is
--- `embν`, related by `embν-∼`.
+-- already said of the Kleisli side. At ν the embedding of a pure stream into
+-- an acting one is `embνᵃ`, related by `embνᵃ-∼`.
 mutual
   RelGV-sub : ∀ {A B} (p : A <: B) {x : ⟦ A ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelGV B (⟦ p ⟧<:ᵛ x) (⟦ p ⟧<: y)
   RelGV-sub sub-void {()}
@@ -625,12 +620,10 @@ mutual
   RelGV-sub sub-int    r = r
   RelGV-sub sub-float  r = r
   RelGV-sub sub-μ      r = r
-  RelGV-sub (sub-ν ⊑-pure) r = r
-  RelGV-sub (sub-ν ⊑-eff)  r = r
-  RelGV-sub (sub-ν ⊑-pe)   r = embν-∼ r
-  RelGV-sub (sub-ν ⊑-act)  r = r
-  RelGV-sub (sub-ν ⊑-pa)   r = embνᵃ-∼ r
-  RelGV-sub (sub-ν ⊑-ae)   r = embν∞ᵈ-∼ r
+  RelGV-sub (sub-ν {φ = pure} {pure} _) r = r
+  RelGV-sub (sub-ν {φ = act}  {act}  _) r = r
+  RelGV-sub (sub-ν {φ = pure} {act}  _) r = embνᵃ-∼ r
+  RelGV-sub (sub-ν {φ = act}  {pure} ())
   RelGV-sub (sub-arr {q = Zero} a b g) r = RelGM-sub g b r
   RelGV-sub (sub-arr {q = One}  a b g) r = λ ra → RelGM-sub g b (r (RelGV-sub a ra))
   RelGV-sub (sub-arr {q = Many} a b g) r = λ ra → RelGM-sub g b (r (RelGV-sub a ra))
@@ -1027,15 +1020,15 @@ bridge-i (t-Out-app-infer {F = F} wfF refl d) re er =
             (bridge-i d (reᵐ re) er) (λ rv → out-app-bridge {π = pure} {wfF = wfF} rv)
 -- D233: at an EFFECTFUL stream both sides evaluate the stream, then return the
 -- suspension of the force — `liftFn-curry-fst` is the IR side's reduction.
-bridge-i {ctx = ctx} (t-Out-eff-app-infer {F = F} {π = π} {g = g} wfF refl d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-  subst (RelGT (Unit ⇒[ mk-kind Many π ] ⟦ F ⟧T (ν-type F π))
-              (returnT ((⟦ t-Out-eff-app-infer {g = g} wfF refl d ⟧ᵢ fmt _) dγ₁)))
+bridge-i {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF refl d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
+  subst (RelGT (Unit ⇒[ mk-kind Many Once.Lang.Type.Grade.act ] ⟦ F ⟧T (ν-type F Once.Lang.Type.Grade.act))
+              (returnT ((⟦ t-Out-eff-app-infer wfF refl d ⟧ᵢ fmt _) dγ₁)))
         (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt σ) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_)
-                   (liftFn-curry-fst {A = ν-type F π} {C = ⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF))))
-        (RelGᵖ-bind {A = ν-type F π} {B = Unit ⇒[ mk-kind Many π ] ⟦ F ⟧T (ν-type F π)}
+                   (liftFn-curry-fst {A = ν-type F Once.Lang.Type.Grade.act} {C = ⟦ F ⟧T (ν-type F Once.Lang.Type.Grade.act)} (Out-ir wfF))))
+        (RelGᵖ-bind {A = ν-type F Once.Lang.Type.Grade.act} {B = Unit ⇒[ mk-kind Many Once.Lang.Type.Grade.act ] ⟦ F ⟧T (ν-type F Once.Lang.Type.Grade.act)}
                    (bridge-i d (reᵐ re) er)
-                   (λ rv → RelGT-return {A = Unit ⇒[ mk-kind Many π ] ⟦ F ⟧T (ν-type F π)}
-                             (λ _ → out-app-bridge {F = F} {π = π} {wfF = wfF} rv)))
+                   (λ rv → RelGT-return {A = Unit ⇒[ mk-kind Many Once.Lang.Type.Grade.act ] ⟦ F ⟧T (ν-type F Once.Lang.Type.Grade.act)}
+                             (λ _ → out-app-bridge {F = F} {π = Once.Lang.Type.Grade.act} {wfF = wfF} rv)))
 bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {ρ = ρ} {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
   subst (RelGT Unit (returnT ((⟦ t-terminal-app d ⟧ᵢ fmt ρ) dγ₁))) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt σ) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-terminal {T})))
         (RelGᵖ-bind {A = T} {B = Unit} (bridge-i d {ρ = ρ} (reᵐ re) er)
@@ -1179,15 +1172,15 @@ bridge-c (t-cata-check {F = F} {A = A} {π = π} {u = u} wfF dalg) re er =
 -- what `RelGV` asks for there) comes from coalgebraic extensionality.
 -- (`RelGT-bind` at `returnT`, not `RelGᵖ-bind`: the Spec clause applies its
 -- continuation directly rather than through the opaque `>>=ᵖ`.)
-bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} {u = u} wfF dcoalg) re er =
-  RelGT-bind {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A}
+bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} wfF dcoalg) re er =
+  RelGT-bind {A = A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧T A}
             {B = A ⇒[ mk-kind Many π₀ ] ν-type F π}
             (bridge-c dcoalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} rco →
   RelGT-return {A = A ⇒[ mk-kind Many π₀ ] ν-type F π}
     (λ {a} {b} rab →
       RelGM-return u {ν-type F π}
         (ana-bridgeᵍ π wfF c₁ (returnT c₂)
-                     (RelGT-return {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} rco) rab)))
+                     (RelGT-return {A = A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧T A} rco) rab)))
 -- D226: the mode switch. Both sides map their result along the same `⟦ p ⟧<:`,
 -- and the relation respects every conversion (`RelGT-sub`).
 bridge-c (t-sub d p) re er = RelGT-sub p (bridge-i d re er)

@@ -47,7 +47,7 @@ open import Once.Lang.Type.Grade
 open import Once.Lang.Type
 open import Once.Lang.Type.Poly
 open import Once.Type
-open import Once.Lang.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Lang.Type.DecEq using (_≟q_; _≟p_; _≟k_; _≟f_)
 open import Once.Spec.Name using (CanonicalName; canonical; gen)
 open import Once.Lang.Name using (showCanonical)
 open import Once.Spec.Name using (generatorNS)
@@ -183,7 +183,7 @@ mutual
   unify' n s (PAct a b) (PAct a' b') = unify2 n s a a' b b'
   unify' n s (Pμ-type F) (Pμ-type G) = unifyF n s F G
   unify' n s (Pν-type F π) (Pν-type G π′) =
-    if purityEqBool π π′ then unifyF n s F G else nothing
+    if does (π ≟f π′) then unifyF n s F G else nothing
   {-# CATCHALL #-}
   unify' _ _ _ _ = nothing
 

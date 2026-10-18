@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 import Once.Lang.Type.Grade as T
 import Once.Lang.Type as T
 open import Once.Lang.Type.WellFormed using (rf-⇒)
-open import Once.Lang.Type.Grade using (mk-kind; Many)
+open import Once.Lang.Type.Grade using (mk-kind; Many; fin)
 open import Once.Lang.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Lang.Context as C using (Ctx; Usage)
 open import Once.Lang.Core.PolyTy
@@ -170,13 +170,13 @@ abs-⊢ Δ sg {Γ = Γ} (GT.⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F
     (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψa ] absTm Δ alg ∷ X ⇒[ mk-kind Many π ] absTy Δ A ! π₁)
            (absTy-⟦⟧ Δ F A) (abs-⊢ Δ sg a))
     (abs-⊢ Δ sg t)
-abs-⊢ Δ sg {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {π = π} {π₁ = π₁} {F = F} {A = A} {c = c} wf k x) =
+abs-⊢ Δ sg {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {φ = φ} {π₁ = π₁} {F = F} {A = A} {c = c} wf k x) =
   ⊢unfold (abs-wf Δ wf)
-    (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψc ] absTm Δ c ∷ absTy Δ A ⇒[ mk-kind Many π ] X ! π₁)
+    (subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψc ] absTm Δ c ∷ absTy Δ A ⇒[ mk-kind Many (fin φ) ] X ! π₁)
            (absTy-⟦⟧ Δ F A) (abs-⊢ Δ sg k))
     (abs-⊢ Δ sg x)
-abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} (GT.⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
-  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] out (absTm Δ t) ∷ X ! π₁ T.·p π) (sym (absTy-⟦⟧ Δ F (T.ν-type F π)))
+abs-⊢ Δ sg {Γ = Γ} {Ψ = Ψ} (GT.⊢out {φ = φ} {π₁ = π₁} {F = F} {t = t} wf d) =
+  subst (λ X → Δ ⊩ absCtx Δ Γ ⊢[ Ψ ] out (absTm Δ t) ∷ X ! π₁ T.·p fin φ) (sym (absTy-⟦⟧ Δ F (T.ν-type F φ)))
     (⊢out (abs-wf Δ wf) (abs-⊢ Δ sg d))
 abs-⊢ Δ sg (GT.⊢coerce p d) = ⊢coerce (abs-<: Δ p) (abs-⊢ Δ sg d)
 abs-⊢ Δ sg GT.⊢lit-int   = ⊢lit-int

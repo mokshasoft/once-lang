@@ -74,7 +74,7 @@ data VoidFree : ∀ {A B} → A <: B → Set where
   vf-sum    : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
             → VoidFree a → VoidFree b → VoidFree (sub-sum a b)
   vf-μ      : ∀ {F} → VoidFree (sub-μ {F})
-  vf-ν      : ∀ {F π π′} {g : π ⊑π π′} → VoidFree (sub-ν {F} {π} {π′} g)
+  vf-ν      : ∀ {F φ φ′} {g : T.fin φ ⊑π T.fin φ′} → VoidFree (sub-ν {F} {φ} {φ′} g)
   vf-rigid  : ∀ {k i} → VoidFree (sub-rigid {k} {i})
 
 private

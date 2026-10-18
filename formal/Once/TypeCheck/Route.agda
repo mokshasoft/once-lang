@@ -100,9 +100,9 @@ mutual
                  → Rii d d′ → Rii (t-apply-eff-app-infer {g = g} d) (t-apply-eff-app-infer {g = g′} d′)
     ii-Out : ∀ {F F′ w w′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ν-type F T.pure ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pure ⨾ Ψ′}
            → Rii d d′ → Rii (t-Out-app-infer w refl d) (t-Out-app-infer w′ refl d′)
-    ii-Out-eff : ∀ {F F′ w w′ Ψ Ψ′ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
-                   {d : ctx ⊢ᵢ e ∶ ν-type F π ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ π′ ⨾ Ψ′}
-               → Rii d d′ → Rii (t-Out-eff-app-infer {g = g} w refl d) (t-Out-eff-app-infer {g = g′} w′ refl d′)
+    ii-Out-eff : ∀ {F F′ w w′ Ψ Ψ′}
+                   {d : ctx ⊢ᵢ e ∶ ν-type F T.act ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.act ⨾ Ψ′}
+               → Rii d d′ → Rii (t-Out-eff-app-infer w refl d) (t-Out-eff-app-infer w′ refl d′)
     -- `t-app` / `t-effApp`: the argument is CHECKED at the head's domain, so the
     -- two heads' types are aligned (the argument's context does not depend on it,
     -- but the check type does).
@@ -159,8 +159,8 @@ mutual
     cc-cata : ∀ {F w w′ Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
                 {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ′}
             → ∀ {u u′} → Rcc a a′ → Rcc (t-cata-check {ctx = ctx} {F = F} {u = u} w a) (t-cata-check {F = F} {u = u′} w′ a′)
-    cc-ana : ∀ {F w w′ Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] (T.⟦ F ⟧T A)) ⨾ Ψ}
-               {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] (T.⟦ F ⟧T A)) ⨾ Ψ′}
+    cc-ana : ∀ {F w w′ Ψ Ψ′} {φ : T.Finite} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧T A)) ⨾ Ψ}
+               {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧T A)) ⨾ Ψ′}
            → ∀ {u u′} → Rcc a a′ → Rcc (t-ana-check {ctx = ctx} {F = F} {π₀ = π₀} {u = u} w a) (t-ana-check {F = F} {u = u′} w′ a′)
     cc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p ≤p′} {b : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
                {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁′ Surface.Usage.∷ Ψ′)}

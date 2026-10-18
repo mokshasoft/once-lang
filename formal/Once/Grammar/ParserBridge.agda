@@ -40,7 +40,7 @@ open import Once.Lang.Type using (Type)
 open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)
-open import Once.Parser.TypeRelation using (ParsesArrowTail; ParsesAtom; ParsesAtom-shrinks; ParsesFunctorAtom; ParsesFunctorAtom-shrinks; ParsesFunctorProd; ParsesFunctorProd-shrinks; ParsesFunctorProdTail; ParsesFunctorSum; ParsesFunctorSumTail; ParsesProd; ParsesProd-shrinks; ParsesProdTail; ParsesSum; ParsesSum-shrinks; ParsesSumTail; ParsesType; pa-eff; pa-act; pa-nu-act; pa-float; pa-int; pa-mu; pa-nu; pa-nu-eff; pa-paren; pa-unit; pa-void; pat-arrow; pat-arrow-g; pat-done; pfa-id; pfa-k; pfa-paren; pfp-mk; pfpt-done; pfpt-star; pfs-mk; pfst-done; pfst-plus; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk)
+open import Once.Parser.TypeRelation using (ParsesArrowTail; ParsesAtom; ParsesAtom-shrinks; ParsesFunctorAtom; ParsesFunctorAtom-shrinks; ParsesFunctorProd; ParsesFunctorProd-shrinks; ParsesFunctorProdTail; ParsesFunctorSum; ParsesFunctorSumTail; ParsesProd; ParsesProd-shrinks; ParsesProdTail; ParsesSum; ParsesSum-shrinks; ParsesSumTail; ParsesType; pa-eff; pa-act; pa-nu-act; pa-float; pa-int; pa-mu; pa-nu; pa-paren; pa-unit; pa-void; pat-arrow; pat-arrow-g; pat-done; pfa-id; pfa-k; pfa-paren; pfp-mk; pfpt-done; pfpt-star; pfs-mk; pfst-done; pfst-plus; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk)
 
 ------------------------------------------------------------------------
 -- Irrelevance of Acc for each WF parser
@@ -157,33 +157,11 @@ parseArrowTail-as-strippedWF t toks a =
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- D233: the functor parser REJECTS `Eff` and `( Eff` — `Eff` is not a
+-- D313/D318: the functor parser REJECTS `Act` and `( Act` — `Act` is not a
 -- functor keyword. This is what makes `Nu`'s pure-first dispatch complete
--- for `Nu (Eff F)`.
+-- for `Nu (Act F)`.
 ------------------------------------------------------------------------
 
-fAtomEff : ∀ toks (a : Acc _<_ (length (TWord "Eff" ∷ toks))) → parseFunctorAtomWF (TWord "Eff" ∷ toks) a ≡ nothing
-fAtomEff toks (acc rec) = refl
-
-fProdEff : ∀ toks (a : Acc _<_ (length (TWord "Eff" ∷ toks))) → parseFunctorProdWF (TWord "Eff" ∷ toks) a ≡ nothing
-fProdEff toks (acc rec) rewrite fAtomEff toks (acc rec) = refl
-
-fSumEff : ∀ toks (a : Acc _<_ (length (TWord "Eff" ∷ toks))) → parseFunctorSumWF (TWord "Eff" ∷ toks) a ≡ nothing
-fSumEff toks (acc rec) rewrite fProdEff toks (acc rec) = refl
-
-fAtomParenEff : ∀ toks (a : Acc _<_ (length (TLParen ∷ TWord "Eff" ∷ toks)))
-              → parseFunctorAtomWF (TLParen ∷ TWord "Eff" ∷ toks) a ≡ nothing
-fAtomParenEff toks (acc rec) rewrite fSumEff toks (rec (s≤s ≤-refl)) = refl
-
-fProdParenEff : ∀ toks (a : Acc _<_ (length (TLParen ∷ TWord "Eff" ∷ toks)))
-              → parseFunctorProdWF (TLParen ∷ TWord "Eff" ∷ toks) a ≡ nothing
-fProdParenEff toks (acc rec) rewrite fAtomParenEff toks (acc rec) = refl
-
-fSumParenEff : ∀ toks (a : Acc _<_ (length (TLParen ∷ TWord "Eff" ∷ toks)))
-             → parseFunctorSumWF (TLParen ∷ TWord "Eff" ∷ toks) a ≡ nothing
-fSumParenEff toks (acc rec) rewrite fProdParenEff toks (acc rec) = refl
-
--- D313: and `Act` likewise.
 fAtomAct : ∀ toks (a : Acc _<_ (length (TWord "Act" ∷ toks))) → parseFunctorAtomWF (TWord "Act" ∷ toks) a ≡ nothing
 fAtomAct toks (acc rec) = refl
 
@@ -322,16 +300,8 @@ mutual
     rewrite eqF
     = _ , refl
 
-  -- D233: Nu (Eff F) — the pure attempt fails on `( Eff`, then the effectful
+  -- D313: Nu (Act F) — the pure attempt fails on `( Act`, then the acting
   -- functor sum is parsed and closed by `)`.
-  complete-atomWFraw (pa-nu-eff {toks = toks} dF) (acc rec)
-    rewrite fSumParenEff toks (rec (s≤s ≤-refl))
-    with complete-functorSumWFraw dF (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl)))
-  ... | dF' , eqF
-    rewrite eqF
-    = _ , refl
-
-  -- D313: Nu (Act F), as Nu (Eff F).
   complete-atomWFraw (pa-nu-act {toks = toks} dF) (acc rec)
     rewrite fSumParenAct toks (rec (s≤s ≤-refl))
     with complete-functorSumWFraw dF (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl)))

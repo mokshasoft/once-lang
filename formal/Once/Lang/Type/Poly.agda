@@ -21,7 +21,7 @@ open import Data.Product using (Σ; _×_; _,_)
 open import Data.String using (String)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Lang.Type.Grade using (Quantity; Many; Purity; pure; act; eff; mk-kind)
+open import Once.Lang.Type.Grade using (Quantity; Many; Purity; Finite; pure; act; eff; mk-kind)
 open import Once.Lang.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; K; Id; _⊕_; _⊗_)
 
@@ -41,7 +41,7 @@ mutual
     PEff    : PolyType → PolyType → PolyType               -- an effectful arrow (`Eff A B`)
     PAct    : PolyType → PolyType → PolyType               -- one that returns (`Act A B`, D313)
     Pμ-type : PolyFunctor → PolyType
-    Pν-type : PolyFunctor → Purity → PolyType
+    Pν-type : PolyFunctor → Finite → PolyType
     PInt    : PolyType
     PFloat  : PolyType
     PTVar   : String → PolyType                           -- a type variable

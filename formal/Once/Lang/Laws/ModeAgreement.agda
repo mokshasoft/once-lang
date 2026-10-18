@@ -344,16 +344,10 @@ mutual
   agree-ii (t-Out-eff-app-infer _ refl d) (t-Out-eff-app-infer _ refl d′) with agree-ii d d′
   ... | refl , refl = refl , refl
   {-# CATCHALL #-}
-  agree-ii (t-Out-eff-app-infer {g = T.eg-act} _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
+  agree-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
   ... | () , _
   {-# CATCHALL #-}
-  agree-ii (t-Out-eff-app-infer {g = T.eg-eff} _ _ d) (t-Out-app-infer _ _ d′) with agree-ii d d′
-  ... | () , _
-  {-# CATCHALL #-}
-  agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-act} _ _ d′) with agree-ii d d′
-  ... | () , _
-  {-# CATCHALL #-}
-  agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-eff} _ _ d′) with agree-ii d d′
+  agree-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) with agree-ii d d′
   ... | () , _
   agree-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
   agree-ii (t-app () _ _) (t-Out-eff-app-infer _ _ _)

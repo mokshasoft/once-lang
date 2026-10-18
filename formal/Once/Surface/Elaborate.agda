@@ -320,8 +320,8 @@ cataM {F} {A} wfF m =
 -- D273: `cataM`'s mirror. The coalgebra CLOSURE is the environment of the
 -- parameterized `Ana`, so the arm is evaluated once and applied per forced
 -- layer, and it may capture locals.
-anaM : ∀ {F : Functor} {A : Type} {π : Purity} → WellFormedF F → AllocMode
-     → IR (⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) (⌊ A ⌋ ⇛ ⌊ ν-type F π ⌋)
+anaM : ∀ {F : Functor} {A : Type} {φ : Finite} → WellFormedF F → AllocMode
+     → IR (⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) (⌊ A ⌋ ⇛ ⌊ ν-type F φ ⌋)
 anaM {F} {A} wfF m =
   curry (Ana (wf-⌊⌋ wfF)
              (subst (λ o → IR ((⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) * ⌊ A ⌋) o)
@@ -612,8 +612,8 @@ elaborate m (cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wfF alg) =
 -- Anamorphism (dual of cata, D273): the coalgebra is an ordinary term in
 -- context, producing the coalgebra CLOSURE once; `anaM` is a closed morphism
 -- from that closure to the unfold — exactly `cata`'s `cataM ∘ ealg`.
-elaborate m (ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wfF coalg) =
-  anaM {π = π} wfF m ∘ (elaborate m coalg ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
+elaborate m (ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {φ = φ} wfF coalg) =
+  anaM {φ = φ} wfF m ∘ (elaborate m coalg ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
 
 -- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
 --   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`

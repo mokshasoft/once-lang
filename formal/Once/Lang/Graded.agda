@@ -139,7 +139,6 @@ record νᵖ (F : SFunctor) : Set where
 ⟦ μ-type F ⟧ᵛ   = Val.⟦ μ-type F ⟧
 ⟦ ν-type F pure ⟧ᵛ = νᵖ (translateF Carrier Carrier F)
 ⟦ ν-type F act ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
-⟦ ν-type F eff ⟧ᵛ  = ν∞ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᵛ        = Val.⟦ Int ⟧
 ⟦ Float ⟧ᵛ      = Val.⟦ Float ⟧
 -- D243: no runtime value of a rigid parameter (used at ground instances only).

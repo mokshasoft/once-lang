@@ -27,7 +27,7 @@
 
 module Once.Lang.Type.Sub where
 
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; _·p_)
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; _·p_; fin)
 open import Once.Lang.Type
   using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 
@@ -61,7 +61,7 @@ data _<:_ : Type → Type → Set where
   sub-prod   : ∀ {A A′ B B′} → A <: A′ → B <: B′ → (A * B) <: (A′ * B′)
   sub-sum    : ∀ {A A′ B B′} → A <: A′ → B <: B′ → (A + B) <: (A′ + B′)
   sub-μ      : ∀ {F} → μ-type F <: μ-type F
-  sub-ν      : ∀ {F π π′} → π ⊑π π′ → ν-type F π <: ν-type F π′
+  sub-ν      : ∀ {F φ φ′} → fin φ ⊑π fin φ′ → ν-type F φ <: ν-type F φ′
   sub-rigid  : ∀ {k i} → rigid k i <: rigid k i
 
 -- The identities of the order and of the thin category of types.
@@ -79,6 +79,6 @@ data _<:_ : Type → Type → Set where
 <:-refl (A * B) = sub-prod (<:-refl A) (<:-refl B)
 <:-refl (A + B) = sub-sum (<:-refl A) (<:-refl B)
 <:-refl (μ-type F) = sub-μ
-<:-refl (ν-type F π) = sub-ν (⊑π-refl π)
+<:-refl (ν-type F φ) = sub-ν (⊑π-refl (fin φ))
 <:-refl (rigid _ _) = sub-rigid
 

@@ -94,8 +94,6 @@ record TyAlg : Set₁ where
     -- SIGNATURES are parsed by this generic algebra, not by the ground-type
     -- parser `pa-nu` extended — two parsers, one keyword set.
     aNu : RF → R
-    -- D233: the effectful stream `Nu (Eff F)` = ν(T ∘ F).
-    aNuEff : RF → R
     -- D313: `Nu (Act F)`, the stream whose layers return.
     aNuAct : RF → R
     fK : R → RF
@@ -488,11 +486,7 @@ module Gen (alg : TyAlg) where
             → ParsesFuncSumG toks F rest → ParsesAtomG (TWord "Mu" ∷ toks) (aMu F) rest
       pa-nu : ∀ {toks rest} {F : RF}
             → ParsesFuncSumG toks F rest → ParsesAtomG (TWord "Nu" ∷ toks) (aNu F) rest
-      -- D233: `Nu ( Eff F )` — `Eff` is not a functor keyword, so unambiguous.
-      pa-nu-eff : ∀ {toks rest} {F : RF}
-                → ParsesFuncSumG toks F (TRParen ∷ rest)
-                → ParsesAtomG (TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ toks) (aNuEff F) rest
-      -- D313: `Nu ( Act F )`, likewise.
+      -- D313: `Nu ( Act F )` — `Act` is not a functor keyword, so unambiguous.
       pa-nu-act : ∀ {toks rest} {F : RF}
                 → ParsesFuncSumG toks F (TRParen ∷ rest)
                 → ParsesAtomG (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ toks) (aNuAct F) rest
@@ -573,8 +567,6 @@ module Gen (alg : TyAlg) where
     atomShrink (pa-act dA dB) = <-trans (atomShrink dB) (<-trans (atomShrink dA) (s≤s ≤-refl))
     atomShrink (pa-mu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
     atomShrink (pa-nu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
-    atomShrink (pa-nu-eff dF) =
-      <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (funcSumShrink dF)) (s≤s ≤-refl)) (s≤s ≤-refl)) (s≤s ≤-refl)
     atomShrink (pa-nu-act dF) =
       <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (funcSumShrink dF)) (s≤s ≤-refl)) (s≤s ≤-refl)) (s≤s ≤-refl)
     atomShrink (pa-extra ex) = extraShrink ex

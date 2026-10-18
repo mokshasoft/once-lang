@@ -699,9 +699,9 @@ mutual
   iFromInferSub (t-Out-app-infer {v = v} {F = F} wfF refl d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-Out-app-infer wfF refl d)
     in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F T.pure)) eqI sb
-  iFromInferSub (t-Out-eff-app-infer {v = v} {F = F} {π = π} {g = g} wfF refl d) sb =
-    let (_ , _ , _ , eqI) = infer-complete (t-Out-eff-app-infer {g = g} wfF refl d)
-    in checkElab-fallback-RApp-Out v (T.Unit T.⇒[ T.mk-kind T.Many π ] T.⟦ F ⟧T (T.ν-type F π)) eqI sb
+  iFromInferSub (t-Out-eff-app-infer {v = v} {F = F} wfF refl d) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-Out-eff-app-infer wfF refl d)
+    in checkElab-fallback-RApp-Out v (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧T (T.ν-type F T.act)) eqI sb
   iFromInferSub (t-apply-app-infer {p = p} {A = A} {B = B} d) sb =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eqI sb
@@ -817,10 +817,7 @@ mutual
   infer-complete (t-Out-app-infer {v = v} {F = F} wfF refl d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-Out v wfF eqSub
-  infer-complete (t-Out-eff-app-infer {v = v} {F = F} {g = T.eg-eff} wfF refl d) =
-    let (_ , _ , _ , eqSub) = infer-complete d
-    in infer-complete-RApp-Out-eff v wfF eqSub
-  infer-complete (t-Out-eff-app-infer {v = v} {F = F} {g = T.eg-act} wfF refl d) =
+  infer-complete (t-Out-eff-app-infer {v = v} {F = F} wfF refl d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-Out-act v wfF eqSub
   infer-complete (t-apply-app-infer {p = p} {A = A} d) =
@@ -1065,7 +1062,7 @@ mutual
             _ , _ , _ , refl
   -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
   -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.
-  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {π = π} {u = u} wfF dcoalg)
+  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} wfF dcoalg)
     with wellFormedF?-complete-at wfF
   ... | eqW
     with check-completeV dcoalg

@@ -15,7 +15,7 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Lang.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any)
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; Purity; Finite; pure; act; eff; ArrowKind; mk-kind)
 import Data.Nat as ℕ
 
 -- Quantities, purities, kinds.
@@ -30,6 +30,13 @@ One ≟q Many = no λ ()
 Many ≟q Zero = no λ ()
 Many ≟q One = no λ ()
 Many ≟q Many = yes refl
+
+-- | …and on a stream's finite grade (D318).
+_≟f_ : DecidableEquality Finite
+pure ≟f pure = yes refl
+pure ≟f act  = no (λ ())
+act  ≟f pure = no (λ ())
+act  ≟f act  = yes refl
 
 -- | Decidable equality on Purity (plan 0.5.1)
 _≟p_ : DecidableEquality Purity
@@ -218,7 +225,7 @@ mutual
   -- TVar removed from Type; now in PolyType (see Once.Type)
   -- OCP-0003: μ-type and ν-type cases
   (μ-type F₁) ≟T (μ-type F₂) = ≟T-μ-aux (F₁ ≟F F₂)
-  (ν-type F₁ π₁) ≟T (ν-type F₂ π₂) = ≟T-ν-aux (π₁ ≟p π₂) (F₁ ≟F F₂)
+  (ν-type F₁ π₁) ≟T (ν-type F₂ π₂) = ≟T-ν-aux (π₁ ≟f π₂) (F₁ ≟F F₂)
   μ-type _ ≟T Unit = no λ ()
   μ-type _ ≟T Void = no λ ()
   μ-type _ ≟T Int = no λ ()

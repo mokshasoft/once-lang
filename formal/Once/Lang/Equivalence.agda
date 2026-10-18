@@ -112,7 +112,6 @@ Obs n (A ⇒[ mk-kind One  π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a�
 Obs n (A ⇒[ mk-kind Many π ] B) f g = ∀ a a′ → (∀ m → Obs m A a a′) → ObsM n π B (f a) (g a′)
 Obs n (ν-type F pure) v w = νᵖ-upto _ n v w
 Obs n (ν-type F act)  v w = νᵈ-upto _ n v w
-Obs n (ν-type F eff)  v w = ν∞-upto _ n v w
 
 ------------------------------------------------------------------------
 -- The equivalence: every finite observation agrees.

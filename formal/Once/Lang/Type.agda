@@ -9,8 +9,9 @@
 --   A * B, A + B    product and coproduct;
 --   A ⇒[ k ] B      the exponential, graded by `k` (`Spec.Type.Grade`);
 --   μ-type F        the initial algebra of the functor `F` (inductive data);
---   ν-type F π      the final coalgebra of `F` (codata), whose layers are
---                   produced with effect `π`: `ν-type F eff` is ν(T ∘ F);
+--   ν-type F φ      the final coalgebra of `F` (codata), whose layers are
+--                   produced at the FINITE grade `φ` (D318): `ν-type F act`
+--                   is ν(T ∘ F) over the finite call trees;
 --   Int, Float      the target's integers and floating-point numbers;
 --   rigid k i       the `i`-th type parameter of a polymorphic definition,
 --                   of kind `k`, held abstract while its body is typed.
@@ -24,7 +25,7 @@ module Once.Lang.Type where
 open import Data.Nat using (ℕ)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Lang.Type.Grade using (ArrowKind; mk-kind; Zero; One; Many; Purity; pure)
+open import Once.Lang.Type.Grade using (ArrowKind; mk-kind; Zero; One; Many; Purity; Finite; pure)
 
 mutual
   -- Polynomial (strictly positive) functors.
@@ -41,7 +42,7 @@ mutual
     _+_    : Type → Type → Type
     _⇒[_]_ : Type → ArrowKind → Type → Type
     μ-type : Functor → Type
-    ν-type : Functor → Purity → Type
+    ν-type : Functor → Finite → Type   -- D318: a stream's layers are at most `act`
     Int    : Type
     Float  : Type
     rigid  : TKind → ℕ → Type

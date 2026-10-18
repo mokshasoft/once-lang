@@ -29,7 +29,7 @@
 --
 -- THE GRADE IS A SEMANTIC CLAIM (D231): a `pure` term emits nothing. The two
 -- places an effect could have hidden are closed: codata carries its grade
--- (D233 — forcing `ν-type F eff` is `eff`), and an FFI declaration is honest
+-- (D233/D318 — forcing `ν-type F act` is `act`), and an FFI declaration is honest
 -- (`Once.Type.Honest`: no bare `Unit`/`Void` constant, no pure arrow into
 -- them), so REFERENCING one is pure and its effect is paid at application.
 ------------------------------------------------------------------------
@@ -43,7 +43,7 @@ module Once.Lang.Core.Typing {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff; EffGrade)
+open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_; Purity; pure; mk-kind; positionGrade; _·p_; eff; EffGrade; Finite; fin)
 open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
 open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
@@ -135,17 +135,18 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
 
   -- ν F: its coalgebra structure `out` and its (non-dependent) introduction.
   -- `unfold` builds the ν LAZILY, so building it costs only evaluating its
-  -- parts (`π₁`, `π₂`); the coalgebra's grade `π` is RECORDED in the type
-  -- (D233: `ν-type F eff` is ν(T ∘ F)) and paid when a layer is forced.
-  ⊢unfold : ∀ {n} {Γ : Ctx n} {Ψc Ψs : Usage n} {π π₁ π₂ : Purity} {F : Functor} {A c s}
+  -- parts (`π₁`, `π₂`); the coalgebra's grade is RECORDED in the type and paid
+  -- when a layer is forced. D318: it is FINITE (`pure` or `act`) — a layer is a
+  -- finite block of calls; `ν F eff` has no introduction.
+  ⊢unfold : ∀ {n} {Γ : Ctx n} {Ψc Ψs : Usage n} {φ : Finite} {π₁ π₂ : Purity} {F : Functor} {A c s}
           → WellFormedF F
-          → Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! π₁
+          → Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ! π₁
           → Γ ⊢[ Ψs ] s ∷ A ! π₂
-          → Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F π ! π₁ ·p π₂   -- B1
-  ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π π₁ : Purity} {F : Functor} {t}
+          → Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F φ ! π₁ ·p π₂   -- B1
+  ⊢out : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {φ : Finite} {π₁ : Purity} {F : Functor} {t}
        → WellFormedF F
-       → Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁
-       → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F π) ! π₁ ·p π
+       → Γ ⊢[ Ψ ] t ∷ ν-type F φ ! π₁
+       → Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧T (ν-type F φ) ! π₁ ·p fin φ
 
   -- D226: subtyping is a COERCION term (it has content: `Void <: B` is `¡`).
   ⊢coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {π : Purity} {A B t}

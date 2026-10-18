@@ -24,11 +24,7 @@ module Make (alg : TyAlg) where
   open Gen alg
   open P.Make alg
 
-  -- The functor parser rejects `Eff`, hence `( Eff …`.
-  fSum-parenEff : ∀ toks → fSumP (TLParen ∷ TWord "Eff" ∷ toks) ≡ nothing
-  fSum-parenEff toks = refl
-
-  -- D313: and `( Act …`; the effectful-stream head rejects it too.
+  -- D313: the functor parser rejects `Act`, hence `( Act …`.
   fSum-parenAct : ∀ toks → fSumP (TLParen ∷ TWord "Act" ∷ toks) ≡ nothing
   fSum-parenAct toks = refl
 
@@ -46,9 +42,6 @@ module Make (alg : TyAlg) where
       rewrite extraMiss-Mu toks | complete-fSum dF = refl
     complete-atom (pa-nu {toks} dF)
       rewrite extraMiss-Nu toks | complete-fSum dF = refl
-    -- D233: the pure attempt fails on `( Eff` (`Eff` is no functor keyword).
-    complete-atom (pa-nu-eff {toks} dF)
-      rewrite extraMiss-Nu (TLParen ∷ TWord "Eff" ∷ toks) | fSum-parenEff toks | complete-fSum dF = refl
     complete-atom (pa-nu-act {toks} dF)
       rewrite extraMiss-Nu (TLParen ∷ TWord "Act" ∷ toks) | fSum-parenAct toks | complete-fSum dF = refl
     complete-atom (pa-extra ex) rewrite extraComplete ex = refl

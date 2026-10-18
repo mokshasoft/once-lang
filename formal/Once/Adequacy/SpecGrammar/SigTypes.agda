@@ -59,7 +59,7 @@ homPoly = record
   { h-unit = refl ; h-void = refl ; h-int = refl ; h-float = refl
   ; h-prod = λ _ _ → refl ; h-sum = λ _ _ → refl ; h-eff = λ _ _ → refl ; h-act = λ _ _ → refl
   ; h-arrow = λ _ _ _ → refl
-  ; h-mu = λ _ → refl ; h-nu = λ _ → refl ; h-nueff = λ _ → refl ; h-nuact = λ _ → refl
+  ; h-mu = λ _ → refl ; h-nu = λ _ → refl ; h-nuact = λ _ → refl
   ; hF-k = λ _ → refl ; hF-id = refl ; hF-sum = λ _ _ → refl ; hF-prod = λ _ _ → refl
   ; extra→ = λ { (PI.tvar {name} lw) → tvar (trans (sym (lower-eq name)) lw) }
   ; extra← = var←

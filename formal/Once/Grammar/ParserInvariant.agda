@@ -35,7 +35,7 @@ open import Once.Grammar.Convert using (Expressible;
                                          ex-unit; ex-void; ex-int;
                                          ex-float;
                                          ex-prod; ex-sum; ex-fun; ex-eff; ex-act; ex-nu-act;
-                                         ex-mu; ex-nu; ex-nu-eff;
+                                         ex-mu; ex-nu;
                                          ExpressibleF; exf-k; exf-id;
                                          exf-sum; exf-prod)
 open import Once.Grammar.ParserBridge using (sound-type; sound-atom)
@@ -61,7 +61,6 @@ mutual
   ParsesAtom-Expressible (pa-paren dT refl) = ParsesType-Expressible dT
   ParsesAtom-Expressible (pa-mu dF) = ex-mu (ParsesFunctorSum-ExpressibleF dF)
   ParsesAtom-Expressible (pa-nu dF) = ex-nu (ParsesFunctorSum-ExpressibleF dF)
-  ParsesAtom-Expressible (pa-nu-eff dF) = ex-nu-eff (ParsesFunctorSum-ExpressibleF dF)
   ParsesAtom-Expressible (pa-nu-act dF) = ex-nu-act (ParsesFunctorSum-ExpressibleF dF)
 
   ParsesProd-Expressible : ∀ {toks T rest} → ParsesProd toks T rest → Expressible T

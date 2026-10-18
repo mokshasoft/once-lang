@@ -234,9 +234,9 @@ mutual
   subst-i′ ir (t-apply-eff-app-infer {g = g} d) = t-apply-eff-app-infer {g = g} (subst-i′ ir d)
   subst-i′ ir (t-Out-app-infer {F = F} wf refl d) =
     sym (ρ̂-⟦⟧ F (ν-type F pure)) ⇝ᵢ t-Out-app-infer (ρ̂-wf wf) refl (subst-i′ ir d)
-  subst-i′ ir (t-Out-eff-app-infer {F = F} {π = π} {g = g} wf refl d) =
-    cong (λ X → Unit ⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π)))
-      ⇝ᵢ t-Out-eff-app-infer {g = g} (ρ̂-wf wf) refl (subst-i′ ir d)
+  subst-i′ ir (t-Out-eff-app-infer {F = F} wf refl d) =
+    cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (ρ̂-⟦⟧ F (ν-type F act)))
+      ⇝ᵢ t-Out-eff-app-infer (ρ̂-wf wf) refl (subst-i′ ir d)
   subst-i′ ir (t-app h df dx)        = t-app h (subst-i′ ir df) (subst-c′ ir dx)
   subst-i′ ir (t-effApp {g = g} h df dx) = t-effApp {g = g} h (subst-i′ ir df) (subst-c′ ir dx)
   subst-i′ ir (t-app-spine h da df)  = t-app-spine h (subst-i′ ir da) (subst-d′ ir df)
@@ -258,9 +258,9 @@ mutual
   subst-c′ ir (t-cata-check {F = F} {A = A} {π = π} {u = u} wf da) =
     t-cata-check {u = u} (ρ̂-wf wf)
       (cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir da)
-  subst-c′ ir (t-ana-check {F = F} {A = A} {π = π} {u = u} wf dc) =
+  subst-c′ ir (t-ana-check {F = F} {A = A} {φ = φ} {u = u} wf dc) =
     t-ana-check {u = u} (ρ̂-wf wf)
-      (cong (λ X → ρ̂ A ⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir dc)
+      (cong (λ X → ρ̂ A ⇒[ mk-kind Many (fin φ) ] X) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir dc)
   subst-c′ ir (t-sub d p)           = t-sub (subst-i′ ir d) (ρ̂-<: p)
   subst-c′ ir (t-lam {u = u} le d)          = t-lam {u = u} le (subst-c′ ir d)
   subst-c′ ir (t-pair-lit-check a b) = t-pair-lit-check (subst-c′ ir a) (subst-c′ ir b)

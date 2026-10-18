@@ -312,7 +312,7 @@ mutual
   ⌈ A + B    ⌉ = ⌈ A ⌉ T.+ ⌈ B ⌉
   ⌈ A ⇛ B    ⌉ = ⌈ A ⌉ T.⇒[ T.effK ] ⌈ B ⌉   -- canonical grade
   ⌈ μ-type F ⌉ = T.μ-type ⌈ F ⌉F
-  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F T.eff   -- canonical grade
+  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F T.act   -- canonical grade (the top finite one, D318)
   ⌈ Int      ⌉ = T.Int
   ⌈ Float    ⌉ = T.Float
 

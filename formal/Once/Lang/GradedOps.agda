@@ -146,17 +146,6 @@ mutual
   mapAnaᵖ H (G₁ S⊕ G₂) c (inj₂ y) = inj₂ (mapAnaᵖ H G₂ c y)
   mapAnaᵖ H (G₁ S⊗ G₂) c (x , y)  = mapAnaᵖ H G₁ c x , mapAnaᵖ H G₂ c y
 
--- `pure ⊑ eff` at ν: a pure stream is an effectful one whose layers emit
--- nothing and always arrive. The maps are named and written by hand (D062).
-embν    : ∀ {H} → νᵖ H → ν∞ H
-mapEmbν : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵖ H) → ⟦ G ⟧SF (ν∞ H)
-force (force∞ (embν {H} v)) = ret∞ (mapEmbν H H (forceᵖ v))
-mapEmbν H (SK B)     x        = x
-mapEmbν H SId        x        = embν x
-mapEmbν H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν H G₁ x)
-mapEmbν H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν H G₂ y)
-mapEmbν H (G₁ S⊗ G₂) (x , y)  = mapEmbν H G₁ x , mapEmbν H G₂ y
-
 -- `pure ⊑ act` at ν: a pure stream is one whose layers are finite trees that
 -- emit nothing and always arrive (D313).
 embνᵃ    : ∀ {H} → νᵖ H → νᵈ H
@@ -168,21 +157,6 @@ mapEmbνᵃ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbνᵃ H G₁ x)
 mapEmbνᵃ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbνᵃ H G₂ y)
 mapEmbνᵃ H (G₁ S⊗ G₂) (x , y)  = mapEmbνᵃ H G₁ x , mapEmbνᵃ H G₂ y
 
--- `act ⊑ eff` at ν: a stream whose layers are finite trees is one whose layers
--- are trees of `T∞` (D313). The maps are named and written by hand (D062).
-embν∞ᵈ    : ∀ {H} → νᵈ H → ν∞ H
-embLay∞   : ∀ (H : SFunctor) → T (⟦ H ⟧SF (νᵈ H)) → T∞ (⟦ H ⟧SF (ν∞ H))
-mapEmbν∞ᵈ : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᵈ H) → ⟦ G ⟧SF (ν∞ H)
-force∞ (embν∞ᵈ {H} v) = embLay∞ H (forceᵈ v)
-force (embLay∞ H (ret l))      = ret∞ (mapEmbν∞ᵈ H H l)
-force (embLay∞ H (call o a k)) = call∞ o a (λ b → embLay∞ H (k b))
-force (embLay∞ H (halt o a))   = halt∞ o a
-mapEmbν∞ᵈ H (SK B)     x        = x
-mapEmbν∞ᵈ H SId        x        = embν∞ᵈ x
-mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₁ x) = inj₁ (mapEmbν∞ᵈ H G₁ x)
-mapEmbν∞ᵈ H (G₁ S⊕ G₂) (inj₂ y) = inj₂ (mapEmbν∞ᵈ H G₂ y)
-mapEmbν∞ᵈ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵈ H G₁ x , mapEmbν∞ᵈ H G₂ y
-
 -- `unfold c s` at coalgebra grade `π` — the stream, a VALUE (building it runs
 -- nothing; the rule embeds it at the grade it is built at) — given the
 -- coalgebra's FUNCTION `clo` (its term was evaluated once, when the stream was
@@ -190,19 +164,16 @@ mapEmbν∞ᵈ H (G₁ S⊗ G₂) (x , y)  = mapEmbν∞ᵈ H G₁ x , mapEmbν�
 -- pure ν needs a pure coalgebra function; an effectful one runs the function in
 -- each forced layer — a server is such a stream (D233), its coalgebra reads the
 -- next request.
-ana-semᵛ : ∀ {F A} (π : Purity) → WellFormedF F
-         → (⟦ A ⟧ᵛ → M π ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → ⟦ ν-type F π ⟧ᵛ
+ana-semᵛ : ∀ {F A} (φ : Finite) → WellFormedF F
+         → (⟦ A ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → ⟦ ν-type F φ ⟧ᵛ
 ana-semᵛ {F} {A} pure wf clo a =
   anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a
 ana-semᵛ {F} {A} act wf clo a =
   anaᵈ (translateF Carrier Carrier F) (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
-ana-semᵛ {F} {A} eff wf clo a =
-  ana∞ (translateF Carrier Carrier F) (λ a′ → fmap∞ (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 
-out-semᵛ : ∀ π {F} → WellFormedF F → ⟦ ν-type F π ⟧ᵛ → M π ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᵛ
+out-semᵛ : ∀ φ {F} → WellFormedF F → ⟦ ν-type F φ ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T (ν-type F φ) ⟧ᵛ
 out-semᵛ pure {F} wf v = cf⁻¹ᵛ (ν-type F pure) wf (coerce-ν-out wf _ (forceᵖ v))
 out-semᵛ act  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F act) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
-out-semᵛ eff  {F} wf v = fmap∞ (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (coerce-ν-out wf _ layer)) (force∞ v)
 
 ------------------------------------------------------------------------
 -- Subtyping coercions (D226), graded.
@@ -220,12 +191,10 @@ out-semᵛ eff  {F} wf v = fmap∞ (λ layer → cf⁻¹ᵛ (ν-type F eff) wf (
 ⟦ sub-sum a b ⟧<:ᵛ (inj₁ x) = inj₁ (⟦ a ⟧<:ᵛ x)
 ⟦ sub-sum a b ⟧<:ᵛ (inj₂ y) = inj₂ (⟦ b ⟧<:ᵛ y)
 ⟦ sub-μ ⟧<:ᵛ x = x
-⟦ sub-ν ⊑-pure ⟧<:ᵛ x = x
-⟦ sub-ν ⊑-eff  ⟧<:ᵛ x = x
-⟦ sub-ν ⊑-pe   ⟧<:ᵛ x = embν x
-⟦ sub-ν ⊑-act  ⟧<:ᵛ x = x
-⟦ sub-ν ⊑-pa   ⟧<:ᵛ x = embνᵃ x
-⟦ sub-ν ⊑-ae   ⟧<:ᵛ x = embν∞ᵈ x
+⟦ sub-ν {φ = pure} {pure} _ ⟧<:ᵛ x = x
+⟦ sub-ν {φ = act}  {act}  _ ⟧<:ᵛ x = x
+⟦ sub-ν {φ = pure} {act}  _ ⟧<:ᵛ x = embνᵃ x
+⟦ sub-ν {φ = act}  {pure} () ⟧<:ᵛ
 ⟦ sub-rigid ⟧<:ᵛ x = x
 
 ------------------------------------------------------------------------

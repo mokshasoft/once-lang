@@ -29,6 +29,11 @@ qS LG.Many = SG.Many
 πS LG.act  = SG.act
 πS LG.eff  = SG.eff
 
+-- A ν's grade is finite on both sides (D318 item 13).
+φS : LG.Finite → SG.Finite
+φS LG.pure = SG.pureᶠ
+φS LG.act  = SG.actᶠ
+
 kS : LG.ArrowKind → SG.ArrowKind
 kS (LG.mk-kind q π) = SG.mk-kind (qS q) (πS π)
 
@@ -43,7 +48,7 @@ toPoly (A LP.P⇒[ q ] B)   = toPoly A SS.P⇒[ qS q ] toPoly B
 toPoly (LP.PEff A B)      = SS.PEff (toPoly A) (toPoly B)
 toPoly (LP.PAct A B)      = SS.PAct (toPoly A) (toPoly B)
 toPoly (LP.Pμ-type F)     = SS.Pμ (toPolyF F)
-toPoly (LP.Pν-type F π)   = SS.Pν (toPolyF F) (πS π)
+toPoly (LP.Pν-type F φ)   = SS.Pν (toPolyF F) (φS φ)
 toPoly LP.PInt            = SS.PInt
 toPoly LP.PFloat          = SS.PFloat
 toPoly (LP.PTVar x)       = SS.PTVar x
@@ -61,7 +66,7 @@ toTy (A LT.* B)          = toTy A ST.* toTy B
 toTy (A LT.+ B)          = toTy A ST.+ toTy B
 toTy (A LT.⇒[ k ] B)     = toTy A ST.⇒[ kS k ] toTy B
 toTy (LT.μ-type F)       = ST.μ (toFun F)
-toTy (LT.ν-type F π)     = ST.ν (toFun F) (πS π)
+toTy (LT.ν-type F φ)     = ST.ν (toFun F) (φS φ)
 toTy LT.Int              = ST.Int
 toTy LT.Float            = ST.Float
 toTy (LT.rigid _ _)      = ST.Unit
@@ -83,7 +88,7 @@ toPolyG (A LT.* B)                     = toPolyG A SS.P* toPolyG B
 toPolyG (A LT.+ B)                     = toPolyG A SS.P+ toPolyG B
 toPolyG (A LT.⇒[ LG.mk-kind q π ] B)   = arrowG π q (toPolyG A) (toPolyG B)
 toPolyG (LT.μ-type F)                  = SS.Pμ (toPolyGF F)
-toPolyG (LT.ν-type F π)                = SS.Pν (toPolyGF F) (πS π)
+toPolyG (LT.ν-type F φ)                = SS.Pν (toPolyGF F) (φS φ)
 toPolyG LT.Int                         = SS.PInt
 toPolyG LT.Float                       = SS.PFloat
 toPolyG (LT.rigid _ _)                 = SS.PUnit

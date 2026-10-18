@@ -35,7 +35,7 @@ import Once.Spec.Word as OnceWord
 open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
-open import Once.Lang.Type.Grade using (Zero; One; Many; eff)
+open import Once.Lang.Type.Grade using (Zero; One; Many; eff; fin)
 open import Once.Lang.Context using (Ctx; Usage; _↾_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Lang.Graded using (⟦_⟧ᵛ; M; bindM; bindᵍ; subM)
 open import Once.Lang.Type.WellFormed using (con-fun)
@@ -162,10 +162,10 @@ primSem p-i2f  fmt a       = FA.i2f (float-format fmt) (OnceWord.Width.toℤ (in
 -- seed (D273, plan 0.116 E: as `fold`'s algebra, D131, and the IR's `Ana`); the
 -- coalgebra FUNCTION runs in each forced layer, so an effectful one (a server,
 -- D233) emits per layer.
-⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} {π = π} {π₁ = π₁} {π₂ = π₂} wf dc ds ⟧ fmt ρ dγ =
+⟦ ⊢unfold {Γ = Γ} {Ψc = Ψc} {Ψs = Ψs} {φ = φ} {π₁ = π₁} {π₂ = π₂} wf dc ds ⟧ fmt ρ dγ =
   bindᵍ π₁ π₂ (⟦ dc ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) dγ)) λ clo →
-  fmapM π₂ (ana-semᵛ π wf clo) (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ))
-⟦ ⊢out {π = π} {π₁ = π₁} wf d ⟧ fmt ρ dγ = bindᵍ π₁ π (⟦ d ⟧ fmt ρ dγ) (out-semᵛ π wf)
+  fmapM π₂ (ana-semᵛ φ wf clo) (⟦ ds ⟧ fmt ρ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) dγ))
+⟦ ⊢out {φ = φ} {π₁ = π₁} wf d ⟧ fmt ρ dγ = bindᵍ π₁ (fin φ) (⟦ d ⟧ fmt ρ dγ) (out-semᵛ φ wf)
 ⟦ ⊢coerce {π = π} p d ⟧ fmt ρ dγ = fmapM π ⟦ p ⟧<:ᵛ (⟦ d ⟧ fmt ρ dγ)
 
 ⟦ ⊢lit-int {i = i} ⟧   fmt ρ dγ = OnceWord.Width.fromℤ (int-bits fmt) i

@@ -213,13 +213,9 @@ mutual
   route-ii (t-Out-app-infer _ refl d) (t-Out-app-infer _ refl d′) = ii-Out (route-ii d d′)
   route-ii (t-Out-eff-app-infer _ refl d) (t-Out-eff-app-infer _ refl d′) = ii-Out-eff (route-ii d d′)
   {-# CATCHALL #-}
-  route-ii (t-Out-eff-app-infer {g = T.eg-act} _ _ d) (t-Out-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-Out-eff-app-infer _ _ d) (t-Out-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   {-# CATCHALL #-}
-  route-ii (t-Out-eff-app-infer {g = T.eg-eff} _ _ d) (t-Out-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
-  {-# CATCHALL #-}
-  route-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-act} _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
-  {-# CATCHALL #-}
-  route-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer {g = T.eg-eff} _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
+  route-ii (t-Out-app-infer _ _ d) (t-Out-eff-app-infer _ _ d′) = ⊥-elim (ex (agree-ii d d′) λ { (() , _) })
   route-ii (t-Out-eff-app-infer _ _ _) (t-app () _ _)
   route-ii (t-app () _ _) (t-Out-eff-app-infer _ _ _)
   route-ii (t-Out-eff-app-infer _ _ _) (t-effApp () _ _)

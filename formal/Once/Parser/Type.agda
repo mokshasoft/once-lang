@@ -275,41 +275,32 @@ parseTypeAtomWF (TBang      ∷ _) _ = nothing
 parseTypeAtomWF (TNewline   ∷ _) _ = nothing
 parseTypeAtomWF (TEOF       ∷ _) _ = nothing
 
--- The pure stream is tried FIRST: a functor never starts with `( Eff`
--- (`Eff` is not a functor keyword), so the effectful form is reached exactly
--- when the pure one fails — deterministic, and the completeness bridge only
--- needs "the functor parser rejects `( Eff`".
-nuEff : ∀ {r} → ParseFunctorSumD r → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ r)
-nuEff nothing                          = nothing
-nuEff (just (F , TRParen ∷ r2 , dF))   = just (ν-type F eff , r2 , pa-nu-eff dF)
-{-# CATCHALL #-}
-nuEff (just (F , _ , dF))              = nothing
-
--- D313: `Nu (Act F)`, likewise.
+-- The pure stream is tried FIRST: a functor never starts with `( Act`
+-- (`Act` is not a functor keyword), so the acting form (D313/D318) is reached
+-- exactly when the pure one fails — deterministic, and the completeness bridge
+-- only needs "the functor parser rejects `( Act`".
 nuAct : ∀ {r} → ParseFunctorSumD r → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ r)
 nuAct nothing                          = nothing
 nuAct (just (F , TRParen ∷ r2 , dF))   = just (ν-type F act , r2 , pa-nu-act dF)
 {-# CATCHALL #-}
 nuAct (just (F , _ , dF))              = nothing
 
-parseNuWord : (w : String) (r : List Token) → Dec (w ≡ "Eff") → Dec (w ≡ "Act")
+parseNuWord : (w : String) (r : List Token) → Dec (w ≡ "Act")
             → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ TLParen ∷ TWord w ∷ r))
             → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord w ∷ r)
-parseNuWord .("Eff") r (yes refl) _ rec =
-  nuEff (parseFunctorSumWF r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))))
-parseNuWord .("Act") r (no _) (yes refl) rec =
+parseNuWord .("Act") r (yes refl) rec =
   nuAct (parseFunctorSumWF r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))))
-parseNuWord w r (no _) (no _) rec = nothing
+parseNuWord w r (no _) rec = nothing
 
-parseNuEffWF : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest)) → ParseAtomD (TWord "Nu" ∷ rest)
-parseNuEffWF (TLParen ∷ TWord w ∷ r) rec = parseNuWord w r (w ≟ "Eff") (w ≟ "Act") rec
+parseNuActWF : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest)) → ParseAtomD (TWord "Nu" ∷ rest)
+parseNuActWF (TLParen ∷ TWord w ∷ r) rec = parseNuWord w r (w ≟ "Act") rec
 {-# CATCHALL #-}
-parseNuEffWF _ _ = nothing
+parseNuActWF _ _ = nothing
 
 nuTry : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest))
       → ParseFunctorSumD rest → ParseAtomD (TWord "Nu" ∷ rest)
 nuTry rest rec (just (F , r , dF)) = just (ν-type F pure , r , pa-nu dF)
-nuTry rest rec nothing             = parseNuEffWF rest rec
+nuTry rest rec nothing             = parseNuActWF rest rec
 
 parseNuWF rest rec = nuTry rest rec (parseFunctorSumWF rest (rec (s≤s ≤-refl)))
 

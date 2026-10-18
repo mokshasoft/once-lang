@@ -241,13 +241,13 @@ realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
                       (sym (⌊⟧T-commute F (ν-type F Once.Lang.Type.Grade.pure)))
                       (IR.Out (wf-⌊⌋ wfF)))
                (realize-infer d))
--- D233: at an EFFECTFUL stream the force is suspended (`curry (Out ∘ fst)`),
+-- D233/D318: at an ACTING stream the force is suspended (`curry (Out ∘ fst)`),
 -- as `t-apply-eff-app-infer` suspends `apply` — the elaborator's term exactly.
-realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} {π = π} wfF ceq d) =
+realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _
-                 (Once.Lang.Type.Unit ⇒[ mk-kind Many π ] Z)) ceq
-    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F π ⌋ o)
-                                (sym (⌊⟧T-commute F (ν-type F π)))
+                 (Once.Lang.Type.Unit ⇒[ mk-kind Many Once.Lang.Type.Grade.act ] Z)) ceq
+    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F Once.Lang.Type.Grade.act ⌋ o)
+                                (sym (⌊⟧T-commute F (ν-type F Once.Lang.Type.Grade.act)))
                                 (IR.Out (wf-⌊⌋ wfF))
                           IR.∘ IR.fst))
                (realize-infer d))

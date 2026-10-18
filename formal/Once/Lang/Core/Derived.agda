@@ -34,7 +34,7 @@ module Once.Lang.Core.Derived {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
 open import Once.Lang.Type using (Type; Functor; Unit; Void; _*_; _+_; _⇒[_]_; ⟦_⟧T; μ-type; ν-type)
-open import Once.Lang.Type.Grade using (Purity; pure; eff; mk-kind; One; Many)
+open import Once.Lang.Type.Grade using (Purity; pure; eff; mk-kind; One; Many; Finite; fin)
 open import Once.Lang.Core.Syntax S
 
 private
@@ -108,5 +108,5 @@ effAppᶜ π f x = lam Unit Many π (app (wk f) (wk x))
 applyEffᶜ : ∀ {n} → Purity → Type → Type → Tm n
 applyEffᶜ π A B = lam ((A ⇒[ mk-kind Many π ] B) * A) Many pure (lam Unit Many π (app (fst v1) (snd v1)))
 
-outEffᶜ : ∀ {n} → Purity → Functor → Tm n
-outEffᶜ π F = lam (ν-type F π) Many pure (lam Unit Many π (out v1))
+outEffᶜ : ∀ {n} → Finite → Functor → Tm n
+outEffᶜ φ F = lam (ν-type F φ) Many pure (lam Unit Many (fin φ) (out v1))

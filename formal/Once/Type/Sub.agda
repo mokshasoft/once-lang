@@ -12,7 +12,7 @@ module Once.Type.Sub where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind)
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; fin)
 open import Once.Lang.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Lang.Type.Sub
   using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
@@ -63,7 +63,7 @@ private
   μ-aux (yes refl) = yes sub-μ
   μ-aux (no ¬e)    = no λ { sub-μ → ¬e refl }
 
-  ν-aux : ∀ {F G π π′} → Dec (F ≡ G) → Dec (π ⊑π π′) → Dec (ν-type F π <: ν-type G π′)
+  ν-aux : ∀ {F G φ φ′} → Dec (F ≡ G) → Dec (fin φ ⊑π fin φ′) → Dec (ν-type F φ <: ν-type G φ′)
   ν-aux (yes refl) (yes g) = yes (sub-ν g)
   ν-aux (no ¬e)    _       = no λ { (sub-ν _) → ¬e refl }
   ν-aux (yes refl) (no ¬g) = no λ { (sub-ν g) → ¬g g }
@@ -136,7 +136,7 @@ Float <:? (ν-type _ _) = no λ ()
 μ-type _ <:? (_ + _) = no λ ()
 μ-type _ <:? (_ ⇒[ _ ] _) = no λ ()
 μ-type _ <:? (ν-type _ _) = no λ ()
-ν-type F π <:? ν-type G π′ = ν-aux (F ≟F G) (π ⊑π? π′)
+ν-type F φ <:? ν-type G φ′ = ν-aux (F ≟F G) (fin φ ⊑π? fin φ′)
 ν-type _ _ <:? Unit = no λ ()
 ν-type _ _ <:? Void = no λ ()
 ν-type _ _ <:? Int = no λ ()

@@ -18,7 +18,7 @@ open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; subst; cong; cong₂)
 
-open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff; _·p_)
+open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff; _·p_; Finite; fin)
 open import Once.Lang.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Lang.Type.Sub using (⊑-pe; _⊑π_)
 open import Once.Lang.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
@@ -156,10 +156,10 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
                (+ᵘ-identityˡ (Many *ᵘ Ψ)))
         (⊢let da (⊢lam refl (⊢fold u wf (⊢var (suc zero)) (⊢var zero))))
 
-⊢anaᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π : Purity} {c}
+⊢anaᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ : Purity} {φ : Finite} {c}
       → pure ⊑π π₀ → WellFormedF F
-      → Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure
-      → Γ ⊢[ Many *ᵘ Ψ ] anaᶜ F A π₀ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F π ! pure
+      → Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ! pure
+      → Γ ⊢[ Many *ᵘ Ψ ] anaᶜ F A π₀ c ∷ A ⇒[ mk-kind Many π₀ ] ν-type F φ ! pure
 ⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} u₀ wf dc =
   ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
                    (⊢sub-eff u₀ (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))))
@@ -187,10 +187,10 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢applyEffᶜ {Γ = Γ} = subst (λ U → Γ ⊢[ U ] applyEffᶜ _ _ _ ∷ _ ! pure) (z+qz Many)
   (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var (suc zero))) (⊢snd (⊢var (suc zero))))))
 
-⊢outEffᶜ : ∀ {n} {Γ : Ctx n} {π : Purity} {F : Functor}
+⊢outEffᶜ : ∀ {n} {Γ : Ctx n} {φ : Finite} {F : Functor}
          → WellFormedF F
-         → Γ ⊢[ zeroUsage ] outEffᶜ π F
-             ∷ ν-type F π ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many π ] ⟦ F ⟧T (ν-type F π)) ! pure
+         → Γ ⊢[ zeroUsage ] outEffᶜ φ F
+             ∷ ν-type F φ ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T (ν-type F φ)) ! pure
 ⊢outEffᶜ wf = ⊢lam refl (⊢lam refl (⊢out wf (⊢var (suc zero))))
 
 -- Applying an effectful arrow builds its suspension: exactly the surface's

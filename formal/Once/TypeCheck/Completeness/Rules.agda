@@ -477,17 +477,6 @@ infer-complete-RApp-Out {ctx} arg {F} wfF eqArg
                 (just wfF) (wellFormedF?-complete-at wfF)
       = _ , _ , _ , refl
 
-infer-complete-RApp-Out-eff :
-  ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
-    {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.eff)}
-    {d' f' : ℕ}
-    (wfF : WellFormedF F)
-  → inferElab ctx arg ≡ success (T.ν-type F T.eff) Ψ argE d' f'
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] T.⟦ F ⟧T (T.ν-type F T.eff)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-
 infer-complete-RApp-Out-act :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -502,12 +491,6 @@ infer-complete-RApp-Out-act :
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
 -- however the decision is obtained (parameter or `inspectWellFormedF` view).
-infer-complete-RApp-Out-eff {ctx} arg {F} wfF eqArg
-  with inferElabV ctx arg | eqArg
-... | success _ Ψ' argE' d' fr' , w' | refl
-      rewrite inferOutGo-J ctx arg F T.eff Ψ' argE' d' fr' w'
-                (just wfF) (wellFormedF?-complete-at wfF)
-      = _ , _ , _ , refl
 infer-complete-RApp-Out-act {ctx} arg {F} wfF eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ Ψ' argE' d' fr' , w' | refl

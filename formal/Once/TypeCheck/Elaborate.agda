@@ -950,41 +950,35 @@ elabGivenLeaf ctx cn A π _ r = given-infer ctx (Raw.RResolved cn) A π r
 -- reduce them with plain nested `with | eq` — like `checkPair`.
 -- D194: `Out v` — the ν eliminator, INFER-mode (a check rule would have to
 -- invert `⟦ F ⟧T (ν-type F) ≡ T` to recover `F`).
--- The IR `Out` at a stream of grade `π`, retyped to the layer's surface type.
-outIR : (F : Once.Lang.Type.Functor) (π : Once.Lang.Type.Grade.Purity) → Once.Lang.Type.WellFormed.WellFormedF F
-      → IR ⌊ Once.Lang.Type.ν-type F π ⌋ ⌊ ⟦ F ⟧T (Once.Lang.Type.ν-type F π) ⌋
-outIR F π wfF =
-  subst (λ o → IR ⌊ Once.Lang.Type.ν-type F π ⌋ o)
-        (sym (⌊⟧T-commute F (Once.Lang.Type.ν-type F π)))
+-- The IR `Out` at a stream of grade `φ`, retyped to the layer's surface type.
+outIR : (F : Once.Lang.Type.Functor) (φ : Once.Lang.Type.Grade.Finite) → Once.Lang.Type.WellFormed.WellFormedF F
+      → IR ⌊ Once.Lang.Type.ν-type F φ ⌋ ⌊ ⟦ F ⟧T (Once.Lang.Type.ν-type F φ) ⌋
+outIR F φ wfF =
+  subst (λ o → IR ⌊ Once.Lang.Type.ν-type F φ ⌋ o)
+        (sym (⌊⟧T-commute F (Once.Lang.Type.ν-type F φ)))
         (IR.Out (wf-⌊⌋ wfF))
 
-inferOutGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Lang.Type.Functor) (π : Once.Lang.Type.Grade.Purity)
+inferOutGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Lang.Type.Functor) (φ : Once.Lang.Type.Grade.Finite)
              (Ψ : Surface.Usage (NamedCtx.size ctx))
-             (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Lang.Type.ν-type F π))
+             (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Lang.Type.ν-type F φ))
              (d fr : ℕ)
-             (w : ctx ⊢ᵢ arg ∶ Once.Lang.Type.ν-type F π ⨾ Ψ)
+             (w : ctx ⊢ᵢ arg ∶ Once.Lang.Type.ν-type F φ ⨾ Ψ)
            → (mw : Maybe (Once.Lang.Type.WellFormed.WellFormedF F)) → wellFormedF? F ≡ mw
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-inferOutGo ctx arg F π Ψ argE d fr w nothing _ = failure (BuiltinTypeMismatch "Out") , tt
+inferOutGo ctx arg F φ Ψ argE d fr w nothing _ = failure (BuiltinTypeMismatch "Out") , tt
 inferOutGo ctx arg F Once.Lang.Type.Grade.pure Ψ argE d fr w (just wfF) eqW =
   success (⟦ F ⟧T (Once.Lang.Type.ν-type F Once.Lang.Type.Grade.pure)) _
     (Surface.morph-app (outIR F Once.Lang.Type.Grade.pure wfF) argE)
     (suc d) fr
   , t-Out-app-infer wfF refl w
--- D233: an EFFECTFUL stream — the stream is evaluated now, the force is
+-- D233/D318: an ACTING stream — the stream is evaluated now, the force is
 -- suspended (`curry (Out ∘ fst)`), as `t-apply-eff-app-infer` suspends `apply`.
-inferOutGo ctx arg F Once.Lang.Type.Grade.eff Ψ argE d fr w (just wfF) eqW =
-  success (Once.Lang.Type.Unit Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.eff ]
-             ⟦ F ⟧T (Once.Lang.Type.ν-type F Once.Lang.Type.Grade.eff)) _
-    (Surface.morph-app (IR.curry (outIR F Once.Lang.Type.Grade.eff wfF IR.∘ IR.fst)) argE)
-    (suc d) fr
-  , t-Out-eff-app-infer {g = Once.Lang.Type.Grade.eg-eff} wfF refl w
 inferOutGo ctx arg F Once.Lang.Type.Grade.act Ψ argE d fr w (just wfF) eqW =
   success (Once.Lang.Type.Unit Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ]
              ⟦ F ⟧T (Once.Lang.Type.ν-type F Once.Lang.Type.Grade.act)) _
     (Surface.morph-app (IR.curry (outIR F Once.Lang.Type.Grade.act wfF IR.∘ IR.fst)) argE)
     (suc d) fr
-  , t-Out-eff-app-infer {g = Once.Lang.Type.Grade.eg-act} wfF refl w
+  , t-Out-eff-app-infer wfF refl w
 -- D311: no surface `Out` of a `prod` stream yet (plan 0.117 F).
 
 inferOutAt : (ctx : NamedCtx) (arg : RawExpr) {T : Type} (Ψ : Surface.Usage (NamedCtx.size ctx))
@@ -1938,10 +1932,10 @@ mutual
   checkAnaOn : (ctx : NamedCtx) (arg : RawExpr) (T : Type) → AnaTarget T
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
   checkAnaGo : (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type)
-               (π₀ π : Once.Lang.Type.Grade.Purity)
+               (π₀ : Once.Lang.Type.Grade.Purity) (φ : Once.Lang.Type.Grade.Finite)
              → (mw : Maybe (Once.Lang.Type.WellFormed.WellFormedF F)) → wellFormedF? F ≡ mw
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
-                                       (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] Once.Lang.Type.ν-type F π)
+                                       (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] Once.Lang.Type.ν-type F φ)
 
 
   -- Plan 0.4 T0 Option B — verified elaborator declarations.
@@ -2299,9 +2293,9 @@ mutual
   checkAnaOn ctx coalg _ (ana-at A π₀ F π) = checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl
   checkAnaOn _ _ _ ana-other = failure (BuiltinTypeMismatch "ana") , tt
 
-  checkAnaGo ctx coalg F A π₀ π nothing _ = failure (BuiltinTypeMismatch "ana") , tt
-  checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
-    with checkElabV ctx coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] ⟦ F ⟧T A)
+  checkAnaGo ctx coalg F A π₀ φ nothing _ = failure (BuiltinTypeMismatch "ana") , tt
+  checkAnaGo ctx coalg F A π₀ φ (just wfF) eqW
+    with checkElabV ctx coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin φ) ] ⟦ F ⟧T A)
   ... | failure err , _ = failure err , tt
   ... | success Ψ coalgE d fr , wArg = withUnit (failure (BuiltinTypeMismatch "ana") , tt) π₀ λ u →
           success _ (Surface.ana wfF coalgE) (suc d) fr

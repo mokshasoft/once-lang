@@ -90,7 +90,7 @@ mutual
   coh-ii (ii-apply {d = d} {d′ = d′} r) = apply-h {d = d} {d′ = d′} (coh-ii r)
   coh-ii (ii-apply-eff {g = g} {g′ = g′} {d = d} {d′ = d′} r) = applyeff-h {g = g} {g′ = g′} {d = d} {d′ = d′} (coh-ii r)
   coh-ii (ii-Out {w = w} {w′ = w′} {d = d} {d′ = d′} r) = out-h w w′ {d = d} {d′ = d′} (coh-ii r)
-  coh-ii (ii-Out-eff {w = w} {w′ = w′} {g = g} {g′ = g′} {d = d} {d′ = d′} r) = outeff-h {g = g} {g′ = g′} w w′ {d = d} {d′ = d′} (coh-ii r)
+  coh-ii (ii-Out-eff {w = w} {w′ = w′} {d = d} {d′ = d′} r) = outeff-h w w′ {d = d} {d′ = d′} (coh-ii r)
   coh-ii (ii-app r₁ r₂) = app-h (coh-ii r₁) (coh-cc r₂)
   coh-ii (ii-effApp r₁ r₂) = effApp-h (coh-ii r₁) (coh-cc r₂)
   coh-ii (ii-app-spine {wF = wF} {dF′ = dF′} rx rd) =

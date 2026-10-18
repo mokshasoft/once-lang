@@ -44,7 +44,7 @@ open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym; subst-sym-subst)
 
-open import Once.Lang.Type.Grade using (mk-kind; pure; eff; Quantity; Zero; One; Many; act)
+open import Once.Lang.Type.Grade using (mk-kind; pure; eff; Quantity; Zero; One; Many; act; fin)
 open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Lang.Type.WellFormed using (con-base; con-fun; base-Unit)
 open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; _∷_)
@@ -1714,12 +1714,12 @@ faithful {Γ = Γ} (cata {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg) dγ =
               (faithful alg (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))))
 -- ana: dual of cata; reduces to the same closure-bridge via `ana-body`
 -- (+ the `ana-ev-bridge` trace lemma).
-faithful {Γ = Γ} (ana {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {π = π} wf coalg) dγ =
-  FL.ana-body {Γ = Γ} {π₀ = π₀} {π = π} wf coalg dγ
+faithful {Γ = Γ} (ana {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg) dγ =
+  FL.ana-body {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg dγ
     (trans (cong (λ t → t dγ)
-                 (liftFn-∘ {B = ⟦ Γ ↾ Ψ ⟧ᶜ} {C = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ}
+                 (liftFn-∘ {B = ⟦ Γ ↾ Ψ ⟧ᶜ} {C = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ}
                            (elaborate IR.Heap coalg) (restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))))
-       (trans (cong (_>>=T liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate IR.Heap coalg))
+       (trans (cong (_>>=T liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} (elaborate IR.Heap coalg))
                     (liftFn-restrictEnv {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))
               (faithful coalg (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))))
 

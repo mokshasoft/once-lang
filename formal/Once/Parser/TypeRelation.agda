@@ -128,12 +128,6 @@ mutual
           → ParsesFunctorSum toks F rest
           → ParsesAtom (TWord "Nu" ∷ toks) (ν-type F pure) rest
 
-    -- D233: 'Nu (Eff F)' — the EFFECTFUL stream ν(T ∘ F). `Eff` is not a
-    -- functor keyword, so `Nu ( Eff …` can only be this form.
-    pa-nu-eff : ∀ {toks rest} {F : Functor}
-              → ParsesFunctorSum toks F (TRParen ∷ rest)
-              → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ toks) (ν-type F eff) rest
-
     -- D313: 'Nu (Act F)' — the stream whose layers RETURN, ν(T ∘ F) over the
     -- finite trees. `Act` is not a functor keyword either.
     pa-nu-act : ∀ {toks rest} {F : Functor}
@@ -261,11 +255,6 @@ mutual
             (<-trans (ParsesType-shrinks dT) (s≤s ≤-refl))
   ParsesAtom-shrinks (pa-nu dF) =
     <-trans (ParsesFunctorSum-shrinks dF) (s≤s ≤-refl)
-  ParsesAtom-shrinks (pa-nu-eff dF) =
-    <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (ParsesFunctorSum-shrinks dF))
-                              (s≤s ≤-refl))
-                     (s≤s ≤-refl))
-            (s≤s ≤-refl)
   ParsesAtom-shrinks (pa-nu-act dF) =
     <-trans (<-trans (<-trans (<-trans (s≤s ≤-refl) (ParsesFunctorSum-shrinks dF))
                               (s≤s ≤-refl))

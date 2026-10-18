@@ -70,9 +70,6 @@ mutual
   -- was unreachable from source. See D189.
   GNu     : GFunctor → GType
 
-  -- D233: the EFFECTFUL stream `Nu (Eff F)` = ν(T ∘ F).
-  GNuEff  : GFunctor → GType
-
   -- D313: the stream whose layers RETURN, `Nu (Act F)`.
   GNuAct  : GFunctor → GType
 

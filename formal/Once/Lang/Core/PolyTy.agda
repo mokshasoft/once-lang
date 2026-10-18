@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 import Once.Lang.Type as T
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Type.Grade using (Purity; ArrowKind)
+open import Once.Lang.Type.Grade using (Purity; Finite; ArrowKind)
 open import Once.Lang.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 ------------------------------------------------------------------------
@@ -61,7 +61,7 @@ mutual
     _*_ _+_ : Ty m → Ty m → Ty m
     _⇒[_]_  : Ty m → ArrowKind → Ty m → Ty m
     μ-type  : Fun m → Ty m
-    ν-type  : Fun m → Purity → Ty m
+    ν-type  : Fun m → Finite → Ty m
     -- D243: an ENCLOSING definition's rigid parameter — a constant here, left
     -- alone by substitution and instantiation. Abstraction (`rigid k i ↦ var i`)
     -- is the separate step that turns a body typed at its rigid schema into a

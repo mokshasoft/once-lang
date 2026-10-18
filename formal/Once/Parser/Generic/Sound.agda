@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Parser.Token
 open import Once.Parser.Generic.Relation
 import Once.Parser.Generic.Parser as P
-open P using (effHead?; actHead?)
+open P using (actHead?)
 
 module Make (alg : TyAlg) where
   open TyAlg alg
@@ -40,19 +40,14 @@ module Make (alg : TyAlg) where
     ... | just (a , r , ex) with refl ← just-injective h = pa-extra ex
     ... | nothing = sound-kw toks (acc rec) h
 
-    -- D233: `Nu ( Eff F )` — the pure attempt failed, so `effHead?` decides.
+    -- D313/D318: `Nu ( Act F )` — the pure attempt failed, so `actHead?` decides.
     {-# TERMINATING #-}
-    sound-nuEff : ∀ (rest : List Token) (e : Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Eff" ∷ r))
-      → effHead? rest ≡ e → (a : Acc _<_ (length (TWord "Nu" ∷ rest))) {T : R} {r2 : List Token} →
-      nuEffWith rest e ≡ just (T , r2) → ParsesAtomG (TWord "Nu" ∷ rest) T r2
-    -- D313: … else `Nu ( Act F )`, which `actHead?` decides.
-    sound-nuEff rest nothing _ (acc rec) h with actHead? rest
-    ... | just (r , refl) with fSumP r in eq2
-    ...   | just (F , TRParen ∷ r2) with sound-fSum r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))) eq2
-    ...     | dF with refl ← just-injective h = pa-nu-act dF
-    sound-nuEff .(TLParen ∷ TWord "Eff" ∷ r) (just (r , refl)) _ (acc rec) h with fSumP r in eq2
+    sound-nuAct : ∀ (rest : List Token) (e : Maybe (Σ[ r ∈ List Token ] rest ≡ TLParen ∷ TWord "Act" ∷ r))
+      → actHead? rest ≡ e → (a : Acc _<_ (length (TWord "Nu" ∷ rest))) {T : R} {r2 : List Token} →
+      nuActWith rest e ≡ just (T , r2) → ParsesAtomG (TWord "Nu" ∷ rest) T r2
+    sound-nuAct .(TLParen ∷ TWord "Act" ∷ r) (just (r , refl)) _ (acc rec) h with fSumP r in eq2
     ... | just (F , TRParen ∷ r2) with sound-fSum r (rec (<-trans (<-trans (s≤s ≤-refl) (s≤s ≤-refl)) (s≤s ≤-refl))) eq2
-    ...   | dF with refl ← just-injective h = pa-nu-eff dF
+    ...   | dF with refl ← just-injective h = pa-nu-act dF
 
     {-# TERMINATING #-}
     sound-kw : ∀ (toks : List Token) (a : Acc _<_ (length toks)) {T rest} →
@@ -90,7 +85,7 @@ module Make (alg : TyAlg) where
     ...     | dF with refl ← just-injective h = pa-nu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
       | no _ | no _ | no _ | no _ | no _ | no _ | no _ | yes refl | nothing
-      = sound-nuEff rest (effHead? rest) refl (acc rec) h
+      = sound-nuAct rest (actHead? rest) refl (acc rec) h
     sound-kw (TLParen ∷ rest) (acc rec) h with typeP rest in eq1
     ... | just (T , TRParen ∷ rest2) with sound-type rest (rec (s≤s ≤-refl)) eq1
     ...   | dT with refl ← just-injective h = pa-paren dT refl

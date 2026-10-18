@@ -56,7 +56,6 @@ gtypeToPolyType (G.TEff a b)     = PEff (gtypeToPolyType a) (gtypeToPolyType b)
 gtypeToPolyType (G.TAct a b)     = PAct (gtypeToPolyType a) (gtypeToPolyType b)
 gtypeToPolyType (G.GMu gf)       = Pμ-type (gtypeToPolyFunctor gf)
 gtypeToPolyType (G.GNu gf)       = Pν-type (gtypeToPolyFunctor gf) pure
-gtypeToPolyType (G.GNuEff gf)    = Pν-type (gtypeToPolyFunctor gf) Once.Lang.Type.Grade.eff
 gtypeToPolyType (G.GNuAct gf)    = Pν-type (gtypeToPolyFunctor gf) Once.Lang.Type.Grade.act
 
 gtypeToPolyFunctor (G.GFK g)      = PK (gtypeToPolyType g)

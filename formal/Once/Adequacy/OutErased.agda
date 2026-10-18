@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Type.Grade using (Purity)
+open import Once.Lang.Type.Grade using (Purity; Finite)
 open import Once.Lang.Type using (Type; Functor; ν-type; ⟦_⟧T)
 open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Lang.FunctorMeaning using (translateF)
@@ -58,7 +58,7 @@ import Once.IR as IR
 -- The transported `Out` morphism `realize-infer` uses
 ------------------------------------------------------------------------
 
-Out-ir : ∀ {F : Functor} {π : Purity} → WellFormedF F → IR.IR ⌊ ν-type F π ⌋ ⌊ ⟦ F ⟧T (ν-type F π) ⌋
+Out-ir : ∀ {F : Functor} {π : Finite} → WellFormedF F → IR.IR ⌊ ν-type F π ⌋ ⌊ ⟦ F ⟧T (ν-type F π) ⌋
 Out-ir {F} {π} wfF = subst (λ o → IR.IR ⌊ ν-type F π ⌋ o)
                        (sym (⌊⟧T-commute F (ν-type F π)))
                        (IR.Out (wf-⌊⌋ wfF))
@@ -317,7 +317,7 @@ base-out (X Once.Lang.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
 -- transports, IS the direct `out-sem` — one equation of trees. Each transport
 -- maps the forced tree's leaves, the maps fuse (`fmapT-∘`), and the leaf maps
 -- agree pointwise (`νout-erase-D`).
-liftFn-Out : ∀ {F : Functor} {π : Purity} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
+liftFn-Out : ∀ {F : Functor} {π : Finite} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
   → liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v ≡ out-sem {π = π} wfF v
 liftFn-Out {F} {π} wfF v =
   trans (subst-T-fmap (cohᴰ (⟦ F ⟧T (ν-type F π))) (evalᴰ fmt ρ (Out-ir wfF) v′))

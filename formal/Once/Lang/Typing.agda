@@ -467,19 +467,18 @@ mutual
                     → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
                             ∶ C ⨾ (zeroUsage +ᵘ (Once.Lang.Type.Grade.Many *ᵘ Ψ))
 
-    -- | D233: `Out v` at an EFFECTFUL stream (`Nu (Eff F)` = ν(T∘F)). Forcing a
+    -- | D233/D318: `Out v` at an ACTING stream (`ν F act`: a layer is one finite block of calls). Forcing a
     -- layer runs the coalgebra, so — exactly as applying an effectful arrow at
     -- the surface does (`t-effApp`, `t-apply-eff-app-infer`) — the term is the
     -- SUSPENSION `Eff Unit C`: the stream is evaluated now, the force runs when
     -- the suspension is applied.
     t-Out-eff-app-infer : ∀ {ctx : NamedCtx} {v : RawExpr} {F : Functor} {C : Type}
                           {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                          {π : Once.Lang.Type.Grade.Purity} {g : Once.Lang.Type.Grade.EffGrade π}
                         → WellFormedF F
-                        → ⟦ F ⟧T (ν-type F π) ≡ C
-                        → ctx ⊢ᵢ v ∶ ν-type F π ⨾ Ψ
+                        → ⟦ F ⟧T (ν-type F Once.Lang.Type.Grade.act) ≡ C
+                        → ctx ⊢ᵢ v ∶ ν-type F Once.Lang.Type.Grade.act ⨾ Ψ
                         → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
-                                ∶ (Once.Lang.Type.Unit Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] C)
+                                ∶ (Once.Lang.Type.Unit Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] C)
                                 ⨾ (zeroUsage +ᵘ (Once.Lang.Type.Grade.Many *ᵘ Ψ))
 
     ----------------------------------------------------------------
@@ -707,14 +706,14 @@ mutual
     -- `F` is read from the EXPECTED type, which is what makes `ana` need no
     -- syntax of its own: it is an ordinary applied builtin, like `cata`, and
     -- D191's `Nu` is what lets the annotation that determines `F` be written.
-    -- D233: the stream carries the coalgebra's grade; building it runs
-    -- nothing, so `ana`'s own arrow is free (`π₀`, as `curry`'s outer arrow).
+    -- D233/D318: the stream carries the coalgebra's FINITE grade; building it
+    -- runs nothing, so `ana`'s own arrow is free (`π₀`, as `curry`'s outer arrow).
     t-ana-check : ∀ {ctx : NamedCtx} {coalg : RawExpr} {F : Functor} {A : Type}
-                  {π₀ π : Once.Lang.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Lang.Type.Grade.pure ⊑π π₀}
+                  {π₀ : Once.Lang.Type.Grade.Purity} {φ : Once.Lang.Type.Grade.Finite} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Lang.Type.Grade.pure ⊑π π₀}
                 → WellFormedF F
-                → ctx ⊢ᶜ coalg ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] (⟦ F ⟧T A)) ⨾ Ψ
+                → ctx ⊢ᶜ coalg ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin φ) ] (⟦ F ⟧T A)) ⨾ Ψ
                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg
-                        ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] (ν-type F π))
+                        ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] (ν-type F φ))
                         ⨾ (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ)   -- B1: the coalgebra runs per layer
 
     -- | THE MODE SWITCH, with subsumption (D226 / plan 0.99). A term whose type

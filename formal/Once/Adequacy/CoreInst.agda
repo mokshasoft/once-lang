@@ -91,12 +91,12 @@ module WithSG (sg : SigGround) where
     GT.⊢fold u (ρ̂-wf wf)
       (subst (λ X → ρ̂S Γ ⊢[ Ψa ] ρ̂ₜ alg ∷ X T.⇒[ mk-kind Many π ] ρ̂ A ! π₁) (ρ̂-⟦⟧ F A) (ρ̂ᶜ a))
       (ρ̂ᶜ t)
-  ρ̂ᶜ {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {π = π} {π₁ = π₁} {F = F} {A = A} {c = c} wf k x) =
+  ρ̂ᶜ {Γ = Γ} (GT.⊢unfold {Ψc = Ψc} {φ = φ} {π₁ = π₁} {F = F} {A = A} {c = c} wf k x) =
     GT.⊢unfold (ρ̂-wf wf)
-      (subst (λ X → ρ̂S Γ ⊢[ Ψc ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many π ] X ! π₁) (ρ̂-⟦⟧ F A) (ρ̂ᶜ k))
+      (subst (λ X → ρ̂S Γ ⊢[ Ψc ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many (T.fin φ) ] X ! π₁) (ρ̂-⟦⟧ F A) (ρ̂ᶜ k))
       (ρ̂ᶜ x)
-  ρ̂ᶜ {Γ = Γ} {Ψ = Ψ} (GT.⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
-    subst (λ X → ρ̂S Γ ⊢[ Ψ ] G.out (ρ̂ₜ t) ∷ X ! π₁ T.·p π) (sym (ρ̂-⟦⟧ F (ν-type F π))) (GT.⊢out (ρ̂-wf wf) (ρ̂ᶜ d))
+  ρ̂ᶜ {Γ = Γ} {Ψ = Ψ} (GT.⊢out {φ = π} {π₁ = π₁} {F = F} {t = t} wf d) =
+    subst (λ X → ρ̂S Γ ⊢[ Ψ ] G.out (ρ̂ₜ t) ∷ X ! π₁ T.·p T.fin π) (sym (ρ̂-⟦⟧ F (ν-type F π))) (GT.⊢out (ρ̂-wf wf) (ρ̂ᶜ d))
   ρ̂ᶜ (GT.⊢coerce p d)  = GT.⊢coerce (ρ̂-<: p) (ρ̂ᶜ d)
   ρ̂ᶜ GT.⊢lit-int       = GT.⊢lit-int
   ρ̂ᶜ GT.⊢lit-float     = GT.⊢lit-float
@@ -199,14 +199,14 @@ module WithSG (sg : SigGround) where
               (trans (tr-isubst′ (absTy-⟦⟧ Δ F A) _)
                 (closeF (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂S-abs Γ) _ (ρ̂-⟦⟧ F A) (inst-abs a))))
             (inst-abs t))
-  inst-abs {Γ = Γ} (GT.⊢unfold {π = π} {F = F} {A = A} wf k x) =
+  inst-abs {Γ = Γ} (GT.⊢unfold {φ = φ} {F = F} {A = A} wf k x) =
     trans (tr-unfold refl refl refl refl refl refl _ (IA x))
           (cong₂ (GT.⊢unfold (ρ̂-wf wf))
             (trans (tr-subst (⟦⟧F-⟪⟫ (absF Δ F) (absTy Δ A) τ) _)
               (trans (tr-isubst′ (absTy-⟦⟧ Δ F A) _)
-                (closeF (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂S-abs Γ) _ (ρ̂-⟦⟧ F A) (inst-abs k))))
+                (closeF (λ X → ρ̂ A T.⇒[ mk-kind Many (T.fin φ) ] X) (ρ̂S-abs Γ) _ (ρ̂-⟦⟧ F A) (inst-abs k))))
             (inst-abs x))
-  inst-abs {Γ = Γ} (GT.⊢out {π = π} {F = F} wf d) =
+  inst-abs {Γ = Γ} (GT.⊢out {φ = π} {F = F} wf d) =
     trans (tr-isubst′ (sym (absTy-⟦⟧ Δ F (ν-type F π))) _)
       (trans (tr-subst (sym (⟦⟧F-⟪⟫ (absF Δ F) (Ty.ν-type (absF Δ F) π) τ)) _)
         (close (ρ̂S-abs Γ) _ (sym (ρ̂-⟦⟧ F (ν-type F π)))
@@ -439,14 +439,14 @@ module WithSG (sg : SigGround) where
                      (H.trans (ρ̂ᶜ-ren θ da) (H.sym (ren-sA (ρ̂θ θ) (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)))))
                    (U≡ θ Ψt) (T≡ θ t) (ρ̂ᶜ-ren θ dt))
                (H.sym (rmU (sym (trans (TH.thin-usage-+ᵘ (ρ̂θ θ) (Many C.*ᵘ Ψa) Ψt) (cong (C._+ᵘ thin-usage (ρ̂θ θ) Ψt) (TH.thin-usage-*ᵘ (ρ̂θ θ) Many Ψa)))))))
-  ρ̂ᶜ-ren θ (GT.⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π = π} {F = F} {A = A} {c = c} {s = sd} wf dc ds) =
+  ρ̂ᶜ-ren θ (GT.⊢unfold {Ψc = Ψc} {Ψs = Ψs} {φ = φ} {F = F} {A = A} {c = c} {s = sd} wf dc ds) =
     H.trans (ρ̂ᶜ-sU (sym (trans (TH.thin-usage-+ᵘ θ (Many C.*ᵘ Ψc) Ψs) (cong (C._+ᵘ thin-usage θ Ψs) (TH.thin-usage-*ᵘ θ Many Ψc)))))
       (H.trans (≅2 _ _ (GT.⊢unfold (ρ̂-wf wf)) (U≡ θ Ψc) (T≡ θ c)
-                   (H.trans (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A))
-                     (H.trans (ρ̂ᶜ-ren θ dc) (H.sym (ren-sA (ρ̂θ θ) (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)))))
+                   (H.trans (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many (T.fin φ) ] X) (ρ̂-⟦⟧ F A))
+                     (H.trans (ρ̂ᶜ-ren θ dc) (H.sym (ren-sA (ρ̂θ θ) (λ X → ρ̂ A T.⇒[ mk-kind Many (T.fin φ) ] X) (ρ̂-⟦⟧ F A)))))
                    (U≡ θ Ψs) (T≡ θ sd) (ρ̂ᶜ-ren θ ds))
                (H.sym (rmU (sym (trans (TH.thin-usage-+ᵘ (ρ̂θ θ) (Many C.*ᵘ Ψc) Ψs) (cong (C._+ᵘ thin-usage (ρ̂θ θ) Ψs) (TH.thin-usage-*ᵘ (ρ̂θ θ) Many Ψc)))))))
-  ρ̂ᶜ-ren θ (GT.⊢out {Ψ = Ψ} {π = π} {F = F} {t = t} wf d) =
+  ρ̂ᶜ-ren θ (GT.⊢out {Ψ = Ψ} {φ = π} {F = F} {t = t} wf d) =
     H.trans (rmA (λ X → X) (sym (ρ̂-⟦⟧ F (ν-type F π))))
       (H.trans (≅1 _ _ (GT.⊢out (ρ̂-wf wf)) (U≡ θ Ψ) (T≡ θ t) (ρ̂ᶜ-ren θ d))
                (H.sym (ren-sA (ρ̂θ θ) (λ X → X) (sym (ρ̂-⟦⟧ F (ν-type F π))))))
@@ -572,11 +572,11 @@ module WithSG (sg : SigGround) where
                 ≅ DT.⊢outᶜ {Γ = Δ₀} w
       out-gen w refl = H.refl
 
-      outEff-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {π} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf π) ≡ X)
+      outEff-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {π : T.Finite} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf π) ≡ X)
                  → GT.⊢lam {Γ = Δ₀} {q = Many} refl (GT.⊢lam {q = Many} refl
-                     (subst (λ Y → ((Δ₀ C., ν-type Gf π) C., T.Unit) ⊢[ T.Zero C.∷ C.singleUse zero T.One ] G.out (G.var (suc zero)) ∷ Y ! π) e
+                     (subst (λ Y → ((Δ₀ C., ν-type Gf π) C., T.Unit) ⊢[ T.Zero C.∷ C.singleUse zero T.One ] G.out (G.var (suc zero)) ∷ Y ! T.fin π) e
                             (GT.⊢out w (GT.⊢var (suc zero)))))
-                   ≅ DT.⊢outEffᶜ {Γ = Δ₀} {π = π} w
+                   ≅ DT.⊢outEffᶜ {Γ = Δ₀} {φ = π} w
       outEff-gen w refl = H.refl
 
     c-in : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢inᶜ {Γ = Γ} wf) ≅ DT.⊢inᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
@@ -585,7 +585,7 @@ module WithSG (sg : SigGround) where
     c-out : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outᶜ {Γ = Γ} wf) ≅ DT.⊢outᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
     c-out {F} wf = out-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F pure)))
 
-    c-outEff : ∀ {π F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outEffᶜ {Γ = Γ} {π = π} wf) ≅ DT.⊢outEffᶜ {Γ = ρ̂S Γ} {π = π} (ρ̂-wf wf)
+    c-outEff : ∀ {π : T.Finite} {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outEffᶜ {Γ = Γ} {φ = π} wf) ≅ DT.⊢outEffᶜ {Γ = ρ̂S Γ} {φ = π} (ρ̂-wf wf)
     c-outEff {π} {F} wf = outEff-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F π)))
 
     private
@@ -599,12 +599,12 @@ module WithSG (sg : SigGround) where
                            (GT.⊢lam {q = Many} refl (GT.⊢fold u w (GT.⊢var (suc zero)) (GT.⊢var zero)))
       cata-gen u w refl D = H.refl
 
-      ana-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ c π} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
-                  (Y : Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many π ] X ! pure)
-              → GT.⊢unfold w (subst (λ Z → (Δ₀ C., R) ⊢[ T.Zero C.∷ Ψ ] G.wk c ∷ R T.⇒[ mk-kind Many π ] Z ! pure) e
+      ana-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ c} {π : T.Finite} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
+                  (Y : Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many (T.fin π) ] X ! pure)
+              → GT.⊢unfold w (subst (λ Z → (Δ₀ C., R) ⊢[ T.Zero C.∷ Ψ ] G.wk c ∷ R T.⇒[ mk-kind Many (T.fin π) ] Z ! pure) e
                                      (DT.wk-⊢′ R Y))
                              (GT.⊢var zero)
-                ≅ GT.⊢unfold w (DT.wk-⊢′ R (subst (λ Z → Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many π ] Z ! pure) e Y))
+                ≅ GT.⊢unfold w (DT.wk-⊢′ R (subst (λ Z → Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many (T.fin π) ] Z ! pure) e Y))
                                (GT.⊢var zero)
       ana-gen w refl Y = H.refl
 
@@ -619,18 +619,18 @@ module WithSG (sg : SigGround) where
         E = trans (cong (C._+ᵘ (Many C.*ᵘ Ψ)) (trans (cong (C._+ᵘ C.zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ C.zeroUsage)))
                   (+ᵘ-identityˡ (Many C.*ᵘ Ψ))
 
-    c-ana : ∀ {Ψ F A π₀ π c} (u₀ : Once.Lang.Type.Sub._⊑π_ T.pure π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure)
+    c-ana : ∀ {Ψ F A π₀} {π : T.Finite} {c} (u₀ : Once.Lang.Type.Sub._⊑π_ T.pure π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many (T.fin π) ] ⟦ F ⟧T A ! pure)
           → ρ̂ᶜ (DT.⊢anaᶜ u₀ wf dc)
-            ≅ DT.⊢anaᶜ u₀ (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many π ] X ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))
+            ≅ DT.⊢anaᶜ u₀ (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many (T.fin π) ] X ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))
     c-ana {Ψ} {F} {A} {π₀} {π} {c} u₀ wf dc =
       ≅lam refl (cong (λ u → G.unfold _ u (G.var zero)) (ρ̂ₜ-ren suc c))
         (H.trans (ρ̂ᶜ-sUf (T.One C.∷_) (+ᵘ-identityʳ (Many C.*ᵘ Ψ)))
           (H.trans (≅1 _ _ (GT.⊢sub-eff u₀) refl
                        (cong (λ u → G.unfold _ u (G.var zero)) (ρ̂ₜ-ren suc c))
                        (H.trans (≅2 _ _ (GT.⊢unfold (ρ̂-wf wf)) refl (ρ̂ₜ-ren suc c)
-                                    (H.trans (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many π ] Z) (ρ̂-⟦⟧ F A))
+                                    (H.trans (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many (T.fin π) ] Z) (ρ̂-⟦⟧ F A))
                                       (H.trans (wk≅ A dc)
-                                               (H.sym (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many π ] Z) (ρ̂-⟦⟧ F A)))))
+                                               (H.sym (rmA (λ Z → ρ̂ A T.⇒[ mk-kind Many (T.fin π) ] Z) (ρ̂-⟦⟧ F A)))))
                                     refl refl H.refl)
                                 (ana-gen (ρ̂-wf wf) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))))
                    (H.sym (rmUf (T.One C.∷_) (+ᵘ-identityʳ (Many C.*ᵘ Ψ))))))

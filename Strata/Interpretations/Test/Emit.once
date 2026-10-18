@@ -35,3 +35,8 @@ signature emit : Eff Int Unit
 -- are both one machine word. What differs is the SOURCE type, and hence what the
 -- word MEANS — `42` against `0x3FE0000000000000` for `0.5` at binary64.
 signature emitF : Eff Float Unit
+
+-- | `emit` at the TERMINATING grade (D313): the same write, declared as an
+-- operation that returns. D318: a ν's grade is finite, so a stream's coalgebra
+-- is `act` — this is the observable operation one can run.
+signature emitA : Act Int Unit

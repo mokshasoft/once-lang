@@ -248,8 +248,8 @@ mutual
   tm-i (t-apply-app-infer d) = cong (G.app _) (tm-i d)
   tm-i (t-apply-eff-app-infer d) = cong (G.app _) (tm-i d)
   tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pure))) _) (cong (G.app _) (tm-i d))
-  tm-i (t-Out-eff-app-infer {F = F} {π = π} wf refl d) =
-    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π)))) _) (cong (G.app _) (tm-i d))
+  tm-i (t-Out-eff-app-infer {F = F} wf refl d) =
+    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Lang.Type.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Lang.Type.Grade.act)))) _) (cong (G.app _) (tm-i d))
   tm-i (t-app h df dx)       = cong₂ G.app (tm-i df) (tm-c dx)
   tm-i (t-effApp h df dx) =
     cong₂ (λ a b → G.lam _ _ _ (G.app a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
@@ -273,9 +273,9 @@ mutual
   tm-c (t-curry-check df)          = cong (λ u → G.let′ _ u _) (tm-c df)
   tm-c (t-cata-check {F = F} {A = A} {π = π} wf da) =
     cong (λ u → G.let′ _ u _) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
-  tm-c (t-ana-check {F = F} {A = A} {π = π} wf dc) =
+  tm-c (t-ana-check {F = F} {A = A} {φ = π} wf dc) =
     cong (λ u → G.lam _ _ _ (G.unfold _ u (G.var zero)))
-         (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
+         (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
                 (sym (ρ̂ₜ-ren suc _)))
   tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
   tm-c (t-lam le d)         = cong (G.lam _ _ _) (tm-c d)
@@ -422,9 +422,9 @@ mutual
   dr-i (t-Out-app-infer {F = F} wf refl d) =
     H.trans (⇝ᵢ-dr (sym (ρ̂-⟦⟧ F (ν-type F pure))) _)
             (≅app refl (sym (ρ̂-⟦⟧ F (ν-type F pure))) refl (H.sym (c-out wf)) (tm-i d) (dr-i d))
-  dr-i (t-Out-eff-app-infer {F = F} {π = π} wf refl d) =
-    H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π)))) _)
-            (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many π ] X) (sym (ρ̂-⟦⟧ F (ν-type F π))))
+  dr-i (t-Out-eff-app-infer {F = F} wf refl d) =
+    H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Lang.Type.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Lang.Type.Grade.act)))) _)
+            (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Lang.Type.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Lang.Type.Grade.act))))
                   refl (H.sym (c-outEff wf)) (tm-i d) (dr-i d))
   dr-i (t-app h df dx)       =
     H.trans (≅app-pure refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.≡-to-≅ (sym (ρ̂ᶜ-app-pure _ _ _)))
@@ -464,13 +464,13 @@ mutual
       q  = cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c da)
   -- D273: `cata`'s shape — the coalgebra lives in the context, no `close`.
-  dr-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {π = π} {u = u} wf dc) =
+  dr-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} wf dc) =
     H.trans (≅1 _ _ (DT.⊢anaᶜ u (ρ̂-wf wf)) refl TE
                 (H.trans (H.trans (⇝ᶜ-dr q _) (dr-c dc))
-                         (H.sym (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)))))
+                         (H.sym (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)))))
             (H.sym (c-ana u wf (proj₂ (elabᶜ V dc))))
     where
-      q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many π ] X) (ρ̂-⟦⟧ F A)
+      q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c dc)
   dr-c (t-sub d p)           = ≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) refl (tm-i d) (dr-i d)
   dr-c (t-lam {u = u} le d)  =

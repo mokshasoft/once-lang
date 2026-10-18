@@ -119,7 +119,7 @@ cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 -- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
 -- other side of `⌈_⌉`).
-out-sem : ∀ {F : Functor} {π : Purity} → WellFormedF F
+out-sem : ∀ {F : Functor} {π : Once.Lang.Type.Grade.Finite} → WellFormedF F
         → ⟦ Once.Lang.Type.ν-type F π ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Lang.Type.ν-type F π) ⟧ᴰ
 out-sem {F} {π} wf v =
   fmapT (λ layer → coerce-functor⁻¹-D wf (Once.Lang.Type.ν-type F π)
@@ -275,7 +275,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 ⟦_⟧ᶜ {ctx = ctx} (t-cata-check {u = u} wfF dalg) fmt ρ dγ =
   -- plan 0.113 B1: the algebra's usage is ω-scaled; it reads `dγ` restricted.
   (⟦ dalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ u wfF valg v
-⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {π = π} {u = u} wfF dcoalg) fmt ρ dγ =
+⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {φ = π} {u = u} wfF dcoalg) fmt ρ dγ =
   λ a → returnM u (ana-semᵛ π wfF ((⟦ dcoalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ)) a)
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
 ⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt ρ dγ = fmapᵖ ⟦ p ⟧<:ᵛ ((⟦ d ⟧ᵢ fmt ρ) dγ)
@@ -439,10 +439,10 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
        >>=ᵖ out-semᵛ Once.Lang.Type.Grade.pure wfF)
 -- D233: forcing an EFFECTFUL stream at the surface — the stream is evaluated
 -- now, the force runs when the suspension is applied (as `t-apply-eff-app-infer`).
-⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} {π = π} wfF ceq d) fmt ρ dγ =
+⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) fmt ρ dγ =
   (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx}
                   (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ v →
-  returnᵖ (λ _ → subst (λ Z → M π ⟦ Z ⟧ᵛ) ceq (out-semᵛ π wfF v))
+  returnᵖ (λ _ → subst (λ Z → M Once.Lang.Type.Grade.act ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Lang.Type.Grade.act wfF v))
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ _ → returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ fa → proj₁ fa (proj₂ fa)
 -- D222 / plan 0.95 A′: the EFF closure's elimination is a SUSPENSION — but only

@@ -82,7 +82,6 @@ mutual
     bind-ok θ (instantiateAcc A (substPoly θ A) s) (instantiateAcc B (substPoly θ B)) (inst-ok θ A s c) (λ s′ c′ → inst-ok θ B s′ c′)
   inst-ok θ (Pμ-type F) s c = instF-ok θ F s c
   inst-ok θ (Pν-type F pure) s c = instF-ok θ F s c
-  inst-ok θ (Pν-type F eff)  s c = instF-ok θ F s c
   inst-ok θ (Pν-type F act) s c = instF-ok θ F s c
 
   instF-ok : ∀ θ (F : PolyFunctor) s → Consistent θ s → Matches θ (instantiateFunctor F (substPolyF θ F) s)
@@ -262,25 +261,14 @@ mutual
   inst-sound (Pμ-type F) (_ ⇒[ _ ] _) s ()
   inst-sound (Pμ-type F) (ν-type _ _) s ()
   inst-sound (Pν-type F pure) (ν-type f pure) s eq = map-sound (λ g → ν-type g pure) (instF-sound F f s eq)
-  inst-sound (Pν-type F eff) (ν-type f eff) s eq = map-sound (λ g → ν-type g eff) (instF-sound F f s eq)
-  inst-sound (Pν-type F pure) (ν-type f eff) s ()
-  inst-sound (Pν-type F eff) (ν-type f pure) s ()
   inst-sound (Pν-type F pure) Unit s ()
-  inst-sound (Pν-type F eff) Unit s ()
   inst-sound (Pν-type F pure) Void s ()
-  inst-sound (Pν-type F eff) Void s ()
   inst-sound (Pν-type F pure) Int s ()
-  inst-sound (Pν-type F eff) Int s ()
   inst-sound (Pν-type F pure) Float s ()
-  inst-sound (Pν-type F eff) Float s ()
   inst-sound (Pν-type F pure) (_ * _) s ()
-  inst-sound (Pν-type F eff) (_ * _) s ()
   inst-sound (Pν-type F pure) (_ + _) s ()
-  inst-sound (Pν-type F eff) (_ + _) s ()
   inst-sound (Pν-type F pure) (_ ⇒[ _ ] _) s ()
-  inst-sound (Pν-type F eff) (_ ⇒[ _ ] _) s ()
   inst-sound (Pν-type F pure) (μ-type _) s ()
-  inst-sound (Pν-type F eff) (μ-type _) s ()
   inst-sound (A P⇒[ q ] B) (a ⇒[ mk-kind q′ act ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind Zero act ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind Zero eff ] b) s ()
@@ -290,9 +278,7 @@ mutual
   inst-sound (PAct A B) (a ⇒[ mk-kind Many eff ] b) s ()
   inst-sound (Pν-type F act) (ν-type f act) s eq = map-sound (λ g → ν-type g act) (instF-sound F f s eq)
   inst-sound (Pν-type F pure) (ν-type f act) s ()
-  inst-sound (Pν-type F eff) (ν-type f act) s ()
   inst-sound (Pν-type F act) (ν-type f pure) s ()
-  inst-sound (Pν-type F act) (ν-type f eff) s ()
   inst-sound (Pν-type F act) Unit s ()
   inst-sound (Pν-type F act) Void s ()
   inst-sound (Pν-type F act) Int s ()

@@ -239,8 +239,8 @@ module _ {n} {Γ : Ctx n} where
     returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x))
 
   -- D273: the coalgebra lives in the context and is bound once, as `cata`'s.
-  ana-congˢ : ∀ {Ψ F A π₀ π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
-           → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} wf g ≈ˢ ana wf g′
+  ana-congˢ : ∀ {Ψ F A π₀ φ} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Lang.Type.Grade.fin φ) ] ⟦ F ⟧T A)}
+           → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ˢ ana wf g′
   ana-congˢ {Ψ} {F = F} {A} wf = cong (λ X σ dγ → X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ clo →
     returnT (λ a → returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A) (clo a')) a)))
 

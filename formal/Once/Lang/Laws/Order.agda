@@ -15,7 +15,7 @@ module Once.Lang.Laws.Order where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; isEquivalence)
 open import Relation.Binary.Structures using (IsPartialOrder)
-open import Once.Lang.Type.Grade using (Purity; pure; eff; mk-kind)
+open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind)
 open import Once.Lang.Type using (Type; _*_; _+_)
 open import Once.Lang.Type.Sub
   using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
@@ -56,7 +56,10 @@ purity-⊑-isPartialOrder = record
 <:-antisym (sub-prod a b) (sub-prod a′ b′) = cong₂ _*_ (<:-antisym a a′) (<:-antisym b b′)
 <:-antisym (sub-sum a b) (sub-sum a′ b′) = cong₂ _+_ (<:-antisym a a′) (<:-antisym b b′)
 <:-antisym sub-μ sub-μ = refl
-<:-antisym (sub-ν g) (sub-ν g′) rewrite ⊑π-antisym g g′ = refl
+<:-antisym (sub-ν {φ = pure} {pure} _) (sub-ν _)  = refl
+<:-antisym (sub-ν {φ = act}  {act}  _) (sub-ν _)  = refl
+<:-antisym (sub-ν {φ = pure} {act}  _) (sub-ν ())
+<:-antisym (sub-ν {φ = act}  {pure} ()) _
 <:-antisym sub-rigid sub-rigid = refl
 
 subtype-isPartialOrder : IsPartialOrder _≡_ _<:_

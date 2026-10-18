@@ -183,11 +183,11 @@ module _ {Γ : Ctx n} where
   cata-h w w′ {a′ = a′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (cata-cong w h) (≈-intro (cong (λ v → ⟦ cata {Γ = Γ} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
 
-  ana-h : ∀ {F} (w w′ : WellFormedF F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
-          {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)}
-        → a ≅ a′ → ana {Γ = Γ} {π₀ = π₀} w a ≅ ana w′ a′
-  ana-h {π₀ = π₀} w w′ {a′ = a′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (ana-cong w h) (≈-intro (cong (λ v → ⟦ ana {Γ = Γ} {π₀ = π₀} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+  ana-h : ∀ {F} {φ : T.Finite} (w w′ : WellFormedF F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
+          {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
+        → a ≅ a′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} w a ≅ ana w′ a′
+  ana-h {π₀ = π₀} {φ = φ} w w′ {a′ = a′} (≅i refl refl h) =
+    ≅i refl refl (≈-trans (ana-cong w h) (≈-intro (cong (λ v → ⟦ ana {Γ = Γ} {π₀ = π₀} {φ = φ} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
 
   -- A fold's carrier is its algebra's codomain, so equal algebras give one carrier.
   private
@@ -495,11 +495,11 @@ module _ {ctx : NamedCtx} where
   out-h w w′ {d′ = d′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-app-infer v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
 
-  outeff-h : ∀ {F F′} {Ψ Ψ′ : U} {π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′} (w : WellFormedF F) (w′ : WellFormedF F′)
-               {d : ctx ⊢ᵢ e ∶ ν-type F π ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ π′ ⨾ Ψ′}
-           → RI d ≅ RI d′ → RI (t-Out-eff-app-infer {g = g} w refl d) ≅ RI (t-Out-eff-app-infer {g = g′} w′ refl d′)
-  outeff-h {g′ = g′} w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-eff-app-infer {g = g′} v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+  outeff-h : ∀ {F F′} {Ψ Ψ′ : U} (w : WellFormedF F) (w′ : WellFormedF F′)
+               {d : ctx ⊢ᵢ e ∶ ν-type F T.act ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.act ⨾ Ψ′}
+           → RI d ≅ RI d′ → RI (t-Out-eff-app-infer w refl d) ≅ RI (t-Out-eff-app-infer w′ refl d′)
+  outeff-h w w′ {d′ = d′} (≅i refl refl h) =
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-eff-app-infer v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
 
   applychk-h : ∀ {A A′ B} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
                  {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B) * A′) ⨾ Ψ′}

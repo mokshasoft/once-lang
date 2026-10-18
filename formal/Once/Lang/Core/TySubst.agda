@@ -25,7 +25,7 @@ open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 
-open import Once.Lang.Type.Grade using (Purity; pure; mk-kind; Many; One)
+open import Once.Lang.Type.Grade using (Purity; pure; fin; mk-kind; Many; One)
 open import Once.Lang.Type.Sub using (⊑π-refl)
 open import Once.Lang.Context using (Usage; zeroUsage; singleUse)
 open import Once.Lang.Core.PolyTy
@@ -55,7 +55,7 @@ KSub Δ Δ′ σ = ∀ i → Δ i ≡ Once.Lang.Type.k-base → Base Δ′ (σ i
 <:ₚ-refl (A + B) = sub-sum (<:ₚ-refl A) (<:ₚ-refl B)
 <:ₚ-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:ₚ-refl A) (<:ₚ-refl B) (⊑π-refl π)
 <:ₚ-refl (μ-type F) = sub-μ
-<:ₚ-refl (ν-type F π) = sub-ν (⊑π-refl π)
+<:ₚ-refl (ν-type F π) = sub-ν (⊑π-refl (fin π))
 
 ------------------------------------------------------------------------
 -- Substitution on contexts and terms

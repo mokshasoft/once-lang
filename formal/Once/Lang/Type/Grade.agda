@@ -97,6 +97,17 @@ data Purity : Set where
   act  : Purity   -- observable effects, and returns (D313)
   eff  : Purity   -- observable effects, and may run forever (D317)
 
+-- D318 (item 13): a STREAM's layers are at most `act` — `ν F eff` has no
+-- introduction (a layer of a stream is a finite block of calls). The finite
+-- grades, named as the grades they are (`fin`).
+data Finite : Set where
+  pure : Finite
+  act  : Finite
+
+fin : Finite → Purity
+fin pure = pure
+fin act  = act
+
 -- Join: the least grade above both — the grade at which two arms meet, of
 -- which exactly one runs.
 _⊔p_ : Purity → Purity → Purity

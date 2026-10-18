@@ -69,3 +69,32 @@ emitF:
     xorl    %eax, %eax
     ret
 .size emitF, .-emitF
+
+# `emitA : Act Int Unit` — `emit` at the TERMINATING grade (D313): the same
+# write, declared as an operation that returns. A stream's layer may run it
+# (D318: a ν's grade is finite, so its coalgebra is `act`, never `eff`).
+.align 16
+.global emitA
+.type emitA, @function
+emitA:
+    pushl   %ebx
+    pushl   %ecx                # Input1 — must survive the call
+    pushl   %edx
+    pushl   %esi
+    pushl   %edi
+    subl    $8, %esp
+    movl    %ecx, (%esp)        # %ecx is still the argument — the whole word
+    movl    $4, %eax            # SYS_write (32-bit)
+    movl    $1, %ebx            # fd = stdout
+    movl    %esp, %ecx          # buf
+    movl    $4, %edx            # count (the whole word)
+    int     $0x80
+    addl    $8, %esp
+    popl    %edi
+    popl    %esi
+    popl    %edx
+    popl    %ecx
+    popl    %ebx
+    xorl    %eax, %eax          # return Unit (0)
+    ret
+.size emitA, .-emitA

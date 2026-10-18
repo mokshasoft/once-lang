@@ -333,13 +333,13 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- coalgebra emits a SigOp per layer). Mathematical definition only; the
   -- operational `SS.eval` runs it fuel-bounded (n layers at fuel n), and the
   -- denotational `evalᴰ` reads its budget-`n` event prefix (`ana-events`).
-  -- D233: the stream carries the coalgebra's grade (`ν-type F π` = ν(T∘F) at
-  -- `eff`); building it runs nothing, so `ana`'s own arrow is free (`π₀`).
+  -- D233/D318: the stream carries the coalgebra's FINITE grade (`ν-type F φ`,
+  -- `φ = pure | act`); building it runs nothing, so `ana`'s own arrow is free (`π₀`).
   -- PLAN 0.101 (D273): the coalgebra is an ordinary term IN CONTEXT — it may
   -- capture locals — obtained once, as `cata`'s algebra is.
-  ana : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π₀ π : Purity}
-      → WellFormedF F → Expr Γ Ψ (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A)
-      → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many π₀ ] ν-type F π)   -- B1: once per layer
+  ana : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π₀ : Purity} {φ : Finite}
+      → WellFormedF F → Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)
+      → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many π₀ ] ν-type F φ)   -- B1: once per layer
 
 
 

@@ -55,9 +55,8 @@ module _ (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′) where
       h-act   : ∀ a b → h (O.aAct a b) ≡ S.aAct (h a) (h b)
       h-arrow : ∀ q a b → h (O.aArrow q a b) ≡ S.aArrow (qS q) (h a) (h b)
       h-mu    : ∀ f → h (O.aMu f) ≡ S.aMu (hF f)
-      h-nu    : ∀ f → h (O.aNu f) ≡ S.aNu SG.pure (hF f)
-      h-nueff : ∀ f → h (O.aNuEff f) ≡ S.aNu SG.eff (hF f)
-      h-nuact : ∀ f → h (O.aNuAct f) ≡ S.aNu SG.act (hF f)
+      h-nu    : ∀ f → h (O.aNu f) ≡ S.aNu SG.pureᶠ (hF f)
+      h-nuact : ∀ f → h (O.aNuAct f) ≡ S.aNu SG.actᶠ (hF f)
       hF-k    : ∀ a → hF (O.fK a) ≡ S.fK (h a)
       hF-id   : hF O.fId ≡ S.fId
       hF-sum  : ∀ f g → hF (O.fSum f g) ≡ S.fSum (hF f) (hF g)
@@ -114,7 +113,6 @@ module Bridge (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′)
   atom→ (pa-act dA dB) = atomAt (sym (h-act _ _)) (a-act (atom→ dA) (atom→ dB))
   atom→ (pa-mu dF) = atomAt (sym (h-mu _)) (a-mu (fsum→ dF))
   atom→ (pa-nu dF) = atomAt (sym (h-nu _)) (a-nu (fsum→ dF))
-  atom→ (pa-nu-eff dF) = atomAt (sym (h-nueff _)) (a-nu-eff (fsum→ dF))
   atom→ (pa-nu-act dF) = atomAt (sym (h-nuact _)) (a-nu-act (fsum→ dF))
   atom→ (pa-extra ex) = a-extra (extra→ ex)
   atom→ (pa-paren dT refl) = a-paren (type→ dT)
@@ -220,17 +218,12 @@ module Bridge (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′)
     act₂ : ∀ {toks₁ A toks₂ A′ B′ r′} → ParsesAtomG toks₁ A toks₂ → h A ≡ A′ → Back ParsesAtomG toks₂ B′ r′
          → Back ParsesAtomG (P.TWord "Act" ∷ toks₁) (S.aAct A′ B′) r′
     mu₁  : ∀ {toks₁ F′ r′} → BackF ParsesFuncSumG toks₁ F′ r′ → Back ParsesAtomG (P.TWord "Mu" ∷ toks₁) (S.aMu F′) r′
-    nu₁  : ∀ {toks₁ F′ r′} → BackF ParsesFuncSumG toks₁ F′ r′ → Back ParsesAtomG (P.TWord "Nu" ∷ toks₁) (S.aNu SG.pure F′) r′
-    nueff₁ : ∀ {toks₁ F′ r′} → BackF ParsesFuncSumG toks₁ F′ (TRParen ∷ r′)
-           → Back ParsesAtomG (P.TWord "Nu" ∷ P.TLParen ∷ P.TWord "Eff" ∷ toks₁) (S.aNu SG.eff F′) r′
-    nueff₂ : ∀ {toks₁ f rest F′ r′} → ParsesFuncSumG toks₁ f rest → hF f ≡ F′
-           → Σ[ rest′ ∈ List P.Token ] (rest ≡ P.TRParen ∷ rest′ × F rest′ ≡ r′)
-           → Back ParsesAtomG (P.TWord "Nu" ∷ P.TLParen ∷ P.TWord "Eff" ∷ toks₁) (S.aNu SG.eff F′) r′
+    nu₁  : ∀ {toks₁ F′ r′} → BackF ParsesFuncSumG toks₁ F′ r′ → Back ParsesAtomG (P.TWord "Nu" ∷ toks₁) (S.aNu SG.pureᶠ F′) r′
     nuact₁ : ∀ {toks₁ F′ r′} → BackF ParsesFuncSumG toks₁ F′ (TRParen ∷ r′)
-           → Back ParsesAtomG (P.TWord "Nu" ∷ P.TLParen ∷ P.TWord "Act" ∷ toks₁) (S.aNu SG.act F′) r′
+           → Back ParsesAtomG (P.TWord "Nu" ∷ P.TLParen ∷ P.TWord "Act" ∷ toks₁) (S.aNu SG.actᶠ F′) r′
     nuact₂ : ∀ {toks₁ f rest F′ r′} → ParsesFuncSumG toks₁ f rest → hF f ≡ F′
            → Σ[ rest′ ∈ List P.Token ] (rest ≡ P.TRParen ∷ rest′ × F rest′ ≡ r′)
-           → Back ParsesAtomG (P.TWord "Nu" ∷ P.TLParen ∷ P.TWord "Act" ∷ toks₁) (S.aNu SG.act F′) r′
+           → Back ParsesAtomG (P.TWord "Nu" ∷ P.TLParen ∷ P.TWord "Act" ∷ toks₁) (S.aNu SG.actᶠ F′) r′
     paren₁ : ∀ {toks₁ A′ r′} → Back ParsesTypeG toks₁ A′ (TRParen ∷ r′) → Back ParsesAtomG (P.TLParen ∷ toks₁) A′ r′
     paren₂ : ∀ {toks₁ a rest A′ r′} → ParsesTypeG toks₁ a rest → h a ≡ A′
            → Σ[ rest′ ∈ List P.Token ] (rest ≡ P.TRParen ∷ rest′ × F rest′ ≡ r′)
@@ -243,11 +236,9 @@ module Bridge (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′)
   act₁ (A , toks₂ , dA , hA , e₂) dB = act₂ dA hA (atom← dB toks₂ e₂)
   act₂ {A = A} dA hA (B , rest , dB , hB , er) = aAct A B , rest , pa-act dA dB , trans (h-act A B) (cong₂ S.aAct hA hB) , er
   mu₁ (f , rest , dF , hf , er) = aMu f , rest , pa-mu dF , trans (h-mu f) (cong S.aMu hf) , er
-  nu₁ (f , rest , dF , hf , er) = aNu f , rest , pa-nu dF , trans (h-nu f) (cong (S.aNu SG.pure) hf) , er
-  nueff₁ (f , rest , dF , hf , er) = nueff₂ dF hf (peel refl er)
-  nueff₂ {f = f} dF hf (rest′ , refl , er) = aNuEff f , rest′ , pa-nu-eff dF , trans (h-nueff f) (cong (S.aNu SG.eff) hf) , er
+  nu₁ (f , rest , dF , hf , er) = aNu f , rest , pa-nu dF , trans (h-nu f) (cong (S.aNu SG.pureᶠ) hf) , er
   nuact₁ (f , rest , dF , hf , er) = nuact₂ dF hf (peel refl er)
-  nuact₂ {f = f} dF hf (rest′ , refl , er) = aNuAct f , rest′ , pa-nu-act dF , trans (h-nuact f) (cong (S.aNu SG.act) hf) , er
+  nuact₂ {f = f} dF hf (rest′ , refl , er) = aNuAct f , rest′ , pa-nu-act dF , trans (h-nuact f) (cong (S.aNu SG.actᶠ) hf) , er
   paren₁ (a , rest , dT , ha , er) = paren₂ dT ha (peel refl er)
   paren₂ {a = a} dT ha (rest′ , refl , er) = a , rest′ , pa-paren dT refl , ha , er
   extra₁ (a , rest , ex , ha , er) = a , rest , pa-extra ex , ha , er
@@ -260,11 +251,6 @@ module Bridge (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′)
   atom← (a-act dA dB) toks e = step (λ x → Back ParsesAtomG x _ _) refl e (λ {toks′} e′ → act₁ (atom← dA toks′ e′) dB)
   atom← (a-mu dF) toks e = step (λ x → Back ParsesAtomG x _ _) refl e (λ {toks′} e′ → mu₁ (fsum← dF toks′ e′))
   atom← (a-nu dF) toks e = step (λ x → Back ParsesAtomG x _ _) refl e (λ {toks′} e′ → nu₁ (fsum← dF toks′ e′))
-  atom← (a-nu-eff dF) toks e =
-    step (λ x → Back ParsesAtomG x _ _) refl e (λ e₁ →
-    step (λ x → Back ParsesAtomG (P.TWord "Nu" ∷ x) _ _) refl e₁ (λ e₂ →
-    step (λ x → Back ParsesAtomG (P.TWord "Nu" ∷ P.TLParen ∷ x) _ _) refl e₂ (λ {toks′} e₃ →
-    nueff₁ (fsum← dF toks′ e₃))))
   atom← (a-nu-act dF) toks e =
     step (λ x → Back ParsesAtomG x _ _) refl e (λ e₁ →
     step (λ x → Back ParsesAtomG (P.TWord "Nu" ∷ x) _ _) refl e₁ (λ e₂ →

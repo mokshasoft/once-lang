@@ -65,15 +65,16 @@ purityTests = testGroup "Purity (pure emits nothing)"
         ]
       assertBool "Should reject an emitting constant hidden in a pure function" (isLeft r)
 
-  , testCase "pure function forcing an effectful stream is rejected" $ do
-      -- D233: an effectful coalgebra builds `Nu (Eff F)` = ν(T ∘ F). `peek`
-      -- takes a PURE stream, so passing it the effectful one is a type error:
-      -- otherwise forcing the layer would emit inside a pure function.
+  , testCase "pure function forcing an acting stream is rejected" $ do
+      -- D233/D318: an acting coalgebra builds `Nu (Act F)` = ν(T ∘ F) over the
+      -- finite call trees. `peek` takes a PURE stream, so passing it the acting
+      -- one is a type error: otherwise forcing the layer would emit inside a pure
+      -- function.
       r <- checkLib
         [ "import I.Test.Emit as E"
         , ""
-        , "mkNu : Int -> Nu (Eff (K Int))"
-        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
+        , "mkNu : Int -> Nu (Act (K Int))"
+        , "mkNu = ana (compose (\\_ -> 7) emitA@E)"
         , ""
         , "peek : Nu (K Int) -> Int"
         , "peek v = Out v"
@@ -81,7 +82,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , "run : Int"
         , "run = peek (mkNu 3)"
         ]
-      assertBool "Should reject forcing an effectful stream inside a pure function" (isLeft r)
+      assertBool "Should reject forcing an acting stream inside a pure function" (isLeft r)
 
   , testCase "an effectful coalgebra cannot build a pure stream" $ do
       r <- checkLib
@@ -96,15 +97,30 @@ purityTests = testGroup "Purity (pure emits nothing)"
         ]
       assertBool "Should reject an effectful coalgebra at a pure stream type" (isLeft r)
 
-  , testCase "forcing an effectful stream is an effectful suspension" $ do
-      -- The honest twin: `Out` on `Nu (Eff F)` is `Eff Unit (F …)`.
+  , testCase "an eff coalgebra builds no stream" $ do
+      -- D318 item 13: a ν's grade is finite. `emit` is `Eff` (it need not
+      -- return), so a layer that runs it is not a finite block of calls, and
+      -- there is no `Nu (Eff …)` to put it in.
       r <- checkLib
         [ "import I.Test.Emit as E"
         , ""
-        , "mkNu : Int -> Nu (Eff (K Int))"
+        , "mkNu : Int -> Nu (Act (K Int))"
         , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         , ""
         , "run : Eff Unit Int"
+        , "run = Out (mkNu 3)"
+        ]
+      assertBool "Should reject an eff coalgebra at an acting stream type" (isLeft r)
+
+  , testCase "forcing an acting stream is an acting suspension" $ do
+      -- The honest twin: `Out` on `Nu (Act F)` is `Act Unit (F …)`.
+      r <- checkLib
+        [ "import I.Test.Emit as E"
+        , ""
+        , "mkNu : Int -> Nu (Act (K Int))"
+        , "mkNu = ana (compose (\\_ -> 7) emitA@E)"
+        , ""
+        , "run : Act Unit Int"
         , "run = Out (mkNu 3)"
         ]
       r @?= Right ()

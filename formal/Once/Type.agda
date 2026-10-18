@@ -125,7 +125,6 @@ mutual
   showType (A ⇒[ mk-kind _ act ] B) = "Act " ++ showType A ++ " " ++ showType B
   showType (μ-type F) = "μ " ++ showFunctor F
   showType (ν-type F pure) = "ν " ++ showFunctor F
-  showType (ν-type F eff)  = "ν (Eff " ++ showFunctor F ++ ")"
   showType (ν-type F act) = "ν (Act " ++ showFunctor F ++ ")"
   showType Int = "Int"
   showType Float = "Float"
@@ -193,7 +192,6 @@ mutual
   showPolyType (PAct A B)       = "Act " ++ showPolyType A ++ " " ++ showPolyType B
   showPolyType (Pμ-type F)      = "μ " ++ showPolyFunctor F
   showPolyType (Pν-type F pure) = "ν " ++ showPolyFunctor F
-  showPolyType (Pν-type F eff)  = "ν (Eff " ++ showPolyFunctor F ++ ")"
   showPolyType (Pν-type F act) = "ν (Act " ++ showPolyFunctor F ++ ")"
   showPolyType PInt             = "Int"
   showPolyType PFloat           = "Float"

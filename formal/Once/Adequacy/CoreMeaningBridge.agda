@@ -106,7 +106,7 @@ open import Once.Lang.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Lang.Environment using (bindᵛ)
 open import Data.Fin using (zero; suc)
-open import Once.Lang.Type.Grade using (Many; mk-kind; pure; eff)
+open import Once.Lang.Type.Grade using (Many; mk-kind; pure; eff; Finite; fin)
 open import Once.Lang.Type using (_⇒[_]_)
 open import Once.Lang.Environment using (restrictᵛ)
 open import Once.Lang.Core.Syntax S
@@ -282,8 +282,8 @@ module Comb {δ : GM.DefSem} where
   substΨ1 refl d x a = refl
 
   -- plan 0.113 B1: the coalgebra's usage is ω-scaled; it reads `x` restricted.
-  ana-sem″ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀ π} {c}
-    (u₀ : pure ⊑π π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
+  ana-sem″ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀} {π : Finite} {c}
+    (u₀ : pure ⊑π π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
     → GM.⟦ ⊢anaᶜ u₀ wf dc ⟧ fmt δ x
       ≡ (λ a → returnM u₀ (ana-semᵛ π wf (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a))
   ana-sem″ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} {π} u₀ wf dc x =
@@ -431,7 +431,7 @@ module _ {δ : GM.DefSem} where
   bridge-c V ag (t-inr-app-check d) dγ = app-comb _ (λ v → refl) (bridge-c V ag d _)
   bridge-c {ctx = ctx} V ag (t-initial-app-check d) dγ = app-comb {F = λ w → ⊥-elim w} _ (λ v → >>=ᵖ-β v (λ w → ⊥-elim w)) (bridge-c V ag d (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ))
   -- D273: the coalgebra lives in the context — no `close`, read at `dγ`.
-  bridge-c {ctx = ctx} V ag (t-ana-check {π₀ = π₀} {π = π} {u = u} wf dcoalg) dγ =
+  bridge-c {ctx = ctx} V ag (t-ana-check {π₀ = π₀} {φ = π} {u = u} wf dcoalg) dγ =
     trans (cong (λ C → λ a → returnM u (ana-semᵛ π wf C a)) (bridge-c V ag dcoalg _))
           (sym (Comb.ana-sem″ {δ = δ} u wf (proj₂ (elabᶜ V dcoalg)) dγ))
   bridge-c {ctx = ctx} V ag (t-apply-check {A = A} {B = B} dp) dγ =

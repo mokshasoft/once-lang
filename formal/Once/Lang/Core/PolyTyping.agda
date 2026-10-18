@@ -34,7 +34,7 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Lang.Type as T
-open import Once.Lang.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff; EffGrade)
+open import Once.Lang.Type.Grade using (Purity; pure; mk-kind; Quantity; One; Many; _≤q_; positionGrade; _·p_; eff; EffGrade; Finite; fin)
 open import Once.Lang.Type.Sub using (_⊑π_; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
 open import Once.Lang.Type.WellFormed using (IsConcrete)
 open import Once.Lang.Type.Honest using (HonestFFI)
@@ -150,7 +150,7 @@ data _<:ₚ_ {m} : Ty m → Ty m → Set where
   sub-prod   : ∀ {A A′ B B′} → A <:ₚ A′ → B <:ₚ B′ → (A * B) <:ₚ (A′ * B′)
   sub-sum    : ∀ {A A′ B B′} → A <:ₚ A′ → B <:ₚ B′ → (A + B) <:ₚ (A′ + B′)
   sub-μ      : ∀ {F} → μ-type F <:ₚ μ-type F
-  sub-ν      : ∀ {F π π′} → π ⊑π π′ → ν-type F π <:ₚ ν-type F π′
+  sub-ν      : ∀ {F φ φ′} → fin φ ⊑π fin φ′ → ν-type F φ <:ₚ ν-type F φ′
 
 <:ₚ-⟪⟫ : ∀ {m} {A B : Ty m} (σ : GSub m) → A <:ₚ B → A ⟪ σ ⟫ <: B ⟪ σ ⟫
 <:ₚ-⟪⟫ {A = var i} σ sub-var = Once.Lang.Type.Sub.<:-refl (σ i)
@@ -225,15 +225,15 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
         → Δ ⊩ Γ ⊢[ Ψt ] t ∷ μ-type F ! π₂
         → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψa) +ᵘ Ψt ] fold F alg t ∷ A ! π₁ ·p (π₂ ·p π)
 
-  ⊢unfold : ∀ {n} {Γ : PCtx m n} {Ψc Ψs : Usage n} {π π₁ π₂ : Purity} {F : Fun m} {A c s}
+  ⊢unfold : ∀ {n} {Γ : PCtx m n} {Ψc Ψs : Usage n} {φ : Finite} {π₁ π₂ : Purity} {F : Fun m} {A c s}
           → WFFun Δ F
-          → Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many π ] ⟦ F ⟧F A ! π₁
+          → Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧F A ! π₁
           → Δ ⊩ Γ ⊢[ Ψs ] s ∷ A ! π₂
-          → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F π ! π₁ ·p π₂
-  ⊢out : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π₁ : Purity} {F : Fun m} {t}
+          → Δ ⊩ Γ ⊢[ (Many *ᵘ Ψc) +ᵘ Ψs ] unfold F c s ∷ ν-type F φ ! π₁ ·p π₂
+  ⊢out : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {φ : Finite} {π₁ : Purity} {F : Fun m} {t}
        → WFFun Δ F
-       → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν-type F π ! π₁
-       → Δ ⊩ Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧F (ν-type F π) ! π₁ ·p π
+       → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν-type F φ ! π₁
+       → Δ ⊩ Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧F (ν-type F φ) ! π₁ ·p fin φ
 
   ⊢coerce : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π : Purity} {A B t}
           → A <:ₚ B → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] coerce A B t ∷ B ! π
@@ -295,13 +295,13 @@ instantiate {Γ = Γ} σ r (⊢fold {Ψa = Ψa} {π = π} {π₁ = π₁} {F = F
     (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψa ] alg ⟪ σ ⟫ₜ ∷ X T.⇒[ mk-kind Many π ] A ⟪ σ ⟫ ! π₁) (⟦⟧F-⟪⟫ F A σ)
            (instantiate σ r a))
     (instantiate σ r t)
-instantiate {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {π = π} {π₁ = π₁} {F = F} {A = A} {c = c} wf k s) =
+instantiate {Γ = Γ} σ r (⊢unfold {Ψc = Ψc} {φ = φ} {π₁ = π₁} {F = F} {A = A} {c = c} wf k s) =
   GT.⊢unfold (wf-⟪⟫ r wf)
-    (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψc ] c ⟪ σ ⟫ₜ ∷ A ⟪ σ ⟫ T.⇒[ mk-kind Many π ] X ! π₁) (⟦⟧F-⟪⟫ F A σ)
+    (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψc ] c ⟪ σ ⟫ₜ ∷ A ⟪ σ ⟫ T.⇒[ mk-kind Many (fin φ) ] X ! π₁) (⟦⟧F-⟪⟫ F A σ)
            (instantiate σ r k))
     (instantiate σ r s)
-instantiate {Γ = Γ} {Ψ = Ψ} σ r (⊢out {π = π} {π₁ = π₁} {F = F} {t = t} wf d) =
-  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.out (t ⟪ σ ⟫ₜ) ∷ X ! π₁ ·p π) (sym (⟦⟧F-⟪⟫ F (ν-type F π) σ))
+instantiate {Γ = Γ} {Ψ = Ψ} σ r (⊢out {φ = φ} {π₁ = π₁} {F = F} {t = t} wf d) =
+  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.out (t ⟪ σ ⟫ₜ) ∷ X ! π₁ ·p fin φ) (sym (⟦⟧F-⟪⟫ F (ν-type F φ) σ))
     (GT.⊢out (wf-⟪⟫ r wf) (instantiate σ r d))
 instantiate σ r (⊢coerce p d) = GT.⊢coerce (<:ₚ-⟪⟫ σ p) (instantiate σ r d)
 instantiate σ r ⊢lit-int = GT.⊢lit-int

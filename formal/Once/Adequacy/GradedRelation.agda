@@ -29,7 +29,7 @@ open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
-open import Once.Lang.GradedOps using (fmapM; prjB; injB; embν; mapEmbν; embνᵃ; mapEmbνᵃ; embν∞ᵈ; embLay∞; mapEmbν∞ᵈ)
+open import Once.Lang.GradedOps using (fmapM; prjB; injB; embνᵃ; mapEmbνᵃ)
 open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
@@ -63,14 +63,6 @@ record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᵈ F) : Set where
 
 open _∼ᵖᵈ_
 
--- An effectful stream (`ν-type F eff`, layers in `T∞`, D312) against the
--- Kleisli one: each forced layer's tree is related to the finite one.
-record _∼∞ᵈ_ {F : SFunctor} (x : ν∞ F) (y : νᵈ F) : Set where
-  coinductive
-  field
-    force-∼∞ᵈ : RelT∞′ (⟦ F ⟧SF-rel (_∼∞ᵈ_ {F})) (force∞ x) (forceᵈ y)
-
-open _∼∞ᵈ_
 
 ------------------------------------------------------------------------
 -- The relation, by recursion on the type.
@@ -96,7 +88,6 @@ RelGV Float       x y = x ≡ y
 RelGV (μ-type F)  x y = x ≡ y
 RelGV (ν-type F pure) x y = x ∼ᵖᵈ y
 RelGV (ν-type F act)  x y = x ∼ᵈ y
-RelGV (ν-type F eff)  x y = x ∼∞ᵈ y
 RelGV (rigid _ _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
 RelGV (A + B) (inj₁ a₁) (inj₁ a₂) = RelGV A a₁ a₂
@@ -194,32 +185,7 @@ injB-rel (base-Sum ia ib) (inj₁ x) = injB-rel ia x
 injB-rel (base-Sum ia ib) (inj₂ y) = injB-rel ib y
 injB-rel base-rigid  ()
 
-------------------------------------------------------------------------
--- `pure ⊑ eff` at ν: embedding a pure stream keeps it related. Its layers are
--- silent and always there, which is what `∼ᵖᵈ` already says of the Kleisli
--- side.
-------------------------------------------------------------------------
-
-mutual
-  embν-∼ : ∀ {H : SFunctor} {x : νᵖ H} {y : νᵈ H} → x ∼ᵖᵈ y → embν x ∼∞ᵈ y
-  force-∼∞ᵈ (embν-∼ {H} r) = layᵖ H (force-∼ᵖᵈ r)
-
-  layᵖ : ∀ (H : SFunctor) {x : νᵖ H} {m : T (⟦ H ⟧SF (νᵈ H))}
-       → RelT′ (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (ret (forceᵖ x)) m
-       → RelT∞′ (⟦ H ⟧SF-rel (_∼∞ᵈ_ {H})) (force∞ (embν x)) m
-  layᵖ H (rel-ret rr) = rel∞-ret refl (mapEmbν-∼ H H rr)
-
-  mapEmbν-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (νᵖ H)} {l′ : ⟦ G ⟧SF (νᵈ H)}
-            → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → ⟦ G ⟧SF-rel (_∼∞ᵈ_ {H}) (mapEmbν H G l) l′
-  mapEmbν-∼ H (SK B)     r = r
-  mapEmbν-∼ H SId        r = embν-∼ r
-  mapEmbν-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = mapEmbν-∼ H G₁ r
-  mapEmbν-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = mapEmbν-∼ H G₂ r
-  mapEmbν-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-  mapEmbν-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-  mapEmbν-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbν-∼ H G₁ r₁ , mapEmbν-∼ H G₂ r₂
-
--- `pure ⊑ act` at ν (D313): the pure layers are silent.
+-- `pure ⊑ act` at ν: embedding a pure stream keeps it related.
 mutual
   embνᵃ-∼ : ∀ {H : SFunctor} {x : νᵖ H} {y : νᵈ H} → x ∼ᵖᵈ y → embνᵃ x ∼ᵈ y
   force-∼ (embνᵃ-∼ {H} r) = embLayerᵃ H (force-∼ᵖᵈ r)
@@ -238,30 +204,6 @@ mutual
   mapEmbνᵃ-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
   mapEmbνᵃ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
   mapEmbνᵃ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbνᵃ-∼ H G₁ r₁ , mapEmbνᵃ-∼ H G₂ r₂
-
--- `act ⊑ eff` at ν (D313): a stream whose layers are finite trees, read as
--- trees of `T∞`, stays related.
-mutual
-  embν∞ᵈ-∼ : ∀ {H : SFunctor} {x : νᵈ H} {y : νᵈ H} → x ∼ᵈ y → embν∞ᵈ x ∼∞ᵈ y
-  force-∼∞ᵈ (embν∞ᵈ-∼ {H} r) = embLay∞-∼ H (force-∼ r)
-
-  embLay∞-∼ : ∀ (H : SFunctor) {m m′ : T (⟦ H ⟧SF (νᵈ H))}
-            → RelT′ (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) m m′
-            → RelT∞′ (⟦ H ⟧SF-rel (_∼∞ᵈ_ {H})) (embLay∞ H m) m′
-  embLay∞-∼ H (rel-ret rr) = rel∞-ret refl (mapEmbν∞ᵈ-∼ H H rr)
-  embLay∞-∼ H (rel-call f) = rel∞-call refl (λ b → embLay∞-∼ H (f b))
-  embLay∞-∼ H rel-halt     = rel∞-halt refl
-
-  mapEmbν∞ᵈ-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (νᵈ H)} {l′ : ⟦ G ⟧SF (νᵈ H)}
-              → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) l l′ → ⟦ G ⟧SF-rel (_∼∞ᵈ_ {H}) (mapEmbν∞ᵈ H G l) l′
-  mapEmbν∞ᵈ-∼ H (SK B)     r = r
-  mapEmbν∞ᵈ-∼ H SId        r = embν∞ᵈ-∼ r
-  mapEmbν∞ᵈ-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = mapEmbν∞ᵈ-∼ H G₁ r
-  mapEmbν∞ᵈ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = mapEmbν∞ᵈ-∼ H G₂ r
-  mapEmbν∞ᵈ-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-  mapEmbν∞ᵈ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-  mapEmbν∞ᵈ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbν∞ᵈ-∼ H G₁ r₁ , mapEmbν∞ᵈ-∼ H G₂ r₂
-
 
 -- A pure meaning, embedded at any grade (what a lambda's body is, D250).
 RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t

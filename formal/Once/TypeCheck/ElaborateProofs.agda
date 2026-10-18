@@ -1259,7 +1259,7 @@ checkElab-fallback-RApp-generic {ctx} {τ} f x T eqAH eqInf sb
 -- because the equation it would rewrite by mentions the very term being
 -- abstracted.
 inferOutGo-J :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Lang.Type.Functor) (π : Once.Lang.Type.Grade.Purity)
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Lang.Type.Functor) (π : Once.Lang.Type.Grade.Finite)
     (Ψ : Surface.Usage (NamedCtx.size ctx))
     (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Lang.Type.ν-type F π))
     (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ Once.Lang.Type.ν-type F π ⨾ Ψ)
@@ -1344,14 +1344,14 @@ checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV ⊑-pa
 -- cata needs five: the dispatch bridge at any grade, and the success lemma.
 checkAnaGo-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type)
-    (π₀ π : Once.Lang.Type.Grade.Purity)
+    (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite)
     (mw : Maybe (Once.Lang.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π₀ π mw eq
 checkAnaGo-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGoV-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type)
-    (π₀ π : Once.Lang.Type.Grade.Purity)
+    (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite)
     (mw : Maybe (Once.Lang.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
               (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] Once.Lang.Type.ν-type F π)
@@ -1359,17 +1359,17 @@ checkAnaGoV-J :
 checkAnaGoV-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
 
 checkAnaGo-just-success :
-  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type) (π₀ π : Once.Lang.Type.Grade.Purity)
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type) (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite)
     (wfF : Once.Lang.Type.WellFormed.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {coalgE : SExpr (NamedCtx.debruijn ctx)
-                  Ψ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] Once.Lang.Type.⟦ F ⟧T A)}
+                  Ψ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A)}
     {d fr : ℕ}
     {w : ctx
-           ⊢ᶜ coalg ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] Once.Lang.Type.⟦ F ⟧T A)
+           ⊢ᶜ coalg ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A)
            ⨾ Ψ}
   → checkElabV ctx
-              coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] Once.Lang.Type.⟦ F ⟧T A)
+              coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A)
       ≡ (success Ψ coalgE d fr , w)
   → (u : pure ⊑π π₀)
   → checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
@@ -1377,15 +1377,15 @@ checkAnaGo-just-success :
           , t-ana-check {u = u} wfF w)
 checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pure
   with checkElabV ctx
-                  coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
+                  coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
 checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pe
   with checkElabV ctx
-                  coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
+                  coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
 checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pa
   with checkElabV ctx
-                  coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
+                  coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
 
 -- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause

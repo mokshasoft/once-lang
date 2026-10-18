@@ -66,8 +66,6 @@ printGType (G.GMu gf) =
   TWord "Mu" ∷ TLParen ∷ printGFunctor gf ++ TRParen ∷ []
 printGType (G.GNu gf) =
   TWord "Nu" ∷ TLParen ∷ printGFunctor gf ++ TRParen ∷ []
-printGType (G.GNuEff gf) =
-  TWord "Nu" ∷ TLParen ∷ TWord "Eff" ∷ printGFunctor gf ++ TRParen ∷ []
 printGType (G.GNuAct gf) =
   TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ printGFunctor gf ++ TRParen ∷ []
 

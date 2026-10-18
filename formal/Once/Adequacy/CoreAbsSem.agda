@@ -182,12 +182,12 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-fold {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl da dt
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-unfold : ∀ {Ψc Ψs π π₁ π₂ F' F A' A} {c' c s' s : G.Tm n} {wf' wf}
-                {eΓ : Γ' ≡ Γ} {et : G.unfold F' c' s' ≡ G.unfold F c s} {eN : T.ν-type F' π ≡ T.ν-type F π}
+  tr-unfold : ∀ {Ψc Ψs φ π₁ π₂ F' F A' A} {c' c s' s : G.Tm n} {wf' wf}
+                {eΓ : Γ' ≡ Γ} {et : G.unfold F' c' s' ≡ G.unfold F c s} {eN : T.ν-type F' φ ≡ T.ν-type F φ}
                 (eF : F' ≡ F) (eA : A' ≡ A) (ec : c' ≡ c)
-                (eCo : (A' T.⇒[ T.mk-kind T.Many π ] T.⟦ F' ⟧T A') ≡ (A T.⇒[ T.mk-kind T.Many π ] T.⟦ F ⟧T A))
+                (eCo : (A' T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ F' ⟧T A') ≡ (A T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ F ⟧T A))
                 (es : s' ≡ s) (eA′ : A' ≡ A)
-                (dc : Γ' ⊢[ Ψc ] c' ∷ A' T.⇒[ T.mk-kind T.Many π ] T.⟦ F' ⟧T A' ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
+                (dc : Γ' ⊢[ Ψc ] c' ∷ A' T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ F' ⟧T A' ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
             → tr eΓ et eN (GT.⊢unfold wf' dc ds) ≡ GT.⊢unfold wf (tr eΓ ec eCo dc) (tr eΓ es eA′ ds)
   tr-unfold {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl dc ds
     rewrite WellFormedF-irrelevant wf' wf = refl
@@ -347,15 +347,15 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
             (trans (tr-subst (⟦⟧F-⟪⟫ (absF Δ F) (absTy Δ A) σ) _)
                    (trans (tr-isubst {r = r} (absTy-⟦⟧ Δ F A) _) (irr (RT a) (RT-id a))))
             (RT-id t))
-  RT-id (GT.⊢unfold {π = π} {F = F} {A = A} wf k x) =
+  RT-id (GT.⊢unfold {φ = φ} {F = F} {A = A} wf k x) =
     trans (tr-unfold (rtF-id F) (rt-id A) (rtT-id _)
-                     (cong₂ (λ G X → X T.⇒[ T.mk-kind T.Many π ] T.⟦ G ⟧T X) (rtF-id F) (rt-id A))
+                     (cong₂ (λ G X → X T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ G ⟧T X) (rtF-id F) (rt-id A))
                      (rtT-id _) (rt-id A) _ (RT x))
           (cong₂ (GT.⊢unfold wf)
             (trans (tr-subst (⟦⟧F-⟪⟫ (absF Δ F) (absTy Δ A) σ) _)
                    (trans (tr-isubst {r = r} (absTy-⟦⟧ Δ F A) _) (irr (RT k) (RT-id k))))
             (RT-id x))
-  RT-id (GT.⊢out {π = π} {F = F} wf d) =
+  RT-id (GT.⊢out {φ = π} {F = F} wf d) =
     trans (tr-isubst {r = r} (sym (absTy-⟦⟧ Δ F (T.ν-type F π))) _)
       (trans (tr-subst (sym (⟦⟧F-⟪⟫ (absF Δ F) (Ty.ν-type (absF Δ F) π) σ)) _)
       (trans (tr-out (rtF-id F) (rtT-id _) (rt-id (T.ν-type F π)) (RT d)) (cong (GT.⊢out wf) (RT-id d))))
