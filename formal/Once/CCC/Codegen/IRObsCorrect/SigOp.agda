@@ -196,7 +196,7 @@ module SigOpC {FS : FrameSemantics} where
       { traces-agree = trans (++-identityʳ _) ev-eq
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((nh , span′ 0 _ refl) ∷ [])
-                   live (λ _ → cong (λ t → DL.length t + base) (sym em≡)) stops refl refl
+                   live (λ _ → cong (λ t → DL.length t + base) (sym em≡)) (λ p → stops p , refl) refl refl
                    (cong (SMCore.LocState.ev-log s DL.++_) ev-eq)
                    place
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output

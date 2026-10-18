@@ -190,7 +190,9 @@ module OutC {FS : FrameSemantics} where
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (λ p → CalleeRun.live crun (trans st-eq p))
                          (λ p → CalleeRun.returned crun (trans st-eq p))
-                         (λ p → CalleeRun.stops crun (trans st-eq p))
+                         (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
+                              , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
+                                      (chain-left run4 (trans (cong (λ st → halted (floc st)) call-eq) nh3)))
                          (CalleeRun.no-ret crun) (CalleeRun.no-link crun)
                          (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
                          place

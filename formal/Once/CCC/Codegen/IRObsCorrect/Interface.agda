@@ -166,7 +166,7 @@ module Core {FS : FrameSemantics} where
           ; validityWF-frontier-advance) public
   open MemOps {FS} using (readLoc) public
   open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
-  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start) public
+  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start; chain-left) public
   open FlatEventTrace {FS} using (ChainNotNested; chain-log)
 
   -- …and in general: a chain of emitted (non-nested) instructions grows the
@@ -378,7 +378,9 @@ module Core {FS : FrameSemantics} where
       live       : stopsAt s (evalᴰ ir x) ≡ false → halted (floc settle) ≡ false
       at-end     : stopsAt s (evalᴰ ir x) ≡ false
                  → fpc settle ≡ length (emitted n l ir) + base
-      stops      : stopsAt s (evalᴰ ir x) ≡ true  → halted (floc settle) ≡ true
+      -- D320: …and it has not LEFT: a fragment stops at a call with no answer,
+      -- never at the program's `c-leave` (the run's end must read `halted`).
+      stops      : stopsAt s (evalᴰ ir x) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
       -- Plan 0.105: THE LOG GROWS BY EXACTLY THE FRAGMENT'S CALLS. A sequel
@@ -640,7 +642,8 @@ module Core {FS : FrameSemantics} where
       -- …and it RETURNED: the block ends in `c-ret`, which pops the address
       -- the call pushed and leaves the caller's own (empty) stack behind.
       returned   : stopsAt (floc fs) comp ≡ false → fpc settle ≡ ret-pc
-      stops      : stopsAt (floc fs) comp ≡ true  → halted (floc settle) ≡ true
+      -- D320: …without having LEFT (see `ValueRealized.stops`).
+      stops      : stopsAt (floc fs) comp ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left (floc fs)
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
       -- plan 0.98: the premise supplies the value — see `ValueRealized.place`.

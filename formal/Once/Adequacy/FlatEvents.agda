@@ -50,10 +50,12 @@ open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.Lang.Event using (SigOpEvent)
 open import Once.CCC.Machine.FlatLog using (LogFree)
+open import Once.CCC.Machine.FlatLeft using (LeftFree)
+import Once.CCC.Machine.FlatLeft
 import Once.CCC.Machine.FlatLog
 import Once.CCC.Machine.SMCore as SMC
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; proj₁)
 open import Once.Lang.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
 
@@ -66,6 +68,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   -- them itself).
   open AbstractExec {FS} using (sigop-events)
   private module LP = Once.CCC.Machine.FlatLog.LogPres {FS}
+  private module LL = Once.CCC.Machine.FlatLeft.LeftPres {FS}
 
   ev-of-loc : AbstractInstr → LocState FS → List SigOpEvent
   -- The step's own events: what `exec-abstract` appends to the log.
@@ -273,6 +276,70 @@ module FlatEventTrace {FS : FrameSemantics} where
     trans (chain-log rest nns)
           (trans (cong (_++ chain-events rest) (step-log i nn prog fs))
                  (++-assoc (flog fs) (event-of i fs) (chain-events rest)))
+
+  ------------------------------------------------------------------------
+  -- D320: A RUN THAT ENDS RUNNING HAS NOT LEFT. Only `c-leave` sets the flag
+  -- (`FlatLeft`), and it halts the machine, so no step follows it.
+  ------------------------------------------------------------------------
+  private
+    leave-or-free : ∀ (i : AbstractInstr) → (i ≡ SMC.instr-ctrl SMC.c-leave) ⊎ LeftFree i
+    leave-or-free (SMC.instr-ctrl (SMC.c-label _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl (SMC.c-entry _ _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl (SMC.c-start _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl SMC.c-leave) = inj₁ refl
+    leave-or-free (SMC.instr-ctrl (SMC.c-call-fn _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl (SMC.c-ret _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl (SMC.c-jmp _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl (SMC.c-branch-scratch-zero _)) = inj₂ tt
+    leave-or-free (SMC.instr-ctrl (SMC.c-branch-tag-zero _)) = inj₂ tt
+    leave-or-free SMC.instr-call-closure = inj₂ tt
+    leave-or-free SMC.instr-save-closure-reg = inj₂ tt
+    leave-or-free (SMC.instr-alloc-stack _) = inj₂ tt
+    leave-or-free (SMC.instr-dealloc-stack _) = inj₂ tt
+    leave-or-free (SMC.instr-push-frame _) = inj₂ tt
+    leave-or-free SMC.instr-pop-frame = inj₂ tt
+    leave-or-free SMC.mov-to-output = inj₂ tt
+    leave-or-free SMC.mov-to-input = inj₂ tt
+    leave-or-free SMC.load-indirect = inj₂ tt
+    leave-or-free SMC.load-indirect-suc = inj₂ tt
+    leave-or-free (SMC.load-from-slot _) = inj₂ tt
+    leave-or-free (SMC.store-at-slot _) = inj₂ tt
+    leave-or-free SMC.store-indirect = inj₂ tt
+    leave-or-free SMC.store-indirect-suc = inj₂ tt
+    leave-or-free (SMC.lea-slot _) = inj₂ tt
+    leave-or-free (SMC.restore-input _) = inj₂ tt
+    leave-or-free (SMC.lea-indexed _) = inj₂ tt
+    leave-or-free (SMC.instr-reclaim-to _) = inj₂ tt
+    leave-or-free (SMC.worklist-init _) = inj₂ tt
+    leave-or-free (SMC.worklist-push _) = inj₂ tt
+    leave-or-free (SMC.worklist-pop _) = inj₂ tt
+    leave-or-free (SMC.worklist-check _) = inj₂ tt
+    leave-or-free (SMC.instr-sigop _) = inj₂ tt
+    leave-or-free (SMC.instr-load-const _ _) = inj₂ tt
+    leave-or-free (SMC.instr-load-code-addr _) = inj₂ tt
+    leave-or-free (SMC.instr-load-tag-lit _) = inj₂ tt
+    leave-or-free (SMC.instr-case-on-tag _ _) = inj₂ tt
+    leave-or-free (SMC.instr-alloc-heap _) = inj₂ tt
+    leave-or-free (SMC.instr-loop _) = inj₂ tt
+    leave-or-free (SMC.instr-reg-op _) = inj₂ tt
+
+    leave-halts : ∀ {prog k fs fs'} → halted (floc fs) ≡ true → FlatSteps prog k fs fs' → halted (floc fs') ≡ false → ⊥
+    leave-halts h []            hp = true≢false (trans (sym h) hp)
+      where true≢false : true ≡ false → ⊥
+            true≢false ()
+    leave-halts h ((h′ , _) ∷ _) hp = true≢false (trans (sym h) h′)
+      where true≢false : true ≡ false → ⊥
+            true≢false ()
+
+  chain-left : ∀ {prog k fs fs'} (r : FlatSteps prog k fs fs') → halted (floc fs') ≡ false
+             → LocState.left (floc fs') ≡ LocState.left (floc fs)
+  chain-left-at : ∀ {prog k fs fs'} (i : AbstractInstr) → (i ≡ SMC.instr-ctrl SMC.c-leave) ⊎ LeftFree i
+                → FlatSteps prog k (flat-exec-instr i prog fs) fs' → halted (floc fs') ≡ false
+                → LocState.left (floc fs') ≡ LocState.left (floc fs)
+  chain-left []                              hp = refl
+  chain-left (_∷_ {i = i} _ rest)            hp = chain-left-at i (leave-or-free i) rest hp
+  chain-left-at .(SMC.instr-ctrl SMC.c-leave) (inj₁ refl) rest hp = ⊥-elim (leave-halts refl rest hp)
+  chain-left-at {prog} {fs = fs} i (inj₂ lf) rest hp = trans (chain-left rest hp) (LL.flat-exec-instr-left i lf prog fs)
 
   -- A SETTLED state (halted, or nothing to fetch) emits no events for any
   -- fuel — the run is over. (`flat-events`'s first dispatch returns `[]`.)

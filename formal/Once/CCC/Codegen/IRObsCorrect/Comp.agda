@@ -313,7 +313,8 @@ module CompC {FS : FrameSemantics} where
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
                        (VR.out-mode vg) (VR.cont-alloc vg)
                        chain (λ p → VR.live vg (to-g p)) (λ p → atEnd (to-g p))
-                       (λ p → VR.stops vg (to-g p))
+                       (λ p → proj₁ (VR.stops vg (to-g p))
+                            , trans (proj₂ (VR.stops vg (to-g p))) (chain-left (FlatSteps-++ chainF movStep) liveM))
                        (VR.no-ret vg) (VR.no-link vg)
                        log-comp
                        (λ p → VR.place vg (to-g-res p))

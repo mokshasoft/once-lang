@@ -10,9 +10,9 @@
 -- registers, the halt flag and the log). This module says so once, per
 -- instruction, as `FlatLog` does for the log.
 --
--- `LeftFree` excludes `c-leave` and the two retired nested instructions
--- (`instr-case-on-tag`, `instr-loop`), which run a nested trace; nothing emits
--- them.
+-- `LeftFree` excludes `c-leave` alone: the structured machine never sets the
+-- flag (its control instructions are the identity there), so even the two
+-- retired nested instructions, which run a nested trace, leave it alone.
 ------------------------------------------------------------------------
 
 module Once.CCC.Machine.FlatLeft where
@@ -22,20 +22,20 @@ open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
 open import Data.Bool using (Bool; true; false)
-open import Data.Product using (proj₁)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (proj₁; proj₂)
+open import Data.Nat using (zero; suc)
+import Data.Nat
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
 open AllocState using (current-frame)
-open LocState using (regs; heapMem)
+open LocState using (regs; heapMem; halted)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.Flat
 
 LeftFree : AbstractInstr → Set
 LeftFree (instr-ctrl c-leave)    = ⊥
-LeftFree (instr-case-on-tag _ _) = ⊥
-LeftFree (instr-loop _)          = ⊥
 {-# CATCHALL #-}
 LeftFree _                       = ⊤
 
@@ -91,41 +91,70 @@ module LeftPres {FS : FrameSemantics} where
   restore-left (just v) s alloc = refl
   restore-left nothing  s alloc = refl
 
-  -- ONE STEP OF THE STRUCTURED MACHINE leaves the lft alone, unless it calls.
-  exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc
-                    → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
-  exec-abstract-left mov-to-output            _ s alloc = refl
-  exec-abstract-left mov-to-input             _ s alloc = refl
-  exec-abstract-left load-indirect            _ s alloc = load-via-left Output (sv-as-loc (readReg (regs s) Input1)) s
-  exec-abstract-left load-indirect-suc        _ s alloc = load-suc-via-left Output (sv-as-loc (readReg (regs s) Input1)) s
-  exec-abstract-left (load-from-slot slot)    _ s alloc = load-slot-left (readLoc s (AtStack (current-frame alloc) slot)) s alloc
-  exec-abstract-left (store-at-slot slot)     _ s alloc = writeLoc-left s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)
-  exec-abstract-left store-indirect           _ s alloc = store-via-left (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  exec-abstract-left store-indirect-suc       _ s alloc = store-suc-via-left (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  exec-abstract-left (lea-slot slot)          _ s alloc = refl
-  exec-abstract-left (restore-input slot)     _ s alloc = restore-left (readLoc s (AtStack (current-frame alloc) slot)) s alloc
-  exec-abstract-left (lea-indexed slot)       _ s alloc =
+  -- THE LOOP leaves it alone if its body does (a fuel induction).
+  loop-run-left : ∀ (run : BodyRunner) (fuel : Data.Nat.ℕ) (s : LocState FS) alloc
+                → (∀ s′ alloc′ → lft (proj₁ (run s′ alloc′)) ≡ lft s′)
+                → lft (proj₁ (exec-loop-run run fuel s alloc)) ≡ lft s
+  loop-run-left run zero    s alloc h = refl
+  loop-run-left run (suc n) s alloc h with halted s
+  ... | true  = refl
+  ... | false with readReg (regs s) Scratch
+  ...   | SV-Tag zero    = refl
+  ...   | SV-Tag (suc m) = trans (loop-run-left run n _ _ h) (h s alloc)
+  ...   | SV-Ptr _       = trans (loop-run-left run n _ _ h) (h s alloc)
+  ...   | SV-Lit _ _     = trans (loop-run-left run n _ _ h) (h s alloc)
+  ...   | SV-Code _      = trans (loop-run-left run n _ _ h) (h s alloc)
+
+  -- ONE STEP OF THE STRUCTURED MACHINE leaves the flag alone — every step.
+  abs-left   : ∀ (i : AbstractInstr) (s : LocState FS) alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
+  trace-left : ∀ (t : AbstractTrace) (s : LocState FS) alloc → lft (proj₁ (exec-trace t s alloc)) ≡ lft s
+  case-left  : ∀ (mv : Maybe (StoredValue FS)) (f g : AbstractTrace) (s : LocState FS) alloc
+             → lft (proj₁ (exec-case-dispatch mv f g s alloc)) ≡ lft s
+  trace-left []       s alloc = refl
+  trace-left (i ∷ is) s alloc with halted s
+  ... | true  = refl
+  ... | false = trans (trace-left is (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc))) (abs-left i s alloc)
+  case-left (just (SV-Tag zero))    f g s alloc = trace-left f s alloc
+  case-left (just (SV-Tag (suc _))) f g s alloc = trace-left g s alloc
+  case-left (just (SV-Ptr _))       f g s alloc = refl
+  case-left (just (SV-Lit _ _))     f g s alloc = refl
+  case-left (just (SV-Code _))      f g s alloc = refl
+  case-left nothing                 f g s alloc = refl
+  abs-left (instr-case-on-tag f g)  s alloc = case-left (case-tag-at s) f g s alloc
+  abs-left (instr-loop body)        s alloc = loop-run-left (exec-trace body) loop-fuel s alloc (λ s′ a′ → trace-left body s′ a′)
+  abs-left mov-to-output s alloc = refl
+  abs-left mov-to-input s alloc = refl
+  abs-left load-indirect s alloc = load-via-left Output (sv-as-loc (readReg (regs s) Input1)) s
+  abs-left load-indirect-suc s alloc = load-suc-via-left Output (sv-as-loc (readReg (regs s) Input1)) s
+  abs-left (load-from-slot slot) s alloc = load-slot-left (readLoc s (AtStack (current-frame alloc) slot)) s alloc
+  abs-left (store-at-slot slot) s alloc = writeLoc-left s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)
+  abs-left store-indirect s alloc = store-via-left (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
+  abs-left store-indirect-suc s alloc = store-suc-via-left (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
+  abs-left (lea-slot slot) s alloc = refl
+  abs-left (restore-input slot) s alloc = restore-left (readLoc s (AtStack (current-frame alloc) slot)) s alloc
+  abs-left (lea-indexed slot) s alloc =
     lea-indexed-left (slot-base (readLoc s (AtStack (current-frame alloc) slot))) (sv-tag-val (readReg (regs s) Scratch)) s
-  exec-abstract-left (instr-alloc-stack n)    _ s alloc = refl
-  exec-abstract-left (instr-dealloc-stack n)  _ s alloc = refl
-  exec-abstract-left (instr-reclaim-to n)     _ s alloc = refl
-  exec-abstract-left (instr-push-frame cap)   _ s alloc = refl
-  exec-abstract-left instr-pop-frame          _ s alloc = refl
-  exec-abstract-left instr-call-closure       _ s alloc = refl
-  exec-abstract-left (worklist-init slot)     _ s alloc = refl
-  exec-abstract-left (worklist-push slot)     _ s alloc = writeLoc-left s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)
-  exec-abstract-left (worklist-pop slot)      _ s alloc = load-slot-left (readLoc s (AtStack (current-frame alloc) slot)) s alloc
-  exec-abstract-left (worklist-check slot)    _ s alloc = refl
-  exec-abstract-left (instr-sigop si)         _ s alloc = refl
-  exec-abstract-left (instr-load-const p v)   _ s alloc = refl
-  exec-abstract-left (instr-load-code-addr n) _ s alloc = refl
-  exec-abstract-left instr-save-closure-reg   _ s alloc = refl
-  exec-abstract-left (instr-load-tag-lit n)   _ s alloc = refl
-  exec-abstract-left (instr-case-on-tag f g)  () s alloc
-  exec-abstract-left (instr-alloc-heap n)     _ s alloc = refl
-  exec-abstract-left (instr-loop body)        () s alloc
-  exec-abstract-left (instr-reg-op op)        _ s alloc = refl
-  exec-abstract-left (instr-ctrl c)           _ s alloc = refl
+  abs-left (instr-alloc-stack n) s alloc = refl
+  abs-left (instr-dealloc-stack n) s alloc = refl
+  abs-left (instr-reclaim-to n) s alloc = refl
+  abs-left (instr-push-frame cap) s alloc = refl
+  abs-left instr-pop-frame s alloc = refl
+  abs-left instr-call-closure s alloc = refl
+  abs-left (worklist-init slot) s alloc = refl
+  abs-left (worklist-push slot) s alloc = writeLoc-left s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)
+  abs-left (worklist-pop slot) s alloc = load-slot-left (readLoc s (AtStack (current-frame alloc) slot)) s alloc
+  abs-left (worklist-check slot) s alloc = refl
+  abs-left (instr-sigop si) s alloc = refl
+  abs-left (instr-load-const p v) s alloc = refl
+  abs-left (instr-load-code-addr n) s alloc = refl
+  abs-left instr-save-closure-reg s alloc = refl
+  abs-left (instr-load-tag-lit n) s alloc = refl
+  abs-left (instr-alloc-heap n) s alloc = refl
+  abs-left (instr-reg-op op) s alloc = refl
+  abs-left (instr-ctrl c) s alloc = refl
+
+  exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
+  exec-abstract-left i _ = abs-left i
 
   -- The control helpers of the flat machine, by their own cases.
   private
@@ -202,7 +231,7 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-load-const p v)   lf prog fs = exec-abstract-left (instr-load-const p v) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-load-code-addr n) lf prog fs = exec-abstract-left (instr-load-code-addr n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-load-tag-lit n)   lf prog fs = exec-abstract-left (instr-load-tag-lit n) lf (floc fs) (falloc fs)
-  flat-exec-instr-left (instr-case-on-tag f g)  () prog fs
+  flat-exec-instr-left (instr-case-on-tag f g)  lf prog fs = exec-abstract-left (instr-case-on-tag f g) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-alloc-heap n)     lf prog fs = exec-abstract-left (instr-alloc-heap n) lf (floc fs) (falloc fs)
-  flat-exec-instr-left (instr-loop body)        () prog fs
+  flat-exec-instr-left (instr-loop body)        lf prog fs = exec-abstract-left (instr-loop body) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-reg-op op)        lf prog fs = exec-abstract-left (instr-reg-op op) lf (floc fs) (falloc fs)

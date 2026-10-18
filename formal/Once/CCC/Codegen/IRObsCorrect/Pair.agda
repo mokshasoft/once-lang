@@ -244,7 +244,10 @@ module PairAsm {FS : FrameSemantics} where
                          (VR.settle vrg) (VR.out-mode vrg) (VR.cont-alloc vrg)
                          (FlatSteps-++ PC.pre-chain
                            (FlatSteps-++ chainF₀ (FlatSteps-++ PCF.mid-chain chainG₀)))
-                         absurd-g absurd-g (λ _ → VR.stops vrg sgeq)
+                         absurd-g absurd-g
+                         (λ _ → proj₁ (VR.stops vrg sgeq)
+                              , trans (proj₂ (VR.stops vrg sgeq))
+                                      (chain-left (FlatSteps-++ PC.pre-chain (FlatSteps-++ chainF₀ PCF.mid-chain)) PCF.nhM2))
                          (VR.no-ret vrg) (VR.no-link vrg)
                          (trans log-fg (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair-g))))
                          absurd-g-res
@@ -287,7 +290,8 @@ module PairAsm {FS : FrameSemantics} where
             realized (2 + VR.steps vrf) (VR.settle vrf)
                      (VR.out-mode vrf) (VR.cont-alloc vrf)
                      (FlatSteps-++ PC.pre-chain chainF₀)
-                     absurd-f absurd-f (λ _ → VR.stops vrf sfeq)
+                     absurd-f absurd-f
+                     (λ _ → proj₁ (VR.stops vrf sfeq) , trans (proj₂ (VR.stops vrf sfeq)) (chain-left PC.pre-chain PC.nh2))
                      (VR.no-ret vrf) (VR.no-link vrf)
                      (trans (VR.log vrf) (trans (cong (_++ esF) logP2) (cong (h ++_) (sym ev-pair-f))))
                      absurd-f-res

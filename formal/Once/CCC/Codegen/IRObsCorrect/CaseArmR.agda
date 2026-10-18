@@ -263,7 +263,7 @@ module ArmRC {FS : FrameSemantics} where
                 realized (3 + VR.steps vg) (VR.settle vg) (VR.out-mode vg) (VR.cont-alloc vg)
                          chain-stopped (λ p → arm-not-stopped (trans (sym st-eq) p) q)
                          (λ p → arm-not-stopped (trans (sym st-eq) p) q)
-                         (λ _ → VR.stops vg q)
+                         (λ _ → proj₁ (VR.stops vg q) , trans (proj₂ (VR.stops vg q)) (chain-left (P.run-r cond) nh-r3))
                          (VR.no-ret vg) (VR.no-link vg)
                          log-c
                          -- plan 0.98: the arm stopped, so it has NO result —
