@@ -3,5 +3,5 @@
 import I.Linux.Syscalls as S
 getId : Int -> (Int -> Int)
 getId n = id
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (getId 99 42)

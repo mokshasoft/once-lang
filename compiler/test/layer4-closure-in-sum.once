@@ -15,5 +15,5 @@ forty2 _ = 42
 pickFn : (Unit -> Int) + (Unit -> Int) -> Int
 pickFn s = destruct s of { Left f -> f () ; Right g -> g () }
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (pickFn ((inl forty2) : (Unit -> Int) + (Unit -> Int)))

@@ -11,5 +11,5 @@ import I.Linux.Exit as E
 mySwap : A * B -> B * A
 mySwap = swap@S
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit0@E

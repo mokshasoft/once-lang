@@ -2,5 +2,5 @@
 import I.Linux.Syscalls as S
 pickFromSum : Int + Int -> Int
 pickFromSum s = destruct s of { Left x -> x ; Right y -> y }
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (pickFromSum (inl 42 : Int + Int))

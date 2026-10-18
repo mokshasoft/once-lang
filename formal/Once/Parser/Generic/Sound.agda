@@ -79,22 +79,17 @@ module Make (alg : TyAlg) where
     ...       | just (B , r2) with sound-atom r1 (rec (<-trans (atomShrink dA) (s≤s ≤-refl))) eq2
     ...         | dB with refl ← just-injective h = pa-act dA dB
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
-    ... | yes refl with atomP rest in eq1
-    ...   | just (A , r1) with sound-atom rest (rec (s≤s ≤-refl)) eq1
-    ...     | dA with refl ← just-injective h = pa-io dA
-    sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
+      | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-mu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-nu dF
     sound-kw (TWord name ∷ rest) (acc rec) h
-      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | yes refl | nothing
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | yes refl | nothing
       = sound-nuEff rest (effHead? rest) refl (acc rec) h
     sound-kw (TLParen ∷ rest) (acc rec) h with typeP rest in eq1
     ... | just (T , TRParen ∷ rest2) with sound-type rest (rec (s≤s ≤-refl)) eq1

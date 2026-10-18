@@ -14,5 +14,5 @@ rightId y = y
 extract : Int + Int -> Int
 extract = case leftId rightId
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (extract (inl 42))

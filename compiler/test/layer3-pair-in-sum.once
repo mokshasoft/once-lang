@@ -7,5 +7,5 @@
 
 import I.Linux.Syscalls as S
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (destruct ((inl (42, 99)) : (Int * Int) + Int) of { Left p -> fst p ; Right y -> y })

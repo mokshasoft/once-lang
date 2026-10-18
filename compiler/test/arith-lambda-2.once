@@ -15,5 +15,5 @@ import I.Linux.Syscalls as S
 g : Int -> Int -> Int
 g x y = x + 2 * y
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (g 4 19)

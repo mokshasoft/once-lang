@@ -109,12 +109,12 @@ typeMismatchTests = testGroup "Type mismatches"
 
 mainTypeTests :: TestTree
 mainTypeTests = testGroup "Main function validation"
-  [ testCase "main with IO Unit (Eff Unit Unit) is valid" $ do
-      -- The canonical (and only valid) main type is `IO Unit` = `Eff Unit Unit`
+  [ testCase "main with Eff Unit Unit is valid" $ do
+      -- The canonical main type is `Eff Unit Unit`
       -- (fixed by validateMain; see Once.Denotation.Behavior). `Eff Unit Int`
       -- is NOT valid — the trailing object must be Unit.
       let source = T.unlines
-            [ "main : IO Unit"
+            [ "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -218,7 +218,7 @@ scopeErrorTests = testGroup "Scope errors"
   , rejects "unbound qualified (imported) name"
       [ "import I.Linux.Syscalls as S"
       , ""
-      , "main : IO Unit"
+      , "main : Eff Unit Unit"
       , "main = nope@S"
       ]
   ]

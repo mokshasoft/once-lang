@@ -24,5 +24,5 @@ sumList = cata (case zeroI addPair)
 xs : Mu (K Unit + (K Int * Id))
 xs = In (inr (10, In (inr (20, In (inr (12, In (inl unit)))))))
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (sumList xs)

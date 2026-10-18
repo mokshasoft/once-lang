@@ -6,5 +6,5 @@ keepFst : Int -> Int -> Int
 keepFst x y = x
 partial : Int -> Int
 partial = keepFst 42
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (partial 99)

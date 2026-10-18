@@ -24,8 +24,8 @@
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
-emitLit : IO Unit
+emitLit : Eff Unit Unit
 emitLit = compose emitF@E (\_ -> 0.5)
 
-main : IO Unit
+main : Eff Unit Unit
 main = compose exit@S (compose (\_ -> 7) emitLit)

@@ -15,5 +15,5 @@ forty2 _ = 42
 applyFst : (Unit -> Int) * Int -> Int
 applyFst p = (fst p) ()
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (applyFst (forty2, 99))

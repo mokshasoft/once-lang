@@ -208,7 +208,7 @@ pdn-go (DTypeSig name ty ∷ rest) _       with isGround ty
 -- mirroring `extractFunctions-go`. Sig-less + schema-shaped body
 -- (D072): keep bare (it routes to PolyFunInfo).
 pdn-go (DFunDef name body ∷ rest) (just _) = pdn-go rest nothing
--- D227 amendment: a sig-less `main` is declared at `IO Unit` (a FunInfo), so it
+-- D227 amendment: a sig-less `main` is declared at `Eff Unit Unit` (a FunInfo), so it
 -- is never kept bare — mirroring `extractFunctions-sigless`.
 pdn-go (DFunDef name body ∷ rest) nothing = pdn-sigless name body rest (name ≟ "main")
 -- A DSignature resets the pending (mirror of `extractFunctions-go`).

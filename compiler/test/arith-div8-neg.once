@@ -11,5 +11,5 @@ import I.Linux.Syscalls as S
 f : Int -> Int
 f x = x / 8
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (f (0 - 24))

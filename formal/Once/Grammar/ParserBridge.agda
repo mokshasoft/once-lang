@@ -40,7 +40,7 @@ open import Once.Lang.Type using (Type)
 open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)
-open import Once.Parser.TypeRelation using (ParsesArrowTail; ParsesAtom; ParsesAtom-shrinks; ParsesFunctorAtom; ParsesFunctorAtom-shrinks; ParsesFunctorProd; ParsesFunctorProd-shrinks; ParsesFunctorProdTail; ParsesFunctorSum; ParsesFunctorSumTail; ParsesProd; ParsesProd-shrinks; ParsesProdTail; ParsesSum; ParsesSum-shrinks; ParsesSumTail; ParsesType; pa-eff; pa-act; pa-nu-act; pa-float; pa-int; pa-io; pa-mu; pa-nu; pa-nu-eff; pa-paren; pa-unit; pa-void; pat-arrow; pat-arrow-g; pat-done; pfa-id; pfa-k; pfa-paren; pfp-mk; pfpt-done; pfpt-star; pfs-mk; pfst-done; pfst-plus; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk)
+open import Once.Parser.TypeRelation using (ParsesArrowTail; ParsesAtom; ParsesAtom-shrinks; ParsesFunctorAtom; ParsesFunctorAtom-shrinks; ParsesFunctorProd; ParsesFunctorProd-shrinks; ParsesFunctorProdTail; ParsesFunctorSum; ParsesFunctorSumTail; ParsesProd; ParsesProd-shrinks; ParsesProdTail; ParsesSum; ParsesSum-shrinks; ParsesSumTail; ParsesType; pa-eff; pa-act; pa-nu-act; pa-float; pa-int; pa-mu; pa-nu; pa-nu-eff; pa-paren; pa-unit; pa-void; pat-arrow; pat-arrow-g; pat-done; pfa-id; pfa-k; pfa-paren; pfp-mk; pfpt-done; pfpt-star; pfs-mk; pfst-done; pfst-plus; pp-mk; ppt-done; ppt-star; ps-mk; pst-done; pst-plus; pt-mk)
 
 ------------------------------------------------------------------------
 -- Irrelevance of Acc for each WF parser
@@ -298,13 +298,6 @@ mutual
     with complete-atomWFraw dB (rec (<-trans (ParsesAtom-shrinks dA') (s≤s ≤-refl)))
   ... | dB' , eqB
     rewrite eqB
-    = _ , refl
-
-  -- IO A: single recursive atom parse, desugar to Eff Unit A.
-  complete-atomWFraw (pa-io {toks1 = toks1} {rest} dA) (acc rec)
-    with complete-atomWFraw dA (rec (s≤s ≤-refl))
-  ... | bA , eqA
-    rewrite eqA
     = _ , refl
 
   -- ( type ): inner parseType recursion, outer expects TRParen.

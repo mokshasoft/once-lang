@@ -189,7 +189,7 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er g deriv rest) (mai
                            (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun)) rec))))
     cf0 : C.CompiledFun
     cf0 = C.mkCompiledFun (bare (funName fi)) ty irFun
-    -- A `main : IO Unit` definition is found where it stands.
+    -- A `main : Eff Unit Unit` definition is found where it stands.
     here : funName fi ≡ "main" → ty ≡ EffUU → ∀ cfs
          → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → findMain (cf0 ∷ cfs) ≡ just ir)
     here nm te cfs = found (funName fi) ty irFun nm te

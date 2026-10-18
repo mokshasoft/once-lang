@@ -248,7 +248,7 @@ BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ _ rest) =
   ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ BMainExists rest
 BMainExists (bpoly _ rest) = BMainExists rest
 
--- D253: the program's `main` is the call of the entry `main : IO Unit`; the
+-- D253: the program's `main` is the call of the entry `main : Eff Unit Unit`; the
 -- bundle finds it with the compiler's own decisions (`findMain-here`).
 bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 bundle-find bnil = nothing

@@ -109,10 +109,10 @@ literals =
 --     `compose` and emit at run time — their scripts still check only the exit
 --     code, which is why the float itself is asserted here.)
 --   * The literal needs a SIGNATURE-CARRYING binding. `compose emitF@E
---     (\\_ -> 0.5)` checks fine against a declared `IO Unit`, but nested inside
+--     (\\_ -> 0.5)` checks fine against a declared `Eff Unit Unit`, but nested inside
 --     another `compose` it lands in an INFERENCE position and a float literal
 --     has no inferable type — a pre-existing frontend gap, not something this
---     branch introduced. Hoisting it into `emitLit : IO Unit` restores a
+--     branch introduced. Hoisting it into `emitLit : Eff Unit Unit` restores a
 --     checking position.
 --   * D127: the arm is a WRITTEN constant function `\\_ -> 0.5`, not a bare
 --     literal. There is no implicit value-lift any more: `compose`'s arms are
@@ -122,10 +122,10 @@ program lit = T.unlines
   [ "import I.Linux.Syscalls as S"
   , "import I.Test.Emit as E"
   , ""
-  , "emitLit : IO Unit"
+  , "emitLit : Eff Unit Unit"
   , T.pack ("emitLit = compose emitF@E (\\_ -> " ++ lit ++ ")")
   , ""
-  , "main : IO Unit"
+  , "main : Eff Unit Unit"
   , "main = compose exit@S (compose (\\_ -> 7) emitLit)"
   ]
 
@@ -244,10 +244,10 @@ arithProgram expr = T.unlines
   [ "import I.Linux.Syscalls as S"
   , "import I.Test.Emit as E"
   , ""
-  , "emitExpr : IO Unit"
+  , "emitExpr : Eff Unit Unit"
   , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
   , ""
-  , "main : IO Unit"
+  , "main : Eff Unit Unit"
   , "main = compose exit@S (compose (\\_ -> 7) emitExpr)"
   ]
 

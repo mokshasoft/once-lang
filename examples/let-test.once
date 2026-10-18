@@ -18,14 +18,14 @@
 import I.Linux.File as F
 
 -- Test: single binding
-test_single : IO Unit
+test_single : Eff Unit Unit
 test_single = let msg = "Single binding works!" in effCompose (println@F) (pure msg)
 
 -- Test: multiple bindings (semicolon separated)
 -- Later bindings can reference earlier ones
-test_multi : IO Unit
+test_multi : Eff Unit Unit
 test_multi = let greeting = "Hello"; target = "Multiple bindings work!" in effCompose (println@F) (pure target)
 
 -- Main runs the multi-binding test
-main : IO Unit
+main : Eff Unit Unit
 main = test_multi

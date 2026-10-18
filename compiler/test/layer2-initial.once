@@ -17,5 +17,5 @@ absurdToInt = initial
 pickInt : Int + Void -> Int
 pickInt s = destruct s of { Left x -> x ; Right v -> absurdToInt v }
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (pickInt ((inl 42) : Int + Void))

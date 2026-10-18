@@ -14,7 +14,7 @@
 --   TypeSum  ::= TypeProd ('+' TypeProd)*                     (left-assoc sum)
 --   TypeProd ::= TypeAtom ('*' TypeAtom)*                     (left-assoc product)
 --   TypeAtom ::= 'Unit' | 'Void' | 'Int' | 'Float' | 'Buffer' | 'String'
---              | 'Eff' TypeAtom TypeAtom | 'IO' TypeAtom
+--              | 'Eff' TypeAtom TypeAtom | 'Act' TypeAtom TypeAtom
 --              | UpperIdent                                   (type variable)
 --              | '(' Type ')'
 --
@@ -220,15 +220,9 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
                                      (rec (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)))
 ...     | nothing = nothing
 ...     | just (B , rest2 , dB) = just (A ⇒[ mk-kind Many act ] B , rest2 , pa-act dA dB)
--- IO A desugars to Eff Unit A.
-parseTypeAtomWF (TWord name ∷ rest) (acc rec)
-  | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "IO"
-... | yes refl with parseTypeAtomWF rest (rec (s≤s ≤-refl))
-...   | nothing = nothing
-...   | just (A , rest1 , dA) = just (Unit ⇒[ mk-kind Many eff ] A , rest1 , pa-io dA)
 -- Mu F: parse the functor body (initial algebra).
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
-  | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Mu"
+  | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Mu"
 ... | yes refl with parseFunctorSumWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
 ...   | just (F , rest1 , dF) = just (μ-type F , rest1 , pa-mu dF)
@@ -236,11 +230,11 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
 -- of the language had no surface type, so an `ana` could not be annotated
 -- and the ν codegen path was unreachable from source (D189).
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
-  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Nu"
+  | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Nu"
 ... | yes refl = parseNuWF rest rec
 -- Non-keyword TWord: no derivation exists.
 parseTypeAtomWF (TWord name ∷ rest) _
-  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
 
 -- TLParen: delegate to the named helper.
 parseTypeAtomWF (TLParen ∷ rest) (acc rec) = parseTypeAtomWF-TLParen rest (rec (s≤s ≤-refl))
@@ -320,7 +314,7 @@ nuTry rest rec nothing             = parseNuEffWF rest rec
 parseNuWF rest rec = nuTry rest rec (parseFunctorSumWF rest (rec (s≤s ≤-refl)))
 
 ------------------------------------------------------------------------
--- parseTypeAtomWF-TLParen / -Eff / -IO (Acc-neutral helpers)
+-- parseTypeAtomWF-TLParen (Acc-neutral helpers)
 --
 -- Each takes `rest` + Acc on `length rest` directly. The nested
 -- `with parseX …` tree lives here instead of inside parseTypeAtomWF's

@@ -345,7 +345,7 @@ extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₂
 -- inferType, D072 M2). `polyDefNames` (Resolve) uses the SAME
 -- criterion, so the keep-bare set agrees.
 -- D227 amendment: `main`'s type is the language's, not an inference result —
--- `main : IO Unit` is the program's INTERFACE. A sig-less `main` is therefore
+-- `main : Eff Unit Unit` is the program's INTERFACE. A sig-less `main` is therefore
 -- declared at `Eff Unit Unit` and CHECKED there, where `Void <: Unit` (D226)
 -- accepts a halting body (`main = exit@S …` infers `Eff Unit Void`).
 extractFunctions-go aliases (DFunDef name body ∷ rest) nothing =

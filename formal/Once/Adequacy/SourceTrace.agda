@@ -85,7 +85,7 @@ open import Once.IRTy using (IRTy; _≟IRTy_)
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
 ------------------------------------------------------------------------
 
--- | Recognise `main`'s type, `IO Unit`.
+-- | Recognise `main`'s type, `Eff Unit Unit`.
 
 -- D253: `main` is an entry like any other; the program's own `main` is the CALL
 -- of it, `once_main`, which is exactly what `_start` runs.
@@ -95,7 +95,7 @@ open import Once.IRTy using (IRTy; _≟IRTy_)
 -- `cfIsPrimitive cf`: a PRIMITIVE is never the entry — its body is not emitted
 -- at codegen, so it has no `once_main` to call.
 
--- | A module is a PROGRAM when it has an entry `main : IO Unit`.
+-- | A module is a PROGRAM when it has an entry `main : Eff Unit Unit`.
 
 -- Explicit dispatch on the compile result (no `with`-opacity).
 

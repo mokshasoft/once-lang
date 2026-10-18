@@ -112,7 +112,7 @@ setupSystem =
   -- 13. Rootserver yields forever
   in yieldLoop
 
-main : IO Unit
+main : Eff Unit Unit
 main = setupSystem
 
 ------------------------------------------------------------------------

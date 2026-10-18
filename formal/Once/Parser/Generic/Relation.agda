@@ -112,7 +112,6 @@ record TyAlg : Set₁ where
     extraMiss-Float  : (rest : List Token) → extraP (TWord "Float"  ∷ rest) ≡ nothing
     extraMiss-Eff    : (rest : List Token) → extraP (TWord "Eff"    ∷ rest) ≡ nothing
     extraMiss-Act    : (rest : List Token) → extraP (TWord "Act"    ∷ rest) ≡ nothing
-    extraMiss-IO     : (rest : List Token) → extraP (TWord "IO"     ∷ rest) ≡ nothing
     extraMiss-Mu     : (rest : List Token) → extraP (TWord "Mu"     ∷ rest) ≡ nothing
     extraMiss-Nu     : (rest : List Token) → extraP (TWord "Nu"     ∷ rest) ≡ nothing
     extraMiss-LParen : (rest : List Token) → extraP (TLParen ∷ rest) ≡ nothing
@@ -485,8 +484,6 @@ module Gen (alg : TyAlg) where
       pa-act : ∀ {toks1 toks2 rest} {A B : R}
              → ParsesAtomG toks1 A toks2 → ParsesAtomG toks2 B rest
              → ParsesAtomG (TWord "Act" ∷ toks1) (aAct A B) rest
-      pa-io : ∀ {toks1 rest} {A : R}
-            → ParsesAtomG toks1 A rest → ParsesAtomG (TWord "IO" ∷ toks1) (aEff aUnit A) rest
       pa-mu : ∀ {toks rest} {F : RF}
             → ParsesFuncSumG toks F rest → ParsesAtomG (TWord "Mu" ∷ toks) (aMu F) rest
       pa-nu : ∀ {toks rest} {F : RF}
@@ -574,7 +571,6 @@ module Gen (alg : TyAlg) where
     atomShrink (pa-float rest)  = s≤s ≤-refl
     atomShrink (pa-eff dA dB) = <-trans (atomShrink dB) (<-trans (atomShrink dA) (s≤s ≤-refl))
     atomShrink (pa-act dA dB) = <-trans (atomShrink dB) (<-trans (atomShrink dA) (s≤s ≤-refl))
-    atomShrink (pa-io dA) = <-trans (atomShrink dA) (s≤s ≤-refl)
     atomShrink (pa-mu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
     atomShrink (pa-nu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
     atomShrink (pa-nu-eff dF) =

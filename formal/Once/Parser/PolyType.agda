@@ -18,7 +18,7 @@
 --   PolySum      ::= PolyProd ('+' PolyProd)*
 --   PolyProd     ::= PolyAtom ('*' PolyAtom)*
 --   PolyAtom     ::= 'Unit' | 'Void' | 'Int' | 'Float' | 'Buffer' | 'String'
---                  | 'Eff' PolyAtom PolyAtom | 'IO' PolyAtom
+--                  | 'Eff' PolyAtom PolyAtom | 'Act' PolyAtom PolyAtom
 --                  | lower_ident                                -- type variable
 --                  | 'Mu' PolyFuncSum | 'Nu' PolyFuncSum
 --                  | lower_ident                                -- type variable
@@ -79,7 +79,7 @@ open import Once.Parser.CharClass public using (isLowerWord)
 -- type errors.
 --
 -- Coverage was checked before deleting, not assumed: both parsers accepted the
--- same keyword set (Unit/Void/Int/Float/Buffer/String/Eff/IO/Mu/Nu/K/Id), the
+-- same keyword set (Unit/Void/Int/Float/Buffer/String/Eff/Act/Mu/Nu/K/Id), the
 -- quantity arrows are handled generically by `arrowDir`, and this file's
 -- `TLBrace` clause was a rejection, not a feature. Nothing to port.
 ------------------------------------------------------------------------

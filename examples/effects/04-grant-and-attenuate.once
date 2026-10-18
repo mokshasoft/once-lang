@@ -36,5 +36,5 @@ signature withFileRead : (Eff[ {FileRead} ∪ r ] A B) -> (Eff[ r ] A B)
 -- main = root. Discharge every needed capability; residual must reach {}.
 --   withFileRead : {Console, FileRead}  ↓  {Console}
 --   withConsole  : {Console}            ↓  {}        ✓ runnable
-main : IO Unit
+main : Eff Unit Unit
 main = withConsole (withFileRead (report "motd.txt"))

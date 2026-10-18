@@ -12,7 +12,7 @@
 --     (6b) in its scope;
 --   * a polymorphic definition becomes a `∀` entry: its body, typed once at its
 --     rigid schema, elaborated and ABSTRACTED (D243);
---   * `main` — the first `main : IO Unit`, exactly as the compiler finds it —
+--   * `main` — the first `main : Eff Unit Unit`, exactly as the compiler finds it —
 --     is an entry like any other (D253); the program runs a REFERENCE to it,
 --     and its telescope is the whole module.
 -- The correspondence between the surface scope and the core signature
@@ -185,7 +185,7 @@ private
   u0 {Ψ = Usage.[]} d = d
 
 -- The walk's `main` selection is TOP-LEVEL (not `where`-bound), so a proof can
--- follow it: the first `main : IO Unit`, exactly as the compiler's `findMain`
+-- follow it: the first `main : Eff Unit Unit`, exactly as the compiler's `findMain`
 -- picks it.
 module _ {Fs s} {S : Sig Fs s} {sc : Scope} {fi : Parser.FunInfo} {ty : T.Type} {Ψ : Usage 0} where
 
@@ -239,7 +239,7 @@ polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts sg D =
          (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} ss is ts D)))
          (polyBody {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} ss is ts sg D)
 
--- D253: the program names the entry `main : IO Unit`.
+-- D253: the program names the entry `main : Eff Unit Unit`.
 programAt : ∀ {Fs s} {S : Sig Fs s} → Tele S → (d : Fin s) → S !! d ≡ monoSchema EffUU → Program Fs
 programAt tl d e = program tl d e
 

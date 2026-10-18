@@ -583,7 +583,7 @@ link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er g D 
                   inv)
                (fresh-fun {csc = csc} {fi = fi} {ty = ty} {es = es} fr) u
 
--- The entry `main` is in the table, at `IO Unit`'s direct-call objects.
+-- The entry `main` is in the table, at `Eff Unit Unit`'s direct-call objects.
 main-linked : ∀ {csc es} (b : FB.FunBundle csc es) (pre : List IRFun) → FB.BMainExists b
             → LinkedAt (tableOf-go (FB.bundle→compiled b) pre) (bare "main") ⌊ Unit ⌋ ⌊ Unit ⌋
 main-linked FB.bnil pre ()

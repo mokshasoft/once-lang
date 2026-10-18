@@ -10,5 +10,5 @@ import I.Linux.Syscalls as S
 seven : Int
 seven = 7
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S seven

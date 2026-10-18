@@ -82,7 +82,7 @@ PolyAlg = record
   ; extraComplete = tvar-complete
   ; extraMiss-Unit   = λ _ → refl ; extraMiss-Void  = λ _ → refl
   ; extraMiss-Int    = λ _ → refl ; extraMiss-Float = λ _ → refl
-  ; extraMiss-Eff    = λ _ → refl ; extraMiss-Act   = λ _ → refl ; extraMiss-IO    = λ _ → refl
+  ; extraMiss-Eff    = λ _ → refl ; extraMiss-Act   = λ _ → refl
   ; extraMiss-Mu     = λ _ → refl ; extraMiss-Nu    = λ _ → refl
   ; extraMiss-LParen = λ _ → refl
   }

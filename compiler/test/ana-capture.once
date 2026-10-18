@@ -30,5 +30,5 @@ viaLet = let b = 3 in (ana (\s -> (s + b, s + 2)) : Int -> Nu (K Int * Id))
 second : Nu (K Int * Id) -> Int
 second v = fst (Out (snd (Out v)))
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (second (fromK 5 10) + second (viaLet 20))

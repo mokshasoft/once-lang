@@ -20,7 +20,7 @@ import Backend.Common (runOnce, testStrataDir)
 specMatrixTests :: TestTree
 specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
   [ testGroup "main (D227 amendment, D253)"
-      [ testCase "a signature-less main that is not IO Unit is rejected" $ do
+      [ testCase "a signature-less main that is not Eff Unit Unit is rejected" $ do
           r <- checkExe [ "main = 5" ]
           assertBool "Should reject a main of type Int" (isLeft r)
       ]
@@ -147,7 +147,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
 checkLib :: [T.Text] -> IO (Either String ())
 checkLib = build ["--lib"]
 
--- An executable build: `main` must be `IO Unit`.
+-- An executable build: `main` must be `Eff Unit Unit`.
 checkExe :: [T.Text] -> IO (Either String ())
 checkExe = build []
 

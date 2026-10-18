@@ -89,7 +89,7 @@ allocObject untypedCap objType sizeBits destSlot =
 -- Main Rootserver Logic
 ------------------------------------------------------------------------
 
-main : IO Unit
+main : Eff Unit Unit
 main =
   -- 1. Get BootInfo from kernel
   let bootinfo = getBootInfo@BootInfo ()

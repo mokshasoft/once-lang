@@ -3,5 +3,5 @@
 import I.Linux.Syscalls as S
 mid3 : Int -> Int -> Int -> Int
 mid3 a b c = b
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (mid3 99 42 7)

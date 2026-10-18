@@ -155,13 +155,13 @@ ModuleTyped : P.Module → Set
 ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions (Parser.extractAliases m) m)
 
 ------------------------------------------------------------------------
--- The entry point: a monomorphic definition `main : IO Unit`.
+-- The entry point: a monomorphic definition `main : Eff Unit Unit`.
 ------------------------------------------------------------------------
 
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
--- Every monomorphic definition named `main` is at `IO Unit` (the compiler's
+-- Every monomorphic definition named `main` is at `Eff Unit Unit` (the compiler's
 -- entry point is at that type).
 MainsEffUU : ∀ {sc es} → ModTele sc es → Set
 MainsEffUU []                                  = ⊤
@@ -169,7 +169,7 @@ MainsEffUU (ffi _ _ _ _ _ rest)                = MainsEffUU rest
 MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ _ rest) = (funName fi ≡ "main" → ty ≡ EffUU) × MainsEffUU rest
 MainsEffUU (poly _ rest)                       = MainsEffUU rest
 
--- Some monomorphic definition is `main : IO Unit`.
+-- Some monomorphic definition is `main : Eff Unit Unit`.
 MainIn : ∀ {sc es} → ModTele sc es → Set
 MainIn []                                  = ⊥
 MainIn (ffi _ _ _ _ _ rest)                = MainIn rest

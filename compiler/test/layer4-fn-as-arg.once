@@ -2,5 +2,5 @@
 import I.Linux.Syscalls as S
 apply1 : (Int -> Int) -> Int -> Int
 apply1 f x = f x
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (apply1 id 42)

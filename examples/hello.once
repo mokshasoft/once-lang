@@ -6,7 +6,7 @@
 -- Demonstrates:
 --   - Effect composition using let bindings
 --   - Module imports (I.Linux.File, I.Linux.Syscalls)
---   - Executable mode (main : IO Unit)
+--   - Executable mode (main : Eff Unit Unit)
 --
 -- Note: Once uses categorical composition. The >>> operator for
 -- effect composition is planned but not yet implemented. For now,
@@ -22,5 +22,5 @@ import I.Linux.File as F
 -- pure "Hello" : Eff Unit (String Utf8) - constant effect producing the string
 -- println@F : Eff (String Utf8) Unit - prints the string
 -- effCompose println (pure "Hello") : Eff Unit Unit
-main : IO Unit
+main : Eff Unit Unit
 main = effCompose (println@F) (pure "Hello for Once")

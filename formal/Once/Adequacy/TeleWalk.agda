@@ -127,7 +127,7 @@ open import Once.Adequacy.TeleWalk.Invariant fmt Fs Ip hiding (φ; ι)
 -- `main` (D253): an entry like any other. The compiled program runs the CALL
 -- of it, which the table answers with its compiled body read through the ABI;
 -- the core program runs the entry. The entry's compile chain
--- (`MonoStep.relM`) relates the two, at the run of `IO Unit`.
+-- (`MonoStep.relM`) relates the two, at the run of `Eff Unit Unit`.
 ------------------------------------------------------------------------
 
 -- The run of the compiled program at a table.

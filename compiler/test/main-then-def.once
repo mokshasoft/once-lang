@@ -9,7 +9,7 @@
 
 import I.Linux.Syscalls as S
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S 3
 
 later : Int

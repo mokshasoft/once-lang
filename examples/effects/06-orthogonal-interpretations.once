@@ -47,5 +47,5 @@ report = readFile >>> putLine
 signature withConsole  : (Eff[ {Console}  ∪ r ] A B) -> (Eff[ r ] A B)
 signature withFileRead : (Eff[ {FileRead} ∪ r ] A B) -> (Eff[ r ] A B)
 
-main : IO Unit
+main : Eff Unit Unit
 main = withConsole (withFileRead (report "motd.txt"))

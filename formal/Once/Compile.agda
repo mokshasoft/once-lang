@@ -135,7 +135,7 @@ open import Once.Denotation.Realize using (realize)
 -- Main function validation
 ------------------------------------------------------------------------
 
--- | Validate that main has type Eff Unit Unit (i.e. `IO Unit`).
+-- | Validate that main has type Eff Unit Unit.
 --
 -- The entry point is an effectful action that returns no meaningful
 -- value; exit codes come from explicit `exit@<alias>` calls in the
@@ -145,10 +145,10 @@ open import Once.Denotation.Realize using (realize)
 validateMain : Type → String ⊎ ⊤
 validateMain (Unit ⇒[ mk-kind Many eff ] Unit) = inj₂ tt
 {-# CATCHALL #-}
-validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but got: " ++ showType ty)
+validateMain ty = inj₁ ("main must have type Eff Unit Unit, but got: " ++ showType ty)
 
 -- D253: `main` is an entry like any other. It is not rewritten: its entry
--- form is the direct-call morphism (`directCallIR`), which at `IO Unit` is
+-- form is the direct-call morphism (`directCallIR`), which at `Eff Unit Unit` is
 -- `apply ∘ ⟨ ir ∘ terminal , id ⟩` — it RUNS the action on the Unit input,
 -- and `_start` calls `once_main` like any caller calls an entry.
 
@@ -159,7 +159,7 @@ validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but go
 -- An arrow function's `cfIR : IR Unit (A ⇒ B)` (the curried closure) is
 -- uncurried to `apply ∘ ⟨ cfIR ∘ terminal , id ⟩ : IR A B` — the verified
 -- `apply` consumes the closure with the incoming argument `id`. `main` is no
--- exception (D253): at `IO Unit = Unit ⇒[eff] Unit` this is its entry.
+-- exception (D253): at `Eff Unit Unit = Unit ⇒[eff] Unit` this is its entry.
 directCallIR : (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] IR ⌊ D ⌋ ⌊ C ⌋
 -- Plan 0.53: `Heap`, not `Stack`. A curried direct-call
 -- function's first application returns a closure that captures the first arg
@@ -516,7 +516,7 @@ open import Data.Integer.Show renaming (show to showℤ)
 -- only the toolchain axiom related to them — D261.)
 ------------------------------------------------------------------------
 
--- | `main`'s type, `IO Unit`.
+-- | `main`'s type, `Eff Unit Unit`.
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
@@ -537,7 +537,7 @@ findMain-here cf (yes _) (just _) cont = just mainCall
 findMain-here cf (yes _) nothing  cont = cont
 findMain-here cf (no  _) _        cont = cont
 
--- | A module is a PROGRAM when it has an entry `main : IO Unit`.
+-- | A module is a PROGRAM when it has an entry `main : Eff Unit Unit`.
 findMain : List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 findMain []         = nothing
 findMain (cf ∷ rest) =

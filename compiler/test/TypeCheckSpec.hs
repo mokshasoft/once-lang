@@ -29,7 +29,7 @@ interFunctionCallTests :: TestTree
 interFunctionCallTests = testGroup "Inter-function calls"
   [ testCase "simple function call" $ do
       -- A function can call another function defined earlier. `main` must be
-      -- IO Unit (= Eff Unit Unit), so the inter-function call is exercised by
+      -- Eff Unit Unit (= Eff Unit Unit), so the inter-function call is exercised by
       -- `useHelper` rather than by `main` directly.
       let source = T.unlines
             [ "helper : Int -> Int"
@@ -38,7 +38,7 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "useHelper : Int -> Int"
             , "useHelper x = helper x"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -56,7 +56,7 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "compute : Int -> Int"
             , "compute x = double (add1 x)"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -73,7 +73,7 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "caller : Int -> Int"
             , "caller y = callee y"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -88,7 +88,7 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "config : Int"
             , "config = port"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -112,7 +112,7 @@ interFunctionCallTests = testGroup "Inter-function calls"
             , "f5 : Int"
             , "f5 = f4"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -135,7 +135,7 @@ recursionTests = testGroup "No general recursion (D241)"
             [ "loop : Int"
             , "loop = loop"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -146,7 +146,7 @@ recursionTests = testGroup "No general recursion (D241)"
             [ "countdown : Int -> Int"
             , "countdown n = countdown n"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -157,7 +157,7 @@ recursionTests = testGroup "No general recursion (D241)"
             [ "gcd : Int -> Int -> Int"
             , "gcd a b = gcd b a"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -177,7 +177,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "p3 : a -> a"
             , "p3 = f2"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -191,7 +191,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "p3 : a -> a"
             , "p3 = id"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -205,7 +205,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "twice : Int -> Int"
             , "twice n = inc (inc n)"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -291,7 +291,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             [ "absurdInt : Void -> Int"
             , "absurdInt v = initial v"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -302,7 +302,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             [ "bad : Void -> Unit -> Void"
             , "bad v u = v + u"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -313,7 +313,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             [ "bad : Int -> Void -> Void"
             , "bad x v = x + v"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source
@@ -324,7 +324,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             [ "bad : Void -> Int"
             , "bad v = fst v"
             , ""
-            , "main : IO Unit"
+            , "main : Eff Unit Unit"
             , "main = id"
             ]
       result <- typeCheckSource source

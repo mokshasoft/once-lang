@@ -34,5 +34,5 @@ empty = In (inl unit)
 t : Mu (K Unit + (Id + (Id * Id)))
 t = In (inr (inr (In (inr (inl empty)), empty)))
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (size t)

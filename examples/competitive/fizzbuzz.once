@@ -27,5 +27,5 @@ import I.Linux.Syscalls as S
 -- Full FizzBuzz would need integer literals in expressions
 -- which requires extending the IR/codegen
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit0@S

@@ -3,5 +3,5 @@
 import I.Linux.Syscalls as S
 keepSnd : Int -> Int -> Int
 keepSnd x y = y
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (keepSnd 99 42)

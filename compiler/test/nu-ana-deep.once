@@ -30,5 +30,5 @@ mkS : Int -> Nu (K Int * Id)
 mkS = ana (pair id id)
 
 -- Force, take the recursive position, force THAT, then read its payload.
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (fst (Out (snd (Out (mkS 42)))))

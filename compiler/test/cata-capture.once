@@ -30,5 +30,5 @@ viaLet = let b = 2 in (cata (case (\_ -> b) addPair) : Mu (K Unit + (K Int * Id)
 xs : Mu (K Unit + (K Int * Id))
 xs = In (inr (10, In (inr (20, In (inl unit)))))
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (withBase 5 xs + viaLet xs)

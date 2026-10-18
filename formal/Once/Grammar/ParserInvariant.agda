@@ -58,8 +58,6 @@ mutual
     ex-eff (ParsesAtom-Expressible dA) (ParsesAtom-Expressible dB)
   ParsesAtom-Expressible (pa-act dA dB) =
     ex-act (ParsesAtom-Expressible dA) (ParsesAtom-Expressible dB)
-  ParsesAtom-Expressible (pa-io dA) =
-    ex-eff ex-unit (ParsesAtom-Expressible dA)
   ParsesAtom-Expressible (pa-paren dT refl) = ParsesType-Expressible dT
   ParsesAtom-Expressible (pa-mu dF) = ex-mu (ParsesFunctorSum-ExpressibleF dF)
   ParsesAtom-Expressible (pa-nu dF) = ex-nu (ParsesFunctorSum-ExpressibleF dF)

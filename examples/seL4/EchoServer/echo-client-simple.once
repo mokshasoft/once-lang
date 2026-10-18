@@ -42,7 +42,7 @@ sendTestMessage =
 -- Main Entry Point
 ------------------------------------------------------------------------
 
-main : IO Unit
+main : Eff Unit Unit
 main = sendTestMessage
 
 ------------------------------------------------------------------------

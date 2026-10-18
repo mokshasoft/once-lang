@@ -77,7 +77,7 @@ testLoop count =
 -- Main Entry Point
 ------------------------------------------------------------------------
 
-main : IO Unit
+main : Eff Unit Unit
 main =
   -- Run 10 echo tests
   let result = testLoop 10

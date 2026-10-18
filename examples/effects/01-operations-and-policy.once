@@ -28,5 +28,5 @@ greet = putLine
 
 -- `main` is the root capability holder; here the {Console} requirement is
 -- discharged by the root grant (see 04 for grant/attenuate).
-main : IO Unit
+main : Eff Unit Unit
 main = greet "Hello for Once"

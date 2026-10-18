@@ -5,5 +5,5 @@
 import I.Linux.Syscalls as S
 myid : Int -> Int
 myid = id
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (myid 42)

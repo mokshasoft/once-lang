@@ -5,5 +5,5 @@ f : Int -> Int
 f = id
 g : Int -> Int
 g = f
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (g 42)

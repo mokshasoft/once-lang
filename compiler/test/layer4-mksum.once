@@ -17,5 +17,5 @@ import I.Linux.Syscalls as S
 mkSum : Int -> Int + Int
 mkSum x = inl x
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (destruct (mkSum 42) of { Left x -> x ; Right y -> 99 })

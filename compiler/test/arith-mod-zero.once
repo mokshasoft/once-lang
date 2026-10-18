@@ -9,5 +9,5 @@ import I.Linux.Syscalls as S
 f : Int -> Int
 f x = x % 0
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (f 7)

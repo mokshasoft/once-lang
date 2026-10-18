@@ -18,5 +18,5 @@ mySwap : A * B -> B * A
 mySwap = swap@S
 
 -- Use exit0 from the imported Interpretation module
-main : IO Unit
+main : Eff Unit Unit
 main = exit0@E

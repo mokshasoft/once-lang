@@ -27,8 +27,8 @@ emitAll : Eff (Mu (K Unit + (K Int * Id))) Unit
 emitAll = cata (case terminal (compose emit@E fst))
 
 -- The fold, as a morphism `main` can compose with.
-runAll : IO Unit
+runAll : Eff Unit Unit
 runAll = emitAll xs
 
-main : IO Unit
+main : Eff Unit Unit
 main = compose exit@S (compose (\_ -> 7) runAll)

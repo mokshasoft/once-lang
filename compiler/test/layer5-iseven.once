@@ -27,5 +27,5 @@ even42 _ = 42
 odd99 : Unit -> Int
 odd99 _ = 99
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (case even42 odd99 (isEven two))

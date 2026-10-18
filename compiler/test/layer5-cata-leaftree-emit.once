@@ -32,8 +32,8 @@ emitTree : Eff (Mu (K Int + (Id * Id))) Unit
 emitTree = cata (case emit@E terminal)
 
 -- The fold, as a morphism `main` can compose with.
-runTree : IO Unit
+runTree : Eff Unit Unit
 runTree = emitTree t
 
-main : IO Unit
+main : Eff Unit Unit
 main = compose exit@S (compose (\_ -> 7) runTree)

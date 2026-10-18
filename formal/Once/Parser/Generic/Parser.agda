@@ -85,20 +85,15 @@ module Make (alg : TyAlg) where
   ...     | nothing = nothing
   ...     | just (B , r2) = just (aAct A B , r2)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "IO"
-  ... | yes refl with atomP rest
-  ...   | nothing = nothing
-  ...   | just (A , r1) = just (aEff aUnit A , r1)
-  atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
+    | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Mu"
   ... | yes refl with fSumP rest
   ...   | nothing = nothing
   ...   | just (F , r1) = just (aMu F , r1)
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name Str.≟ "Nu"
   ... | yes refl = nuP rest
   atomKw (TWord name ∷ rest)
-    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
   atomKw (TLParen ∷ rest) with typeP rest
   ... | just (T , TRParen ∷ rest2) = just (T , rest2)
   {-# CATCHALL #-}

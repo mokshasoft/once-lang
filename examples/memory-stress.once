@@ -25,5 +25,5 @@ signature getenv : Eff (String Utf8) (String Utf8)
 -- Test: runtime string from environment variable
 -- getenv returns a String at runtime (not compile-time static)
 -- This tests that non-static strings work correctly
-main : IO Unit
+main : Eff Unit Unit
 main = compose println (compose getenv "TEST_VAR")

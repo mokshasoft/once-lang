@@ -28,8 +28,8 @@ k : Int -> Eff Int Unit
 k = curry (compose emit@E fst)
 
 -- ELIMINATE: `(k 5, 9)` is the pair literal `(Int ⇒[eff] Unit) * Int`.
-fire : IO Unit
+fire : Eff Unit Unit
 fire = apply (k 5, 9)
 
-main : IO Unit
+main : Eff Unit Unit
 main = compose exit@S (compose (\_ -> 7) fire)

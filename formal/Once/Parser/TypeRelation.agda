@@ -93,7 +93,7 @@ quantityTokenOf Many = TCaretW
 mutual
 
   -- atom ::= 'Unit' | 'Void' | 'Int' | 'Float' | 'Buffer' | 'String'
-  --        | 'Eff' atom atom | 'Act' atom atom | 'IO' atom | '(' type ')'
+  --        | 'Eff' atom atom | 'Act' atom atom | '(' type ')'
   data ParsesAtom : List Token → Type → List Token → Set where
 
     pa-unit    : ∀ rest → ParsesAtom (TWord "Unit"   ∷ rest) Unit   rest
@@ -111,10 +111,6 @@ mutual
            → ParsesAtom toks1 A toks2
            → ParsesAtom toks2 B rest
            → ParsesAtom (TWord "Act" ∷ toks1) (A ⇒[ mk-kind Many act ] B) rest
-
-    pa-io : ∀ {toks1 rest} {A : Type}
-          → ParsesAtom toks1 A rest
-          → ParsesAtom (TWord "IO" ∷ toks1) (Unit ⇒[ mk-kind Many eff ] A) rest
 
     pa-paren : ∀ {toks rest1 rest2} {T : Type}
              → ParsesType toks T rest1
@@ -260,8 +256,6 @@ mutual
   ParsesAtom-shrinks (pa-act dA dB) =
     <-trans (ParsesAtom-shrinks dB)
             (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl))
-  ParsesAtom-shrinks (pa-io dA) =
-    <-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)
   ParsesAtom-shrinks (pa-paren dT refl) =
     <-trans (s≤s ≤-refl)
             (<-trans (ParsesType-shrinks dT) (s≤s ≤-refl))

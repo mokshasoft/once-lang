@@ -16,5 +16,5 @@ discard = terminal
 forty2 : Unit -> Int
 forty2 _ = 42
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (forty2 (discard 99))

@@ -6,5 +6,5 @@
 
 import I.Linux.Syscalls as S
 
-main : IO Unit
+main : Eff Unit Unit
 main = exit@S (snd (snd (snd (1, (2, (3, 42))))))
