@@ -18949,8 +18949,8 @@ cannot pick one.
 * A Host's code lives outside the compiler, beside the Interpretations.
 * Refined (same day, implementing it): `leave` is the Host's, not an operation of the program's
   signature, so it is never an event: the image ends `main` with a control instruction `c-leave`,
-  lowered to a call of the fixed symbol `once_60leave` (the symbol of the reserved name `0leave`; no
-  identifier starts with a digit). Reaching it is the machines' end `returned`; a call with no answer,
+  lowered to a call of the fixed symbol `once_leave` — no name of a program has it (a name's symbol has
+  a digit after `once_`, `Once.Target.SymbolFresh`). Reaching it is the machines' end `returned`; a call with no answer,
   a fault, or a pc off the code is the end `halted`. The concrete model halts at a call with no answer
   (the call resolver's `halting`); before, it returned past every call, `exit` included, which made the
   external-call contract demand `false ≡ true` at every reachable `exit`.
