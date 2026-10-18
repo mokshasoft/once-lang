@@ -56,7 +56,10 @@ open import Data.Nat using (ℕ; _+_; z≤n; suc)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.List using ([]; take)
+open import Data.List using ([]; take; map)
+open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
+open import Once.Adequacy.MachineTrace using (listTr; module Machine)
+open import Once.Lang.Event using (toEvent)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -125,7 +128,7 @@ import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 -- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
-open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
+open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized; eventsAt; resultAt; evalᴰ; floc)
 
 -- The FlatFromObs bundle at the x86-32 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -411,6 +414,30 @@ conc-flat-sim brs p ir lk img n =
     run₀ : RunAt (FFOx.image ir) FFOx.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
     agree = events-agree-start (Nof brs ir lk n)
+              ev-x86-32 (block-env (C.blocks-x86-32 p))
+              (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
+              (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
+              refl refl refl refl refl
+
+-- D320: THE BINARY'S TRACE (see the x86-64 instance).
+conc-tr :
+  ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+    (lk : LinkedProgram (sig ι) (irProgram tbl ir))
+  → FFOx.image ir ≡ C.image-of p
+  → Machine.trace (RTx.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p))
+                     (compile-trace (FFOx.image ir))) ([] , X.initState)
+    ≈ᵗ⟨ _≡_ ⟩ listTr (map toEvent (eventsAt (floc (FFOx.main-flat ir)) (evalᴰ ir tt)))
+                     (FFOx.end-of-res (resultAt (floc (FFOx.main-flat ir)) (evalᴰ ir tt)))
+conc-tr brs p ir lk img =
+  Machine.reaches-≈ (RTx.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p))
+                       (compile-trace (FFOx.image ir)))
+    (RTx.ended-reaches val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p))
+       (compile-trace (FFOx.image ir)) (proj₁ agree) [] X.initState
+       (trans (proj₂ agree) (FFOx.flat-ends ir-obs-correct brs ir lk)))
+  where
+    run₀ : RunAt (FFOx.image ir) FFOx.start-flat
+    run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
+    agree = events-agree-start (ValueRealized.steps (FFOx.entry-vr ir lk ir-obs-correct brs 0) + 2)
               ev-x86-32 (block-env (C.blocks-x86-32 p))
               (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
               (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀

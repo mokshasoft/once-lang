@@ -30,6 +30,7 @@ open import Once.Lang.Event using (SigOpEvent)
 open State using (halted; pc; regs)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith)
 import Once.Arith.Backend.RunTraceCore as Core
+import Once.Arith.Backend.RunTraceMachine as RTM
 
 -- Classify a `call-sym` (the generic core's `matchCall`): reduces on the
 -- `call-sym` constructor, so the trace loop still reduces definitionally.
@@ -58,3 +59,7 @@ ret-call answer h lbl s = ret-with (answer h lbl s) s
 module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent → String → State → Maybe Word) where
   open Core.RunTrace State Program Instr (List XInstr × ℕ)
     halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val)) public
+  -- D320: the same machine as a machine whose trace is read off by corecursion.
+  open RTM.RunMachine State Program Instr (List XInstr × ℕ)
+    halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val))
+    using (Conf; δ; ended-reaches) public

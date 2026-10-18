@@ -38,7 +38,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Lang.Trace using (FFIAnswers)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
 import Once.Denotation.ValueDomain as ValueDomain
-open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at; runIR)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Semantics.Machine
@@ -163,3 +163,10 @@ rewrite-program-preserves fmt ι p n =
   cong (λ t → projTrace ι t n)
     (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (main p))) _) (table-sound fmt (pureHalf ι) (table p)))
            (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt (pureHalf ι) (table p)) (main p))))
+
+-- D320: …and the same tree, so the same TRACE (calls and how the run ended).
+rewrite-program-tree : ∀ (fmt : TargetNum) (ι : Interp) (p : Once.Denotation.Program.IRProgram)
+                     → runIR fmt (pureHalf ι) (rewrite-program p) ≡ runIR fmt (pureHalf ι) p
+rewrite-program-tree fmt ι p =
+  trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (main p))) _) (table-sound fmt (pureHalf ι) (table p)))
+        (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt (pureHalf ι) (table p)) (main p)))

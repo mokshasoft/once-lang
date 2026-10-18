@@ -50,7 +50,10 @@ module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRF
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using ([])
+open import Data.List using ([]; map)
+open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
+open import Once.Adequacy.MachineTrace using (listTr; module Machine)
+open import Once.Lang.Event using (toEvent)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Data.List using (take)
@@ -117,7 +120,7 @@ open import Once.Memory.StackSlots using (stack-addr)
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
 open IRObsCorrectFlatness {rv64-frame-semantics}
-  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized)
+  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized; eventsAt; resultAt; evalᴰ; floc)
 
 ------------------------------------------------------------------------
 -- THE ENTRY FRAME — CONSTRUCTED (plan 0.65 G3, 2026-08-17).
@@ -329,6 +332,30 @@ conc-flat-sim brs p ir lk img n =
     run₀ : RunAt (FFOr.image ir) FFOr.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl)
     agree = events-agree-start (Nof brs ir lk n)
+              ev-riscv64 (block-env (C.blocks-riscv64 p))
+              (FFOr.image ir) FFOr.start-flat RS.initState (ir-stack-budget ir) (entry-corr ir)
+              (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
+              refl refl refl refl refl
+
+-- D320: THE BINARY'S TRACE (see the x86-64 instance).
+conc-tr :
+  ∀ (brs : FFOr.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+    (lk : LinkedProgram (sig ι) (irProgram tbl ir))
+  → FFOr.image ir ≡ C.image-of p
+  → Machine.trace (RTr.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
+                     (compile-trace (FFOr.image ir))) ([] , RS.initState)
+    ≈ᵗ⟨ _≡_ ⟩ listTr (map toEvent (eventsAt (floc (FFOr.main-flat ir)) (evalᴰ ir tt)))
+                     (FFOr.end-of-res (resultAt (floc (FFOr.main-flat ir)) (evalᴰ ir tt)))
+conc-tr brs p ir lk img =
+  Machine.reaches-≈ (RTr.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
+                       (compile-trace (FFOr.image ir)))
+    (RTr.ended-reaches val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
+       (compile-trace (FFOr.image ir)) (proj₁ agree) [] RS.initState
+       (trans (proj₂ agree) (FFOr.flat-ends ir-obs-correct brs ir lk)))
+  where
+    run₀ : RunAt (FFOr.image ir) FFOr.start-flat
+    run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl)
+    agree = events-agree-start (ValueRealized.steps (FFOr.entry-vr ir lk ir-obs-correct brs 0) + 2)
               ev-riscv64 (block-env (C.blocks-riscv64 p))
               (FFOr.image ir) FFOr.start-flat RS.initState (ir-stack-budget ir) (entry-corr ir)
               (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
