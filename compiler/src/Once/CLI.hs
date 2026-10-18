@@ -141,6 +141,9 @@ data BuildOptions = BuildOptions
   , buildAlloc     :: Maybe AllocStrategy         -- ^ Default allocation strategy
   , buildInterp    :: Maybe FilePath              -- ^ Legacy interpretation path
   , buildExplicitInterps :: [(InterpType, FilePath)]  -- ^ Explicit interpretations
+  -- | D320: the Host the executable runs under (`Strata/Hosts/<host>/Host.<arch>`,
+  -- which defines `once_leave`). The compiled code never depends on it.
+  , buildHost      :: String
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -401,22 +404,31 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
                 Left err -> do
                   TIO.putStrLn $ "Impl-file assembly failed: " <> T.pack err
                   exitFailure
-                Right implObjs -> do
-                  -- Link all .o files (user + impls) to executable
-                  linkResult <- link arch (objPath : implObjs) outputBase
-                  case linkResult of
-                    Left err -> do
-                      TIO.putStrLn $ "Link failed: " <> T.pack err
-                      exitFailure
-                    Right exePath -> do
-                      if buildSaveTemps opts
-                        then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
-                        else do
-                          removeFile asmPath
-                          removeFile objPath
-                          mapM_ removeFile implObjs
-                          TIO.putStrLn $ "Generated: " <> T.pack exePath
-                      exitSuccess
+                Right implObjs0 -> do
+                 -- D320: the Host's `leave` (`once_leave`), linked beside the
+                 -- program; which Host is the link's choice, not the compiler's.
+                 hostResult <- assembleHost strataDir arch (buildHost opts)
+                 case hostResult of
+                  Left err -> do
+                    TIO.putStrLn $ "Host assembly failed: " <> T.pack err
+                    exitFailure
+                  Right hostObj -> do
+                    let implObjs = implObjs0 ++ [hostObj]
+                    -- Link all .o files (user + impls + Host) to executable
+                    linkResult <- link arch (objPath : implObjs) outputBase
+                    case linkResult of
+                      Left err -> do
+                        TIO.putStrLn $ "Link failed: " <> T.pack err
+                        exitFailure
+                      Right exePath -> do
+                        if buildSaveTemps opts
+                          then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
+                          else do
+                            removeFile asmPath
+                            removeFile objPath
+                            mapM_ removeFile implObjs
+                            TIO.putStrLn $ "Generated: " <> T.pack exePath
+                        exitSuccess
 
         -- unreachable: `Infer` is resolved to Library/Executable above
         Infer -> exitFailure
@@ -432,6 +444,18 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
 -- | Plan 0.11: assemble per-arch impl files for the given list of
 -- import paths. Returns the list of `.o` paths produced (same order
 -- as input). Skips imports that have no `.<arch>` companion file.
+-- | D320: assemble the Host (`Strata/Hosts/<host>/Host.<arch>`).
+assembleHost :: FilePath -> Bridge.Arch -> String -> IO (Either String FilePath)
+assembleHost strataDir arch host = do
+  let hostPath = strataDir </> "Hosts" </> host </> ("Host." ++ archImplExtension arch)
+  exists <- doesFileExist hostPath
+  if not exists
+    then pure (Left ("no Host " ++ host ++ " for this target: " ++ hostPath ++ " is missing"))
+    else do
+      let objPath = hostPath ++ ".o"
+      r <- assemble arch hostPath objPath
+      pure (either (\e -> Left ("Failed to assemble " ++ hostPath ++ ": " ++ e)) (const (Right objPath)) r)
+
 assembleImplFiles :: FilePath -> Bridge.Arch -> [[T.Text]] -> IO (Either String [FilePath])
 assembleImplFiles strataDir arch paths = go paths []
   where

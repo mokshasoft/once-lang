@@ -60,6 +60,7 @@ data BuildConfig = BuildConfig
   , bcAlloc     :: Maybe AllocStrategy
   , bcInterp    :: Maybe String
   , bcExplicit  :: [(InterpType, String)]
+  , bcHost      :: String
   , bcInput     :: Maybe String
   }
 
@@ -74,6 +75,7 @@ defaultBuildConfig = BuildConfig
   , bcAlloc     = Nothing
   , bcInterp    = Nothing
   , bcExplicit  = []
+  , bcHost      = "Linux"
   , bcInput     = Nothing
   }
 
@@ -104,6 +106,7 @@ parseBuild args = go args defaultBuildConfig
         , buildAlloc     = bcAlloc cfg
         , buildInterp    = bcInterp cfg
         , buildExplicitInterps = bcExplicit cfg
+        , buildHost      = bcHost cfg
         }
     go ("-o" : out : rest) cfg = go rest cfg { bcOutput = Just out }
     go ("--lib" : rest) cfg = go rest cfg { bcMode = Library }
@@ -118,6 +121,7 @@ parseBuild args = go args defaultBuildConfig
       Just alloc -> go rest cfg { bcAlloc = Just alloc }
       Nothing -> Nothing  -- invalid allocation strategy
     go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
+    go ("--host" : h : rest) cfg = go rest cfg { bcHost = h }
     -- Parse -I:TYPE MODULE (explicit interpretation with type)
     go (x : modPath : rest) cfg
       | "-I:" `isPrefixOf` x =
