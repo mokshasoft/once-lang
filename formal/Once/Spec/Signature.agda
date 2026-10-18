@@ -97,16 +97,6 @@ notEmpty? (a + b) = either (notEmpty? a) (notEmpty? b)
         either (no _)  (yes q) = yes (inj₂ q)
         either (no ¬p) (no ¬q) = no λ { (inj₁ p) → ¬p p ; (inj₂ q) → ¬q q }
 
--- An inhabited base type has a value.
-inhabitant : ∀ b → NotEmpty b → ⟦ b ⟧ᵇ
-inhabitant unit    _       = _
-inhabitant void    ()
-inhabitant int     _       = 0
-inhabitant float   _       = 0
-inhabitant (a * b) (p , q) = inhabitant a p , inhabitant b q
-inhabitant (a + b) (inj₁ p) = inj₁ (inhabitant a p)
-inhabitant (a + b) (inj₂ q) = inj₂ (inhabitant b q)
-
 ------------------------------------------------------------------------
 -- Declarations
 ------------------------------------------------------------------------
