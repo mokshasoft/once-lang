@@ -378,6 +378,11 @@ with the code:
    `>>=`, the Freyd structure up to observation, the inhabited model and
    world, functorial coercions) are stated and being proved (plan 0.120); the
    earlier claims were proved in plan 0.119 B2 and D1.
+5. **Imported definitions** (D319): an import contributes only its module's
+   `signature` declarations; a program's definitions are its own module's.
+   Dependent types need imported definitions with their bodies (a type
+   computes through them; PLAN-REF on `origin/plan-ref`), named by their
+   module's path. The Spec cannot yet state this.
 5. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical
    names").
 6. **D317 in flight**: the implementation follows the new Spec in plan 0.119

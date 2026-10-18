@@ -18868,3 +18868,34 @@ findings; two POCs (plans/0.120-poc) showed the mechanization goes through.
 * Metatheory: proved again (plan 0.120); the D1 run relation becomes the finite-prefix lemmas.
 * Implementation (plan 0.119 §7 D): `Nu (Eff F)` and `Eff`-declared operations no longer parse; the
   compiler's `correct` targets weak bisimilarity of traces (D4).
+
+## D319 — THE SPEC AFTER AN ULTRAREVIEW: A TRACE MENTIONS NO SIGNATURE, ONE NOTION PER NAME (2026-10-18)
+
+**Decided by the user, 2026-10-18** (an ultrareview of the Spec's changes since plan 0.119 A, branch
+`spec-review-85a2c50a7`; every finding applied there, reviewed with the user, moved here); approval by
+`make spec-approve` pending. **Amends**: D318 item 1 (the trace's type); D249 (the surface claim's
+premise). **Relates**: D317, D318, plan-ref (`origin/plan-ref`, PLAN-REF).
+
+### Decision
+1. **A trace mentions no signature**: `End`, `Tr`, weak bisimilarity and `Calls` move from
+   `Spec.Observation (Σ)` to the parameter-free `Spec.Trace`. Every program's behaviour has the one type
+   `Tr ⊤`, as `Spec.Correct`'s single `Behavior` needs (before, `Tr (signature tp) ⊤` differed per
+   program).
+2. **One declaration per name is one definition**, `Spec.Signature.OneName`, used by `Denotes` and by
+   every claim. `Distinct`'s `sig-unique` (two entries named alike agree on their type) is replaced by
+   `OneName`: the surface claim's premise is stronger, so it covers fewer signatures, but only ones no
+   program has (`Denotes` requires `OneName`).
+3. **One layer of stream sameness is one definition**, `Spec.Equivalence.OneLayer`;
+   `SameNu f G (suc n) = OneLayer f G (SameNu f G n)`, so `stream-out`/`-in`/`-coind` are about the
+   relation `SameStream` unfolds.
+4. **The Spec holds no proof helper**: `inhabitant` (the Inhabited claims' witness) moves to
+   `Once.Metatheory.Inhabitant`.
+5. **Kept**: a definition's name stays a `CanonicalName`, and `Distinct` keeps `def-not-gen` although
+   every name `Denotes` gives is `own x`: definitions will be imported (dependent types unfold imported
+   definitions, PLAN-REF), and then a definition's name carries its module's path. Docs: the loop
+   `ana round` is checked at `Eff A B` (D317 item 2 said `A -> Eff A B`).
+
+### Consequences
+* Spec: Trace (new), Observation, Equivalence, Signature, Core.Program, Surface.Program, Source,
+  Metatheory, the root.
+* Metatheory: green (`Once.Metatheory`); `Once.Metatheory.OneName` holds `decl-unique`/`mem-unique`.
