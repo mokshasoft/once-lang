@@ -46,7 +46,7 @@ open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁)
 import Data.String as Str
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
@@ -74,7 +74,6 @@ open Once.Denotation.Program.IRFun using (fname)
 open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
 open import Once.Lang.Core.PolyTy using (Sig)
 open import Once.Lang.Core.Telescope using (Tele; Program; runCore; program; noKinds; noVars; noResp)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′)
 open import Once.Lang.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Lang.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
@@ -98,8 +97,13 @@ open import Once.Lang.Trace using (FFIAnswers)
 φ : FFIAnswers
 φ = pureHalf ι
 
-open import Once.Adequacy.GradedRelation fmt using (RelGT; RelGV)
-open import Once.Lang.Trace using (returnT; rel-ret)
+open import Once.Adequacy.GradedRelation fmt using (RelGV; GM-D)
+open import Once.Lang.Iterative using (T∞; force; return∞)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret)
+open RelS using (forceS)
+open import Once.Denotation.ValueRel using (retargetˡ)
+open import Once.Denotation.EvalRel using (eval-rel; table-self)
+open import Once.Lang.Type.Grade using (eff)
 open import Once.Lang.Trace using (projTrace)
 import Once.Adequacy.TeleEntry fmt ι as TE
 
@@ -130,13 +134,19 @@ open import Once.Adequacy.TeleWalk.Invariant fmt Fs Ip hiding (φ; ι)
 -- (`MonoStep.relM`) relates the two, at the run of `Eff Unit Unit`.
 ------------------------------------------------------------------------
 
--- D320: the compiled program's tree at a table and the core program's run are
--- RELATED — the same nodes, read off the finite one, with how each ended —
--- which gives their traces (`TraceTr.RelT∞′-tr`).
+-- D320 / plan 0.119 D5: the compiled program's run at a table and the core
+-- program's run are RELATED, step for step — which gives their traces
+-- (`TraceTr.RelS-tr`).
 Agree : List IRFun → Program Fs → Set
-Agree tbl P = RelT∞′ (RelGV Once.Lang.Type.Unit) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) mainCall tt)
+Agree tbl P = RelS (RelGV Once.Lang.Type.Unit) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) mainCall tt)
 
 private
+  -- A run related to a returned value, against a returned value.
+  ret-inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelS R (return∞ a) (return∞ b) → R a b
+  ret-inv h = inv (forceS h)
+    where inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelSB R (Once.Lang.Trace.ret (inj₁ a)) (Once.Lang.Trace.ret (inj₁ b)) → R a b
+          inv (s-ret r) = r
+
   K-subst : ∀ {A : Type} (P : Type → Set) (p : A ≡ A) (x : P A) → subst P p x ≡ x
   K-subst P refl x = refl
 
@@ -170,13 +180,6 @@ from-sem {S = S} {sc} tl ss is ts sg d e (poly {pfi = pfi} {Ψ = Ψ} D rest) u =
 from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er g D rest) u =
   from-sem (TR.monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D) ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest u
 
--- A pure value against a Kleisli computation, fed to effectful continuations:
--- the computation returns at once, so the continuation's relation is the whole.
-ret-bind∞ : ∀ {A B : Type} {v : ⟦ A ⟧ᵛ} {t : Once.Lang.Trace.T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → T∞ ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → Once.Lang.Trace.T ⟦ B ⟧ᴰ}
-          → RelGT A (returnT v) t → (∀ {a b} → RelGV A a b → RelT∞′ (RelGV B) (k a) (g b))
-          → RelT∞′ (RelGV B) (k v) (t Once.Lang.Trace.>>=T g)
-ret-bind∞ (rel-ret r) h = h r
-
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} (g : RigidFree EffUU)
               (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ EffUU ⌋}
               (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
@@ -191,19 +194,24 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {e
   -- Plan 0.105 / D320: the entry's compile chain relates the core entry to the
   -- compiled call (`relM`); the compiled program's tree IS that call, and the
   -- core program's run IS that entry.
-  subst₂ (RelT∞′ (RelGV Once.Lang.Type.Unit)) core-eq (sym ir-tree)
-         (ret-bind∞ {EffUU} {Once.Lang.Type.Unit} {k = λ c → c tt} {g = λ c → c tt} relM (λ rv → rv {tt} {tt} tt))
+  subst (λ c → RelS (RelGV Once.Lang.Type.Unit) c _) core-eq
+    (GM-D eff Once.Lang.Type.Unit (proj₁ (ret-inv relM) {tt} {tt} tt)
+      (retargetˡ ir-tree
+        (uncurry-app (tableEnv fmt φ pre) irFun (eval-rel fmt (table-self fmt φ pre) irFun {tt} {tt} tt) {tt} {tt} tt)))
   where
     open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {Parser.mkFunInfo "main" ft bd false} {EffUU} g D {irFun} cf inv
     later = tableOf-go (FB.bundle→compiled rest-b) []
 
-    ir-tree : evalᴰ fmt (tableEnv fmt φ (tableOf-go (FB.bundle→compiled rest-b) (e ∷ pre))) mainCall tt ≡ (M Once.Lang.Trace.>>=T λ c → c tt)
+    -- the compiled program calls `main`, which the table answers with its
+    -- direct-call form (`uncurry-app` relates that to the body's closure)
+    ir-tree : force (evalᴰ fmt (tableEnv fmt φ (tableOf-go (FB.bundle→compiled rest-b) (e ∷ pre))) mainCall tt)
+              ≡ force (evalᴰ fmt (tableEnv fmt φ pre) (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) tt)
     ir-tree =
-      trans (cong (λ tbl → evalᴰ fmt (tableEnv fmt φ tbl) mainCall tt) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))
+      cong force
+        (trans (cong (λ tbl → evalᴰ fmt (tableEnv fmt φ tbl) mainCall tt) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))
           (trans (skip-later later (e ∷ pre) tt (later-not-main rest-b hs))
-            (trans (tableEnv-hit (bare "main") ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Unit ⌋
-                      (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)
-                   (uncurry-app (tableEnv fmt φ pre) irFun tt)))
+                 (tableEnv-hit (bare "main") ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Unit ⌋
+                    (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
 
     -- the core program's entry, read back at its only instance, is the elaboration's meaning
     core≡ : GM.⟦_⟧ S (PT.instantiate S noVars noResp bodyD) fmt δ tt ≡ GM.⟦_⟧ S Dc fmt δ tt
