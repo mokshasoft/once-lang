@@ -215,6 +215,9 @@ walk (in-ν w)        = in-ν w , []
 walk (Ana w f)         =
   let (f' , bf) = rewrite-ir f
   in Ana w f' , bf
+walk (Iter f)          =
+  let (f' , bf) = rewrite-ir f
+  in Iter f' , bf
 walk (const p v)   = const p v , []
 -- Plan 0.108: a comparison stays one node, but its lowering CALLS its arith
 -- block, so the block is registered here — the file defines it, the call links.

@@ -61,6 +61,7 @@ cost (Cata _ alg)  = cost alg                 -- cost of algebra
 cost (Out _)       = 0                        -- observation is free
 cost (in-ν _)    = 1                        -- ν-type wrapper allocation
 cost (Ana _ coalg) = cost coalg               -- cost of coalgebra
+cost (Iter body) = cost body                  -- cost of one round
 -- Memory and primitives
 cost (SigOp _)      = 0                        -- primitives are opaque
 cost (Call _)       = 0                        -- the callee is its own table entry

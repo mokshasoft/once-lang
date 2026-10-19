@@ -43,6 +43,7 @@ ir-size (Cata _ alg) = 2 ℕ.+ ir-size alg  -- Similar to curry: contains body
 ir-size (Out _) = 1
 ir-size (in-ν _) = 1            -- Lambek isomorphism inverse
 ir-size (Ana _ coalg) = 2 ℕ.+ ir-size coalg  -- Contains coalgebra body
+ir-size (Iter body) = 2 ℕ.+ ir-size body  -- the round, the loop
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-size (SigOp _) = 1

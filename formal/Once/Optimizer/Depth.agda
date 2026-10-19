@@ -55,6 +55,7 @@ depth (Cata _ alg)  = suc (depth alg)
 depth (Out _)       = 0
 depth (in-ν _)    = 0
 depth (Ana _ coalg) = suc (depth coalg)
+depth (Iter body) = suc (depth body)
 -- Memory and primitives
 depth (SigOp _)      = 0
 depth (Call _)       = 0

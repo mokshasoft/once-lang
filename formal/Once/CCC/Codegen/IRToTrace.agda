@@ -87,7 +87,7 @@ open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 open import Once.CCC.Label using (LabelId; ℓ)
 
-open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Lang.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -1205,6 +1205,43 @@ ir-to-trace' n l (Ana wf coalg) =
       all-bodies  = (ℓ o this-label , block-budget ,
                      mov-to-output ∷ store-at-slot 0 ∷ coalg-trace ++ resusp-trace) ∷ coalg-bodies
   in next , l3 , this-trace , all-bodies
+
+-- ────────────────────────────────────────────────────────────────────
+-- Iter body — THE LOOP (D317/D319, plan 0.119 D5). Input1 is the pair
+-- `(e , a)`. The environment `e` is kept in a slot; each round runs `body`
+-- on the current pair (its slots above the loop's two), then branches on the
+-- result's tag exactly as `case` does: `inl b` leaves with `b`; `inr a′`
+-- builds the next pair `(e , a′)` (a fresh 2-cell block, as `⟨_,_⟩`'s) and
+-- jumps back — the back edge is the round's control step.
+--
+--   load-indirect ∷ store-at-slot env ∷
+--   c-label top ∷ body ++
+--   mov-to-input ∷ c-branch-tag-zero done ∷
+--   load-indirect-suc ∷ store-at-slot state ∷
+--   instr-alloc-heap 2 ∷ mov-to-input ∷
+--   load-from-slot env ∷ store-indirect ∷ load-from-slot state ∷ store-indirect-suc ∷
+--   c-jmp top ∷ c-label done ∷ load-indirect-suc ∷ []
+-- ────────────────────────────────────────────────────────────────────
+ir-to-trace' n l (Iter body) =
+  let l-top       = l
+      l-done      = suc l
+      env-stash   = n
+      state-stash = suc env-stash
+      (nb , l1 , bt , bb) = ir-to-trace' (suc state-stash) (suc (suc l)) body
+  in nb , l1 ,
+     (load-indirect ∷ store-at-slot env-stash ∷
+      instr-ctrl (c-label (ℓ o l-top)) ∷ []) ++
+     bt ++
+     (mov-to-input ∷
+      instr-ctrl (c-branch-tag-zero (ℓ o l-done)) ∷
+      load-indirect-suc ∷ store-at-slot state-stash ∷
+      instr-alloc-heap 2 ∷ mov-to-input ∷
+      load-from-slot env-stash ∷ store-indirect ∷
+      load-from-slot state-stash ∷ store-indirect-suc ∷
+      instr-ctrl (c-jmp (ℓ o l-top)) ∷
+      instr-ctrl (c-label (ℓ o l-done)) ∷
+      load-indirect-suc ∷ []) ,
+     bb
 
 -- free-heap is semantically a no-op (returns its input unchanged).
 -- run-free-heap emits `mov-to-output ∷ []` to copy Input1 → Output as

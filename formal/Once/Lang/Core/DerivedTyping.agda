@@ -18,7 +18,7 @@ open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; subst; cong; cong₂)
 
-open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; eff; _·p_; Finite; fin)
+open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; pure; act; eff; _·p_; Finite; fin)
 open import Once.Lang.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 open import Once.Lang.Type.Sub using (⊑-pe; _⊑π_)
 open import Once.Lang.Context using (Ctx; _,_; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
@@ -163,6 +163,15 @@ wk-⊢′ {Γ = Γ} {Ψ = Ψ} B d = subst (λ U → _ ⊢[ Zero ∷ U ] _ ∷ _ 
 ⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} u₀ wf dc =
   ⊢lam refl (subst (λ U → (Γ , A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
                    (⊢sub-eff u₀ (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))))
+
+⊢loopᶜ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B : Type} {c}
+       → Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure
+       → Γ ⊢[ Many *ᵘ Ψ ] loopᶜ A c ∷ A ⇒[ mk-kind Many eff ] B ! pure
+⊢loopᶜ {Γ = Γ} {Ψ} dc =
+  subst (λ U → Γ ⊢[ U ] _ ∷ _ ! pure)
+        (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
+               (+ᵘ-identityˡ (Many *ᵘ Ψ)))
+        (⊢let dc (⊢lam refl (⊢iter (⊢var (suc zero)) (⊢var zero))))
 
 ------------------------------------------------------------------------
 -- The remaining closed combinators and the suspensions.

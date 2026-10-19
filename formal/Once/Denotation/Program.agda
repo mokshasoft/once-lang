@@ -135,6 +135,7 @@ Linked Σ tbl (case f g)       = Linked Σ tbl f × Linked Σ tbl g
 Linked Σ tbl (curry f)        = Linked Σ tbl f
 Linked Σ tbl (Cata _ alg)     = Linked Σ tbl alg
 Linked Σ tbl (Ana _ coalg)    = Linked Σ tbl coalg
+Linked Σ tbl (Iter body)      = Linked Σ tbl body
 Linked Σ tbl (Call {A} {B} f) = LinkedAt tbl f A B
 Linked Σ tbl id               = ⊤
 Linked Σ tbl fst              = ⊤

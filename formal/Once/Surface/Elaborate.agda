@@ -328,6 +328,11 @@ anaM {F} {A} wfF m =
                     (⌊⟧T-commute F A)
                     (apply ∘ ⟨ fst , snd ⟩)))
 
+-- The loop (D317/D319): the round CLOSURE is the environment of `Iter`, so
+-- the round is obtained once and applied per iteration (`anaM`'s shape).
+loopM : ∀ {A B : Type} → AllocMode → IR (⌊ A ⌋ ⇛ ⌊ B + A ⌋) (⌊ A ⌋ ⇛ ⌊ B ⌋)
+loopM m = curry (Iter (apply ∘ ⟨ fst , snd ⟩))
+
 -- D142 / plan 0.86 step B: the environment is `Γ ↾ Ψ` — EXACTLY the variables
 -- this term uses — not the whole context. A dead variable cannot be in the
 -- environment product because it was never put there.
@@ -614,6 +619,10 @@ elaborate m (cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wfF alg) =
 -- from that closure to the unfold — exactly `cata`'s `cataM ∘ ealg`.
 elaborate m (ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {φ = φ} wfF coalg) =
   anaM {φ = φ} wfF m ∘ (elaborate m coalg ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
+
+-- The loop: the round is obtained once, as `ana`'s coalgebra.
+elaborate m (loop {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} round) =
+  loopM {A} {B} m ∘ (elaborate m round ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
 
 -- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
 --   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`

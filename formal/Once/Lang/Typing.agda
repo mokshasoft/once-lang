@@ -710,6 +710,17 @@ mutual
                         ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] (ν-type F φ))
                         ⨾ (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ)   -- B1: the coalgebra runs per layer
 
+    -- D317/D319: `ana round` checked at `Eff`: THE LOOP (the Spec's `c-loop`).
+    -- Its round is a finite block (`act`) ending with the result or the next
+    -- state; the loop runs it from the seed, possibly forever, so it is `eff`.
+    -- `ana` is read from the EXPECTED type, as `t-ana-check`: a ν codomain is a
+    -- stream, an `eff` arrow a loop.
+    t-loop-check : ∀ {ctx : NamedCtx} {round : RawExpr} {A B : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                 → ctx ⊢ᶜ round ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] (B + A)) ⨾ Ψ
+                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) round
+                         ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.eff ] B)
+                         ⨾ (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ)   -- the round runs per iteration
+
     -- | THE MODE SWITCH, with subsumption (D226 / plan 0.99). A term whose type
     -- is INFERRED checks at any supertype. Inference reports the least
     -- (principal) type; conversion happens only here, where the expected type

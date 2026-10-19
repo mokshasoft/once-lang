@@ -35,7 +35,7 @@ open import Once.Lang.Type using (Type; Unit; _*_; μ-type; ν-type)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR
   using (IR; Call; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
-         initial; curry; apply; SigOp; Cata; In; Out; Ana; in-ν;
+         initial; curry; apply; SigOp; Cata; In; Out; Ana; Iter; in-ν;
          out-μ; const)
 open import Once.IRTy
   using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; WellFormedFI; fits-int; fits-float; IRTy)
@@ -72,7 +72,7 @@ open import Once.Lang.Trace using (T; ret; call; halt; callOp; haltOp; returnT; 
 open import Once.Lang.Stream
 open import Once.Denotation.ValueDomain
 open νᵈ using (forceᵈ)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞; iter∞)
 open import Once.Lang.StreamInf using (νᴵ; module νᴵ; in-νᴵ; anaFᴵ)
 open νᴵ using (forceᴵ)
 
@@ -190,6 +190,9 @@ evalᴰ fmt ρ (Ana {F} wf {E} {A} coalg) a =
                                    (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A) x))
                           (evalᴰ fmt ρ coalg (proj₁ a , a')))
             (proj₂ a))
+-- The loop: Elgot iteration of `T∞` over the round, which reads the FIXED
+-- environment `proj₁ a` at every round (as `Ana`'s coalgebra).
+evalᴰ fmt ρ (Iter body) a = iter∞ (λ a' → evalᴰ fmt ρ body (proj₁ a , a')) (proj₂ a)
 evalᴰ fmt ρ (Out {F} wf) v =
   fmap∞ (λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (ν-type F)))
                      (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉

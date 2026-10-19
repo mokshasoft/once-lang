@@ -41,7 +41,7 @@ open import Once.Lang.Name using (showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Data.Maybe using (just)
 open import Once.Lang.Trace using (T; fmapT; Interp; module Interp)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; loop)
 open import Once.Lang.StreamInf using (anaFᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
 open Interp using (sig; impl)
@@ -82,7 +82,7 @@ open import Once.Lang.Typing
          t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
          t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
          t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check; t-pair-morph-check;
-         t-curry-check; t-cata-check; t-ana-check;
+         t-curry-check; t-cata-check; t-ana-check; t-loop-check;
          t-sub; t-lam; t-pair-lit-check;
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
          t-initial-app-check; t-app-spine;
@@ -278,6 +278,9 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
   (⟦ dalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ) >>=ᵖ λ valg → λ v → cata-semᵛ u wfF valg v
 ⟦_⟧ᶜ {ctx = ctx} (t-ana-check {π₀ = π₀} {φ = π} {u = u} wfF dcoalg) fmt ρ dγ =
   λ a → returnM u (ana-semᵛ π wfF ((⟦ dcoalg ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ)) a)
+-- The loop: the round evaluated once (it is a closure), then run from the seed.
+⟦_⟧ᶜ {ctx = ctx} (t-loop-check dround) fmt ρ dγ =
+  λ a → loop ((⟦ dround ⟧ᶜ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-*Many _) dγ)) a
 -- D226: the mode switch maps the inferred computation's RESULT along `p`.
 ⟦_⟧ᶜ {ctx = ctx} (t-sub d p) fmt ρ dγ = fmapᵖ ⟦ p ⟧<:ᵛ ((⟦ d ⟧ᵢ fmt ρ) dγ)
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives

@@ -50,10 +50,11 @@ open import Data.List.Properties using (++-assoc)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
-open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Lang.Type using (Functor; K; Id; _⊕_; _⊗_)
+import Once.IRTy as IT
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -556,6 +557,20 @@ labels-in (in-ν _) n l =
 labels-in (Ana _ c) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+-- the loop owns `l` (its top) and `suc l` (its exit); the round is compiled
+-- above them.
+labels-in (Iter b) n l =
+  li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl l<hi ∷
+  ++⁺ (ls-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (labels-in b _ _))
+      (li-none refl ∷ li-lab refl (n≤1+n l) up ∷ li-none refl ∷ li-none refl ∷
+       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+       li-none refl ∷ li-lab refl ≤-refl l<hi ∷ li-lab refl (n≤1+n l) up ∷
+       li-none refl ∷ [])
+  where
+    up : suc (suc l) ≤ label-of (ir-to-trace' n l (Iter b))
+    up = label-mono b _ _
+    l<hi : l < label-of (ir-to-trace' n l (Iter b))
+    l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
 labels-in (SigOp si)     n l = sigop-labels si n l (cmp-of (sem si))
 labels-in (Call _)      n l = li-none refl ∷ []
 labels-in (const fits-int _)   n l = li-none refl ∷ []
@@ -1290,6 +1305,9 @@ case-pieces : ∀ {A B C} (f : IR A C) (g : IR B C) (n l : ℕ)
                       (label-of (ir-to-trace' (budget-of (ir-to-trace' n (suc (suc l)) f))
                                               (label-of (ir-to-trace' n (suc (suc l)) f)) g))
                       (trace-of (ir-to-trace' n l (case f g)))
+iter-pieces : ∀ {E A B} (b : IR (E IT.* A) (B IT.+ A)) (n l : ℕ)
+            → Pieces2 l (suc (suc l)) (label-of (ir-to-trace' (suc (suc n)) (suc (suc l)) b))
+                      (trace-of (ir-to-trace' n l (Iter b)))
 
 
 seg-agree id n l = segagree-nolab _ (refl ∷ [])
@@ -1347,6 +1365,24 @@ seg-agree (⟨ f , g ⟩)  n l = pair-agree-heap f g n l
 -- branches, so no left-to-right split works — `Pieces2` is exactly this shape,
 -- with `gt`'s window above `ft`'s (windows descend along the trace).
 seg-agree (case f g) n l = pieces2-agree l (suc (suc l)) _ _ (case-pieces f g n l)
+-- the loop: ONE embedded trace (the round) between the skeleton's prefix (the
+-- top label) and its suffix (the branch to the exit, the back edge, the exit).
+seg-agree (Iter b) n l = pieces2-agree l (suc (suc l)) _ _ (iter-pieces b n l)
+
+iter-pieces b n l =
+  p2cons (suc (suc l)) (label-of (ir-to-trace' (suc (suc n)) (suc (suc l)) b)) refl hdL
+         (λ st → ok-neu (slots-below b (suc (suc n)) (suc (suc l))) st)
+         (seg-agree b _ _) (labels-in b _ _) ≤-refl (label-mono b _ _) ≤-refl
+    (p2nil refl tailL)
+  where
+    hdL : LabelsIn l (suc (suc l)) _
+    hdL = li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ []
+    tailL : LabelsIn l (suc (suc l)) _
+    tailL = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷
+            li-none refl ∷ []
+
 
 case-pieces f g n l =
   p2cons lf lg refl hdL (λ st → ok-neu (slots-below g nf lf) st) (seg-agree g nf lf)
@@ -1875,6 +1911,45 @@ scope-ok (case f g) n l = mkScope blin blagr nceb ncbe
                    (nocross-win BG ft lf lg l2 lf (ScopeOK.bl-in Sg)
                                 (labels-in f n l2) (inj₂ ≤-refl))
                    (ScopeOK.nc-be Sg)))
+
+-- the loop: one sub-IR (the round) between glue whose labels are `l` (the
+-- top) and `suc l` (the exit); every block of the round sits at `suc (suc l)`
+-- or above, so the glue is settled by the window alone.
+scope-ok (Iter b) n l = mkScope blin blagr nceb ncbe
+  where
+    l2 = suc (suc l)
+    Bd = ir-to-trace' (suc (suc n)) l2 b
+    bt = trace-of Bd ; BB = blocks-layout (bodies-of Bd) ; lb = label-of Bd
+    Sb = scope-ok b (suc (suc n)) l2
+    l≤l2 : l ≤ l2
+    l≤l2 = m≤n⇒m≤1+n (n≤1+n l)
+    p1 = load-indirect ∷ store-at-slot n ∷ instr-ctrl (c-label (ℓ o l)) ∷ []
+    p3 = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷
+         load-indirect-suc ∷ store-at-slot (suc n) ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
+         load-from-slot n ∷ store-indirect ∷ load-from-slot (suc n) ∷ store-indirect-suc ∷
+         instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
+         load-indirect-suc ∷ []
+    p1L : LabelsIn l l2 p1
+    p1L = li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ []
+    p3L : LabelsIn l l2 p3
+    p3L = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ li-none refl ∷
+          li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+          li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷
+          li-none refl ∷ []
+    blin : LabelsIn l lb BB
+    blin = ls-weaken l≤l2 ≤-refl (ScopeOK.bl-in Sb)
+    blagr : SegAgree BB
+    blagr = ScopeOK.bl-agree Sb
+    glueL : ∀ (p : AbstractTrace) → LabelsIn l l2 p → NoCross p BB
+    glueL p pL = nocross-win p BB l l2 l2 lb pL (ScopeOK.bl-in Sb) (inj₁ ≤-refl)
+    glueR : ∀ (p : AbstractTrace) → LabelsIn l l2 p → NoCross BB p
+    glueR p pL = nocross-win BB p l2 lb l l2 (ScopeOK.bl-in Sb) pL (inj₂ ≤-refl)
+    nceb : NoCross (p1 ++ (bt ++ p3)) BB
+    nceb = nocross-++ˡ p1 (bt ++ p3) BB (glueL p1 p1L)
+             (nocross-++ˡ bt p3 BB (ScopeOK.nc-eb Sb) (glueL p3 p3L))
+    ncbe : NoCross BB (p1 ++ (bt ++ p3))
+    ncbe = nocross-++ʳ BB p1 (bt ++ p3) (glueR p1 p1L)
+             (nocross-++ʳ BB bt p3 (ScopeOK.nc-be Sb) (glueR p3 p3L))
 
 scope-ok (Cata {F} _ alg) n l = mkScope blin blagr nceb ncbe
   where

@@ -341,6 +341,13 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
       → WellFormedF F → Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)
       → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many π₀ ] ν-type F φ)   -- B1: once per layer
 
+  -- THE LOOP (D317/D319): `ana round` at `Eff`. The round is a finite block
+  -- (`act`) ending with the result or the next state, obtained once; the loop
+  -- runs it from the seed, possibly forever (`eff`). Its usage is `ana`'s.
+  loop : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B}
+       → Expr Γ Ψ (A ⇒[ mk-kind Many act ] (B + A))
+       → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many eff ] B)
+
 
 
 

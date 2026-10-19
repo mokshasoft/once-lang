@@ -240,6 +240,14 @@ data IR where
   -- produces one F-layer. See IR/Totality.agda and IR/Productivity.agda.
   Ana : ∀ {F} → WellFormedFI F → ∀ {E A} → IR (E * A) (⟦ F ⟧TI A) → IR (E * A) (ν-type F)
 
+  -- Iter: THE LOOP (D317/D319, plan 0.119 D5) — Elgot iteration in the
+  -- Kleisli category of `T∞`. The round reads a fixed environment `E` (as
+  -- `Ana`'s coalgebra, D273) and the current state `A`, and ends with the
+  -- result (`inl`) or the next state (`inr`); a round that continues is a
+  -- silent step of the run. Its code: run the round, branch on the tag, jump
+  -- back.
+  Iter : ∀ {E A B} → IR (E * A) (B + A) → IR (E * A) B
+
   -- Guard/Unguard removed: GuardedT was unnecessary.
   -- Productivity follows from IR totality, not type-level guardedness.
   -- See IR/Totality.agda for the proof that all IR coalgebras are "guarded".

@@ -47,7 +47,7 @@ open import Once.Lang.Typing
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_; t-id-check; t-fst-check; t-snd-check;
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
-         t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float;
+         t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-loop-check; t-int; t-float;
          t-unit; t-unit-var; t-var-local; t-var-resolved; t-var-own;
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
@@ -60,7 +60,7 @@ open import Once.Lang.Typing
          t-var-poly-instantiate-infer; d-poly)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
 open import Once.Lang.Context using (Usage; zeroUsage)
-open import Once.Surface.Syntax using (Expr; svar→expr; lam; app; effApp; pair; neg; let'; case'; int; float; unit; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; lift-morphism; morph-app; coerce; cata; ana; comp'; copair'; fork'; curry')
+open import Once.Surface.Syntax using (Expr; svar→expr; lam; app; effApp; pair; neg; let'; case'; int; float; unit; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; lift-morphism; morph-app; coerce; cata; ana; loop; comp'; copair'; fork'; curry')
 open import Once.Spec.Name using (bare)
 open import Once.Lang.Context using (_+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
@@ -118,6 +118,7 @@ realize (t-cata-check wfF dalg) = cata wfF (realize dalg)
 -- already elaborated (`curry (Ana … ∘ snd)`); what it lacked was a typing rule
 -- to be produced BY.
 realize (t-ana-check wfF dcoalg) = ana wfF (realize dcoalg)
+realize (t-loop-check dround)   = loop (realize dround)
 -- D226: the mode switch realises as the conversion it carries.
 realize (t-sub d p)             = coerce p (realize-infer d)
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)

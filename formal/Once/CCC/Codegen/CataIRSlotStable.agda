@@ -363,6 +363,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (Out _)         n l = all-stable?-sound _ refl
   ir-stable (in-ν _)      n l = all-stable?-sound _ refl
   ir-stable (Ana _ c)       n l = all-stable?-sound _ refl
+  -- the loop: a straight-line prefix and suffix around the round.
+  ir-stable (Iter b)        n l = tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable b _ _) (all-stable?-sound _ refl)
   ir-stable (g ∘ f)         n l = ++⁺ (ir-stable f n l) (tt ∷ᴬ ir-stable g _ _)
   -- Stage G: one clause, the heap shape. (The stack-shape clause that stood
   -- here collapsed onto the same LHS when the mode was dropped, and shadowed
@@ -469,6 +471,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-blocks-stable (case f g)           n l = ++⁺ (ir-blocks-stable f n (suc (suc l)))
                                                   (ir-blocks-stable g _ _)
   ir-blocks-stable (Cata {F} _ alg)     n l = ir-blocks-stable alg 0 l
+  ir-blocks-stable (Iter b)             n l = ir-blocks-stable b _ _
 
   -- top-level: the LINKED program — entry, its terminator, then the blocks.
   ir-to-trace-slot-stable : ∀ {A B} (ir : IR A B) → AllSlotStable (ir-to-trace ir)

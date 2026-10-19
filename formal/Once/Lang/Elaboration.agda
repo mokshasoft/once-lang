@@ -189,6 +189,7 @@ elabᶜ V (t-pair-morph-check df dg)  = lift2 (pairᶜ _ _) (⊢pairᶜ (·p-dia
 elabᶜ V (t-curry-check {u = u} df)  = lift1 (curryᶜ _ _ _ _) (⊢curryᶜ u) (elabᶜ V df)
 elabᶜ V (t-cata-check {u = u} wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ u wf) (elabᶜ V dalg)
 elabᶜ V (t-ana-check {u = u} wf dc) = lift1 (anaᶜ _ _ _) (⊢anaᶜ u wf) (elabᶜ V dc)
+elabᶜ V (t-loop-check dc)          = lift1 (loopᶜ _) ⊢loopᶜ (elabᶜ V dc)
 elabᶜ V (t-sub d p)                 = coerceE p (elabᵢ V d)
 elabᶜ V (t-lam {u = u} ≤p d)        = let (b , ⊢b) = elabᶜ V d in lam _ _ _ b , ⊢lam ≤p (⊢sub-eff u ⊢b)
 elabᶜ V (t-pair-lit-check da db)    = lift2 pair ⊢pair (elabᶜ V da) (elabᶜ V db)

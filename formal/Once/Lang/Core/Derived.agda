@@ -95,6 +95,9 @@ cataᶜ F π alg = let′ Many alg (lam (μ-type F) Many π (fold F v1 v0))
 -- D247: `ana`'s coalgebra is not evaluated at build — the ν stores it (D192).
 anaᶜ : ∀ {n} → Functor → Type → Purity → Tm n → Tm n
 anaᶜ F A π₀ c = lam A Many π₀ (unfold F (wk c) v0)
+-- `ana round` at `Eff` (D317/D319): the round is evaluated once, then the seed.
+loopᶜ : ∀ {n} → Type → Tm n → Tm n
+loopᶜ A c = let′ Many c (lam A Many eff (iter v1 v0))
 
 -- Applying an effectful arrow at the surface builds a SUSPENSION
 -- `Unit ⇒[eff] B`; head and argument are evaluated when it runs

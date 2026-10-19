@@ -52,7 +52,7 @@ open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
-open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Lang.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
@@ -151,6 +151,8 @@ frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
 frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+-- the loop's two stashes, then the round above them.
+frontier-mono (Iter b)       n l = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (frontier-mono b _ _))
 frontier-mono (SigOp si)     n l = sigop-mono n (cmp-of (sem si))
 frontier-mono (Call _)      n l = ≤-refl
 frontier-mono (const fits-int _)   n l = ≤-refl
@@ -876,6 +878,20 @@ slots-below (Ana _ c) n l =
     (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+-- the loop: the environment stash, the round (its own frontier is the loop's
+-- budget), then the branch and the next pair through the two stashes.
+slots-below (Iter b) n l =
+  segok-pre _ refl (sb-none refl ∷ sb-slot refl e< (λ _ ()) ∷ sb-none refl ∷ [])
+    (segok-++ (slots-below b _ _)
+      (segok-idle _ refl
+        (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl h (λ _ ()) ∷
+         sb-none refl ∷ sb-none refl ∷ sb-slot refl e< (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl h (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ [])))
+  where h : suc (suc n) ≤ budget-of (ir-to-trace' n l (Iter b))
+        h = frontier-mono b _ _
+        e< : suc n ≤ budget-of (ir-to-trace' n l (Iter b))
+        e< = ≤-trans (m≤n⇒m≤1+n ≤-refl) h
 slots-below (SigOp si)     n l = sigop-below si n (cmp-of (sem si))
 slots-below (Call _)      n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-int _)   n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -912,6 +928,7 @@ blocks-below (case f g)          n l = ++⁺ (blocks-below f n (suc (suc l)))
 blocks-below (In _)            n l = []
 blocks-below (out-μ _)           n l = []
 blocks-below (Cata {F} _ alg)    n l = blocks-below alg 0 l
+blocks-below (Iter b)            n l = blocks-below b _ _
 blocks-below (Out _)             n l = []
 blocks-below (in-ν _)          n l = segok-idle _ refl (sb-none refl ∷ []) ∷ []
 -- D199: the block is `coalg ++ re-suspension`, and the budget is the pass's
