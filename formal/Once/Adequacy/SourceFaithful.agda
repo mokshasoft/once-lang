@@ -58,7 +58,8 @@ open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull; projUsed; distribute; distribIR; compIR; copairIR; forkIR; curryIR; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Once.Lang.Trace using (ret)
-open import Once.Lang.Iterative using (T∞; force; return∞; _>>=∞_; fmap∞; bindBlock)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; bindBlock)
+open T∞ using (force)
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial)
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info;
                                              add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info;

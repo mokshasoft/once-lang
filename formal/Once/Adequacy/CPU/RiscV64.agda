@@ -78,11 +78,11 @@ block-env : List (String × RF.Payload) → String → Maybe RF.Payload
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
 
--- D320: the binary's TRACE — the machine read off step by step (`RT.δ`,
+-- D320: the binary's TRACE — the machine read off step by step (`RT.Run.δ`,
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-riscv64 : Interp → RF.Image → RV.State → Tr ⊤
 run-trace-riscv64 ι P s =
-  Machine.trace (RT.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
+  Machine.trace (RT.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   -- The CPU's decoder (the ISA's encoding) — only ever used through

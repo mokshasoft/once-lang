@@ -13,6 +13,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Lang.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.Lang.Iterative
+open T∞ using (force)
+open TreeEq∞ using (force≈)
 
 ------------------------------------------------------------------------
 -- Bisimilarity is reflexive and a congruence for bind
@@ -63,7 +65,7 @@ data RelB {X Y : Set} (R : X → Y → Set) : T (X ⊎ T∞ X) → T Y → Set w
 record RelT∞′ {X Y : Set} (R : X → Y → Set) (m : T∞ X) (t : T Y) : Set where
   constructor rel∞
   field block : RelB R (force m) t
-open RelT∞′ public
+open RelT∞′
 
 rel∞-ret : ∀ {X Y} {R : X → Y → Set} {x y} → R x y → RelT∞′ R (return∞ x) (ret y)
 rel∞-ret r = rel∞ (b-ret r)

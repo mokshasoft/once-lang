@@ -98,7 +98,8 @@ open import Once.Lang.Trace using (FFIAnswers)
 φ = pureHalf ι
 
 open import Once.Adequacy.GradedRelation fmt using (RelGV; GM-D)
-open import Once.Lang.Iterative using (T∞; force; return∞)
+open import Once.Lang.Iterative using (T∞; return∞)
+open T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel using (retargetˡ)

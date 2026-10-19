@@ -41,7 +41,6 @@ Once/CCC/Codegen/IRObsCorrect/Prelude.agda 28
 Once/CCC/Codegen/IRObsCorrectFlat.agda 14
 Once/CCC/Codegen/ThunkScope.agda 1
 Once/CCC/Machine/Allocation.agda 1
-Once/CCC/Machine/ClosureWellFormed.agda 6
 Once/CCC/Machine/Flat.agda 1
 Once/CCC/Machine/SMPrimitives.agda 2
 Once/CCC/Target/RiscV64/Layout.agda 3

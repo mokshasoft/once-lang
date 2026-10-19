@@ -21,7 +21,8 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.Lang.Trace using (T; ret; call; halt)
-open import Once.Lang.Iterative using (T∞; force)
+open import Once.Lang.Iterative using (T∞)
+open T∞ using (force)
 
 -- What a budgeted observation ends with: a result and the budget left, or a
 -- cut.

@@ -137,7 +137,8 @@ base-refl base-rigid      ()
 -- Runs: the monad's operations preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞; bindBlock; force)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
+open T∞ using (force)
 open import Once.Lang.Trace using (ret; call; halt)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)

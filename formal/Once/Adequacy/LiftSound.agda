@@ -44,7 +44,8 @@ open import Once.Arith.Machine.Rewrite using (try-lift; shape-of; has-op; block-
 open import Data.Maybe using () renaming (map to mapᴹ)
 open import Once.Lang.Trace using (T; ret)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Lang.Iterative using (T∞; force; return∞; _>>=∞_; bindBlock)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
+open T∞ using (force)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Fst; Snd; InputPath; Path; here-int; here-flt; go-fst; go-snd; typePath?)
 open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-through; rp-at; rp-comp; pair-path;

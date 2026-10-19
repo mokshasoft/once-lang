@@ -42,7 +42,7 @@ open HaltOp using (hdom)
 record T∞ (X : Set) : Set where
   coinductive
   field force : T (X ⊎ T∞ X)
-open T∞ public
+open T∞
 
 ------------------------------------------------------------------------
 -- The monad
@@ -141,7 +141,7 @@ data StepEq {X Y : Set} (Rx : X → X → Set) (Ry : Y → Y → Set) : X ⊎ Y 
 record TreeEq∞ {X : Set} (Rx : X → X → Set) (m m′ : T∞ X) : Set where
   coinductive
   field force≈ : BlockEq (StepEq Rx (TreeEq∞ Rx)) (force m) (force m′)
-open TreeEq∞ public
+open TreeEq∞
 
 ------------------------------------------------------------------------
 -- The functor action, and sequencing a layer of computations (`seqF`'s twin).

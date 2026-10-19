@@ -66,11 +66,11 @@ block-env : List (String × RF.Payload) → String → Maybe (List XInstr)
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just (proj₁ p) else block-env bs s
 
--- D320: the binary's TRACE — the machine read off step by step (`RT.δ`,
+-- D320: the binary's TRACE — the machine read off step by step (`RT.Run.δ`,
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-x86-32 : Interp → RF.Image → X32.State → Tr ⊤
 run-trace-x86-32 ι P s =
-  Machine.trace (RT.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
+  Machine.trace (RT.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   decode-x86-32 : List Byte → Maybe RF.Image

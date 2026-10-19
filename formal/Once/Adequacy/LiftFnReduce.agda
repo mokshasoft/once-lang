@@ -258,7 +258,8 @@ liftFn-case-inj₂ {A} {B} {C} f g b =
 
 open import Data.Sum using () renaming (inj₁ to left)
 open import Once.Lang.Trace using (ret)
-open import Once.Lang.Iterative using (force; bindBlock)
+open import Once.Lang.Iterative using (T∞; bindBlock)
+open T∞ using (force)
 
 Now : ∀ {X : Set} → T∞ X → X → Set
 Now m v = force m ≡ ret (left v)
