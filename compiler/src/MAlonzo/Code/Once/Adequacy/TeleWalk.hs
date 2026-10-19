@@ -436,7 +436,7 @@ du_later'45'not'45'main_212 v0 v1 v2
   = coe
       du_un_228
       (coe
-         MAlonzo.Code.Once.Compile.d_tableOf'45'go_850
+         MAlonzo.Code.Once.Compile.d_tableOf'45'go_948
          (coe
             MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_332
             (coe v0) (coe v1))
@@ -665,14 +665,14 @@ du_here'45'main_414 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
          MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
          (coe du_φ_14 (coe v1) (coe v2))
          (coe
-            MAlonzo.Code.Once.Compile.d_tableOf'45'go_850
+            MAlonzo.Code.Once.Compile.d_tableOf'45'go_948
             (coe
                MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_332
                (coe v15) (coe v16))
             (coe
                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                (coe
-                  MAlonzo.Code.Once.Compile.d_irFunOf_840
+                  MAlonzo.Code.Once.Compile.d_irFunOf_938
                   (coe
                      MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                      (coe
@@ -1010,7 +1010,7 @@ du_later_506 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6]
 du_later_506 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_tableOf'45'go_850
+      MAlonzo.Code.Once.Compile.d_tableOf'45'go_948
       (coe
          MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_332
          (coe v0) (coe v1))
@@ -1599,7 +1599,7 @@ du_walk'45'mono'45'd_650 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                            (coe
                               MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                               (coe
-                                 MAlonzo.Code.Once.Compile.d_irFunOf_840
+                                 MAlonzo.Code.Once.Compile.d_irFunOf_938
                                  (coe
                                     MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                                     (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v5)) (coe v8)
@@ -1719,7 +1719,7 @@ du_walk'45'mono'45'd_650 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                              (coe
                                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                 (coe
-                                                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                                                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                                                    (coe
                                                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                                                       (coe
@@ -1870,7 +1870,7 @@ du_walk'45'mono'45'd_650 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                    (coe
-                                                      MAlonzo.Code.Once.Compile.d_irFunOf_840
+                                                      MAlonzo.Code.Once.Compile.d_irFunOf_938
                                                       (coe
                                                          MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                                                          (coe

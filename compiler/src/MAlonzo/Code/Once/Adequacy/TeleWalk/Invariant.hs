@@ -817,7 +817,7 @@ du_e_450 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6
 du_e_450 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Compile.d_irFunOf_840
+      MAlonzo.Code.Once.Compile.d_irFunOf_938
       (coe
          MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
          (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe du_x_436 (coe v0)))

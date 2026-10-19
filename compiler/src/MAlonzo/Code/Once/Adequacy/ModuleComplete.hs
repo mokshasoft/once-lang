@@ -657,7 +657,7 @@ du_found_438 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_found_438
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe MAlonzo.Code.Once.Compile.d_mainCall_808) erased
+      (coe MAlonzo.Code.Once.Compile.d_mainCall_906) erased
 -- Once.Adequacy.ModuleComplete._.step
 d_step_442 ::
   MAlonzo.Code.Once.Compile.T_CScope_372 ->

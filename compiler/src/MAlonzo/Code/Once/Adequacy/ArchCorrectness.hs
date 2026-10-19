@@ -244,7 +244,7 @@ d_o_94 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12 ~v13
        ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21
   = du_o_94
 du_o_94 :: MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
-du_o_94 = coe MAlonzo.Code.Once.Compile.d_entry'45'owner_962
+du_o_94 = coe MAlonzo.Code.Once.Compile.d_entry'45'owner_1060
 -- Once.Adequacy.ArchCorrectness.X64.BlockRunsHyp-x86-64
 d_BlockRunsHyp'45'x86'45'64_102 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -594,7 +594,7 @@ du_as64_104 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
 du_as64_104
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_as64_2180
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_as64_2178
 -- Once.Adequacy.ArchCorrectness.X64.code-map
 d_code'45'map_106 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -775,7 +775,7 @@ du_code'45'map_106 ::
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer
 du_code'45'map_106
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_code'45'map_2264
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_code'45'map_2262
 -- Once.Adequacy.ArchCorrectness.X64.conc-tr
 d_conc'45'tr_108 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -1020,7 +1020,7 @@ du_conc'45'tr_108 ::
   MAlonzo.Code.Once.Spec.Trace.T__'8776''7511''10216'_'10217'__86
 du_conc'45'tr_108 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_conc'45'tr_2414
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_conc'45'tr_2412
       (coe du_o_94) (coe v8) (coe v7) (coe v0 v7) (coe v1 v7) (coe v2 v7)
       (coe v3 v7) (coe v4 v7) (coe v5 v7) (coe v6 v7) v9 v10 v11 v12
 -- Once.Adequacy.ArchCorrectness.X64.entry-corr
@@ -1203,7 +1203,7 @@ du_entry'45'corr_110 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_628
 du_entry'45'corr_110 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'corr_2300
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'corr_2298
 -- Once.Adequacy.ArchCorrectness.X64.entry-frame-base
 d_entry'45'frame'45'base_112 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -1609,7 +1609,7 @@ du_entry'45'frame'45'x86'45'64_114 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14
 du_entry'45'frame'45'x86'45'64_114 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
       (coe du_o_94) (coe v8) (coe v7) (coe v0 v7) (coe v1 v7) (coe v2 v7)
       (coe v3 v7) (coe v4 v7) (coe v5 v7) (coe v6 v7)
 -- Once.Adequacy.ArchCorrectness.X64.entry-like
@@ -1790,7 +1790,7 @@ du_entry'45'like_116 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_entry'45'like_116 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'like_2376
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'like_2374
 -- Once.Adequacy.ArchCorrectness.X64.entry-regtag
 d_entry'45'regtag_118 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -1971,7 +1971,7 @@ du_entry'45'regtag_118 ::
   MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.T_RegTagWF_524
 du_entry'45'regtag_118 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'regtag_2370
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'regtag_2368
 -- Once.Adequacy.ArchCorrectness.X64.entry-view
 d_entry'45'view_120 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -2152,7 +2152,7 @@ du_entry'45'view_120 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_464
 du_entry'45'view_120
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'view_2278
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'view_2276
 -- Once.Adequacy.ArchCorrectness.X64.entry-wf
 d_entry'45'wf_122 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -2331,7 +2331,7 @@ du_entry'45'wf_122 ::
   Integer -> MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_736
 du_entry'45'wf_122 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'wf_2346
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_entry'45'wf_2344
 -- Once.Adequacy.ArchCorrectness.X64.file-tr-x86-64
 d_file'45'tr'45'x86'45'64_124 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -2585,7 +2585,7 @@ du_file'45'tr'45'x86'45'64_124 ::
 du_file'45'tr'45'x86'45'64_124 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                v11 v12 v13 v14 v15 v16 v17
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_file'45'tr'45'x86'45'64_2468
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_file'45'tr'45'x86'45'64_2466
       (coe du_o_94) (coe v8) (coe v7) (coe v0 v7) (coe v1 v7) (coe v2 v7)
       (coe v3 v7) (coe v4 v7) (coe v5 v7) (coe v6 v7) v9 v10 v13 v17
 -- Once.Adequacy.ArchCorrectness.X64.stack-top-in-stack
@@ -2821,7 +2821,7 @@ du_stack'45'top'45'in'45'stack_126 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_stack'45'top'45'in'45'stack_126 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_stack'45'top'45'in'45'stack_2114
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_stack'45'top'45'in'45'stack_2112
       (coe du_o_94) v8 v7 (coe v0 v7) (coe v1 v7) (coe v2 v7) (coe v3 v7)
       (coe v4 v7) (coe v5 v7) (coe v6 v7)
 -- Once.Adequacy.ArchCorrectness.X64.x86-64-frame-semantics
@@ -3534,7 +3534,7 @@ du_blocks'45'prefix_136 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_blocks'45'prefix_136 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_blocks'45'prefix_2382
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_blocks'45'prefix_2380
       v2 v3
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-alloc
 d_entry'45'alloc_138 ::
@@ -3784,9 +3784,9 @@ du_entry'45'alloc_138 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'alloc_2302
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'alloc_2300
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-bf
@@ -3969,7 +3969,7 @@ du_entry'45'bf_140 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_584
 du_entry'45'bf_140 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'bf_2326
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'bf_2324
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-blocks
 d_entry'45'blocks_142 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -4153,7 +4153,7 @@ du_entry'45'blocks_142 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'blocks_2452
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'blocks_2450
          (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
@@ -4512,7 +4512,7 @@ du_entry'45'loc_146 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
 du_entry'45'loc_146
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'loc_2308
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'loc_2306
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-nh
 d_entry'45'nh_148 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -4863,7 +4863,7 @@ du_entry'45'ns_150 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_entry'45'ns_150 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'ns_2322
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'ns_2320
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-regs
 d_entry'45'regs_152 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -5042,7 +5042,7 @@ du_entry'45'regs_152 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_Registers_120
 du_entry'45'regs_152
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_2310
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_2308
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-s
 d_entry'45's_154 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -5221,7 +5221,7 @@ du_entry'45's_154 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 du_entry'45's_154
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_2312
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_2310
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-span
 d_entry'45'span_156 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -5714,13 +5714,13 @@ du_entry'45'vr_158 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'vr_2516
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'vr_2514
                               (coe v9) (coe v8)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.entry-witness
@@ -6029,13 +6029,13 @@ du_entry'45'witness_160 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'witness_2490
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'witness_2488
                               (coe v9) (coe v8)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.flat-cut
@@ -6357,13 +6357,13 @@ du_flat'45'cut_162 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          coe
                            (\ v17 v18 v19 v20 v21 v22 ->
                               coe
-                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'cut_2690
+                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'cut_2688
                                 (coe v9) (coe v8)
                                 (coe
                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
                                    (coe v7))
                                 (coe
-                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                    (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12)
                                    (coe v13) (coe v14) (coe v15) (coe v16))
                                 v17 v18 v19 v20 v21))))))))
@@ -6884,13 +6884,13 @@ du_flat'45'fuel_166 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'fuel_2668
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'fuel_2666
                               (coe v9) (coe v8)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.flat-progress
@@ -7212,13 +7212,13 @@ du_flat'45'progress_168 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          coe
                            (\ v17 v18 v19 v20 v21 v22 ->
                               coe
-                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'progress_2642
+                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'progress_2640
                                 (coe v9) (coe v8)
                                 (coe
                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
                                    (coe v7))
                                 (coe
-                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                    (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12)
                                    (coe v13) (coe v14) (coe v15) (coe v16))
                                 v17 v18 v19 v20 v21))))))))
@@ -7406,7 +7406,7 @@ du_fns'45'slot'45'stable_170 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_fns'45'slot'45'stable_170 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_fns'45'slot'45'stable_2462
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_fns'45'slot'45'stable_2460
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
          (coe v0))
@@ -7593,7 +7593,7 @@ du_image_172 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image_2342
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image_2340
          (coe v1) (coe v0))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.image-slot-stable
 d_image'45'slot'45'stable_174 ::
@@ -7780,7 +7780,7 @@ du_image'45'slot'45'stable_174 v0 v1
   = let v2 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image'45'slot'45'stable_2474
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image'45'slot'45'stable_2472
          (coe v2) (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
@@ -7968,7 +7968,7 @@ du_main'45'blocks_176 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'blocks_2338
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'blocks_2336
          (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
@@ -8223,13 +8223,13 @@ du_main'45'flat_178 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'flat_2480
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'flat_2478
                               (coe v9)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.span-prefix
@@ -8663,9 +8663,9 @@ du_start'45'flat_182 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_start'45'flat_2478
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_start'45'flat_2476
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_entry'45'frame'45'x86'45'64_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.tail-fuel
@@ -8846,7 +8846,7 @@ du_tail'45'fuel_184 ::
   () -> MAlonzo.Code.Once.Lang.Res.T_Res_8 -> Integer
 du_tail'45'fuel_184 v0 v1
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_tail'45'fuel_2540
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_tail'45'fuel_2538
       v1
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.top-pre
 d_top'45'pre_186 ::
@@ -9030,7 +9030,7 @@ du_top'45'pre_186
   = let v0 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_top'45'pre_2332
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_top'45'pre_2330
          (coe v0))
 -- Once.Adequacy.ArchCorrectness.X64.FFOx.σFS
 d_σFS_188 ::
@@ -9211,7 +9211,7 @@ du_σFS_188 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 du_σFS_188 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_σFS_2502
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_σFS_2500
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_x86'45'64'45'frame'45'semantics_32
          (coe v0))
@@ -9564,7 +9564,7 @@ du_as32_198 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
 du_as32_198
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_as32_2180
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_as32_2178
 -- Once.Adequacy.ArchCorrectness.X32.code-map
 d_code'45'map_200 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -9745,7 +9745,7 @@ du_code'45'map_200 ::
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer
 du_code'45'map_200
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_code'45'map_2264
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_code'45'map_2262
 -- Once.Adequacy.ArchCorrectness.X32.conc-tr
 d_conc'45'tr_202 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -9990,7 +9990,7 @@ du_conc'45'tr_202 ::
   MAlonzo.Code.Once.Spec.Trace.T__'8776''7511''10216'_'10217'__86
 du_conc'45'tr_202 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_conc'45'tr_2414
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_conc'45'tr_2412
       (coe du_o_94) (coe v8) (coe v7) (coe v0 v7) (coe v1 v7) (coe v2 v7)
       (coe v3 v7) (coe v4 v7) (coe v5 v7) (coe v6 v7) v9 v10 v11 v12
 -- Once.Adequacy.ArchCorrectness.X32.entry-corr
@@ -10173,7 +10173,7 @@ du_entry'45'corr_204 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_628
 du_entry'45'corr_204 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'corr_2300
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'corr_2298
 -- Once.Adequacy.ArchCorrectness.X32.entry-frame-base
 d_entry'45'frame'45'base_206 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -10580,7 +10580,7 @@ du_entry'45'frame'45'x86'45'32_208 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14
 du_entry'45'frame'45'x86'45'32_208 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
       (coe du_o_94) (coe v8) (coe v7) (coe v0 v7) (coe v1 v7) (coe v2 v7)
       (coe v3 v7) (coe v4 v7) (coe v5 v7) (coe v6 v7)
 -- Once.Adequacy.ArchCorrectness.X32.entry-like
@@ -10761,7 +10761,7 @@ du_entry'45'like_210 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_entry'45'like_210 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'like_2376
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'like_2374
 -- Once.Adequacy.ArchCorrectness.X32.entry-regtag
 d_entry'45'regtag_212 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -10942,7 +10942,7 @@ du_entry'45'regtag_212 ::
   MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.T_RegTagWF_524
 du_entry'45'regtag_212 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'regtag_2370
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'regtag_2368
 -- Once.Adequacy.ArchCorrectness.X32.entry-view
 d_entry'45'view_214 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -11123,7 +11123,7 @@ du_entry'45'view_214 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_464
 du_entry'45'view_214
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'view_2278
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'view_2276
 -- Once.Adequacy.ArchCorrectness.X32.entry-wf
 d_entry'45'wf_216 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -11302,7 +11302,7 @@ du_entry'45'wf_216 ::
   Integer -> MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_736
 du_entry'45'wf_216 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'wf_2346
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_entry'45'wf_2344
 -- Once.Adequacy.ArchCorrectness.X32.file-tr-x86-32
 d_file'45'tr'45'x86'45'32_218 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -11557,7 +11557,7 @@ du_file'45'tr'45'x86'45'32_218 ::
 du_file'45'tr'45'x86'45'32_218 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                v11 v12 v13 v14 v15 v16 v17
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_file'45'tr'45'x86'45'32_2468
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_file'45'tr'45'x86'45'32_2466
       (coe du_o_94) (coe v8) (coe v7) (coe v0 v7) (coe v1 v7) (coe v2 v7)
       (coe v3 v7) (coe v4 v7) (coe v5 v7) (coe v6 v7) v9 v10 v13 v17
 -- Once.Adequacy.ArchCorrectness.X32.stack-top-in-stack
@@ -11794,7 +11794,7 @@ du_stack'45'top'45'in'45'stack_220 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_stack'45'top'45'in'45'stack_220 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_stack'45'top'45'in'45'stack_2114
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_stack'45'top'45'in'45'stack_2112
       (coe du_o_94) v8 v7 (coe v0 v7) (coe v1 v7) (coe v2 v7) (coe v3 v7)
       (coe v4 v7) (coe v5 v7) (coe v6 v7)
 -- Once.Adequacy.ArchCorrectness.X32.x86-32-frame-semantics
@@ -12507,7 +12507,7 @@ du_blocks'45'prefix_230 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_blocks'45'prefix_230 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_blocks'45'prefix_2382
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_blocks'45'prefix_2380
       v2 v3
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-alloc
 d_entry'45'alloc_232 ::
@@ -12757,9 +12757,9 @@ du_entry'45'alloc_232 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'alloc_2302
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'alloc_2300
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-bf
@@ -12942,7 +12942,7 @@ du_entry'45'bf_234 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_584
 du_entry'45'bf_234 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'bf_2326
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'bf_2324
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-blocks
 d_entry'45'blocks_236 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -13126,7 +13126,7 @@ du_entry'45'blocks_236 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'blocks_2452
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'blocks_2450
          (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
@@ -13485,7 +13485,7 @@ du_entry'45'loc_240 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
 du_entry'45'loc_240
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'loc_2308
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'loc_2306
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-nh
 d_entry'45'nh_242 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -13836,7 +13836,7 @@ du_entry'45'ns_244 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_entry'45'ns_244 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'ns_2322
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'ns_2320
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-regs
 d_entry'45'regs_246 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -14015,7 +14015,7 @@ du_entry'45'regs_246 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_Registers_120
 du_entry'45'regs_246
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_2310
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_2308
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-s
 d_entry'45's_248 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -14194,7 +14194,7 @@ du_entry'45's_248 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 du_entry'45's_248
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_2312
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_2310
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-span
 d_entry'45'span_250 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -14687,13 +14687,13 @@ du_entry'45'vr_252 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'vr_2516
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'vr_2514
                               (coe v9) (coe v8)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.entry-witness
@@ -15002,13 +15002,13 @@ du_entry'45'witness_254 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'witness_2490
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'witness_2488
                               (coe v9) (coe v8)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.flat-cut
@@ -15330,13 +15330,13 @@ du_flat'45'cut_256 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          coe
                            (\ v17 v18 v19 v20 v21 v22 ->
                               coe
-                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'cut_2690
+                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'cut_2688
                                 (coe v9) (coe v8)
                                 (coe
                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
                                    (coe v7))
                                 (coe
-                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                    (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12)
                                    (coe v13) (coe v14) (coe v15) (coe v16))
                                 v17 v18 v19 v20 v21))))))))
@@ -15857,13 +15857,13 @@ du_flat'45'fuel_260 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'fuel_2668
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'fuel_2666
                               (coe v9) (coe v8)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.flat-progress
@@ -16185,13 +16185,13 @@ du_flat'45'progress_262 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          coe
                            (\ v17 v18 v19 v20 v21 v22 ->
                               coe
-                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'progress_2642
+                                MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'progress_2640
                                 (coe v9) (coe v8)
                                 (coe
                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
                                    (coe v7))
                                 (coe
-                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                    (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12)
                                    (coe v13) (coe v14) (coe v15) (coe v16))
                                 v17 v18 v19 v20 v21))))))))
@@ -16379,7 +16379,7 @@ du_fns'45'slot'45'stable_264 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_fns'45'slot'45'stable_264 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_fns'45'slot'45'stable_2462
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_fns'45'slot'45'stable_2460
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
          (coe v0))
@@ -16566,7 +16566,7 @@ du_image_266 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image_2342
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image_2340
          (coe v1) (coe v0))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.image-slot-stable
 d_image'45'slot'45'stable_268 ::
@@ -16753,7 +16753,7 @@ du_image'45'slot'45'stable_268 v0 v1
   = let v2 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image'45'slot'45'stable_2474
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image'45'slot'45'stable_2472
          (coe v2) (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
@@ -16941,7 +16941,7 @@ du_main'45'blocks_270 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'blocks_2338
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'blocks_2336
          (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
@@ -17196,13 +17196,13 @@ du_main'45'flat_272 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'flat_2480
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'flat_2478
                               (coe v9)
                               (coe
                                  MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
                                  (coe v7))
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.span-prefix
@@ -17636,9 +17636,9 @@ du_start'45'flat_276 v0 v1 v2 v3 v4 v5 v6 v7 v8
                         (let v16 = coe v6 v7 in
                          coe
                            (coe
-                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_start'45'flat_2478
+                              MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_start'45'flat_2476
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2116
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_entry'45'frame'45'x86'45'32_2114
                                  (coe v9) (coe v8) (coe v7) (coe v10) (coe v11) (coe v12) (coe v13)
                                  (coe v14) (coe v15) (coe v16))))))))))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.tail-fuel
@@ -17819,7 +17819,7 @@ du_tail'45'fuel_278 ::
   () -> MAlonzo.Code.Once.Lang.Res.T_Res_8 -> Integer
 du_tail'45'fuel_278 v0 v1
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_tail'45'fuel_2540
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_tail'45'fuel_2538
       v1
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.top-pre
 d_top'45'pre_280 ::
@@ -18003,7 +18003,7 @@ du_top'45'pre_280
   = let v0 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_top'45'pre_2332
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_top'45'pre_2330
          (coe v0))
 -- Once.Adequacy.ArchCorrectness.X32.FFOx.σFS
 d_σFS_282 ::
@@ -18184,7 +18184,7 @@ du_σFS_282 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 du_σFS_282 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_σFS_2502
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_σFS_2500
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_x86'45'32'45'frame'45'semantics_32
          (coe v0))
@@ -18537,7 +18537,7 @@ du_asR_292 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
 du_asR_292
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_asR_2172
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_asR_2170
 -- Once.Adequacy.ArchCorrectness.RV.code-map
 d_code'45'map_294 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -18718,7 +18718,7 @@ du_code'45'map_294 ::
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Integer
 du_code'45'map_294
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_code'45'map_2232
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_code'45'map_2230
 -- Once.Adequacy.ArchCorrectness.RV.conc-tr
 d_conc'45'tr_296 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -18973,7 +18973,7 @@ du_conc'45'tr_296 ::
   MAlonzo.Code.Once.Spec.Trace.T__'8776''7511''10216'_'10217'__86
 du_conc'45'tr_296 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_conc'45'tr_2384
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_conc'45'tr_2382
       (coe du_o_94) (coe v9) (coe v8) (coe v0 v8) (coe v1 v8) (coe v2 v8)
       (coe v3 v8) (coe v4 v8) (coe v5 v8) (coe v6 v8) (coe v7 v8) v10 v11
       v12 v13
@@ -19157,7 +19157,7 @@ du_entry'45'corr_298 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_628
 du_entry'45'corr_298 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'corr_2270
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'corr_2268
 -- Once.Adequacy.ArchCorrectness.RV.entry-frame-base
 d_entry'45'frame'45'base_300 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -19573,7 +19573,7 @@ du_entry'45'frame'45'riscv64_302 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14
 du_entry'45'frame'45'riscv64_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
       (coe du_o_94) (coe v9) (coe v8) (coe v0 v8) (coe v1 v8) (coe v2 v8)
       (coe v3 v8) (coe v4 v8) (coe v5 v8) (coe v6 v8) (coe v7 v8)
 -- Once.Adequacy.ArchCorrectness.RV.entry-like
@@ -19754,7 +19754,7 @@ du_entry'45'like_304 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_entry'45'like_304 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'like_2346
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'like_2344
 -- Once.Adequacy.ArchCorrectness.RV.entry-regtag
 d_entry'45'regtag_306 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -19935,7 +19935,7 @@ du_entry'45'regtag_306 ::
   MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.T_RegTagWF_524
 du_entry'45'regtag_306 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'regtag_2340
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'regtag_2338
 -- Once.Adequacy.ArchCorrectness.RV.entry-view
 d_entry'45'view_308 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -20116,7 +20116,7 @@ du_entry'45'view_308 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_464
 du_entry'45'view_308
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'view_2246
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'view_2244
 -- Once.Adequacy.ArchCorrectness.RV.entry-wf
 d_entry'45'wf_310 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -20295,7 +20295,7 @@ du_entry'45'wf_310 ::
   Integer -> MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_736
 du_entry'45'wf_310 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'wf_2316
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_entry'45'wf_2314
 -- Once.Adequacy.ArchCorrectness.RV.file-tr-riscv64
 d_file'45'tr'45'riscv64_312 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -20559,7 +20559,7 @@ du_file'45'tr'45'riscv64_312 ::
 du_file'45'tr'45'riscv64_312 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                              v12 v13 v14 v15 v16 v17 v18
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_file'45'tr'45'riscv64_2438
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_file'45'tr'45'riscv64_2436
       (coe du_o_94) (coe v9) (coe v8) (coe v0 v8) (coe v1 v8) (coe v2 v8)
       (coe v3 v8) (coe v4 v8) (coe v5 v8) (coe v6 v8) (coe v7 v8) v10 v11
       v14 v18
@@ -20988,7 +20988,7 @@ du_stack'45'top'45'in'45'stack_316 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_stack'45'top'45'in'45'stack_316 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_stack'45'top'45'in'45'stack_2108
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_stack'45'top'45'in'45'stack_2106
       (coe du_o_94) v9 v8 (coe v0 v8) (coe v1 v8) (coe v2 v8) (coe v3 v8)
       (coe v4 v8) (coe v5 v8) (coe v6 v8) (coe v7 v8)
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.BlockRunsT
@@ -21519,7 +21519,7 @@ du_blocks'45'prefix_324 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_blocks'45'prefix_324 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_blocks'45'prefix_2382
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_blocks'45'prefix_2380
       v2 v3
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-alloc
 d_entry'45'alloc_326 ::
@@ -21781,9 +21781,9 @@ du_entry'45'alloc_326 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                            (let v18 = coe v7 v8 in
                             coe
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'alloc_2302
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'alloc_2300
                                  (coe
-                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                     (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                     (coe v14) (coe v15) (coe v16) (coe v17) (coe v18)))))))))))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-bf
@@ -21966,7 +21966,7 @@ du_entry'45'bf_328 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_584
 du_entry'45'bf_328 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'bf_2326
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'bf_2324
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-blocks
 d_entry'45'blocks_330 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -22150,7 +22150,7 @@ du_entry'45'blocks_330 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'blocks_2452
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'blocks_2450
          (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
@@ -22509,7 +22509,7 @@ du_entry'45'loc_334 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
 du_entry'45'loc_334
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'loc_2308
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'loc_2306
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-nh
 d_entry'45'nh_336 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -22860,7 +22860,7 @@ du_entry'45'ns_338 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_entry'45'ns_338 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'ns_2322
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'ns_2320
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-regs
 d_entry'45'regs_340 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -23039,7 +23039,7 @@ du_entry'45'regs_340 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_Registers_120
 du_entry'45'regs_340
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_2310
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_2308
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-s
 d_entry'45's_342 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -23218,7 +23218,7 @@ du_entry'45's_342 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408
 du_entry'45's_342
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_2312
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_2310
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-span
 d_entry'45'span_344 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
@@ -23723,13 +23723,13 @@ du_entry'45'vr_346 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                            (let v18 = coe v7 v8 in
                             coe
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'vr_2516
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'vr_2514
                                  (coe v10) (coe v9)
                                  (coe
                                     MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
                                     (coe v8))
                                  (coe
-                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                     (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                     (coe v14) (coe v15) (coe v16) (coe v17) (coe v18)))))))))))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.entry-witness
@@ -24050,13 +24050,13 @@ du_entry'45'witness_348 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                            (let v18 = coe v7 v8 in
                             coe
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'witness_2490
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'witness_2488
                                  (coe v10) (coe v9)
                                  (coe
                                     MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
                                     (coe v8))
                                  (coe
-                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                     (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                     (coe v14) (coe v15) (coe v16) (coe v17) (coe v18)))))))))))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.flat-cut
@@ -24390,13 +24390,13 @@ du_flat'45'cut_350 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             coe
                               (\ v19 v20 v21 v22 v23 v24 ->
                                  coe
-                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'cut_2690
+                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'cut_2688
                                    (coe v10) (coe v9)
                                    (coe
                                       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
                                       (coe v8))
                                    (coe
-                                      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                       (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                       (coe v14) (coe v15) (coe v16) (coe v17) (coe v18))
                                    v19 v20 v21 v22 v23)))))))))
@@ -24929,13 +24929,13 @@ du_flat'45'fuel_354 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                            (let v18 = coe v7 v8 in
                             coe
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'fuel_2668
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'fuel_2666
                                  (coe v10) (coe v9)
                                  (coe
                                     MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
                                     (coe v8))
                                  (coe
-                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                     (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                     (coe v14) (coe v15) (coe v16) (coe v17) (coe v18)))))))))))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.flat-progress
@@ -25269,13 +25269,13 @@ du_flat'45'progress_356 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             coe
                               (\ v19 v20 v21 v22 v23 v24 ->
                                  coe
-                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'progress_2642
+                                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_flat'45'progress_2640
                                    (coe v10) (coe v9)
                                    (coe
                                       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
                                       (coe v8))
                                    (coe
-                                      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                       (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                       (coe v14) (coe v15) (coe v16) (coe v17) (coe v18))
                                    v19 v20 v21 v22 v23)))))))))
@@ -25463,7 +25463,7 @@ du_fns'45'slot'45'stable_358 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_fns'45'slot'45'stable_358 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_fns'45'slot'45'stable_2462
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_fns'45'slot'45'stable_2460
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
          (coe v0))
@@ -25650,7 +25650,7 @@ du_image_360 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image_2342
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image_2340
          (coe v1) (coe v0))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.image-slot-stable
 d_image'45'slot'45'stable_362 ::
@@ -25837,7 +25837,7 @@ du_image'45'slot'45'stable_362 v0 v1
   = let v2 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image'45'slot'45'stable_2474
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_image'45'slot'45'stable_2472
          (coe v2) (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
@@ -26025,7 +26025,7 @@ du_main'45'blocks_364 v0
   = let v1 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'blocks_2338
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'blocks_2336
          (coe v1)
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
@@ -26292,13 +26292,13 @@ du_main'45'flat_366 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                            (let v18 = coe v7 v8 in
                             coe
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'flat_2480
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_main'45'flat_2478
                                  (coe v10)
                                  (coe
                                     MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
                                     (coe v8))
                                  (coe
-                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                     (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                     (coe v14) (coe v15) (coe v16) (coe v17) (coe v18)))))))))))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.span-prefix
@@ -26744,9 +26744,9 @@ du_start'45'flat_370 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                            (let v18 = coe v7 v8 in
                             coe
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_start'45'flat_2478
+                                 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_start'45'flat_2476
                                  (coe
-                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2110
+                                    MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_entry'45'frame'45'riscv64_2108
                                     (coe v10) (coe v9) (coe v8) (coe v11) (coe v12) (coe v13)
                                     (coe v14) (coe v15) (coe v16) (coe v17) (coe v18)))))))))))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.tail-fuel
@@ -26927,7 +26927,7 @@ du_tail'45'fuel_372 ::
   () -> MAlonzo.Code.Once.Lang.Res.T_Res_8 -> Integer
 du_tail'45'fuel_372 v0 v1
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_tail'45'fuel_2540
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_tail'45'fuel_2538
       v1
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.top-pre
 d_top'45'pre_374 ::
@@ -27111,7 +27111,7 @@ du_top'45'pre_374
   = let v0 = coe du_o_94 in
     coe
       (coe
-         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_top'45'pre_2332
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_top'45'pre_2330
          (coe v0))
 -- Once.Adequacy.ArchCorrectness.RV.FFOr.σFS
 d_σFS_376 ::
@@ -27292,7 +27292,7 @@ du_σFS_376 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 du_σFS_376 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_σFS_2502
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_σFS_2500
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_rv64'45'frame'45'semantics_38
          (coe v0))
@@ -27478,10 +27478,10 @@ du_TP_378 v0 v1
   = coe
       MAlonzo.Code.Once.Denotation.Program.d_table_392
       (coe
-         MAlonzo.Code.Once.Compile.d_rewrite'45'program_894
+         MAlonzo.Code.Once.Compile.d_rewrite'45'program_992
          (coe
             MAlonzo.Code.Once.Denotation.Program.C_irProgram_396
-            (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
+            (coe MAlonzo.Code.Once.Compile.d_moduleTable_966 (coe v0))
             (coe v1)))
 -- Once.Adequacy.ArchCorrectness.LK
 d_LK_388 ::
@@ -27667,7 +27667,7 @@ du_LK_388 v0 v1
       MAlonzo.Code.Once.Adequacy.SourceTrace.du_rewrite'45'program'45'linked_234
       (coe
          MAlonzo.Code.Once.Denotation.Program.C_irProgram_396
-         (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
+         (coe MAlonzo.Code.Once.Compile.d_moduleTable_966 (coe v0))
          (coe v1))
       (coe
          MAlonzo.Code.Once.Adequacy.ProgramLinked.du_moduleToProgram'45'linked_2632
@@ -28427,7 +28427,7 @@ du_x86'45'64'45'correct_416 v0 v1 v2 v3 v4 v5 v6 v7 v8
       (coe
          (\ v9 v10 v11 v12 v13 v14 ->
             coe
-              MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_file'45'tr'45'x86'45'64_2468
+              MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.du_file'45'tr'45'x86'45'64_2466
               (coe du_o_94) (coe du_TP_378 (coe v9) (coe v12)) (coe v8)
               (coe v0 v8) (coe v1 v8) (coe v2 v8) (coe v3 v8) (coe v4 v8)
               (coe v5 v8) (coe v6 v8)
@@ -28678,7 +28678,7 @@ du_x86'45'32'45'correct_444 v0 v1 v2 v3 v4 v5 v6 v7 v8
       (coe
          (\ v9 v10 v11 v12 v13 v14 ->
             coe
-              MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_file'45'tr'45'x86'45'32_2468
+              MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.du_file'45'tr'45'x86'45'32_2466
               (coe du_o_94) (coe du_TP_378 (coe v9) (coe v12)) (coe v8)
               (coe v0 v8) (coe v1 v8) (coe v2 v8) (coe v3 v8) (coe v4 v8)
               (coe v5 v8) (coe v6 v8)
@@ -28939,7 +28939,7 @@ du_riscv64'45'correct_472 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
       (coe
          (\ v10 v11 v12 v13 v14 v15 ->
             coe
-              MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_file'45'tr'45'riscv64_2438
+              MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.du_file'45'tr'45'riscv64_2436
               (coe du_o_94) (coe du_TP_378 (coe v10) (coe v13)) (coe v9)
               (coe v0 v9) (coe v1 v9) (coe v2 v9) (coe v3 v9) (coe v4 v9)
               (coe v5 v9) (coe v6 v9) (coe v7 v9)

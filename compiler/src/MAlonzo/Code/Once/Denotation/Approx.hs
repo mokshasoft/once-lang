@@ -22,6 +22,8 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.List.Base
+import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Lang.Event
 import qualified MAlonzo.Code.Once.Lang.Iterative
@@ -403,3 +405,111 @@ du_endAp_814 v0
              C_cut_14 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Denotation.Approx.done-≤B
+d_done'45''8804'B_830 ::
+  () ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  AgdaAny ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_done'45''8804'B_830 ~v0 v1 v2 v3 v4 v5 v6 ~v7
+  = du_done'45''8804'B_830 v1 v2 v3 v4 v5 v6
+du_done'45''8804'B_830 ::
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  AgdaAny -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+du_done'45''8804'B_830 v0 v1 v2 v3 v4 v5
+  = case coe v3 of
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v6
+        -> case coe v6 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v7
+               -> coe
+                    MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v2)
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v7
+               -> let v8 = subInt (coe v2) (coe (1 :: Integer)) in
+                  coe
+                    (coe
+                       du_done'45''8804'B_830 (coe v0) (coe v1) (coe v8)
+                       (coe MAlonzo.Code.Once.Lang.Iterative.d_force_64 (coe v7)) (coe v4)
+                       (coe v5))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Lang.Trace.C_call_118 v6 v7 v8
+        -> coe
+             du_done'45''8804''45'call_854 (coe v0) (coe v1) (coe v2) (coe v6)
+             (coe v7) (coe v8)
+             (coe
+                MAlonzo.Code.Once.Lang.Trace.d_callAnswer_330 (coe v0) (coe v1)
+                (coe v6) (coe v7))
+             (coe v4) (coe v5)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Denotation.Approx.done-≤-call
+d_done'45''8804''45'call_854 ::
+  () ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 ->
+  AgdaAny ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  Maybe AgdaAny ->
+  AgdaAny ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_done'45''8804''45'call_854 ~v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 ~v10
+  = du_done'45''8804''45'call_854 v1 v2 v3 v4 v5 v6 v7 v8 v9
+du_done'45''8804''45'call_854 ::
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 ->
+  AgdaAny ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  Maybe AgdaAny ->
+  AgdaAny -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+du_done'45''8804''45'call_854 v0 v1 v2 v3 v4 v5 v6 v7 v8
+  = case coe v6 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
+        -> coe
+             du_done'45''8804'B_830 (coe v0)
+             (coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32 (coe v1)
+                (coe
+                   MAlonzo.Code.Data.List.Base.du_'91'_'93'_270
+                   (coe
+                      MAlonzo.Code.Once.Lang.Trace.d_callEvent_94 (coe v3) (coe v4))))
+             (coe v2) (coe v5 v9) (coe v7) (coe v8)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Denotation.Approx.done-≤
+d_done'45''8804'_946 ::
+  () ->
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  AgdaAny ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_done'45''8804'_946 ~v0 v1 v2 v3 v4 v5 v6
+  = du_done'45''8804'_946 v1 v2 v3 v4 v5 v6
+du_done'45''8804'_946 ::
+  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  AgdaAny ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+du_done'45''8804'_946 v0 v1 v2 v3 v4 v5 v6
+  = coe
+      du_done'45''8804'B_830 (coe v0) (coe v1) (coe v2)
+      (coe MAlonzo.Code.Once.Lang.Iterative.d_force_64 (coe v3)) (coe v4)
+      (coe v5)

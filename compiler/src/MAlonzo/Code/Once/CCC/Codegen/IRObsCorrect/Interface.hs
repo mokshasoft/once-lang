@@ -7322,12 +7322,8 @@ d_IRObsCorrectF_2550 = erased
 d_cata'45'correct_2588
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Interface.Core.cata-correct"
--- Once.CCC.Codegen.IRObsCorrect.Interface.Core.iter-correct
-d_iter'45'correct_2598
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Interface.Core.iter-correct"
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.exec-flat-stop
-d_exec'45'flat'45'stop_2606 ::
+d_exec'45'flat'45'stop_2596 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -7337,9 +7333,9 @@ d_exec'45'flat'45'stop_2606 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'flat'45'stop_2606 = erased
+d_exec'45'flat'45'stop_2596 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.reg-write-readLoc
-d_reg'45'write'45'readLoc_2634 ::
+d_reg'45'write'45'readLoc_2624 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -7348,4 +7344,4 @@ d_reg'45'write'45'readLoc_2634 ::
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_reg'45'write'45'readLoc_2634 = erased
+d_reg'45'write'45'readLoc_2624 = erased

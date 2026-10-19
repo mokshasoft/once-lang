@@ -187,7 +187,7 @@ d_trIRAt_106 v0 v1 v2
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
             (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20))
-         (coe MAlonzo.Code.Once.Compile.d_mainCall_808)
+         (coe MAlonzo.Code.Once.Compile.d_mainCall_906)
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
 -- Once.Adequacy.CoreBridge.core-ef-tr
 d_core'45'ef'45'tr_126 ::
@@ -259,7 +259,7 @@ du_core'45'ef'45'tr_126 v0 v1 v2 v3 v4 v5
                             MAlonzo.Code.Once.Lang.Module.du_teleSig_116 (coe v3) (coe v1))
                          (coe v5))
                       (coe
-                         MAlonzo.Code.Once.Compile.d_tableOf'45'go_850
+                         MAlonzo.Code.Once.Compile.d_tableOf'45'go_948
                          (coe
                             MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_332
                             (coe v3) (coe v4))
@@ -270,7 +270,7 @@ du_core'45'ef'45'tr_126 v0 v1 v2 v3 v4 v5
                    (coe
                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20))
-                   (coe MAlonzo.Code.Once.Compile.d_mainCall_808)
+                   (coe MAlonzo.Code.Once.Compile.d_mainCall_906)
                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoreBridge._.I′

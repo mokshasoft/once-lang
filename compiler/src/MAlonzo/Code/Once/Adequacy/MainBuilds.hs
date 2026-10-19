@@ -657,10 +657,10 @@ du_cfm'45'built'45'gated_542 v0 v1 v2
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Compile.d_printFile_968 v0
-                          (MAlonzo.Code.Once.Compile.d_emit'45'at_1050
+                          MAlonzo.Code.Once.Compile.d_printFile_1066 v0
+                          (MAlonzo.Code.Once.Compile.d_emit'45'at_1148
                              (coe v0) (coe v2)
-                             (coe MAlonzo.Code.Once.Compile.d_findMain_826 (coe v2))))
+                             (coe MAlonzo.Code.Once.Compile.d_findMain_924 (coe v2))))
                        erased)
              else coe
                     seq (coe v4) (coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12)

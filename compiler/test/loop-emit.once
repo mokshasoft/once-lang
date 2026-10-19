@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.119 D5: THE LOOP over a round that PERFORMS AN EVENT — each round
+-- emits the counter, then steps. From (3, 0) the rounds emit 3, 2, 1, 0 and
+-- the loop returns the sum 3 + 2 + 1 = 6. A round that emits is not silent,
+-- so the compiler gives no warning.
+--
+-- Expected: exit code 6.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+stop : Int * Int -> Unit -> Int + (Int * Int)
+stop p _ = inl (snd p)
+
+next : Int * Int -> Unit -> Int + (Int * Int)
+next p _ = inr (fst p - 1, snd p + fst p)
+
+step : Int * Int -> Int + (Int * Int)
+step p = case (next p) (stop p) (fst p == 0)
+
+round : Act (Int * Int) (Int + (Int * Int))
+round = compose step (compose snd (pair (compose emit@E fst) id))
+
+loopEmit : Eff (Int * Int) Int
+loopEmit = ana round
+
+main : Eff Unit Unit
+main = compose exit@S (compose loopEmit (\_ -> (3, 0)))

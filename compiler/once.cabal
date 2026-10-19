@@ -319,6 +319,14 @@ library
       MAlonzo.Code.Once.Adequacy.MachineTrace
       MAlonzo.Code.Once.Adequacy.SourceRefl
       MAlonzo.Code.Once.Arith.Backend.RunTraceMachine
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterBody
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterCont
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterExit
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterInv
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterProof
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterRounds
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterRun
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterShape
       MAlonzo.Code.Once.CCC.Machine.FlatLeft
       MAlonzo.Code.Once.Denotation.TraceTr
       MAlonzo.Code.Once.Lang.Out
@@ -494,6 +502,7 @@ library
       MAlonzo.Code.Once.Surface.CoerceIR
       MAlonzo.Code.Once.Surface.Context
       MAlonzo.Code.Once.Surface.Elaborate
+      MAlonzo.Code.Once.Surface.LoopWarn
       MAlonzo.Code.Once.Surface.Properties
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning

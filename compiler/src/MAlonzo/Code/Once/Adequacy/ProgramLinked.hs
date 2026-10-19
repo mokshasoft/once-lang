@@ -1968,7 +1968,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -1980,7 +1980,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -1992,7 +1992,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2004,7 +2004,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2020,7 +2020,7 @@ du_ref'45'entry_1408 v0 v1 v2
                        (coe
                           MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                           (coe
-                             MAlonzo.Code.Once.Compile.d_irFunOf_840
+                             MAlonzo.Code.Once.Compile.d_irFunOf_938
                              (coe
                                 MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                                 (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2033,7 +2033,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2045,7 +2045,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2057,7 +2057,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2069,7 +2069,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2081,7 +2081,7 @@ du_ref'45'entry_1408 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45'here_48
                 (coe
-                   MAlonzo.Code.Once.Compile.d_irFunOf_840
+                   MAlonzo.Code.Once.Compile.d_irFunOf_938
                    (coe
                       MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
                       (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -2532,7 +2532,7 @@ du_e_1938 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6
 du_e_1938 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Compile.d_irFunOf_840
+      MAlonzo.Code.Once.Compile.d_irFunOf_938
       (coe
          MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
          (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v0)) (coe v1)
@@ -3479,7 +3479,7 @@ du_main'45'linked_2548 v0 v1 v2
                                   (coe
                                      MAlonzo.Code.Once.Adequacy.ElaborateLinked.du_linkedAt'45''43''43'_270
                                      (coe
-                                        MAlonzo.Code.Once.Compile.d_tableOf'45'go_850
+                                        MAlonzo.Code.Once.Compile.d_tableOf'45'go_948
                                         (coe
                                            MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_332
                                            (coe v20) (coe v18))
@@ -3536,7 +3536,7 @@ du_e_2588 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRFun_6
 du_e_2588 v0
   = coe
-      MAlonzo.Code.Once.Compile.d_irFunOf_840
+      MAlonzo.Code.Once.Compile.d_irFunOf_938
       (coe
          MAlonzo.Code.Once.Compile.C_mkCompiledFun_252
          (coe
@@ -3660,7 +3660,7 @@ du_T_2662 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6]
 du_T_2662 v0 v1
   = coe
-      MAlonzo.Code.Once.Compile.d_tableOf'45'go_850
+      MAlonzo.Code.Once.Compile.d_tableOf'45'go_948
       (coe
          MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_332
          (coe v0) (coe v1))

@@ -104,10 +104,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_1074
-toMStage Parse = MC.C_Parse_1076
-toMStage Check = MC.C_Check_1078
-toMStage Build = MC.C_Build_1080
+toMStage :: Stage -> MC.T_Stage_1172
+toMStage Parse = MC.C_Parse_1174
+toMStage Check = MC.C_Check_1176
+toMStage Build = MC.C_Build_1178
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -140,12 +140,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_132 (MP.d_pfunType_126 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_1082 -> CompileResult
-fromMResult (MC.C_Parsed_1084 fis pfis) =
+fromMResult :: MC.T_CompileResult_1180 -> CompileResult
+fromMResult (MC.C_Parsed_1182 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_1086 _)  = Checked
-fromMResult (MC.C_Built_1088 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_1090 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_1184 _)  = Checked
+fromMResult (MC.C_Built_1186 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_1188 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -153,7 +153,7 @@ fromMResult (MC.C_Error_1090 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_1138 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_1236 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -205,7 +205,7 @@ moduleHasMain (Module m) = MEN.d_module'45'has'45'main_6 m
 -- was only half true — the refusal was gone and the replacement unreachable.
 moduleWarnings :: Arch -> Module -> [Text]
 moduleWarnings arch (Module m) =
-  map agdaToText (MW.d_warningsFor_402 (toMArch arch) (unsafeCoerce m))
+  map agdaToText (MW.d_warningsFor_422 (toMArch arch) (unsafeCoerce m))
 
 -- | Flatten imports: for each `DImport path (just alias)` in the
 -- user's module, substitute the primitives of the imported module

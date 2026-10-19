@@ -739,7 +739,7 @@ du_bundle'45'find_796 v0 v1
                -> case coe v18 of
                     MAlonzo.Code.Once.Parser.C_e'45'fun_134 v20
                       -> coe
-                           MAlonzo.Code.Once.Compile.du_findMain'45'here_812
+                           MAlonzo.Code.Once.Compile.du_findMain'45'here_910
                            (coe
                               MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__76
                               (coe
@@ -748,7 +748,7 @@ du_bundle'45'find_796 v0 v1
                               (coe
                                  MAlonzo.Code.Once.Spec.Name.d_bare_14
                                  (coe ("main" :: Data.Text.Text))))
-                           (coe MAlonzo.Code.Once.Compile.d_isEffUU'63'_794 (coe v5))
+                           (coe MAlonzo.Code.Once.Compile.d_isEffUU'63'_892 (coe v5))
                            (coe du_bundle'45'find_796 (coe v19) (coe v17))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -904,7 +904,7 @@ du_bundle'45'find'45'exists_1012 v0 v1
                               (coe
                                  MAlonzo.Code.Once.Spec.Name.d_bare_14
                                  (coe ("main" :: Data.Text.Text))))
-                           (coe MAlonzo.Code.Once.Compile.d_isEffUU'63'_794 (coe v5))
+                           (coe MAlonzo.Code.Once.Compile.d_isEffUU'63'_892 (coe v5))
                            (\ v21 -> coe du_bundle'45'find'45'exists_1012 (coe v19) (coe v17))
                            erased
                     _ -> MAlonzo.RTE.mazUnreachableError

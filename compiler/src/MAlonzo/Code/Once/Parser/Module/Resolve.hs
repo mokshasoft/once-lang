@@ -491,11 +491,11 @@ d_pdn'45'sigless_244 v0 v1 v2 v3
              else coe
                     seq (coe v5)
                     (let v6
-                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2204
+                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2234
                                (coe
-                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2182
+                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2212
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1422
+                                     MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1452
                                      (coe
                                         MAlonzo.Code.Data.List.Base.du__'43''43'__32
                                         (coe
