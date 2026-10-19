@@ -54,7 +54,8 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Lang.Trace as TM
-open import Once.Lang.Res using (is-stopped)
+open import Once.Lang.Res using (Res; stopped; returns; is-stopped)
+open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 open import Data.Bool using (Bool)
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
@@ -139,20 +140,20 @@ module ArmRC {FS : FrameSemantics} where
       -- plan 0.97: the two trailing control rows happen only when the arm
       -- REACHED ITS END. `evalᴰ (case f g) (inj₂ Bv)` IS `evalᴰ g Bv`, so the
       -- arm's stoppedness is the clause's, and a stopped arm never jumps.
-      pc-at-jmp : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false
+      pc-at-jmp : ∀ {v r} → resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ returns (done v r)
                 → fpc (VR.settle vg) ≡ (3 + length gt) + base
       pc-at-jmp q = trans (VR.at-end vg q) (shuffle-jmp (length gt) base)
 
-      jmpStep : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false) → FlatSteps prog 1 (VR.settle vg) t1
-      jmpStep q = flat-step1 {prog} {VR.settle vg} (VR.live vg q)
+      jmpStep : ∀ {v r} (q : resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ returns (done v r)) → FlatSteps prog 1 (VR.settle vg) t1
+      jmpStep q = flat-step1 {prog} {VR.settle vg} (VR.live vg (cong is-stopped q))
                   (trans (cong (fetch prog) (pc-at-jmp q)) at-jmp)
                   (trans (flat-jmp prog (VR.settle vg) (ℓ o (suc l)))
                          (cong (λ mj → do-jump mj (VR.settle vg)) (join-target prog base la)))
 
-      labelStep : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false) → FlatSteps prog 1 t1 t2
-      labelStep q = flat-step1 {prog} {t1} (VR.live vg q) at-join-label refl
+      labelStep : ∀ {v r} (q : resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ returns (done v r)) → FlatSteps prog 1 t1 t2
+      labelStep q = flat-step1 {prog} {t1} (VR.live vg (cong is-stopped q)) at-join-label refl
 
-      chain : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false)
+      chain : ∀ {v r} (q : resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ returns (done v r))
             → FlatSteps prog (3 + (VR.steps vg + (1 + 1))) P.fs0 t2
       chain q = FlatSteps-++ (P.run-r cond)
                 (FlatSteps-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q)))
@@ -180,21 +181,23 @@ module ArmRC {FS : FrameSemantics} where
                                 (record (falloc P.r3) { next-slot = n1 })
                                 refl (frontier-mono f n (suc (suc l))) ≤-refl
 
-      mem-pres : ∀ (loc : ValueLocation FS)
+      mem-pres : NotCut (resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k))
+               → ∀ (loc : ValueLocation FS)
                → BeforeFrontier (record alloc { next-slot = n }) loc
                → SMCore.MemOps.readLoc (floc t2) loc ≡ SMCore.MemOps.readLoc s loc
-      mem-pres loc bf = trans (vr-mem-pres vg loc (bf-up loc bf)) (P.mem-eq loc)
+      mem-pres nc loc bf = trans (vr-mem-pres vg nc loc (bf-up loc bf)) (P.mem-eq loc)
 
-      bf-mono-c : ∀ (m : ℕ) (loc : ValueLocation FS)
+      bf-mono-c : NotCut (resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k))
+                → ∀ (m : ℕ) (loc : ValueLocation FS)
                 → BeforeFrontier (record alloc { next-slot = m }) loc
                 → BeforeFrontier (record (falloc t2) { next-slot = m }) loc
-      bf-mono-c m loc bf = VR.bf-mono vg m loc bf
+      bf-mono-c nc m loc bf = VR.bf-mono vg nc m loc bf
 
       ------------------------------------------------------------
       -- THE EVENTS. Five control/straight rows surround `g`'s run and none
       -- of them is a SigOp, so the composite emits exactly what `g` does.
       ------------------------------------------------------------
-      ev-chain : (q : stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false)
+      ev-chain : ∀ {v r} (q : resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ returns (done v r))
                → chain-events (chain q) ≡ chain-events (VR.run vg)
       ev-chain q =
         trans (chain-events-++ (P.run-r cond) (FlatSteps-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q))))
@@ -204,13 +207,13 @@ module ArmRC {FS : FrameSemantics} where
               (trans (cong₂ _++_ (chain-events-subst-start (sym handG) (VR.run vg))
                                  (trans (chain-events-++ (jmpStep q) (labelStep q))
                                         (cong₂ _++_
-                                           (ev-step1 (VR.settle vg) (VR.live vg q)
+                                           (ev-step1 (VR.settle vg) (VR.live vg (cong is-stopped q))
                                               (trans (cong (fetch prog) (pc-at-jmp q)) at-jmp)
                                               (trans (flat-jmp prog (VR.settle vg) (ℓ o (suc l)))
                                                      (cong (λ mj → do-jump mj (VR.settle vg))
                                                            (join-target prog base la)))
                                               refl)
-                                           (ev-step1 t1 (VR.live vg q) at-join-label refl refl))))
+                                           (ev-step1 t1 (VR.live vg (cong is-stopped q)) at-join-label refl refl))))
                      (++-idʳ (chain-events (VR.run vg))))))
 
       ev-chain-stopped : chain-events chain-stopped ≡ chain-events (VR.run vg)
@@ -219,63 +222,90 @@ module ArmRC {FS : FrameSemantics} where
           (trans (cong (_++ chain-events chainG) (P.ev-run-r cond))
                  (chain-events-subst-start (sym handG) (VR.run vg)))
 
-      arm-not-stopped : ∀ {X : Set} → stopsAt (floc P.r3) (evalᴰ g Bv) ≡ false
-                      → stopsAt (floc P.r3) (evalᴰ g Bv) ≡ true → X
-      arm-not-stopped q₀ q₁ with trans (sym q₀) q₁
-      ... | ()
-
       -- plan 0.105: the arm runs from the caller's log — the three prologue
       -- rows make no call — so its run IS the clause's.
       h-eq : SMCore.LocState.ev-log (floc P.r3) ≡ SMCore.LocState.ev-log s
       h-eq = P.log-r3
 
-      RE : runAt (floc P.r3) (evalᴰ g Bv) ≡ runAt s (evalᴰ (case f g) (inj₂ Bv))
-      RE = runAt-≡ {st = floc P.r3} {st′ = s} {m = (evalᴰ g Bv)} {m′ = (evalᴰ (case f g) (inj₂ Bv))} h-eq refl
+      RE : runAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ runAt s (⟪ evalᴰ (case f g) (inj₂ Bv) ⟫ k)
+      RE = runAt-≡ {st = floc P.r3} {st′ = s} {m = ⟪ evalᴰ g Bv ⟫ k} {m′ = ⟪ evalᴰ (case f g) (inj₂ Bv) ⟫ k} h-eq refl
 
-      st-eq : stopsAt s (evalᴰ (case f g) (inj₂ Bv)) ≡ stopsAt (floc P.r3) (evalᴰ g Bv)
-      st-eq = sym (cong (λ r → is-stopped (proj₂ r)) RE)
+      res-eq : resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ resultAt s (⟪ evalᴰ (case f g) (inj₂ Bv) ⟫ k)
+      res-eq = cong proj₂ RE
 
-      log-c : SMCore.LocState.ev-log (floc (VR.settle vg)) ≡ SMCore.LocState.ev-log s ++ eventsAt s (evalᴰ (case f g) (inj₂ Bv))
+      nc-g : NotCut (resultAt s (⟪ evalᴰ (case f g) (inj₂ Bv) ⟫ k)) → NotCut (resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k))
+      nc-g = subst NotCut (sym res-eq)
+
+      prog-g : ∀ {m} → chain-ctrls (VR.run vg) ≤ m → k ≤ budgetLeft k (resultAt s (⟪ evalᴰ (case f g) (inj₂ Bv) ⟫ k)) + m
+      prog-g = progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (VR.run vg)) res-eq (VR.progress vg))
+
+      -- The arm's control steps, inside the clause's chain.
+      ctrlsG : chain-ctrls (VR.run vg) ≡ chain-ctrls chainG
+      ctrlsG = sym (chain-ctrls-subst-start (sym handG) (VR.run vg))
+
+      log-c : SMCore.LocState.ev-log (floc (VR.settle vg)) ≡ SMCore.LocState.ev-log s ++ eventsAt s (⟪ evalᴰ (case f g) (inj₂ Bv) ⟫ k)
       log-c = trans (VR.log vg) (cong₂ _++_ h-eq (cong proj₁ RE))
 
+      -- plan 0.119 D5: the arm's budgeted run returned (the clause jumps to the
+      -- join), stopped, or was cut (the machine is inside the arm).
       witness : MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k
-      witness = wit (stopsAt (floc P.r3) (evalᴰ g Bv)) refl
+      witness = wit (resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k)) refl
         where
-          wit : (sg : Bool) → stopsAt (floc P.r3) (evalᴰ g Bv) ≡ sg
+          wit : (ρ : Res (Ap ⟦ C ⟧)) → resultAt (floc P.r3) (⟪ evalᴰ g Bv ⟫ k) ≡ ρ
               → MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k
-          wit false q = record
+          wit (returns (done v r)) q = record
             { value-realized =
                 realized (3 + (VR.steps vg + (1 + 1))) t2 (VR.out-mode vg) (VR.cont-alloc vg)
-                         (chain q) (λ _ → VR.live vg q) (λ _ → at-end-t2)
-                         (λ p → arm-not-stopped q (trans (sym st-eq) p))
-                         (VR.no-ret vg) (VR.no-link vg)
+                         (chain q) (λ _ → VR.live vg (cong is-stopped q)) (λ _ → at-end-t2)
+                         (λ p → case trans (sym (cong is-stopped (trans (sym res-eq) q))) p of λ ())
+                         (λ nc → VR.no-ret vg (nc-g nc)) (λ nc → VR.no-link vg (nc-g nc))
                          log-c
-                         (λ p → VR.place vg (trans (cong proj₂ RE) p))
-                         (λ fr j bf → mem-pres (AtStack fr j) bf)
-                         (λ hl bf → mem-pres (AtDynamic hl) bf)
-                         (VR.frame-pres vg)
-                         bf-mono-c
+                         (λ p → VR.place vg (trans res-eq p))
+                         (prog-g (≤-trans (≤-reflexive ctrlsG) (≤-trans (ctrls-≤ˡ chainG (FlatSteps-++ (jmpStep q) (labelStep q))) (ctrls-≤ʳ (P.run-r cond) _))))
+                         (λ nc fr j bf → mem-pres (nc-g nc) (AtStack fr j) bf)
+                         (λ nc hl bf → mem-pres (nc-g nc) (AtDynamic hl) bf)
+                         (λ nc → VR.frame-pres vg (nc-g nc))
+                         (λ nc → bf-mono-c (nc-g nc))
             ; traces-agree =
                 trans (ev-chain q) (trans (MachineRefinesObsF.traces-agree mrg) (cong proj₁ RE))
             }
-          wit true q = record
+          wit stopped q = record
             { value-realized =
                 realized (3 + VR.steps vg) (VR.settle vg) (VR.out-mode vg) (VR.cont-alloc vg)
-                         chain-stopped (λ p → arm-not-stopped (trans (sym st-eq) p) q)
-                         (λ p → arm-not-stopped (trans (sym st-eq) p) q)
-                         (λ _ → proj₁ (VR.stops vg q) , trans (proj₂ (VR.stops vg q)) (chain-left (P.run-r cond) nh-r3))
-                         (VR.no-ret vg) (VR.no-link vg)
+                         chain-stopped
+                         (λ p → case trans (sym (cong is-stopped (trans (sym res-eq) q))) p of λ ())
+                         (λ p → case trans (sym (trans (sym res-eq) q)) p of λ ())
+                         (λ _ → proj₁ (VR.stops vg (cong is-stopped q)) , trans (proj₂ (VR.stops vg (cong is-stopped q))) (chain-left (P.run-r cond) nh-r3))
+                         (λ nc → VR.no-ret vg (nc-g nc)) (λ nc → VR.no-link vg (nc-g nc))
                          log-c
                          -- plan 0.98: the arm stopped, so it has NO result —
                          -- `place`'s premise says otherwise and refutes itself.
-                         (λ p → arm-not-stopped (cong is-stopped (trans (cong proj₂ RE) p)) q)
-                         (λ fr j bf → mem-pres (AtStack fr j) bf)
-                         (λ hl bf → mem-pres (AtDynamic hl) bf)
-                         (VR.frame-pres vg)
-                         bf-mono-c
+                         (λ p → case trans (sym (trans (sym res-eq) q)) p of λ ())
+                         (prog-g (≤-trans (≤-reflexive ctrlsG) (ctrls-≤ʳ (P.run-r cond) chainG)))
+                         (λ nc fr j bf → mem-pres (nc-g nc) (AtStack fr j) bf)
+                         (λ nc hl bf → mem-pres (nc-g nc) (AtDynamic hl) bf)
+                         (λ nc → VR.frame-pres vg (nc-g nc))
+                         (λ nc → bf-mono-c (nc-g nc))
             ; traces-agree =
                 trans ev-chain-stopped (trans (MachineRefinesObsF.traces-agree mrg) (cong proj₁ RE))
             }
+          wit (returns cut) q = record
+            { value-realized =
+                realized (3 + VR.steps vg) (VR.settle vg) (VR.out-mode vg) (VR.cont-alloc vg)
+                         chain-stopped (λ _ → VR.live vg (cong is-stopped q))
+                         (λ p → case trans (sym cM) p of λ ())
+                         (λ p → case trans (sym (cong is-stopped cM)) p of λ ())
+                         (cut-absurd cM) (cut-absurd cM)
+                         log-c
+                         (λ p → case trans (sym cM) p of λ ())
+                         (prog-g (≤-trans (≤-reflexive ctrlsG) (ctrls-≤ʳ (P.run-r cond) chainG)))
+                         (cut-absurd cM) (cut-absurd cM) (cut-absurd cM) (cut-absurd cM)
+            ; traces-agree =
+                trans ev-chain-stopped (trans (MachineRefinesObsF.traces-agree mrg) (cong proj₁ RE))
+            }
+            where
+              cM : resultAt s (⟪ evalᴰ (case f g) (inj₂ Bv) ⟫ k) ≡ returns cut
+              cM = trans (sym res-eq) q
 
     ------------------------------------------------------------------
     -- THE `inl` ARM. The branch JUMPS here, so the prologue is one step

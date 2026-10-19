@@ -80,7 +80,6 @@ open import Once.IRTy using (Unit)
 open import Once.Denotation.Behavior using (Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Lang.Event using (SigOpEvent)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IR)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
 open import Data.List.Relation.Unary.All using ([]; _∷_)
@@ -106,6 +105,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Bool using (true; false)
 open import Relation.Binary.PropositionalEquality using (cong₂)
 open import Once.Lang.Res using (Res; returns; stopped; is-stopped)
+open import Once.Denotation.Approx using (Ap; done; cut; budgetLeft)
 open import Once.Spec.Trace using (End; returned) renaming (halted to halted-end)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
@@ -125,7 +125,7 @@ import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 
-open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks; eventsAt; resultAt; evalᴰ)
+open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks; eventsAt; resultAt; evalᴰ; ⟪_⟫_; chain-ctrls)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; fetch-++-right; fpc; find-label; ft-go-prefix; FlatState; flat-exec-instr; floc; falloc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
@@ -441,25 +441,49 @@ private
             (trans (cong (fetch (emitted 0 0 ir ++ instr-ctrl c-leave ∷ [])) (sym (+-identityʳ (length (emitted 0 0 ir)))))
                    (fetch-++-right (emitted 0 0 ir) (instr-ctrl c-leave ∷ []) 0)))))
 
-flat-ends : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir))
-          → flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs 0) + 2)) (image ir) start-flat
-            ≡ (eventsAt (floc (main-flat ir)) (evalᴰ ir tt) , just (endOf (resultAt (floc (main-flat ir)) (evalᴰ ir tt))))
-flat-ends ioc brs ir lk =
-  trans (flat-events-steps (ValueRealized.run vr) 2)
-        (trans (cong₂ _▹_ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs 0))
+-- plan 0.119 D5: …at a ROUND BUDGET. `main`'s budgeted run returned (the
+-- image's `c-leave`: `returned`), stopped (`halted`), or was CUT — the machine
+-- is still running, its fuel used up at the cut.
+endAp : ∀ {X : Set} → Res (Ap X) → Data.Maybe.Maybe (End ⊤)
+endAp (returns (done _ _)) = just (returned tt)
+endAp stopped              = just halted-end
+endAp (returns cut)        = nothing
+
+tail-fuel : ∀ {X : Set} → Res (Ap X) → ℕ
+tail-fuel (returns (done _ _)) = 2
+tail-fuel stopped              = 2
+tail-fuel (returns cut)        = 0
+
+flat-ends : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
+          → flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs k)
+                              + tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))))
+                        (image ir) start-flat
+            ≡ (eventsAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k) , endAp (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k)))
+flat-ends ioc brs ir lk k =
+  trans (flat-events-steps (ValueRealized.run vr) (tail-fuel (resultAt s0 T)))
+        (trans (cong₂ _▹_ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs k))
                           (tail (resultAt s0 T) refl))
-               (cong (_, just (endOf (resultAt s0 T))) (++-identityʳ (eventsAt s0 T))))
+               (cong (_, endAp (resultAt s0 T)) (++-identityʳ (eventsAt s0 T))))
   where
-    vr = entry-vr ir lk ioc brs 0
+    vr = entry-vr ir lk ioc brs k
     s0 = floc (main-flat ir)
-    T  = evalᴰ ir tt
+    T  = ⟪ evalᴰ ir tt ⟫ k
     st = ValueRealized.settle vr
-    tail : ∀ (r : Res _) → resultAt s0 T ≡ r → flat-events 2 (image ir) st ≡ ([] , just (endOf r))
-    tail (returns v) eq = done (ValueRealized.live vr (cong is-stopped eq)) (ValueRealized.at-end vr (cong is-stopped eq))
-      where done : halted (floc st) ≡ false → fpc st ≡ length (emitted 0 0 ir) + 1
-                 → flat-events 2 (image ir) st ≡ ([] , just (returned tt))
-            done h p rewrite h | p | leave-at ir = refl
-    tail stopped eq = done (ValueRealized.stops vr (cong is-stopped eq))
-      where done : halted (floc st) ≡ true × LocState.left (floc st) ≡ LocState.left s0
-                 → flat-events 2 (image ir) st ≡ ([] , just halted-end)
-            done (h , l) rewrite h | l = refl
+    tail : ∀ (ρ : Res _) → resultAt s0 T ≡ ρ → flat-events (tail-fuel ρ) (image ir) st ≡ ([] , endAp ρ)
+    tail (returns (done v r)) eq = fin (ValueRealized.live vr (cong is-stopped eq)) (ValueRealized.at-end vr eq)
+      where fin : halted (floc st) ≡ false → fpc st ≡ length (emitted 0 0 ir) + 1
+                → flat-events 2 (image ir) st ≡ ([] , just (returned tt))
+            fin h p rewrite h | p | leave-at ir = refl
+    tail stopped eq = fin (ValueRealized.stops vr (cong is-stopped eq))
+      where fin : halted (floc st) ≡ true × LocState.left (floc st) ≡ LocState.left s0
+                → flat-events 2 (image ir) st ≡ ([] , just halted-end)
+            fin (h , l) rewrite h | l = refl
+    tail (returns cut) eq = refl
+
+-- A cut run has taken a control step for every silent step it passed.
+flat-progress : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
+              → resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k) ≡ returns cut
+              → k ≤ chain-ctrls (ValueRealized.run (entry-vr ir lk ioc brs k))
+flat-progress ioc brs ir lk k eq =
+  subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (ValueRealized.run (entry-vr ir lk ioc brs k))) eq
+        (ValueRealized.progress (entry-vr ir lk ioc brs k))

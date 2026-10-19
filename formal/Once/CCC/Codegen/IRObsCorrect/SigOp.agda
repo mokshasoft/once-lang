@@ -61,6 +61,7 @@ open import Once.SigOp.Info using (SigOpSem; effect-of; pureV; primV; emitsV; ha
 open SigOpInfo using (baseA; conB; sem; name)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code)
+open import Once.Denotation.Approx using (tagRun; run-approx-embed; is-stopped-tag; budgetLeft-tag; done-tag; budgetLeft)
 
 module SigOpC {FS : FrameSemantics} where
 
@@ -85,8 +86,15 @@ module SigOpC {FS : FrameSemantics} where
   resOf : ∀ {A B} → SigOpInfo A B → EvV.⟦ B ⟧ → ⟦ ⌊ B ⌋ ⟧
   resOf {B = B} si v = subst idᶠ (sym (cohᴰ B)) (injectᵇ (conB si) v)
 
+  -- plan 0.119 D5: the node means the finite block `E₀` embedded in `T∞`
+  -- (`evalᴰ (SigOp si) x` is `embed (E₀ si x)` by definition); the contract's
+  -- proofs below are about `E₀`, and `Step.build` reads the budgeted run off it
+  -- (`run-approx-embed`: a block consumes no budget).
+  E₀ : ∀ {A B} (si : SigOpInfo A B) → ⟦ ⌊ A ⌋ ⟧ → TM.T ⟦ ⌊ B ⌋ ⟧
+  E₀ si x = TM.fmapT (resOf si) (DT.sigOpT fmt φ si (argOf si x))
+
   evalᴰ-at : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → ∀ x
-           → evalᴰ (SigOp si) x ≡ TM.fmapT (resOf si) (DT.sigOpSemT fmt φ si c (argOf si x))
+           → E₀ si x ≡ TM.fmapT (resOf si) (DT.sigOpSemT fmt φ si c (argOf si x))
   evalᴰ-at si c e x = cong (λ c′ → TM.fmapT (resOf si) (DT.sigOpSemT fmt φ si c′ (argOf si x))) e
 
   -- …and the machine's three readings of the same contract.
@@ -181,7 +189,11 @@ module SigOpC {FS : FrameSemantics} where
     span′ = subst (SpanAt prog base) em≡ span
 
     E : TM.T ⟦ ⌊ B ⌋ ⟧
-    E = evalᴰ (SigOp si) x
+    E = E₀ si x
+
+    -- The node's budgeted run is `E`'s, tagged with the untouched budget.
+    R : ∀ k → runAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ tagRun k (runAt s E)
+    R k = run-approx-embed ιᶠ (SMCore.LocState.ev-log s) k E
 
     fs₁ : FlatState
     fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)
@@ -193,25 +205,29 @@ module SigOpC {FS : FrameSemantics} where
                → ResultPlace ⌊ B ⌋ Stack (falloc fs₁) (falloc fs₁) v (floc fs₁))
           → ∀ k → MachineRefinesObsF prog base n l (SigOp si) x s alloc cl k
     build ev-eq live stops place k = record
-      { traces-agree = trans (++-identityʳ _) ev-eq
+      { traces-agree = trans (++-identityʳ _) ev-eq′
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((nh , span′ 0 _ refl) ∷ [])
-                   live (λ _ → cong (λ t → DL.length t + base) (sym em≡)) (λ p → stops p , refl) refl refl
-                   (cong (SMCore.LocState.ev-log s DL.++_) ev-eq)
-                   place
+                   (λ p → live (trans (sym st≡) p)) (λ _ → cong (λ t → DL.length t + base) (sym em≡))
+                   (λ p → stops (trans (sym st≡) p) , refl) (λ _ → refl) (λ _ → refl)
+                   (cong (SMCore.LocState.ev-log s DL.++_) ev-eq′)
+                   (λ p → place (done-tag (resultAt s E) (trans (sym (cong proj₂ (R k))) p)))
+                   (subst (λ b → k ≤ b + _) (sym bl≡) (m≤m+n k _))
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output
                    -- register, the halt flag and the log — memory is untouched
                    -- whatever the SigOp means.
-                   (λ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j) nhw-instr-sigop refl)
-                   (λ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl) nhw-instr-sigop refl)
-                   refl (λ _ _ bf → bf)
+                   (λ _ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j) nhw-instr-sigop refl)
+                   (λ _ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl) nhw-instr-sigop refl)
+                   (λ _ → refl) (λ _ _ _ bf → bf)
       }
+      where
+        ev-eq′ : sigop-events si s ≡ eventsAt s (⟪ evalᴰ (SigOp si) x ⟫ k)
+        ev-eq′ = trans ev-eq (sym (cong proj₁ (R k)))
+        st≡ : stopsAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ stopsAt s E
+        st≡ = trans (cong (λ ρ → is-stopped (proj₂ ρ)) (R k)) (is-stopped-tag k (resultAt s E))
+        bl≡ : budgetLeft k (resultAt s (⟪ evalᴰ (SigOp si) x ⟫ k)) ≡ k
+        bl≡ = trans (cong (λ ρ → budgetLeft k (proj₂ ρ)) (R k)) (budgetLeft-tag k (resultAt s E))
 
-  ------------------------------------------------------------------------
-  -- A REGISTER RESULT. At a register-fitting codomain the result coercion is
-  -- the identity, so the value the machine writes is the value the
-  -- denotation returns.
-  ------------------------------------------------------------------------
   res-reg : ∀ {B} (fit : FitsInReg B) (ib : IsBaseType B) (v : EvV.⟦ B ⟧)
           → SV-Lit fit v ≡ prim-sv (fits-erase fit) (subst idᶠ (sym (cohᴰ B)) (injectᵇ ib v))
   res-reg fits-intˢ   base-Int   v = refl
@@ -298,12 +314,12 @@ module SigOpC {FS : FrameSemantics} where
       module S = Step si n l prog base span x s alloc cl nh nc
       a = argOf si x
       w = proj₁ (pure-agree si c eff d a)
-      E≡ : evalᴰ (SigOp si) x ≡ TM.ret (resOf si w)
+      E≡ : E₀ si x ≡ TM.ret (resOf si w)
       E≡ = trans (evalᴰ-at si c e x) (cong (TM.fmapT (resOf si)) (proj₂ (proj₂ (pure-agree si c eff d a))))
-      ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
+      ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
       ev-eq = trans (events-at si c e s)
                 (trans (cong (λ z → sigop-events-of z si s) eff) (sym (cong (eventsAt s) E≡)))
-      stops-f : stopsAt s (evalᴰ (SigOp si) x) ≡ false
+      stops-f : stopsAt s (E₀ si x) ≡ false
       stops-f = cong (stopsAt s) E≡
       out≡ : exec-sigop-output si s ≡ prim-sv (fits-erase fit) (resOf si w)
       out≡ = trans (output-at si c e s)
@@ -313,7 +329,7 @@ module SigOpC {FS : FrameSemantics} where
                          (trans (cong (λ c′ → Once.SigOp.Info.semM-of φ (name si) c′ fmt a) e)
                                 (proj₁ (proj₂ (pure-agree si c eff d a)))))
                        (res-reg fit (conB si) w))))
-      place : ∀ {v} → resultAt s (evalᴰ (SigOp si) x) ≡ returns v
+      place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
             → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
       place p = subst (λ v → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
                   (returns-inj (trans (sym (cong (resultAt s) E≡)) p))
@@ -328,7 +344,7 @@ module SigOpC {FS : FrameSemantics} where
     where
       module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
       E≡ = evalᴰ-at si (emitsV refl) e x
-      ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
+      ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
       ev-eq = trans (events-at si (emitsV refl) e s)
                 (trans (event-agree si x s inp) (sym (cong (eventsAt s) E≡)))
 
@@ -340,7 +356,7 @@ module SigOpC {FS : FrameSemantics} where
     where
       module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
       E≡ = evalᴰ-at si (haltsV refl) e x
-      ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
+      ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
       ev-eq = trans (events-at si (haltsV refl) e s)
                 (trans (event-agree si x s inp) (sym (cong (eventsAt s) E≡)))
 
@@ -380,7 +396,7 @@ module SigOpC {FS : FrameSemantics} where
                   go (no nu) = cong (TM.callAnswer-at ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (no nu)) (proj₂ y)
       res-call : resultAt s (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret)) ≡ returns (resOf si ans)
       res-call = cong proj₂ run-call
-      ev-eq : sigop-events si s ≡ eventsAt s (evalᴰ (SigOp si) x)
+      ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
       ev-eq = trans (events-at si callsV e s)
                 (trans (event-agree si x s inp)
                   (trans (sym (cong proj₁ run-call)) (sym (cong (eventsAt s) E≡))))
@@ -392,7 +408,7 @@ module SigOpC {FS : FrameSemantics} where
       out-fit : ∀ (f : FitsInReg B) → call-sigop-output si s ≡ prim-sv (fits-erase f) (resOf si ans)
       out-fit fits-intˢ   = out≡ fits-intˢ
       out-fit fits-floatˢ = out≡ fits-floatˢ
-      place : ∀ {v} → resultAt s (evalᴰ (SigOp si) x) ≡ returns v
+      place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
             → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
       place p = subst (λ v → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
                   (returns-inj (trans (sym res-call) (trans (sym (cong (resultAt s) E≡)) p)))

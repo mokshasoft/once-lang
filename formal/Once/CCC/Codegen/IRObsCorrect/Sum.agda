@@ -45,21 +45,21 @@ module SumC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) refl refl (log-of run _ (sym (denot-[] k))) (λ { refl → place })
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run _ (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
-                   (λ fr j bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                   (λ _ → (λ fr j bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                    nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
-                                   (AtStack fr j) bf')
-                   (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                   (AtStack fr j) bf'))
+                   (λ _ → (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
-                                 (AtDynamic hl) bf')
-                   cf-fs10
-                   (λ m loc' bf' → frontier-monotone
+                                 (AtDynamic hl) bf'))
+                   (λ _ → cf-fs10)
+                   (λ _ → (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
-                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf'))
       }
     where
       payload-stash sum-stash : ℕ
@@ -84,7 +84,7 @@ module SumC {FS : FrameSemantics} where
       fs9  = flat-exec-instr store-indirect-suc         prog fs8
       fs10 = flat-exec-instr (load-from-slot sum-stash) prog fs9
 
-      denot-[] : ∀ k → eventsAt s (evalᴰ (inl {A} {B}) x) ≡ []
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (inl {A} {B}) x ⟫ k) ≡ []
       denot-[] k = refl
 
       -- The sum block's address, as `alloc-impl` hands it out at fs2.
@@ -415,21 +415,21 @@ module SumC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) refl refl (log-of run _ (sym (denot-[] k))) (λ { refl → place })
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run _ (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
-                   (λ fr j bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                   (λ _ → (λ fr j bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                    nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
-                                   (AtStack fr j) bf')
-                   (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                   (AtStack fr j) bf'))
+                   (λ _ → (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
-                                 (AtDynamic hl) bf')
-                   cf-fs10
-                   (λ m loc' bf' → frontier-monotone
+                                 (AtDynamic hl) bf'))
+                   (λ _ → cf-fs10)
+                   (λ _ → (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
-                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf'))
       }
     where
       payload-stash sum-stash : ℕ
@@ -454,7 +454,7 @@ module SumC {FS : FrameSemantics} where
       fs9  = flat-exec-instr store-indirect-suc         prog fs8
       fs10 = flat-exec-instr (load-from-slot sum-stash) prog fs9
 
-      denot-[] : ∀ k → eventsAt s (evalᴰ (inr {A} {B}) x) ≡ []
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (inr {A} {B}) x ⟫ k) ≡ []
       denot-[] k = refl
 
       -- The sum block's address, as `alloc-impl` hands it out at fs2.

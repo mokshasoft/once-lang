@@ -34,6 +34,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Lang.Trace as TM
 open import Once.Lang.Res using (returns)
+open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 
 module ApplyC {FS : FrameSemantics} where
 
@@ -122,15 +123,18 @@ module ApplyC {FS : FrameSemantics} where
                 realized (17 + CalleeRun.steps crun) (CalleeRun.settle crun)
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (λ p → CalleeRun.live crun (trans st-eq p))
-                         (λ p → CalleeRun.returned crun (trans st-eq p))
+                         (λ p → CalleeRun.returned crun (trans res-eq p))
                          (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
                               , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
                                       (chain-left run17 (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)))
-                         (CalleeRun.no-ret crun)
-                         (CalleeRun.no-link crun)
+                         (λ nc → CalleeRun.no-ret crun (nc′ nc))
+                         (λ nc → CalleeRun.no-link crun (nc′ nc))
                          (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
-                         place (λ fr j bf → mem-pres-apply (AtStack fr j) bf) (λ hl bf → mem-pres-apply (AtDynamic hl) bf)
-                         (trans (CalleeRun.frame-pres crun (falloc ASP.a16)
+                         place
+                         (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
+                                     (ctrls-≤ʳ run17 (CalleeRun.run crun)))
+                         (λ nc fr j bf → mem-pres-apply nc (AtStack fr j) bf) (λ nc hl bf → mem-pres-apply nc (AtDynamic hl) bf)
+                         (λ nc → trans (CalleeRun.frame-pres crun (nc′ nc) (falloc ASP.a16)
                                    (cong falloc call-eq))
                                 OB.cf-a16)
                          bf-mono-apply
@@ -257,21 +261,24 @@ module ApplyC {FS : FrameSemantics} where
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
               h-eq = trans (log-of run17 _ refl) (++-identityʳ _)
 
-              RE : runAt (floc callFs) (evalᴰ body (env , proj₂ x)) ≡ runAt s (evalᴰ (apply {A} {B}) x)
-              RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq denot-eq
+              RE : runAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k) ≡ runAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
+              RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq (cong (⟪_⟫ k) denot-eq)
 
-              st-eq : stopsAt (floc callFs) (evalᴰ body (env , proj₂ x))
-                    ≡ stopsAt s (evalᴰ (apply {A} {B}) x)
+              st-eq : stopsAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k)
+                    ≡ stopsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
               -- plan 0.98: the `subst` is GONE. It existed to move
               -- `TM.valueT d k` along `denot-eq`; now the premise BINDS the
               -- value, so the two sides name the same `v` and only the
               -- equation being transported has to move.
-              res-eq : resultAt (floc callFs) (evalᴰ body (env , proj₂ x)) ≡ resultAt s (evalᴰ (apply {A} {B}) x)
+              res-eq : resultAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k) ≡ resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               res-eq = cong proj₂ RE
 
-              place : ∀ {v} → resultAt s (evalᴰ (apply {A} {B}) x) ≡ returns v
+              nc′ : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)) → NotCut (resultAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k))
+              nc′ = subst NotCut (sym res-eq)
+
+              place : ∀ {v r} → resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k) ≡ returns (done v r)
                     → ResultPlace B (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         v (floc (CalleeRun.settle crun))
@@ -285,26 +292,28 @@ module ApplyC {FS : FrameSemantics} where
               -- caller's `BeforeFrontier` across it.
               -- The setup ALLOCATES the callee's pair, so the frontier moves
               -- twice: `bf-advance` across the sixteen rows, then the callee's.
-              bf-mono-apply : ∀ (m : ℕ) (loc : ValueLocation FS)
+              bf-mono-apply : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k))
+                            → ∀ (m : ℕ) (loc : ValueLocation FS)
                             → BeforeFrontier (record alloc { next-slot = m }) loc
                             → BeforeFrontier
                                 (record (falloc (CalleeRun.settle crun)) { next-slot = m }) loc
-              bf-mono-apply m loc bf =
-                CalleeRun.bf-mono crun (falloc ASP.a16) m (cong falloc call-eq) loc
+              bf-mono-apply nc m loc bf =
+                CalleeRun.bf-mono crun (nc′ nc) (falloc ASP.a16) m (cong falloc call-eq) loc
                   (frontier-monotone (record alloc { next-slot = m })
                      (record (falloc ASP.a16) { next-slot = m })
                      (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf)
 
-              mem-pres-apply : ∀ (loc : ValueLocation FS)
+              mem-pres-apply : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k))
+                             → ∀ (loc : ValueLocation FS)
                              → BeforeFrontier (record alloc { next-slot = n }) loc
                              → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc
                                ≡ SMCore.MemOps.readLoc s loc
-              mem-pres-apply loc bf =
+              mem-pres-apply nc loc bf =
                 -- The callee preserves the caller's frame at ANY bound; the
                 -- setup's own preservation is at apply's frontier `n`. The
                 -- lift across the setup keeps the bound and moves only the
                 -- heap frontier (the setup allocates the callee's pair).
-                trans (CalleeRun.mem-pres crun (falloc ASP.a16) n
+                trans (CalleeRun.mem-pres crun (nc′ nc) (falloc ASP.a16) n
                          (cong falloc call-eq) loc
                          (frontier-monotone (record alloc { next-slot = n })
                             (record (falloc ASP.a16) { next-slot = n })
@@ -312,7 +321,7 @@ module ApplyC {FS : FrameSemantics} where
                       (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
                              (ASP.setup-mem-pres n≤ OB.rdi12' OB.rdi14' loc bf))
 
-              trc : chain-events run ≡ eventsAt s (evalᴰ (apply {A} {B}) x)
+              trc : chain-events run ≡ eventsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               trc = trans (chain-events-++ run17 (CalleeRun.run crun))
                           (trans (CalleeRun.events crun) (cong proj₁ RE))
 

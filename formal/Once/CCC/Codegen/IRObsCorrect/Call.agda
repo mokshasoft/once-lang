@@ -31,6 +31,8 @@ open LocState using (halted)
 import Once.IRTy
 import Once.IR
 open import Once.Lang.Res using (is-stopped)
+open import Once.Denotation.Approx using (NotCut; budgetLeft)
+open import Data.Nat.Properties using (+-monoʳ-≤)
 open import Once.Denotation.Program using (tableCalls)
 import Once.Denotation.DenotTrace as DT
 import Once.Lang.Trace as TM
@@ -45,15 +47,17 @@ module CallC {FS : FrameSemantics} where
         realized (1 + CalleeRun.steps crun) (CalleeRun.settle crun)
                  (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                  run (λ p → CalleeRun.live crun (trans st-eq p))
-                 (λ p → CalleeRun.returned crun (trans st-eq p))
+                 (λ p → CalleeRun.returned crun (trans res-eq p))
                  (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
                       , trans (proj₂ (CalleeRun.stops crun (trans st-eq p))) (cong (λ st → LocState.left (floc st)) call-eq))
-                 (CalleeRun.no-ret crun) (CalleeRun.no-link crun)
+                 (λ nc → CalleeRun.no-ret crun (nc′ nc)) (λ nc → CalleeRun.no-link crun (nc′ nc))
                  (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
-                 (λ p → CalleeRun.place crun (trans (cong proj₂ RE) p))
-                 (λ fr i bf → mem-pres (AtStack fr i) bf) (λ hl bf → mem-pres (AtDynamic hl) bf)
-                 (CalleeRun.frame-pres crun alloc (cong falloc call-eq))
-                 (λ m loc bf → CalleeRun.bf-mono crun alloc m (cong falloc call-eq) loc bf)
+                 (λ p → CalleeRun.place crun (trans res-eq p))
+                 (progress-≤ (subst (λ r → k ≤ budgetLeft k r + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
+                             (ctrls-≤ʳ run1 (CalleeRun.run crun)))
+                 (λ nc fr i bf → mem-pres nc (AtStack fr i) bf) (λ nc hl bf → mem-pres nc (AtDynamic hl) bf)
+                 (λ nc → CalleeRun.frame-pres crun (nc′ nc) alloc (cong falloc call-eq))
+                 (λ nc m loc bf → CalleeRun.bf-mono crun (nc′ nc) alloc m (cong falloc call-eq) loc bf)
     ; traces-agree = trc
     }
     where
@@ -89,28 +93,39 @@ module CallC {FS : FrameSemantics} where
       run : FlatSteps prog (1 + CalleeRun.steps crun) e0 (CalleeRun.settle crun)
       run = FlatSteps-++ run1 (CalleeRun.run crun)
 
-      -- The callee preserves the caller's frame at any bound, and the call
-      -- itself writes no memory.
-      mem-pres : ∀ (loc : ValueLocation FS)
-               → BeforeFrontier (record alloc { next-slot = n }) loc
-               → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc ≡ SMCore.MemOps.readLoc s loc
-      mem-pres loc bf =
-        trans (CalleeRun.mem-pres crun alloc n (cong falloc call-eq) loc bf)
-              (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
-
       -- plan 0.105: the call writes nothing but control, so the callee runs
       -- from the caller's log.
       h-eq : SMCore.LocState.ev-log (floc post) ≡ SMCore.LocState.ev-log s
       h-eq = cong (λ st → SMCore.LocState.ev-log (floc st)) call-eq
 
-      RE : runAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) ≡ runAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
+      RE : runAt (floc post) (⟪ tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x ⟫ k)
+         ≡ runAt s (⟪ evalᴰ (Once.IR.Call {A} {B} f) x ⟫ k)
       RE = runAt-≡ {st = floc post} {st′ = s}
-             {m = tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x}
-             {m′ = evalᴰ (Once.IR.Call {A} {B} f) x} h-eq refl
+             {m = ⟪ tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x ⟫ k}
+             {m′ = ⟪ evalᴰ (Once.IR.Call {A} {B} f) x ⟫ k} h-eq refl
 
-      st-eq : stopsAt (floc post) (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) ≡ stopsAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
+      st-eq : stopsAt (floc post) (⟪ tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x ⟫ k)
+            ≡ stopsAt s (⟪ evalᴰ (Once.IR.Call {A} {B} f) x ⟫ k)
       st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
-      trc : chain-events run ≡ eventsAt s (evalᴰ (Once.IR.Call {A} {B} f) x)
+      res-eq : resultAt (floc post) (⟪ tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x ⟫ k)
+             ≡ resultAt s (⟪ evalᴰ (Once.IR.Call {A} {B} f) x ⟫ k)
+      res-eq = cong proj₂ RE
+
+      nc′ : NotCut (resultAt s (⟪ evalᴰ (Once.IR.Call {A} {B} f) x ⟫ k))
+          → NotCut (resultAt (floc post) (⟪ tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x ⟫ k))
+      nc′ = subst NotCut (sym res-eq)
+
+      trc : chain-events run ≡ eventsAt s (⟪ evalᴰ (Once.IR.Call {A} {B} f) x ⟫ k)
       trc = trans (chain-events-++ run1 (CalleeRun.run crun))
                   (trans (CalleeRun.events crun) (cong proj₁ RE))
+
+      -- The callee preserves the caller's frame at any bound, and the call
+      -- itself writes no memory.
+      mem-pres : NotCut (resultAt s (⟪ evalᴰ (Once.IR.Call {A} {B} f) x ⟫ k))
+               → ∀ (loc : ValueLocation FS)
+               → BeforeFrontier (record alloc { next-slot = n }) loc
+               → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc ≡ SMCore.MemOps.readLoc s loc
+      mem-pres nc loc bf =
+        trans (CalleeRun.mem-pres crun (nc′ nc) alloc n (cong falloc call-eq) loc bf)
+              (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)

@@ -72,6 +72,9 @@ open import Once.Lang.Trace using (T; ret; call; halt; callOp; haltOp; returnT; 
 open import Once.Lang.Stream
 open import Once.Denotation.ValueDomain
 open νᵈ using (forceᵈ)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞)
+open import Once.Lang.StreamInf using (νᴵ; module νᴵ; in-νᴵ; anaFᴵ)
+open νᴵ using (forceᴵ)
 
 ------------------------------------------------------------------------
 -- The recursion-scheme trace in the T-convention.
@@ -137,7 +140,7 @@ open νᵈ using (forceᵈ)
 record CallEnv : Set where
   constructor callEnv
   field
-    callsE : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+    callsE : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
     ffiE   : FFIAnswers
 open CallEnv
 
@@ -155,63 +158,63 @@ sigOpSemT fmt ans {A} {B} si callsV x = call (callOp (name si) A (baseA si) B) x
 sigOpT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧
 sigOpT fmt ans si = sigOpSemT fmt ans si (sem si)
 
-evalᴰ        : (fmt : TargetNum) → CallEnv → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+evalᴰ        : (fmt : TargetNum) → CallEnv → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
 cata-ev-algᴰ : (fmt : TargetNum) → CallEnv → ∀ {F E C} → WellFormedFI F → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
-             → ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ) → T ⟦ C ⟧ᴰᴵ
+             → ⟦ ⌈ F ⌉F ⟧F (T∞ ⟦ C ⟧ᴰᴵ) → T∞ ⟦ C ⟧ᴰᴵ
 
-evalᴰ fmt ρ id            a        = returnT a
-evalᴰ fmt ρ (g ∘ f)       a        = evalᴰ fmt ρ f a >>=T evalᴰ fmt ρ g
-evalᴰ fmt ρ (⟨ f , g ⟩) a        = evalᴰ fmt ρ f a >>=T λ b → evalᴰ fmt ρ g a >>=T λ c → returnT (b , c)
-evalᴰ fmt ρ fst           p        = returnT (proj₁ p)
-evalᴰ fmt ρ snd           p        = returnT (proj₂ p)
-evalᴰ fmt ρ inl           a        = returnT (inj₁ a)
-evalᴰ fmt ρ inr           b        = returnT (inj₂ b)
+evalᴰ fmt ρ id            a        = return∞ a
+evalᴰ fmt ρ (g ∘ f)       a        = evalᴰ fmt ρ f a >>=∞ evalᴰ fmt ρ g
+evalᴰ fmt ρ (⟨ f , g ⟩) a        = evalᴰ fmt ρ f a >>=∞ λ b → evalᴰ fmt ρ g a >>=∞ λ c → return∞ (b , c)
+evalᴰ fmt ρ fst           p        = return∞ (proj₁ p)
+evalᴰ fmt ρ snd           p        = return∞ (proj₂ p)
+evalᴰ fmt ρ inl           a        = return∞ (inj₁ a)
+evalᴰ fmt ρ inr           b        = return∞ (inj₂ b)
 evalᴰ fmt ρ (case f g)    (inj₁ a) = evalᴰ fmt ρ f a
 evalᴰ fmt ρ (case f g)    (inj₂ b) = evalᴰ fmt ρ g b
-evalᴰ fmt ρ terminal      _        = returnT tt
+evalᴰ fmt ρ terminal      _        = return∞ tt
 evalᴰ fmt ρ initial       ()
-evalᴰ fmt ρ (curry f)   a        = returnT (λ b → evalᴰ fmt ρ f (a , b))
+evalᴰ fmt ρ (curry f)   a        = return∞ (λ b → evalᴰ fmt ρ f (a , b))
 evalᴰ fmt ρ apply         p        = proj₁ p (proj₂ p)
 -- A SigOp's argument and result are first-order (`baseA`, `conB`), so they
 -- cross between the two value domains unchanged.
 evalᴰ fmt ρ (SigOp {A} {B} si) a   =
-  fmapT (λ v → subst (λ z → z) (sym (cohᴰ B)) (injectᵇ (conB si) v))
-        (sigOpT fmt (ffiE ρ) si (forgetᵇ (baseA si) (subst (λ z → z) (cohᴰ A) a)))
+  embed (fmapT (λ v → subst (λ z → z) (sym (cohᴰ B)) (injectᵇ (conB si) v))
+               (sigOpT fmt (ffiE ρ) si (forgetᵇ (baseA si) (subst (λ z → z) (cohᴰ A) a))))
 evalᴰ fmt ρ (Call {A} {B} f) a = callsE ρ f A B a
 evalᴰ fmt ρ (Cata {F} wf {E} {C} alg)  a =
   sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg (proj₁ a)) (proj₂ a)
 -- D273: the coalgebra reads the FIXED environment `proj₁ a` at every layer.
 evalᴰ fmt ρ (Ana {F} wf {E} {A} coalg) a =
-  returnT (anaFᵈ ⌈ F ⌉F
-            (λ a' → fmapT (λ x → coerce-functor-D (wf-⌈⌉ wf) ⌈ A ⌉
+  return∞ (anaFᴵ ⌈ F ⌉F
+            (λ a' → fmap∞ (λ x → coerce-functor-D (wf-⌈⌉ wf) ⌈ A ⌉
                                    (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A) x))
                           (evalᴰ fmt ρ coalg (proj₁ a , a')))
             (proj₂ a))
 evalᴰ fmt ρ (Out {F} wf) v =
-  fmapT (λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (ν-type F)))
+  fmap∞ (λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (ν-type F)))
                      (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉
                        (coerce-ν-out (wf-⌈⌉ wf) _ layer)))
-        (forceᵈ v)
+        (forceᴵ v)
 evalᴰ fmt ρ (in-ν {F} wf) a =
-  returnT (in-νᵈ (coerce-ν-in ⌈ F ⌉F ⟦ ⌈ ν-type F ⌉ ⟧ᴰ
+  return∞ (in-νᴵ (coerce-ν-in ⌈ F ⌉F ⟦ ⌈ ν-type F ⌉ ⟧ᴰ
                     (coerce-functor-D (wf-⌈⌉ wf) ⌈ ν-type F ⌉
                       (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F (ν-type F)) a))))
 -- μ values are first-order: the layer crosses by the functor coercion.
 evalᴰ fmt ρ (In {F} wf) a =
-  returnT (sem-In ⌈ F ⌉F (coerce-functor-D (wf-⌈⌉ wf) ⌈ μ-type F ⌉
+  return∞ (sem-In ⌈ F ⌉F (coerce-functor-D (wf-⌈⌉ wf) ⌈ μ-type F ⌉
                             (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F (μ-type F)) a)))
 evalᴰ fmt ρ (out-μ {F} wf) a =
-  returnT (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (μ-type F)))
+  return∞ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (μ-type F)))
              (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) a)))
-evalᴰ fmt ρ (const fits-int v)   a = returnT (OnceWord.Width.fromℤ (int-bits fmt) v)
-evalᴰ fmt ρ (const fits-float v) a = returnT (round (float-format fmt) v)
+evalᴰ fmt ρ (const fits-int v)   a = return∞ (OnceWord.Width.fromℤ (int-bits fmt) v)
+evalᴰ fmt ρ (const fits-float v) a = return∞ (round (float-format fmt) v)
 
 -- The fold's per-layer step: sequence the layer's children, then run the
 -- algebra on the layer.
 cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg env fc =
-  seqF ⌈ F ⌉F fc >>=T λ layer →
+  seqF∞ ⌈ F ⌉F fc >>=∞ λ layer →
     evalᴰ fmt ρ alg (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C))
                              (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ C ⌉ layer))
 
-liftFn : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-liftFn fmt ρ {A} {B} ir v = subst T (cohᴰ B) (evalᴰ fmt ρ ir (subst (λ z → z) (sym (cohᴰ A)) v))
+liftFn : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+liftFn fmt ρ {A} {B} ir v = subst T∞ (cohᴰ B) (evalᴰ fmt ρ ir (subst (λ z → z) (sym (cohᴰ A)) v))

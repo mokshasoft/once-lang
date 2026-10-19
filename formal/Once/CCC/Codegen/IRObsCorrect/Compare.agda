@@ -63,13 +63,15 @@ import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
 import Once.Lang.Trace as TM
+open import Once.Denotation.Approx using (tagRun; run-approx-embed; done-tag; budgetLeft; done)
+open import Once.Lang.Res using (is-stopped)
 
 module CompareC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
   open AbstractExec {FS} using (exec-sigop-output)
-  open SigOpC {FS} using (argOf; resOf; evalᴰ-at; output-at; pure-input; obs-correct-sigop-nc)
+  open SigOpC {FS} using (argOf; resOf; E₀; evalᴰ-at; output-at; pure-input; obs-correct-sigop-nc)
 
   private
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
@@ -93,18 +95,19 @@ module CompareC {FS : FrameSemantics} where
           → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
   cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
-      { traces-agree   = sym (cong (eventsAt s) E≡)
+      { traces-agree   = sym (cong proj₁ ER)
       ; value-realized =
           realized 11 fs11 Heap (falloc fs11) run (λ _ → nh11)
                    (λ _ → cong (λ t → DL.length t + base) (sym em≡))
-                   (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
-                   refl refl
-                   (log-of run _ (sym (cong (eventsAt s) E≡)))
-                   place
-                   (λ fr j bf' → mem-pres (AtStack fr j) bf')
-                   (λ hl bf' → mem-pres (AtDynamic hl) bf')
-                   cf-fs11
-                   (λ m loc' bf' → frontier-monotone
+                   (λ st → case trans (sym (cong (λ ρ → is-stopped (proj₂ ρ)) ER)) st of λ ())
+                   (λ _ → refl) (λ _ → refl)
+                   (log-of run _ (sym (cong proj₁ ER)))
+                   (λ p → place (done-tag (resultAt s (E₀ si x)) (trans (sym (cong proj₂ (RE k))) p)))
+                   (subst (λ ρ → k ≤ budgetLeft k (proj₂ ρ) + chain-ctrls run) (sym ER) (m≤m+n k _))
+                   (λ _ fr j bf' → mem-pres (AtStack fr j) bf')
+                   (λ _ hl bf' → mem-pres (AtDynamic hl) bf')
+                   (λ _ → cf-fs11)
+                   (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs11) { next-slot = m })
                                      (sym cf-fs11) ≤-refl heapref-≤ loc' bf')
@@ -134,8 +137,15 @@ module CompareC {FS : FrameSemantics} where
       t : ℕ
       t = if c then 1 else 0
 
-      E≡ : evalᴰ (SigOp si) x ≡ TM.ret (resOf si (EvV.eraseᵍ (bool c)))
+      E≡ : E₀ si x ≡ TM.ret (resOf si (EvV.eraseᵍ (bool c)))
       E≡ = evalᴰ-at si (primV (p-cmp op)) e x
+
+      -- The node's budgeted run: the block's, at the untouched budget.
+      RE : ∀ k → runAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ tagRun k (runAt s (E₀ si x))
+      RE k = run-approx-embed ιᶠ (SMCore.LocState.ev-log s) k (E₀ si x)
+
+      ER : runAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ (DL.[] , returns (done (resOf si (EvV.eraseᵍ (bool c))) k))
+      ER = trans (RE k) (cong (λ t → tagRun k (runAt s t)) E≡)
 
       -- The block's info decodes the SAME argument: the two base witnesses
       -- are the one canonical witness.
@@ -415,7 +425,7 @@ module CompareC {FS : FrameSemantics} where
           (valid-inl-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
           before
 
-      place : ∀ {v} → resultAt s (evalᴰ (SigOp si) x) ≡ returns v
+      place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
             → ResultPlace _ Heap (falloc fs11) (falloc fs11) v (floc fs11)
       place p = subst (λ v → ResultPlace _ Heap (falloc fs11) (falloc fs11) v (floc fs11))
                   (returns-inj (trans (sym (cong (resultAt s) E≡)) p))

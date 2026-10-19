@@ -52,6 +52,8 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Lang.Trace as TM
+open import Once.Denotation.Approx using (done; NotCut)
+open import Once.Lang.Res using (returns; is-stopped)
 
 module PairC {FS : FrameSemantics} where
 
@@ -425,7 +427,8 @@ module PairC {FS : FrameSemantics} where
     {xf : ValueDomain.⟦ A ⟧ᴰᴵ} {kf : ℕ}
     (vrf : ValueRealized prog (suc (suc base)) (PairShape.f-start f g n l) l f xf
              (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) kf)
-    (sfeq : stopsAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (evalᴰ f xf) ≡ false)
+    {vf : ValueDomain.⟦ B ⟧ᴰᴵ} {rf : ℕ}
+    (sfeq : resultAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (⟪ evalᴰ f xf ⟫ kf) ≡ returns (done vf rf))
     where
     open PairChain f g n l prog base s alloc cl n≤ nh span
 
@@ -441,12 +444,16 @@ module PairC {FS : FrameSemantics} where
     endF = VR.at-end vrf sfeq
 
     liveF : halted (floc fsF) ≡ false
-    liveF = VR.live vrf sfeq
+    liveF = VR.live vrf (cong is-stopped sfeq)
+
+    -- `f` returned, so it was not cut (plan 0.119 D5).
+    ncF : NotCut (resultAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (⟪ evalᴰ f xf ⟫ kf))
+    ncF = subst NotCut (sym sfeq) tt
 
     -- `falloc PR.p2` IS `alloc` (`PairRun.alloc-p2`), so `f`'s frame
     -- equation is already the caller's.
     cf-fsF : current-frame (falloc fsF) ≡ current-frame alloc
-    cf-fsF = VR.frame-pres vrf
+    cf-fsF = VR.frame-pres vrf ncF
 
     ------------------------------------------------------------------
     -- THE MID ROWS: stash `f`'s result at `fst-stash`, then put the
@@ -513,7 +520,7 @@ module PairC {FS : FrameSemantics} where
     read-backup-fsF : SMCore.MemOps.readLoc (floc fsF)
                         (AtStack (current-frame alloc) PS.backup)
                       ≡ just (readReg (regs (floc PR.p1)) Output)
-    read-backup-fsF = PR.restore-ok (floc fsF) (vr-mem-pres vrf)
+    read-backup-fsF = PR.restore-ok (floc fsF) (vr-mem-pres vrf ncF)
 
     aF : AllocState {FS}
     aF = record alloc { next-slot = PS.fst-stash }
@@ -547,7 +554,7 @@ module PairC {FS : FrameSemantics} where
 
     handG : m2 ≡ entry-flat bg (floc m2) (falloc m2) (fclosure m2)
     handG = handover-eq bg m2
-              (cong (λ z → suc (suc z)) endF) (VR.no-ret vrf) (VR.no-link vrf)
+              (cong (λ z → suc (suc z)) endF) (VR.no-ret vrf ncF) (VR.no-link vrf ncF)
 
     ------------------------------------------------------------------
     -- THE SLOT `fst-stash`, WRITTEN HERE AND READ IN THE TAIL.
@@ -589,11 +596,13 @@ module PairC {FS : FrameSemantics} where
     {xf : ValueDomain.⟦ A ⟧ᴰᴵ} {kf : ℕ}
     (vrf : ValueRealized prog (suc (suc base)) (PairShape.f-start f g n l) l f xf
              (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) kf)
-    (sfeq : stopsAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (evalᴰ f xf) ≡ false)
+    {vf : ValueDomain.⟦ B ⟧ᴰᴵ} {rf : ℕ}
+    (sfeq : resultAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (⟪ evalᴰ f xf ⟫ kf) ≡ returns (done vf rf))
     {xg : ValueDomain.⟦ A ⟧ᴰᴵ} {kg : ℕ}
     (vrg : ValueRealized prog (PairChainF.bg f g n l prog base s alloc cl n≤ nh span vrf sfeq) (PairShape.n1 f g n l) (PairShape.l1 f g n l) g xg
              (floc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (falloc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (fclosure (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) kg)
-    (sgeq : stopsAt (floc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (evalᴰ g xg) ≡ false)
+    {vg : ValueDomain.⟦ C ⟧ᴰᴵ} {rg : ℕ}
+    (sgeq : resultAt (floc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vg rg))
     where
     open PairChain f g n l prog base s alloc cl n≤ nh span
     open PairChainF f g n l prog base s alloc cl n≤ nh span vrf sfeq
@@ -610,10 +619,14 @@ module PairC {FS : FrameSemantics} where
     endG = VR.at-end vrg sgeq
 
     liveG : halted (floc fsG) ≡ false
-    liveG = VR.live vrg sgeq
+    liveG = VR.live vrg (cong is-stopped sgeq)
+
+    -- `g` returned, so it was not cut.
+    ncG : NotCut (resultAt (floc m2) (⟪ evalᴰ g xg ⟫ kg))
+    ncG = subst NotCut (sym sgeq) tt
 
     cf-fsG : current-frame (falloc fsG) ≡ current-frame alloc
-    cf-fsG = trans (VR.frame-pres vrg) cf-m2
+    cf-fsG = trans (VR.frame-pres vrg ncG) cf-m2
 
     -- `fst-stash` is `suc n`, strictly below `f`'s emission frontier
     -- `n + 4 ≤ n1`, so it is inside the window `g`'s run preserves.
@@ -630,7 +643,7 @@ module PairC {FS : FrameSemantics} where
     read-fst-fsG : SMCore.MemOps.readLoc (floc fsG)
                      (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
     read-fst-fsG =
-      trans (VR.stack-pres vrg (current-frame alloc) PS.fst-stash bf-fst-g)
+      trans (VR.stack-pres vrg ncG (current-frame alloc) PS.fst-stash bf-fst-g)
             read-fst-m2
 
     ----------------------------------------------------------------
@@ -964,6 +977,14 @@ module PairC {FS : FrameSemantics} where
               (FlatSteps-++ mid-chain
                 (FlatSteps-++ chainG tail-chain)))
 
+    -- plan 0.119 D5: the pair's control steps cover `f`'s and `g`'s.
+    RUN-ctrls : chain-ctrls (VR.run vrf) + chain-ctrls (VR.run vrg) ≤ chain-ctrls RUN
+    RUN-ctrls =
+      subst₂ (λ a b → a + b ≤ chain-ctrls RUN)
+             (chain-ctrls-subst-start (sym handF) (VR.run vrf))
+             (chain-ctrls-subst-start (sym handG) (VR.run vrg))
+             (ctrls-5 pre-chain chainF mid-chain chainG tail-chain)
+
     LIVE : halted (floc SETTLE) ≡ false
     LIVE = nhU10
 
@@ -982,7 +1003,7 @@ module PairC {FS : FrameSemantics} where
              (cong (_+ base) (sym len-emitted)))
 
     NORET : fret SETTLE ≡ []
-    NORET = VR.no-ret vrg
+    NORET = VR.no-ret vrg ncG
 
     NOLINK : flink SETTLE ≡ nothing
-    NOLINK = VR.no-link vrg
+    NOLINK = VR.no-link vrg ncG

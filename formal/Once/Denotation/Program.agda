@@ -35,6 +35,7 @@ open Once.IR.IR
 open import Once.IRTy using (_≟IRTy_; IRTy; Unit)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Lang.Trace using (T; unlinkedT)
+open import Once.Lang.Iterative using (T∞; embed)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open import Once.Lang.Trace using (FFIAnswers)
 open SigOpInfo using (name; sem)
@@ -75,24 +76,24 @@ open IRFun
 -- The program's call environment: its table, then the interpretation's pure
 -- FFI contracts (plan 0.105).
 tableEnv   : TargetNum → FFIAnswers → List IRFun → CallEnv
-tableCalls : TargetNum → FFIAnswers → List IRFun → CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+tableCalls : TargetNum → FFIAnswers → List IRFun → CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
 
 -- The entry `e`, asked for as `f : A → B`, answers when the name and both
 -- objects match; otherwise the lookup falls to the earlier entries. (A
 -- top-level helper taking the decisions, not a `with`.)
 tableEnv-at : TargetNum → FFIAnswers → (e : IRFun) → List IRFun → (f : CanonicalName) → (A B : IRTy)
-            → Dec (fname e ≡ f) → Dec (fdom e ≡ A) → Dec (fcod e ≡ B) → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+            → Dec (fname e ≡ f) → Dec (fdom e ≡ A) → Dec (fcod e ≡ B) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
 -- The two object equations are TRANSPORTED along, not matched on: matching
 -- `refl` would make the lookup reduce only at a literal `refl`, never at the
 -- proof a decision procedure returns.
 tableEnv-at fmt φ e es f A B (yes _) (yes p) (yes q) a =
-  subst (λ Y → T ⟦ Y ⟧ᴰᴵ) q
+  subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q
     (evalᴰ fmt (tableEnv fmt φ es) (fbody e) (subst ⟦_⟧ᴰᴵ (sym p) a))
 tableEnv-at fmt φ e es f A B (yes _) (yes _) (no _)  a = tableCalls fmt φ es f A B a
 tableEnv-at fmt φ e es f A B (yes _) (no _)  _       a = tableCalls fmt φ es f A B a
 tableEnv-at fmt φ e es f A B (no _)  _       _       a = tableCalls fmt φ es f A B a
 
-tableCalls fmt φ []       f A B a = unlinkedT
+tableCalls fmt φ []       f A B a = embed unlinkedT
 tableCalls fmt φ (e ∷ es) f A B a = tableEnv-at fmt φ e es f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) a
 
 tableEnv fmt φ es = callEnv (tableCalls fmt φ es) φ
@@ -165,7 +166,7 @@ record IRProgram : Set where
 
 open IRProgram
 
-runIR : TargetNum → FFIAnswers → IRProgram → T ⟦ Unit ⟧ᴰᴵ
+runIR : TargetNum → FFIAnswers → IRProgram → T∞ ⟦ Unit ⟧ᴰᴵ
 runIR fmt φ p = evalᴰ fmt (tableEnv fmt φ (table p)) (main p) tt
 
 -- A LINKED PROGRAM: every call, in `main` and in every entry of the table, names

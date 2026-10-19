@@ -35,6 +35,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Lang.Trace as TM
 open import Once.Lang.Res using (returns)
+open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 
 module OutC {FS : FrameSemantics} where
 
@@ -189,16 +190,18 @@ module OutC {FS : FrameSemantics} where
                 realized (4 + CalleeRun.steps crun) (CalleeRun.settle crun)
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (λ p → CalleeRun.live crun (trans st-eq p))
-                         (λ p → CalleeRun.returned crun (trans st-eq p))
+                         (λ p → CalleeRun.returned crun (trans res-eq p))
                          (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
                               , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
                                       (chain-left run4 (trans (cong (λ st → halted (floc st)) call-eq) nh3)))
-                         (CalleeRun.no-ret crun) (CalleeRun.no-link crun)
+                         (λ nc → CalleeRun.no-ret crun (nc′ nc)) (λ nc → CalleeRun.no-link crun (nc′ nc))
                          (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
                          place
-                         (λ fr j bf → mem-pres-out (AtStack fr j) bf)
-                         (λ hl bf → mem-pres-out (AtDynamic hl) bf)
-                         (CalleeRun.frame-pres crun alloc (cong falloc call-eq))
+                         (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
+                                     (ctrls-≤ʳ run4 (CalleeRun.run crun)))
+                         (λ nc fr j bf → mem-pres-out nc (AtStack fr j) bf)
+                         (λ nc hl bf → mem-pres-out nc (AtDynamic hl) bf)
+                         (λ nc → CalleeRun.frame-pres crun (nc′ nc) alloc (cong falloc call-eq))
                          bf-mono-out
             ; traces-agree = trc
             }
@@ -225,29 +228,6 @@ module OutC {FS : FrameSemantics} where
                        (subst (λ st → InputAt {E IRTy′.* A} (mode-of c) (falloc OSP.b3) seed st)
                               (sym (cong floc call-eq)) (input-of c))
 
-              -- D204: what the WHOLE force leaves alone — the three setup rows
-              -- (which write no memory at all) composed with the callee's own
-              -- preservation. `falloc OSP.b3` IS `alloc` definitionally, so
-              -- the `enter-call` premise the callee wants is `refl`.
-              -- `falloc OSP.b3` IS `alloc` (neither setup row touches the
-              -- allocator), so the frontier only moves at the call.
-              bf-mono-out : ∀ (m : ℕ) (loc : ValueLocation FS)
-                          → BeforeFrontier (record alloc { next-slot = m }) loc
-                          → BeforeFrontier
-                              (record (falloc (CalleeRun.settle crun)) { next-slot = m }) loc
-              bf-mono-out m loc bf =
-                CalleeRun.bf-mono crun alloc m (cong falloc call-eq) loc bf
-
-              mem-pres-out : ∀ (loc : ValueLocation FS)
-                           → BeforeFrontier (record alloc { next-slot = n }) loc
-                           → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc
-                             ≡ SMCore.MemOps.readLoc s loc
-              mem-pres-out loc bf =
-                trans (CalleeRun.mem-pres crun alloc n
-                         (trans (cong falloc call-eq) refl) loc bf)
-                      (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
-                             (OSP.mem-pres loc))
-
               run4 : FlatSteps prog 4 (entry-flat base s alloc cl)
                        (flat-exec-instr instr-call-closure prog OSP.b3)
               run4 = (nh , span 0 _ refl) ∷ (nh1 , span 1 _ refl)
@@ -266,21 +246,52 @@ module OutC {FS : FrameSemantics} where
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
               h-eq = trans (log-of run4 _ refl) (++-identityʳ _)
 
-              RE : runAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ runAt s (evalᴰ (Out wf) ν-val)
-              RE = runAt-≡ {st = floc callFs} {st′ = s} {m = (evalᴰ (Out wf) ν-val)} {m′ = (evalᴰ (Out wf) ν-val)} h-eq refl
+              RE : runAt (floc callFs) (⟪ evalᴰ (Out wf) ν-val ⟫ k) ≡ runAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k)
+              RE = runAt-≡ {st = floc callFs} {st′ = s} {m = ⟪ evalᴰ (Out wf) ν-val ⟫ k} {m′ = ⟪ evalᴰ (Out wf) ν-val ⟫ k} h-eq refl
 
-              st-eq : stopsAt (floc callFs) (evalᴰ (Out wf) ν-val) ≡ stopsAt s (evalᴰ (Out wf) ν-val)
+              res-eq : resultAt (floc callFs) (⟪ evalᴰ (Out wf) ν-val ⟫ k) ≡ resultAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k)
+              res-eq = cong proj₂ RE
+
+              nc′ : NotCut (resultAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k)) → NotCut (resultAt (floc callFs) (⟪ evalᴰ (Out wf) ν-val ⟫ k))
+              nc′ = subst NotCut (sym res-eq)
+
+              st-eq : stopsAt (floc callFs) (⟪ evalᴰ (Out wf) ν-val ⟫ k) ≡ stopsAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k)
               st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
-              place : ∀ {v} → resultAt s (evalᴰ (Out wf) ν-val) ≡ returns v
+              place : ∀ {v r} → resultAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k) ≡ returns (done v r)
                     → ResultPlace (⟦ F ⟧TI (ν-type F)) (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         v (floc (CalleeRun.settle crun))
               place p = CalleeRun.place crun (trans (cong proj₂ RE) p)
 
-              trc : chain-events run ≡ eventsAt s (evalᴰ (Out wf) ν-val)
+              trc : chain-events run ≡ eventsAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k)
               trc = trans (chain-events-++ run4 (CalleeRun.run crun))
                           (trans (CalleeRun.events crun) (cong proj₁ RE))
+
+              -- D204: what the WHOLE force leaves alone — the three setup rows
+              -- (which write no memory at all) composed with the callee's own
+              -- preservation. `falloc OSP.b3` IS `alloc` definitionally, so
+              -- the `enter-call` premise the callee wants is `refl`.
+              -- `falloc OSP.b3` IS `alloc` (neither setup row touches the
+              -- allocator), so the frontier only moves at the call.
+              bf-mono-out : NotCut (resultAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k))
+                          → ∀ (m : ℕ) (loc : ValueLocation FS)
+                          → BeforeFrontier (record alloc { next-slot = m }) loc
+                          → BeforeFrontier
+                              (record (falloc (CalleeRun.settle crun)) { next-slot = m }) loc
+              bf-mono-out nc m loc bf =
+                CalleeRun.bf-mono crun (nc′ nc) alloc m (cong falloc call-eq) loc bf
+
+              mem-pres-out : NotCut (resultAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k))
+                           → ∀ (loc : ValueLocation FS)
+                           → BeforeFrontier (record alloc { next-slot = n }) loc
+                           → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc
+                             ≡ SMCore.MemOps.readLoc s loc
+              mem-pres-out nc loc bf =
+                trans (CalleeRun.mem-pres crun (nc′ nc) alloc n
+                         (trans (cong falloc call-eq) refl) loc bf)
+                      (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
+                             (OSP.mem-pres loc))
 
 
 

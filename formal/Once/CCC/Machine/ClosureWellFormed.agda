@@ -56,6 +56,7 @@ import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 import Once.Denotation.DenotTrace as DT
 import Once.Lang.Trace as TM
+open import Once.Lang.Iterative using (T∞; valueNow)
 -- Plan 0.54 Phase B rung A: the Type-level `fits-int`/`fits-float` for the stored
 -- `SV-Lit` (SMCore's `SV-Lit` is Type-indexed) in the strengthened primitive leaves.
 open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
@@ -89,7 +90,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- D179: the MONADIC evaluator, named the same way and for the same reason.
   -- `ValidAtWF` indexes on `⟦_⟧ᴰᴵ`, so a closure's meaning is a Kleisli arrow
   -- and must come from `evalᴰ`, not the pure `eval`.
-  evalᴰ : ∀ {A B} → IR A B → ⟦ A ⟧ → TM.T ⟦ B ⟧
+  evalᴰ : ∀ {A B} → IR A B → ⟦ A ⟧ → T∞ ⟦ B ⟧
   evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS) (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.fs-ffi FS) tbl)
 
   -- Plan 0.105: a meaning is a tree, and its value is the value of its RUN —
@@ -395,7 +396,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
         BeforeFrontier alloc (sucLoc ν-loc) →
         ValidAtWF Heap alloc {ν-type F}
-          (TM.valueT ιᶠ [] (evalᴰ (Ana wf coalg) seed)) ν-loc s
+          (valueNow (evalᴰ (Ana wf coalg) seed)) ν-loc s
 
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
@@ -480,7 +481,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         (x : ⟦ μ-type F ⟧) →
         -- D179: `out-μ` is PURE (μ is finite data), so the layer does not
         -- depend on the budget and `0` is as good as any.
-        ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s →
+        ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s →
         ValidAtWF m alloc {μ-type F} x loc s
 
       -- D179: `valid-ν-wf` DELETED. The machine never builds a ν — codegen
@@ -705,384 +706,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
       where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
 
-    --------------------------------------------------------------------
-    -- Plan 0.14 Phase B.0: factored IRResultAWF.
-    --
-    -- Three sub-records by allocator world:
-    --   IRResultBase   — common fields every IR result must provide
-    --                    (state/alloc/trace + result-place + halt/frame
-    --                     + per-instruction WF chain).
-    --   IRStackBudget  — stack-allocator invariants (next-slot bumps,
-    --                    slot writes/reads, scratch budget).
-    --   IRHeapBudget   — heap-allocator invariants (next-heap-ref bumps,
-    --                    heap budget, existing-heap-preservation).
-    --
-    -- IRResultAWF bundles all three. `open … public` re-exposes each
-    -- sub-record's fields at the bundle level so consumers can still
-    -- write `r .final-state`, `r .slot-monotone`, `r .heap-monotone`
-    -- without going through `.base.` / `.stack-inv.` / `.heap-inv.`.
-    --
-    -- Stack-only IRs fill the heap sub-record trivially
-    -- (heap-monotone = ≤-refl, heap-budget = 0, trace-no-heap-writes = tt).
-    -- Heap-allocating IRs (run-pair and friends) contribute
-    -- non-trivially to the heap sub-record while filling the stack
-    -- sub-record with whatever scratch they use.
-    --
-    -- Future InReg-allocating IRs add an IRRegBudget sub-record and
-    -- one new bundle field; the existing two sub-records stay untouched.
-    --------------------------------------------------------------------
-
-    -- Plan 0.17: type-level alloc effect.
-    --
-    -- Each producer declares its `bump` (delta on next-slot and
-    -- next-heap-ref). `final-alloc` is a DERIVED projection:
-    -- `final-alloc = apply-bump bump alloc`. Inconsistencies between
-    -- the bump and the trace's actual alloc effect are caught by
-    -- `alloc-correct` (which ties trace to apply-bump). Inconsistencies
-    -- between the heap-result/stack-result discipline (e.g. a
-    -- heap-result producer that bumps next-slot) are caught by
-    -- `result-place`'s BeforeFrontier proofs.
-    --
-    -- See `plans/0.17-type-level-alloc-effect.md`.
-    record IRResultBase (m : AllocMode)
-                        {A B : IRTy}
-                        (ir : IR A B)
-                        (x : ⟦ A ⟧)
-                        (s : LocState FS)
-                        (alloc : AllocState {FS}) : Set where
-      inductive
-      field
-        final-state : LocState FS
-        trace : AbstractTrace
-        -- Plan 0.17: declared alloc effect. The single source of truth
-        -- for how this IR transforms the AllocState. `final-alloc` is
-        -- derived from this + alloc (see derived projections below).
-        bump : AllocBump
-        -- Plan 0.14 (2026-05-18): structural gap elimination. The
-        -- trace MUST equal what IRToTrace emits at this alloc's
-        -- frontier. Spec/runtime divergence becomes a type error.
-        -- Producers discharge with `refl` when shapes match definitionally;
-        -- those needing alignment work surface as visible proof gaps.
-        trace-is-ir-to-trace :
-          trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
-        trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
-        -- Plan 0.17: alloc-correct ties trace's runtime alloc to
-        -- `apply-bump bump alloc`. A producer whose trace bumps
-        -- next-slot while declaring next-slot-delta = 0 cannot
-        -- discharge this — type error.
-        alloc-correct :
-          proj₂ (exec-trace trace s alloc) ≡ apply-bump bump alloc
-        -- continuation-alloc: caller's frame, but next-slot and
-        -- next-heap-ref both inherited from apply-bump bump alloc
-        -- (the resources the IR consumed). Bumping next-heap-ref here
-        -- is what makes heap-mode pair / inl / inr's fresh AtDynamic
-        -- result satisfy BeforeFrontier on the continuation side.
-        -- D179: the realized value comes from `evalᴰ`, at the budget the
-        -- producer names. While this said `eval ir x` the value half refined
-        -- the PURE semantics while the trace half refined `evalᴰ` — two models
-        -- for one machine state.
-        obs-budget : ℕ
-        -- plan 0.98: THE IR RETURNS. `result-place` names the value `evalᴰ`
-        -- produced, and after 0.98 a computation need not produce one — a
-        -- halting SigOp has no result. So the record must SAY that this run
-        -- returned before it can speak of "the value". It is not a new
-        -- assumption: `not-halted` below already says the machine did not
-        -- stop, and obs-correctness is precisely the claim that the two
-        -- agree. Stating it on the semantic side is what makes
-        -- `result-place`'s type well-formed without a hidden meta.
-        ir-returns : TM.Returns? (TM.resultAt ιᶠ (ev-log s) (evalᴰ ir x))
-        result-place : ResultPlace B m (apply-bump bump alloc)
-          (record alloc
-            { next-slot     = next-slot     (apply-bump bump alloc)
-            ; next-heap-ref = next-heap-ref (apply-bump bump alloc) })
-          (TM.valueT ιᶠ (ev-log s) (evalᴰ ir x) {ir-returns}) final-state
-        not-halted : halted final-state ≡ false
-        -- Plan 0.14: consequence-form memory preservation. Locations
-        -- valid in the caller's view (BeforeFrontier alloc) read the
-        -- same after the IR runs as before. Subsumes the old
-        -- TraceNoHeapWrites + TraceWritesAbove combo. Each producer
-        -- proves this from whatever shape its trace has; place-stage
-        -- locality keeps the obligation tractable.
-        mem-preserved-before :
-          (loc : ValueLocation FS) → BeforeFrontier alloc loc →
-          readLoc final-state loc ≡ readLoc s loc
-        trace-twf : TraceWF s alloc trace
-        trace-preserves-halted :
-          ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
-          halted s' ≡ false →
-          TraceWF s' alloc' trace →
-          halted (proj₁ (exec-trace trace s' alloc')) ≡ false
-        -- Plan 0.17.3 (frame-op fence): no producer may emit
-        -- instr-push-frame / instr-pop-frame in its trace. Frames are
-        -- vestigial; this turns "no producer uses them" into a typed
-        -- obligation.
-        trace-no-frame-ops : SMP.TraceNoFrameOps trace
-
-      -- Plan 0.17: derived projection for backward-compat.
-      -- Consumers reading `IRResultBase.final-alloc r` get
-      -- `apply-bump bump alloc` — the same AllocState they got before,
-      -- just constructed from the declared bump rather than free-form.
-      final-alloc : AllocState {FS}
-      final-alloc = apply-bump bump alloc
-
-      -- Plan 0.17: derived (was a field). apply-bump only updates
-      -- next-slot / next-heap-ref via record syntax, so current-frame
-      -- is preserved by definition.
-      frame-preserved : current-frame final-alloc ≡ current-frame alloc
-      frame-preserved = apply-bump-preserves-frame bump alloc
-
-    -- Plan 0.17.1: IRStackBudget takes `bump : AllocBump`, not `final-alloc`.
-    -- Algebraic fields (slot-monotone, slot-stays-in-budget) become derived
-    -- projections; semantic fields (budgets, trace shape) remain as fields.
-    record IRStackBudget (alloc : AllocState {FS}) (bump : AllocBump)
-                         (trace : AbstractTrace)
-                         (s : LocState FS) : Set where
-      inductive
-      field
-        max-slot-written : ℕ
-        stack-budget : ℕ
-        -- Consistency check: declared stack-budget covers the bump's slot delta.
-        bump-fits-stack-budget : next-slot-delta bump ≤ stack-budget
-        -- max-slot-written must cover the bump-derived final next-slot.
-        max-slot-geq-final : next-slot-delta bump ℕ.+ next-slot alloc ≤ max-slot-written
-        max-slot-usage-bound : max-slot-written ≤ next-slot alloc ℕ.+ stack-budget
-        frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
-          halted s' ≡ false →
-          readReg (regs s') Input1 ≡ SV-Ptr input-loc →
-          readLoc s' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc) →
-          (next-slot alloc ≡ next-slot (apply-bump bump alloc)) ⊎
-          ((readLoc (proj₁ (exec-trace trace s' alloc))
-                   (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc)) ⊎ ⊤)
-        trace-writes-above : TraceWritesAbove (next-slot alloc) trace
-        trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
-        trace-writes-below : TraceWritesBelow max-slot-written trace
-        trace-slot-reads-below : TraceSlotReadsBelow max-slot-written trace
-        scratch-budget : ℕ
-        scratch-bounded : max-slot-written ≤ next-slot (apply-bump bump alloc) ℕ.+ scratch-budget
-
-      -- Derived projections (Plan 0.17.1):
-      slot-monotone : next-slot alloc ≤ next-slot (apply-bump bump alloc)
-      slot-monotone = m≤n+m (next-slot alloc) (next-slot-delta bump)
-
-      slot-stays-in-budget : next-slot (apply-bump bump alloc) ≤ next-slot alloc ℕ.+ stack-budget
-      slot-stays-in-budget = subst (_≤ next-slot alloc ℕ.+ stack-budget)
-        (+-comm (next-slot alloc) (next-slot-delta bump))
-        (+-monoʳ-≤ (next-slot alloc) bump-fits-stack-budget)
-
-    record IRHeapBudget (alloc : AllocState {FS}) (bump : AllocBump)
-                        (trace : AbstractTrace) : Set where
-      inductive
-      field
-        heap-budget : ℕ
-        max-heap-ref-written : ℕ
-        -- Consistency check: declared heap-budget covers the bump's heap delta.
-        bump-fits-heap-budget : next-heap-ref-delta bump ≤ heap-budget
-        max-heap-ref-geq-final : next-heap-ref-delta bump ℕ.+ next-heap-ref alloc ≤ max-heap-ref-written
-        max-heap-usage-bound : max-heap-ref-written ≤ next-heap-ref alloc ℕ.+ heap-budget
-
-      -- Derived projection (Plan 0.17.1):
-      heap-monotone : next-heap-ref alloc ≤ next-heap-ref (apply-bump bump alloc)
-      heap-monotone = m≤n+m (next-heap-ref alloc) (next-heap-ref-delta bump)
-        -- Plan 0.14 follow-up: the SYNTACTIC field `trace-no-heap-writes`
-        -- has been removed. Stack-only producers prove TraceNoHeapWrites
-        -- LOCALLY for their trace shape and feed it to `mem-preserved-from-tnhw`
-        -- to discharge `IRResultBase.mem-preserved-before` — the actual
-        -- consequence-form invariant downstream needs (see
-        -- `feedback_consequence_form_invariants`). Composers compose
-        -- `mem-preserved-before` via `mem-preserved-compose` rather than
-        -- chaining the syntactic predicate.
-
-    record IRResultAWF (m : AllocMode)
-                       {A B : IRTy}
-                       (ir : IR A B)
-                       (x : ⟦ A ⟧)
-                       (s : LocState FS)
-                       (alloc : AllocState {FS}) : Set where
-      inductive
-      field
-        base       : IRResultBase m ir x s alloc
-        stack-inv  : IRStackBudget alloc (IRResultBase.bump base) (IRResultBase.trace base) s
-        heap-inv   : IRHeapBudget  alloc (IRResultBase.bump base) (IRResultBase.trace base)
-      open IRResultBase   base       public
-      open IRStackBudget  stack-inv  public
-      open IRHeapBudget   heap-inv   public
-
-    ------------------------------------------------------------------------
-    -- Plan 0.17: smart constructor for producers.
-    --
-    -- Captures the cascade pattern that every compositional producer
-    -- (PairWF, ApplyWF, ComposeWF, ...) hits: the producer has a
-    -- natural `alloc-final-local` (computed from sub-IR results or
-    -- scratch budgets) and constructs all its proofs (alloc-correct,
-    -- result-place, stack-inv, heap-inv) typed against that local
-    -- shape. With the bump-derived `final-alloc = apply-bump bump alloc`,
-    -- those proofs need transporting to the canonical form via subst.
-    --
-    -- This builder takes the producer's local-shape fields PLUS a
-    -- `bump` PLUS a single `final-alloc-eq : alloc-final-local ≡
-    -- apply-bump bump alloc` bridge, and packages all four substs
-    -- internally. Producers add ~3 lines (declare bump, prove the
-    -- equality, call mk-IRResultAWF-via-bump) instead of restructuring
-    -- 5-10 proof sites.
-    ------------------------------------------------------------------------
-
-    mk-IRResultAWF-via-bump :
-      ∀ {m A B} {ir : IR A B} {x : ⟦ A ⟧} {s : LocState FS} {alloc : AllocState {FS}}
-        (final-state : LocState FS)
-        (final-alloc-local : AllocState {FS})
-        (trace : AbstractTrace)
-        (bump : AllocBump)
-        (final-alloc-eq : final-alloc-local ≡ apply-bump bump alloc)
-        (trace-is-ir-to-trace : trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir)
-        (trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state)
-        (alloc-correct-local : proj₂ (exec-trace trace s alloc) ≡ final-alloc-local)
-        -- D179: the value half now refines `evalᴰ`; the producer names the
-        -- budget it realizes the value at.
-        (obs-budget : ℕ)
-        (ir-returns : TM.Returns? (TM.resultAt ιᶠ (ev-log s) (evalᴰ ir x)))
-        (result-place-local :
-           ResultPlace B m final-alloc-local
-             (record alloc { next-slot     = next-slot     final-alloc-local
-                           ; next-heap-ref = next-heap-ref final-alloc-local })
-             (TM.valueT ιᶠ (ev-log s) (evalᴰ ir x) {ir-returns}) final-state)
-        (not-halted : halted final-state ≡ false)
-        (mem-preserved-before :
-           (loc : ValueLocation FS) → BeforeFrontier alloc loc →
-           readLoc final-state loc ≡ readLoc s loc)
-        (trace-twf : TraceWF s alloc trace)
-        (trace-preserves-halted :
-           ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
-           halted s' ≡ false →
-           TraceWF s' alloc' trace →
-           halted (proj₁ (exec-trace trace s' alloc')) ≡ false)
-        (trace-no-frame-ops : SMP.TraceNoFrameOps trace)
-        (stack-inv-local : IRStackBudget alloc bump trace s)
-        (heap-inv-local  : IRHeapBudget  alloc bump trace)
-        → IRResultAWF m ir x s alloc
-    mk-IRResultAWF-via-bump {m = m} {ir = ir} {x = x} {s = s} {alloc = alloc}
-                            final-state final-alloc-local trace bump final-alloc-eq
-                            trace-is-ir-to-trace trace-correct alloc-correct-local
-                            obs-budget ir-returns result-place-local not-halted mem-preserved-before
-                            trace-twf trace-preserves-halted trace-no-frame-ops
-                            stack-inv-local heap-inv-local =
-      record
-        { base = record
-            { final-state = final-state
-            ; trace = trace
-            ; bump = bump
-            ; trace-is-ir-to-trace = trace-is-ir-to-trace
-            ; trace-correct = trace-correct
-            ; alloc-correct = trans alloc-correct-local final-alloc-eq
-            ; obs-budget = obs-budget
-            ; ir-returns = ir-returns
-            ; result-place =
-                subst (λ a → ResultPlace _ m a
-                              (record alloc { next-slot     = next-slot a
-                                            ; next-heap-ref = next-heap-ref a })
-                              (TM.valueT ιᶠ (ev-log s) (evalᴰ ir x) {ir-returns}) final-state)
-                      final-alloc-eq result-place-local
-            ; not-halted = not-halted
-            ; mem-preserved-before = mem-preserved-before
-            ; trace-twf = trace-twf
-            ; trace-preserves-halted = trace-preserves-halted
-            ; trace-no-frame-ops = trace-no-frame-ops
-            }
-        ; stack-inv = stack-inv-local
-        ; heap-inv  = heap-inv-local
-        }
-
-    --------------------------------------------------------------------
-    -- BodyCorrect: Pre-computed body execution proof
-    --
-    -- Input1 pair is constructed by Apply as Heap (boxed).
-    -- Output mode comes from body's actual output.
-    --------------------------------------------------------------------
-
-    record BodyCorrect {EnvType A B : IRTy}
-                       (body : IR (EnvType * A) B)
-                       (env : ⟦ EnvType ⟧)
-                       (env-loc : ValueLocation FS)
-                       (bound : ℕ) : Set where
-      inductive
-      field
-        body-capacity : ℕ
-        body-cap-eq : body-capacity ≡ ir-stack-requirement body
-
-        -- Execute returns mode-indexed result
-        -- Input1 pair is Heap (boxed) - constructed by Apply
-        -- Output mode is existentially quantified (body decides)
-        -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
-        execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
-          (s : LocState FS) (alloc : AllocState {FS})
-          (mPair : AllocMode) →
-          ValidAtWF mPair alloc {EnvType * A} (env , arg) pair-loc s →
-          BeforeFrontier alloc pair-loc →
-          halted s ≡ false →
-          readReg (regs s) Input1 ≡ SV-Ptr pair-loc →
-          ∃[ mOut ] IRResultAWF mOut body (env , arg) s alloc
-
-  open IRResultAWF public
-  open BodyCorrect public
-
-  --------------------------------------------------------------------
-  -- Backward-compat helper: derive exact heap-preservation (≡) when
-  -- the IR result's heap-budget is 0. Replaces the old field
-  -- `heap-preserved : ≡` for consumers that need exact equality.
-  -- Stack-only IRs (the default) set heap-budget = 0, so the equality
-  -- is derivable. Heap-allocating IRs (Phase B+) cannot use this.
-  --------------------------------------------------------------------
-  heap-preserved-of : ∀ {m A B} {ir : IR A B} {x : ⟦ A ⟧}
-                       {s : LocState FS} {alloc : AllocState {FS}}
-                       (r : IRResultAWF m ir x s alloc) →
-    IRResultAWF.heap-budget r ≡ 0 →
-    next-heap-ref (IRResultAWF.final-alloc r) ≡ next-heap-ref alloc
-  heap-preserved-of {alloc = alloc} r budget-eq = ≤-antisym
-    (≤-trans (IRResultAWF.max-heap-ref-geq-final r) bound-alloc)
-    (IRResultAWF.heap-monotone r)
-    where
-      -- After substituting budget = 0 and applying +-identityʳ to
-      -- collapse `n ℕ.+ 0` to `n`, we get the desired bound.
-      bound-via-budget : IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc ℕ.+ 0
-      bound-via-budget = subst
-        (λ b → IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc ℕ.+ b)
-        budget-eq
-        (IRResultAWF.max-heap-usage-bound r)
-
-      bound-alloc : IRResultAWF.max-heap-ref-written r ≤ next-heap-ref alloc
-      bound-alloc = subst (IRResultAWF.max-heap-ref-written r ≤_)
-                          (+-identityʳ (next-heap-ref alloc))
-                          bound-via-budget
-
-  ------------------------------------------------------------------------
-  -- ClosureWellFormed: Closure with pre-computed body execution proof
-  --
-  -- This extends the basic closure validity with body-correct.
-  -- Curry constructs this, Apply uses it.
-  ------------------------------------------------------------------------
-
-  record ClosureWellFormed {EnvType A B : IRTy}
-                           (body : IR (EnvType * A) B)
-                           (env : ⟦ EnvType ⟧)
-                           {body-bound : ℕ}
-                           (body<bound : ir-size body < body-bound)
-                           (closure-loc env-loc code-loc : ValueLocation FS)
-                           (s : LocState FS)
-                           (alloc : AllocState {FS}) : Set where
-    field
-      -- Memory layout
-      env-ptr : readLoc s closure-loc ≡ just (SV-Ptr env-loc)
-      code-ptr : readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc)
-      -- Frontier tracking
-      env-before : BeforeFrontier alloc env-loc
-      code-before : BeforeFrontier alloc code-loc
-      sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
-      -- Env validity (now using ValidAtWF with mode)
-      mEnv : AllocMode
-      env-valid : ValidAtWF mEnv alloc {EnvType} env env-loc s
-      -- PRE-COMPUTED body execution proof with program-bound
-      body-correct : BodyCorrect body env env-loc body-bound
-
-  open ClosureWellFormed public
 
   ------------------------------------------------------------------------
   -- Decomposition for ValidAtWF closures
@@ -1257,19 +880,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   input-read (in-at-reg _ eq)     = eq
   input-read (in-unit _)          = refl
 
-  -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
-  RecDispatcherWF : ℕ → Set
-  RecDispatcherWF bound = ∀ {A B} (mIn : AllocMode) (ir : IR A B) →
-    ir-size ir < bound →
-    (x : ⟦ A ⟧) (s : LocState FS) (alloc : AllocState {FS}) →
-    InputPlace {A} mIn alloc x s →
-    -- Stage F: the caller says WHERE the result goes. Not yet read by
-    -- `IRResultBase.result-place`, which still lets the callee choose — that
-    -- re-indexing is the next step and is what makes this parameter load-
-    -- bearing rather than plumbing.
-    (dest : Place) →
-    halted s ≡ false →
-    ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
   ------------------------------------------------------------------------
   -- Decomposition for ValidAtWF pairs (any mode)
@@ -1497,7 +1107,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- Option 3: μ/ν validity recurses on the stored layer ValidAtWF
   -- (structurally smaller → terminating); the μValid-* lemmas are gone.
   validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-mem-only (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₁ s₂ stack-eq heap-eq lv)
+    valid-μ-wf wf x (validityWF-mem-only (valueNow (evalᴰ (out-μ wf) x)) loc s₁ s₂ stack-eq heap-eq lv)
 
 
   -- Primitives: memory-independent (BeforeFrontier doesn't depend on state)
@@ -1594,7 +1204,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at frontier preserves memory at all BeforeFrontier locations
   validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-at-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
+    valid-μ-wf wf x (validityWF-write-at-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1683,7 +1293,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
   validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-at-suc-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
+    valid-μ-wf wf x (validityWF-write-at-suc-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1785,7 +1395,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
   validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-sv-at-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
+    valid-μ-wf wf x (validityWF-write-sv-at-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1881,7 +1491,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
   -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
   validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-sv-at-suc-frontier (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
+    valid-μ-wf wf x (validityWF-write-sv-at-suc-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -1978,7 +1588,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using μValid-frontier-advance
   validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-alloc-advance (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s n lv)
+    valid-μ-wf wf x (validityWF-alloc-advance (valueNow (evalᴰ (out-μ wf) x)) loc s n lv)
 
 
   -- Primitives: advance BeforeFrontier
@@ -2074,7 +1684,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
   validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-frontier-advance (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s cf-eq slot-≤ heap-≤ lv)
+    valid-μ-wf wf x (validityWF-frontier-advance (valueNow (evalᴰ (out-μ wf) x)) loc s cf-eq slot-≤ heap-≤ lv)
 
 
   -- Primitives: advance BeforeFrontier
@@ -2157,7 +1767,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
   validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-with-bf-transfer (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s a₁ a₂ bf lv)
+    valid-μ-wf wf x (validityWF-with-bf-transfer (valueNow (evalᴰ (out-μ wf) x)) loc s a₁ a₂ bf lv)
 
 
   -- Primitives: transfer BeforeFrontier
@@ -2252,7 +1862,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
   validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-mem-preserved (TM.valueT ιᶠ [] (evalᴰ (out-μ wf) x)) loc s₁ s₂ loc-before mem-eq lv)
+    valid-μ-wf wf x (validityWF-mem-preserved (valueNow (evalᴰ (out-μ wf) x)) loc s₁ s₂ loc-before mem-eq lv)
 
 
   -- Primitives: BeforeFrontier unchanged
@@ -2443,15 +2053,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- using trace-correct to translate from exec-trace to final-state.
   ------------------------------------------------------------------------
 
-  -- Plan 0.14: now a trivial accessor — the producer carried the
-  -- consequence directly.
-  irresult-mem-preserved : ∀ {m A B} {ir : IR A B} {x : ⟦ A ⟧}
-    {s : LocState FS} {alloc : AllocState {FS}}
-    (result : IRResultAWF m ir x s alloc) →
-    (loc : ValueLocation FS) →
-    BeforeFrontier alloc loc →
-    readLoc (IRResultAWF.final-state result) loc ≡ readLoc s loc
-  irresult-mem-preserved = IRResultAWF.mem-preserved-before
 
   -- Plan 0.14: helper for stack-only producers. Their traces still
   -- syntactically satisfy TraceNoHeapWrites + TraceWritesAbove; this

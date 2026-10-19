@@ -38,6 +38,8 @@ open import Once.Semantics.Machine using (coerce-ν-in)
 
 open import Once.Lang.Stream using (νᵈ; module νᵈ; in-νᵈ; seqF; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ)
 open νᵈ
+open import Once.Lang.Iterative using (T∞)
+open import Once.Lang.StreamInf using (νᴵ)
 
 -- SFunctor and the `⟦_⟧F → ⟦_⟧SF` coercion sits outside it.
 anaᵈ-erase : ∀ {H₁ H₂ : SFunctor} (heq : H₁ ≡ H₂) {A : Set}
@@ -64,7 +66,8 @@ subst-νᵈ-cong : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂) (v : νᵈ H�
 subst-νᵈ-cong refl v = refl
 ------------------------------------------------------------------------
 -- The monadic value domain. Mirrors `Val.⟦_⟧` EXCEPT at the arrow, which
--- becomes the Kleisli arrow into `T`.
+-- becomes the Kleisli arrow into `T∞` (plan 0.119 D5: the IR is ungraded, so
+-- an arrow is one that need not stop; a finite block embeds).
 ------------------------------------------------------------------------
 
 ⟦_⟧ᴰ : Type → Set
@@ -84,9 +87,9 @@ subst-νᵈ-cong refl v = refl
 -- and `⌊_⌋` erasing became incoherent with `coh` (the full→runtime direction
 -- has no canonical inhabitant when only ONE side forgets the argument). Making
 -- both sides forget it together is what restores coherence.
-⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ = ⊤ → T ⟦ B ⟧ᴰ   -- erased: no argument
-⟦ A ⇒[ mk-kind One  π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ = ⊤ → T∞ ⟦ B ⟧ᴰ   -- erased: no argument
+⟦ A ⇒[ mk-kind One  π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 ⟦ μ-type F ⟧ᴰ   = Val.⟦ μ-type F ⟧            -- first-order data: reuse pure
 -- ν is the OTHER type that suspends computation, so like the arrow it is
 -- Kleisli: forcing a layer IS a `T`-computation. A ν built by an EFFECTFUL
@@ -95,7 +98,7 @@ subst-νᵈ-cong refl v = refl
 -- re-invented by a separate eager left-to-right unfold, which ordered events
 -- the anamorphism does not order. Here the order is the order the program
 -- FORCES layers, which is the order the machine runs them in.
-⟦ ν-type F _ ⟧ᴰ = νᵈ (translateF Carrier Carrier F)
+⟦ ν-type F _ ⟧ᴰ = νᴵ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᴰ        = Val.⟦ Int ⟧
 ⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
 -- D243: no runtime value of a rigid parameter (used at ground instances only).
@@ -118,13 +121,13 @@ cohᴰ (A + B)      = cong₂ _⊎_ (cohᴰ A) (cohᴰ B)
 -- D143: split on the quantity. At `Zero` BOTH sides forget the argument
 -- (`⌊_⌋` gives `Unit ⇛ ⌊B⌋`, `⟦_⟧ᴰ` gives `⊤ → T ⟦B⟧ᴰ`), so only the codomain
 -- has to be transported — which is exactly what makes erasure coherent.
-cohᴰ (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⊤ → T y) (cohᴰ B)
-cohᴰ (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B)
-cohᴰ (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B)
+cohᴰ (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⊤ → T∞ y) (cohᴰ B)
+cohᴰ (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ B)
+cohᴰ (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ B)
 cohᴰ (μ-type F)   = coh (μ-type F)
 -- ν's monadic meaning is no longer its pure one, so this transport stops
 -- borrowing `coh` and names its own constructor. Structurally identical.
-cohᴰ (ν-type F _) = cong νᵈ (tF-coh F)
+cohᴰ (ν-type F _) = cong νᴵ (tF-coh F)
 cohᴰ Int          = refl
 cohᴰ Float        = refl
 cohᴰ (rigid _ _)  = refl

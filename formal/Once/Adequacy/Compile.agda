@@ -58,11 +58,11 @@ open Once.Lang.Trace.PrefixFamily using (bnd; sat; coh)
 
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Lang.Core.Telescope using (Program; program)
-open import Once.Adequacy.SourceTrace using (⟦_⟧; ⟦⟧-via-module; ⟦_⟧IR; ⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Adequacy.RewritePreserves using (rewrite-program-preserves; rewrite-program-tree)
+open import Once.Adequacy.RewritePreserves using (rewrite-program-tree)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 
@@ -153,18 +153,6 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- discharge is part of the substantive proof work — they are NOT
 -- new trusted-base axioms, they are spec-level connectors).
 ------------------------------------------------------------------------
-
--- Module-level behavior: the DENOTATIONAL meaning of the parsed module
--- (D059) — `⟦ moduleToIR m ⟧IR` (= `evalᴰ`), the observation-depth SigOp trace.
--- So `module-to-asm-correct`'s obligation is "the compiled trace equals the
--- denotational source meaning". The surface/IR presentations are tied by the
--- standalone `faithful` fact (D060), not a conjunct of the compiler theorem.
--- Plan 0.73 (D113): the module's meaning takes the ARCH. This is where the
--- target reaches the denotation — `arch-float-format` is the whole of it,
--- and `⟦_⟧A` next door has taken an arch all along for the same reason.
--- Plan 0.105: and the interpretation of its FFI calls.
-⟦_⟧M : P.Module → Arch → Interp → Behavior
-⟦ m ⟧M arch ι = ⟦ moduleToProgram m ⟧IR (arch-numerics arch) ι
 
 -- DISTINCT EMITTED SYMBOLS (`DistinctSymbols`) + its proof (`program-no-clash`)
 -- now live in `Once.Adequacy.NameClash` (imported above). The assembler trust
@@ -269,17 +257,6 @@ built-of-inv arch (inj₂ F)   asm _ = F , refl
 -- `arch-correct : ∀ arch → ArchCorrect …` witness is in scope — they consume
 -- its `asm-trace-faithful`/`ir-flat-correct` fields. (Moved here from the
 -- top level so each arch's obligations are type-enforced via `ArchCorrect`.)
-
--- Stage 1 correctness — DISCHARGED (Plan 0.45 Part B), no longer a
--- postulate. `⟦ m ⟧M = runTrace m` definitionally, and `⟦⟧-via-module`
--- reduces `⟦ src ⟧` to `runTrace m` given the parse (J-style dispatch in
--- `SourceTrace`, no `with`-opacity). The two meanings coincide.
-gmoduleToModule-correct :
-  ∀ (src : Source) (m : P.Module) →
-  srcToModule src ≡ just m →
-  ∀ (arch : Arch) (ι : Interp) (n : ℕ) → at (⟦ m ⟧M arch ι) n ≡ at (⟦ src ⟧ (arch-numerics arch) ι) n
-gmoduleToModule-correct src m eq arch ι n =
-  sym (cong (λ b → at (b ι) n) (⟦⟧-via-module src m eq (arch-numerics arch)))
 
 -- `main⇒built` (Plan 0.48): a module with a compilable `main`
 -- (`moduleToIR m ≡ just ir`) Builds for EVERY `doOpt` — PROVEN (no longer a

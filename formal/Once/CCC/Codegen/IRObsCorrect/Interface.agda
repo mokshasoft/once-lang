@@ -60,7 +60,10 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Lang.Trace as TM
-open import Once.Lang.Res using (Res; returns; is-stopped)
+open import Once.Lang.Res using (Res; returns; stopped; is-stopped)
+open import Once.Lang.Iterative using (T∞; Now; valueNow)
+open import Once.Denotation.Approx using (Ap; done; cut; approx; NotCut; budgetLeft)
+open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤)
 open import Data.Bool using (Bool)
 import Data.List.Properties
 open import Once.CCC.Machine.FlatLog using (LogFree)
@@ -82,7 +85,7 @@ module Core {FS : FrameSemantics} where
   ιᶠ : TM.Interp
   ιᶠ = Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS
 
-  evalᴰ : ∀ {A B} → IR A B → ValueDomain.⟦ A ⟧ᴰᴵ → TM.T ValueDomain.⟦ B ⟧ᴰᴵ
+  evalᴰ : ∀ {A B} → IR A B → ValueDomain.⟦ A ⟧ᴰᴵ → T∞ ValueDomain.⟦ B ⟧ᴰᴵ
   evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
                    (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl)
 
@@ -115,8 +118,38 @@ module Core {FS : FrameSemantics} where
 
   -- The value of a computation that RETURNS AT ONCE (`ret v`: a constructor,
   -- a destructor, a suspension). It makes no call, so no history is read.
-  retVal : ∀ {X} (m : TM.T X) {p : TM.Returns? (TM.resultAt ιᶠ DL.[] m)} → X
-  retVal m {p} = TM.valueT ιᶠ DL.[] m {p}
+  retVal : ∀ {X} (m : T∞ X) {p : Now m} → X
+  retVal m {p} = valueNow m {p}
+
+  -- plan 0.119 D5: a fragment's meaning need not stop, so the machine is
+  -- related to it at a ROUND BUDGET `k` (`Once.Denotation.Approx`): what the run
+  -- does before its `k+1`-th silent step, a finite tree.
+  ⟪_⟫_ : ∀ {X} → T∞ X → ℕ → TM.T (Ap X)
+  ⟪ m ⟫ k = approx k m
+
+  bind-arith : ∀ {k r′ a c d : ℕ} (b : ℕ) → k ≤ r′ + a → r′ ≤ b + c → a + c ≤ d → k ≤ b + d
+  bind-arith {k} {r′} {a} {c} {d} b pf pg le =
+    ≤-trans pf (≤-trans (+-monoˡ-≤ a pg)
+      (≤-trans (≤-reflexive (trans (+-assoc b c a) (cong (b +_) (+-comm c a))))
+               (+-monoʳ-≤ b le)))
+
+  -- A cut result refutes every field conditioned on the run not being cut.
+  cut-absurd : ∀ {X Y : Set} {ρ : Res (Ap Y)} → ρ ≡ returns cut → NotCut ρ → X
+  cut-absurd refl ()
+
+  -- `progress` carried to a run that takes more steps.
+  progress-≤ : ∀ {k b m m′ : ℕ} → k ≤ b + m → m ≤ m′ → k ≤ b + m′
+  progress-≤ {b = b} p le = ≤-trans p (+-monoʳ-≤ b le)
+
+  -- `progress` of a composite: the first part left `r′`, the second ran at it.
+  -- (A budget left over by a returned or cut run does not depend on the
+  -- budget it was read against; a stopped run claims nothing.)
+  progress-bind : ∀ {Y : Set} {k r′ a c d : ℕ} (ρ : Res (Ap Y))
+                → k ≤ r′ + a → r′ ≤ budgetLeft r′ ρ + c → a + c ≤ d
+                → k ≤ budgetLeft k ρ + d
+  progress-bind {k = k} {d = d} stopped _ _ _ = m≤m+n k d
+  progress-bind (returns (done _ b)) pf pg le = bind-arith b pf pg le
+  progress-bind (returns cut)        pf pg le = bind-arith 0 pf pg le
 
   -- D174: the STEP vocabulary for a run that allocates and dereferences.
   -- `flat-step-straight` threads `exec-abstract` definitionally, so the
@@ -166,8 +199,34 @@ module Core {FS : FrameSemantics} where
           ; validityWF-frontier-advance) public
   open MemOps {FS} using (readLoc) public
   open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
-  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start; chain-left) public
+  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start; chain-left; chain-ctrls; chain-ctrls-++; chain-ctrls-subst-start; ctrls-≤ʳ; ctrls-≤ˡ) public
   open FlatEventTrace {FS} using (ChainNotNested; chain-log)
+
+  -- The control steps of two parts, inside a chain that runs them with
+  -- other segments around (the pair's shapes).
+  ctrls-4 : ∀ {prog kP kF kM kG} {e0 s1 s2 s3 s4 : FlatState}
+              (preS : FlatSteps prog kP e0 s1) (cF : FlatSteps prog kF s1 s2)
+              (midS : FlatSteps prog kM s2 s3) (cG : FlatSteps prog kG s3 s4)
+          → chain-ctrls cF + chain-ctrls cG
+            ≤ chain-ctrls (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS cG)))
+  ctrls-4 preS cF midS cG =
+    subst (chain-ctrls cF + chain-ctrls cG ≤_)
+          (sym (trans (chain-ctrls-++ preS _)
+                (cong (chain-ctrls preS +_)
+                  (trans (chain-ctrls-++ cF _) (cong (chain-ctrls cF +_) (chain-ctrls-++ midS cG))))))
+          (≤-trans (+-monoʳ-≤ (chain-ctrls cF) (m≤n+m (chain-ctrls cG) (chain-ctrls midS)))
+                   (m≤n+m _ (chain-ctrls preS)))
+
+  ctrls-5 : ∀ {prog kP kF kM kG kT} {e0 s1 s2 s3 s4 s5 : FlatState}
+              (preS : FlatSteps prog kP e0 s1) (cF : FlatSteps prog kF s1 s2)
+              (midS : FlatSteps prog kM s2 s3) (cG : FlatSteps prog kG s3 s4)
+              (tailS : FlatSteps prog kT s4 s5)
+          → chain-ctrls cF + chain-ctrls cG
+            ≤ chain-ctrls (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS (FlatSteps-++ cG tailS))))
+  ctrls-5 preS cF midS cG tailS =
+    ≤-trans (+-monoʳ-≤ (chain-ctrls cF) (ctrls-≤ˡ cG tailS))
+            (ctrls-4 preS cF midS (FlatSteps-++ cG tailS))
+
 
   -- …and in general: a chain of emitted (non-nested) instructions grows the
   -- log by its events, so a clause's `log` follows from its `traces-agree`.
@@ -375,14 +434,14 @@ module Core {FS : FrameSemantics} where
       -- fragment's text; once the Spec has stopped, so has the machine — and
       -- the pc is wherever the halting instruction left it, INSIDE the text,
       -- which is why `at-end` is conditioned too.
-      live       : stopsAt s (evalᴰ ir x) ≡ false → halted (floc settle) ≡ false
-      at-end     : stopsAt s (evalᴰ ir x) ≡ false
+      live       : stopsAt s (⟪ evalᴰ ir x ⟫ k) ≡ false → halted (floc settle) ≡ false
+      at-end     : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r)
                  → fpc settle ≡ length (emitted n l ir) + base
       -- D320: …and it has not LEFT: a fragment stops at a call with no answer,
       -- never at the program's `c-leave` (the run's end must read `halted`).
-      stops      : stopsAt s (evalᴰ ir x) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s
-      no-ret     : fret settle ≡ []
-      no-link    : flink settle ≡ nothing
+      stops      : stopsAt s (⟪ evalᴰ ir x ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s
+      no-ret     : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → fret settle ≡ []
+      no-link    : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → flink settle ≡ nothing
       -- Plan 0.105: THE LOG GROWS BY EXACTLY THE FRAGMENT'S CALLS. A sequel
       -- runs from `settle`, and its answers are the interpretation's at the
       -- log there — so `g ∘ f` can only hand `g` the run the denotation means
@@ -391,7 +450,7 @@ module Core {FS : FrameSemantics} where
       -- `FlatSteps`: the retired nested instructions (`instr-case-on-tag`,
       -- `instr-loop`) grow the log without an `event-of`, and a chain does not
       -- know it was emitted.
-      log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log s DL.++ eventsAt s (evalᴰ ir x)
+      log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log s DL.++ eventsAt s (⟪ evalᴰ ir x ⟫ k)
       -- D179: the value comes from `evalᴰ`, not the pure `eval`. While it was
       -- `eval ir x` the value half refined a DIFFERENT semantics from the
       -- trace half — the same two-models category error this codebase retired
@@ -423,7 +482,7 @@ module Core {FS : FrameSemantics} where
       -- one fact, and it carries the value: `resT ≡ returns v` is BOTH the
       -- condition and the witness, and `v` is bound by it rather than
       -- computed beside it. The obligation can no longer be mis-stated.
-      place      : ∀ {v} → resultAt s (evalᴰ ir x) ≡ returns v
+      place      : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r)
                  → ResultPlace B out-mode (falloc settle) cont-alloc
                      v (floc settle)
       -- D204: WHAT THE RUN LEAVES ALONE.
@@ -464,14 +523,19 @@ module Core {FS : FrameSemantics} where
       -- part is named and quarantined.
 
       -- PERMANENT. Slots below the fragment's own frontier are untouched.
-      stack-pres : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
+      -- A cut run has consumed the whole budget, and the machine has taken a
+      -- control step for every silent step it passed (so the run grows with
+      -- the budget on every target: a control step lowers to an instruction).
+      progress   : k ≤ budgetLeft k (resultAt s (⟪ evalᴰ ir x ⟫ k)) + chain-ctrls run
+
+      stack-pres : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
                  → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
                  → SMCore.MemOps.readLoc (floc settle) (AtStack fr j)
                    ≡ SMCore.MemOps.readLoc s (AtStack fr j)
 
       -- CONTINGENT on the bump encoding; to be restated as 0.35 M2's liveness
       -- property when the allocator is wired.
-      heap-pres  : ∀ (hl : HeapLocation)
+      heap-pres  : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → ∀ (hl : HeapLocation)
                  → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
                  → SMCore.MemOps.readLoc (floc settle) (AtDynamic hl)
                    ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
@@ -493,14 +557,14 @@ module Core {FS : FrameSemantics} where
       -- `cf-fs10` (Sum, TwoCell), `cf-a16` (ApplySetupPres), `cf-t1`/`cf-u3`
       -- (TenStepPres/NineStepPres) — so the field exports what was already
       -- there rather than asking for new work.
-      frame-pres : current-frame (falloc settle) ≡ current-frame alloc
+      frame-pres : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → current-frame (falloc settle) ≡ current-frame alloc
 
       -- D206: over an arbitrary slot bound `m`, for the same reason
       -- `CalleeRun.mem-pres` is: the run keeps the frame and only grows the
       -- heap, so it carries a `BeforeFrontier` at WHATEVER slot bound the
       -- consumer is working with — `g ∘ f` needs it at `f`'s bound to spend
       -- `f`'s preservation and at `g`'s to spend `g`'s.
-      bf-mono    : ∀ (m : ℕ) (loc : ValueLocation FS)
+      bf-mono    : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → ∀ (m : ℕ) (loc : ValueLocation FS)
                  → BeforeFrontier (record alloc { next-slot = m }) loc
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
 
@@ -510,12 +574,13 @@ module Core {FS : FrameSemantics} where
   -- only to whoever needs to know that the heap half is contingent.
   vr-mem-pres : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl k}
               → (vr : ValueRealized prog base n l ir x s alloc cl k)
+              → NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k))
               → ∀ (loc : ValueLocation FS)
               → BeforeFrontier (record alloc { next-slot = n }) loc
               → SMCore.MemOps.readLoc (floc (ValueRealized.settle vr)) loc
                 ≡ SMCore.MemOps.readLoc s loc
-  vr-mem-pres vr (AtStack fr j) bf = ValueRealized.stack-pres vr fr j bf
-  vr-mem-pres vr (AtDynamic hl) bf = ValueRealized.heap-pres  vr hl bf
+  vr-mem-pres vr nc (AtStack fr j) bf = ValueRealized.stack-pres vr nc fr j bf
+  vr-mem-pres vr nc (AtDynamic hl) bf = ValueRealized.heap-pres  vr nc hl bf
 
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
@@ -553,7 +618,7 @@ module Core {FS : FrameSemantics} where
       -- finite list and the chain to `settle` makes all of them; the depth-`k`
       -- prefix is the consumer's to take.
       traces-agree :
-        chain-events (ValueRealized.run value-realized) ≡ eventsAt s (evalᴰ ir x)
+        chain-events (ValueRealized.run value-realized) ≡ eventsAt s (⟪ evalᴰ ir x ⟫ k)
       -- The value device: "the value the next effectful SigOp reads is right".
       -- Plan 0.54 rung A: a `ResultPlace` (register `at-reg` OR memory `at-loc`),
       -- NOT bare `ValidAtWF` at a memory loc — a Pure primitive result is
@@ -624,7 +689,7 @@ module Core {FS : FrameSemantics} where
                    -- D199: `B` is EXPLICIT. Indexing by the computation
                    -- rather than by `(ir , inp)` costs its inferability —
                    -- `TM.T ⟦ B ⟧` pins `⟦ B ⟧`, and `⟦_⟧` is not injective.
-                   (B : IRTy) (comp : TM.T ⟦ B ⟧)
+                   (B : IRTy) (comp : T∞ ⟦ B ⟧)
                    (k : ℕ) : Set where
     constructor callee-run
     field
@@ -638,22 +703,23 @@ module Core {FS : FrameSemantics} where
       -- closure may invoke a halting SigOp; then it never reaches its `c-ret`
       -- and never returns. `live`/`returned`/`place` are what a RETURNING
       -- callee leaves, and `stops` is the other half.
-      live       : stopsAt (floc fs) comp ≡ false → halted (floc settle) ≡ false
+      live       : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ false → halted (floc settle) ≡ false
       -- …and it RETURNED: the block ends in `c-ret`, which pops the address
       -- the call pushed and leaves the caller's own (empty) stack behind.
-      returned   : stopsAt (floc fs) comp ≡ false → fpc settle ≡ ret-pc
+      returned   : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fpc settle ≡ ret-pc
       -- D320: …without having LEFT (see `ValueRealized.stops`).
-      stops      : stopsAt (floc fs) comp ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left (floc fs)
-      no-ret     : fret settle ≡ []
-      no-link    : flink settle ≡ nothing
+      stops      : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left (floc fs)
+      no-ret     : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → fret settle ≡ []
+      no-link    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → flink settle ≡ nothing
       -- plan 0.98: the premise supplies the value — see `ValueRealized.place`.
-      place      : ∀ {v} → resultAt (floc fs) comp ≡ returns v
+      place      : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r)
                  → ResultPlace B out-mode (falloc settle) cont-alloc
                      v (floc settle)
       -- Plan 0.105: exact, and the log grows by them — see
       -- `ValueRealized.log`/`traces-agree`.
-      events     : chain-events run ≡ eventsAt (floc fs) comp
-      log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log (floc fs) DL.++ eventsAt (floc fs) comp
+      events     : chain-events run ≡ eventsAt (floc fs) (⟪ comp ⟫ k)
+      log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log (floc fs) DL.++ eventsAt (floc fs) (⟪ comp ⟫ k)
+      progress   : k ≤ budgetLeft k (resultAt (floc fs) (⟪ comp ⟫ k)) + chain-ctrls run
       -- D204: WHAT THE CALL LEAVES ALONE — the call half of the same fact
       -- `ValueRealized.mem-pres` states for a straight-line fragment.
       --
@@ -676,16 +742,16 @@ module Core {FS : FrameSemantics} where
       -- merely below some frontier. The caller picks the bound it needs; a
       -- straight-line fragment could not make this claim, which is why
       -- `ValueRealized`'s version is fixed at its own `n`.
-      mem-pres   : ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
+      mem-pres   : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
                  → ∀ (loc : ValueLocation FS)
                  → BeforeFrontier (record pre { next-slot = m }) loc
                  → SMCore.MemOps.readLoc (floc settle) loc ≡ SMCore.MemOps.readLoc (floc fs) loc
       -- D210: …and the call's. `enter-call` SHIFTS the frame, so the claim is
       -- against the caller's `pre`, which is what a returning callee restores.
-      frame-pres : ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+      frame-pres : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
                  → current-frame (falloc settle) ≡ current-frame pre
 
-      bf-mono    : ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
+      bf-mono    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
                  → ∀ (loc : ValueLocation FS)
                  → BeforeFrontier (record pre { next-slot = m }) loc
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc

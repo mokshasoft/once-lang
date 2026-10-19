@@ -35,6 +35,8 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Lang.Trace as TM
 
+open import Once.Denotation.Approx using (NotCut)
+
 module PairPresC {FS : FrameSemantics} where
 
   open Core {FS}
@@ -65,6 +67,9 @@ module PairPresC {FS : FrameSemantics} where
     (vrF : ValueRealized prog bf₀ (suc (suc (suc (suc n)))) l f xf
              (floc (pair-p2 prog base n s alloc cl)) alloc
              (fclosure (pair-p2 prog base n s alloc cl)) kf)
+    -- …and `f` was not cut (plan 0.119 D5: the preservation fields hold of a
+    -- run that ended or returned).
+    (ncF : NotCut (resultAt (floc (pair-p2 prog base n s alloc cl)) (⟪ evalᴰ f xf ⟫ kf)))
     -- `g`'s, at the state the two mid rows leave. `n1`/`l1` are `f`'s output
     -- frontier and label base; all this module needs of them is `n ≤ n1`,
     -- which the caller supplies as `frontier-mono f f-start l` composed with
@@ -75,6 +80,7 @@ module PairPresC {FS : FrameSemantics} where
              (floc (pair-m2 prog n (ValueRealized.settle vrF)))
              (falloc (pair-m2 prog n (ValueRealized.settle vrF)))
              (fclosure (pair-m2 prog n (ValueRealized.settle vrF))) kg)
+    (ncG : NotCut (resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg)))
     where
 
     module VR = ValueRealized
@@ -194,7 +200,7 @@ module PairPresC {FS : FrameSemantics} where
     bf-after-f : ∀ (m : ℕ) (loc : ValueLocation FS)
                → BeforeFrontier (record alloc { next-slot = m }) loc
                → BeforeFrontier (record (falloc fsF) { next-slot = m }) loc
-    bf-after-f = VR.bf-mono vrF
+    bf-after-f = VR.bf-mono vrF ncF
 
     bf-mid : ∀ (m : ℕ) (loc : ValueLocation FS)
            → BeforeFrontier (record (falloc fsF) { next-slot = m }) loc
@@ -206,7 +212,7 @@ module PairPresC {FS : FrameSemantics} where
     bf-after-g : ∀ (m : ℕ) (loc : ValueLocation FS)
                → BeforeFrontier (record (falloc m2) { next-slot = m }) loc
                → BeforeFrontier (record (falloc gs) { next-slot = m }) loc
-    bf-after-g = VR.bf-mono vrG
+    bf-after-g = VR.bf-mono vrG ncG
 
     bf-to-m2 : ∀ (m : ℕ) (loc : ValueLocation FS)
              → BeforeFrontier (record alloc { next-slot = m }) loc
@@ -237,7 +243,7 @@ module PairPresC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     frame-pres-pair : current-frame (falloc NSP.u10) ≡ current-frame alloc
     frame-pres-pair =
-      trans cf-tail (trans (VR.frame-pres vrG) (trans cf-mid (VR.frame-pres vrF)))
+      trans cf-tail (trans (VR.frame-pres vrG ncG) (trans cf-mid (VR.frame-pres vrF ncF)))
 
     ------------------------------------------------------------------
     -- D206: BFMONO, at an ARBITRARY slot bound `m` — which is exactly why
@@ -271,7 +277,7 @@ module PairPresC {FS : FrameSemantics} where
                     → BeforeFrontier (record alloc { next-slot = n }) loc
                     → SMCore.MemOps.readLoc (floc fsF) loc ≡ SMCore.MemOps.readLoc s loc
     mem-pres-to-fsF loc b =
-      trans (vr-mem-pres vrF loc (bf-f loc b))
+      trans (vr-mem-pres vrF ncF loc (bf-f loc b))
       (trans (store-slot-preserves-before backup (floc p1)
                 (record alloc { next-slot = n }) (falloc p1) loc
                 (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
@@ -290,17 +296,17 @@ module PairPresC {FS : FrameSemantics} where
                    → BeforeFrontier (record alloc { next-slot = n }) loc
                    → SMCore.MemOps.readLoc (floc gs) loc ≡ SMCore.MemOps.readLoc s loc
     mem-pres-to-gs loc b =
-      trans (vr-mem-pres vrG loc (w-g-outer loc b))
+      trans (vr-mem-pres vrG ncG loc (w-g-outer loc b))
       (trans (mem-untouched (restore-input backup) (floc m1) (falloc m1) loc
                 Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
       (trans (store-slot-preserves-before fst-stash (floc fsF)
                 (record alloc { next-slot = n }) (falloc fsF) loc
-                (VR.frame-pres vrF) (n≤1+n n) b)
+                (VR.frame-pres vrF ncF) (n≤1+n n) b)
              (mem-pres-to-fsF loc b)))
 
     frame-pres-to-gs : current-frame (falloc gs) ≡ current-frame alloc
     frame-pres-to-gs =
-      trans (VR.frame-pres vrG) (trans cf-mid (VR.frame-pres vrF))
+      trans (VR.frame-pres vrG ncG) (trans cf-mid (VR.frame-pres vrF ncF))
 
     module Fill
       (rdi6 : sv-as-loc (readReg (regs (floc NSP.u6)) Input1) ≡ just (AtDynamic NSP.hl))
@@ -336,16 +342,16 @@ module PairPresC {FS : FrameSemantics} where
                  nhw-load-from-slot refl nhw-load-from-slot refl
                  ≤-refl rdi6 rdi8 loc (w-gs loc b))
         -- (4) `g`'s run, at `g`'s own emission frontier `n1`
-       (trans (vr-mem-pres vrG loc (w-g loc b))
+       (trans (vr-mem-pres vrG ncG loc (w-g loc b))
         -- (3b) `restore-input backup` — a register write; no memory at all
        (trans (mem-untouched (restore-input backup) (floc m1) (falloc m1) loc
                  Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
         -- (3a) `store-at-slot fst-stash` — slot `suc n`, ABOVE the window
        (trans (store-slot-preserves-before fst-stash (floc fsF)
                  (record alloc { next-slot = n }) (falloc fsF) loc
-                 (VR.frame-pres vrF) (n≤1+n n) b)
+                 (VR.frame-pres vrF ncF) (n≤1+n n) b)
         -- (2) `f`'s run, at `f`'s own emission frontier `f-start = n + 4`
-       (trans (vr-mem-pres vrF loc (bf-f loc b))
+       (trans (vr-mem-pres vrF ncF loc (bf-f loc b))
         -- (1b) `store-at-slot backup` — slot `n`, the window's own bound
        (trans (store-slot-preserves-before backup (floc p1)
                  (record alloc { next-slot = n }) (falloc p1) loc

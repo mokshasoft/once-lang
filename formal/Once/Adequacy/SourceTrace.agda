@@ -66,7 +66,7 @@ open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
 open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent)
 open import Once.Spec.Trace using (Tr)
-open import Once.Denotation.TraceTr using (runTr)
+open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Adequacy.MachineTrace using (silentTr)
 open import Data.Unit using (⊤)
 -- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
@@ -217,31 +217,10 @@ rewrite-program-linked p (lm , les) =
 -- IR-level meaning (the source observable).
 ------------------------------------------------------------------------
 
--- The SigOp trace the denotational `evalᴰ` reads off `main`'s IR (the
--- elaborated meaning), at observation depth `n` (Plan 0.46: the monadic
--- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
--- D179: `Behavior` is a RECORD — the three laws travel with the family, so a
--- producer must supply them. They are not new obligations invented here: they
--- are exactly `PrefixFamily`, which every RUN satisfies (plan 0.105: the
--- observable is a `take` of one run's events, `projTrace-pf`).
-⟦_⟧IR : Maybe IRProgram → TargetNum → Interp → Behavior
--- D244: the meaning of a compiled program is `main` run in the environment of
--- its function table (`runIR`); an internal call means its callee. Plan 0.105:
--- run AGAINST the interpretation — its pure half is the FFI values, its
--- answers what the calls return.
-⟦ just p ⟧IR fmt ι = mkBehavior (projTrace ι m) (coh pf) (bnd pf) (sat pf)
-  where
-    m  = runIR fmt (pureHalf ι) p
-    pf : PrefixFamily (projTrace ι m)
-    pf = projTrace-pf ι m
--- A module with no `main` observes nothing, at every depth — the empty family,
--- whose three laws are immediate.
-⟦ nothing ⟧IR _ _ = silent
-
 -- D320: …and as a TRACE — the run's calls, then how it ended (`returned` or
 -- `halted`, `TraceTr.runTr`). A module with no `main` shows nothing, ever.
 ⟦_⟧IRᵗ : Maybe IRProgram → TargetNum → Interp → Tr ⊤
-⟦ just p ⟧IRᵗ fmt ι = runTr ι [] (runIR fmt (pureHalf ι) p)
+⟦ just p ⟧IRᵗ fmt ι = trT∞ ι [] (runIR fmt (pureHalf ι) p)
 ⟦ nothing ⟧IRᵗ _ _ = silentTr
 
 -- D165, RESTATED AT THE MEANING (plan 0.103 6a″): the arith lifting preserves
@@ -306,41 +285,3 @@ srcToModule-inv : ∀ (src : Source) (mR : P.Module) →
 srcToModule-inv src mR eq =
   srcToModule-inv-p (Source.srcImports src) (parseStrict (Source.srcText src)) mR eq
 
-------------------------------------------------------------------------
--- The source semantics (discharges the `Behavior.⟦_⟧` postulate).
-------------------------------------------------------------------------
-
--- D059/D060: the source meaning is the DENOTATIONAL `evalᴰ` (compositional →
--- reasons about Once programs; observation-depth → commensurable apex meter),
--- via `⟦_⟧IR ∘ moduleToProgram` (D244: main in its function table's environment). The surface presentation `⟦_⟧ˢ` agrees with this
--- IR presentation by the proven `faithful` (a standalone fact, no longer a
--- conjunct of the compiler theorem).
--- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
--- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
-sourceTrace-aux : Maybe P.Module → TargetNum → Interp → Behavior
-sourceTrace-aux (just m) fmt = ⟦ moduleToProgram m ⟧IR fmt
-sourceTrace-aux nothing  _ _ = silent
-
-sourceTrace : Source → TargetNum → Interp → Behavior
-sourceTrace src fmt = sourceTrace-aux (srcToModule src) fmt
-
--- `abstract`: keep `⟦_⟧` opaque downstream. Otherwise `⟦ src ⟧` unfolds
--- to `sourceTrace src`'s `with gmoduleToModule src …`, and
--- `Verified.Compile.correct`'s own `with gmoduleToModule src in g-eq`
--- reduces the goal's `⟦ src ⟧` while the per-stage postulate's stays
--- unreduced → `UnequalTerms`. Opacity makes both sides the same term.
-abstract
-  -- Plan 0.105: a source's behaviour is relative to an interpretation of its
-  -- FFI calls; correctness quantifies over it.
-  ⟦_⟧ : Source → TargetNum → Interp → Behavior
-  ⟦ src ⟧ = sourceTrace src
-
-  -- Reduction lemma (exported): when `src` parses AND RESOLVES to module `m`
-  -- (`srcToModule src ≡ just m`), its meaning IS `m`'s source trace. Proven
-  -- INSIDE the `abstract` block (where `⟦_⟧` reduces to `sourceTrace`); the
-  -- J-style `sourceTrace-aux` makes the front-end equation `rewrite`-able with
-  -- no `with`-opacity. This discharges `Compile.gmoduleToModule-correct`.
-  ⟦⟧-via-module :
-    ∀ (src : Source) (m : P.Module) → srcToModule src ≡ just m →
-    ∀ (fmt : TargetNum) → ⟦ src ⟧ fmt ≡ ⟦ moduleToProgram m ⟧IR fmt
-  ⟦⟧-via-module src m eq fmt rewrite eq = refl

@@ -70,7 +70,8 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Lang.Trace as TM
-import Once.Denotation.TraceMonadLaws as TML
+open import Once.Denotation.Approx using (Ap; done; NotCut; thenAp; run-approx-bind)
+open import Once.Lang.Iterative using (T∞; _>>=∞_; return∞)
 open import Once.Lang.Res using (Res; returns; is-stopped)
 
 module PairProofC {FS : FrameSemantics} where
@@ -105,10 +106,11 @@ module PairProofC {FS : FrameSemantics} where
   -- before the run, hence live after it — which IS the inequality.
   vr-heap-mono : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl k}
                → (vr : ValueRealized prog base n l ir x s alloc cl k)
+               → NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k))
                → next-heap-ref alloc
                  ≤ next-heap-ref (falloc (ValueRealized.settle vr))
-  vr-heap-mono vr = ≤-from-pred (λ c eq →
-    bf-heap-out (ValueRealized.bf-mono vr 0 (AtDynamic (heap-loc (mkHeapRef c) 0))
+  vr-heap-mono vr nc = ≤-from-pred (λ c eq →
+    bf-heap-out (ValueRealized.bf-mono vr nc 0 (AtDynamic (heap-loc (mkHeapRef c) 0))
                    (BeforeFrontier.heap-before (≤-reflexive (sym eq)))))
 
   ----------------------------------------------------------------------
@@ -216,19 +218,21 @@ module PairProofC {FS : FrameSemantics} where
       logP2 = log-silent PC.pre-chain _ refl
 
       esF : List SigOpEvent
-      esF = eventsAt (floc PC.PR.p2) (evalᴰ f x)
+      esF = eventsAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k)
 
-      innerT : ⟦ B ⟧ → TM.T ⟦ B IRTy′.* C ⟧
-      innerT vb = evalᴰ g x TM.>>=T λ c → TM.returnT (vb , c)
+      innerT : ⟦ B ⟧ → T∞ ⟦ B IRTy′.* C ⟧
+      innerT vb = evalᴰ g x >>=∞ λ c → return∞ (vb , c)
 
-      RF : runAt (floc PC.PR.p2) (evalᴰ f x) ≡ TM.run ιᶠ h (evalᴰ f x)
-      RF = cong (λ hh → TM.run ιᶠ hh (evalᴰ f x)) logP2
+      RF : runAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k) ≡ TM.run ιᶠ h (⟪ evalᴰ f x ⟫ k)
+      RF = cong (λ hh → TM.run ιᶠ hh (⟪ evalᴰ f x ⟫ k)) logP2
 
-      pair-run : ∀ (r : Res ⟦ B ⟧) → resultAt (floc PC.PR.p2) (evalᴰ f x) ≡ r
-               → runAt s (evalᴰ ⟨ f , g ⟩ x) ≡ TM.thenRes ιᶠ h esF r innerT
-      pair-run r q =
-        trans (TML.run-bind ιᶠ h (evalᴰ f x) innerT)
-              (cong₂ (λ es r′ → TM.thenRes ιᶠ h es r′ innerT)
+      -- plan 0.119 D5: the pair's budgeted run — `f` at `k`, then the inner
+      -- bind at what `f` left (`run-approx-bind`).
+      pair-run : ∀ (ρ : Res (Ap ⟦ B ⟧)) → resultAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k) ≡ ρ
+               → runAt s (⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k) ≡ thenAp ιᶠ h esF ρ innerT
+      pair-run ρ q =
+        trans (run-approx-bind ιᶠ h k (evalᴰ f x) innerT)
+              (cong₂ (λ es ρ′ → thenAp ιᶠ h es ρ′ innerT)
                      (sym (cong proj₁ RF)) (trans (sym (cong proj₂ RF)) q))
 
       tf : chain-events chainF₀ ≡ esF
@@ -261,11 +265,12 @@ module PairProofC {FS : FrameSemantics} where
       -- plan 0.98: the split is on `f`'s RESULT. `returns vB` binds the value
       -- `PairPlace` has to place, so it is no longer fetched out of a total
       -- field on a branch that may not have one.
-      module Returns (vB : ⟦ B ⟧) (rfeq : resultAt (floc PC.PR.p2) (evalᴰ f x) ≡ returns vB) where
-          sfeq : stopsAt (floc PC.PR.p2) (evalᴰ f x) ≡ false
-          sfeq = cong is-stopped rfeq
+      module Returns (vB : ⟦ B ⟧) (rB : ℕ) (rfeq : resultAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k) ≡ returns (done vB rB)) where
+          -- `f` returned, so it was not cut.
+          ncF : NotCut (resultAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k))
+          ncF = subst NotCut (sym rfeq) tt
 
-          module PCF = PairChainF f g n l prog base s alloc cl n≤ nh span vrf sfeq
+          module PCF = PairChainF f g n l prog base s alloc cl n≤ nh span vrf rfeq
 
           ----------------------------------------------------------------
           -- The allocator across `f` and the two mid rows. `next-slot` never
@@ -327,8 +332,8 @@ module PairProofC {FS : FrameSemantics} where
                      Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
             (trans (store-slot-preserves-before (suc n) (floc PCF.fsF)
                      (record alloc { next-slot = n }) (falloc PCF.fsF) loc
-                     (VR.frame-pres vrf) (n≤1+n n) b)
-            (trans (vr-mem-pres vrf loc (bf-f loc b))
+                     (VR.frame-pres vrf ncF) (n≤1+n n) b)
+            (trans (vr-mem-pres vrf ncF loc (bf-f loc b))
             (trans (store-slot-preserves-before n (floc PC.PR.p1)
                      (record alloc { next-slot = n }) (falloc PC.PR.p1) loc
                      (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
@@ -342,28 +347,29 @@ module PairProofC {FS : FrameSemantics} where
               (falloc PCF.m2)
               (trans PCF.cf-fsF (sym PCF.cf-m2))
               (≤-reflexive (sym ns-m2)) (≤-reflexive (sym hr-mid))
-              loc (VR.bf-mono vrf (next-slot alloc) loc b)
+              loc (VR.bf-mono vrf ncF (next-slot alloc) loc b)
 
           inpG-of : InputAt {A} mIn alloc x s → InputAt {A} mIn (falloc PCF.m2) x (floc PCF.m2)
           inpG-of (in-loc loc vd bf rd) =
             in-loc loc
               (validityWF-frontier-advance x loc (floc PCF.m2)
                  PCF.cf-m2 (≤-reflexive (sym ns-m2))
-                 (≤-trans (vr-heap-mono vrf) (≤-reflexive (sym hr-mid)))
+                 (≤-trans (vr-heap-mono vrf ncF) (≤-reflexive (sym hr-mid)))
                  (validityWF-mem-preserved x loc s (floc PCF.m2) bf
                     (λ loc' b' → mem-to-m2 loc' (bf-n loc' b')) vd))
               (bfG loc bf) (trans input1-m2 rd)
           inpG-of (in-reg fit rd) = in-reg fit (trans input1-m2 rd)
           inpG-of (in-unit e)     = in-unit e
 
+          -- `g` runs at the budget `f` left.
           mrg : MachineRefinesObsF prog PCF.bg PS.n1 PS.l1 g x
-                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) k
+                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) rB
           mrg = ihg PS.n1 PS.l1 prog PCF.bg ss cr (PS.span-g prog base span)
                     blocks-g (PS.labels-g prog base la) mIn x (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2)
-                    nsG PCF.nhM2 (inpG-of inp) k
+                    nsG PCF.nhM2 (inpG-of inp) rB
 
           vrg : ValueRealized prog PCF.bg PS.n1 PS.l1 g x
-                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) k
+                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) rB
           vrg = MachineRefinesObsF.value-realized mrg
 
           -- `g` runs from the log `f` left: the two mid rows make no call.
@@ -372,19 +378,19 @@ module PairProofC {FS : FrameSemantics} where
                         (trans (VR.log vrf) (cong (_++ esF) logP2))
 
           esG : List SigOpEvent
-          esG = eventsAt (floc PCF.m2) (evalᴰ g x)
+          esG = eventsAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB)
 
-          RG : runAt (floc PCF.m2) (evalᴰ g x) ≡ TM.run ιᶠ (h ++ esF) (evalᴰ g x)
-          RG = cong (λ hh → TM.run ιᶠ hh (evalᴰ g x)) logM2
+          RG : runAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB) ≡ TM.run ιᶠ (h ++ esF) (⟪ evalᴰ g x ⟫ rB)
+          RG = cong (λ hh → TM.run ιᶠ hh (⟪ evalᴰ g x ⟫ rB)) logM2
 
-          inner-run : ∀ (r : Res ⟦ C ⟧) → resultAt (floc PCF.m2) (evalᴰ g x) ≡ r
-                    → runAt s (evalᴰ ⟨ f , g ⟩ x)
-                      ≡ TM.appE esF (TM.thenRes ιᶠ (h ++ esF) esG r (λ c → TM.returnT (vB , c)))
-          inner-run r q =
-            trans (pair-run (returns vB) rfeq)
+          inner-run : ∀ (ρ : Res (Ap ⟦ C ⟧)) → resultAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB) ≡ ρ
+                    → runAt s (⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k)
+                      ≡ TM.appE esF (thenAp ιᶠ (h ++ esF) esG ρ (λ c → return∞ (vB , c)))
+          inner-run ρ q =
+            trans (pair-run (returns (done vB rB)) rfeq)
                   (cong (TM.appE esF)
-                    (trans (TML.run-bind ιᶠ (h ++ esF) (evalᴰ g x) (λ c → TM.returnT (vB , c)))
-                           (cong₂ (λ es r′ → TM.thenRes ιᶠ (h ++ esF) es r′ (λ c → TM.returnT (vB , c)))
+                    (trans (run-approx-bind ιᶠ (h ++ esF) rB (evalᴰ g x) (λ c → return∞ (vB , c)))
+                           (cong₂ (λ es ρ′ → thenAp ιᶠ (h ++ esF) es ρ′ (λ c → return∞ (vB , c)))
                                   (sym (cong proj₁ RG)) (trans (sym (cong proj₂ RG)) q))))
 
           -- …and the log after `g` is the caller's followed by both.
@@ -399,5 +405,6 @@ module PairProofC {FS : FrameSemantics} where
           tg = trans (chain-events-subst-start (sym PCF.handG) (VR.run vrg))
                      (MachineRefinesObsF.traces-agree mrg)
 
-          module PPres = PairPres f g n l prog base s alloc cl vrf
-                           PS.n1 PS.l1 n≤n1 vrg
+          -- Preservation across both parts, for a `g` that was not cut.
+          module PPres (ncG : NotCut (resultAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB))) =
+            PairPres f g n l prog base s alloc cl vrf ncF PS.n1 PS.l1 n≤n1 vrg ncG

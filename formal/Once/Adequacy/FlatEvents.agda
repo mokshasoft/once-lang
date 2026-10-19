@@ -33,7 +33,8 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Nat using (_+_)
+open import Data.Nat using (_+_; _≤_)
+open import Data.Nat.Properties using (+-assoc; m≤n+m; m≤m+n)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -44,7 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- The observable's value domain — the same `⟦_⟧` the event carries.
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; module AbstractExec; AbstractTrace; AbstractInstr; instr-sigop)
+  using (LocState; module LocState; module AbstractExec; AbstractTrace; AbstractInstr; instr-sigop; instr-ctrl)
 open LocState using (halted)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -207,6 +208,44 @@ module FlatEventTrace {FS : FrameSemantics} where
   chain-events-subst-start : ∀ {prog k fs₁ fs₂ fs'} (eq : fs₁ ≡ fs₂) (stp : FlatSteps prog k fs₁ fs')
                            → chain-events (subst (λ s → FlatSteps prog k s fs') eq stp) ≡ chain-events stp
   chain-events-subst-start refl stp = refl
+
+  ------------------------------------------------------------------------
+  -- plan 0.119 D5: the CONTROL steps of a chain — the steps every target
+  -- lowers to at least one instruction (a straight-line step may lower to
+  -- none). A loop's round ends at a jump, so a run's silent steps are paid
+  -- for in control steps (`ValueRealized.progress`).
+  ------------------------------------------------------------------------
+
+  ctrl-of : AbstractInstr → ℕ
+  ctrl-of (instr-ctrl _) = 1
+  {-# CATCHALL #-}
+  ctrl-of _              = 0
+
+  chain-ctrls : ∀ {prog k fs fs'} → FlatSteps prog k fs fs' → ℕ
+  chain-ctrls []                    = 0
+  chain-ctrls (_∷_ {i = i} _ rest)  = ctrl-of i + chain-ctrls rest
+
+  chain-ctrls-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
+                     (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
+                 → chain-ctrls (FlatSteps-++ xs ys) ≡ chain-ctrls xs + chain-ctrls ys
+  chain-ctrls-++ []                     ys = refl
+  chain-ctrls-++ (_∷_ {i = i} _ xs) ys =
+    trans (cong (ctrl-of i +_) (chain-ctrls-++ xs ys)) (sym (+-assoc (ctrl-of i) (chain-ctrls xs) (chain-ctrls ys)))
+
+  chain-ctrls-subst-start : ∀ {prog k fs₁ fs₂ fs'} (eq : fs₁ ≡ fs₂) (stp : FlatSteps prog k fs₁ fs')
+                          → chain-ctrls (subst (λ s → FlatSteps prog k s fs') eq stp) ≡ chain-ctrls stp
+  chain-ctrls-subst-start refl stp = refl
+
+  -- A chain's control steps are at least those of a part of it.
+  ctrls-≤ʳ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
+               (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
+           → chain-ctrls ys ≤ chain-ctrls (FlatSteps-++ xs ys)
+  ctrls-≤ʳ xs ys = subst (chain-ctrls ys ≤_) (sym (chain-ctrls-++ xs ys)) (m≤n+m (chain-ctrls ys) (chain-ctrls xs))
+
+  ctrls-≤ˡ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
+               (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
+           → chain-ctrls xs ≤ chain-ctrls (FlatSteps-++ xs ys)
+  ctrls-≤ˡ xs ys = subst (chain-ctrls xs ≤_) (sym (chain-ctrls-++ xs ys)) (m≤m+n (chain-ctrls xs) (chain-ctrls ys))
 
   ------------------------------------------------------------------------
   -- Plan 0.105: THE LOG GROWS BY EXACTLY THE EVENTS. A step appends its own

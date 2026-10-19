@@ -42,8 +42,8 @@ module TwoCellC {FS : FrameSemantics} where
 
   curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
                    {x : ⟦ A ⟧} (s : LocState FS)
-                 → eventsAt s (evalᴰ (curry body) x) ≡ []
-  curry-denot-[] body m s = refl
+                 → ∀ k → eventsAt s (⟪ evalᴰ (curry body) x ⟫ k) ≡ []
+  curry-denot-[] body m s k = refl
 
 
   open TwoCellRunC {FS}
@@ -54,11 +54,12 @@ module TwoCellC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) refl refl (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
-                   (λ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
-                   (λ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
-                   TCB.cf-fs10
-                   (λ m loc' bf' → frontier-monotone
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
+                   (m≤m+n k _)
+                   (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
+                   (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
+                   (λ _ → TCB.cf-fs10)
+                   (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
@@ -69,7 +70,7 @@ module TwoCellC {FS : FrameSemantics} where
       module TCR = TwoCellRun n l prog base s alloc cl n≤ nh span
       module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
 
-      denot-[] : ∀ k → eventsAt s (evalᴰ (curry body) x) ≡ []
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (curry body) x ⟫ k) ≡ []
       denot-[] k = refl
 
       -- ── THE THREE INPUT RESIDENCES. The env cell receives whatever `Input1`
@@ -142,11 +143,12 @@ module TwoCellC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) refl refl (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
-                   (λ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
-                   (λ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
-                   TCB.cf-fs10
-                   (λ m loc' bf' → frontier-monotone
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
+                   (m≤m+n k _)
+                   (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
+                   (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
+                   (λ _ → TCB.cf-fs10)
+                   (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
@@ -157,7 +159,7 @@ module TwoCellC {FS : FrameSemantics} where
 
       -- Building a suspension RUNS NOTHING: the coalgebra is stored, not
       -- called, so neither side emits. (`Out` is where the events appear.)
-      denot-[] : ∀ k → eventsAt s (evalᴰ (Ana wf coalg) x) ≡ []
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (Ana wf coalg) x ⟫ k) ≡ []
       denot-[] k = refl
 
       cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1

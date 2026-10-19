@@ -50,7 +50,7 @@ import Once.Lang.Core.Telescope as Tele
 import Once.Lang.Core.PolyTyping as PT
 import Once.Lang.Core.Meaning as GM
 import Once.Denotation.Behavior
-open import Once.Adequacy.SourceTrace using (⟦_⟧IR; ⟦_⟧IRᵗ)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (runTr; trT∞; RelT∞′-tr)
 open import Once.Metatheory.Trace using (WB-sym)

@@ -38,7 +38,8 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Lang.Trace as TM
-import Once.Denotation.TraceMonadLaws as TML
+open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
+open import Data.Nat.Properties using (+-monoʳ-≤)
 open import Once.Lang.Res using (Res; stopped; returns; is-stopped)
 
 module CompC {FS : FrameSemantics} where
@@ -255,7 +256,7 @@ module CompC {FS : FrameSemantics} where
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
   comp-value-realized-of {B = B} {C} {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span bl la ihg mf =
-    go (resultAt s (evalᴰ f x)) refl
+    go (resultAt s (⟪ evalᴰ f x ⟫ k)) refl
        (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
       module VR = ValueRealized
@@ -279,51 +280,58 @@ module CompC {FS : FrameSemantics} where
                           (sym (+-identityʳ (length ft))))
                     (fetch-++-right ft (mov-to-input ∷ gt) 0))
 
-      -- plan 0.105: `g ∘ f` means `evalᴰ f x >>=T evalᴰ g`, and the RUN of a
-      -- bind is the runs of its parts with the history threaded (`run-bind`):
-      -- `g` runs from the composite's entry log followed by `f`'s calls. `f`'s
-      -- `log` field says the machine is at exactly that log when `g` starts,
-      -- so `g`'s obligation is about the right run. (The depth arithmetic of
-      -- the budgeted monad — `minus-take`, `take-++-threaded` — is gone: the
-      -- events are exact.)
+      -- plan 0.105: `g ∘ f` means `evalᴰ f x >>=∞ evalᴰ g`, and the budgeted RUN
+      -- of a bind is the budgeted runs of its parts with the history threaded
+      -- (`run-approx-bind`, plan 0.119 D5): `g` runs from the composite's entry
+      -- log followed by `f`'s calls, AT THE BUDGET `f` LEFT. `f`'s `log` field
+      -- says the machine is at exactly that log when `g` starts.
       h : DL.List SigOpEvent
       h = SMCore.LocState.ev-log s
 
       esF : DL.List SigOpEvent
-      esF = eventsAt s (evalᴰ f x)
+      esF = eventsAt s (⟪ evalᴰ f x ⟫ k)
 
-      comp-run : ∀ (r : Res ValueDomain.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
-               → runAt s (evalᴰ (g ∘ f) x) ≡ TM.thenRes ιᶠ h esF r (evalᴰ g)
-      comp-run r rfeq = trans (TML.run-bind ιᶠ h (evalᴰ f x) (evalᴰ g))
-                              (cong (λ r′ → TM.thenRes ιᶠ h esF r′ (evalᴰ g)) rfeq)
+      comp-run : ∀ (ρ : Res (Ap ValueDomain.⟦ B ⟧ᴰᴵ)) → resultAt s (⟪ evalᴰ f x ⟫ k) ≡ ρ
+               → runAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ thenAp ιᶠ h esF ρ (evalᴰ g)
+      comp-run ρ rfeq = trans (run-approx-bind ιᶠ h k (evalᴰ f x) (evalᴰ g))
+                              (cong (λ ρ′ → thenAp ιᶠ h esF ρ′ (evalᴰ g)) rfeq)
 
-      -- D203: `go` builds BOTH halves, split on `f`'s RESULT (plan 0.98):
-      -- `returns vf` binds the value `g` consumes; `stopped` means `g` never
-      -- runs and the composite's machine run IS `f`'s. Taken as an ARGUMENT
-      -- with its own equation rather than `with`-abstracted.
-      go : (r : Res ValueDomain.⟦ B ⟧ᴰᴵ) → resultAt s (evalᴰ f x) ≡ r
+      -- D203: `go` builds BOTH halves, split on `f`'s budgeted RESULT (plan
+      -- 0.98, 0.119 D5): `done vf r′` binds the value `g` consumes and the
+      -- budget it runs at; `stopped` and `cut` mean `g` never runs and the
+      -- composite's machine run IS `f`'s. Taken as an ARGUMENT with its own
+      -- equation rather than `with`-abstracted.
+      go : (ρ : Res (Ap ValueDomain.⟦ B ⟧ᴰᴵ)) → resultAt s (⟪ evalᴰ f x ⟫ k) ≡ ρ
          → (vr : ValueRealized prog base n l f x s alloc cl k)
-         → chain-events (VR.run vr) ≡ eventsAt s (evalᴰ f x)
+         → chain-events (VR.run vr) ≡ eventsAt s (⟪ evalᴰ f x ⟫ k)
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
       -- ── `f` RAN TO ITS END ────────────────────────────────────────────
-      go (returns vf) rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF spF hpF cfF bfF) tf =
+      go (returns (done vf r′)) rfeq
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
                        (VR.out-mode vg) (VR.cont-alloc vg)
-                       chain (λ p → VR.live vg (to-g p)) (λ p → atEnd (to-g p))
+                       chain (λ p → VR.live vg (to-g p)) (λ p → atEnd (to-g-res p))
                        (λ p → proj₁ (VR.stops vg (to-g p))
                             , trans (proj₂ (VR.stops vg (to-g p))) (chain-left (FlatSteps-++ chainF movStep) liveM))
-                       (VR.no-ret vg) (VR.no-link vg)
+                       (λ nc → VR.no-ret vg (to-g-nc nc)) (λ nc → VR.no-link vg (to-g-nc nc))
                        log-comp
                        (λ p → VR.place vg (to-g-res p))
-                       (λ fr j bf → mem-pres-comp (AtStack fr j) bf) (λ hl bf → mem-pres-comp (AtDynamic hl) bf)
-                       (trans (VR.frame-pres vg) cfF)
+                       (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chain) (sym res-comp)
+                              (progress-bind (resultAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′))
+                                             (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) rfeq progF)
+                                             (VR.progress vg) ctrls-comp))
+                       (λ nc fr j bf → mem-pres-comp nc (AtStack fr j) bf) (λ nc hl bf → mem-pres-comp nc (AtDynamic hl) bf)
+                       (λ nc → trans (VR.frame-pres vg (to-g-nc nc)) (cfF ncF))
                        bf-mono-comp
           ; traces-agree = traces
           }
         where
+          -- `f` returned, so it was not cut.
+          ncF : NotCut (resultAt s (⟪ evalᴰ f x ⟫ k))
+          ncF = subst NotCut (sym rfeq) tt
+
           fsM : FlatState
           fsM = flat-exec-instr mov-to-input prog fsF
 
@@ -340,7 +348,7 @@ module CompC {FS : FrameSemantics} where
           nsG = ≤-trans (≤-reflexive nsF) (≤-trans ns (frontier-mono f n l))
 
           -- `f` returned, so `f` did not stop.
-          sfeq : stopsAt s (evalᴰ f x) ≡ false
+          sfeq : stopsAt s (⟪ evalᴰ f x ⟫ k) ≡ false
           sfeq = cong is-stopped rfeq
 
           liveM : halted (floc fsM) ≡ false
@@ -355,22 +363,23 @@ module CompC {FS : FrameSemantics} where
           inputM : InputAt mOutf (falloc fsM) vf (floc fsM)
           inputM = result→input (placeF rfeq) movEq memEq
 
+          -- `g` runs at the budget `f` left.
           mg : MachineRefinesObsF prog base' n1 l1 g vf
-                                  (floc fsM) (falloc fsM) (fclosure fsM) k
+                                  (floc fsM) (falloc fsM) (fclosure fsM) r′
           mg = ihg n1 l1 prog base' ss cr span-g
                    (comp-blocks-g g f prog n l bl)
                    (comp-labels-g g f prog base n l la) mOutf vf
-                   (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM k
+                   (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM r′
 
           vg : ValueRealized prog base' n1 l1 g vf
-                             (floc fsM) (falloc fsM) (fclosure fsM) k
+                             (floc fsM) (falloc fsM) (fclosure fsM) r′
           vg = MachineRefinesObsF.value-realized mg
 
           movStep : FlatSteps prog 1 fsF fsM
-          movStep = (liveF sfeq , trans (cong (fetch prog) (endF sfeq)) mov-in-prog) ∷ []
+          movStep = (liveF sfeq , trans (cong (fetch prog) (endF rfeq)) mov-in-prog) ∷ []
 
           handover : fsM ≡ entry-flat base' (floc fsM) (falloc fsM) (fclosure fsM)
-          handover = handover-eq base' fsM (cong suc (endF sfeq)) retF linkF
+          handover = handover-eq base' fsM (cong suc (endF rfeq)) (retF ncF) (linkF ncF)
 
           chainG : FlatSteps prog (VR.steps vg) fsM (VR.settle vg)
           chainG = subst (λ st → FlatSteps prog (VR.steps vg) st (VR.settle vg))
@@ -380,43 +389,29 @@ module CompC {FS : FrameSemantics} where
                             (entry-flat base s alloc cl) (VR.settle vg)
           chain = FlatSteps-++ chainF (FlatSteps-++ movStep chainG)
 
-          -- D204: `g ∘ f` preserves what BOTH preserve.
-          mem-pres-comp : ∀ (loc : ValueLocation FS)
-                        → BeforeFrontier (record alloc { next-slot = n }) loc
-                        → SMCore.MemOps.readLoc (floc (VR.settle vg)) loc
-                          ≡ SMCore.MemOps.readLoc s loc
-          mem-pres-comp loc bf =
-            trans (vr-mem-pres vg loc
-                    (frontier-monotone (record (falloc fsM) { next-slot = n })
-                                       (record (falloc fsM) { next-slot = n1 })
-                                       refl (frontier-mono f n l) ≤-refl loc
-                                       (bfF n loc bf)))
-                  (trans (memEq loc) (mpF loc bf))
-            where
-              mpF : ∀ (l' : ValueLocation FS)
-                  → BeforeFrontier (record alloc { next-slot = n }) l'
-                  → SMCore.MemOps.readLoc (floc fsF) l' ≡ SMCore.MemOps.readLoc s l'
-              mpF (AtStack fr j) b = spF fr j b
-              mpF (AtDynamic hl) b = hpF hl b
-
-          bf-mono-comp : ∀ (m : ℕ) (loc : ValueLocation FS)
-                       → BeforeFrontier (record alloc { next-slot = m }) loc
-                       → BeforeFrontier (record (falloc (VR.settle vg)) { next-slot = m }) loc
-          bf-mono-comp m loc bf = VR.bf-mono vg m loc (bfF m loc bf)
+          -- The composite's control steps cover both parts'.
+          ctrls-comp : chain-ctrls chainF + chain-ctrls (VR.run vg) ≤ chain-ctrls chain
+          ctrls-comp =
+            subst (chain-ctrls chainF + chain-ctrls (VR.run vg) ≤_)
+                  (sym (trans (chain-ctrls-++ chainF (FlatSteps-++ movStep chainG))
+                              (cong (chain-ctrls chainF +_) (chain-ctrls-++ movStep chainG))))
+                  (+-monoʳ-≤ (chain-ctrls chainF)
+                     (≤-trans (≤-reflexive (sym (chain-ctrls-subst-start (sym handover) (VR.run vg))))
+                              (m≤n+m _ (chain-ctrls movStep))))
 
           -- ── THE RUN OF `g` IS THE COMPOSITE'S TAIL ─────────────────────
           -- `mov-to-input` leaves the log alone, so `g` starts at `f`'s settle
           -- log, which is `h ++ esF` (`f`'s `log`).
-          RG : runAt (floc fsM) (evalᴰ g vf) ≡ TM.run ιᶠ (h DL.++ esF) (evalᴰ g vf)
-          RG = cong (λ hh → TM.run ιᶠ hh (evalᴰ g vf)) logF
+          RG : runAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′) ≡ TM.run ιᶠ (h DL.++ esF) (⟪ evalᴰ g vf ⟫ r′)
+          RG = cong (λ hh → TM.run ιᶠ hh (⟪ evalᴰ g vf ⟫ r′)) logF
 
-          CR : runAt s (evalᴰ (g ∘ f) x) ≡ TM.appE esF (runAt (floc fsM) (evalᴰ g vf))
-          CR = trans (comp-run (returns vf) rfeq) (cong (TM.appE esF) (sym RG))
+          CR : runAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ TM.appE esF (runAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′))
+          CR = trans (comp-run (returns (done vf r′)) rfeq) (cong (TM.appE esF) (sym RG))
 
           evG : DL.List SigOpEvent
-          evG = eventsAt (floc fsM) (evalᴰ g vf)
+          evG = eventsAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′)
 
-          ev-comp : eventsAt s (evalᴰ (g ∘ f) x) ≡ esF DL.++ evG
+          ev-comp : eventsAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ esF DL.++ evG
           ev-comp = cong proj₁ CR
 
           -- THE TRACE HALF (D203): the chain is `chainF ++ mov ++ chainG`.
@@ -428,14 +423,14 @@ module CompC {FS : FrameSemantics} where
           evG-eq : chain-events chainG ≡ chain-events (VR.run vg)
           evG-eq = chain-events-subst-start (sym handover) (VR.run vg)
 
-          traces : chain-events chain ≡ eventsAt s (evalᴰ (g ∘ f) x)
+          traces : chain-events chain ≡ eventsAt s (⟪ evalᴰ (g ∘ f) x ⟫ k)
           traces =
             trans events-split
             (trans (cong₂ DL._++_ tf (trans evG-eq (MachineRefinesObsF.traces-agree mg)))
                    (sym ev-comp))
 
           -- …and the log grows by both.
-          log-comp : SMCore.LocState.ev-log (floc (VR.settle vg)) ≡ h DL.++ eventsAt s (evalᴰ (g ∘ f) x)
+          log-comp : SMCore.LocState.ev-log (floc (VR.settle vg)) ≡ h DL.++ eventsAt s (⟪ evalᴰ (g ∘ f) x ⟫ k)
           log-comp =
             trans (VR.log vg)
             (trans (cong (DL._++ evG) logF)
@@ -443,56 +438,114 @@ module CompC {FS : FrameSemantics} where
                    (cong (h DL.++_) (sym ev-comp))))
 
           -- `f` RETURNED, so the composite's result is `g`'s.
-          res-comp : resultAt s (evalᴰ (g ∘ f) x) ≡ resultAt (floc fsM) (evalᴰ g vf)
+          res-comp : resultAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ resultAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′)
           res-comp = cong proj₂ CR
 
-          to-g : ∀ {b} → stopsAt s (evalᴰ (g ∘ f) x) ≡ b → stopsAt (floc fsM) (evalᴰ g vf) ≡ b
+          to-g : ∀ {b} → stopsAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ b → stopsAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′) ≡ b
           to-g p = trans (sym (cong is-stopped res-comp)) p
 
-          to-g-res : ∀ {v} → resultAt s (evalᴰ (g ∘ f) x) ≡ returns v
-                   → resultAt (floc fsM) (evalᴰ g vf) ≡ returns v
+          to-g-res : ∀ {v} → resultAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ returns v
+                   → resultAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′) ≡ returns v
           to-g-res p = trans (sym res-comp) p
 
-          atEnd : stopsAt (floc fsM) (evalᴰ g vf) ≡ false → fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
+          to-g-nc : NotCut (resultAt s (⟪ evalᴰ (g ∘ f) x ⟫ k)) → NotCut (resultAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′))
+          to-g-nc = subst NotCut res-comp
+
+          atEnd : ∀ {v r} → resultAt (floc fsM) (⟪ evalᴰ g vf ⟫ r′) ≡ returns (done v r)
+                → fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
           atEnd q = trans (VR.at-end vg q)
                         (sym (trans (cong (_+ base) (length-++ ft {mov-to-input ∷ gt}))
                                     (shuffle (length ft) (length gt) base)))
 
+          -- D204: `g ∘ f` preserves what BOTH preserve.
+          mem-pres-comp : NotCut (resultAt s (⟪ evalᴰ (g ∘ f) x ⟫ k))
+                        → ∀ (loc : ValueLocation FS)
+                        → BeforeFrontier (record alloc { next-slot = n }) loc
+                        → SMCore.MemOps.readLoc (floc (VR.settle vg)) loc
+                          ≡ SMCore.MemOps.readLoc s loc
+          mem-pres-comp nc loc bf =
+            trans (vr-mem-pres vg (to-g-nc nc) loc
+                    (frontier-monotone (record (falloc fsM) { next-slot = n })
+                                       (record (falloc fsM) { next-slot = n1 })
+                                       refl (frontier-mono f n l) ≤-refl loc
+                                       (bfF ncF n loc bf)))
+                  (trans (memEq loc) (mpF loc bf))
+            where
+              mpF : ∀ (l' : ValueLocation FS)
+                  → BeforeFrontier (record alloc { next-slot = n }) l'
+                  → SMCore.MemOps.readLoc (floc fsF) l' ≡ SMCore.MemOps.readLoc s l'
+              mpF (AtStack fr j) b = spF ncF fr j b
+              mpF (AtDynamic hl) b = hpF ncF hl b
+
+          bf-mono-comp : NotCut (resultAt s (⟪ evalᴰ (g ∘ f) x ⟫ k))
+                       → ∀ (m : ℕ) (loc : ValueLocation FS)
+                       → BeforeFrontier (record alloc { next-slot = m }) loc
+                       → BeforeFrontier (record (falloc (VR.settle vg)) { next-slot = m }) loc
+          bf-mono-comp nc m loc bf = VR.bf-mono vg (to-g-nc nc) m loc (bfF ncF m loc bf)
+
       -- ── `f` STOPPED THE PROGRAM ───────────────────────────────────────
-      -- `g` NEVER RUNS: `thenRes … stopped` never mentions it. So the
+      -- `g` NEVER RUNS: `thenAp … stopped` never mentions it. So the
       -- composite's machine run IS `f`'s run, and the three fields describing
       -- a fragment which REACHED ITS END are vacuous.
       go stopped rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF spF hpF cfF bfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF) tf =
         record
           { value-realized =
               realized kf fsF mOutf caf chainF
-                       absurd absurd (λ _ → stopsF sfeq) retF linkF
+                       absurd (λ p → case trans (sym res-comp) p of λ ()) (λ _ → stopsF sfeq)
+                       (λ _ → retF ncF) (λ _ → linkF ncF)
                        (trans logF (cong (h DL.++_) (sym ev-comp)))
-                       absurd-res
-                       spF hpF cfF bfF
+                       (λ p → case trans (sym res-comp) p of λ ())
+                       (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) (sym res-comp) (m≤m+n k _))
+                       (λ _ → spF ncF) (λ _ → hpF ncF) (λ _ → cfF ncF) (λ _ → bfF ncF)
           ; traces-agree = trans tf (sym ev-comp)
           }
         where
-          sfeq : stopsAt s (evalᴰ f x) ≡ true
+          ncF : NotCut (resultAt s (⟪ evalᴰ f x ⟫ k))
+          ncF = subst NotCut (sym rfeq) tt
+
+          sfeq : stopsAt s (⟪ evalᴰ f x ⟫ k) ≡ true
           sfeq = cong is-stopped rfeq
 
-          CR : runAt s (evalᴰ (g ∘ f) x) ≡ (esF , stopped)
+          CR : runAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ (esF , stopped)
           CR = comp-run stopped rfeq
 
-          ev-comp : eventsAt s (evalᴰ (g ∘ f) x) ≡ esF
+          ev-comp : eventsAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ esF
           ev-comp = cong proj₁ CR
 
-          res-comp : resultAt s (evalᴰ (g ∘ f) x) ≡ stopped
+          res-comp : resultAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ stopped
           res-comp = cong proj₂ CR
 
-          absurd : ∀ {X : Set} → stopsAt s (evalᴰ (g ∘ f) x) ≡ false → X
+          absurd : ∀ {X : Set} → stopsAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ false → X
           absurd p = case trans (sym (cong is-stopped res-comp)) p of λ ()
 
-          -- The composite has NO result, so `place`'s premise is refutable.
-          absurd-res : ∀ {v} → resultAt s (evalᴰ (g ∘ f) x) ≡ returns v
-                     → ResultPlace _ mOutf (falloc fsF) caf v (floc fsF)
-          absurd-res p = case trans (sym res-comp) p of λ ()
+      -- ── `f` WAS CUT ───────────────────────────────────────────────────
+      -- The budget ran out inside `f`: `g` never runs, the composite is cut
+      -- where `f` is, and the machine is still running there.
+      go (returns cut) rfeq
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF) tf =
+        record
+          { value-realized =
+              realized kf fsF mOutf caf chainF
+                       (λ _ → liveF (cong is-stopped rfeq))
+                       (λ p → case trans (sym res-comp) p of λ ())
+                       (λ p → case trans (sym (cong is-stopped res-comp)) p of λ ())
+                       (cut-absurd res-comp) (cut-absurd res-comp)
+                       (trans logF (cong (h DL.++_) (sym ev-comp)))
+                       (λ p → case trans (sym res-comp) p of λ ())
+                       (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) (sym res-comp) (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) rfeq progF))
+                       (cut-absurd res-comp) (cut-absurd res-comp) (cut-absurd res-comp) (cut-absurd res-comp)
+          ; traces-agree = trans tf (sym ev-comp)
+          }
+        where
+          CR : runAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ (esF , returns cut)
+          CR = comp-run (returns cut) rfeq
+
+          ev-comp : eventsAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ esF
+          ev-comp = cong proj₁ CR
+
+          res-comp : resultAt s (⟪ evalᴰ (g ∘ f) x ⟫ k) ≡ returns cut
+          res-comp = cong proj₂ CR
 
 
   -- (moved below `comp-value-realized-of`: it names that proof's chain, so it

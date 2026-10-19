@@ -25,7 +25,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (tt)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
 open import Once.Spec.Word using (Carrier)
 import Once.Lang.Value Carrier Carrier as V
 open import Once.Lang.Event using (SigOpEvent)
@@ -83,6 +84,45 @@ loopBlock c (ret (inj₁ b)) = ret (inj₁ b)
 loopBlock c (ret (inj₂ a)) = ret (inj₂ (loop c a))
 loopBlock c (call o x k)   = call o x (λ v → loopBlock c (k v))
 loopBlock c (halt o x)     = halt o x
+
+------------------------------------------------------------------------
+-- A run that returns AT ONCE (its first block is `ret`: a constructor, a
+-- destructor, a suspension), and its value — read without an Interpretation.
+------------------------------------------------------------------------
+
+NowB : ∀ {X} → T (X ⊎ T∞ X) → Set
+NowB (ret (inj₁ _)) = ⊤
+NowB (ret (inj₂ _)) = ⊥
+NowB (call _ _ _)   = ⊥
+NowB (halt _ _)     = ⊥
+
+nowB : ∀ {X} (b : T (X ⊎ T∞ X)) → {NowB b} → X
+nowB (ret (inj₁ x)) = x
+
+Now : ∀ {X} → T∞ X → Set
+Now m = NowB (force m)
+
+valueNow : ∀ {X} (m : T∞ X) → {Now m} → X
+valueNow m {p} = nowB (force m) {p}
+
+------------------------------------------------------------------------
+-- ITERATION over rounds that need not stop (the IR's loop, plan 0.119 D5):
+-- the IR is ungraded, so a round is a `T∞` computation; a round's end that
+-- continues is a silent step. `loop` is the instance at a finite round
+-- (`iter∞ (embed ∘ c)` has the same blocks).
+------------------------------------------------------------------------
+
+iterRun   : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → T∞ (B ⊎ A) → T∞ B
+iterBlock : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → T ((B ⊎ A) ⊎ T∞ (B ⊎ A)) → T (B ⊎ T∞ B)
+force (iterRun f m) = iterBlock f (force m)
+iterBlock f (ret (inj₁ (inj₁ b))) = ret (inj₁ b)
+iterBlock f (ret (inj₁ (inj₂ a))) = ret (inj₂ (iterRun f (f a)))
+iterBlock f (ret (inj₂ m))        = ret (inj₂ (iterRun f m))
+iterBlock f (call o x k)          = call o x (λ v → iterBlock f (k v))
+iterBlock f (halt o x)            = halt o x
+
+iter∞ : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → A → T∞ B
+iter∞ f a = iterRun f (f a)
 
 ------------------------------------------------------------------------
 -- Bisimilarity: the same blocks, step by step, forever; the results related
