@@ -52,7 +52,7 @@ import Once.Lang.Core.Meaning as GM
 import Once.Denotation.Behavior
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
-open import Once.Denotation.TraceTr using (runTr; trT∞; RelT∞′-tr)
+open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
 open import Once.Metatheory.Trace using (WB-sym)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; mainCall; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB
@@ -117,13 +117,13 @@ interp-subst refl I = refl
 ------------------------------------------------------------------------
 -- D320: THE SAME LINK, AS TRACES — calls and how each run ended. The walk's
 -- relation (`TeleWalk.Agree`) relates the core run to the compiled tree node
--- by node, so their traces are weakly bisimilar (`TraceTr.RelT∞′-tr`).
+-- by node, so their traces are weakly bisimilar (`TraceTr.RelS-tr`).
 ------------------------------------------------------------------------
 
 private
   -- the compiled program's trace, in a world
   trIRAt : Interp → List IRFun → Tr ⊤
-  trIRAt ι′ tbl = runTr ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) mainCall tt)
+  trIRAt ι′ tbl = trT∞ ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) mainCall tt)
 
   core-ef-tr : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
                  {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
@@ -133,7 +133,7 @@ private
   core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b I =
     subst (λ ι′ → trIRAt ι′ (tableOf-go (FB.bundle→compiled b) []) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι′ [] (runCore fmt P I′))
           (interp-subst (teleSig≡entrySig mt) I)
-          (WB-sym sym (RelT∞′-tr (interp (teleSig mt) I′) []
+          (WB-sym sym (RelS-tr (interp (teleSig mt) I′) []
              (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _))))
     where
       I′ = subst Impl (sym (teleSig≡entrySig mt)) I
@@ -151,7 +151,7 @@ program-core-tr :
     ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (moduleSig m) I) [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I))
 program-core-tr m mt hvm I ir mi with FB.program-node m ir mi
 ... | es , ef , b , ceq =
-  subst (λ t → runTr ι [] t ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I)))
+  subst (λ t → trT∞ ι [] t ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I)))
         (sym (cong₂ (λ tbl x → evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) x tt) (cong tableOfResult ceq) ir≡))
         (core-ef-tr m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b I)
   where
