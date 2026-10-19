@@ -50,6 +50,7 @@ open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel
+open import Once.Denotation.EvalRel using (base-eqI; base-reflI; fo-eq; RelS-now; RelEnv; sigop-rel)
 open import Once.Lang.StreamInf using (anaFᴵ; in-νᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
 open import Once.Lang.Type using (μ-type; ν-type)
@@ -63,77 +64,12 @@ open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
 
 ------------------------------------------------------------------------
--- IR base types: related is equal, and equal is related.
-------------------------------------------------------------------------
-
-base-eqI : ∀ {A} → IsBaseTypeI A → ∀ {x y : ⟦ A ⟧ᴰᴵ} → RelD ⌈ A ⌉ x y → x ≡ y
-base-eqI II.base-Unit       _ = refl
-base-eqI II.base-Void {()}
-base-eqI II.base-Int        r = r
-base-eqI II.base-Float      r = r
-base-eqI (II.base-Prod a b) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with base-eqI a r₁ | base-eqI b r₂
-... | refl | refl = refl
-base-eqI (II.base-Sum a b) {inj₁ x} {inj₁ y} r = cong inj₁ (base-eqI a r)
-base-eqI (II.base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eqI b r)
-base-eqI (II.base-Sum a b) {inj₁ _} {inj₂ _} ()
-base-eqI (II.base-Sum a b) {inj₂ _} {inj₁ _} ()
-
-base-reflI : ∀ {A} → IsBaseTypeI A → ∀ (x : ⟦ A ⟧ᴰᴵ) → RelD ⌈ A ⌉ x x
-base-reflI II.base-Unit       x = tt
-base-reflI II.base-Void       ()
-base-reflI II.base-Int        x = refl
-base-reflI II.base-Float      x = refl
-base-reflI (II.base-Prod a b) (x , y) = base-reflI a x , base-reflI b y
-base-reflI (II.base-Sum a b)  (inj₁ x) = base-reflI a x
-base-reflI (II.base-Sum a b)  (inj₂ y) = base-reflI b y
-
--- A first-order layer over μ: related is equal, and equal is related.
-fo-eq : ∀ {F G} → WellFormedFI F → ∀ {x y : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ} → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x y → x ≡ y
-fo-eq (II.wf-K b)       r = base-eqI b r
-fo-eq II.wf-Id          r = r
-fo-eq (II.wf-Sum f g) {inj₁ x} {inj₁ y} r = cong inj₁ (fo-eq f r)
-fo-eq (II.wf-Sum f g) {inj₂ x} {inj₂ y} r = cong inj₂ (fo-eq g r)
-fo-eq (II.wf-Sum f g) {inj₁ _} {inj₂ _} ()
-fo-eq (II.wf-Sum f g) {inj₂ _} {inj₁ _} ()
-fo-eq (II.wf-Prod f g) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with fo-eq f r₁ | fo-eq g r₂
-... | refl | refl = refl
-
-fo-refl : ∀ {F G} → WellFormedFI F → ∀ (x : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ) → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x x
-fo-refl (II.wf-K b)      x        = base-reflI b x
-fo-refl II.wf-Id         x        = refl
-fo-refl (II.wf-Sum f g)  (inj₁ x) = fo-refl f x
-fo-refl (II.wf-Sum f g)  (inj₂ y) = fo-refl g y
-fo-refl (II.wf-Prod f g) (x , y)  = fo-refl f x , fo-refl g y
-
-------------------------------------------------------------------------
--- Runs.
-------------------------------------------------------------------------
-
--- Two runs that return at once, related values.
-RelS-now : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {m′ : T∞ Y} {v v′}
-         → force m ≡ ret (inj₁ v) → force m′ ≡ ret (inj₁ v′) → R v v′ → RelS R m m′
-forceS (RelS-now {R = R} {m = m} {m′} e e′ r) = subst₂′ e e′ (s-ret r)
-  where
-    subst₂′ : ∀ {a b c d} → a ≡ c → b ≡ d → RelSB R c d → RelSB R a b
-    subst₂′ refl refl h = h
-
--- A finite tree is related to itself, call for call.
-RelT′-refl : ∀ {X} {R : X → X → Set} → (∀ x → R x x) → ∀ (t : T X) → RelT′ R t t
-RelT′-refl h (ret x)      = rel-ret (h x)
-RelT′-refl h (call o a k) = rel-call (λ b → RelT′-refl h (k b))
-RelT′-refl h (halt o a)   = rel-halt
-
-------------------------------------------------------------------------
 -- The relation on call environments, and the rewrite's soundness.
 ------------------------------------------------------------------------
 
 module _ (fmt : TargetNum) where
 
-  RelEnv : CallEnv → CallEnv → Set
-  RelEnv ρ ρ′ = (∀ f (A B : IRTy) {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (callsE ρ f A B a) (callsE ρ′ f A B a′))
-              × (ffiE ρ ≡ ffiE ρ′)
-
-  module _ {ρ ρ′ : CallEnv} (re : RelEnv ρ ρ′) where
+  module _ {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
     private
       E  : ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
       E  = evalᴰ fmt ρ
@@ -144,7 +80,6 @@ module _ (fmt : TargetNum) where
     rw-at-rel   : ∀ {A B} (ir : IR A B) (d : Maybe (IR A B × ArithBlock)) → try-lift ir ≡ d
                 → ∀ {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (E (proj₁ (rw-at ir d)) a) (E′ ir a′)
     walk-rel    : ∀ {A B} (ir : IR A B) {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (E (proj₁ (walk ir)) a) (E′ ir a′)
-    sigop-rel   : ∀ {X Y} (si : SigOpInfo X Y) {a a′} → RelD ⌈ ⌊ X ⌋ ⌉ a a′ → RelS (RelD ⌈ ⌊ Y ⌋ ⌉) (E (SigOp si) a) (E′ (SigOp si) a′)
 
     -- A lifted subtree: the block and the subtree return the same value at
     -- once; the subtree's input and output are base types.
@@ -159,10 +94,6 @@ module _ (fmt : TargetNum) where
 
     rw-at-rel ir (just (ir′ , blk)) eq r = lifted ir ir′ blk eq r
     rw-at-rel ir nothing            eq r = walk-rel ir r
-
-    sigop-rel si {a} r with base-eqI (base-⌊⌋ (baseA si)) r
-    ... | refl rewrite proj₂ re =
-      RelS-embed (RelT′-refl (base-reflI (base-⌊⌋ (conB si))) _)
 
     walk-rel id         r = relS-ret r
     walk-rel (g ∘ f)    r = RelS-bind (rewrite-rel f r) (λ r′ → rewrite-rel g r′)
@@ -221,7 +152,7 @@ module _ (fmt : TargetNum) where
         ... | bA , bB , now with base-eqI bA r
         ...   | refl with now ρ _
         ...     | v , e₁ , e₂ = RelS-now e₁ e₂ (base-reflI bB v)
-        bare-rel nothing            eq = sigop-rel si r
+        bare-rel nothing            eq = sigop-rel fmt re si r
     walk-rel (Call {A} {B} f) r = proj₁ re f A B r
 
 ------------------------------------------------------------------------

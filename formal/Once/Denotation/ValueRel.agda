@@ -137,7 +137,7 @@ base-refl base-rigid      ()
 -- Runs: the monad's operations preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
+open import Once.Lang.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞; bindBlock; force)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
 
@@ -164,6 +164,31 @@ RelSB-fmapˡ (s-ret r)  h = s-ret (h r)
 RelSB-fmapˡ (s-next r) h = s-next (RelS-fmapˡ r h)
 RelSB-fmapˡ (s-call g) h = s-call (λ b → RelSB-fmapˡ (g b) h)
 RelSB-fmapˡ s-halt     h = s-halt
+
+-- Mapping the other side.
+RelS-fmapʳ  : ∀ {X Y Y′} {R : X → Y → Set} {R′ : X → Y′ → Set} {g : Y → Y′} {m : T∞ X} {m′ : T∞ Y}
+            → RelS R m m′ → (∀ {a b} → R a b → R′ a (g b)) → RelS R′ m (fmap∞ g m′)
+RelSB-fmapʳ : ∀ {X Y Y′} {R : X → Y → Set} {R′ : X → Y′ → Set} {g : Y → Y′} {l l′}
+            → RelSB R l l′ → (∀ {a b} → R a b → R′ a (g b)) → RelSB R′ l (bindBlock l′ (λ y → return∞ (g y)))
+forceS (RelS-fmapʳ r h) = RelSB-fmapʳ (forceS r) h
+RelSB-fmapʳ (s-ret r)  h = s-ret (h r)
+RelSB-fmapʳ (s-next r) h = s-next (RelS-fmapʳ r h)
+RelSB-fmapʳ (s-call g) h = s-call (λ b → RelSB-fmapʳ (g b) h)
+RelSB-fmapʳ s-halt     h = s-halt
+
+-- Two runs that force to the same block are interchangeable (a bind of a
+-- returned value forces to its continuation, so this is how left identity is
+-- used: by `refl`).
+retargetˡ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n : T∞ Y} → force m ≡ force m′ → RelS R m′ n → RelS R m n
+forceS (retargetˡ e h) = subst (λ l → RelSB _ l _) (sym e) (forceS h)
+
+retargetʳ : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {n n′ : T∞ Y} → force n ≡ force n′ → RelS R m n′ → RelS R m n
+forceS (retargetʳ e h) = subst (RelSB _ _) (sym e) (forceS h)
+
+-- A run transported along an equation of carriers.
+RelS-substˡ : ∀ {X X′ Y} {R : X′ → Y → Set} (E : X ≡ X′) {m : T∞ X} {n : T∞ Y}
+            → RelS (λ a b → R (subst (λ Z → Z) E a) b) m n → RelS R (subst T∞ E m) n
+RelS-substˡ refl h = h
 
 seqF∞-rel : ∀ {X Y} {R : X → Y → Set} (G : Functor) {l : ⟦ G ⟧F (T∞ X)} {l′ : ⟦ G ⟧F (T∞ Y)}
           → FRel (RelS R) G l l′ → RelS (FRel R G) (seqF∞ G l) (seqF∞ G l′)
@@ -246,7 +271,6 @@ module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF 
 ------------------------------------------------------------------------
 
 open import Once.Lang.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
-open import Once.Lang.Iterative using (force)
 open import Once.Lang.Trace using (T)
 open StreamRel
 
