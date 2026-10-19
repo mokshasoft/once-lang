@@ -69,6 +69,7 @@ module IterInvC {FS : FrameSemantics} where
         placeF : ResultPlace E mf (falloc fsF) caf e (floc fsF)
         cf-F   : current-frame (falloc fsF) ≡ current-frame alloc₀
         ns-F   : next-slot (falloc fsF) ≡ next-slot alloc₀
+        hr-F   : next-heap-ref alloc₀ ≤ next-heap-ref (falloc fsF)
         -- what the caller has live is untouched at `fsF` (a register write)
         mem0-F : ∀ (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = n }) loc
                → SMCore.MemOps.readLoc (floc fsF) loc ≡ SMCore.MemOps.readLoc s₀ loc
