@@ -1861,9 +1861,17 @@ mutual
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
   checkAnaGo : (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type)
                (π₀ : Once.Lang.Type.Grade.Purity) (φ : Once.Lang.Type.Grade.Finite)
+             → π₀ ⊑π Once.Lang.Type.Grade.act
              → (mw : Maybe (Once.Lang.Type.WellFormed.WellFormedF F)) → wellFormedF? F ≡ mw
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
                                        (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] Once.Lang.Type.ν-type F φ)
+  -- D317/D319: `ana round` at `A ⇒[eff] B` — the loop. Decided on the round's
+  -- own check result (a helper, not a `with`).
+  checkLoop : (ctx : NamedCtx) (round : RawExpr) (A B : Type)
+            → VerifiedCheckResult ctx round
+                (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] (B Once.Lang.Type.+ A))
+            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) round)
+                (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.eff ] B)
 
 
   -- Plan 0.4 T0 Option B — verified elaborator declarations.
@@ -2218,16 +2226,23 @@ mutual
   -- coalgebra's arrow pointing the other way. PLAN 0.101 (D273): checked in
   -- the AMBIENT context — it may capture locals — and its usage is the ana's.
   checkAna ctx coalg T = checkAnaOn ctx coalg T (anaTarget T)
-  checkAnaOn ctx coalg _ (ana-at A π₀ F π) = checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl
+  checkAnaOn ctx coalg _ (ana-at A π₀ F π ua) = checkAnaGo ctx coalg F A π₀ π ua (wellFormedF? F) refl
+  checkAnaOn ctx round _ (loop-at A B) =
+    checkLoop ctx round A B
+      (checkElabV ctx round (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] (B Once.Lang.Type.+ A)))
   checkAnaOn _ _ _ ana-other = failure (BuiltinTypeMismatch "ana") , tt
 
-  checkAnaGo ctx coalg F A π₀ φ nothing _ = failure (BuiltinTypeMismatch "ana") , tt
-  checkAnaGo ctx coalg F A π₀ φ (just wfF) eqW
+  checkAnaGo ctx coalg F A π₀ φ ua nothing _ = failure (BuiltinTypeMismatch "ana") , tt
+  checkAnaGo ctx coalg F A π₀ φ ua (just wfF) eqW
     with checkElabV ctx coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin φ) ] ⟦ F ⟧T A)
   ... | failure err , _ = failure err , tt
   ... | success Ψ coalgE d fr , wArg = withUnit (failure (BuiltinTypeMismatch "ana") , tt) π₀ λ u →
           success _ (Surface.ana wfF coalgE) (suc d) fr
-            , t-ana-check {u = u} wfF wArg
+            , t-ana-check {u = u} {ua = ua} wfF wArg
+
+  checkLoop ctx round A B (failure err , _) = failure err , tt
+  checkLoop ctx round A B (success Ψ roundE d fr , w) =
+    success _ (Surface.loop roundE) (suc d) fr , t-loop-check w
 
 
 ------------------------------------------------------------------------

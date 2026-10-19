@@ -38,7 +38,7 @@ open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 
-open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Lang.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
@@ -271,6 +271,7 @@ alloc-min-trace' (case f g) n l =
       (++⁺ (alloc-min-trace' g _ _)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (alloc-min-trace' f _ _) (tt ∷ []))))
+alloc-min-trace' (Iter b) n l = tt ∷ tt ∷ tt ∷ ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 alloc-min-trace' (In _)  n l = tt ∷ []
 alloc-min-trace' (out-μ _) n l = tt ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame).
@@ -389,6 +390,7 @@ alloc-min-blocks (case f g) n l =
     (++⁺ (alloc-min-blocks f n (suc (suc l))) (alloc-min-blocks g (bud F) (lab F)))
   where F = ir-to-trace' n (suc (suc l)) f
         G = ir-to-trace' (bud F) (lab F) g
+alloc-min-blocks (Iter b) n l = alloc-min-blocks b _ _
 alloc-min-blocks (Cata {F} _ alg) n l = alloc-min-blocks alg 0 l
 
 ------------------------------------------------------------------------

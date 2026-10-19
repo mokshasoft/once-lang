@@ -42,7 +42,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
 open import Once.Denotation.ValueRelPER using (RelD-sym)
 open import Once.Lang.Laws.SubLaws using (<:-trans)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret; RelS-embed)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret; RelS-embed; RelS-iter∞)
 open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; seqF∞-rel; cfD⁻¹-rel; cfD-rel; cμin-rel; sem-cata-rel; anaᴵ-rel; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (RelEnv; liftFn-rel; RelT′-refl)
 open import Once.Adequacy.EnvRel using (restrict-rel; lookup-rel; bind-rel)
@@ -217,6 +217,10 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
     RelS-bind (SD-rel alg (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {F} {A} {π} wf ralg)
   SD-rel (ana {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg) r =
     RelS-bind (SD-rel coalg (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
+  SD-rel (loop {Γ = Γ} {A = A} {B = B} round) r =
+    RelS-bind (SD-rel round (restrict-rel {Γ = Γ} _ r)) λ {c} {c′} rc →
+      relS-ret (λ ra → RelS-iter∞ {RB = RelD B} {S = RelD (B + A)} {f = c} {f′ = c′}
+                                  (λ rb → rb) rc (λ ()) (λ ()) ra)
   SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero pure ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (value-info name base-Unit bC) tt)
   SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero eff ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind Zero eff) name base-Unit bC) tt)
   SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero act ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind Zero act) name base-Unit bC) tt)

@@ -174,6 +174,7 @@ fusion-once (Cata {F} wf alg) = Cata {F} wf (fusion-once alg)
 fusion-once (Out wf) = Out wf
 fusion-once (in-ν wf) = in-ν wf
 fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
+fusion-once (Iter body) = Iter (fusion-once body)
 -- Fuse: μ-anchored fusion (correct by construction)
 -- No fusion opportunities here - Fuse is already the fused form
 -- Guard/Unguard removed: productivity follows from IR totality

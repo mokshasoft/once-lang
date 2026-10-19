@@ -44,7 +44,7 @@ open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float;
 import Once.IRTy as IRT
 open import Once.IR using (IR; AllocMode; Heap; Stack;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply; In; out-μ; Cata; Out; in-ν; Ana;
+  curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter;
   SigOp; Call; const)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
@@ -540,6 +540,7 @@ HeapModed (Cata _ alg) = HeapModed alg
 HeapModed (Out _)   = ⊤
 HeapModed (in-ν _) = ⊤
 HeapModed (Ana _ coalg) = HeapModed coalg
+HeapModed (Iter coalg) = HeapModed coalg
 HeapModed (SigOp _) = ⊤
 HeapModed (Call _) = ⊤
 HeapModed (const _ _) = ⊤
@@ -565,6 +566,7 @@ heap-moded (Cata _ alg) = heap-moded alg
 heap-moded (Out _)      = tt
 heap-moded (in-ν _)     = tt
 heap-moded (Ana _ c)    = heap-moded c
+heap-moded (Iter c)    = heap-moded c
 heap-moded (SigOp _)    = tt
 heap-moded (Call _)     = tt
 heap-moded (const _ _)  = tt

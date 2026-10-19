@@ -166,6 +166,63 @@ run-approx-bind : ∀ {X Y} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (m : T
                   ≡ thenAp ι h (proj₁ (run ι h (approx r m))) (proj₂ (run ι h (approx r m))) f
 run-approx-bind ι h r m f = run-approx-bindB ι h r (force m) f
 
+------------------------------------------------------------------------
+-- THE LOOP at a budget: a budgeted run of `iterRun f m` is the budgeted run of
+-- the round `m`, then — on `inr a` with budget left — one silent step (one
+-- unit of budget) and the loop from the next round `f a`.
+------------------------------------------------------------------------
+
+open import Once.Lang.Iterative using (iterRun; iterBlock)
+
+thenIter : ∀ {A B} → Interp → List SigOpEvent → List SigOpEvent → Res (Ap (B ⊎ A))
+         → (A → T∞ (B ⊎ A)) → Run (Ap B)
+thenIter ι h es stopped                            f = es , stopped
+thenIter ι h es (returns cut)                      f = es , returns cut
+thenIter ι h es (returns (done (inj₁ b) r))        f = es , returns (done b r)
+thenIter ι h es (returns (done (inj₂ a) zero))     f = es , returns cut
+thenIter ι h es (returns (done (inj₂ a) (suc r)))  f = appE es (run ι (h ++ es) (approx r (iterRun f (f a))))
+
+mutual
+  run-approx-iterB : ∀ {A B} (ι : Interp) (h : List SigOpEvent) (r : ℕ)
+                       (b : T ((B ⊎ A) ⊎ T∞ (B ⊎ A))) (f : A → T∞ (B ⊎ A))
+                   → run ι h (approxBlock r (iterBlock f b))
+                     ≡ thenIter ι h (proj₁ (run ι h (approxBlock r b))) (proj₂ (run ι h (approxBlock r b))) f
+  run-approx-iterB ι h r       (ret (inj₁ (inj₁ b))) f = refl
+  run-approx-iterB ι h zero    (ret (inj₁ (inj₂ a))) f = refl
+  run-approx-iterB ι h (suc r) (ret (inj₁ (inj₂ a))) f =
+    cong (λ hh → run ι hh (approx r (iterRun f (f a)))) (sym (++-identityʳ h))
+  run-approx-iterB ι h zero    (ret (inj₂ m))        f = refl
+  run-approx-iterB ι h (suc r) (ret (inj₂ m))        f = run-approx-iterB ι h r (force m) f
+  run-approx-iterB ι h r       (call o a k)          f = run-approx-iter-call ι h r o a k f (callAnswer ι h o a)
+  run-approx-iterB ι h r       (halt o a)            f = refl
+
+  run-approx-iter-call : ∀ {A B} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.⟦ cdom o ⟧)
+                           (k : M.⟦ ccod o ⟧ → T ((B ⊎ A) ⊎ T∞ (B ⊎ A))) (f : A → T∞ (B ⊎ A))
+                           (mb : Maybe M.⟦ ccod o ⟧)
+                       → run-call ι h o a (λ b → approxBlock r (iterBlock f (k b))) mb
+                         ≡ thenIter ι h (proj₁ (run-call ι h o a (λ b → approxBlock r (k b)) mb))
+                                        (proj₂ (run-call ι h o a (λ b → approxBlock r (k b)) mb)) f
+  run-approx-iter-call ι h r o a k f (just b) =
+    trans (cong (consE (callEvent o a)) (run-approx-iterB ι (h ++ [ callEvent o a ]) r (k b) f))
+          (cons-thenIter ι h (callEvent o a)
+             (proj₁ (run ι (h ++ [ callEvent o a ]) (approxBlock r (k b))))
+             (proj₂ (run ι (h ++ [ callEvent o a ]) (approxBlock r (k b)))) f)
+  run-approx-iter-call ι h r o a k f nothing = refl
+
+  cons-thenIter : ∀ {A B} ι h e es (ρ : Res (Ap (B ⊎ A))) (f : A → T∞ (B ⊎ A))
+                → consE e (thenIter ι (h ++ [ e ]) es ρ f) ≡ thenIter ι h (e ∷ es) ρ f
+  cons-thenIter ι h e es stopped                           f = refl
+  cons-thenIter ι h e es (returns cut)                     f = refl
+  cons-thenIter ι h e es (returns (done (inj₁ b) r))       f = refl
+  cons-thenIter ι h e es (returns (done (inj₂ a) zero))    f = refl
+  cons-thenIter ι h e es (returns (done (inj₂ a) (suc r))) f =
+    cong (λ hh → appE (e ∷ es) (run ι hh (approx r (iterRun f (f a))))) (++-assoc h [ e ] es)
+
+run-approx-iter : ∀ {A B} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (m : T∞ (B ⊎ A)) (f : A → T∞ (B ⊎ A))
+                → run ι h (approx r (iterRun f m))
+                  ≡ thenIter ι h (proj₁ (run ι h (approx r m))) (proj₂ (run ι h (approx r m))) f
+run-approx-iter ι h r m f = run-approx-iterB ι h r (force m) f
+
 -- The value a budgeted run returned.
 done-value : ∀ {X} {v v′ : X} {r r′ : ℕ} → returns (done v r) ≡ returns (done v′ r′) → v ≡ v′
 done-value refl = refl

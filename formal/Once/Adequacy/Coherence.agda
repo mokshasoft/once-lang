@@ -126,6 +126,7 @@ mutual
   coh-cc (cc-curry r) = curry-h (coh-cc r)
   coh-cc (cc-cata {w = w} {w′ = w′} r) = cata-h w w′ (coh-cc r)
   coh-cc (cc-ana {w = w} {w′ = w′} r) = ana-h w w′ (coh-cc r)
+  coh-cc (cc-loop r) = loop-h (coh-cc r)
   coh-cc (cc-lam {≤p = ≤p} {≤p′ = ≤p′} r) = lam-h ≤p ≤p′ (coh-cc r)
   coh-cc (cc-pair-lit r₁ r₂) = pair-h (coh-cc r₁) (coh-cc r₂)
   coh-cc (cc-In {w = w} {w′ = w′} {d = d} {d′ = d′} r) = In-h w w′ {d = d} {d′ = d′} (coh-cc r)

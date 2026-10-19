@@ -42,7 +42,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst)
 
 open import Once.Lang.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; act; eff; Finite; fin)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; relS-ret; RelS-bind; RelS-embed; RelS-≈ˡ; embed-bind)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; relS-ret; RelS-bind; RelS-embed; RelS-≈ˡ; embed-bind; RelS-loop; RelS-iter∞)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; RelS-fmapʳ; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (liftFn-rel)
@@ -87,7 +87,7 @@ open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd;
   d-terminal; d-initial; d-case; d-pair; d-cata; _⊢ᵈ_∶_⇒[_]↦_⨾_;
   t-case-copair-check; t-pair-morph-check;
-  t-curry-check; t-cata-check; t-ana-check;
+  t-curry-check; t-cata-check; t-ana-check; t-loop-check;
   t-int; t-float; t-unit; t-unit-var; t-var-local;
   t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
@@ -1219,6 +1219,16 @@ module _ (σ-self : RelDefs fmt σ σ) where
               (bridge-c dcoalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} rco →
     relS-ret ((λ {a} {b} rab → RelGM-return u {ν-type F π} (ana-bridgeᵍ π wfF c₁ c₂ rco rab))
              , (λ ra → relS-ret (ana-clo-rel {F} {A} {π} wfF (proj₂ rco) ra))))
+  -- THE LOOP: the round's own bridge, then the graded loop over finite rounds
+  -- against SD's iteration (`RelS-loop`); the source side is self-related
+  -- (`RelS-iter∞` over the round's own self-relation).
+  bridge-c (t-loop-check {A = A} {B = B} dround) re er =
+    RelGᵖ-app {A = A ⇒[ mk-kind Many act ] (B + A)} {B = A ⇒[ mk-kind Many eff ] B}
+              (bridge-c dround (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} rc →
+    relS-ret ((λ {a} {b} rab → RelS-loop {RB = RelGV B} {S = RelGV (B + A)} {c = c₁} {f′ = c₂}
+                                         (λ r → r) (proj₁ rc) (λ ()) (λ ()) rab)
+             , (λ ra → RelS-iter∞ {RB = RelD B} {S = RelD (B + A)} {f = c₂} {f′ = c₂}
+                                  (λ r → r) (proj₂ rc) (λ ()) (λ ()) ra)))
   -- D226: the mode switch. Both sides map their result along the same `⟦ p ⟧<:`,
   -- and the relation respects every conversion (`RelGT-sub`).
   bridge-c (t-sub d p) re er = RelGT-sub p (bridge-i d re er)

@@ -276,6 +276,7 @@ mutual
     cong (λ u → G.lam _ _ _ (G.unfold _ u (G.var zero)))
          (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
                 (sym (ρ̂ₜ-ren suc _)))
+  tm-c (t-loop-check dr)    = cong (λ u → G.let′ _ u _) (tm-c dr)
   tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
   tm-c (t-lam le d)         = cong (G.lam _ _ _) (tm-c d)
   tm-c (t-pair-lit-check a b) = cong₂ G.pair (tm-c a) (tm-c b)
@@ -470,6 +471,8 @@ mutual
     where
       q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c dc)
+  dr-c (t-loop-check dr)     =
+    H.trans (≅1 _ _ DT.⊢loopᶜ refl (tm-c dr) (dr-c dr)) (H.sym (c-loop (proj₂ (elabᶜ V dr))))
   dr-c (t-sub d p)           = ≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) refl (tm-i d) (dr-i d)
   dr-c (t-lam {u = u} le d)  =
     ≅lam refl (tm-c d) (≅1 _ _ (GT.⊢sub-eff u) refl (tm-c d) (dr-c d))

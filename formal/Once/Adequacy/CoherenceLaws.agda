@@ -33,13 +33,13 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; _≤q_; fin)
+open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; _≤q_; fin; act)
 open import Once.Lang.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T; K; Id; _⊕_; _⊗_)
 open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
 open import Once.Lang.Laws.SubLaws using (<:-trans; <:-unique)
 open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
 open import Once.Lang.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
-open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
+open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
@@ -56,7 +56,7 @@ open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-i
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret; RelS-iter∞)
 open import Once.Denotation.ValueRel using (RelD; base-refl; RelS-fmap; RelS-fmapˡ; RelS-assocˡ; RelS-assocʳ; RelS-assoc₂; RelS-unfmapʳ;
   retargetˡ; retargetʳ; seqF∞-rel; FRel; fr-K; fr-Id; fr-inl; fr-inr; fr-pair; cfD⁻¹-rel)
 open import Once.Denotation.ValueRelPER using (RelS-sym; RelS-trans; RelS-pairʳ; RelD-sym; RelD-trans; RelD-rightself)
@@ -209,6 +209,14 @@ module _ {n} {Γ : Ctx n} where
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ˢ ana wf g′
   ana-congˢ {F = F} {A} {φ = φ} wf eg σ rσ r =
     RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
+
+  -- the loop: related rounds, bound once, iterate to related loops.
+  loop-congˢ : ∀ {Ψ A B} {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many act ] (B + A))}
+            → g ≈ˢ g′ → loop {Γ = Γ} g ≈ˢ loop g′
+  loop-congˢ {A = A} {B} eg σ rσ r =
+    RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ {c} {c′} rc →
+      relS-ret (λ ra → RelS-iter∞ {RB = RelD B} {S = RelD (B + A)} {f = c} {f′ = c′}
+                                  (λ rb → rb) rc (λ ()) (λ ()) ra)
 
   let-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B}
            → e₁ ≈ˢ e₁′ → e₂ ≈ˢ e₂′ → let' e₁ e₂ ≈ˢ let' e₁′ e₂′

@@ -179,6 +179,7 @@ linked-retable tbl (I.case f g)    (lf , lg) = linked-retable tbl f lf , linked-
 linked-retable tbl (I.curry f)     lf = linked-retable tbl f lf
 linked-retable tbl (I.Cata _ alg)  la = linked-retable tbl alg la
 linked-retable tbl (I.Ana _ coalg) lc = linked-retable tbl coalg lc
+linked-retable tbl (I.Iter body) lc = linked-retable tbl body lc
 linked-retable tbl (I.Call {A} {B} f) lk = linkedAt-rewrite tbl f A B lk
 linked-retable tbl I.id            _ = tt
 linked-retable tbl I.fst           _ = tt

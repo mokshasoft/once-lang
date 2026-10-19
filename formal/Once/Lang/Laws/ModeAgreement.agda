@@ -453,6 +453,10 @@ mutual
   agree-cc (t-curry-check d) (t-curry-check d′) = agree-cc d d′
   agree-cc (t-cata-check _ d) (t-cata-check _ d′) = cong (T.Many *ᵘ_) (agree-cc d d′)
   agree-cc (t-ana-check _ d) (t-ana-check _ d′) = cong (T.Many *ᵘ_) (agree-cc d d′)
+  agree-cc (t-loop-check d) (t-loop-check d′) = cong (T.Many *ᵘ_) (agree-cc d d′)
+  -- a stream's arrow is at most `act`, a loop's is `eff`: never both.
+  agree-cc (t-ana-check {ua = ()} _ _) (t-loop-check _)
+  agree-cc (t-loop-check _) (t-ana-check {ua = ()} _ _)
   agree-cc (t-lam _ b) (t-lam _ b′) with agree-cc b b′
   ... | refl = refl
   agree-cc (t-pair-lit-check a b) (t-pair-lit-check a′ b′) = cong₂ _+ᵘ_ (agree-cc a a′) (agree-cc b b′)
@@ -491,6 +495,7 @@ mutual
   agree-ic d (t-curry-check _) = ⊥-elim (noinf-curry-app d)
   agree-ic d (t-cata-check _ _) = ⊥-elim (noinf-cata-app d)
   agree-ic d (t-ana-check _ _) = ⊥-elim (noinf-ana-app d)
+  agree-ic d (t-loop-check _) = ⊥-elim (noinf-ana-app d)
   agree-ic d (t-In-app-check _ _) = ⊥-elim (noinf-In-app d)
   agree-ic d (t-inl-app-check _) = ⊥-elim (noinf-inl-app d)
   agree-ic d (t-inr-app-check _) = ⊥-elim (noinf-inr-app d)

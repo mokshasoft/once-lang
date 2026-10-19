@@ -159,7 +159,10 @@ mutual
             → ∀ {u u′} → Rcc a a′ → Rcc (t-cata-check {ctx = ctx} {F = F} {u = u} w a) (t-cata-check {F = F} {u = u′} w′ a′)
     cc-ana : ∀ {F w w′ Ψ Ψ′} {φ : T.Finite} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧T A)) ⨾ Ψ}
                {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧T A)) ⨾ Ψ′}
-           → ∀ {u u′} → Rcc a a′ → Rcc (t-ana-check {ctx = ctx} {F = F} {π₀ = π₀} {u = u} w a) (t-ana-check {F = F} {u = u′} w′ a′)
+           → ∀ {u u′ ua ua′} → Rcc a a′ → Rcc (t-ana-check {ctx = ctx} {F = F} {π₀ = π₀} {u = u} {ua = ua} w a) (t-ana-check {F = F} {u = u′} {ua = ua′} w′ a′)
+    cc-loop : ∀ {Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many T.act ] (B + A)) ⨾ Ψ}
+                {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many T.act ] (B + A)) ⨾ Ψ′}
+            → Rcc a a′ → Rcc (t-loop-check a) (t-loop-check a′)
     cc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p ≤p′} {b : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
                {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁′ Surface.Usage.∷ Ψ′)}
            → ∀ {u u′} → Rcc b b′ → Rcc (t-lam {q = q} {π = π} {u = u} ≤p b) (t-lam {u = u′} ≤p′ b′)

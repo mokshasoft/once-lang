@@ -10,6 +10,7 @@
 module Once.Denotation.TraceMonadInfLaws where
 
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Lang.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.Lang.Iterative
@@ -142,6 +143,51 @@ RelSB-bind (s-ret r)  c = forceS (c r)
 RelSB-bind (s-next h) c = s-next (RelS-bind h c)
 RelSB-bind (s-call f) c = s-call (λ b → RelSB-bind (f b) c)
 RelSB-bind s-halt     c = s-halt
+
+-- THE LOOP is a congruence: related rounds from related states give related
+-- loops. `S` relates the rounds' results (`B ⊎ A`); a result is related only
+-- on the diagonal, where it reads as the results' or the states' relation.
+module _ {A A′ B B′ : Set} {RB : B → B′ → Set} {S : (B ⊎ A) → (B′ ⊎ A′) → Set}
+         {f : A → T∞ (B ⊎ A)} {f′ : A′ → T∞ (B′ ⊎ A′)}
+         (s-inl : ∀ {b b′} → S (inj₁ b) (inj₁ b′) → RB b b′)
+         (s-inr : ∀ {a a′} → S (inj₂ a) (inj₂ a′) → RelS S (f a) (f′ a′))
+         (s-lr  : ∀ {b a′} → S (inj₁ b) (inj₂ a′) → ⊥)
+         (s-rl  : ∀ {a b′} → S (inj₂ a) (inj₁ b′) → ⊥) where
+  RelS-iterRun   : ∀ {m m′} → RelS S m m′ → RelS RB (iterRun f m) (iterRun f′ m′)
+  RelSB-iterBlock : ∀ {l l′} → RelSB S l l′ → RelSB RB (iterBlock f l) (iterBlock f′ l′)
+  iter-ret       : ∀ x y → S x y → RelSB RB (iterBlock f (ret (inj₁ x))) (iterBlock f′ (ret (inj₁ y)))
+  forceS (RelS-iterRun h) = RelSB-iterBlock (forceS h)
+  RelSB-iterBlock (s-ret {x} {y} r) = iter-ret x y r
+  RelSB-iterBlock (s-next h)        = s-next (RelS-iterRun h)
+  RelSB-iterBlock (s-call g)        = s-call (λ b → RelSB-iterBlock (g b))
+  RelSB-iterBlock s-halt            = s-halt
+  iter-ret (inj₁ b) (inj₁ b′) r = s-ret (s-inl r)
+  iter-ret (inj₂ a) (inj₂ a′) r = s-next (RelS-iterRun (s-inr r))
+  iter-ret (inj₁ b) (inj₂ a′) r = ⊥-elim (s-lr r)
+  iter-ret (inj₂ a) (inj₁ b′) r = ⊥-elim (s-rl r)
+
+  RelS-iter∞ : ∀ {a a′} → S (inj₂ a) (inj₂ a′) → RelS RB (iter∞ f a) (iter∞ f′ a′)
+  RelS-iter∞ r = RelS-iterRun (s-inr r)
+
+-- …and against a loop over FINITE rounds (`loop`, the graded side's): a round
+-- that is a finite block, related to the other side's run.
+module _ {A A′ B B′ : Set} {RB : B → B′ → Set} {S : (B ⊎ A) → (B′ ⊎ A′) → Set}
+         {c : A → T (B ⊎ A)} {f′ : A′ → T∞ (B′ ⊎ A′)}
+         (s-inl : ∀ {b b′} → S (inj₁ b) (inj₁ b′) → RB b b′)
+         (s-inr : ∀ {a a′} → S (inj₂ a) (inj₂ a′) → RelS S (embed (c a)) (f′ a′))
+         (s-lr  : ∀ {b a′} → S (inj₁ b) (inj₂ a′) → ⊥)
+         (s-rl  : ∀ {a b′} → S (inj₂ a) (inj₁ b′) → ⊥) where
+  RelS-loop       : ∀ {a a′} → S (inj₂ a) (inj₂ a′) → RelS RB (loop c a) (iter∞ f′ a′)
+  RelSB-loopBlock : ∀ (t : T (B ⊎ A)) {l′} → RelSB S (embedBlock t) l′ → RelSB RB (loopBlock c t) (iterBlock f′ l′)
+  loop-ret        : ∀ x y → S x y → RelSB RB (loopBlock c (ret x)) (iterBlock f′ (ret (inj₁ y)))
+  forceS (RelS-loop {a} r) = RelSB-loopBlock (c a) (forceS (s-inr r))
+  RelSB-loopBlock (ret x)      (s-ret {y = y} r) = loop-ret x y r
+  RelSB-loopBlock (call o x k) (s-call h)        = s-call (λ b → RelSB-loopBlock (k b) (h b))
+  RelSB-loopBlock (halt o x)   s-halt            = s-halt
+  loop-ret (inj₁ b) (inj₁ b′) r = s-ret (s-inl r)
+  loop-ret (inj₂ a) (inj₂ a′) r = s-next (RelS-loop r)
+  loop-ret (inj₁ b) (inj₂ a′) r = ⊥-elim (s-lr r)
+  loop-ret (inj₂ a) (inj₁ b′) r = ⊥-elim (s-rl r)
 
 -- Two finite trees related call for call embed as related runs.
 RelSB-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelSB R (embedBlock m) (embedBlock t)

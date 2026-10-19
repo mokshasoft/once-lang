@@ -927,6 +927,15 @@ module Core {FS : FrameSemantics} where
                  → IRObsCorrectF alg
                  → IRObsCorrectF (Cata wf alg)
 
+    -- plan 0.119 D5: THE LOOP's obligation, by induction on the round budget
+    -- `k`: a round is the body's witness at `base + 3`, the branch, the next
+    -- pair, and the back edge (one control step per silent step consumed —
+    -- `progress`); the budgeted run decomposes by `Approx.run-approx-iter`.
+    -- OPEN (scaffolded, to be discharged in D5 before the plan closes).
+    iter-correct : ∀ {E A B} (body : IR (E * A) (B IRTy′.+ A))
+                 → IRObsCorrectF body
+                 → IRObsCorrectF (Iter body)
+
   -- ════════════════════════════════════════════════════════════════════
   -- `ir-obs-correct` — the GENERIC IR-observable theorem: a TOTAL dispatch
   -- over the IR giving every shape its observable-correctness witness. This

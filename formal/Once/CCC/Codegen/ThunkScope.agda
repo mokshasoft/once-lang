@@ -324,6 +324,14 @@ module Scope {FS : FrameSemantics} where
   thunks-in (SigOp x)  n l = sigop-thunks x n l (cmp-of (sem x))
   thunks-in (Call _)  n l = all-no-thunk-in _ refl
   thunks-in (Ana x c)  n l = all-no-thunk-in _ refl
+  -- the loop mints only `c-label`s; the round sits above its two.
+  thunks-in (Iter b)   n l =
+    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
+    ++⁺ (ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (thunks-in b _ _))
+        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
+         thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
+         thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
+         thunk-none-in _ refl ∷ [])
   thunks-in (g ∘ f)    n l =
     ++⁺ (ts-weaken ≤-refl (label-mono g _ _) (thunks-in f n l))
         (thunk-none-in _ refl ∷ ts-weaken (label-mono f n l) ≤-refl (thunks-in g _ _))
@@ -407,6 +415,8 @@ module Scope {FS : FrameSemantics} where
                  (blocks-thunks-in f n (suc (suc l))))
         (All-map (λ {b} → bts-weaken b (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl)
                  (blocks-thunks-in g _ _))
+  blocks-thunks-in (Iter b) n l =
+    All-map (λ {bk} → bts-weaken bk (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl) (blocks-thunks-in b _ _)
   -- The window widens to the DISPATCH's outgoing counter, not the algebra's.
   blocks-thunks-in (Cata {F} _ alg) n l =
     All-map (λ {b} → bts-weaken b ≤-refl

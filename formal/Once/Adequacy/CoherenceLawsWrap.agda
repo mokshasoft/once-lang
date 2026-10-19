@@ -32,7 +32,7 @@ open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_
 open import Once.Lang.Laws.SubLaws using (<:-trans)
 open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
 open import Once.Lang.Context using (Ctx; _∷_; _,_^_)
-open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
+open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 import Once.Lang.Type.Grade
 import Once.Type
 open import Once.Lang.Type.WellFormed using (WellFormedF)
@@ -160,6 +160,8 @@ module _ {n} {Γ : Ctx n} where
 module _ {n} {Γ : Ctx n} where
   ana-cong : ∀ {Ψ F A π₀ φ} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Lang.Type.Grade.fin φ) ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ ana wf g′
   ana-cong {Ψ} {F} {A} {π₀} {φ} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {Ψ} {F} {A} {π₀} {φ} wf {g} {g′} h1)
+  loop-cong : ∀ {Ψ A B} {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many Once.Lang.Type.Grade.act ] (B Once.Lang.Type.+ A))} → g ≈ g′ → loop {Γ = Γ} g ≈ loop g′
+  loop-cong {Ψ} {A} {B} {g} {g′} (≈-intro h1) = ≈-intro (loop-congˢ {Γ = Γ} {Ψ} {A} {B} {g} {g′} h1)
 
 module _ {n} {Γ : Ctx n} where
   let-cong : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B} → e₁ ≈ e₁′ → e₂ ≈ e₂′ → let' e₁ e₂ ≈ let' e₁′ e₂′

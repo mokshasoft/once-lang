@@ -31,7 +31,7 @@ open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 
-open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Lang.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
@@ -253,6 +253,8 @@ calls-trace' (in-ν _)     n l _ =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 calls-trace' (Ana _ c)      n l _ =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+calls-trace' (Iter b)       n l lb =
+  tt ∷ tt ∷ tt ∷ ++⁺ (calls-trace' b _ _ lb) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 calls-trace' (SigOp si)     n l _ = sigop-calls si n (cmp-of (sem si))
 calls-trace' (Call {A} {B} f) n l lk = (A , B , lk) ∷ []
 calls-trace' (const fits-int _)   n l _ = tt ∷ []
@@ -329,6 +331,7 @@ calls-blocks (Ana wf c) n l lc =
                                    (ℓ o l) 0 wf)))
                 (tt ∷ []))
       (calls-blocks c 1 (suc l) lc)
+calls-blocks (Iter b) n l lb = calls-blocks b _ _ lb
 calls-blocks (SigOp _)      n l _ = []
 calls-blocks (Call _)      n l _ = []
 calls-blocks (const fits-int _)   n l _ = []

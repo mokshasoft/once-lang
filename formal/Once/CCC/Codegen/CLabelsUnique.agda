@@ -217,7 +217,7 @@ resusp-cl n l lbl env (wf-Sum wfF wfG) =
 ------------------------------------------------------------------------
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+  curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
@@ -591,6 +591,30 @@ frag (case f g) n l =
     dTg = proj₁ (proj₁ Fg) ; dBg = proj₁ (proj₂ (proj₁ Fg)) ; jg = proj₂ (proj₂ (proj₁ Fg))
     wTf = proj₁ (proj₂ Ff) ; wBf = proj₂ (proj₂ Ff)
     wTg = proj₁ (proj₂ Fg) ; wBg = proj₂ (proj₂ Fg)
+-- the loop defines `l` (its top) before the round and `suc l` (its exit) after
+-- it; the round's labels and blocks sit at `suc (suc l)` and above.
+frag (Iter b) n l =
+  transport {P = FragP l lb} (cong (l ∷_) (clabs-++ (trace-of Xb) _)) refl
+    ( ( All-++⁺ (fresh-below l<ssl wTb) (fresh-below (n<1+n l) w1)
+        ∷ dst-++ dTb ([] ∷ []) (dj-sym (dj-win w1 wTb ≤-refl))
+      , dBb
+      , fresh-below l<ssl wBb ∷ dj-++ˡ jb (fresh-below (n<1+n (suc l)) wBb ∷ []) )
+    , (≤-refl , <-≤-trans l<ssl ssl≤lb)
+      ∷ All-++⁺ (win-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl wTb) ((n≤1+n l , ssl≤lb) ∷ [])
+    , win-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl wBb )
+  where
+    ssl = suc (suc l)
+    Xb = ir-to-trace' (suc (suc n)) ssl b
+    lb = label-of Xb
+    ssl≤lb : ssl ≤ lb
+    ssl≤lb = label-mono b (suc (suc n)) ssl
+    l<ssl : l < ssl
+    l<ssl = ≤-trans (n<1+n l) (n≤1+n (suc l))
+    w1 : Win (suc l) ssl (suc l ∷ [])
+    w1 = (≤-refl , ≤-refl) ∷ []
+    Fb = frag b (suc (suc n)) ssl
+    dTb = proj₁ (proj₁ Fb) ; dBb = proj₁ (proj₂ (proj₁ Fb)) ; jb = proj₂ (proj₂ (proj₁ Fb))
+    wTb = proj₁ (proj₂ Fb) ; wBb = proj₂ (proj₂ Fb)
 frag (In _)     n l = none
 frag (out-μ _)  n l = none
 frag (Cata {F} _ alg) n l =
@@ -728,6 +752,9 @@ frag-nf (case f g) n l =
      (nf (trace-of Xf) _ (proj₁ (frag-nf f _ _)) refl)
   , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f _ _)) (proj₂ (frag-nf g _ _))
   where Xf = ir-to-trace' n (suc (suc l)) f
+frag-nf (Iter b) n l =
+  nf (trace-of Xb) _ (proj₁ (frag-nf b _ _)) refl , proj₂ (frag-nf b _ _)
+  where Xb = ir-to-trace' (suc (suc n)) (suc (suc l)) b
 frag-nf (In _)     n l = refl , refl
 frag-nf (out-μ _)  n l = refl , refl
 frag-nf (Cata {F} _ alg) n l =

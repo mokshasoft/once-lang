@@ -103,8 +103,9 @@ open import Once.Lang.Context using (_⊔ᵘ_; ⊑ᵘ-refl)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Once.Lang.Environment using (bindᵛ)
 open import Data.Fin using (zero; suc)
-open import Once.Lang.Type.Grade using (Many; mk-kind; pure; eff; Finite; fin)
-open import Once.Lang.Type using (_⇒[_]_)
+open import Once.Lang.Type.Grade using (Many; mk-kind; pure; act; eff; Finite; fin)
+open import Once.Lang.Type using (_⇒[_]_; _+_)
+open import Once.Lang.Iterative using (loop)
 open import Once.Lang.Environment using (restrictᵛ)
 open import Once.Lang.Core.Syntax S
 open import Once.Lang.Type.Sub using (_⊑π_; sub-arr)
@@ -322,6 +323,18 @@ module Comb {δ : GM.DefSem} where
     where E = trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
                     (+ᵘ-identityˡ (Many *ᵘ Ψ))
 
+  -- the loop: the round's closure, bound once, then iterated (`Lang.Iterative.loop`).
+  loop-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B : Type} {c}
+    (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
+    → GM.⟦ ⊢loopᶜ dc ⟧ fmt δ x ≡ (λ a → loop (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a)
+  loop-sem {Γ = Γ} {Ψ} dc x =
+    trans (RS.⟦⟧-substΨ E (⊢let dc (⊢lam refl (⊢iter (⊢var (suc zero)) (⊢var zero)))) fmt δ x)
+          (trans (bindC (cong (GM.⟦ dc ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-*Many Ψ) x))
+                        (λ vr → extensionality λ a → trans (>>=ᵖ-β vr _) (>>=ᵖ-β a _)))
+                 (>>=ᵖ-β _ _))
+    where E = trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
+                    (+ᵘ-identityˡ (Many *ᵘ Ψ))
+
 ------------------------------------------------------------------------
 -- The bridge
 ------------------------------------------------------------------------
@@ -431,6 +444,9 @@ module _ {δ : GM.DefSem} where
   bridge-c {ctx = ctx} V ag (t-ana-check {π₀ = π₀} {φ = π} {u = u} wf dcoalg) dγ =
     trans (cong (λ C → λ a → returnM u (ana-semᵛ π wf C a)) (bridge-c V ag dcoalg _))
           (sym (Comb.ana-sem″ {δ = δ} u wf (proj₂ (elabᶜ V dcoalg)) dγ))
+  bridge-c {ctx = ctx} V ag (t-loop-check dround) dγ =
+    trans (cong (λ C → λ a → loop C a) (bridge-c V ag dround _))
+          (sym (Comb.loop-sem {δ = δ} (proj₂ (elabᶜ V dround)) dγ))
   bridge-c {ctx = ctx} V ag (t-apply-check {A = A} {B = B} dp) dγ =
     trans (bindC (bridge-i V ag dp _) (λ fa → refl))
           (sym (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})

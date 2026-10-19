@@ -21,6 +21,7 @@ open import Once.Lang.Type.Grade
 open import Once.Lang.Type
 open import Once.Lang.Type.Poly
 open import Once.Type
+open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pa; ⊑-act)
 
 -- `cata alg` : μ F ⇒ A
 data CataTarget : Type → Set where
@@ -32,13 +33,19 @@ cataTarget (μ-type F ⇒[ mk-kind Many π ] A) = cata-at F π A
 {-# CATCHALL #-}
 cataTarget _ = cata-other
 
--- `ana coalg` : A ⇒ ν F
+-- `ana coalg` : A ⇒ ν F at a terminating grade (a stream), or `ana round` :
+-- A ⇒[eff] B (THE LOOP, D317/D319) — the Spec's `c-ana` bounds the stream's
+-- arrow by `act`, so the two never overlap. The `eff` clause comes FIRST: it
+-- reads the grade alone, so it reduces at any codomain.
 data AnaTarget : Type → Set where
-  ana-at    : ∀ A π₀ F π → AnaTarget (A ⇒[ mk-kind Many π₀ ] ν-type F π)
+  loop-at   : ∀ A B → AnaTarget (A ⇒[ mk-kind Many eff ] B)
+  ana-at    : ∀ A π₀ F π → π₀ ⊑π act → AnaTarget (A ⇒[ mk-kind Many π₀ ] ν-type F π)
   ana-other : ∀ {T} → AnaTarget T
 
 anaTarget : (T : Type) → AnaTarget T
-anaTarget (A ⇒[ mk-kind Many π₀ ] ν-type F π) = ana-at A π₀ F π
+anaTarget (A ⇒[ mk-kind Many eff ] B)           = loop-at A B
+anaTarget (A ⇒[ mk-kind Many pure ] ν-type F π) = ana-at A pure F π ⊑-pa
+anaTarget (A ⇒[ mk-kind Many act ] ν-type F π)  = ana-at A act F π ⊑-act
 {-# CATCHALL #-}
 anaTarget _ = ana-other
 

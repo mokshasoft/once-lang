@@ -143,6 +143,7 @@ mutual
   ic-sub d (t-curry-check _) = ⊥-elim (noinf-curry-app d)
   ic-sub d (t-cata-check _ _) = ⊥-elim (noinf-cata-app d)
   ic-sub d (t-ana-check _ _) = ⊥-elim (noinf-ana-app d)
+  ic-sub d (t-loop-check _) = ⊥-elim (noinf-ana-app d)
   ic-sub d (t-In-app-check _ _) = ⊥-elim (noinf-In-app d)
   ic-sub d (t-inl-app-check _) = ⊥-elim (noinf-inl-app d)
   ic-sub d (t-inr-app-check _) = ⊥-elim (noinf-inr-app d)

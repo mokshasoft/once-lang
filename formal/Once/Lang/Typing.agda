@@ -704,6 +704,7 @@ mutual
     -- runs nothing, so `ana`'s own arrow is free (`π₀`, as `curry`'s outer arrow).
     t-ana-check : ∀ {ctx : NamedCtx} {coalg : RawExpr} {F : Functor} {A : Type}
                   {π₀ : Once.Lang.Type.Grade.Purity} {φ : Once.Lang.Type.Grade.Finite} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Lang.Type.Grade.pure ⊑π π₀}
+                  {ua : π₀ ⊑π Once.Lang.Type.Grade.act}   -- the Spec's `c-ana` bound: at `eff`, `ana` is the loop
                 → WellFormedF F
                 → ctx ⊢ᶜ coalg ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin φ) ] (⟦ F ⟧T A)) ⨾ Ψ
                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg

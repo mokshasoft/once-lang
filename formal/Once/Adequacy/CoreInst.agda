@@ -625,6 +625,14 @@ module WithSG (sg : SigGround) where
         E = trans (cong (C._+ᵘ (Many C.*ᵘ Ψ)) (trans (cong (C._+ᵘ C.zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ C.zeroUsage)))
                   (+ᵘ-identityˡ (Many C.*ᵘ Ψ))
 
+    c-loop : ∀ {Ψ A B c} (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many T.act ] (B T.+ A) ! pure)
+           → ρ̂ᶜ (DT.⊢loopᶜ dc) ≅ DT.⊢loopᶜ (ρ̂ᶜ dc)
+    c-loop {Ψ} dc = H.trans (ρ̂ᶜ-sU E) (H.sym (rmU E))
+      where
+        open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
+        E = trans (cong (C._+ᵘ (Many C.*ᵘ Ψ)) (trans (cong (C._+ᵘ C.zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ C.zeroUsage)))
+                  (+ᵘ-identityˡ (Many C.*ᵘ Ψ))
+
     c-ana : ∀ {Ψ F A π₀} {π : T.Finite} {c} (u₀ : Once.Lang.Type.Sub._⊑π_ T.pure π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many (T.fin π) ] ⟦ F ⟧T A ! pure)
           → ρ̂ᶜ (DT.⊢anaᶜ u₀ wf dc)
             ≅ DT.⊢anaᶜ u₀ (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many (T.fin π) ] X ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))

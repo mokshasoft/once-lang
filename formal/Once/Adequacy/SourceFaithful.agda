@@ -644,6 +644,9 @@ mutual
     FL.cata-body {Γ = Γ} wf alg dγ dγ′ (ih∘ (⊑ᵘ-*Many Ψ) alg r)
   faithful {Γ = Γ} (ana {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg) {dγ} {dγ′} r =
     FL.ana-body {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg dγ dγ′ (ih∘ (⊑ᵘ-*Many Ψ) coalg r)
+  -- the loop: the round reads the environment through `⊑ᵘ-*Many`, as `ana`'s coalgebra.
+  faithful {Γ = Γ} (loop {Ψ = Ψ} round) {dγ} {dγ′} r =
+    FL.loop-body {Γ = Γ} round dγ dγ′ (ih∘ (⊑ᵘ-*Many Ψ) round r)
 
   -- Two-operand arithmetic, at its narrowed operands.
   binop : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A₁ A₂ C : Type} (si : SigOpInfo (A₁ * A₂) C)

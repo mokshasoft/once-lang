@@ -52,7 +52,7 @@ open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; SigOp; Call; const)
+open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Lang.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -304,6 +304,7 @@ frame-free-trace' (case f g) (hf , hg) n l =
       (++⁺ (frame-free-trace' g hg _ _)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (frame-free-trace' f hf _ _) (tt ∷ []))))
+frame-free-trace' (Iter b) hb n l = tt ∷ tt ∷ tt ∷ ++⁺ (frame-free-trace' b hb _ _) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 frame-free-trace' (In _)  hm n l = tt ∷ []
 frame-free-trace' (out-μ _) hm n l = tt ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame), so its IH is
@@ -402,6 +403,7 @@ frame-free-blocks' inl hm n l = []
 frame-free-blocks' inr hm n l = []
 frame-free-blocks' (case f g) (hf , hg) n l =
   ++⁺ (frame-free-blocks' f hf n (suc (suc l))) (frame-free-blocks' g hg _ _)
+frame-free-blocks' (Iter b) hb n l = frame-free-blocks' b hb _ _
 frame-free-blocks' (In _)  hm n l = []
 frame-free-blocks' (out-μ _) hm n l = []
 frame-free-blocks' (Cata {F} _ alg) hm n l = frame-free-blocks' alg hm 0 l

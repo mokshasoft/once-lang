@@ -52,7 +52,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap; Cata; SigOp; Call; out-μ
   -- Plan 0.68 step 0: the enumeration needs EVERY constructor in scope, not
   -- just the ones with a clause of their own before it.
   id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
-  In; Out; in-ν; Ana; const) public
+  In; Out; in-ν; Ana; Iter; const) public
 open import Once.IRTy using (FitsInRegI; ⌊_⌋; fits-int; fits-float) public
 open import Once.IRTy using (⟦_,_⟧-baseI)
 open import Data.Unit using (tt) public

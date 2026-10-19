@@ -257,9 +257,10 @@ mutual
   subst-c′ ir (t-cata-check {F = F} {A = A} {π = π} {u = u} wf da) =
     t-cata-check {u = u} (ρ̂-wf wf)
       (cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir da)
-  subst-c′ ir (t-ana-check {F = F} {A = A} {φ = φ} {u = u} wf dc) =
-    t-ana-check {u = u} (ρ̂-wf wf)
+  subst-c′ ir (t-ana-check {F = F} {A = A} {φ = φ} {u = u} {ua = ua} wf dc) =
+    t-ana-check {u = u} {ua = ua} (ρ̂-wf wf)
       (cong (λ X → ρ̂ A ⇒[ mk-kind Many (fin φ) ] X) (ρ̂-⟦⟧ F A) ⇝ᶜ subst-c′ ir dc)
+  subst-c′ ir (t-loop-check dr)     = t-loop-check (subst-c′ ir dr)
   subst-c′ ir (t-sub d p)           = t-sub (subst-i′ ir d) (ρ̂-<: p)
   subst-c′ ir (t-lam {u = u} le d)          = t-lam {u = u} le (subst-c′ ir d)
   subst-c′ ir (t-pair-lit-check a b) = t-pair-lit-check (subst-c′ ir a) (subst-c′ ir b)

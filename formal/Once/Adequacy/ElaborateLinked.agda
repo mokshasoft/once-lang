@@ -89,6 +89,7 @@ linked-mono h (IR.case f g)    (lf , lg) = linked-mono h f lf , linked-mono h g 
 linked-mono h (IR.curry f)     lf = linked-mono h f lf
 linked-mono h (IR.Cata _ alg)  la = linked-mono h alg la
 linked-mono h (IR.Ana _ coalg) lc = linked-mono h coalg lc
+linked-mono h (IR.Iter body) lc = linked-mono h body lc
 linked-mono h (IR.Call f)      lk = h lk
 linked-mono h IR.id            _ = tt
 linked-mono h IR.fst           _ = tt
@@ -123,6 +124,7 @@ linked-σ (IR.case f g)    (lf , lg) = linked-σ f lf , linked-σ g lg
 linked-σ (IR.curry f)     lf = linked-σ f lf
 linked-σ (IR.Cata _ alg)  la = linked-σ alg la
 linked-σ (IR.Ana _ coalg) lc = linked-σ coalg lc
+linked-σ (IR.Iter body) lc = linked-σ body lc
 linked-σ (IR.Call f)      lk = lk
 linked-σ IR.id            _ = tt
 linked-σ IR.fst           _ = tt
@@ -201,6 +203,7 @@ Refs Ps Pc Pp (fork' f g)         = Refs Ps Pc Pp f × Refs Ps Pc Pp g
 Refs Ps Pc Pp (curry' f)          = Refs Ps Pc Pp f
 Refs Ps Pc Pp (cata _ alg)        = Refs Ps Pc Pp alg
 Refs Ps Pc Pp (ana _ coalg)       = Refs Ps Pc Pp coalg
+Refs Ps Pc Pp (loop round)        = Refs Ps Pc Pp round
 
 -- A reference elaborates to a call (`refIR`); it is linked when the call is.
 -- An FFI reference declared in the signatures, at its declared type: the call
@@ -259,6 +262,7 @@ Refs-map hs hc hp (fork' f g)         (a , b) = Refs-map hs hc hp f a , Refs-map
 Refs-map hs hc hp (curry' f)          r = Refs-map hs hc hp f r
 Refs-map hs hc hp (cata _ alg)        r = Refs-map hs hc hp alg r
 Refs-map hs hc hp (ana _ coalg)       r = Refs-map hs hc hp coalg r
+Refs-map hs hc hp (loop round)        r = Refs-map hs hc hp round r
 
 
 ------------------------------------------------------------------------
@@ -472,6 +476,9 @@ module _ {σ : ISig} (tbl : List IRFun) where
     Linked-subst (λ _ → (⌊ A ⌋ Once.IRTy.⇛ ⌊ ⟦ F ⟧T A ⌋) Once.IRTy.* ⌊ A ⌋) (λ o → o)
                  (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))
     , (elaborate-linked′ m coalg r , rE {Γ = Γ} m (⊑ᵘ-*Many Ψ))
+  -- the loop: `loopM ∘ eround`, `ana`'s shape (no functor to commute).
+  elaborate-linked′ m {Γ = Γ} (loop {Ψ = Ψ} round) r =
+    (tt , (tt , tt)) , (elaborate-linked′ m round r , rE {Γ = Γ} m (⊑ᵘ-*Many Ψ))
 
   elaborate-linked : ∀ (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
                    → Linked σ tbl (elaborateFull m e)

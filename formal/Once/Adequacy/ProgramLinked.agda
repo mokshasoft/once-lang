@@ -167,6 +167,7 @@ realize-refs (t-pair-morph-check df dg)  = realize-refs df , realize-refs dg
 realize-refs (t-curry-check df)          = realize-refs df
 realize-refs (t-cata-check wfF dalg)     = realize-refs dalg
 realize-refs (t-ana-check wfF dcoalg)    = realize-refs dcoalg
+realize-refs (t-loop-check dround)       = realize-refs dround
 realize-refs (t-sub d p)                 = realize-refs-i d
 realize-refs (t-lam ≤p d)                = realize-refs d
 realize-refs (t-pair-lit-check da db)    = realize-refs da , realize-refs db
@@ -360,6 +361,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
   resolve-refs pAcc uf fresh (curry' f)        r = resolve-refs pAcc uf fresh f r
   resolve-refs pAcc uf fresh (cata _ alg)      r = resolve-refs pAcc uf fresh alg r
   resolve-refs pAcc uf fresh (ana _ coalg)     r = resolve-refs pAcc uf fresh coalg r
+  resolve-refs pAcc uf fresh (loop round)      r = resolve-refs pAcc uf fresh round r
 
 ------------------------------------------------------------------------
 -- (D) An entry's call and body.

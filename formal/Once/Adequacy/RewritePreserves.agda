@@ -48,7 +48,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at; runIR; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed; RelS-iter∞)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel
 open import Once.Denotation.EvalRel using (base-eqI; base-reflI; fo-eq; RelS-now; RelEnv; sigop-rel)
@@ -142,6 +142,10 @@ module _ (fmt : TargetNum) where
                                             (λ q → cfD-rel (wf-⌈⌉ w) ⌈ A₀ ⌉ (RelD-subst (⌈⟧TI-commute F A₀) q)))
                                           (cμin-rel ⌈ F ⌉F))
                          rs)
+    walk-rel (Iter {E₀} {A₀} {B₀} b) {e , s} {e′ , s′} (re′ , rs) =
+      RelS-iter∞ {RB = RelD ⌈ B₀ ⌉} {S = RelD ⌈ B₀ II.+ A₀ ⌉}
+                 {f = λ a → E (proj₁ (rewrite-ir b)) (e , a)} {f′ = λ a → E′ b (e′ , a)}
+                 (λ r → r) (λ r → rewrite-rel b (re′ , r)) (λ ()) (λ ()) rs
     walk-rel (const II.fits-int v)   r = relS-ret refl
     walk-rel (const II.fits-float v) r = relS-ret refl
     walk-rel (SigOp si) r = bare-rel (try-lift (SigOp si ∘ id)) refl

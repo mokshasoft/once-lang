@@ -543,6 +543,19 @@ module Unique {FS : FrameSemantics} where
             ≡ thunk-labels ft ++ thunk-labels gt
       tl-eq = trans (tl-++ ft (store-at-slot (suc n) ∷ restore-input n ∷ (gt ++ post)))
                     (cong (thunk-labels ft ++_) (tl-post gt post (nt-dec post refl)))
+  -- the loop defines nothing of its own (its labels are `c-label`s, not
+  -- markers): its definitions are the round's.
+  defs-uniq (Iter b)              n l =
+    subst (λ z → AllPairs _≢_ (z ++ block-defs (bodies-of (ir-to-trace' (s² n) (s² l) b))))
+          (sym (tl-post (trace-of (ir-to-trace' (s² n) (s² l) b)) post (nt-dec post refl)))
+          (defs-uniq b (s² n) (s² l))
+    where
+      post : AbstractTrace
+      post = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷
+             load-indirect-suc ∷ store-at-slot (suc n) ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
+             load-from-slot n ∷ store-indirect ∷ load-from-slot (suc n) ∷ store-indirect-suc ∷
+             instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
+             load-indirect-suc ∷ []
   -- `case` puts `g` FIRST in the trace and `f` first in the blocks, so this is
   -- the mirrored merge.
   defs-uniq (case f g)            n l =

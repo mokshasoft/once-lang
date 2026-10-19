@@ -30,7 +30,7 @@ open import Data.Unit using (tt)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst; subst-sym-subst; subst-subst-sym; subst-∘)
 
-open import Once.Lang.Type.Grade using (Purity; mk-kind; Many; Finite; fin)
+open import Once.Lang.Type.Grade using (Purity; mk-kind; Many; Finite; fin; act; eff)
 open import Once.Lang.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
 import Once.Lang.Type as TT
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; Ana)
@@ -48,11 +48,14 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ
 open import Once.Lang.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Denotation.Phase using (restrictᴰ)
-open import Once.Surface.Elaborate using (elaborate; cataM; anaM; restrictEnv)
+open import Once.Surface.Elaborate using (elaborate; cataM; anaM; loopM; restrictEnv)
 import Once.IR as IR
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; iter∞)
 open import Once.Semantics.Machine using (sem-cata)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret; RelS-iter∞)
+open import Once.Adequacy.CoerceFaithful fmt ρ using (subst-inj₁; subst-inj₂)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Empty using (⊥)
 open import Once.Denotation.ValueRel using (RelD; SRel; StreamRel; RelS-mono; RelS-fmap; RelS-substˡ; retargetˡ; retargetʳ; anaᴵ-rel; cfD-rel; cμin-rel)
 open import Once.Lang.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
@@ -303,3 +306,72 @@ ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg 
                          {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (anaM {F} {A} {φ} wf IR.Heap)
                          (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
      (RelS-bind ih (anaM-unfold {F} {A} {π₀} {φ} wf))
+
+------------------------------------------------------------------------
+-- THE LOOP. `loopM m = curry (Iter (apply ∘ ⟨ fst , snd ⟩))`: a round is
+-- "apply the closure", iterated. The IR loop runs on the IR's domain, SD's on
+-- the source's; the relations carry the coherence (`cohᴰ`) through the sum.
+------------------------------------------------------------------------
+
+loopM-iter : ∀ {A B : Type} {c c′ : ⟦ A ⇒[ mk-kind Many act ] (B TT.+ A) ⟧ᴰ}
+           → RelD (A ⇒[ mk-kind Many act ] (B TT.+ A)) c c′
+           → RelS (RelD (A ⇒[ mk-kind Many eff ] B))
+                  (liftFn fmt ρ {A ⇒[ mk-kind Many act ] (B TT.+ A)} {A ⇒[ mk-kind Many eff ] B}
+                          (loopM {A} {B} IR.Heap) c)
+                  (return∞ (iter∞ c′))
+loopM-iter {A} {B} {c} {c′} r =
+  ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) QA QB) (λ b → evalᴰ fmt ρ (IR.Iter applyIR) (c₀ , b)))
+            (cong return∞ (subst-arrow QA QB (λ b → evalᴰ fmt ρ (IR.Iter applyIR) (c₀ , b)))))
+     (relS-ret λ {x} {x′} rx →
+        RelS-substˡ QB
+          (RelS-iter∞ {RB = λ b v → RelD B (subst (λ z → z) QB b) v}
+                      {S = λ u v → RelD (B TT.+ A) (subst (λ z → z) QBA u) v}
+                      {f = λ a → evalᴰ fmt ρ applyIR (c₀ , a)} {f′ = c′}
+                      s-inl s-inr s-lr s-rl (start rx)))
+  where
+    Arr = A ⇒[ mk-kind Many act ] (B TT.+ A)
+    QA = cohᴰ A
+    QB = cohᴰ B
+    QBA = cohᴰ (B TT.+ A)
+    c₀ = subst (λ z → z) (sym (cohᴰ Arr)) c
+    applyIR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) (⌊ B ⌋ II.+ ⌊ A ⌋)
+    applyIR = IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩
+
+    s-inl : ∀ {b b′} → RelD (B TT.+ A) (subst (λ z → z) QBA (inj₁ b)) (inj₁ b′) → RelD B (subst (λ z → z) QB b) b′
+    s-inl {b} {b′} r′ = subst (λ z → RelD (B TT.+ A) z (inj₁ b′)) (subst-inj₁ QB QA b) r′
+    s-lr : ∀ {b a′} → RelD (B TT.+ A) (subst (λ z → z) QBA (inj₁ b)) (inj₂ a′) → ⊥
+    s-lr {b} {a′} r′ = subst (λ z → RelD (B TT.+ A) z (inj₂ a′)) (subst-inj₁ QB QA b) r′
+    s-rl : ∀ {a b′} → RelD (B TT.+ A) (subst (λ z → z) QBA (inj₂ a)) (inj₁ b′) → ⊥
+    s-rl {a} {b′} r′ = subst (λ z → RelD (B TT.+ A) z (inj₁ b′)) (subst-inj₂ QB QA a) r′
+    s-inr : ∀ {a a′} → RelD (B TT.+ A) (subst (λ z → z) QBA (inj₂ a)) (inj₂ a′)
+          → RelS (λ u v → RelD (B TT.+ A) (subst (λ z → z) QBA u) v) (evalᴰ fmt ρ applyIR (c₀ , a)) (c′ a′)
+    s-inr {a} {a′} r′ =
+      RelS-substˡ⁻ QBA
+        (≡ˢ (cong (λ W → subst T∞ QBA (evalᴰ fmt ρ applyIR W))
+                  (sym (trans (pairᴰ-subst⁻ (cohᴰ Arr) QA c (subst (λ z → z) QA a))
+                              (cong (c₀ ,_) (subst-sym-subst {P = λ z → z} QA)))))
+            (apply-rel {A} {B TT.+ A} {act} {c} {c′} r
+              (subst (λ z → RelD (B TT.+ A) z (inj₂ a′)) (subst-inj₂ QB QA a) r′)))
+    start : ∀ {x x′} → RelD A x x′
+          → RelD (B TT.+ A) (subst (λ z → z) QBA (inj₂ (subst (λ z → z) (sym QA) x))) (inj₂ x′)
+    start {x} {x′} rx =
+      subst (λ z → RelD (B TT.+ A) z (inj₂ x′))
+            (sym (trans (subst-inj₂ QB QA _) (cong inj₂ (subst-subst-sym {P = λ z → z} QA)))) rx
+
+-- `ana-body`'s shape.
+loop-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {A B : Type}
+              (round : Expr Γ Ψ (A ⇒[ mk-kind Many act ] (B TT.+ A)))
+              (dγ dγ′ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
+            → RelS (RelD (A ⇒[ mk-kind Many act ] (B TT.+ A)))
+                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many act ] (B TT.+ A)}
+                      (elaborate IR.Heap round IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ)
+                   (SD.⟦ round ⟧ˢ fmt (SD.internalDefs fmt ρ) (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ′))
+            → RelS (RelD (A ⇒[ mk-kind Many eff ] B))
+                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many eff ] B}
+                      (elaborate IR.Heap (loop {Γ = Γ} round)) dγ)
+                   (SD.⟦ loop {Γ = Γ} round ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
+loop-body {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} round dγ dγ′ ih =
+  ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many act ] (B TT.+ A)} {C = A ⇒[ mk-kind Many eff ] B}
+                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (loopM {A} {B} IR.Heap)
+                         (elaborate IR.Heap round IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
+     (RelS-bind ih (loopM-iter {A} {B}))

@@ -512,6 +512,33 @@ module _ (G : String → Set) where
       cg = close g (proj₁ X) (proj₁ (proj₂ X))
                  (defd-⊆ (++-⊆ gt (blocks-layout gb) (⊆-trans gtT inT)
                             (⊆-trans (⊆-++ʳ (blocks-layout fb) (blocks-layout gb)) inL)) d) okg
+  -- the loop: its two references (the exit branch, the back edge) name its own
+  -- two labels; the round closes by its IH.
+  close (Iter b) n l {D} d okb =
+    closes-++ bt R (proj₁ cb) (inj₁ (lab∈ (ℓ o (suc l)) d done∈) ∷ inj₁ (lab∈ (ℓ o l) d top∈) ∷ [])
+    , proj₂ cb
+    where
+      X = ir-to-trace' (suc (suc n)) (suc (suc l)) b
+      bt = trace-of X ; bbs = bodies-of X
+      R = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷
+          load-indirect-suc ∷ store-at-slot (suc n) ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
+          load-from-slot n ∷ store-indirect ∷ load-from-slot (suc n) ∷ store-indirect-suc ∷
+          instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
+          load-indirect-suc ∷ []
+      T = load-indirect ∷ store-at-slot n ∷ instr-ctrl (c-label (ℓ o l)) ∷ (bt ++ R)
+      L = blocks-layout bbs
+      inT : T ⊆ T ++ L
+      inT = ⊆-++ˡ T L
+      RT : R ⊆ T
+      RT m = there (there (there (∈-++⁺ʳ bt m)))
+      btT : bt ⊆ T
+      btT m = there (there (there (∈-++⁺ˡ m)))
+      top∈ : instr-ctrl (c-label (ℓ o l)) ∈ T ++ L
+      top∈ = inT (there (there (here refl)))
+      done∈ : instr-ctrl (c-label (ℓ o (suc l))) ∈ T ++ L
+      done∈ = inT (RT (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))
+      cb = close b (suc (suc n)) (suc (suc l))
+                 (defd-⊆ (++-⊆ bt L (⊆-trans btT inT) (⊆-++ʳ T L)) d) okb
   close (curry b) n l {D} d okb =
     inj₁ (thk∈ (ℓ o l) d thk∈U) ∷ []
     , closes-++ (block-layout (ℓ o l , bb , bt)) (blocks-layout bbs)

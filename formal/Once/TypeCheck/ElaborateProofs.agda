@@ -19,7 +19,7 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Lang.Type.DecEq using (_≟T_)
-open import Once.Lang.Type.Sub using (_<:_; sub-int; sub-float; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
+open import Once.Lang.Type.Sub using (_<:_; sub-int; sub-float; _⊑π_; ⊑-pure; ⊑-pe; ⊑-pa; ⊑-act)
 open import Once.Type.Sub using (_<:?_)
 open import Once.Lang.Type.Sub using (<:-refl)
 open import Data.Integer using (+_)
@@ -808,6 +808,9 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.cata wfF alg) =
 -- `ana` (dual of cata): recurse into the coalgebra likewise.
 resolveExprWF polys pAcc imps userFns fresh (Surface.ana wfF coalg) =
   Surface.ana wfF (resolveExprWF polys pAcc imps userFns fresh coalg)
+-- the loop: recurse into the round likewise.
+resolveExprWF polys pAcc imps userFns fresh (Surface.loop round) =
+  Surface.loop (resolveExprWF polys pAcc imps userFns fresh round)
 -- Poly = unresolved placeholder from Phase 1. Delegate to helper that
 -- takes the lookup result + equation explicitly, so external proofs
 -- about the sigOp case can `rewrite` the premise cleanly.
@@ -1324,22 +1327,26 @@ checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV ⊑-pa
 -- cata needs five: the dispatch bridge at any grade, and the success lemma.
 checkAnaGo-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type)
-    (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite)
+    (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite) (ua : π₀ ⊑π Once.Lang.Type.Grade.act)
     (mw : Maybe (Once.Lang.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
-  → checkAnaGo ctx coalg F A π₀ π (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π₀ π mw eq
-checkAnaGo-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
+  → checkAnaGo ctx coalg F A π₀ π ua (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π₀ π ua mw eq
+checkAnaGo-J ctx coalg F A π₀ π ua .(wellFormedF? F) refl = refl
 
+-- The dispatch reaches `checkAnaGo` once the grade is known: the view reads
+-- it, so the bound `ua` is split here (a stream's arrow is `pure` or `act`).
 checkAnaGoV-J :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type)
-    (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite)
+    (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite) (ua : π₀ ⊑π Once.Lang.Type.Grade.act)
     (mw : Maybe (Once.Lang.Type.WellFormed.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
   → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
               (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π₀ ] Once.Lang.Type.ν-type F π)
-      ≡ checkAnaGo ctx coalg F A π₀ π mw eq
-checkAnaGoV-J ctx coalg F A π₀ π .(wellFormedF? F) refl = refl
+      ≡ checkAnaGo ctx coalg F A π₀ π ua mw eq
+checkAnaGoV-J ctx coalg F A .Once.Lang.Type.Grade.pure π ⊑-pa  .(wellFormedF? F) refl = refl
+checkAnaGoV-J ctx coalg F A .Once.Lang.Type.Grade.act  π ⊑-act .(wellFormedF? F) refl = refl
 
 checkAnaGo-just-success :
   ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Lang.Type.Functor) (A : Type) (π₀ : Once.Lang.Type.Grade.Purity) (π : Once.Lang.Type.Grade.Finite)
+    (ua : π₀ ⊑π Once.Lang.Type.Grade.act)
     (wfF : Once.Lang.Type.WellFormed.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {coalgE : SExpr (NamedCtx.debruijn ctx)
@@ -1352,21 +1359,30 @@ checkAnaGo-just-success :
               coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A)
       ≡ (success Ψ coalgE d fr , w)
   → (u : pure ⊑π π₀)
-  → checkAnaGo ctx coalg F A π₀ π (just wfF) eqW
+  → checkAnaGo ctx coalg F A π₀ π ua (just wfF) eqW
       ≡ (success (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ) (Surface.ana wfF coalgE) (suc d) fr
-          , t-ana-check {u = u} wfF w)
-checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pure
+          , t-ana-check {u = u} {ua = ua} wfF w)
+checkAnaGo-just-success ctx coalg F A π₀ π ua wfF eqW eqCoalgV ⊑-pure
   with checkElabV ctx
                   coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
-checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pe
+checkAnaGo-just-success ctx coalg F A π₀ π ua wfF eqW eqCoalgV ⊑-pe
   with checkElabV ctx
                   coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
-checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqCoalgV ⊑-pa
+checkAnaGo-just-success ctx coalg F A π₀ π ua wfF eqW eqCoalgV ⊑-pa
   with checkElabV ctx
                   coalg (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many (Once.Lang.Type.Grade.fin π) ] Once.Lang.Type.⟦ F ⟧T A) | eqCoalgV
 ... | (success _ _ _ _ , w) | refl = refl
+
+-- THE LOOP's dispatch: an `eff` arrow is the loop view at any codomain.
+checkLoopV-J :
+  ∀ (ctx : NamedCtx) (round : RawExpr) (A B : Type)
+  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) round)
+              (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.eff ] B)
+      ≡ checkLoop ctx round A B
+          (checkElabV ctx round (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many Once.Lang.Type.Grade.act ] (B Once.Lang.Type.+ A)))
+checkLoopV-J ctx round A B = refl
 
 -- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause
 -- first tries the eff-Go and passes it through on success. Given the eff-Go IS the

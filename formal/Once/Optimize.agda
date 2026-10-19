@@ -66,7 +66,7 @@ open import Once.Lang.Type.DecEq using (_≟T_)
 data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
     h-terminal h-initial h-curry h-apply h-arr
-    h-In h-out-μ h-Cata h-Out h-in-ν h-Ana
+    h-In h-out-μ h-Cata h-Out h-in-ν h-Ana h-Iter
     h-SigOp h-const h-Call : IRHead
 
 -- Decidable equality for IRHead via tag-to-ℕ conversion. Plan 0.5 Phase B
@@ -94,6 +94,7 @@ headTag h-Cata      = 16
 headTag h-Out       = 18
 headTag h-in-ν      = 19
 headTag h-Ana       = 20
+headTag h-Iter      = 21
 headTag h-SigOp      = 24
 headTag h-const      = 25
 headTag h-Call       = 26
@@ -121,6 +122,7 @@ headTag-inj h-Cata      h-Cata      _ = refl
 headTag-inj h-Out       h-Out       _ = refl
 headTag-inj h-in-ν      h-in-ν      _ = refl
 headTag-inj h-Ana       h-Ana       _ = refl
+headTag-inj h-Iter      h-Iter      _ = refl
 headTag-inj h-SigOp      h-SigOp      _ = refl
 headTag-inj h-const      h-const      _ = refl
 headTag-inj h-Call       h-Call       _ = refl
@@ -149,6 +151,7 @@ ir-head (Cata _ _) = h-Cata
 ir-head (Out _) = h-Out
 ir-head (in-ν _) = h-in-ν
 ir-head (Ana _ _) = h-Ana
+ir-head (Iter _) = h-Iter
 ir-head (SigOp _) = h-SigOp
 ir-head (const _ _) = h-const
 ir-head (Call _) = h-Call
@@ -332,6 +335,7 @@ pairView-gen (Cata wf alg)   eq = is-other-pair (subst (IR _) eq (Cata wf alg))
 pairView-gen (Out wf)        eq = is-other-pair (subst (IR _) eq (Out wf))
 pairView-gen (in-ν wf)     eq = is-other-pair (subst (IR _) eq (in-ν wf))
 pairView-gen (Ana wf coalg)  eq = is-other-pair (subst (IR _) eq (Ana wf coalg))
+pairView-gen (Iter b)        eq = is-other-pair (subst (IR _) eq (Iter b))
 pairView-gen (SigOp si)      eq = is-other-pair (subst (IR _) eq (SigOp si))
 pairView-gen (Call f)       eq = is-other-pair (subst (IR _) eq (Call f))
 pairView-gen (const p v) eq = is-other-pair (subst (IR _) eq (const p v))
@@ -360,6 +364,7 @@ coprodView-gen (Cata wf alg)   eq = is-other-coprod (subst (IR _) eq (Cata wf al
 coprodView-gen (Out wf)        eq = is-other-coprod (subst (IR _) eq (Out wf))
 coprodView-gen (in-ν wf)     eq = is-other-coprod (subst (IR _) eq (in-ν wf))
 coprodView-gen (Ana wf coalg)  eq = is-other-coprod (subst (IR _) eq (Ana wf coalg))
+coprodView-gen (Iter b)        eq = is-other-coprod (subst (IR _) eq (Iter b))
 coprodView-gen (SigOp si)      eq = is-other-coprod (subst (IR _) eq (SigOp si))
 coprodView-gen (Call f)       eq = is-other-coprod (subst (IR _) eq (Call f))
 coprodView-gen (const p v) eq = is-other-coprod (subst (IR _) eq (const p v))
@@ -393,6 +398,7 @@ composeFirstView (Cata wf alg)   = cf-other (Cata wf alg)
 composeFirstView (Out wf)        = cf-other (Out wf)
 composeFirstView (in-ν wf)     = cf-other (in-ν wf)
 composeFirstView (Ana wf coalg)  = cf-other (Ana wf coalg)
+composeFirstView (Iter b)        = cf-other (Iter b)
 composeFirstView (SigOp si)      = cf-other (SigOp si)
 composeFirstView (Call f)       = cf-other (Call f)
 composeFirstView (const p v) = cf-other (const p v)
@@ -416,6 +422,7 @@ composeSecondView (Cata wf alg)  = cs-other (Cata wf alg)
 composeSecondView (Out wf)       = cs-other (Out wf)
 composeSecondView (in-ν wf)    = cs-other (in-ν wf)
 composeSecondView (Ana wf coalg) = cs-other (Ana wf coalg)
+composeSecondView (Iter b)       = cs-other (Iter b)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
 composeSecondView (Call f)       = cs-other (Call f)
 composeSecondView (const p v) = cs-other (const p v)
@@ -439,6 +446,7 @@ fstSndView (Cata wf alg)   = fsv-other (Cata wf alg)
 fstSndView (Out wf)        = fsv-other (Out wf)
 fstSndView (in-ν wf)     = fsv-other (in-ν wf)
 fstSndView (Ana wf coalg)  = fsv-other (Ana wf coalg)
+fstSndView (Iter b)        = fsv-other (Iter b)
 fstSndView (SigOp si)      = fsv-other (SigOp si)
 fstSndView (Call f)       = fsv-other (Call f)
 fstSndView (const p v) = fsv-other (const p v)
@@ -462,6 +470,7 @@ inlInrView (Cata wf alg)   = iiv-other (Cata wf alg)
 inlInrView (Out wf)        = iiv-other (Out wf)
 inlInrView (in-ν wf)     = iiv-other (in-ν wf)
 inlInrView (Ana wf coalg)  = iiv-other (Ana wf coalg)
+inlInrView (Iter b)        = iiv-other (Iter b)
 inlInrView (SigOp si)      = iiv-other (SigOp si)
 inlInrView (Call f)       = iiv-other (Call f)
 inlInrView (const p v) = iiv-other (const p v)
@@ -506,6 +515,8 @@ has-effect? (Cata _ alg)    = has-effect? alg
 has-effect? (Out _)         = false
 has-effect? (in-ν _)      = false
 has-effect? (Ana _ coalg)   = has-effect? coalg
+-- a loop may run forever without an event: never dead code.
+has-effect? (Iter _)        = true
 
 
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
@@ -658,6 +669,7 @@ mutual
   optimize-once-structural (Out wf) = Out wf
   optimize-once-structural (in-ν wf) = in-ν wf
   optimize-once-structural (Ana {F} wf coalg) = Ana {F} wf (optimize-once coalg)
+  optimize-once-structural (Iter b) = Iter (optimize-once b)
   -- Guard/Unguard removed: productivity follows from IR totality
   -- out-μ/in-ν: Lambek isomorphisms (potential fusion: out-μ ∘ In = id, In ∘ out-μ = id)
 

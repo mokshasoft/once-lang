@@ -45,7 +45,7 @@ open import Once.Lang.Type.WellFormed using (IsConcrete; WellFormedF)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)
 import Once.Lang.Context as Surface
 open import Once.Lang.Context using (Ctx; Usage; _∷_; _,_^_)
-open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; lam; coerce; poly)
+open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
@@ -188,6 +188,10 @@ module _ {Γ : Ctx n} where
         → a ≅ a′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} w a ≅ ana w′ a′
   ana-h {π₀ = π₀} {φ = φ} w w′ {a′ = a′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (ana-cong w h) (≡→≈ (cong (λ v → ana {Γ = Γ} {π₀ = π₀} {φ = φ} v a′) (WellFormedF-irrelevant w w′))))
+
+  loop-h : ∀ {a : Expr Γ Ψ (A ⇒[ mk-kind Many T.act ] (B + A))} {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many T.act ] (B + A))}
+         → a ≅ a′ → loop {Γ = Γ} a ≅ loop a′
+  loop-h (≅i refl refl h) = ≅i refl refl (loop-cong h)
 
   -- A fold's carrier is its algebra's codomain, so equal algebras give one carrier.
   private

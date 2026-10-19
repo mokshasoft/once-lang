@@ -117,6 +117,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct (Out wf)            _ = obs-correct-Out wf
   ir-obs-correct (in-ν wf)           _ = obs-correct-in-ν wf
   ir-obs-correct (Ana wf f)          _ = obs-correct-Ana wf f
+  ir-obs-correct (Iter body)         lb = iter-correct body (ir-obs-correct body lb)
   -- misc
   ir-obs-correct (const fit v)       _ = obs-correct-const fit v
   ir-obs-correct (SigOp si)          d = obs-correct-sigop si d

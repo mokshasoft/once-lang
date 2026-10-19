@@ -112,6 +112,7 @@ rewrite-ir-linked tbl (Cata w f)   l        | nothing | _ = rewrite-ir-linked tb
 rewrite-ir-linked tbl (Out w)      l        | nothing | _ = tt
 rewrite-ir-linked tbl (in-ν w)     l        | nothing | _ = tt
 rewrite-ir-linked tbl (Ana w f)    l        | nothing | _ = rewrite-ir-linked tbl f l
+rewrite-ir-linked tbl (Iter f)     l        | nothing | _ = rewrite-ir-linked tbl f l
 rewrite-ir-linked tbl (const p v)  l        | nothing | _ = tt
 rewrite-ir-linked tbl (SigOp si)   l        | nothing | _ = bare-linked tbl si l (try-lift (SigOp si ∘ id)) (try-lift-linked tbl (SigOp si ∘ id))
 rewrite-ir-linked tbl (Call f)     l        | nothing | _ = l

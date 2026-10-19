@@ -60,7 +60,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Lang.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders
-open import Once.Lang.Iterative using (T∞; _>>=∞_; return∞; fmap∞)
+open import Once.Lang.Iterative using (T∞; _>>=∞_; return∞; fmap∞; iter∞)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice)
@@ -571,6 +571,10 @@ resolveExpr-faithful polys imps userFns fresh (Srf.ana {Γ = Γ} {Ψ = Ψ} {F = 
                   return∞ (λ a → return∞ (anaFᴵ F
                     (λ a' → fmap∞ (coerce-functor-D wf A) (clo a')) a))))
        (( resolveExpr-faithful polys imps userFns fresh coalg (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-*Many Ψ) dγ)))
+-- loop: the round is BOUND once at the same environment — ONE `cong`.
+resolveExpr-faithful polys imps userFns fresh (Srf.loop {Γ = Γ} {Ψ = Ψ} round) dγ =
+  cong (λ rc → (rc >>=∞ λ clo → return∞ (iter∞ clo)))
+       (resolveExpr-faithful polys imps userFns fresh round (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-*Many Ψ) dγ))
 -- sigOp: D246 — the resolver passes it through, and a SigOp reads no environment.
 resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s conc) dγ =
   sigOp-σ-irrel {Γ = Γ} {A = A} ρ _ _ s conc dγ

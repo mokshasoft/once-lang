@@ -36,7 +36,7 @@ open import Once.Lang.Type using (Type; Unit; _⇒[_]_; ⟦_⟧T)
 open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Lang.Trace using (T; fmapT)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; iter∞)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; CallEnv; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
@@ -348,6 +348,10 @@ sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (call
   return∞ (λ a → return∞ (anaFᴵ F
             (λ a' → fmap∞ (coerce-functor-D wf A) (clo a'))
             a))
+-- The loop (D317/D319): the round is bound ONCE, as `ana`'s coalgebra, and the
+-- loop is the Elgot iteration of `T∞` over that closure — `evalᴰ (Iter …)`'s.
+⟦ loop {Γ = Γ} {Ψ = Ψ} round ⟧ˢ fmt σ dγ =
+  ⟦ round ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=∞ λ clo → return∞ (iter∞ clo)
 -- Effect primitives (sigOp/closure/poly): named external ops resolved to
 -- their contract infos, meant through the SAME `sigOpˢ` the IR's SigOp means
 -- (definitionally = elaborate's `SigOp (value-info name) ∘ terminal`). sigOp

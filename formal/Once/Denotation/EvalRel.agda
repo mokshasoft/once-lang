@@ -40,7 +40,7 @@ open CallEnv using (callsE; ffiE)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed; RelS-iter∞)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel
 open import Once.Lang.StreamInf using (νᴵ)
@@ -182,6 +182,12 @@ module _ (fmt : TargetNum) where
                                             (λ q → cfD-rel (wf-⌈⌉ w) ⌈ A₀ ⌉ (RelD-subst (⌈⟧TI-commute F A₀) q)))
                                           (cμin-rel ⌈ F ⌉F))
                          rs)
+    -- the loop: related rounds (the same body, related environments) from
+    -- related seeds.
+    eval-rel (Iter {E₀} {A₀} {B₀} b) {e , s} {e′ , s′} (re′ , rs) =
+      RelS-iter∞ {RB = RelD ⌈ B₀ ⌉} {S = RelD ⌈ B₀ II.+ A₀ ⌉}
+                 {f = λ a → E b (e , a)} {f′ = λ a → E′ b (e′ , a)}
+                 (λ r → r) (λ r → eval-rel b (re′ , r)) (λ ()) (λ ()) rs
     eval-rel (const II.fits-int v)   r = relS-ret refl
     eval-rel (const II.fits-float v) r = relS-ret refl
     eval-rel (SigOp si) r = sigop-rel si r

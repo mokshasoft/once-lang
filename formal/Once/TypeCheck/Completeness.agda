@@ -43,7 +43,7 @@ open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
 open import Once.Lang.Name using (showCanonical)
 open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.TypeCheck.Elaborate
-  using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo)
+  using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo; checkLoop)
 import Once.Lang.Typing.Scope as Classify
 import Once.TypeCheck.Error as Error
 open import Once.Lang.Typing
@@ -75,7 +75,7 @@ open import Once.Lang.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; clas
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.Lang.Laws.ModeAgreement using (mode-agree-ic; mode-agree-dc)
-open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; withUnit-elim)
+open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; checkLoopV-J; withUnit-elim)
 
 
 -- The per-rule lemmas (split for the 30 s per-module check budget).
@@ -1056,14 +1056,20 @@ mutual
             _ , _ , _ , refl
   -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
   -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.
-  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} wfF dcoalg)
+  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} {ua = ua} wfF dcoalg)
     with wellFormedF?-complete-at wfF
   ... | eqW
     with check-completeV dcoalg
   ... | (_ , _ , _ , W , eqA)
-        with checkAnaGo-just-success ctx coalg F A π₀ π wfF eqW eqA u
+        with checkAnaGo-just-success ctx coalg F A π₀ π ua wfF eqW eqA u
   ...     | eqGo = _ , _ , _ ,
-            cong proj₁ (trans (checkAnaGoV-J ctx coalg F A π₀ π (just wfF) eqW) eqGo)
+            cong proj₁ (trans (checkAnaGoV-J ctx coalg F A π₀ π ua (just wfF) eqW) eqGo)
+  -- THE LOOP: the view reads the `eff` grade alone; the round's own check
+  -- succeeds (IH), and `checkLoop` passes it on.
+  check-complete {ctx} (t-loop-check {round = round} {A = A} {B = B} dround)
+    with check-completeV dround
+  ... | (_ , _ , _ , W , eqR) = _ , _ , _ ,
+        cong proj₁ (trans (checkLoopV-J ctx round A B) (cong (checkLoop ctx round A B) eqR))
   check-complete (t-In-app-check {arg = arg} {F = F} wfF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     -- PLAN 0.80 A1: witness in, decider equation recovered (as for cata).
