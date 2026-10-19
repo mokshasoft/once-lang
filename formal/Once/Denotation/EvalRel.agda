@@ -335,3 +335,8 @@ liftFn-rel : ∀ (fmt : TargetNum) {ρ ρ′ : CallEnv} → RelEnv fmt ρ ρ′
            → ∀ {A B : Type} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : ⟦ A ⟧ᴰ} → RelD A a a′
            → RelS (RelD B) (liftFn fmt ρ {A} {B} ir a) (liftFn fmt ρ′ {A} {B} ir a′)
 liftFn-rel fmt re {A} {B} ir r = RelS-subst₂ (cohᴰ B) (RelS-mono (RelD-coh B) (eval-rel fmt re ir (RelD-coh⁻ A r)))
+
+-- Runs related at `⌈ ⌊ A ⌋ ⌉`, transported to the source domain, are related at `A`.
+coh-runs : ∀ (A : Type) {m n : T∞ ⟦ ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ} → RelS (RelD ⌈ ⌊ A ⌋ ⌉) m n
+         → RelS (RelD A) (subst T∞ (cohᴰ A) m) (subst T∞ (cohᴰ A) n)
+coh-runs A h = RelS-subst₂ (cohᴰ A) (RelS-mono (RelD-coh A) h)

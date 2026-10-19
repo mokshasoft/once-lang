@@ -88,9 +88,13 @@ open import Once.Lang.Trace using (FFIAnswers)
 φ : FFIAnswers
 φ = pureHalf ι
 
-open import Once.Adequacy.GradedRelation fmt using (RelGM)
-open import Once.Lang.Trace using (T)
-open import Once.Adequacy.TeleEnvLemmas fmt φ using (σW; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
+open import Once.Adequacy.GradedRelation fmt using (RelGM; GM-D)
+open import Once.Lang.Iterative using (T∞)
+open import Once.Denotation.TraceMonadInfLaws using (RelS)
+open import Once.Denotation.ValueRel using (RelD)
+open import Once.Denotation.ValueRelPER using (RelS-trans; RelD-trans)
+open import Once.Denotation.EvalRel using (table-self; coh-runs)
+open import Once.Adequacy.TeleEnvLemmas fmt φ using (σW; σW-self; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)
 import Once.Adequacy.TeleEntry fmt ι as TE
 
@@ -115,6 +119,12 @@ open import Once.Adequacy.TelePosition
 ------------------------------------------------------------------------
 
 -- Later table entries do not shadow a name in scope.
+private
+  ≡ˡ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n : T∞ Y} → m ≡ m′ → RelS R m′ n → RelS R m n
+  ≡ˡ refl h = h
+  ≡ʳ : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {n n′ : T∞ Y} → n ≡ n′ → RelS R m n → RelS R m n′
+  ≡ʳ refl h = h
+
 NoShadow : List IRFun → C.FunCtx → Set
 NoShadow later imps = All (λ e → All (λ p → fname e ≢ bare (proj₁ p)) imps) later
 
@@ -222,27 +232,31 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
   D′   = sound-of (Once.TypeCheck.Elaborate.checkElabV ctx (funBody fi) ty) ce
   M    = evalᴰ fmt (tableEnv fmt φ pre) irFun tt
 
-  -- the compiled body means the elaboration's surface meaning (the compile chain)
-  chain : subst T (cohᴰ ty) M ≡ SD.⟦ realize D ⟧ˢ fmt σx tt
+  -- the compiled body's run is related to the elaboration's surface meaning
+  -- (the compile chain): faithfulness, then linking (an equation), then
+  -- coherence.
+  chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ realize D ⟧ˢ fmt σx tt)
   chain =
-    trans (cong (λ ir → subst T (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
-                (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf ce))
-      (trans ((SF.faithful∅ fmt (tableEnv fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))))
-        (trans ((RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′) tt))
-               (realize-invariant D′ D σx tt)))
+    ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
+             (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf ce))
+       (RelS-trans (RelD-trans ty)
+         (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′) tt)
+             (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))))
+         (realize-invariant D′ D σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
 
   relA : RelGM Once.Lang.Type.Grade.pure ty (MeaningM.⟦_⟧ᶜ D fmt ρ tt) (SD.⟦ realize D ⟧ˢ fmt σx tt)
-  relA = MB.bridge-c fmt σx D {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
+  relA = MB.bridge-c fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
            (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   entry≡ : GM.⟦_⟧ S Dc fmt δ tt ≡ CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)
   entry≡ = sym (CAS.mono-entry-sem S noKinds _ _ sg g Dc fmt δ)
 
-  relM : RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T (cohᴰ ty) (abiT ty M))
+  relM : RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relM = TE.abi-rel ty (GM.⟦_⟧ S Dc fmt δ tt) M
-           (subst (RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym chain)
-                  (subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
-                         (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D tt) relA))
+           (GM-D Once.Lang.Type.Grade.pure ty
+                 (subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
+                        (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D tt) relA)
+                 chain)
 
 inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
@@ -281,12 +295,12 @@ inv-mono {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]}
                        (ns-step later (C.CScope.cimps csc) e refl
                           (bare-ne (C.CScope.cimps csc) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)) fr) ns)
                        I ia uf′)
-        callEq : MB.callSD fmt σ x ty ≡ subst T (cohᴰ ty) (abiT ty M)
-        callEq = trans (callSD-later later (e ∷ pre) (C.cpolys csc) I uf′ x ty (ns-head later (C.CScope.cimps csc) ns))
-                       (cong (subst T (cohᴰ ty)) (abi ty x pre irFun))
+        callRel : RelS (RelD ty) (MB.callSD fmt σ x ty) (subst T∞ (cohᴰ ty) (abiT ty M))
+        callRel = ≡ˡ (callSD-later later (e ∷ pre) (C.cpolys csc) I uf′ x ty (ns-head later (C.CScope.cimps csc) ns))
+                     (coh-runs ty (abi ty x pre irFun))
         new : RelGM Once.Lang.Type.Grade.pure ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
         new = subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (MB.callSD fmt σ x ty)) entry≡
-                    (subst (RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt)) (sym callEq) relM)
+                    (GM-D Once.Lang.Type.Grade.pure ty relM callRel)
 
 ------------------------------------------------------------------------
 -- A telescope entry: typed once at its rigid schema; each reference to it is
@@ -363,23 +377,24 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D-U tt)
                        (EI.poly-instance-sem S (viewOf {S = S} ss is ts) sg fmt δ scT
                          (λ ki′ → EI.viewOf-natural S (kindsOf scT) _ _ ss is ts) (Inv.irf inv , Inv.irs inv) D ki))
-                (subst (RelGM Once.Lang.Type.Grade.pure U (MeaningM.⟦_⟧ᶜ D-U fmt ρ tt)) (sym eqSD)
-                       (MB.bridge-c fmt σo D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old))
+                (GM-D Once.Lang.Type.Grade.pure U
+                       (MB.bridge-c fmt σo (σW-self tbl (C.cpolys csc) I uf) D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old)
+                       relSD)
           where
             D-U = EI.inst-at S scT (Inv.irf inv , Inv.irs inv) D ki
             ccU = Once.TypeCheck.Completeness.check-complete D-U
             ce  = proj₂ (proj₂ (proj₂ ccU))
             cr  = Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) (pfunBody pfi) U
             D′  = sound-of cr ce
-            eqSD : SD.DefsSem.refs σ y U ≡ SD.⟦ realize D-U ⟧ˢ fmt σo tt
-            eqSD =
-              trans (refs-head I uf (tableEnv fmt φ tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
-                (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
-                                          (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
-                                             (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) iy)
-                  (trans (cong (λ e′ → SD.⟦ e′ ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) (splice-form I uf (C.cpolys csc) y cr ce))
-                    (trans ((RF.resolveExpr-faithful fmt (tableEnv fmt φ tbl) (C.cpolys csc) I uf 0 (realize D′) tt))
-                           (realize-invariant D′ D-U σo tt))))
+            relSD : RelS (RelD U) (SD.DefsSem.refs σ y U) (SD.⟦ realize D-U ⟧ˢ fmt σo tt)
+            relSD =
+              ≡ˡ (trans (refs-head I uf (tableEnv fmt φ tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
+                   (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
+                                             (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
+                                                (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) iy)
+                     (trans (cong (λ e′ → SD.⟦ e′ ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) (splice-form I uf (C.cpolys csc) y cr ce))
+                            (RF.resolveExpr-faithful fmt (tableEnv fmt φ tbl) (C.cpolys csc) I uf 0 (realize D′) tt))))
+                 (realize-invariant D′ D-U σo (σW-self tbl (C.cpolys csc) I uf) tt)
 
 ------------------------------------------------------------------------
 -- The entry point among the remaining names

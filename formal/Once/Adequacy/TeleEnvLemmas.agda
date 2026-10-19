@@ -51,6 +51,8 @@ import Once.Lang.Context as Srf
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
 open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_)
+open import Once.Denotation.EvalRel using (RelEnv; liftFn-rel; table-self)
+open import Once.Adequacy.SourceRefl using (RelDefs; SD-rel)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; module CallEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; cohᴰ)
 open CallEnv using (callsE)
@@ -197,3 +199,17 @@ calls-same : ∀ (tbl : List IRFun) (P P′ : PolyCtx) (I I′ : String → TopC
            → CallsAgree (σW tbl P I uf) (σW tbl P′ I′ uf′) imps
 calls-same tbl P P′ I I′ uf uf′ []             = tt
 calls-same tbl P P′ I I′ uf uf′ ((n , U) ∷ is) = refl , calls-same tbl P P′ I I′ uf uf′ is
+
+------------------------------------------------------------------------
+-- The walk's environment is related to itself (plan 0.119 D5): its calls are
+-- a table's, and its references the source meanings of closed terms in the
+-- compiled program's environment.
+------------------------------------------------------------------------
+
+σ₀-self : ∀ {ρ : CallEnv} → RelEnv fmt ρ ρ → RelDefs fmt (RF.σ₀ fmt ρ) (RF.σ₀ fmt ρ)
+σ₀-self re = re , λ x A → liftFn-rel fmt re {Unit} {A} (refIR A (bare x)) {tt} {tt} tt
+
+σW-self : ∀ (tbl : List IRFun) (P : PolyCtx) (I : String → TopCtx) (uf : Imports) → RelDefs fmt (σW tbl P I uf) (σW tbl P I uf)
+σW-self tbl P I uf =
+  table-self fmt φ tbl ,
+  λ x A → SD-rel fmt (σ₀-self (table-self fmt φ tbl)) (resolveExpr {Γ = Srf.∅} {Ψ = Srf.zeroUsage} P I uf 0 (Srf.poly x A)) {tt} {tt} tt
