@@ -168,3 +168,12 @@ run-approx-bind ι h r m f = run-approx-bindB ι h r (force m) f
 -- The value a budgeted run returned.
 done-value : ∀ {X} {v v′ : X} {r r′ : ℕ} → returns (done v r) ≡ returns (done v′ r′) → v ≡ v′
 done-value refl = refl
+
+-- How a budgeted run is OBSERVED to end: returned, halted, or — cut — not
+-- (yet): the run goes on past the budget.
+open import Once.Spec.Trace using (End; returned; halted)
+
+endAp : ∀ {X} → Res (Ap X) → Maybe (End ⊤)
+endAp (returns (done _ _)) = just (returned tt)
+endAp stopped              = just halted
+endAp (returns cut)        = nothing

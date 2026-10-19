@@ -167,3 +167,36 @@ module RunMachine
                   → Reaches (h , s) (map toEvent es) e
     ended-reaches M h s {es} {e} q =
       subst (λ o → Reaches (h , s) (calls o) e) q (reach M h s (cong proj₂ q))
+
+    -- plan 0.119 D5: the fuelled run IS the step machine's fuelled run
+    -- (`Once.Adequacy.FuelTrace`), read as the Spec's calls.
+    open import Once.Adequacy.FuelTrace using (Obs; module Fuel)
+    open Fuel δ using (runN; runS)
+
+    outObs : Out → Obs
+    outObs o = calls o , proj₂ o
+
+    runN-events : ∀ n h s → runN n (h , s) ≡ outObs (run-events ev env h n prog s)
+    private
+      rn-h : ∀ n h s (b : Bool) → runS n (δ-h b h s) ≡ outObs (if b then Once.Lang.Out.stop else run-events-fetch ev env h n prog s (fetch prog (pc s)))
+      rn-f : ∀ n h s (mi : Maybe Instr) → runS n (δ-f mi h s) ≡ outObs (run-events-fetch ev env h n prog s mi)
+      rn-i : ∀ n h s i (ml : Maybe String) → runS n (δ-i i ml h s) ≡ outObs (run-events-instr ev env h n prog s i ml)
+      rn-s : ∀ n h s lbl (d : Dec (lbl ≡ host-leave-symbol)) → runS n (δ-s lbl d h s) ≡ outObs (run-events-site ev env h n prog s lbl d)
+      rn-c : ∀ n h s lbl (mp : Maybe Payload) → runS n (δ-c lbl mp h s) ≡ outObs (run-events-call ev env h n prog s lbl mp)
+      rn-e : ∀ n h s (ms : Maybe State) → runS n (δ-e ms h) ≡ outObs (run-events-exec ev env h n prog s ms)
+    runN-events zero    h s = refl
+    runN-events (suc n) h s = rn-h n h s (halted s)
+    rn-h n h s true  = refl
+    rn-h n h s false = rn-f n h s (fetch prog (pc s))
+    rn-f n h s nothing  = refl
+    rn-f n h s (just i) = rn-i n h s i (matchCall i)
+    rn-i n h s i (just lbl) = rn-s n h s lbl (lbl ≟ host-leave-symbol)
+    rn-i n h s i nothing    = rn-e n h s (execInstr prog s i)
+    rn-s n h s lbl (yes _) = refl
+    rn-s n h s lbl (no _)  = rn-c n h s lbl (env lbl)
+    rn-c n h s lbl (just pl) = runN-events n h (dispatchArith pl s)
+    rn-c n h s lbl nothing   =
+      trans (cong (λ ob → map toEvent (ev lbl s) ++ proj₁ ob , proj₂ ob) (runN-events n (h ++ ev lbl s) (ret-call h lbl s)))
+            (cong (_, proj₂ (run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s))) (sym (map-++ toEvent (ev lbl s) (proj₁ (run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s))))))
+    rn-e n h s nothing   = refl
+    rn-e n h s (just s′) = runN-events n h s′

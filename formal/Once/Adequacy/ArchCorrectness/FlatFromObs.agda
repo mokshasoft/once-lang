@@ -105,7 +105,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Bool using (true; false)
 open import Relation.Binary.PropositionalEquality using (cong₂)
 open import Once.Lang.Res using (Res; returns; stopped; is-stopped)
-open import Once.Denotation.Approx using (Ap; done; cut; budgetLeft)
+open import Once.Denotation.Approx using (Ap; done; cut; budgetLeft; endAp)
+open import Data.Nat.Properties using (≤-trans; ≤-reflexive; m≤m+n; n≤1+n)
 open import Once.Spec.Trace using (End; returned) renaming (halted to halted-end)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
@@ -131,7 +132,7 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open CataNextSlot {FS} using (AllSlotStable)
-open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
+open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps; flat-ctrls; flat-ctrls-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 
 -- (plan 0.107: `asm-sem` — the text's meaning — is gone; the file's run is
@@ -444,11 +445,6 @@ private
 -- plan 0.119 D5: …at a ROUND BUDGET. `main`'s budgeted run returned (the
 -- image's `c-leave`: `returned`), stopped (`halted`), or was CUT — the machine
 -- is still running, its fuel used up at the cut.
-endAp : ∀ {X : Set} → Res (Ap X) → Data.Maybe.Maybe (End ⊤)
-endAp (returns (done _ _)) = just (returned tt)
-endAp stopped              = just halted-end
-endAp (returns cut)        = nothing
-
 tail-fuel : ∀ {X : Set} → Res (Ap X) → ℕ
 tail-fuel (returns (done _ _)) = 2
 tail-fuel stopped              = 2
@@ -487,3 +483,26 @@ flat-progress : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedP
 flat-progress ioc brs ir lk k eq =
   subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (ValueRealized.run (entry-vr ir lk ioc brs k))) eq
         (ValueRealized.progress (entry-vr ir lk ioc brs k))
+
+-- The flat fuel the budget-`k` observation is read at, and — when the budget
+-- cut the run — the control steps that fuel covers (at least the budget).
+flat-fuel : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ) → ℕ
+flat-fuel ioc brs ir lk k =
+  ValueRealized.steps (entry-vr ir lk ioc brs k) + tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))
+
+flat-cut : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
+         → endAp (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k)) ≡ nothing
+         → k ≤ flat-ctrls (suc (flat-fuel ioc brs ir lk k)) (image ir) start-flat
+flat-cut ioc brs ir lk k e = go (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k)) refl e
+  where
+    vr = entry-vr ir lk ioc brs k
+    go : ∀ (ρ : Res _) → resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k) ≡ ρ → endAp ρ ≡ nothing
+       → k ≤ flat-ctrls (suc (flat-fuel ioc brs ir lk k)) (image ir) start-flat
+    go (returns (done _ _)) _ ()
+    go stopped              _ ()
+    go (returns cut) eq _ =
+      ≤-trans (flat-progress ioc brs ir lk k eq)
+        (≤-trans (m≤m+n _ (flat-ctrls (tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))) (image ir) (ValueRealized.settle vr)))
+          (≤-trans (≤-reflexive (sym (flat-ctrls-steps (ValueRealized.run vr)
+                                        (tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))))))
+                   (n≤1+n _)))

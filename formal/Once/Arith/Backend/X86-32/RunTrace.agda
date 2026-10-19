@@ -64,4 +64,4 @@ module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent →
   -- D320: the same machine as a machine whose trace is read off by corecursion.
   open RTM.RunMachine State Program Instr (List XInstr)
     halted pc fetch execInstr matchCall (ret-call answer) (dispatch-arith val)
-    using (Conf; δ; ended-reaches) public
+    using (Conf; δ; ended-reaches; runN-events; outObs) public

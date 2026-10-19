@@ -90,3 +90,42 @@ module _ (ι : Interp) where
     -- …so its trace is the finite run's.
     RelT∞′-tr : ∀ h {m : T∞ X} {t : T Y} → RelT∞′ R m t → trT∞ h m ≈ᵗ⟨ _≡_ ⟩ runTr h t
     RelT∞′-tr h r = reaches-≈ (RelB-reaches h (block r))
+
+------------------------------------------------------------------------
+-- plan 0.119 D5: a run observed at a round budget is a fuelled run of the
+-- trace machine — each silent step one machine step, so a cut run has taken
+-- at least as many steps as the budget.
+------------------------------------------------------------------------
+
+open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
+open import Data.Nat.Properties using (m≤n⇒m≤1+n)
+open import Data.Product using (Σ-syntax)
+open import Once.Lang.Trace using (Run)
+open import Once.Denotation.Approx using (Ap; done; cut; approx; approxBlock; endAp)
+open import Once.Adequacy.FuelTrace using (Obs; module Fuel)
+
+obsAp : ∀ {X} → Run (Ap X) → Obs
+obsAp ρ = map toEvent (proj₁ ρ) , endAp (proj₂ ρ)
+
+module _ (ι : Interp) {X : Set} where
+  open Fuel (δ∞ ι {X}) using (runN)
+
+  approx-runB : ∀ (k : ℕ) h (b : T (X ⊎ T∞ X))
+              → Σ[ n ∈ ℕ ] (runN n (h , b) ≡ obsAp (run ι h (approxBlock k b))) × (proj₂ (obsAp (run ι h (approxBlock k b))) ≡ nothing → k ≤ n)
+  approx-call : ∀ (k : ℕ) h (o : CallOp) (a : V.⟦ cdom o ⟧) (c : V.⟦ ccod o ⟧ → T (X ⊎ T∞ X)) (r : Maybe V.⟦ ccod o ⟧)
+              → Σ[ n ∈ ℕ ] (Fuel.runS (δ∞ ι {X}) n (answer ι h o a c r) ≡ obsAp (run-call ι h o a (λ b → approxBlock k (c b)) r))
+                           × (proj₂ (obsAp (run-call ι h o a (λ b → approxBlock k (c b)) r)) ≡ nothing → k ≤ suc n)
+  approx-runB k       h (ret (inj₁ x)) = 1 , refl , λ ()
+  approx-runB zero    h (ret (inj₂ m)) = 0 , refl , λ _ → z≤n
+  approx-runB (suc k) h (ret (inj₂ m)) with approx-runB k h (force m)
+  ... | n , e , le = suc n , e , λ c → s≤s (le c)
+  approx-runB k       h (halt o a)     = 1 , refl , λ ()
+  approx-runB k       h (call o a c) with approx-call k h o a c (callAnswer ι h o a)
+  ... | n , e , le = suc n , e , le
+  approx-call k h o a c (just b) with approx-runB k (h ++ [ callEvent o a ]) (c b)
+  ... | n , e , le = n , cong (λ ob → toEvent (callEvent o a) ∷ proj₁ ob , proj₂ ob) e , λ q → m≤n⇒m≤1+n (le q)
+  approx-call k h o a c nothing  = 0 , refl , λ ()
+
+  approx-run : ∀ (k : ℕ) h (m : T∞ X)
+             → Σ[ n ∈ ℕ ] (runN n (h , force m) ≡ obsAp (run ι h (approx k m))) × (proj₂ (obsAp (run ι h (approx k m))) ≡ nothing → k ≤ n)
+  approx-run k h m = approx-runB k h (force m)

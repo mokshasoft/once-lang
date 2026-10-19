@@ -53,6 +53,15 @@ open import Data.String using (String)
 open import Data.List using ([]; take; map)
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
+open import Once.Adequacy.BudgetApex using (budget-apex)
+open import Once.Denotation.Program using (runIR)
+open import Once.Lang.Trace using (pureHalf)
+import Once.Lang.Trace as LT
+open import Once.Denotation.Approx using (approx)
+open import Once.Denotation.TraceTr using (obsAp)
+open import Once.Adequacy.FuelTrace using (module Fuel)
+open import Data.Product using (Σ-syntax)
+open import Data.Nat using (suc; _≤_)
 open import Once.Lang.Event using (toEvent)
 open import Once.Denotation.TraceTr using (endOf)
 open import Data.Bool using (false)
@@ -69,7 +78,7 @@ open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans)
 open import Once.Adequacy.CPU.X86-64 using (call-at-x86-64; ev-x86-64; block-env; run-trace-x86-64; val-x86-64)
 import Once.CCC.Target.X86-64.File as RF
 import Data.Maybe
@@ -360,10 +369,12 @@ entry-like B = refl , refl , refl , refl , refl
         no-ptr Scratch loc ()
         no-ptr Count   loc ()
 
--- D320: THE BINARY'S TRACE. The concrete run, followed to where the flat run
--- ends (`FFOx.flat-ends`), ENDS there — `returned` at the Host's `leave`,
--- `halted` at a call with no answer — so the concrete machine's trace is the
--- finite trace of the meaning's calls and end (`MachineTrace.reaches-≈`).
+-- D320 / plan 0.119 D5: THE BINARY'S TRACE. At every round budget the
+-- concrete run, followed as far as the flat run is (`FFOx.flat-ends`), shows
+-- what the meaning's budgeted run shows — its calls, and how it ended or that
+-- it was cut — and where it was cut the concrete machine has taken a step per
+-- control step (`events-agree-start`, `FFOx.flat-cut`). That is the meaning's
+-- trace (`BudgetApex`).
 conc-tr :
   ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
@@ -372,19 +383,27 @@ conc-tr :
                      (compile-trace (FFOx.image ir))) ([] , X.initState)
     ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-64) ι
 conc-tr brs p ir lk img =
-  Machine.reaches-≈ (RTx.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
-                       (compile-trace (FFOx.image ir)))
-    (RTx.ended-reaches val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
-       (compile-trace (FFOx.image ir)) (proj₁ agree) [] X.initState
-       (trans (proj₂ agree) (FFOx.flat-ends ir-obs-correct brs ir lk)))
+  budget-apex δc ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir)) fact
   where
+    δc = RTx.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
+               (compile-trace (FFOx.image ir))
     run₀ : RunAt (FFOx.image ir) FFOx.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
-    agree = events-agree-start (ValueRealized.steps (FFOx.entry-vr ir lk ir-obs-correct brs 0) + 2)
-              ev-x86-64 (block-env (C.blocks-x86-64 p))
-              (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
-              (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
-              refl refl refl refl refl
+    fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , X.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir)))))
+                         × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
+    fact k = proj₁ agree
+           , trans (RTx.runN-events val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
+                      (compile-trace (FFOx.image ir)) (proj₁ agree) [] X.initState)
+                   (cong (RTx.outObs val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
+                            (compile-trace (FFOx.image ir)))
+                         (trans (proj₁ (proj₂ agree)) (FFOx.flat-ends ir-obs-correct brs ir lk k)))
+           , λ c → ≤-trans (FFOx.flat-cut ir-obs-correct brs ir lk k c) (proj₂ (proj₂ agree))
+      where
+        agree = events-agree-start (FFOx.flat-fuel ir-obs-correct brs ir lk k)
+                  ev-x86-64 (block-env (C.blocks-x86-64 p))
+                  (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
+                  (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
+                  refl refl refl refl refl
 
 -- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
 -- the per-program `ArchCorrect` (each program brings its own table).

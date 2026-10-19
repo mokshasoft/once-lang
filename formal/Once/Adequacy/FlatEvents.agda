@@ -33,7 +33,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Nat using (_+_; _≤_)
+open import Data.Nat using (_+_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (+-assoc; m≤n+m; m≤m+n)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -46,6 +46,12 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- The observable's value domain — the same `⟦_⟧` the event carries.
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; module AbstractExec; AbstractTrace; AbstractInstr; instr-sigop; instr-ctrl)
+open import Once.CCC.Machine.SMCore
+  using ( mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect
+        ; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to
+        ; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop
+        ; worklist-check; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit
+        ; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; lea-indexed )
 open LocState using (halted)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -217,9 +223,70 @@ module FlatEventTrace {FS : FrameSemantics} where
   ------------------------------------------------------------------------
 
   ctrl-of : AbstractInstr → ℕ
+  ctrl-of mov-to-output = 0
+  ctrl-of mov-to-input = 0
+  ctrl-of load-indirect = 0
+  ctrl-of load-indirect-suc = 0
+  ctrl-of (load-from-slot _) = 0
+  ctrl-of (store-at-slot _) = 0
+  ctrl-of store-indirect = 0
+  ctrl-of store-indirect-suc = 0
+  ctrl-of (lea-slot _) = 0
+  ctrl-of (restore-input _) = 0
+  ctrl-of (instr-alloc-stack _) = 0
+  ctrl-of (instr-dealloc-stack _) = 0
+  ctrl-of (instr-reclaim-to _) = 0
+  ctrl-of (instr-push-frame _) = 0
+  ctrl-of instr-pop-frame = 0
+  ctrl-of instr-call-closure = 0
+  ctrl-of (worklist-init _) = 0
+  ctrl-of (worklist-push _) = 0
+  ctrl-of (worklist-pop _) = 0
+  ctrl-of (worklist-check _) = 0
+  ctrl-of (instr-sigop _) = 0
+  ctrl-of (instr-load-const _ _) = 0
+  ctrl-of (instr-load-code-addr _) = 0
+  ctrl-of instr-save-closure-reg = 0
+  ctrl-of (instr-load-tag-lit _) = 0
+  ctrl-of (instr-case-on-tag _ _) = 0
+  ctrl-of (instr-alloc-heap _) = 0
+  ctrl-of (instr-loop _) = 0
+  ctrl-of (instr-reg-op _) = 0
   ctrl-of (instr-ctrl _) = 1
-  {-# CATCHALL #-}
-  ctrl-of _              = 0
+  ctrl-of (lea-indexed _) = 0
+
+  ctrl-≤1 : ∀ i → ctrl-of i ≤ 1
+  ctrl-≤1 mov-to-output = z≤n
+  ctrl-≤1 mov-to-input = z≤n
+  ctrl-≤1 load-indirect = z≤n
+  ctrl-≤1 load-indirect-suc = z≤n
+  ctrl-≤1 (load-from-slot _) = z≤n
+  ctrl-≤1 (store-at-slot _) = z≤n
+  ctrl-≤1 store-indirect = z≤n
+  ctrl-≤1 store-indirect-suc = z≤n
+  ctrl-≤1 (lea-slot _) = z≤n
+  ctrl-≤1 (restore-input _) = z≤n
+  ctrl-≤1 (instr-alloc-stack _) = z≤n
+  ctrl-≤1 (instr-dealloc-stack _) = z≤n
+  ctrl-≤1 (instr-reclaim-to _) = z≤n
+  ctrl-≤1 (instr-push-frame _) = z≤n
+  ctrl-≤1 instr-pop-frame = z≤n
+  ctrl-≤1 instr-call-closure = z≤n
+  ctrl-≤1 (worklist-init _) = z≤n
+  ctrl-≤1 (worklist-push _) = z≤n
+  ctrl-≤1 (worklist-pop _) = z≤n
+  ctrl-≤1 (worklist-check _) = z≤n
+  ctrl-≤1 (instr-sigop _) = z≤n
+  ctrl-≤1 (instr-load-const _ _) = z≤n
+  ctrl-≤1 (instr-load-code-addr _) = z≤n
+  ctrl-≤1 instr-save-closure-reg = z≤n
+  ctrl-≤1 (instr-load-tag-lit _) = z≤n
+  ctrl-≤1 (instr-case-on-tag _ _) = z≤n
+  ctrl-≤1 (instr-alloc-heap _) = z≤n
+  ctrl-≤1 (instr-loop _) = z≤n
+  ctrl-≤1 (instr-reg-op _) = z≤n
+  ctrl-≤1 (instr-ctrl _) = s≤s z≤n
+  ctrl-≤1 (lea-indexed _) = z≤n
 
   chain-ctrls : ∀ {prog k fs fs'} → FlatSteps prog k fs fs' → ℕ
   chain-ctrls []                    = 0
@@ -246,6 +313,26 @@ module FlatEventTrace {FS : FrameSemantics} where
                (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
            → chain-ctrls xs ≤ chain-ctrls (FlatSteps-++ xs ys)
   ctrls-≤ˡ xs ys = subst (chain-ctrls xs ≤_) (sym (chain-ctrls-++ xs ys)) (m≤m+n (chain-ctrls xs) (chain-ctrls ys))
+
+  -- The control steps of a FUELLED run (`flat-events`' shape).
+  flat-ctrls       : ℕ → AbstractTrace → FlatState → ℕ
+  flat-ctrls-step  : Bool → ℕ → AbstractTrace → FlatState → ℕ
+  flat-ctrls-fetch : Maybe AbstractInstr → ℕ → AbstractTrace → FlatState → ℕ
+  flat-ctrls zero    _    fs = 0
+  flat-ctrls (suc n) prog fs = flat-ctrls-step (halted (floc fs)) n prog fs
+  flat-ctrls-step true  _ _    fs = 0
+  flat-ctrls-step false n prog fs = flat-ctrls-fetch (fetch prog (fpc fs)) n prog fs
+  flat-ctrls-fetch nothing  _ _    fs = 0
+  flat-ctrls-fetch (just i) n prog fs = ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs)
+
+  -- …which a chain's control steps start.
+  flat-ctrls-steps : ∀ {prog k fs fs'} (steps : FlatSteps prog k fs fs')
+                   → ∀ b → flat-ctrls (k + b) prog fs ≡ chain-ctrls steps + flat-ctrls b prog fs'
+  flat-ctrls-steps []                              b = refl
+  flat-ctrls-steps (_∷_ {fs = fs} {i = i} (h , f) rest) b
+    rewrite h | f =
+      trans (cong (ctrl-of i +_) (flat-ctrls-steps rest b))
+            (sym (+-assoc (ctrl-of i) (chain-ctrls rest) (flat-ctrls b _ _)))
 
   ------------------------------------------------------------------------
   -- Plan 0.105: THE LOG GROWS BY EXACTLY THE EVENTS. A step appends its own

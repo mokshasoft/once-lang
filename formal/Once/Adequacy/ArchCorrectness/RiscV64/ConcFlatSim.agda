@@ -271,6 +271,22 @@ r-nonhalt-noncall prog s (label _)    eq hnh = refl
 ------------------------------------------------------------------------
 -- THE THREE INTERFACE RECORDS.
 ------------------------------------------------------------------------
+
+-- plan 0.119 D5: every control lowering is non-empty.
+open import Data.List using (length)
+open import Data.Nat using (s≤s; z≤n)
+open import Once.CCC.Machine.SMCore using (FlatCtrl; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+ctrl-len-arch : ∀ (c : FlatCtrl) → 1 ≤ length (compile-abstract (instr-ctrl c))
+ctrl-len-arch (c-label _) = s≤s z≤n
+ctrl-len-arch (c-jmp _) = s≤s z≤n
+ctrl-len-arch (c-branch-scratch-zero _) = s≤s z≤n
+ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
+ctrl-len-arch (c-entry _ _) = s≤s z≤n
+ctrl-len-arch (c-ret _) = s≤s z≤n
+ctrl-len-arch (c-call-fn _) = s≤s z≤n
+ctrl-len-arch (c-start _) = s≤s z≤n
+ctrl-len-arch c-leave = s≤s z≤n
+
 riscv64-emitter : EI.Emitter FS Reg
 riscv64-emitter = record
   { Instr = Instr
@@ -282,6 +298,7 @@ riscv64-emitter = record
   ; find-label-nil = λ _ _ → refl ; skip-law = skip-law
   ; label-hit = label-hit ; label-miss = label-miss ; headView = headView
   ; find-label = R.find-label ; find-label-def = λ _ _ → refl
+  ; ctrl-len = ctrl-len-arch
   }
 
 riscv64-machine : EI.Machine FS Reg riscv64-emitter

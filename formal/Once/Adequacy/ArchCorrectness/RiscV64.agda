@@ -53,6 +53,15 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([]; map)
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
+open import Once.Adequacy.BudgetApex using (budget-apex)
+open import Once.Denotation.Program using (runIR)
+open import Once.Lang.Trace using (pureHalf)
+import Once.Lang.Trace as LT
+open import Once.Denotation.Approx using (approx)
+open import Once.Denotation.TraceTr using (obsAp)
+open import Once.Adequacy.FuelTrace using (module Fuel)
+open import Data.Product using (Σ-syntax)
+open import Data.Nat using (suc; _≤_)
 open import Once.Lang.Event using (toEvent)
 open import Once.Denotation.TraceTr using (endOf)
 open import Data.Bool using (false)
@@ -103,7 +112,7 @@ open FrameSemantics using (frame-base)
 open import Data.Empty using (⊥)
 open import Data.Unit using (tt)
 open import Data.Nat using (suc; _+_; _*_; z≤n)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
@@ -285,7 +294,7 @@ entry-like B = refl , refl , refl , refl , refl
     no-ptr Scratch loc ()
     no-ptr Count   loc ()
 
--- D320: THE BINARY'S TRACE (see the x86-64 instance).
+-- D320 / plan 0.119 D5: THE BINARY'S TRACE, budget by budget (see the x86-64 instance).
 conc-tr :
   ∀ (brs : FFOr.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
@@ -294,19 +303,24 @@ conc-tr :
                      (compile-trace (FFOr.image ir))) ([] , RS.initState)
     ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics riscv64) ι
 conc-tr brs p ir lk img =
-  Machine.reaches-≈ (RTr.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
-                       (compile-trace (FFOr.image ir)))
-    (RTr.ended-reaches val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
-       (compile-trace (FFOr.image ir)) (proj₁ agree) [] RS.initState
-       (trans (proj₂ agree) (FFOr.flat-ends ir-obs-correct brs ir lk)))
+  budget-apex δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) fact
   where
+    δc = RTr.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir))
     run₀ : RunAt (FFOr.image ir) FFOr.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl)
-    agree = events-agree-start (ValueRealized.steps (FFOr.entry-vr ir lk ir-obs-correct brs 0) + 2)
-              ev-riscv64 (block-env (C.blocks-riscv64 p))
-              (FFOr.image ir) FFOr.start-flat RS.initState (ir-stack-budget ir) (entry-corr ir)
-              (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
-              refl refl refl refl refl
+    fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , RS.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)))))
+                         × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
+    fact k = proj₁ agree
+           , trans (RTr.runN-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir)) (proj₁ agree) [] RS.initState)
+                   (cong (RTr.outObs val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir)))
+                         (trans (proj₁ (proj₂ agree)) (FFOr.flat-ends ir-obs-correct brs ir lk k)))
+           , λ c → ≤-trans (FFOr.flat-cut ir-obs-correct brs ir lk k c) (proj₂ (proj₂ agree))
+      where
+        agree = events-agree-start (FFOr.flat-fuel ir-obs-correct brs ir lk k)
+                  ev-riscv64 (block-env (C.blocks-riscv64 p))
+                  (FFOr.image ir) FFOr.start-flat RS.initState (ir-stack-budget ir) (entry-corr ir)
+                  (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
+                  refl refl refl refl refl
 
 -- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
 -- the per-program `ArchCorrect` (each program brings its own table).

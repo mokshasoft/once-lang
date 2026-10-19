@@ -31,14 +31,14 @@
 --              real extractor and env. Needs both.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≤_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop; instr-ctrl; c-leave)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop; instr-ctrl; c-leave; FlatCtrl)
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Target.Symbol using (once-symbol-path)
@@ -93,6 +93,10 @@ record Emitter : Set₁ where
     -- `load-code-addr` is exactly where the two meet.
     find-label : List Instr → Label → Maybe ℕ
     find-label-def : ∀ prog t → find-label prog t ≡ find-label-go t prog 0
+    -- plan 0.119 D5: a control step lowers to at least one instruction (a
+    -- straight-line one may lower to none), so a run's control steps bound its
+    -- concrete steps from below.
+    ctrl-len : ∀ (c : FlatCtrl) → 1 ≤ length (compile-abstract (instr-ctrl c))
 
 ------------------------------------------------------------------------
 -- THE MACHINE: its state, the readouts the correspondence needs, and how a

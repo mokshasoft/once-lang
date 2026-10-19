@@ -377,6 +377,22 @@ open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
 -- x86-64 filling `EngineInterface`'s three records. What was a 49-argument
 -- module application is three values now, for the memory reason recorded in
 -- `EngineInterface`; the contents are identical.
+
+-- plan 0.119 D5: every control lowering is non-empty.
+open import Data.List using (length)
+open import Data.Nat using (s≤s; z≤n)
+open import Once.CCC.Machine.SMCore using (FlatCtrl; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+ctrl-len-arch : ∀ (c : FlatCtrl) → 1 ≤ length (compile-abstract (instr-ctrl c))
+ctrl-len-arch (c-label _) = s≤s z≤n
+ctrl-len-arch (c-jmp _) = s≤s z≤n
+ctrl-len-arch (c-branch-scratch-zero _) = s≤s z≤n
+ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
+ctrl-len-arch (c-entry _ _) = s≤s z≤n
+ctrl-len-arch (c-ret _) = s≤s z≤n
+ctrl-len-arch (c-call-fn _) = s≤s z≤n
+ctrl-len-arch (c-start _) = s≤s z≤n
+ctrl-len-arch c-leave = s≤s z≤n
+
 x86-64-emitter : EI.Emitter FS Reg
 x86-64-emitter = record
   { Instr = XS.Instr
@@ -388,6 +404,7 @@ x86-64-emitter = record
   ; find-label-nil = λ _ _ → refl ; skip-law = skip-law
   ; label-hit = label-hit ; label-miss = label-miss ; headView = headView
   ; find-label = X.find-label ; find-label-def = λ _ _ → refl
+  ; ctrl-len = ctrl-len-arch
   }
 
 x86-64-machine : EI.Machine FS Reg x86-64-emitter

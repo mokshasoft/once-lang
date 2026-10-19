@@ -265,7 +265,9 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 -- THE PROGRAM-END BOUNDARY, and the two SIGOP REDUCTIONS.
 ------------------------------------------------------------------------
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; event-of; flat-events-halted)
+open FlatEventTrace {FS} using (flat-events; event-of; flat-events-halted; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
+open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
+open import Data.Nat using (s≤s; z≤n)
 
 -- PROGRAM END: the abstract fetch runs out, so the concrete pc — which `pc-off`
 -- pins to `blk-off prog (fpc fs)` — sits past the compiled program, where the
@@ -446,17 +448,22 @@ stuck-result : ∀ ev env lg n prog fs s (i : AbstractInstr)
              → LocState.left (floc (flat-exec-instr i prog fs)) ≡ false
              → event-of i fs ≡ []
              → StuckAt ev env (compile-trace prog) s
-             → Σ ℕ (λ M → RT.run-events ev env lg M (compile-trace prog) s
-                   ≡ event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs))
+             → Σ ℕ (λ M → (RT.run-events ev env lg M (compile-trace prog) s
+                   ≡ event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs)) × ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc M)
 -- (At no fuel the flat side shows nothing yet, and neither does the concrete
 -- one at none; with fuel, both have stopped.)
 stuck-result ev env lg zero    prog fs s i hpost lpost ev-eq st =
   0 , sym (cong (_▹ flat-events zero prog (flat-exec-instr i prog fs)) ev-eq)
+    , ≤-trans (≤-reflexive (+-identityʳ (ctrl-of i))) (ctrl-≤1 i)
 stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
   proj₁ (st lg) , trans (proj₂ (st lg)) (sym (trans (cong (_▹ flat-events (suc n) prog (flat-exec-instr i prog fs)) ev-eq)
                            (flat-stop n (flat-exec-instr i prog fs) hpost lpost)))
+  , ≤-trans (≤-reflexive (trans (cong (ctrl-of i +_) (flat-none n (flat-exec-instr i prog fs) hpost)) (+-identityʳ (ctrl-of i))))
+            (≤-trans (ctrl-≤1 i) (s≤s z≤n))
   where flat-stop : ∀ n fs′ → halted (floc fs′) ≡ true → LocState.left (floc fs′) ≡ false → flat-events (suc n) prog fs′ ≡ stop
         flat-stop n fs′ h l rewrite h | l = refl
+        flat-none : ∀ n fs′ → halted (floc fs′) ≡ true → flat-ctrls (suc n) prog fs′ ≡ 0
+        flat-none n fs′ h rewrite h = refl
 
 ------------------------------------------------------------------------
 -- THE WHOLE SUPPLY, in one record — what an ARCH hands the dispatch.
