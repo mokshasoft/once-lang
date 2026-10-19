@@ -176,6 +176,23 @@ RelSB-fmapʳ (s-next r) h = s-next (RelS-fmapʳ r h)
 RelSB-fmapʳ (s-call g) h = s-call (λ b → RelSB-fmapʳ (g b) h)
 RelSB-fmapʳ s-halt     h = s-halt
 
+-- A bind of a bind, related to a bind: associativity, step for step. The
+-- inner run's steps are the outer run's; once it returns, its continuation and
+-- the next one run in sequence.
+RelS-assocˡ  : ∀ {X Y Z W V} {R₀ : X → W → Set} {R : Z → V → Set} {m : T∞ X} {n : T∞ W}
+                 {f : X → T∞ Y} {g : Y → T∞ Z} {k : W → T∞ V}
+             → RelS R₀ m n → (∀ {a b} → R₀ a b → RelS R (f a >>=∞ g) (k b))
+             → RelS R ((m >>=∞ f) >>=∞ g) (n >>=∞ k)
+RelSB-assocˡ : ∀ {X Y Z W V} {R₀ : X → W → Set} {R : Z → V → Set} {l l′}
+                 {f : X → T∞ Y} {g : Y → T∞ Z} {k : W → T∞ V}
+             → RelSB R₀ l l′ → (∀ {a b} → R₀ a b → RelS R (f a >>=∞ g) (k b))
+             → RelSB R (bindBlock (bindBlock l f) g) (bindBlock l′ k)
+forceS (RelS-assocˡ h c) = RelSB-assocˡ (forceS h) c
+RelSB-assocˡ (s-ret r)  c = forceS (c r)
+RelSB-assocˡ (s-next h) c = s-next (RelS-assocˡ h c)
+RelSB-assocˡ (s-call f) c = s-call (λ b → RelSB-assocˡ (f b) c)
+RelSB-assocˡ s-halt     c = s-halt
+
 -- Two runs that force to the same block are interchangeable (a bind of a
 -- returned value forces to its continuation, so this is how left identity is
 -- used: by `refl`).

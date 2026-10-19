@@ -28,11 +28,11 @@ module Once.Adequacy.LiftFnReduce (fmt : TargetNum) (ρ : CallEnv) where
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (tt)
+open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
-open import Once.Lang.Type.Grade using (mk-kind; Many)
+open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many)
 open import Once.Lang.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
 open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_)
@@ -203,6 +203,41 @@ liftFn-curry : ∀ {A B C : Type} {π} (g : IR IRTy.⌊ A * B ⌋ IRTy.⌊ C ⌋
 liftFn-curry {A} {B} {C} g =
   extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ g) a
 
+------------------------------------------------------------------------
+-- `apply` / `curry` at `One` and `Zero` arrows (LiftFnReduce states `Many`).
+------------------------------------------------------------------------
+
+liftFn-apply₁ : ∀ {A B : Type} {π}
+  → liftFn fmt ρ {(A ⇒[ mk-kind One π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+liftFn-apply₁ {A} {B} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
+
+liftFn-curry₁ : ∀ {A B C : Type} {π} (g : IR IRTy.⌊ A * B ⌋ IRTy.⌊ C ⌋)
+  → liftFn fmt ρ {A} {B ⇒[ mk-kind One π ] C} (IR.curry g)
+    ≡ (λ a → return∞ (λ b → liftFn fmt ρ {A * B} {C} g (a , b)))
+liftFn-curry₁ {A} {B} {C} g = extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ g) a
+
+private
+  apply-red₀ : ∀ {BI BT : Set} (pB : BI ≡ BT) (v : (⊤ → T∞ BT) × ⊤)
+    → subst T∞ pB (proj₁ (subst id (sym (cong₂ _×_ (cong (λ y → ⊤ → T∞ y) pB) refl)) v)
+                          (proj₂ (subst id (sym (cong₂ _×_ (cong (λ y → ⊤ → T∞ y) pB) refl)) v)))
+      ≡ proj₁ v (proj₂ v)
+  apply-red₀ refl v = refl
+
+  curry-red₀ : ∀ {AI AT CI CT : Set} (pA : AI ≡ AT) (pC : CI ≡ CT)
+                 (gg : AI × ⊤ → T∞ CI) (a : AT)
+    → subst T∞ (cong (λ y → ⊤ → T∞ y) pC) (return∞ (λ u → gg (subst id (sym pA) a , u)))
+      ≡ return∞ (λ u → subst T∞ pC (gg (subst id (sym (cong₂ _×_ pA refl)) (a , u))))
+  curry-red₀ refl refl gg a = refl
+
+liftFn-apply₀ : ∀ {A B : Type} {π}
+  → liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+liftFn-apply₀ {A} {B} = extensionality λ v → apply-red₀ (cohᴰ B) v
+
+liftFn-curry₀ : ∀ {A B C : Type} {π} (g : IR IRTy.⌊ A * Unit ⌋ IRTy.⌊ C ⌋)
+  → liftFn fmt ρ {A} {B ⇒[ mk-kind Zero π ] C} (IR.curry g)
+    ≡ (λ a → return∞ (λ u → liftFn fmt ρ {A * Unit} {C} g (a , u)))
+liftFn-curry₀ {A} {B} {C} g = extensionality λ a → curry-red₀ (cohᴰ A) (cohᴰ C) (evalᴰ fmt ρ g) a
+
 liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋) (g : IR IRTy.⌊ B ⌋ IRTy.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
   → liftFn fmt ρ {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt ρ {A} {C} f a
 liftFn-case-inj₁ {A} {B} {C} f g a =
@@ -212,3 +247,68 @@ liftFn-case-inj₂ : ∀ {A B C : Type} (f : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋) (
   → liftFn fmt ρ {A + B} {C} (case f g) (inj₂ b) ≡ liftFn fmt ρ {B} {C} g b
 liftFn-case-inj₂ {A} {B} {C} f g b =
   lift-inj₂-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ (case {IRTy.⌊ A ⌋} {IRTy.⌊ B ⌋} {IRTy.⌊ C ⌋} f g)) (evalᴰ fmt ρ g) (λ x → refl) b
+
+------------------------------------------------------------------------
+-- Returning at once (plan 0.119 D5). Over `T∞` a bind of a returned value is
+-- its continuation only after one `force` (a coinductive record has no η), so
+-- the reductions a pure combinator performs are stated at the forced block:
+-- `Now m v` — `m` returns `v` at once. Composites of pure combinators return
+-- at once, and a bind whose head returns at once forces to its continuation.
+------------------------------------------------------------------------
+
+open import Data.Sum using () renaming (inj₁ to left)
+open import Once.Lang.Trace using (ret)
+open import Once.Lang.Iterative using (force; bindBlock)
+
+Now : ∀ {X : Set} → T∞ X → X → Set
+Now m v = force m ≡ ret (left v)
+
+-- A bind whose head returns at once forces to its continuation.
+now-bind : ∀ {X Y : Set} {m : T∞ X} {v : X} (k : X → T∞ Y) → Now m v → force (m >>=∞ k) ≡ force (k v)
+now-bind k e = cong (λ l → bindBlock l k) e
+
+now-id : ∀ (a : ⟦ A ⟧ᴰ) → Now (liftFn fmt ρ {A} {A} IR.id a) a
+now-id {A} a = cong force (cong (λ h → h a) (liftFn-id {A}))
+
+now-fst : ∀ (v : ⟦ A * B ⟧ᴰ) → Now (liftFn fmt ρ {A * B} {A} fst v) (proj₁ v)
+now-fst {A} {B} v = cong force (cong (λ h → h v) (liftFn-fst {A} {B}))
+
+now-snd : ∀ (v : ⟦ A * B ⟧ᴰ) → Now (liftFn fmt ρ {A * B} {B} snd v) (proj₂ v)
+now-snd {A} {B} v = cong force (cong (λ h → h v) (liftFn-snd {A} {B}))
+
+now-terminal : ∀ (a : ⟦ A ⟧ᴰ) → Now (liftFn fmt ρ {A} {Unit} terminal a) tt
+now-terminal {A} a = cong force (cong (λ h → h a) (liftFn-terminal {A}))
+
+now-∘ : ∀ {g : IR IRTy.⌊ B ⌋ IRTy.⌊ C ⌋} {f : IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋} {a b c}
+      → Now (liftFn fmt ρ {A} {B} f a) b → Now (liftFn fmt ρ {B} {C} g b) c → Now (liftFn fmt ρ {A} {C} (g ∘ f) a) c
+now-∘ {B} {C} {A} {g} {f} {a} hf hg =
+  trans (cong force (cong (λ h → h a) (liftFn-∘ {B} {C} {A} g f))) (trans (now-bind {m = liftFn fmt ρ {A} {B} f a} (liftFn fmt ρ {B} {C} g) hf) hg)
+
+-- A composite forces to its second stage once the first returns at once.
+force-∘ : ∀ {g : IR IRTy.⌊ B ⌋ IRTy.⌊ C ⌋} {f : IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋} {a b}
+        → Now (liftFn fmt ρ {A} {B} f a) b → force (liftFn fmt ρ {A} {C} (g ∘ f) a) ≡ force (liftFn fmt ρ {B} {C} g b)
+force-∘ {B} {C} {A} {g} {f} {a} hf =
+  trans (cong force (cong (λ h → h a) (liftFn-∘ {B} {C} {A} g f))) (now-bind {m = liftFn fmt ρ {A} {B} f a} (liftFn fmt ρ {B} {C} g) hf)
+
+now-pair : ∀ {f : IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋} {g : IR IRTy.⌊ A ⌋ IRTy.⌊ C ⌋} {a b c}
+         → Now (liftFn fmt ρ {A} {B} f a) b → Now (liftFn fmt ρ {A} {C} g a) c → Now (liftFn fmt ρ {A} {B * C} ⟨ f , g ⟩ a) (b , c)
+now-pair {A} {B} {C} {f} {g} {a} {b} hf hg =
+  trans (cong force (cong (λ h → h a) (liftFn-pair {A} {B} {C} f g)))
+        (trans (now-bind {m = liftFn fmt ρ {A} {B} f a} (λ b′ → liftFn fmt ρ {A} {C} g a >>=∞ λ c → return∞ (b′ , c)) hf)
+               (now-bind {m = liftFn fmt ρ {A} {C} g a} (λ c → return∞ (b , c)) hg))
+
+-- `apply` of a closure and an argument that both return at once forces to
+-- the application (at `Many` and `One` arrows).
+force-apply : ∀ {X : Type} {A B : Type} {π} {f : IR IRTy.⌊ X ⌋ IRTy.⌊ A ⇒[ mk-kind Many π ] B ⌋} {x : IR IRTy.⌊ X ⌋ IRTy.⌊ A ⌋} {a F v}
+            → Now (liftFn fmt ρ {X} {A ⇒[ mk-kind Many π ] B} f a) F → Now (liftFn fmt ρ {X} {A} x a) v
+            → force (liftFn fmt ρ {X} {B} (apply ∘ ⟨ f , x ⟩) a) ≡ force (F v)
+force-apply {X} {A} {B} {π} {f} {x} {a} {F} {v} hf hx =
+  trans (force-∘ {(A ⇒[ mk-kind Many π ] B) * A} {B} {X} {apply} {⟨ f , x ⟩} (now-pair {X} {A ⇒[ mk-kind Many π ] B} {A} {f} {x} hf hx))
+        (cong force (cong (λ h → h (F , v)) (liftFn-apply {A} {B} {π})))
+
+force-apply₁ : ∀ {X : Type} {A B : Type} {π} {f : IR IRTy.⌊ X ⌋ IRTy.⌊ A ⇒[ mk-kind One π ] B ⌋} {x : IR IRTy.⌊ X ⌋ IRTy.⌊ A ⌋} {a F v}
+             → Now (liftFn fmt ρ {X} {A ⇒[ mk-kind One π ] B} f a) F → Now (liftFn fmt ρ {X} {A} x a) v
+             → force (liftFn fmt ρ {X} {B} (apply ∘ ⟨ f , x ⟩) a) ≡ force (F v)
+force-apply₁ {X} {A} {B} {π} {f} {x} {a} {F} {v} hf hx =
+  trans (force-∘ {(A ⇒[ mk-kind One π ] B) * A} {B} {X} {apply} {⟨ f , x ⟩} (now-pair {X} {A ⇒[ mk-kind One π ] B} {A} {f} {x} hf hx))
+        (cong force (cong (λ h → h (F , v)) (liftFn-apply₁ {A} {B} {π})))

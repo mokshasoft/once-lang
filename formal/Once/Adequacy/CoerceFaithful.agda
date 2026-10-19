@@ -48,7 +48,8 @@ open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Surface.CoerceIR
 open import Once.Adequacy.LiftFnReduce fmt ρ
   using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-inl; liftFn-inr; liftFn-∘; liftFn-pair;
-         liftFn-apply; liftFn-curry; liftFn-case-inj₁; liftFn-case-inj₂; curry-red; apply-red)
+         liftFn-apply; liftFn-curry; liftFn-case-inj₁; liftFn-case-inj₂;
+         liftFn-apply₀; liftFn-apply₁; liftFn-curry₀; liftFn-curry₁)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
@@ -96,41 +97,6 @@ subst-inj₁ refl refl x = refl
 subst-inj₂ : ∀ {X X′ Y Y′ : Set} (P : X ≡ X′) (Q : Y ≡ Y′) (y : Y)
            → subst id (cong₂ _⊎_ P Q) (inj₂ y) ≡ inj₂ (subst id Q y)
 subst-inj₂ refl refl y = refl
-
-------------------------------------------------------------------------
--- `apply` / `curry` at `One` and `Zero` arrows (LiftFnReduce states `Many`).
-------------------------------------------------------------------------
-
-liftFn-apply₁ : ∀ {A B : Type} {π}
-  → liftFn fmt ρ {(A ⇒[ mk-kind One π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
-liftFn-apply₁ {A} {B} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
-
-liftFn-curry₁ : ∀ {A B C : Type} {π} (g : IR ⌊ A * B ⌋ ⌊ C ⌋)
-  → liftFn fmt ρ {A} {B ⇒[ mk-kind One π ] C} (curry g)
-    ≡ (λ a → return∞ (λ b → liftFn fmt ρ {A * B} {C} g (a , b)))
-liftFn-curry₁ {A} {B} {C} g = extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt ρ g) a
-
-private
-  apply-red₀ : ∀ {BI BT : Set} (pB : BI ≡ BT) (v : (⊤ → T∞ BT) × ⊤)
-    → subst T∞ pB (proj₁ (subst id (sym (cong₂ _×_ (cong (λ y → ⊤ → T∞ y) pB) refl)) v)
-                          (proj₂ (subst id (sym (cong₂ _×_ (cong (λ y → ⊤ → T∞ y) pB) refl)) v)))
-      ≡ proj₁ v (proj₂ v)
-  apply-red₀ refl v = refl
-
-  curry-red₀ : ∀ {AI AT CI CT : Set} (pA : AI ≡ AT) (pC : CI ≡ CT)
-                 (gg : AI × ⊤ → T∞ CI) (a : AT)
-    → subst T∞ (cong (λ y → ⊤ → T∞ y) pC) (return∞ (λ u → gg (subst id (sym pA) a , u)))
-      ≡ return∞ (λ u → subst T∞ pC (gg (subst id (sym (cong₂ _×_ pA refl)) (a , u))))
-  curry-red₀ refl refl gg a = refl
-
-liftFn-apply₀ : ∀ {A B : Type} {π}
-  → liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
-liftFn-apply₀ {A} {B} = extensionality λ v → apply-red₀ (cohᴰ B) v
-
-liftFn-curry₀ : ∀ {A B C : Type} {π} (g : IR ⌊ A * Unit ⌋ ⌊ C ⌋)
-  → liftFn fmt ρ {A} {B ⇒[ mk-kind Zero π ] C} (curry g)
-    ≡ (λ a → return∞ (λ u → liftFn fmt ρ {A * Unit} {C} g (a , u)))
-liftFn-curry₀ {A} {B} {C} g = extensionality λ a → curry-red₀ (cohᴰ A) (cohᴰ C) (evalᴰ fmt ρ g) a
 
 ------------------------------------------------------------------------
 -- The structural IR returns at once a value related to `⟦ p ⟧<:`.
