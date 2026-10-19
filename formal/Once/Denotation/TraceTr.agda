@@ -129,3 +129,33 @@ module _ (ι : Interp) {X : Set} where
   approx-run : ∀ (k : ℕ) h (m : T∞ X)
              → Σ[ n ∈ ℕ ] (runN n (h , force m) ≡ obsAp (run ι h (approx k m))) × (proj₂ (obsAp (run ι h (approx k m))) ≡ nothing → k ≤ n)
   approx-run k h m = approx-runB k h (force m)
+
+------------------------------------------------------------------------
+-- Runs related step for step (`RelS`) have the same fuelled runs, hence
+-- weakly bisimilar traces.
+------------------------------------------------------------------------
+
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
+open RelS using (forceS)
+open import Once.Adequacy.FuelTrace using (module Agree)
+open import Data.Nat.Properties using (≤-refl)
+
+module _ (ι : Interp) {X Y : Set} {R : X → Y → Set} where
+  private
+    module FX = Fuel (δ∞ ι {X})
+    module FY = Fuel (δ∞ ι {Y})
+
+  RelSB-runN : ∀ n h {b : T (X ⊎ T∞ X)} {b′ : T (Y ⊎ T∞ Y)} → RelSB R b b′ → FX.runN n (h , b) ≡ FY.runN n (h , b′)
+  RelSB-ans  : ∀ n h o a {k : V.⟦ ccod o ⟧ → T (X ⊎ T∞ X)} {k′ : V.⟦ ccod o ⟧ → T (Y ⊎ T∞ Y)}
+             → (∀ v → RelSB R (k v) (k′ v)) → (r : Maybe V.⟦ ccod o ⟧)
+             → FX.runS n (answer ι h o a k r) ≡ FY.runS n (answer ι h o a k′ r)
+  RelSB-runN zero    h _          = refl
+  RelSB-runN (suc n) h (s-ret _)  = refl
+  RelSB-runN (suc n) h (s-next r) = RelSB-runN n h (forceS r)
+  RelSB-runN (suc n) h (s-call {o = o} {a = a} f) = RelSB-ans n h o a f (callAnswer ι h o a)
+  RelSB-runN (suc n) h s-halt     = refl
+  RelSB-ans n h o a f (just v) = cong (λ ob → toEvent (callEvent o a) ∷ proj₁ ob , proj₂ ob) (RelSB-runN n (h ++ [ callEvent o a ]) (f v))
+  RelSB-ans n h o a f nothing  = refl
+
+  RelS-tr : ∀ h {m : T∞ X} {m′ : T∞ Y} → RelS R m m′ → trT∞ ι h m ≈ᵗ⟨ _≡_ ⟩ trT∞ ι h m′
+  RelS-tr h r = Agree.agree-≈ (δ∞ ι {X}) (δ∞ ι {Y}) (λ k → k , k , RelSB-runN k h (forceS r) , λ _ → ≤-refl , ≤-refl)

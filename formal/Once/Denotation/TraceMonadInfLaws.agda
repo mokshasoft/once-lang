@@ -103,3 +103,70 @@ RelB-embed rel-halt     = b-halt
 
 RelT∞′-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelT∞′ R (embed m) t
 RelT∞′-embed r = rel∞ (RelB-embed r)
+------------------------------------------------------------------------
+-- Two runs related step for step (plan 0.119 D5: the IR means `T∞` too):
+-- the same blocks — the same calls, the same silent steps — and the results
+-- related by `R`. Heterogeneous bisimilarity; `TreeEq∞` is its homogeneous
+-- instance.
+------------------------------------------------------------------------
+
+record RelS {X Y : Set} (R : X → Y → Set) (m : T∞ X) (m′ : T∞ Y) : Set
+data RelSB {X Y : Set} (R : X → Y → Set) : T (X ⊎ T∞ X) → T (Y ⊎ T∞ Y) → Set
+
+record RelS R m m′ where
+  coinductive
+  field forceS : RelSB R (force m) (force m′)
+open RelS
+
+data RelSB R where
+  s-ret  : ∀ {x y} → R x y → RelSB R (ret (inj₁ x)) (ret (inj₁ y))
+  s-next : ∀ {m m′} → RelS R m m′ → RelSB R (ret (inj₂ m)) (ret (inj₂ m′))
+  s-call : ∀ {o a k k′} → (∀ b → RelSB R (k b) (k′ b)) → RelSB R (call o a k) (call o a k′)
+  s-halt : ∀ {o a} → RelSB R (halt o a) (halt o a)
+
+relS-ret : ∀ {X Y} {R : X → Y → Set} {x y} → R x y → RelS R (return∞ x) (return∞ y)
+forceS (relS-ret r) = s-ret r
+
+RelS-bind  : ∀ {X Y X′ Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {m : T∞ X} {m′ : T∞ X′}
+               {k : X → T∞ Y} {k′ : X′ → T∞ Y′}
+           → RelS R m m′ → (∀ {a b} → R a b → RelS R′ (k a) (k′ b))
+           → RelS R′ (m >>=∞ k) (m′ >>=∞ k′)
+RelSB-bind : ∀ {X Y X′ Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {l : T (X ⊎ T∞ X)} {l′ : T (X′ ⊎ T∞ X′)}
+               {k : X → T∞ Y} {k′ : X′ → T∞ Y′}
+           → RelSB R l l′ → (∀ {a b} → R a b → RelS R′ (k a) (k′ b))
+           → RelSB R′ (bindBlock l k) (bindBlock l′ k′)
+forceS (RelS-bind h c) = RelSB-bind (forceS h) c
+RelSB-bind (s-ret r)  c = forceS (c r)
+RelSB-bind (s-next h) c = s-next (RelS-bind h c)
+RelSB-bind (s-call f) c = s-call (λ b → RelSB-bind (f b) c)
+RelSB-bind s-halt     c = s-halt
+
+-- Two finite trees related call for call embed as related runs.
+RelSB-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelSB R (embedBlock m) (embedBlock t)
+RelSB-embed (rel-ret r)  = s-ret r
+RelSB-embed (rel-call h) = s-call (λ b → RelSB-embed (h b))
+RelSB-embed rel-halt     = s-halt
+
+RelS-embed : ∀ {X Y} {R : X → Y → Set} {m : T X} {t : T Y} → RelT′ R m t → RelS R (embed m) (embed t)
+forceS (RelS-embed r) = RelSB-embed r
+
+-- Bisimilar runs are related to the same runs (on either side).
+RelSB-≈ˡ : ∀ {X Y} {R : X → Y → Set} {l l′ : T (X ⊎ T∞ X)} {u : T (Y ⊎ T∞ Y)}
+         → BlockEq (StepEq _≡_ (TreeEq∞ _≡_)) l l′ → RelSB R l′ u → RelSB R l u
+RelS-≈ˡ  : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n : T∞ Y}
+         → TreeEq∞ _≡_ m m′ → RelS R m′ n → RelS R m n
+forceS (RelS-≈ˡ e h) = RelSB-≈ˡ (force≈ e) (forceS h)
+RelSB-≈ˡ (ret≈ (done≈ refl)) (s-ret r)  = s-ret r
+RelSB-≈ˡ (ret≈ (next≈ e))    (s-next h) = s-next (RelS-≈ˡ e h)
+RelSB-≈ˡ (call≈ f)           (s-call h) = s-call (λ b → RelSB-≈ˡ (f b) (h b))
+RelSB-≈ˡ halt≈               s-halt     = s-halt
+
+RelSB-≈ʳ : ∀ {X Y} {R : X → Y → Set} {l : T (X ⊎ T∞ X)} {u u′ : T (Y ⊎ T∞ Y)}
+         → BlockEq (StepEq _≡_ (TreeEq∞ _≡_)) u u′ → RelSB R l u′ → RelSB R l u
+RelS-≈ʳ  : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {n n′ : T∞ Y}
+         → TreeEq∞ _≡_ n n′ → RelS R m n′ → RelS R m n
+forceS (RelS-≈ʳ e h) = RelSB-≈ʳ (force≈ e) (forceS h)
+RelSB-≈ʳ (ret≈ (done≈ refl)) (s-ret r)  = s-ret r
+RelSB-≈ʳ (ret≈ (next≈ e))    (s-next h) = s-next (RelS-≈ʳ e h)
+RelSB-≈ʳ (call≈ f)           (s-call h) = s-call (λ b → RelSB-≈ʳ (f b) (h b))
+RelSB-≈ʳ halt≈               s-halt     = s-halt
