@@ -132,6 +132,9 @@ import Once.TypeCheck.Principal as Principal
 open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Denotation.Realize using (realize)
 open import Once.Surface.LoopWarn using (silentLoops)
+open import Once.Lang.Principal using (lowerings)
+open import Once.Lang.Type.Sub using (_<:_)
+open import Once.Type.Sub using (_<:?_)
 open import Data.Nat using (_<ᵇ_)
 
 ------------------------------------------------------------------------
@@ -149,6 +152,32 @@ validateMain : Type → String ⊎ ⊤
 validateMain (Unit ⇒[ mk-kind Many eff ] Unit) = inj₂ tt
 {-# CATCHALL #-}
 validateMain ty = inj₁ ("main must have type Eff Unit Unit, but got: " ++ showType ty)
+
+-- | D315 (plan 0.119 D6): `main` is typed at its PRINCIPAL type and used at
+-- `Eff Unit Unit` by subtyping. A `main` whose type is below `Eff Unit Unit`
+-- is compiled at `Eff Unit Unit` — its body checks there (checking is closed
+-- upward), and that is the coercion the Spec's program applies. Any other
+-- type is left as it is, and `validateMain` reports it.
+mainType : Type
+mainType = Unit ⇒[ mk-kind Many eff ] Unit
+
+entry-at : Bool → (ty : Type) → Dec (ty <: mainType) → Type
+entry-at true  ty (yes _) = mainType
+entry-at true  ty (no _)  = ty
+entry-at false ty _       = ty
+
+entryType : String → Type → Type
+entryType name ty = entry-at (name == "main") ty (ty <:? mainType)
+
+-- | D314/D321 (plan 0.119 D6): the first LOWERING of a definition's type at
+-- which its body also checks (`Once.Lang.Principal`); none means the type is
+-- the body's principal type.
+firstChecking : (ctx : NamedCtx) (e : RawExpr) → List Type → Maybe Type
+fc-step : (ctx : NamedCtx) (e : RawExpr) (X : Type) → List Type → TE.VerifiedCheckResult ctx e X → Maybe Type
+firstChecking ctx e []       = nothing
+firstChecking ctx e (X ∷ Xs) = fc-step ctx e X Xs (TE.checkElabV ctx e X)
+fc-step ctx e X Xs (TE.success _ _ _ _ , _) = just X
+fc-step ctx e X Xs (TE.failure _ , _)       = firstChecking ctx e Xs
 
 -- D253: `main` is an entry like any other. It is not rewritten: its entry
 -- form is the direct-call morphism (`directCallIR`), which at `Eff Unit Unit` is
@@ -401,17 +430,19 @@ ce-prim        : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry
 ce-prim-conc   : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
                → Maybe (IsConcrete ty) → Maybe (HonestFFI ty) → Maybe (RigidFree ty) → String ⊎ List CompiledFun
 ce-mono        : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → String ⊎ Type → String ⊎ List CompiledFun
+ce-mono-p      : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type) → Maybe Type → String ⊎ List CompiledFun
 ce-mono-g      : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
                → Maybe (RigidFree ty) → String ⊎ List CompiledFun
 ce-mono-ir     : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
                → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
+ce-poly-p      : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → Maybe Type → String ⊎ List CompiledFun
 ce-poly        : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → String ⊎ ⊤ → String ⊎ List CompiledFun
 
 compileEntries m doOpt sc []                 = inj₂ []
 compileEntries m doOpt sc (e-fun fi ∷ es)    = ce-fun m doOpt sc fi es (funIsPrimitive fi)
 compileEntries m doOpt sc (e-poly pfi ∷ es)  =
-  ce-poly m doOpt sc pfi es
-    (checkOK (TE.checkElabV (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))
+  ce-poly-p m doOpt sc pfi es
+    (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (pfunBody pfi) (lowerings (rigidOf (pfunType pfi))))
 
 ce-fun m doOpt sc fi es true  = ce-prim m doOpt sc fi es (funType fi)
 ce-fun m doOpt sc fi es false =
@@ -431,7 +462,14 @@ ce-prim-conc m doOpt sc fi es ty (just conc) (just _) (just _) =
   compileEntries m doOpt (extendSig sc (funName fi) ty) es
 
 ce-mono m doOpt sc fi es (inj₁ err) = inj₁ err
-ce-mono m doOpt sc fi es (inj₂ ty)  = ce-mono-g m doOpt sc fi es ty (rigidFree? ty)
+ce-mono m doOpt sc fi es (inj₂ ty)  =
+  ce-mono-p m doOpt sc fi es ty (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) (lowerings ty))
+-- D314/D321: a definition is at its principal type; D315: `main` is then
+-- compiled at `Eff Unit Unit`.
+ce-mono-p m doOpt sc fi es ty (just X) =
+  inj₁ ("The type of `" ++ funName fi ++ "`, " ++ showType ty ++ ", is not its principal type: the body also checks at " ++ showType X)
+ce-mono-p m doOpt sc fi es ty nothing =
+  ce-mono-g m doOpt sc fi es (entryType (funName fi) ty) (rigidFree? (entryType (funName fi) ty))
 -- D243: a monomorphic definition's type is ground.
 ce-mono-g m doOpt sc fi es ty nothing =
   inj₁ ("The type of `" ++ funName fi ++ "` mentions a type parameter: " ++ showType ty)
@@ -445,6 +483,11 @@ ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
 
 -- D243: a telescope definition is checked ONCE, at its schema with rigid
 -- parameters; its uses are instances of it.
+ce-poly-p m doOpt sc pfi es (just X) =
+  inj₁ ("The schema of `" ++ pfunName pfi ++ "` is not its principal type: the body also checks at " ++ showType X)
+ce-poly-p m doOpt sc pfi es nothing =
+  ce-poly m doOpt sc pfi es
+    (checkOK (TE.checkElabV (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))
 ce-poly m doOpt sc pfi es (inj₁ err) = inj₁ ("Type error in " ++ pfunName pfi ++ ": " ++ err)
 ce-poly m doOpt sc pfi es (inj₂ _)   = compileEntries m doOpt (addEntry sc pfi) es
 

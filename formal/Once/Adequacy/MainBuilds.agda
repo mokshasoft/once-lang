@@ -29,6 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Lang.Type.Honest using (honest?)
 open import Once.Lang.Type.Instance using (rigidOf)
+open import Once.Lang.Principal using (lowerings)
 open import Once.Type.Rigid using (rigidFree?)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
@@ -121,6 +122,15 @@ ce-prim-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : L
 ce-mono-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : List Parser.Entry) (rt : String ⊎ Type.Type) {c}
               → C.ce-mono IR.Heap false sc fi es rt ≡ inj₂ c
               → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono IR.Heap doOpt sc fi es rt ≡ inj₂ c')
+ce-mono-p-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : List Parser.Entry) (ty : Type.Type) (mx : Maybe Type.Type) {c}
+              → C.ce-mono-p IR.Heap false sc fi es ty mx ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-p IR.Heap doOpt sc fi es ty mx ≡ inj₂ c')
+ce-mono-g-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : List Parser.Entry) (ty : Type.Type) mg {c}
+              → C.ce-mono-g IR.Heap false sc fi es ty mg ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ c')
+ce-poly-p-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (mx : Maybe Type.Type) {c}
+              → C.ce-poly-p IR.Heap false sc pfi es mx ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-poly-p IR.Heap doOpt sc pfi es mx ≡ inj₂ c')
 ce-poly-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (ok : String ⊎ ⊤) {c}
               → C.ce-poly IR.Heap false sc pfi es ok ≡ inj₂ c
               → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-poly IR.Heap doOpt sc pfi es ok ≡ inj₂ c')
@@ -128,8 +138,8 @@ ce-poly-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : Parser.PolyFunInfo) (e
 ce-doOpt doOpt sc [] eq = _ , refl
 ce-doOpt doOpt sc (Parser.e-fun fi ∷ es) eq = ce-fun-doOpt doOpt sc fi es (Parser.FunInfo.funIsPrimitive fi) eq
 ce-doOpt doOpt sc (Parser.e-poly pfi ∷ es) eq =
-  ce-poly-doOpt doOpt sc pfi es
-    (C.checkOK (TE.checkElabV (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
+  ce-poly-p-doOpt doOpt sc pfi es
+    (C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
 
 ce-fun-doOpt doOpt sc fi es true  eq = ce-prim-doOpt doOpt sc fi es (Parser.FunInfo.funType fi) eq
 ce-fun-doOpt doOpt sc fi es false eq =
@@ -147,23 +157,32 @@ ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) (
     conc (just cc) (just _) (just _) eq′ = ce-doOpt doOpt (C.extendSig sc (Parser.FunInfo.funName fi) ty) es eq′
 
 ce-mono-doOpt doOpt sc fi es (inj₁ _) ()
-ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq = grd (rigidFree? ty) eq
-  where
-    grd : ∀ mg {c} → C.ce-mono-g IR.Heap false sc fi es ty mg ≡ inj₂ c
-        → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ c')
-    grd nothing ()
-    grd (just _) eqg
-      with C.compileFun IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
-             (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) in cf-eq
-    ... | inj₁ _ = case eqg of λ ()
-    ... | inj₂ _
-          with C.compileEntries IR.Heap false (C.extendScope sc (Parser.FunInfo.funName fi) ty) es in rec
-    ...   | inj₁ _ = case eqg of λ ()
-    ...   | inj₂ _ =
-            let (ir-d , cfd) = cfun-doOpt doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
-                                 (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf-eq
-                (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es rec
-            in _ , trans (cong (C.ce-mono-ir IR.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.Spec.Name.bare (Parser.FunInfo.funName fi)) ty ir-d)) recd)
+ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq =
+  ce-mono-p-doOpt doOpt sc fi es ty
+    (C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.FunInfo.funBody fi) (lowerings ty)) eq
+
+ce-mono-p-doOpt doOpt sc fi es ty (just _) ()
+ce-mono-p-doOpt doOpt sc fi es ty nothing eq =
+  ce-mono-g-doOpt doOpt sc fi es (C.entryType (Parser.FunInfo.funName fi) ty) (rigidFree? (C.entryType (Parser.FunInfo.funName fi) ty)) eq
+
+ce-mono-g-doOpt doOpt sc fi es ty nothing ()
+ce-mono-g-doOpt doOpt sc fi es ty (just _) eqg
+  with C.compileFun IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+         (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) in cf-eq
+... | inj₁ _ = case eqg of λ ()
+... | inj₂ _
+      with C.compileEntries IR.Heap false (C.extendScope sc (Parser.FunInfo.funName fi) ty) es in rec
+...   | inj₁ _ = case eqg of λ ()
+...   | inj₂ _ =
+        let (ir-d , cfd) = cfun-doOpt doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+                             (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf-eq
+            (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es rec
+        in _ , trans (cong (C.ce-mono-ir IR.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.Spec.Name.bare (Parser.FunInfo.funName fi)) ty ir-d)) recd)
+
+ce-poly-p-doOpt doOpt sc pfi es (just _) ()
+ce-poly-p-doOpt doOpt sc pfi es nothing eq =
+  ce-poly-doOpt doOpt sc pfi es
+    (C.checkOK (TE.checkElabV (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
 
 ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
 ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq

@@ -24,7 +24,9 @@ open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Once.Lang.Principal using (lowerings)
+open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -190,12 +192,21 @@ ce-prim-sound doOpt sc fi es ep (just ty) et eq =
       ffi ep et c h g (ce-sound doOpt (C.extendSig sc (Parser.FunInfo.funName fi) ty) es eq′)
 
 ce-mono-sound doOpt sc fi es ep (inj₁ _) er ()
-ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = grd (rigidFree? ty) eq
+ce-mono-sound doOpt sc fi es ep (inj₂ ty₀) er eq = pstep _ refl eq
   where
-    grd : (mg : Maybe (RigidFree ty)) → ∀ {cfs} → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ cfs
+    ctx = ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)
+    ty = C.entryType (Parser.FunInfo.funName fi) ty₀
+    -- D314/D321: the body checks at none of its type's lowerings.
+    pstep : (mx : Maybe Type) → C.firstChecking ctx (Parser.FunInfo.funBody fi) (lowerings ty₀) ≡ mx
+          → ∀ {cfs} → C.ce-mono-p IR.Heap doOpt sc fi es ty₀ mx ≡ inj₂ cfs
+          → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
+    grd : C.firstChecking ctx (Parser.FunInfo.funBody fi) (lowerings ty₀) ≡ nothing
+        → (mg : Maybe (RigidFree ty)) → ∀ {cfs} → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ cfs
         → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
-    grd nothing ()
-    grd (just g) eqg = step
+    pstep (just _) _ ()
+    pstep nothing fc eqp = grd fc (rigidFree? ty) eqp
+    grd fc nothing ()
+    grd fc (just g) eqg = step
       (C.compileFun IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
          (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi)) refl eqg
       where
@@ -207,19 +218,26 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = grd (rigidFree? ty) eq
         step (inj₂ ir) cf eq′ =
           let (Ψ , jud) = compileFun-sound doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                             (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf
-          in mono ep er g jud
+          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (lowerings ty₀) fc) refl g jud
                (ce-sound doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
-ce-poly-sound doOpt sc pfi es eq = step _ refl eq
+ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
   where
     ctx = ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)
-    step : (r : TE.VerifiedCheckResult ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
+    low = lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi))
+    step : C.firstChecking ctx (Parser.PolyFunInfo.pfunBody pfi) low ≡ nothing
+         → (r : TE.VerifiedCheckResult ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
          → TE.checkElabV ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
          → ∀ {cfs} → C.ce-poly IR.Heap doOpt sc pfi es (C.checkOK r) ≡ inj₂ cfs
          → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)
-    step r@(TE.failure _ , _) _ ()
-    step r@(TE.success Ψ _ _ _ , w) _ eq′ =
-      poly w (ce-sound doOpt (C.addEntry sc pfi) es eq′)
+    step fc r@(TE.failure _ , _) _ ()
+    step fc r@(TE.success Ψ _ _ _ , w) _ eq′ =
+      poly (firstChecking-sound ctx (Parser.PolyFunInfo.pfunBody pfi) low fc) w (ce-sound doOpt (C.addEntry sc pfi) es eq′)
+    pstep : (mx : Maybe Type) → C.firstChecking ctx (Parser.PolyFunInfo.pfunBody pfi) low ≡ mx
+          → ∀ {cfs} → C.ce-poly-p IR.Heap doOpt sc pfi es mx ≡ inj₂ cfs
+          → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)
+    pstep (just _) _ ()
+    pstep nothing fc eqp = step fc _ refl eqp
 
 crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
   (ef : String ⊎ List Parser.Entry) {compiled : List C.CompiledFun} →

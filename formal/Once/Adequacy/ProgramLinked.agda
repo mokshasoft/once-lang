@@ -571,13 +571,14 @@ link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h g r
   with just-injective (trans (sym et) et′)
 ... | refl = link-walk rest rest-b pre (linv-sig (funName fi) ty g (u (here refl)) inv)
                (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m))
-link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf eg ce cf rest-b) pre inv fr u
-link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly D rest) (FB.bpoly ce rest-b) pre inv fr u =
+link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf fc te eg ce cf rest-b) pre inv fr u
+link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr D rest) (FB.bpoly fc ce rest-b) pre inv fr u =
   link-walk rest rest-b pre (linv-poly D (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
             (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er g D rest)
-          (FB.bcons {ty = ty′} {Ψ = Usage.[]} {irFun = irFun} refl rf eg ce cf rest-b) pre inv fr u
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr te g D rest)
+          (FB.bcons {ty = ty′} {Ψ = Usage.[]} {irFun = irFun} refl rf fc te′ eg ce cf rest-b) pre inv fr u
   with inj₂-injective (trans (sym er) rf)
+... | refl with trans (sym te) te′
 ... | refl = link-walk rest rest-b _
                (linv-entry (funName fi) ty irFun g
                   (dc-linked pre ty irFun (body-linked inv (funName fi) ty cf ce))
@@ -589,10 +590,10 @@ main-linked : ∀ {csc es} (b : FB.FunBundle csc es) (pre : List IRFun) → FB.B
             → LinkedAt (tableOf-go (FB.bundle→compiled b) pre) (bare "main") ⌊ Unit ⌋ ⌊ Unit ⌋
 main-linked FB.bnil pre ()
 main-linked (FB.bffi _ _ _ _ _ rest) pre w = main-linked rest pre w
-main-linked (FB.bpoly _ rest) pre w = main-linked rest pre w
-main-linked (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ rest) pre (inj₂ w) =
+main-linked (FB.bpoly _ _ rest) pre w = main-linked rest pre w
+main-linked (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ _ rest) pre (inj₂ w) =
   main-linked rest (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre) w
-main-linked (FB.bcons {fi = fi} {ty = .EffUU} {irFun = irFun} _ _ _ _ _ rest) pre (inj₁ (refl , refl , refl)) =
+main-linked (FB.bcons {fi = fi} {ty = .EffUU} {irFun = irFun} _ _ _ _ _ _ _ rest) pre (inj₁ (refl , refl , refl)) =
   subst (λ t → LinkedAt t (bare "main") ⌊ Unit ⌋ ⌊ Unit ⌋) (sym (tableOf-go-++ (FB.bundle→compiled rest) [] (e ∷ pre)))
         (linkedAt-++ (tableOf-go (FB.bundle→compiled rest) []) (e ∷ pre) (linkedAt-here e pre))
   where e = irFunOf (C.mkCompiledFun (bare "main") EffUU irFun)

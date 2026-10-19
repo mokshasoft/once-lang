@@ -40,6 +40,6 @@ teleSig≡entrySig []                                       = refl
 
 teleSig≡entrySig (ffi {fi = fi} {ty = ty} ep et _ _ _ rest) rewrite ep | et = cong ((funName fi , ty) ∷_) (teleSig≡entrySig rest)
 
-teleSig≡entrySig (mono {fi = fi} ep _ _ _ rest)            rewrite ep = teleSig≡entrySig rest
+teleSig≡entrySig (mono {fi = fi} ep _ _ _ _ _ rest)        rewrite ep = teleSig≡entrySig rest
 
-teleSig≡entrySig (poly _ rest)                            = teleSig≡entrySig rest
+teleSig≡entrySig (poly _ _ rest)                          = teleSig≡entrySig rest

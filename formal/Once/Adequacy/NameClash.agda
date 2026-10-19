@@ -58,6 +58,7 @@ import Once.IR as IR
 import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.Classify as Classify
 open import Once.Lang.Type.Instance using (rigidOf)
+open import Once.Lang.Principal using (lowerings)
 open import Once.Type.Rigid using (rigidFree?)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Lang.Type.Honest using (honest?)
@@ -189,9 +190,12 @@ ce-syms-fun : ∀ (doOpt : Bool) (sc : C.CScope) (fi : FunInfo) (es : List Entry
 ce-syms doOpt sc [] cfs eq = cong C.emittedSyms (sym (inj₂-injective eq))
 ce-syms doOpt sc (e-fun fi ∷ es) cfs eq = ce-syms-fun doOpt sc fi es (FunInfo.funIsPrimitive fi) refl cfs eq
 ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
+  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (PolyFunInfo.pfunType pfi)))
+... | just _ = case eq of λ ()
+... | nothing
   with C.checkOK (TE.checkElabV (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
-... | inj₁ _ = case eq of λ ()
-... | inj₂ _ = ce-syms doOpt (C.addEntry sc pfi) es cfs eq
+...   | inj₁ _ = case eq of λ ()
+...   | inj₂ _ = ce-syms doOpt (C.addEntry sc pfi) es cfs eq
 
 ce-syms-fun doOpt sc fi es true ep cfs eq with FunInfo.funType fi
 ... | nothing = case eq of λ ()
@@ -207,15 +211,19 @@ ce-syms-fun doOpt sc fi es true ep cfs eq with FunInfo.funType fi
 ce-syms-fun doOpt sc fi es false ep cfs eq
   with C.resolveFunType (C.ctop sc) (C.cpolys sc) (FunInfo.funType fi) (FunInfo.funBody fi)
 ... | inj₁ _ = case eq of λ ()
-... | inj₂ ty with rigidFree? ty
-...   | nothing = case eq of λ ()
-...   | just _
+... | inj₂ ty₀
+  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (FunInfo.funBody fi) (lowerings ty₀)
+...   | just _ = case eq of λ ()
+...   | nothing with C.entryType (FunInfo.funName fi) ty₀
+...     | ty with rigidFree? ty
+...       | nothing = case eq of λ ()
+...       | just _
     with C.compileFun IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
-...     | inj₁ _ = case eq of λ ()
-...     | inj₂ irFun
+...         | inj₁ _ = case eq of λ ()
+...         | inj₂ irFun
       with C.compileEntries IR.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec
-...       | inj₁ _ = case eq of λ ()
-...       | inj₂ rest =
+...           | inj₁ _ = case eq of λ ()
+...           | inj₂ rest =
           subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es))))
                 (inj₂-injective eq)
                 (subst (λ b → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) ty irFun ∷ rest)
