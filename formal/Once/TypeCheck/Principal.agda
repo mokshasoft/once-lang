@@ -429,39 +429,52 @@ liftName (just (t , n)) s = just (t , n , s)
 liftName nothing _ = nothing
 
 -- | Decompose an arrow-ish type, binding a metavariable head to a
--- fresh pure arrow. Returns (domain, codomain, isEff, subst, counter).
-arrowParts : PSubst → PolyType → ℕ → Maybe (PolyType × PolyType × Bool × PSubst × ℕ)
+-- fresh pure arrow. Returns (domain, codomain, grade, subst, counter): the
+-- arrow's GRADE on the chain `pure ≤ act ≤ eff` (D314), not an eff bit — an
+-- `act` arrow (an operation, D318 item 5) is neither pure nor `eff`.
+arrowParts : PSubst → PolyType → ℕ → Maybe (PolyType × PolyType × Purity × PSubst × ℕ)
 arrowParts s t n = go (walk fuelD s t)
   where
-  go : PolyType → Maybe (PolyType × PolyType × Bool × PSubst × ℕ)
-  go (a P⇒[ _ ] b) = just (a , b , false , s , n)
-  go (PEff a b)    = just (a , b , true , s , n)
+  go : PolyType → Maybe (PolyType × PolyType × Purity × PSubst × ℕ)
+  go (a P⇒[ _ ] b) = just (a , b , pure , s , n)
+  go (PAct a b)    = just (a , b , act , s , n)
+  go (PEff a b)    = just (a , b , eff , s , n)
   go (PTVar x) with bindVar fuelD x (PTVar (mv n) P⇒[ Many ] PTVar (mv (suc n))) s
-  ... | just s' = just (PTVar (mv n) , PTVar (mv (suc n)) , false , s' , suc (suc n))
+  ... | just s' = just (PTVar (mv n) , PTVar (mv (suc n)) , pure , s' , suc (suc n))
   ... | nothing = nothing
   {-# CATCHALL #-}
   go _ = nothing
 
+-- | The arrow `a ⇒[ Many , π ] b` at a grade.
+arrowAt : Purity → PolyType → PolyType → PolyType
+arrowAt pure a b = a P⇒[ Many ] b
+arrowAt act  a b = PAct a b
+arrowAt eff  a b = PEff a b
+
 -- | Finish a general application `f x` once both types are inferred.
--- Mirrors the kernel: pure arrow applies to its codomain; an eff arrow
--- application yields the thunk `Eff Unit B` (t-effApp).
+-- Mirrors the kernel: a pure arrow applies to its codomain; an effectful
+-- arrow's application yields the thunk `Unit ⇒[π] B` at its grade (t-effApp).
 appFinish : PolyType → PolyType → ℕ → PSubst → Result
 appFinish tf tx n s with arrowParts s tf n
 ... | nothing = nothing
-... | just (a , b , isEff , s₁ , n₁) with unify fuelD s₁ a tx
+... | just (a , b , π , s₁ , n₁) with unify fuelD s₁ a tx
 ...   | nothing = nothing
-...   | just s₂ = just ((if isEff then PEff PUnit b else b) , n₁ , s₂)
+...   | just s₂ = just (thunkAt π b , n₁ , s₂)
+  where
+  thunkAt : Purity → PolyType → PolyType
+  thunkAt pure b′ = b′
+  thunkAt act  b′ = PAct PUnit b′
+  thunkAt eff  b′ = PEff PUnit b′
 
--- | Finish `compose f g` (grade-polymorphic: eff iff either arm eff).
+-- | Finish `compose f g` (grade-polymorphic: the join of its arms' grades).
 composeFinish : PolyType → PolyType → ℕ → PSubst → Result
 composeFinish tf tg n s with arrowParts s tf n
 ... | nothing = nothing
-... | just (bf , cf , ef , s₁ , n₁) with arrowParts s₁ tg n₁
+... | just (bf , cf , πf , s₁ , n₁) with arrowParts s₁ tg n₁
 ...   | nothing = nothing
-...   | just (ag , bg , eg , s₂ , n₂) with unify fuelD s₂ bg bf
+...   | just (ag , bg , πg , s₂ , n₂) with unify fuelD s₂ bg bf
 ...     | nothing = nothing
-...     | just s₃ =
-          just ((if ef ∨ eg then PEff ag cf else (ag P⇒[ Many ] cf)) , n₂ , s₃)
+...     | just s₃ = just (arrowAt (πg ·p πf) ag cf , n₂ , s₃)
 
 -- pInfer/destructFinish are a top-level mutual pair (NOT a where) so
 -- the canon-invariance proof (CanonPrincipal) can reason about

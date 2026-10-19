@@ -235,3 +235,30 @@ endAp : ∀ {X} → Res (Ap X) → Maybe (End ⊤)
 endAp (returns (done _ _)) = just (returned tt)
 endAp stopped              = just halted
 endAp (returns cut)        = nothing
+
+------------------------------------------------------------------------
+-- A budgeted run never GAINS budget: what is left when it returns is at
+-- most what it was given (each silent step spends one unit).
+------------------------------------------------------------------------
+
+open import Data.Nat using (_≤_)
+open import Data.Nat.Properties using (≤-refl; m≤n⇒m≤1+n)
+
+mutual
+  done-≤B : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (b : T (X ⊎ T∞ X)) {v : X} {r′ : ℕ}
+          → proj₂ (run ι h (approxBlock r b)) ≡ returns (done v r′) → r′ ≤ r
+  done-≤B ι h r       (ret (inj₁ x)) refl = ≤-refl
+  done-≤B ι h zero    (ret (inj₂ m)) ()
+  done-≤B ι h (suc r) (ret (inj₂ m)) e    = m≤n⇒m≤1+n (done-≤B ι h r (force m) e)
+  done-≤B ι h r       (call o a k)   e    = done-≤-call ι h r o a k (callAnswer ι h o a) e
+  done-≤B ι h r       (halt o a)     ()
+
+  done-≤-call : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (o : CallOp) (a : M.⟦ cdom o ⟧)
+                  (k : M.⟦ ccod o ⟧ → T (X ⊎ T∞ X)) (mb : Maybe M.⟦ ccod o ⟧) {v : X} {r′ : ℕ}
+              → proj₂ (run-call ι h o a (λ b → approxBlock r (k b)) mb) ≡ returns (done v r′) → r′ ≤ r
+  done-≤-call ι h r o a k (just b) e = done-≤B ι (h ++ [ callEvent o a ]) r (k b) e
+  done-≤-call ι h r o a k nothing  ()
+
+done-≤ : ∀ {X} (ι : Interp) (h : List SigOpEvent) (r : ℕ) (m : T∞ X) {v : X} {r′ : ℕ}
+       → proj₂ (run ι h (approx r m)) ≡ returns (done v r′) → r′ ≤ r
+done-≤ ι h r m = done-≤B ι h r (force m)
