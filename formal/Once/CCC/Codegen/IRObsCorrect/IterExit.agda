@@ -97,7 +97,7 @@ module IterExitC {FS : FrameSemantics} where
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
     (span : SpanAt prog base (emitted n l (Iter body)))
     (la : LabelsAt prog base (emitted n l (Iter body)))
-    (S0 : FlatState) (b : ⟦ B ⟧) {m : AllocMode} {ca : AllocState {FS}}
+    (S0 : FlatState) (b : ⟦ B ⟧) {m : AllocMode}
     (nh0 : halted (floc S0) ≡ false)
     (pc0 : fpc S0 ≡ (3 + length (IterShape.bt body n l) + 0) + base)
     where
