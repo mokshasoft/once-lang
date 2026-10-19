@@ -67,6 +67,8 @@ open import Once.CCC.Codegen.IRObsCorrect.Call    o tbl
 -- `PairAssemble` imports `Pair` (the four clusters) itself, WITHOUT `public`
 -- — same D200 rule: only this façade re-exports.
 open import Once.CCC.Codegen.IRObsCorrect.Pair o tbl
+-- plan 0.119 D5: the loop.
+open import Once.CCC.Codegen.IRObsCorrect.IterProof o tbl using (module IterProofC)
 
 -- The name every importer uses. Each part re-exports `Core`/`Mach`, so the
 -- surface here is what the single file's `IRObsCorrectFlatness` had.
@@ -117,7 +119,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct (Out wf)            _ = obs-correct-Out wf
   ir-obs-correct (in-ν wf)           _ = obs-correct-in-ν wf
   ir-obs-correct (Ana wf f)          _ = obs-correct-Ana wf f
-  ir-obs-correct (Iter body)         lb = iter-correct body (ir-obs-correct body lb)
+  ir-obs-correct (Iter body)         lb = IterProofC.obs-correct-Iter {FS} body (ir-obs-correct body lb)
   -- misc
   ir-obs-correct (const fit v)       _ = obs-correct-const fit v
   ir-obs-correct (SigOp si)          d = obs-correct-sigop si d

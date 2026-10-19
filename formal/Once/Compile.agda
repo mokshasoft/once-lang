@@ -131,6 +131,8 @@ import Once.TypeCheck.Principal as Principal
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Denotation.Realize using (realize)
+open import Once.Surface.LoopWarn using (silentLoops)
+open import Data.Nat using (_<ᵇ_)
 
 ------------------------------------------------------------------------
 -- Main function validation
@@ -453,6 +455,40 @@ compileResolvedModule-aux m doOpt mod (inj₂ es)  = compileEntries m doOpt empt
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
   compileResolvedModule-aux m doOpt mod (extractFunctions (extractAliases mod) mod)
+
+-- | plan 0.119 D5: the definitions with a loop whose round performs no event
+-- (`Once.Surface.LoopWarn`). A PURE QUERY, as the rounding warnings are
+-- (`Once.Warnings`): `compileEntries`'s walk, each body checked again and its
+-- elaborated term read. It never changes what is compiled.
+lw-entries : CScope → List Entry → List String
+lw-fun     : CScope → FunInfo → List Entry → Bool → List String
+lw-prim    : CScope → FunInfo → List Entry → Maybe Type → List String
+lw-mono    : CScope → FunInfo → List Entry → String ⊎ Type → List String
+lw-body    : (ctx : NamedCtx) (body : RawExpr) (ty : Type) → TE.VerifiedCheckResult ctx body ty → Bool
+lw-name    : FunInfo → Bool → List String
+
+lw-entries sc []                = []
+lw-entries sc (e-fun fi ∷ es)   = lw-fun sc fi es (funIsPrimitive fi)
+lw-entries sc (e-poly pfi ∷ es) = lw-entries (addEntry sc pfi) es
+lw-fun sc fi es true  = lw-prim sc fi es (funType fi)
+lw-fun sc fi es false = lw-mono sc fi es (resolveFunType (ctop sc) (cpolys sc) (funType fi) (funBody fi))
+lw-prim sc fi es nothing   = []
+lw-prim sc fi es (just ty) = lw-entries (extendSig sc (funName fi) ty) es
+lw-mono sc fi es (inj₁ _)  = []
+lw-mono sc fi es (inj₂ ty) =
+  lw-name fi (lw-body _ (funBody fi) ty (TE.checkElabV (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty))
+  DL.++ lw-entries (extendScope sc (funName fi) ty) es
+lw-body ctx body ty (TE.failure _ , _)       = false
+lw-body ctx body ty (TE.success _ _ _ _ , w) = 0 <ᵇ silentLoops (realize w)
+lw-name fi true  = funName fi ∷ []
+lw-name fi false = []
+
+silentRoundDefs-aux : String ⊎ List Entry → List String
+silentRoundDefs-aux (inj₁ _)  = []
+silentRoundDefs-aux (inj₂ es) = lw-entries emptyCScope es
+
+silentRoundDefs : Module → List String
+silentRoundDefs mod = silentRoundDefs-aux (extractFunctions (extractAliases mod) mod)
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)

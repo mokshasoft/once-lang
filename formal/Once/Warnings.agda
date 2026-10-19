@@ -57,6 +57,7 @@ open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
 open import Once.Spec.Float.Decimal
   using (decimalOf; round; roundSig; storedExp; maxFiniteExp)
 open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
+open import Once.Compile using (silentRoundDefs)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
    DImport)
@@ -104,6 +105,10 @@ data Warning : Set where
   -- IEEE would still have had digits — a STATED limitation, and the reason it
   -- is a distinct constructor rather than a `FloatRounded` with a large error.
   FloatUnderflow : (int frac flen : ℕ) (at : ℕ) → Warning
+  -- plan 0.119 D5 (GOAL.md): a loop in definition `fn` runs a round that
+  -- performs no event (`Once.Surface.LoopWarn`) — correct, and silent forever
+  -- if it never ends.
+  SilentRound : (fn : String) → Warning
 
 ------------------------------------------------------------------------
 -- Classifying one literal
@@ -349,11 +354,24 @@ renderWarning (FloatUnderflow i f l at) =
     <> " is too small for this target's format; stored as zero"
     <> " (Once models no subnormals)"
 
+renderWarning (SilentRound fn) =
+  "warning: a loop in `" <> fn <> "` runs a round that performs no event;"
+    <> " if the loop never ends, the program goes silent"
+
+-- | plan 0.119 D5: the loops whose round performs no event, one warning per
+-- definition (`Once.Compile.silentRoundDefs`).
+loopWarnings : Module → List Warning
+loopWarnings m = go (silentRoundDefs m)
+  where
+    go : List String → List Warning
+    go []       = []
+    go (f ∷ fs) = SilentRound f ∷ go fs
+
 -- | The compiler's entry point: every rounding warning this module has for
 -- this target, rendered. `Once.Compile` re-exports it and the CLI prints it,
 -- which is what keeps this module ON the apex path rather than beside it.
 warningsFor : Arch → Module → List String
-warningsFor arch m = go (roundingWarnings arch m)
+warningsFor arch m = go (roundingWarnings arch m ++ loopWarnings m)
   where
     go : List Warning → List String
     go []       = []
