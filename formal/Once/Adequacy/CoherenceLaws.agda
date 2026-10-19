@@ -15,8 +15,12 @@
 --     through the bidirectional judgment mean the same: one route converts a
 --     subterm, the other converts the whole.
 --
--- Meanings are compared as FUNCTIONS (`_≈_`), so a congruence is one `cong₂`
--- over the clause body and needs no extensionality.
+-- Plan 0.119 D5: meanings are `T∞` runs, compared step for step. Two terms
+-- mean the same (`_≈ˢ_`) when, in every self-related definitions environment,
+-- related environments give related runs — the two-term form of the source
+-- semantics' fundamental lemma (`SourceRefl.SD-rel`, which is `≈-refl`). A
+-- congruence is then a bind congruence; a coercion law is relational
+-- naturality, by associativity on either side.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Numerics using (TargetNum)
@@ -24,84 +28,66 @@ open import Once.Spec.Numerics using (TargetNum)
 module Once.Adequacy.CoherenceLaws (fmt : TargetNum) where
 
 open import Data.Bool using (true)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Data.Empty using (⊥)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Postulates using (extensionality)
-open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; _≤q_)
-open import Once.Lang.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T)
+open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; _≤q_; fin)
+open import Once.Lang.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T; K; Id; _⊕_; _⊗_)
 open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
 open import Once.Lang.Laws.SubLaws using (<:-trans; <:-unique)
 open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Lang.Context using (Ctx; Usage; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Lang.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; lift-morphism)
-open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; fmapT)
-open import Once.Lang.Laws.Monad using (T-monad; module LawfulMonad)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.DenotTrace using (evalᴰ)
-open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-id; <:-trans-∘)
-open import Once.Lang.Trace using ()
-open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-cong; fmapT-∘)
-open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
+open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
+open import Once.Semantics.Machine using (sem-cata; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Type.WellFormed using (wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Lang.FunctorMeaning using (translateF)
-open import Once.Lang.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
-open import Data.Empty using (⊥)
-open import Once.Lang.Stream using (seqF; anaFᵈ)
-open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; cohᴰ; coerce-functor-D; ⟦_⟧ᴰ)
+open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; ⟦_⟧ᴰ)
 open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
-open import Once.Lang.Type.WellFormed using (WellFormedF)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
-open import Relation.Binary.PropositionalEquality using (subst)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
+open import Once.Denotation.ValueRel using (RelD; base-refl; RelS-fmap; RelS-fmapˡ; RelS-assocˡ; RelS-assocʳ; RelS-assoc₂; RelS-unfmapʳ;
+  retargetˡ; retargetʳ; seqF∞-rel; FRel; fr-K; fr-Id; fr-inl; fr-inr; fr-pair; cfD⁻¹-rel)
+open import Once.Denotation.ValueRelPER using (RelS-sym; RelS-trans; RelS-pairʳ; RelD-sym; RelD-trans; RelD-rightself)
+open import Once.Denotation.EvalRel using (liftFn-rel)
+open import Once.Adequacy.EnvRel using (restrict-rel; bind-rel)
+open import Once.Adequacy.SourceRefl fmt using (RelDefs; SD-rel; sigOp-rel; <:-rel; <:-trans-rel; <:-refl-relʳ; cata-clo-rel; ana-clo-rel)
 import Once.Denotation.SourceDenote as SD
-open SD using (⟦_⟧ˢ; cata-ev-algˢ)
+open SD using (⟦_⟧ˢ; cata-ev-algˢ; DefsSem)
 open SD.DefsSem using (calls)
 
 infix 4 _≈ˢ_ _≈_
 _≈ˢ_ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → Expr Γ Ψ A → Set
-a ≈ˢ b = ⟦ a ⟧ˢ fmt ≡ ⟦ b ⟧ˢ fmt
+_≈ˢ_ {Γ = Γ} {Ψ} {A} a b =
+  ∀ (σ : DefsSem) → RelDefs σ σ → ∀ {dγ dγ′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ} → RelD ⟦ Γ ↾ Ψ ⟧ᶜ dγ dγ′
+  → RelS (RelD A) (⟦ a ⟧ˢ fmt σ dγ) (⟦ b ⟧ˢ fmt σ dγ′)
 
--- Two terms MEAN the same. A record rather than the bare equation so that it
--- is injective for unification: from `a ≈ b` Agda can read off `a` and `b`,
--- which it cannot from `⟦ a ⟧ˢ fmt ≡ ⟦ b ⟧ˢ fmt`.
+-- Two terms MEAN the same. A record rather than the bare relation so that it
+-- is injective for unification: from `a ≈ b` Agda can read off `a` and `b`.
 record _≈_ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (a b : Expr Γ Ψ A) : Set where
   constructor ≈-intro
   field ≈-out : a ≈ˢ b
 
 ≈-refl : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a : Expr Γ Ψ A} → a ≈ a
-≈-refl = ≈-intro refl
+≈-refl {a = a} = ≈-intro (λ σ rσ r → SD-rel rσ a r)
 
 ≈-sym : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a b : Expr Γ Ψ A} → a ≈ b → b ≈ a
-≈-sym (≈-intro e) = ≈-intro (sym e)
+≈-sym {Γ = Γ} {Ψ} {A} (≈-intro e) = ≈-intro (λ σ rσ r → RelS-sym (RelD-sym A) (e σ rσ (RelD-sym ⟦ Γ ↾ Ψ ⟧ᶜ r)))
 
 ≈-trans : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a b c : Expr Γ Ψ A} → a ≈ b → b ≈ c → a ≈ c
-≈-trans (≈-intro e) (≈-intro f) = ≈-intro (trans e f)
-
-------------------------------------------------------------------------
--- The monad facts the coercion laws rest on: equalities of trees, each one
--- associativity law (plan 0.105).
-------------------------------------------------------------------------
-
-fmap-bind : ∀ {X Y Z : Set} (f : Y → Z) (m : T X) (k : X → T Y)
-          → fmapT f (m >>=T k) ≡ (m >>=T λ x → fmapT f (k x))
-fmap-bind f m k = LawfulMonad.assoc T-monad m k (λ y → ret (f y))
-
-bind-fmap : ∀ {X Y Z : Set} (f : X → Y) (m : T X) (k : Y → T Z)
-          → (fmapT f m >>=T k) ≡ (m >>=T λ x → k (f x))
-bind-fmap f m k = LawfulMonad.assoc T-monad m (λ x → ret (f x)) k
-
-ret-bind : ∀ {X Y : Set} (h : X) (f : X → T Y) → (returnT h >>=T f) ≡ f h
-ret-bind h f = refl
-
-bind-congʳ : ∀ {X Y : Set} (m : T X) {k k′ : X → T Y} → (∀ x → k x ≡ k′ x) → (m >>=T k) ≡ (m >>=T k′)
-bind-congʳ m h = cong (m >>=T_) (extensionality h)
+≈-trans {Γ = Γ} {Ψ} {A} (≈-intro e) (≈-intro f) =
+  ≈-intro (λ σ rσ r → RelS-trans (RelD-trans A) (e σ rσ r) (f σ rσ (RelD-rightself ⟦ Γ ↾ Ψ ⟧ᶜ r)))
 
 ------------------------------------------------------------------------
 -- Congruence
@@ -111,171 +97,141 @@ module _ {n} {Γ : Ctx n} where
 
   pair-congˢ : ∀ {Ψ₁ Ψ₂ A B} {a a′ : Expr Γ Ψ₁ A} {b b′ : Expr Γ Ψ₂ B}
             → a ≈ˢ a′ → b ≈ˢ b′ → pair a b ≈ˢ pair a′ b′
-  pair-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → returnT (va , vb))
+  pair-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → relS-ret (ra , rb)
 
-  -- The binary primitives: one clause shape, one `cong₂` each.
+  -- The binary primitives: one clause shape, one bind congruence each.
   add-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → add a b ≈ˢ add a′ b′
-  add-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ add-info (va , vb))
+  add-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ add-info (ra , rb)
   sub-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → sub a b ≈ˢ sub a′ b′
-  sub-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ sub-info (va , vb))
+  sub-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ sub-info (ra , rb)
   mul-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → mul a b ≈ˢ mul a′ b′
-  mul-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ mul-info (va , vb))
+  mul-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ mul-info (ra , rb)
   div-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → div a b ≈ˢ div a′ b′
-  div-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ div-info (va , vb))
+  div-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ div-info (ra , rb)
   mod-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → mod' a b ≈ˢ mod' a′ b′
-  mod-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ mod-info (va , vb))
+  mod-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ mod-info (ra , rb)
   fadd-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fadd a b ≈ˢ fadd a′ b′
-  fadd-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fadd-info (va , vb))
+  fadd-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fadd-info (ra , rb)
   fsub-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fsub a b ≈ˢ fsub a′ b′
-  fsub-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fsub-info (va , vb))
+  fsub-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fsub-info (ra , rb)
   fmul-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fmul a b ≈ˢ fmul a′ b′
-  fmul-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fmul-info (va , vb))
+  fmul-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fmul-info (ra , rb)
   fdiv-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fdiv a b ≈ˢ fdiv a′ b′
-  fdiv-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ fdiv-info (va , vb))
+  fdiv-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fdiv-info (ra , rb)
   lt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → lt a b ≈ˢ lt a′ b′
-  lt-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ lt-info (va , vb))
+  lt-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ lt-info (ra , rb)
   le-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → le a b ≈ˢ le a′ b′
-  le-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ le-info (va , vb))
+  le-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ le-info (ra , rb)
   gt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → gt a b ≈ˢ gt a′ b′
-  gt-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ gt-info (va , vb))
+  gt-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ gt-info (ra , rb)
   ge-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ge a b ≈ˢ ge a′ b′
-  ge-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ ge-info (va , vb))
+  ge-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ ge-info (ra , rb)
   eq-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → eq a b ≈ˢ eq a′ b′
-  eq-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ eq-info (va , vb))
+  eq-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ eq-info (ra , rb)
   ne-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ne a b ≈ˢ ne a′ b′
-  ne-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → SD.sigOpˢ fmt σ ne-info (va , vb))
+  ne-congˢ ea eb σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ ne-info (ra , rb)
 
   neg-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → neg a ≈ˢ neg a′
-  neg-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ v → SD.sigOpˢ fmt σ neg-info v)
+  neg-congˢ ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ neg-info)
 
   i2f-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → i2f a ≈ˢ i2f a′
-  i2f-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ va → SD.sigOpˢ fmt σ i2f-info va)
+  i2f-congˢ ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ i2f-info)
 
   coerce-congˢ : ∀ {Ψ A B} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
-  coerce-congˢ p = cong (λ X σ dγ → fmapT ⟦ p ⟧<: (X σ dγ))
+  coerce-congˢ p ea σ rσ r = RelS-fmap (ea σ rσ r) (<:-rel p)
 
   morph-app-congˢ : ∀ {Ψ A B} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → morph-app {A = A} {B = B} ir a ≈ˢ morph-app {A = A} {B = B} ir a′
-  morph-app-congˢ {Ψ} {A} {B} ir = cong (λ X σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))) dγ)
-    >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt (calls σ) ir (subst (λ z → z) (sym (cohᴰ A)) v)))
+  morph-app-congˢ {Ψ} {A} {B} ir ea σ rσ r =
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
 
   app-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Lang.Type.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A}
            → f ≈ˢ f′ → x ≈ˢ x′ → app f x ≈ˢ app f′ x′
-  app-congˢ {Ψ₁} {Ψ₂} {q = Zero} ef ex = cong (λ X σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) dγ) >>=T λ vf → vf _) ef
-  app-congˢ {Ψ₁} {Ψ₂} {q = One} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) dγ) >>=T λ vf →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx)
-  app-congˢ {Ψ₁} {Ψ₂} {q = Many} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx)
+  app-congˢ {q = Zero} ef ex σ rσ r = RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) (λ rf → rf)
+  app-congˢ {q = One} ef ex σ rσ r =
+    RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
+  app-congˢ {q = Many} ef ex σ rσ r =
+    RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
 
   effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Lang.Type.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
               → f ≈ˢ f′ → x ≈ˢ x′ → effApp {g = g} f x ≈ˢ effApp {g = g} f′ x′
-  effApp-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ → returnT (λ _ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx))
+  effApp-congˢ ef ex σ rσ r =
+    relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
 
   comp-congˢ : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)} {g g′ : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)}
             → f ≈ˢ f′ → g ≈ˢ g′ → comp' f g ≈ˢ comp' f′ g′
-  comp-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vg →
-    returnT (λ a → vg a >>=T vf))
+  comp-congˢ ef eg σ rσ r =
+    RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rg →
+    relS-ret (λ ra → RelS-bind (rg ra) rf)
 
   copair-congˢ : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)} {g g′ : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C)}
               → f ≈ˢ f′ → g ≈ˢ g′ → copair' f g ≈ˢ copair' f′ g′
-  copair-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ vf →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vg →
-    returnT (λ ab → [ vf , vg ]′ ab))
+  copair-congˢ ef eg σ rσ r =
+    RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rg →
+    relS-ret λ { {inj₁ _} {inj₁ _} ra → rf ra ; {inj₂ _} {inj₂ _} rb → rg rb ; {inj₁ _} {inj₂ _} () ; {inj₂ _} {inj₁ _} () }
 
   fork-congˢ : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {g g′ : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)}
             → f ≈ˢ f′ → g ≈ˢ g′ → fork' f g ≈ˢ fork' f′ g′
-  fork-congˢ {Ψ₁} {Ψ₂} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ vf →
-    Y σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vg →
-    returnT (λ a → vf a >>=T λ b → vg a >>=T λ c → returnT (b , c)))
+  fork-congˢ ef eg σ rσ r =
+    RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rg →
+    relS-ret (λ ra → RelS-bind (rf ra) λ rb → RelS-bind (rg ra) λ rc → relS-ret (rb , rc))
 
   curry-congˢ : ∀ {Ψ A B C π₀ π} {f f′ : Expr Γ Ψ ((A * B) ⇒[ mk-kind Many π ] C)}
              → f ≈ˢ f′ → curry' {π₀ = π₀} f ≈ˢ curry' f′
-  curry-congˢ = cong (λ X σ dγ → X σ dγ >>=T λ vf → returnT (λ a → returnT (λ b → vf (a , b))))
+  curry-congˢ ef σ rσ r = RelS-bind (ef σ rσ r) λ rf → relS-ret (λ ra → relS-ret (λ rb → rf (ra , rb)))
 
   cata-congˢ : ∀ {Ψ F A π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
-  cata-congˢ {Ψ} {F = F} {A} wf = cong (λ X σ dγ → X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ valg →   -- plan 0.113 B1
-    returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x))
+  cata-congˢ {F = F} {A} {π} wf eg σ rσ r =
+    RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {F} {A} {π} wf ralg)
 
   -- D273: the coalgebra lives in the context and is bound once, as `cata`'s.
-  ana-congˢ : ∀ {Ψ F A π₀ φ} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Lang.Type.Grade.fin φ) ] ⟦ F ⟧T A)}
+  ana-congˢ : ∀ {Ψ F A π₀ φ} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)}
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ˢ ana wf g′
-  ana-congˢ {Ψ} {F = F} {A} wf = cong (λ X σ dγ → X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ clo →
-    returnT (λ a → returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A) (clo a')) a)))
+  ana-congˢ {F = F} {A} {φ = φ} wf eg σ rσ r =
+    RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
 
   let-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B}
            → e₁ ≈ˢ e₁′ → e₂ ≈ˢ e₂′ → let' e₁ e₂ ≈ˢ let' e₁′ e₂′
-  let-congˢ {Ψ₁} {Ψ₂} {A} {q = Zero} _ = cong (λ Y σ dγ →
-    Y σ (bindᴰ0 {Γ = Γ} {A = A} (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) dγ)))
-  let-congˢ {Ψ₁} {Ψ₂} {A} {q = One} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) dγ) >>=T λ v1 →
-    Y σ (bindᴰ {Γ = Γ} {A = A} One (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) dγ) v1))
-  let-congˢ {Ψ₁} {Ψ₂} {A} {q = Many} = cong₂ (λ X Y σ dγ →
-    X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) dγ) >>=T λ v1 →
-    Y σ (bindᴰ {Γ = Γ} {A = A} Many (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) dγ) v1))
+  let-congˢ {q = Zero} _ e₂ σ rσ r = e₂ σ rσ (restrict-rel {Γ = Γ} _ r)
+  let-congˢ {q = One} e₁ e₂ σ rσ r =
+    RelS-bind (e₁ σ rσ (restrict-rel {Γ = Γ} _ r)) λ rv → e₂ σ rσ (restrict-rel {Γ = Γ} _ r , rv)
+  let-congˢ {q = Many} e₁ e₂ σ rσ r =
+    RelS-bind (e₁ σ rσ (restrict-rel {Γ = Γ} _ r)) λ rv → e₂ σ rσ (restrict-rel {Γ = Γ} _ r , rv)
 
   case-congˢ : ∀ {Ψs Ψₗ Ψᵣ qℓ qr A B C} {s s′ : Expr Γ Ψs (A + B)}
                 {l l′ : Expr (_,_^_ Γ A Many) (qℓ ∷ Ψₗ) C} {r r′ : Expr (_,_^_ Γ B Many) (qr ∷ Ψᵣ) C}
             → s ≈ˢ s′ → l ≈ˢ l′ → r ≈ˢ r′ → case' s l r ≈ˢ case' s′ l′ r′
-  case-congˢ {Ψs} {Ψₗ} {Ψᵣ} {qℓ} {qr} {A} {B} {s′ = s′} {l′ = l′} {r = r} es el er =
-    trans (cong₂ (λ X Y σ dγ →
-      X σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ) >>=T λ v →
-      [ (λ a → Y σ (bindᴰ {Γ = Γ} {A = A} qℓ (restrictᴰ {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) a))
-      , (λ b → ⟦ r ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = B} qr (restrictᴰ {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) b)) ]′ v) es el)
-          (cong (λ Z σ dγ →
-      ⟦ s′ ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ) >>=T λ v →
-      [ (λ a → ⟦ l′ ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} qℓ (restrictᴰ {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) a))
-      , (λ b → Z σ (bindᴰ {Γ = Γ} {A = B} qr (restrictᴰ {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) b)) ]′ v) er)
+  case-congˢ {qℓ = qℓ} {qr} es el er σ rσ re =
+    RelS-bind (es σ rσ (restrict-rel {Γ = Γ} _ re))
+      λ { {inj₁ _} {inj₁ _} ra → el σ rσ (bind-rel {Γ = Γ} qℓ (restrict-rel {Γ = Γ} _ (restrict-rel {Γ = Γ} _ re)) ra)
+        ; {inj₂ _} {inj₂ _} rb → er σ rσ (bind-rel {Γ = Γ} qr (restrict-rel {Γ = Γ} _ (restrict-rel {Γ = Γ} _ re)) rb)
+        ; {inj₁ _} {inj₂ _} ()
+        ; {inj₂ _} {inj₁ _} () }
 
   lam-congˢ : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤q q) ≡ true) {b b′ : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B}
            → b ≈ˢ b′ → lam {π = π} q ≤p b ≈ˢ lam q ≤p b′
-  lam-congˢ {q' = Zero} {A = A} Zero ≤p = cong (λ X σ dγ → returnT (λ _ → X σ (bindᴰ0 {Γ = Γ} {A = A} dγ)))
-  lam-congˢ {q' = Zero} {A = A} One  ≤p = cong (λ X σ dγ → returnT (λ a → X σ (bindᴰ0 {Γ = Γ} {A = A} dγ)))
-  lam-congˢ {q' = Zero} {A = A} Many ≤p = cong (λ X σ dγ → returnT (λ a → X σ (bindᴰ0 {Γ = Γ} {A = A} dγ)))
-  lam-congˢ {q' = One}  {A = A} One  ≤p = cong (λ X σ dγ → returnT (λ a → X σ (bindᴰ {Γ = Γ} {A = A} One dγ a)))
-  lam-congˢ {q' = One}  {A = A} Many ≤p = cong (λ X σ dγ → returnT (λ a → X σ (bindᴰ {Γ = Γ} {A = A} One dγ a)))
-  lam-congˢ {q' = Many} {A = A} Many ≤p = cong (λ X σ dγ → returnT (λ a → X σ (bindᴰ {Γ = Γ} {A = A} Many dγ a)))
+  lam-congˢ {q' = Zero} Zero ≤p eb σ rσ r = relS-ret (eb σ rσ r)
+  lam-congˢ {q' = Zero} One  ≤p eb σ rσ r = relS-ret (λ _ → eb σ rσ r)
+  lam-congˢ {q' = Zero} Many ≤p eb σ rσ r = relS-ret (λ _ → eb σ rσ r)
+  lam-congˢ {q' = One}  One  ≤p eb σ rσ r = relS-ret (λ ra → eb σ rσ (r , ra))
+  lam-congˢ {q' = One}  Many ≤p eb σ rσ r = relS-ret (λ ra → eb σ rσ (r , ra))
+  lam-congˢ {q' = Many} Many ≤p eb σ rσ r = relS-ret (λ ra → eb σ rσ (r , ra))
   lam-congˢ {q' = One}  Zero ()
   lam-congˢ {q' = Many} Zero ()
   lam-congˢ {q' = Many} One  ()
@@ -284,109 +240,105 @@ module _ {n} {Γ : Ctx n} where
 -- Coercion
 ------------------------------------------------------------------------
 
--- A conversion's meaning on a reflexive witness is the identity.
-fmap-refl : ∀ (A : Type) (m : T ⟦ A ⟧ᴰ) → fmapT ⟦ <:-refl A ⟧<: m ≡ m
-fmap-refl A m = trans (fmapT-cong (<:-refl-id A) m) (fmapT-id m)
-
 module _ {n} {Γ : Ctx n} where
 
   coerce-reflˢ : ∀ {Ψ A} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ˢ e
-  coerce-reflˢ {A = A} e = extensionality λ σ → extensionality λ dγ → fmap-refl A _
+  coerce-reflˢ {A = A} e σ rσ r = RelS-fmapˡ (SD-rel rσ e r) (<:-refl-rel A)
 
   coerce-transˢ : ∀ {Ψ A B C} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A)
                → coerce q (coerce p e) ≈ˢ coerce (<:-trans p q) e
-  coerce-transˢ p q e = extensionality λ σ → extensionality λ dγ →
-    trans (fmapT-∘ ⟦ q ⟧<: ⟦ p ⟧<: (⟦ e ⟧ˢ fmt σ dγ)) (fmapT-cong (λ x → sym (<:-trans-∘ p q x)) (⟦ e ⟧ˢ fmt σ dγ))
+  coerce-transˢ {C = C} p q e σ rσ r =
+    RelS-fmapˡ (RelS-fmap {R′ = λ u v → RelD C (⟦ q ⟧<: u) v} (SD-rel rσ e r) (<:-trans-rel p q)) (λ z → z)
 
   coerce-uniqˢ : ∀ {Ψ A B} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ˢ coerce q e
-  coerce-uniqˢ p q e = cong (λ r → ⟦ coerce r e ⟧ˢ fmt) (<:-unique p q)
+  coerce-uniqˢ p q e rewrite <:-unique p q = λ σ rσ r → SD-rel rσ (coerce q e) r
 
   pair-coerceˢ : ∀ {Ψ₁ Ψ₂ A A′ B B′} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
               → pair (coerce pa a) (coerce pb b) ≈ˢ coerce (sub-prod pa pb) (pair a b)
-  pair-coerceˢ pa pb a b = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap ⟦ pa ⟧<: (⟦ a ⟧ˢ fmt σ _) _)
-     (trans (bind-congʳ (⟦ a ⟧ˢ fmt σ _) (λ va → bind-fmap ⟦ pb ⟧<: (⟦ b ⟧ˢ fmt σ _) _))
-      (sym (trans (fmap-bind _ (⟦ a ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ a ⟧ˢ fmt σ _) (λ va → fmap-bind _ (⟦ b ⟧ˢ fmt σ _) _)))))
+  pair-coerceˢ pa pb a b σ rσ r =
+    RelS-assoc₂ (SD-rel rσ a (restrict-rel {Γ = Γ} _ r)) λ ra →
+      retargetˡ refl (RelS-assoc₂ (SD-rel rσ b (restrict-rel {Γ = Γ} _ r)) λ rb →
+        retargetˡ refl (retargetʳ refl (relS-ret (<:-rel pa ra , <:-rel pb rb))))
 
   -- Converting the head's domain is converting the argument.
   app-coerceˢ : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Lang.Type.Grade.pure ⊑π Once.Lang.Type.Grade.pure)
                  (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Lang.Type.Grade.pure ] B)) (x : Expr Γ Ψ₂ X)
              → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ˢ app f (coerce a x)
-  app-coerceˢ {B = B} a g f x = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _)
-     (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (bind-congʳ (⟦ x ⟧ˢ fmt σ _) (λ vx → fmap-refl B _)) (sym (bind-fmap ⟦ a ⟧<: (⟦ x ⟧ˢ fmt σ _) _)))
+  app-coerceˢ {B = B} a g f x σ rσ r =
+    RelS-assocˡ (SD-rel rσ f (restrict-rel {Γ = Γ} _ r)) λ rf →
+      retargetˡ refl (RelS-assocʳ (SD-rel rσ x (restrict-rel {Γ = Γ} _ r)) λ rx →
+        retargetʳ refl (RelS-fmapˡ (rf (<:-rel a rx)) (<:-refl-rel B)))
 
   -- Converting the outer arm's codomain is converting the composite's.
   comp-postˢ : ∀ {Ψ₁ Ψ₂ A M B B′ π} (p : B <: B′) (r r′ : π ⊑π π)
                 (f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M))
             → comp' (coerce (sub-arr (<:-refl M) p r) f) g ≈ˢ coerce (sub-arr (<:-refl A) p r′) (comp' f g)
-  comp-postˢ {A = A} {M} p r r′ f g = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _)
-     (sym (trans (fmap-bind _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (fmap-bind _ (⟦ g ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ g ⟧ˢ fmt σ _) λ vg →
-       cong returnT (extensionality λ x →
-         trans (cong (λ y → fmapT ⟦ p ⟧<: (vg y >>=T vf)) (<:-refl-id A x))
-          (trans (fmap-bind _ (vg x) vf)
-                 (bind-congʳ (vg x) λ m → cong (λ z → fmapT ⟦ p ⟧<: (vf z)) (sym (<:-refl-id M m)))))))))
+  comp-postˢ {A = A} {M} p r r′ f g σ rσ re =
+    RelS-assoc₂ (SD-rel rσ f (restrict-rel {Γ = Γ} _ re)) λ rf →
+      retargetˡ refl (RelS-assocʳ (SD-rel rσ g (restrict-rel {Γ = Γ} _ re)) λ rg →
+        retargetʳ refl (relS-ret λ ra →
+          RelS-assocʳ (rg (<:-refl-relʳ A ra)) λ rm → retargetʳ refl (RelS-fmap (rf (<:-refl-rel M rm)) (<:-rel p))))
 
   -- Converting the outer arm's domain is converting the inner arm's codomain.
   comp-preˢ : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π)
                (f : Expr Γ Ψ₁ (B′ ⇒[ mk-kind Many π′ ] C′)) (h : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B))
            → comp' (coerce (sub-arr q c g) f) h
              ≈ˢ comp' (coerce (sub-arr (<:-refl B′) c g) f) (coerce (sub-arr (<:-refl A) q (⊑π-refl π)) h)
-  comp-preˢ {A = A} {B′ = B′} q c g f h = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _)
-     (sym (trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (bind-fmap _ (⟦ h ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ h ⟧ˢ fmt σ _) λ vh →
-       cong returnT (extensionality λ x →
-         trans (bind-fmap ⟦ q ⟧<: (vh _) _)
-          (trans (cong (λ y → vh y >>=T λ z → fmapT ⟦ c ⟧<: (vf (⟦ <:-refl B′ ⟧<: (⟦ q ⟧<: z)))) (<:-refl-id A x))
-                 (bind-congʳ (vh x) λ z → cong (λ w → fmapT ⟦ c ⟧<: (vf w)) (<:-refl-id B′ (⟦ q ⟧<: z)))))))))
+  comp-preˢ {A = A} {B′ = B′} q c g f h σ rσ re =
+    RelS-assoc₂ (SD-rel rσ f (restrict-rel {Γ = Γ} _ re)) λ rf →
+      retargetˡ refl (retargetʳ refl (RelS-assocʳ (SD-rel rσ h (restrict-rel {Γ = Γ} _ re)) λ rh →
+        retargetʳ refl (relS-ret λ ra →
+          RelS-assocʳ (rh (<:-refl-relʳ A ra)) λ rb → retargetʳ refl (RelS-fmap (rf (<:-refl-relʳ B′ (<:-rel q rb))) (<:-rel c)))))
 
   -- Converting a lambda's body is converting the lambda.
   lam-coerceˢ : ∀ {Ψ q' π A B B′} (≤p : (q' ≤q Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
              → lam {π = π} Many ≤p (coerce p b) ≈ˢ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
-  lam-coerceˢ {q' = Zero} ≤p p b = refl
-  lam-coerceˢ {q' = One} {A = A} ≤p p b = extensionality λ σ → extensionality λ dγ →
-    cong returnT (extensionality λ x →
-      cong (λ y → fmapT ⟦ p ⟧<: (⟦ b ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} One dγ y))) (sym (<:-refl-id A x)))
-  lam-coerceˢ {q' = Many} {A = A} ≤p p b = extensionality λ σ → extensionality λ dγ →
-    cong returnT (extensionality λ x →
-      cong (λ y → fmapT ⟦ p ⟧<: (⟦ b ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} Many dγ y))) (sym (<:-refl-id A x)))
+  lam-coerceˢ {q' = Zero} ≤p p b σ rσ r = retargetʳ refl (relS-ret (λ _ → RelS-fmap (SD-rel rσ b r) (<:-rel p)))
+  lam-coerceˢ {q' = One} {A = A} ≤p p b σ rσ r =
+    retargetʳ refl (relS-ret (λ ra → RelS-fmap (SD-rel rσ b (r , <:-refl-relʳ A ra)) (<:-rel p)))
+  lam-coerceˢ {q' = Many} {A = A} ≤p p b σ rσ r =
+    retargetʳ refl (relS-ret (λ ra → RelS-fmap (SD-rel rσ b (r , <:-refl-relʳ A ra)) (<:-rel p)))
 
   copair-coerceˢ : ∀ {Ψ₁ Ψ₂ A B C C′ π} (p : C <: C′) (r : π ⊑π π)
                     (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C))
                 → copair' (coerce (sub-arr (<:-refl A) p r) f) (coerce (sub-arr (<:-refl B) p r) g)
                   ≈ˢ coerce (sub-arr (<:-refl (A + B)) p r) (copair' f g)
-  copair-coerceˢ p r f g = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _) (trans (bind-congʳ (⟦ f ⟧ˢ fmt σ _) (λ vf → bind-fmap _ (⟦ g ⟧ˢ fmt σ _) _))
-      (sym (trans (fmap-bind _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (fmap-bind _ (⟦ g ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ g ⟧ˢ fmt σ _) λ vg →
-        cong returnT (extensionality λ { (inj₁ a) → refl ; (inj₂ b) → refl }))))))
+  copair-coerceˢ {A = A} {B} p r f g σ rσ re =
+    RelS-assoc₂ (SD-rel rσ f (restrict-rel {Γ = Γ} _ re)) λ rf →
+      retargetˡ refl (RelS-assoc₂ (SD-rel rσ g (restrict-rel {Γ = Γ} _ re)) λ rg →
+        retargetˡ refl (retargetʳ refl (relS-ret
+          λ { {inj₁ _} {inj₁ _} ra → RelS-fmap (rf (<:-rel (<:-refl A) ra)) (<:-rel p)
+            ; {inj₂ _} {inj₂ _} rb → RelS-fmap (rg (<:-rel (<:-refl B) rb)) (<:-rel p)
+            ; {inj₁ _} {inj₂ _} ()
+            ; {inj₂ _} {inj₁ _} () })))
 
   fork-coerceˢ : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π)
                   (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C))
               → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g)
                 ≈ˢ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
-  fork-coerceˢ pb pc r f g = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ f ⟧ˢ fmt σ _) _) (trans (bind-congʳ (⟦ f ⟧ˢ fmt σ _) (λ vf → bind-fmap _ (⟦ g ⟧ˢ fmt σ _) _))
-      (sym (trans (fmap-bind _ (⟦ f ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ f ⟧ˢ fmt σ _) λ vf → trans (fmap-bind _ (⟦ g ⟧ˢ fmt σ _) _) (bind-congʳ (⟦ g ⟧ˢ fmt σ _) λ vg →
-        cong returnT (extensionality λ x →
-          trans (fmap-bind _ (vf _) _) (sym (trans (bind-fmap ⟦ pb ⟧<: (vf _) _) (bind-congʳ (vf _) λ b →
-            trans (bind-fmap ⟦ pc ⟧<: (vg _) _) (sym (trans (fmap-bind _ (vg _) _) (bind-congʳ (vg _) λ c → refl))))))))))))
+  fork-coerceˢ {A = A} pb pc r f g σ rσ re =
+    RelS-assoc₂ (SD-rel rσ f (restrict-rel {Γ = Γ} _ re)) λ rf →
+      retargetˡ refl (RelS-assoc₂ (SD-rel rσ g (restrict-rel {Γ = Γ} _ re)) λ rg →
+        retargetˡ refl (retargetʳ refl (relS-ret λ ra →
+          RelS-assoc₂ (rf (<:-rel (<:-refl A) ra)) λ rb →
+            retargetˡ refl (RelS-assoc₂ (rg (<:-rel (<:-refl A) ra)) λ rc →
+              retargetˡ refl (retargetʳ refl (relS-ret (<:-rel pb rb , <:-rel pc rc)))))))
 
   -- `initial` at any codomain: a function out of `Void` is unique.
   initial-coerceˢ : ∀ {A π} (r : π ⊑π π)
                  → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} IR.initial)
                    ≈ˢ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} IR.initial
-  initial-coerceˢ r = extensionality λ σ → extensionality λ dγ → cong returnT (extensionality λ ())
+  initial-coerceˢ r σ rσ re = retargetˡ refl (relS-ret λ { {()} })
 
 ------------------------------------------------------------------------
 -- `cata` fuses with a conversion of its carrier.
 --
 -- The algebra `alg : ⟦F⟧A ⇒ A`, converted to `⟦F⟧A′ ⇒ A′` (domain `d`,
 -- codomain `p`), folds to the conversion of `alg`'s fold. The relational fold
--- (`cataS-rel`) at `R t₁ t₂ = t₁ ≡ fmapT ⟦ p ⟧<: t₂` carries it: sequencing a
--- related layer is mapping the sequenced layer (`seq-rel`), and a layer
--- converted up and back down is unchanged (`layer-id`, since `d` after the
--- lifted `p` converts a type to ITSELF, and that conversion is the identity).
+-- (`cataS-rel`) carries, for each subtree, the converted fold related to the
+-- original fold mapped by `⟦ p ⟧<:` — and the original fold related to itself,
+-- which the layer step needs (`d` after `p` converts a type to ITSELF, and that
+-- conversion relates a self-related value to itself).
 ------------------------------------------------------------------------
 
 -- The functor-lifted relation on `⟦ F ⟧F`.
@@ -410,50 +362,72 @@ out-rel (wf-Sum wfF wfG) R {inj₁ _} {inj₂ _} ()
 out-rel (wf-Sum wfF wfG) R {inj₂ _} {inj₁ _} ()
 out-rel (wf-Prod wfF wfG) R {_ , _} {_ , _} (r₁ , r₂) = out-rel wfF R r₁ , out-rel wfG R r₂
 
-seq-rel : ∀ F {A A′ : Type} (p : A <: A′) {fc₁ : ⟦ F ⟧F (T ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T ⟦ A ⟧ᴰ)}
-        → RelF F (λ t₁ t₂ → t₁ ≡ fmapT ⟦ p ⟧<: t₂) fc₁ fc₂
-        → seqF F fc₁ ≡ fmapT (sem-fmap F ⟦ p ⟧<:) (seqF F fc₂)
-seq-rel (K B) p refl = refl
-seq-rel Id p r = r
-seq-rel (F ⊕ G) p {inj₁ _} {inj₁ x₂} r =
-  trans (cong (fmapT inj₁) (seq-rel F p r)) (trans (fmapT-∘ inj₁ (sem-fmap F ⟦ p ⟧<:) (seqF F x₂)) (sym (fmapT-∘ (sem-fmap (F ⊕ G) ⟦ p ⟧<:) inj₁ (seqF F x₂))))
-seq-rel (F ⊕ G) p {inj₂ _} {inj₂ y₂} r =
-  trans (cong (fmapT inj₂) (seq-rel G p r)) (trans (fmapT-∘ inj₂ (sem-fmap G ⟦ p ⟧<:) (seqF G y₂)) (sym (fmapT-∘ (sem-fmap (F ⊕ G) ⟦ p ⟧<:) inj₂ (seqF G y₂))))
-seq-rel (F ⊕ G) p {inj₁ _} {inj₂ _} ()
-seq-rel (F ⊕ G) p {inj₂ _} {inj₁ _} ()
-seq-rel (F ⊗ G) p {_ , _} {x₂ , y₂} (r₁ , r₂) rewrite seq-rel F p r₁ | seq-rel G p r₂ =
-  trans (bind-fmap _ (seqF F x₂) _) (trans (bind-congʳ (seqF F x₂) (λ u → bind-fmap _ (seqF G y₂) _))
-    (sym (trans (fmap-bind _ (seqF F x₂) _) (bind-congʳ (seqF F x₂) λ u → fmap-bind _ (seqF G y₂) _))))
+module _ {A A′ : Type} (p : A <: A′) where
+  -- The carrier relation: converted fold against the original fold mapped,
+  -- and the original fold related to itself.
+  Rc : T∞ ⟦ A′ ⟧ᴰ → T∞ ⟦ A ⟧ᴰ → Set
+  Rc t₁ t₂ = RelS (RelD A′) t₁ (fmap∞ ⟦ p ⟧<: t₂) × RelS (RelD A) t₂ t₂
 
-layer-id : ∀ {F} (wf : WellFormedF F) {A A′ : Type} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (l : ⟦ F ⟧F ⟦ A ⟧ᴰ)
-         → ⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ (sem-fmap F ⟦ p ⟧<: l)) ≡ coerce-functor⁻¹-D wf A l
-layer-id {K B} (wf-K b) d p l = trans (cong (λ r → ⟦ r ⟧<: _) (<:-unique d (<:-refl B))) (<:-refl-id B _)
-layer-id wf-Id {A} d p l =
-  trans (sym (<:-trans-∘ p d l)) (trans (cong (λ r → ⟦ r ⟧<: l) (<:-unique (<:-trans p d) (<:-refl A))) (<:-refl-id A l))
-layer-id (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p (inj₁ x) = cong inj₁ (layer-id w₁ d₁ p x)
-layer-id (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p (inj₂ y) = cong inj₂ (layer-id w₂ d₂ p y)
-layer-id (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p (x , y) = cong₂ _,_ (layer-id w₁ d₁ p x) (layer-id w₂ d₂ p y)
+  -- …and on a sequenced layer.
+  Rl : ∀ F → ⟦ F ⟧F ⟦ A′ ⟧ᴰ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
+  Rl F = RelF F (λ a b → RelD A′ a (⟦ p ⟧<: b) × RelD A b b)
+
+  seq-rel : ∀ F {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)}
+          → RelF F Rc fc₁ fc₂ → RelS (Rl F) (seqF∞ F fc₁) (seqF∞ F fc₂)
+  seq-rel (K B) e = relS-ret e
+  seq-rel Id (r , s) = RelS-pairʳ (RelS-unfmapʳ r) s
+  seq-rel (F ⊕ G) {inj₁ _} {inj₁ _} r = RelS-fmap {f = inj₁} {g = inj₁} (seq-rel F r) (λ z → z)
+  seq-rel (F ⊕ G) {inj₂ _} {inj₂ _} r = RelS-fmap {f = inj₂} {g = inj₂} (seq-rel G r) (λ z → z)
+  seq-rel (F ⊕ G) {inj₁ _} {inj₂ _} ()
+  seq-rel (F ⊕ G) {inj₂ _} {inj₁ _} ()
+  seq-rel (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) =
+    RelS-bind (seq-rel F r₁) λ ru → RelS-bind (seq-rel G r₂) λ rv → relS-ret (ru , rv)
+
+  -- The original layer's own relation, read off the paired one.
+  seq-self : ∀ F {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)} → RelF F Rc fc₁ fc₂ → FRel (RelS (RelD A)) F fc₂ fc₂
+  seq-self (K B) e = fr-K
+  seq-self Id (r , s) = fr-Id s
+  seq-self (F ⊕ G) {inj₁ _} {inj₁ _} r = fr-inl (seq-self F r)
+  seq-self (F ⊕ G) {inj₂ _} {inj₂ _} r = fr-inr (seq-self G r)
+  seq-self (F ⊕ G) {inj₁ _} {inj₂ _} ()
+  seq-self (F ⊕ G) {inj₂ _} {inj₁ _} ()
+  seq-self (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) = fr-pair (seq-self F r₁) (seq-self G r₂)
+
+-- A layer converted up by `p` and back down by `d` relates to the layer.
+layer-rel : ∀ {F} (wf : WellFormedF F) {A A′ : Type} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
+              {l₁ : ⟦ F ⟧F ⟦ A′ ⟧ᴰ} {l₂ : ⟦ F ⟧F ⟦ A ⟧ᴰ}
+          → Rl p F l₁ l₂ → RelD (⟦ F ⟧T A) (⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ l₁)) (coerce-functor⁻¹-D wf A l₂)
+layer-rel {K B} (wf-K b) d p {l₁} refl rewrite <:-unique d (<:-refl B) = <:-refl-rel B (base-refl b _)
+layer-rel wf-Id {A} d p {l₁} {l₂} (ra , rb) = RelD-trans A (<:-rel d ra) back
+  where
+    back : RelD A (⟦ d ⟧<: (⟦ p ⟧<: l₂)) l₂
+    back with <:-trans-rel p d rb
+    ... | t rewrite <:-unique (<:-trans p d) (<:-refl A) = RelD-trans A t (<:-refl-rel A rb)
+layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₁ _} r = layer-rel w₁ d₁ p r
+layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₂ _} r = layer-rel w₂ d₂ p r
+layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₂ _} ()
+layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₁ _} ()
+layer-rel (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
 
 cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}
               (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π′)
-              (valg : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ) (x : ⟦μ⟧ F)
-          → sem-cata wf (cata-ev-algˢ {F} {A′} wf (returnT (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x
-            ≡ fmapT ⟦ p ⟧<: (sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x)
-cata-core {F} wf {A} {A′} d p g valg x =
-  cataS-rel {translateF Carrier Carrier F} (λ t₁ t₂ → t₁ ≡ fmapT ⟦ p ⟧<: t₂) algR x
+              {valg valg′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
+          → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) valg valg′
+          → ∀ (x : ⟦μ⟧ F)
+          → Rc p (sem-cata wf (cata-ev-algˢ {F} {A′} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
+                 (sem-cata wf (cata-ev-algˢ {F} {A} wf (return∞ valg′)) x)
+cata-core {F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
+  cataS-rel {translateF Carrier Carrier F} (Rc p) algR x
   where
-    algR : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (λ t₁ t₂ → t₁ ≡ fmapT ⟦ p ⟧<: t₂) y₁ y₂
-         → cata-ev-algˢ {F} {A′} wf (returnT (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁)
-           ≡ fmapT ⟦ p ⟧<: (cata-ev-algˢ {F} {A} wf (returnT valg) (coerce-μ-out wf _ y₂))
-    S₂ : ∀ y₂ → T (⟦ F ⟧F ⟦ A ⟧ᴰ)
-    S₂ y₂ = seqF F (coerce-μ-out wf _ y₂)
+    self′ = RelD-rightself (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) ralg
+    algR : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (Rc p) y₁ y₂
+         → Rc p (cata-ev-algˢ {F} {A′} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁))
+                (cata-ev-algˢ {F} {A} wf (return∞ valg′) (coerce-μ-out wf _ y₂))
     algR {y₁} {y₂} r =
-      trans (bind-congʳ (seqF F (coerce-μ-out wf _ y₁)) (λ l → ret-bind (⟦ sub-arr {q = Many} d p g ⟧<: valg) (λ c → c (coerce-functor⁻¹-D wf A′ l))))
-      (trans (cong (λ m → m >>=T λ l → ⟦ sub-arr {q = Many} d p g ⟧<: valg (coerce-functor⁻¹-D wf A′ l)) (seq-rel F p (out-rel wf _ r)))
-      (trans (bind-fmap (sem-fmap F ⟦ p ⟧<:) (S₂ y₂) (λ l → ⟦ sub-arr {q = Many} d p g ⟧<: valg (coerce-functor⁻¹-D wf A′ l)))
-      (trans (bind-congʳ (S₂ y₂) (λ l → cong (λ z → fmapT ⟦ p ⟧<: (valg z)) (layer-id wf d p l)))
-      (trans (sym (fmap-bind ⟦ p ⟧<: (S₂ y₂) (λ l → valg (coerce-functor⁻¹-D wf A l))))
-             (cong (fmapT ⟦ p ⟧<:) (sym (bind-congʳ (S₂ y₂) (λ l → ret-bind valg (λ c → c (coerce-functor⁻¹-D wf A l))))))))))
+      RelS-assocʳ (seq-rel p F (out-rel wf _ r))
+        (λ rl → retargetˡ refl (retargetʳ refl (RelS-fmap (ralg (layer-rel wf d p rl)) (<:-rel p))))
+      , RelS-bind (seqF∞-rel F (seq-self p F (out-rel wf _ r)))
+          (λ fl → retargetˡ refl (retargetʳ refl (self′ (cfD⁻¹-rel wf A fl))))
 
 module _ {n} {Γ : Ctx n} where
 
@@ -461,10 +435,9 @@ module _ {n} {Γ : Ctx n} where
                   (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
               → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
                 ≈ˢ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
-  cata-coerceˢ {Ψ} wf d p g alg = extensionality λ σ → extensionality λ dγ →
-    trans (bind-fmap _ (⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ)) _)
-     (trans (bind-congʳ (⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ)) λ valg → cong returnT (extensionality λ x → cata-core wf d p g valg x))
-            (sym (fmap-bind _ (⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ)) _)))
+  cata-coerceˢ wf d p g alg σ rσ re =
+    RelS-assoc₂ (SD-rel rσ alg (restrict-rel {Γ = Γ} _ re)) λ ralg →
+      retargetˡ refl (retargetʳ refl (relS-ret λ { {x} refl → proj₁ (cata-core wf d p g ralg x) }))
 
 -- The same laws at `_≈_` live in `CoherenceLawsWrap` (split for the 30 s
 -- per-module check budget).

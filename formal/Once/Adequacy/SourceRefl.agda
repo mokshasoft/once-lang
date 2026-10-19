@@ -39,9 +39,11 @@ open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
 open import Once.Denotation.DenotTrace using (CallEnv; module CallEnv)
 open CallEnv using (ffiE)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.Sub using (⟦_⟧<:)
+open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
+open import Once.Denotation.ValueRelPER using (RelD-sym)
+open import Once.Lang.Laws.SubLaws using (<:-trans)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret; RelS-embed)
-open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; seqF∞-rel; cfD⁻¹-rel; cfD-rel; cμin-rel; sem-cata-rel; anaᴵ-rel; retargetˡ; retargetʳ)
+open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; seqF∞-rel; cfD⁻¹-rel; cfD-rel; cμin-rel; sem-cata-rel; anaᴵ-rel; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (RelEnv; liftFn-rel; RelT′-refl)
 open import Once.Adequacy.EnvRel using (restrict-rel; lookup-rel; bind-rel)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
@@ -93,6 +95,32 @@ RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ (x : String) (A :
 <:-rel (sub-sum a b) {inj₂ _} {inj₂ _} r = <:-rel b r
 <:-rel (sub-sum a b) {inj₁ _} {inj₂ _} ()
 <:-rel (sub-sum a b) {inj₂ _} {inj₁ _} ()
+
+-- Two conversions in sequence relate to the composite conversion.
+<:-trans-rel : ∀ {A B C} (p : A <: B) (q : B <: C) {x y : ⟦ A ⟧ᴰ} → RelD A x y
+             → RelD C (⟦ q ⟧<: (⟦ p ⟧<: x)) (⟦ <:-trans p q ⟧<: y)
+<:-trans-rel sub-void q {()}
+<:-trans-rel sub-unit  q r = <:-rel q r
+<:-trans-rel sub-int   q r = <:-rel q r
+<:-trans-rel sub-float q r = <:-rel q r
+<:-trans-rel sub-μ     q r = <:-rel q r
+<:-trans-rel sub-rigid q {()}
+<:-trans-rel (sub-arr {q = Zero} a b _) (sub-arr a′ b′ _) r =
+  RelS-fmapˡ (RelS-fmap r (<:-trans-rel b b′)) (λ z → z)
+<:-trans-rel (sub-arr {q = One} a b _) (sub-arr a′ b′ _) r rx =
+  RelS-fmapˡ (RelS-fmap (r (<:-trans-rel a′ a rx)) (<:-trans-rel b b′)) (λ z → z)
+<:-trans-rel (sub-arr {q = Many} a b _) (sub-arr a′ b′ _) r rx =
+  RelS-fmapˡ (RelS-fmap (r (<:-trans-rel a′ a rx)) (<:-trans-rel b b′)) (λ z → z)
+<:-trans-rel (sub-prod a b) (sub-prod a′ b′) {_ , _} {_ , _} (r , s) = <:-trans-rel a a′ r , <:-trans-rel b b′ s
+<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₁ _} {inj₁ _} r = <:-trans-rel a a′ r
+<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₂ _} {inj₂ _} r = <:-trans-rel b b′ r
+<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₁ _} {inj₂ _} ()
+<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₂ _} {inj₁ _} ()
+<:-trans-rel (sub-ν _) (sub-ν _) r = r
+
+-- The identity conversion on the right.
+<:-refl-relʳ : ∀ A {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A x (⟦ <:-refl A ⟧<: y)
+<:-refl-relʳ A r = RelD-sym A (<:-refl-rel A (RelD-sym A r))
 
 module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
 

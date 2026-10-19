@@ -81,6 +81,17 @@ RelSB-rightself h (s-next r) = s-next (RelS-rightself h r)
 RelSB-rightself h (s-call f) = s-call (λ b → RelSB-rightself h (f b))
 RelSB-rightself h s-halt     = s-halt
 
+-- A relation to a run, paired with that run's relation to itself.
+RelS-pairʳ  : ∀ {X Y} {R : X → Y → Set} {S : Y → Y → Set} {m : T∞ X} {n : T∞ Y}
+            → RelS R m n → RelS S n n → RelS (λ a b → R a b × S b b) m n
+RelSB-pairʳ : ∀ {X Y} {R : X → Y → Set} {S : Y → Y → Set} {l l′}
+            → RelSB R l l′ → RelSB S l′ l′ → RelSB (λ a b → R a b × S b b) l l′
+forceS (RelS-pairʳ r s) = RelSB-pairʳ (forceS r) (forceS s)
+RelSB-pairʳ (s-ret r)  (s-ret s)  = s-ret (r , s)
+RelSB-pairʳ (s-next r) (s-next s) = s-next (RelS-pairʳ r s)
+RelSB-pairʳ (s-call f) (s-call g) = s-call (λ b → RelSB-pairʳ (f b) (g b))
+RelSB-pairʳ s-halt     s-halt     = s-halt
+
 ------------------------------------------------------------------------
 -- Streams.
 ------------------------------------------------------------------------

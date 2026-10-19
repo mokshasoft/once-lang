@@ -138,6 +138,7 @@ base-refl base-rigid      ()
 ------------------------------------------------------------------------
 
 open import Once.Lang.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞; bindBlock; force)
+open import Once.Lang.Trace using (ret; call; halt)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
 
@@ -192,6 +193,47 @@ RelSB-assocˡ (s-ret r)  c = forceS (c r)
 RelSB-assocˡ (s-next h) c = s-next (RelS-assocˡ h c)
 RelSB-assocˡ (s-call f) c = s-call (λ b → RelSB-assocˡ (f b) c)
 RelSB-assocˡ s-halt     c = s-halt
+
+-- The mirror image: a bind related to a bind of a bind.
+RelS-assocʳ  : ∀ {X Y Z W V} {R₀ : W → X → Set} {R : V → Z → Set} {m : T∞ W} {n : T∞ X}
+                 {f : X → T∞ Y} {g : Y → T∞ Z} {k : W → T∞ V}
+             → RelS R₀ m n → (∀ {a b} → R₀ a b → RelS R (k a) (f b >>=∞ g))
+             → RelS R (m >>=∞ k) ((n >>=∞ f) >>=∞ g)
+RelSB-assocʳ : ∀ {X Y Z W V} {R₀ : W → X → Set} {R : V → Z → Set} {l l′}
+                 {f : X → T∞ Y} {g : Y → T∞ Z} {k : W → T∞ V}
+             → RelSB R₀ l l′ → (∀ {a b} → R₀ a b → RelS R (k a) (f b >>=∞ g))
+             → RelSB R (bindBlock l k) (bindBlock (bindBlock l′ f) g)
+forceS (RelS-assocʳ h c) = RelSB-assocʳ (forceS h) c
+RelSB-assocʳ (s-ret r)  c = forceS (c r)
+RelSB-assocʳ (s-next h) c = s-next (RelS-assocʳ h c)
+RelSB-assocʳ (s-call f) c = s-call (λ b → RelSB-assocʳ (f b) c)
+RelSB-assocʳ s-halt     c = s-halt
+
+-- Both sides binds of binds.
+RelS-assoc₂  : ∀ {X X′ Y Y′ Z Z′} {R₀ : X → X′ → Set} {R : Z → Z′ → Set} {m : T∞ X} {n : T∞ X′}
+                 {f : X → T∞ Y} {g : Y → T∞ Z} {f′ : X′ → T∞ Y′} {g′ : Y′ → T∞ Z′}
+             → RelS R₀ m n → (∀ {a b} → R₀ a b → RelS R (f a >>=∞ g) (f′ b >>=∞ g′))
+             → RelS R ((m >>=∞ f) >>=∞ g) ((n >>=∞ f′) >>=∞ g′)
+RelSB-assoc₂ : ∀ {X X′ Y Y′ Z Z′} {R₀ : X → X′ → Set} {R : Z → Z′ → Set} {l l′}
+                 {f : X → T∞ Y} {g : Y → T∞ Z} {f′ : X′ → T∞ Y′} {g′ : Y′ → T∞ Z′}
+             → RelSB R₀ l l′ → (∀ {a b} → R₀ a b → RelS R (f a >>=∞ g) (f′ b >>=∞ g′))
+             → RelSB R (bindBlock (bindBlock l f) g) (bindBlock (bindBlock l′ f′) g′)
+forceS (RelS-assoc₂ h c) = RelSB-assoc₂ (forceS h) c
+RelSB-assoc₂ (s-ret r)  c = forceS (c r)
+RelSB-assoc₂ (s-next h) c = s-next (RelS-assoc₂ h c)
+RelSB-assoc₂ (s-call f) c = s-call (λ b → RelSB-assoc₂ (f b) c)
+RelSB-assoc₂ s-halt     c = s-halt
+
+-- A map on the right, read back into the relation.
+RelS-unfmapʳ  : ∀ {X Y Y′} {R : X → Y′ → Set} {g : Y → Y′} {m : T∞ X} {n : T∞ Y}
+              → RelS R m (fmap∞ g n) → RelS (λ a b → R a (g b)) m n
+RelSB-unfmapʳ : ∀ {X Y Y′} {R : X → Y′ → Set} {g : Y → Y′} {l l′}
+              → RelSB R l (bindBlock l′ (λ y → return∞ (g y))) → RelSB (λ a b → R a (g b)) l l′
+forceS (RelS-unfmapʳ {n = n} h) = RelSB-unfmapʳ {l′ = force n} (forceS h)
+RelSB-unfmapʳ {l′ = ret (inj₁ y)} (s-ret r)  = s-ret r
+RelSB-unfmapʳ {l′ = ret (inj₂ n)} (s-next h) = s-next (RelS-unfmapʳ h)
+RelSB-unfmapʳ {l′ = call o a k}   (s-call f) = s-call (λ b → RelSB-unfmapʳ {l′ = k b} (f b))
+RelSB-unfmapʳ {l′ = halt o a}     s-halt     = s-halt
 
 -- Two runs that force to the same block are interchangeable (a bind of a
 -- returned value forces to its continuation, so this is how left identity is
