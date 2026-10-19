@@ -25,9 +25,12 @@ open import Data.Unit using (tt)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind; pure; eff; act)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
-open import Once.Lang.Type.WellFormed using (con-base; con-fun; base-Unit)
+open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind; pure; eff; act; fin)
+open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; ⟦_⟧T)
+open import Once.Lang.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
+open import Once.Semantics.Machine using (sem-cata)
+open import Once.Lang.StreamInf using (anaFᴵ)
+open import Once.Denotation.ValueDomain using (coerce-functor-D)
 open import Once.Lang.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Lang.Type.Sub
@@ -51,6 +54,23 @@ open SD using (DefsSem; module DefsSem)
 open DefsSem using (calls; refs)
 
 open Once.Surface.Syntax.Expr
+
+-- The fold of related algebras is a related closure.
+cata-clo-rel : ∀ {F A π} (wf : WellFormedF F) {va vb : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
+             → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) va vb
+             → RelD (μ-type F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ va)) x)
+                                                       (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ vb)) x)
+cata-clo-rel {F} {A} wf {va} {vb} ralg {x} refl =
+  sem-cata-rel wf {R = RelS (RelD A)} {SD.cata-ev-algˢ wf (return∞ va)} {SD.cata-ev-algˢ wf (return∞ vb)}
+    (λ fr → RelS-bind (seqF∞-rel F fr) λ fl → retargetˡ refl (retargetʳ refl (ralg (cfD⁻¹-rel wf A fl)))) x
+
+-- The unfold of related coalgebras, from related seeds, is a related stream.
+ana-clo-rel : ∀ {F A φ} (wf : WellFormedF F) {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ}
+            → RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c c′
+            → ∀ {a a′} → RelD A a a′
+            → RelD (ν-type F φ) (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c a')) a)
+                                (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′)
+ana-clo-rel {F} {A} wf rc ra = anaᴵ-rel (λ ra′ → RelS-fmap (RelS-fmap (rc ra′) (cfD-rel wf A)) (cμin-rel F)) ra
 
 -- Related definitions environments: related calls, related references.
 RelDefs : DefsSem → DefsSem → Set
@@ -165,14 +185,10 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   SD-rel (lift-morphism {A = A} {B = B} ir) r = relS-ret (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
   SD-rel (morph-app {Γ = Γ} {A = A} {B = B} ir e) r =
     RelS-bind (SD-rel e (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
-  SD-rel (cata {Γ = Γ} {F = F} {A = A} wf alg) r =
-    RelS-bind (SD-rel alg (restrict-rel {Γ = Γ} _ r)) λ {va} {vb} ralg →
-      relS-ret λ { {x} refl →
-        sem-cata-rel wf {R = RelS (RelD A)} {SD.cata-ev-algˢ wf (return∞ va)} {SD.cata-ev-algˢ wf (return∞ vb)}
-          (λ fr → RelS-bind (seqF∞-rel F fr) λ fl → retargetˡ refl (retargetʳ refl (ralg (cfD⁻¹-rel wf A fl)))) x }
-  SD-rel (ana {Γ = Γ} {F = F} {A = A} wf coalg) r =
-    RelS-bind (SD-rel coalg (restrict-rel {Γ = Γ} _ r)) λ rc →
-      relS-ret λ ra → relS-ret (anaᴵ-rel (λ ra′ → RelS-fmap (RelS-fmap (rc ra′) (cfD-rel wf A)) (cμin-rel F)) ra)
+  SD-rel (cata {Γ = Γ} {F = F} {A = A} {π = π} wf alg) r =
+    RelS-bind (SD-rel alg (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {F} {A} {π} wf ralg)
+  SD-rel (ana {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg) r =
+    RelS-bind (SD-rel coalg (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
   SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero pure ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (value-info name base-Unit bC) tt)
   SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero eff ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind Zero eff) name base-Unit bC) tt)
   SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero act ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind Zero act) name base-Unit bC) tt)

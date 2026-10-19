@@ -237,6 +237,28 @@ mutual
   mapEmbνᵃ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
   mapEmbνᵃ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbνᵃ-∼ H G₁ r₁ , mapEmbνᵃ-∼ H G₂ r₂
 
+-- `embed` is a monad morphism: a mapped finite block embeds as the map of its
+-- embedding (step for step, the map applied at the return).
+RelS-embed-fmap : ∀ {X Y Z : Set} {g : X → Y} {S : Y → Z → Set} (t : T X) {n : T∞ Z}
+                → RelS (λ l r → S (g l) r) (embed t) n → RelS S (embed (fmapT g t)) n
+RelS-embed-fmap {g = g} t h = RelS-≈ˡ (embed-bind t (λ l → ret (g l))) (emb-fmap h)
+  where
+    emb-fmap  : ∀ {S : _ → _ → Set} {m n} → RelS (λ l r → S (g l) r) m n → RelS S (m >>=∞ λ l → embed (ret (g l))) n
+    emb-fmapB : ∀ {S : _ → _ → Set} {b b′} → RelSB (λ l r → S (g l) r) b b′
+              → RelSB S (Once.Lang.Iterative.bindBlock b λ l → embed (ret (g l))) b′
+    forceS (emb-fmap h) = emb-fmapB (forceS h)
+    emb-fmapB (s-ret r)  = s-ret r
+    emb-fmapB (s-next h) = s-next (emb-fmap h)
+    emb-fmapB (s-call f) = s-call (λ v → emb-fmapB (f v))
+    emb-fmapB s-halt     = s-halt
+
+-- A pure meaning fed to a continuation directly, against the IR's bind.
+RelGᵖ-app : ∀ {A B} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+          → RelGM pure A m t₂
+          → (∀ {a b} → RelGV A a b → RelGM pure B (k a) (g b))
+          → RelGM pure B (k m) (t₂ >>=∞ g)
+RelGᵖ-app {A} {B} {m} {t₂} {k} {g} rt rk = subst (λ z → RelGM pure B z (t₂ >>=∞ g)) (>>=ᵖ-β m k) (RelGᵖ-bind {A} {B} {m} {t₂} {k} {g} rt rk)
+
 -- A pure meaning, embedded at any grade (what a lambda's body is, D250).
 RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
 RelGM-ret ⊑-pure r = r
