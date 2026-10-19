@@ -25,7 +25,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many)
 open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
@@ -48,6 +48,9 @@ open import Once.Denotation.TraceMonadInfLaws
   using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; relS-ret; RelS-bind; RelS-≈ˡ; embed-bind)
 open RelS using (forceS)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
+open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel; RelS-mono)
+open import Once.Denotation.ValueRelPER using (RelD-sym; RelD-trans; RelD-leftself; RelD-rightself; RelS-meet)
+open StreamRel using (forceR)
 open Once.Lang.Graded.νᵖ using (forceᵖ)
 
 ------------------------------------------------------------------------
@@ -101,10 +104,14 @@ RelGV (A + B) (inj₂ b₁) (inj₂ b₂) = RelGV B b₁ b₂
 RelGV (A + B) (inj₁ _)  (inj₂ _)  = ⊥
 RelGV (A + B) (inj₂ _)  (inj₁ _)  = ⊥
 -- The arrow: related arguments to related results AT THE ARROW'S GRADE. A pure
--- arrow's Kleisli twin must answer silently with a related value.
-RelGV (A ⇒[ mk-kind Zero π ] B) f g = RelGM π B (f tt) (g tt)
-RelGV (A ⇒[ mk-kind One  π ] B) f g = ∀ {a b} → RelGV A a b → RelGM π B (f a) (g b)
-RelGV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelGV A a b → RelGM π B (f a) (g b)
+-- arrow's Kleisli twin must answer silently with a related value. The
+-- implementation's closure is also related to itself (`RelD`): an
+-- implementation related to it (the IR, which `faithful` relates to the
+-- source) then inherits the relation (`GV-D`) — the standard PER condition
+-- (plan 0.119 D5).
+RelGV (A ⇒[ mk-kind Zero π ] B) f g = RelGM π B (f tt) (g tt) × RelD (A ⇒[ mk-kind Zero π ] B) g g
+RelGV (A ⇒[ mk-kind One  π ] B) f g = (∀ {a b} → RelGV A a b → RelGM π B (f a) (g b)) × RelD (A ⇒[ mk-kind One π ] B) g g
+RelGV (A ⇒[ mk-kind Many π ] B) f g = (∀ {a b} → RelGV A a b → RelGM π B (f a) (g b)) × RelD (A ⇒[ mk-kind Many π ] B) g g
 
 ------------------------------------------------------------------------
 -- The monad lemmas.
@@ -235,3 +242,137 @@ RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T∞ ⟦ B 
 RelGM-ret ⊑-pure r = r
 RelGM-ret ⊑-pa   r = sameˡ refl r
 RelGM-ret ⊑-pe   r = r
+
+------------------------------------------------------------------------
+-- The implementation side is self-related, and the relation transfers along
+-- `RelD` on the implementation side (plan 0.119 D5).
+------------------------------------------------------------------------
+
+-- Streams. A Spec stream's IR twin is self-related; and an IR stream related
+-- to the twin is a twin too.
+module _ {H : SFunctor} where
+  pd-self   : ∀ {x : νᵖ H} {y : νᴵ H} → x ∼ᵖᵈ y → StreamRel H y y
+  pd-run    : ∀ {m : T∞ (⟦ H ⟧SF (νᵖ H))} {n} → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) m n → RelS (LayerRel H H) n n
+  pd-block  : ∀ {l l′} → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) l l′ → RelSB (LayerRel H H) l′ l′
+  pd-layer  : ∀ (G : SFunctor) {l l′} → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → LayerRel H G l′ l′
+  forceR (pd-self r) = pd-run (force-∼ᵖᵈ r)
+  forceS (pd-run r) = pd-block (forceS r)
+  pd-block (s-ret r)  = s-ret (pd-layer H r)
+  pd-block (s-next r) = s-next (pd-run r)
+  pd-block (s-call f) = s-call (λ b → pd-block (f b))
+  pd-block s-halt     = s-halt
+  pd-layer (SK B)     e = refl
+  pd-layer SId        r = pd-self r
+  pd-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = pd-layer G₁ r
+  pd-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = pd-layer G₂ r
+  pd-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+  pd-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+  pd-layer (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = pd-layer G₁ r , pd-layer G₂ s
+
+  ad-self   : ∀ {x : νᵈ H} {y : νᴵ H} → x ∼ᵈ y → StreamRel H y y
+  ad-run    : ∀ {m : T∞ (⟦ H ⟧SF (νᵈ H))} {n} → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) m n → RelS (LayerRel H H) n n
+  ad-block  : ∀ {l l′} → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) l l′ → RelSB (LayerRel H H) l′ l′
+  ad-layer  : ∀ (G : SFunctor) {l l′} → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) l l′ → LayerRel H G l′ l′
+  forceR (ad-self r) = ad-run (force-∼ r)
+  forceS (ad-run r) = ad-block (forceS r)
+  ad-block (s-ret r)  = s-ret (ad-layer H r)
+  ad-block (s-next r) = s-next (ad-run r)
+  ad-block (s-call f) = s-call (λ b → ad-block (f b))
+  ad-block s-halt     = s-halt
+  ad-layer (SK B)     e = refl
+  ad-layer SId        r = ad-self r
+  ad-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = ad-layer G₁ r
+  ad-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = ad-layer G₂ r
+  ad-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+  ad-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+  ad-layer (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = ad-layer G₁ r , ad-layer G₂ s
+
+  pd-D       : ∀ {x : νᵖ H} {s i : νᴵ H} → x ∼ᵖᵈ s → StreamRel H i s → x ∼ᵖᵈ i
+  pd-D-run   : ∀ {m : T∞ (⟦ H ⟧SF (νᵖ H))} {n n′} → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) m n → RelS (LayerRel H H) n′ n
+             → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) m n′
+  pd-D-block : ∀ {l l′ l″} → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) l l′ → RelSB (LayerRel H H) l″ l′
+             → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) l l″
+  pd-D-layer : ∀ (G : SFunctor) {l l′ l″} → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → LayerRel H G l″ l′ → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l″
+  force-∼ᵖᵈ (pd-D r d) = pd-D-run (force-∼ᵖᵈ r) (forceR d)
+  forceS (pd-D-run r d) = pd-D-block (forceS r) (forceS d)
+  pd-D-block (s-ret r)  (s-ret d)  = s-ret (pd-D-layer H r d)
+  pd-D-block (s-next r) (s-next d) = s-next (pd-D-run r d)
+  pd-D-block (s-call f) (s-call g) = s-call (λ b → pd-D-block (f b) (g b))
+  pd-D-block s-halt     s-halt     = s-halt
+  pd-D-layer (SK B)     e e′ = trans e (sym e′)
+  pd-D-layer SId        r d  = pd-D r d
+  pd-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r d = pd-D-layer G₁ r d
+  pd-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r d = pd-D-layer G₂ r d
+  pd-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} () _
+  pd-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} () _
+  pd-D-layer (G₁ S⊕ G₂) {_} {inj₁ _} {inj₂ _} _ ()
+  pd-D-layer (G₁ S⊕ G₂) {_} {inj₂ _} {inj₁ _} _ ()
+  pd-D-layer (G₁ S⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = pd-D-layer G₁ r d , pd-D-layer G₂ s d′
+
+  ad-D       : ∀ {x : νᵈ H} {s i : νᴵ H} → x ∼ᵈ s → StreamRel H i s → x ∼ᵈ i
+  ad-D-run   : ∀ {m : T∞ (⟦ H ⟧SF (νᵈ H))} {n n′} → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) m n → RelS (LayerRel H H) n′ n
+             → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) m n′
+  ad-D-block : ∀ {l l′ l″} → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) l l′ → RelSB (LayerRel H H) l″ l′
+             → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) l l″
+  ad-D-layer : ∀ (G : SFunctor) {l l′ l″} → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) l l′ → LayerRel H G l″ l′ → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) l l″
+  force-∼ (ad-D r d) = ad-D-run (force-∼ r) (forceR d)
+  forceS (ad-D-run r d) = ad-D-block (forceS r) (forceS d)
+  ad-D-block (s-ret r)  (s-ret d)  = s-ret (ad-D-layer H r d)
+  ad-D-block (s-next r) (s-next d) = s-next (ad-D-run r d)
+  ad-D-block (s-call f) (s-call g) = s-call (λ b → ad-D-block (f b) (g b))
+  ad-D-block s-halt     s-halt     = s-halt
+  ad-D-layer (SK B)     e e′ = trans e (sym e′)
+  ad-D-layer SId        r d  = ad-D r d
+  ad-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r d = ad-D-layer G₁ r d
+  ad-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r d = ad-D-layer G₂ r d
+  ad-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} () _
+  ad-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} () _
+  ad-D-layer (G₁ S⊕ G₂) {_} {inj₁ _} {inj₂ _} _ ()
+  ad-D-layer (G₁ S⊕ G₂) {_} {inj₂ _} {inj₁ _} _ ()
+  ad-D-layer (G₁ S⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = ad-D-layer G₁ r d , ad-D-layer G₂ s d′
+
+-- The implementation side of a related pair is related to itself.
+right-self : ∀ (A : Type) {x : ⟦ A ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelD A y y
+right-self Unit r = tt
+right-self Void {()}
+right-self Int r = refl
+right-self Float r = refl
+right-self (μ-type F) r = refl
+right-self (ν-type F pure) r = pd-self r
+right-self (ν-type F act) r = ad-self r
+right-self (rigid _ _) {()}
+right-self (A * B) {_ , _} {_ , _} (r , s) = right-self A r , right-self B s
+right-self (A + B) {inj₁ _} {inj₁ _} r = right-self A r
+right-self (A + B) {inj₂ _} {inj₂ _} r = right-self B r
+right-self (A + B) {inj₁ _} {inj₂ _} ()
+right-self (A + B) {inj₂ _} {inj₁ _} ()
+right-self (A ⇒[ mk-kind Zero π ] B) (_ , d) = d
+right-self (A ⇒[ mk-kind One π ] B) (_ , d) = d
+right-self (A ⇒[ mk-kind Many π ] B) (_ , d) = d
+
+-- An implementation related (`RelD`) to a Spec meaning's twin is a twin too.
+mutual
+  GV-D : ∀ (A : Type) {c : ⟦ A ⟧ᵛ} {s i : ⟦ A ⟧ᴰ} → RelGV A c s → RelD A i s → RelGV A c i
+  GV-D Unit r d = tt
+  GV-D Void {()}
+  GV-D Int r d = trans r (sym d)
+  GV-D Float r d = trans r (sym d)
+  GV-D (μ-type F) r d = trans r (sym d)
+  GV-D (ν-type F pure) r d = pd-D r d
+  GV-D (ν-type F act) r d = ad-D r d
+  GV-D (rigid _ _) {()}
+  GV-D (A * B) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = GV-D A r d , GV-D B s d′
+  GV-D (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r d = GV-D A r d
+  GV-D (A + B) {inj₂ _} {inj₂ _} {inj₂ _} r d = GV-D B r d
+  GV-D (A + B) {inj₁ _} {inj₂ _} ()
+  GV-D (A + B) {inj₂ _} {inj₁ _} ()
+  GV-D (A + B) {inj₁ _} {inj₁ _} {inj₂ _} _ ()
+  GV-D (A + B) {inj₂ _} {inj₂ _} {inj₁ _} _ ()
+  GV-D (A ⇒[ mk-kind Zero π ] B) (h , _) d = GM-D π B h d , RelD-leftself (A ⇒[ mk-kind Zero π ] B) d
+  GV-D (A ⇒[ mk-kind One π ] B) (h , _) d =
+    (λ rab → GM-D π B (h rab) (d (right-self A rab))) , RelD-leftself (A ⇒[ mk-kind One π ] B) d
+  GV-D (A ⇒[ mk-kind Many π ] B) (h , _) d =
+    (λ rab → GM-D π B (h rab) (d (right-self A rab))) , RelD-leftself (A ⇒[ mk-kind Many π ] B) d
+
+  GM-D : ∀ (π : Purity) (A : Type) {m : M π ⟦ A ⟧ᵛ} {s i : T∞ ⟦ A ⟧ᴰ} → RelGM π A m s → RelS (RelD A) i s → RelGM π A m i
+  GM-D π A r d = RelS-mono (λ { (_ , gv , dv) → GV-D A gv dv }) (RelS-meet r d)
