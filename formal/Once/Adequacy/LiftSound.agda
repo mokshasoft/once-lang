@@ -41,11 +41,12 @@ open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.SigOp.Block using (block-semM; readLeafM; block-info; shape-as-type-base)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (try-lift; shape-of; has-op; block-as-ir)
-open import Once.Postulates using (extensionality)
 open import Data.Maybe using () renaming (map to mapᴹ)
-open import Once.Lang.Trace using (T; returnT; _>>=T_)
+open import Once.Lang.Trace using (T; ret)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Once.Lang.Iterative using (T∞; force; return∞; _>>=∞_; bindBlock)
 open import Once.Denotation.DenotTrace using (evalᴰ)
-open import Once.Arith.Machine.Shape using (InputShape; shape-int; shape-float; shape-pair; Fst; Snd; InputPath; Path; here-int; here-flt; go-fst; go-snd; typePath?)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Fst; Snd; InputPath; Path; here-int; here-flt; go-fst; go-snd; typePath?)
 open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-through; rp-at; rp-comp; pair-path;
   PView; pv-id; pv-fst; pv-snd; pv-pair; pv-comp; pv-other; p-view; is-terminal?; TView; tv-term; tv-comp; tv-other; t-view; it-at;
   recognise-body; recognise-binop; recognise-prim; binop-at; rb-at; rb-view; RBView; v-reassoc; v-sigop; v-cint; v-cflt; v-other;
@@ -61,7 +62,6 @@ import Once.Spec.Word as OnceWord
 import Once.Spec.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 open import Once.Lang.Trace using ()
-open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityˡ)
 
 ------------------------------------------------------------------------
 -- (a) Plumbing means a value and no event.
@@ -74,7 +74,7 @@ open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; >>=T-identityˡ)
 ∧-r {true} e = e
 
 Val : ∀ {X Y} → IR X Y → Set
-Val {X} {Y} g = ∀ (a : ⟦ X ⟧ᴰᴵ) → Σ (⟦ Y ⟧ᴰᴵ) (λ b → evalᴰ fmt ρ g a ≡ returnT b)
+Val {X} {Y} g = ∀ (a : ⟦ X ⟧ᴰᴵ) → Σ (⟦ Y ⟧ᴰᴵ) (λ b → force (evalᴰ fmt ρ g a) ≡ ret (inj₁ b))
 
 plumbing-val : ∀ {X Y} (g : IR X Y) → plumbing? g ≡ true → Val g
 plumbing-val id       _ a = a , refl
@@ -83,11 +83,11 @@ plumbing-val snd      _ a = proj₂ a , refl
 plumbing-val terminal _ a = tt , refl
 plumbing-val ⟨ f , g ⟩ e a with plumbing-val f (∧-l e) a | plumbing-val g (∧-r {plumbing? f} e) a
 ... | b , eb | c , ec =
-  (b , c) , trans (cong (λ m → m >>=T λ b′ → evalᴰ fmt ρ g a >>=T λ c′ → returnT (b′ , c′)) eb)
-                  (cong (λ m → m >>=T λ c′ → returnT (b , c′)) ec)
+  (b , c) , trans (cong (λ t → bindBlock t (λ b′ → evalᴰ fmt ρ g a >>=∞ λ c′ → return∞ (b′ , c′))) eb)
+                  (cong (λ t → bindBlock t (λ c′ → return∞ (b , c′))) ec)
 plumbing-val (f ∘ g) e a with plumbing-val g (∧-r {plumbing? f} e) a
 ... | c , ec with plumbing-val f (∧-l e) c
-...   | b , eb = b , trans (cong (λ m → m >>=T evalᴰ fmt ρ f) ec) eb
+...   | b , eb = b , trans (cong (λ t → bindBlock t (evalᴰ fmt ρ f)) ec) eb
 
 ------------------------------------------------------------------------
 -- (b) An input path reads a leaf of the input.
@@ -103,7 +103,7 @@ rd (Snd ∷ p) (X II.* Y) (x , y) = rd p Y y
 rd _         _          _       = nothing
 
 PathAt : ∀ {X Y} → IR X Y → InputPath → InputPath → ⟦ X ⟧ᴰᴵ → Set
-PathAt {X} {Y} m p₀ p a = Σ (⟦ Y ⟧ᴰᴵ) (λ b → (evalᴰ fmt ρ m a ≡ returnT b) × (rd p₀ Y b ≡ rd p X a))
+PathAt {X} {Y} m p₀ p a = Σ (⟦ Y ⟧ᴰᴵ) (λ b → (force (evalᴰ fmt ρ m a) ≡ ret (inj₁ b)) × (rd p₀ Y b ≡ rd p X a))
 
 PathOK : ∀ {X Y} → IR X Y → InputPath → InputPath → Set
 PathOK {X} {Y} m p₀ p = ∀ (a : ⟦ X ⟧ᴰᴵ) → PathAt m p₀ p a
@@ -121,8 +121,8 @@ path-ok .(⟨ x , y ⟩) (pv-pair x y) (Fst ∷ p₀) p eq a = pair-l (plumbing?
     pair-l : ∀ (b : Bool) → plumbing? y ≡ b → pair-path b x p₀ ≡ just p → PathAt ⟨ x , y ⟩ (Fst ∷ p₀) p a
     pair-l true  py eq′ with path-sound x p₀ p eq′ a | plumbing-val y py a
     ... | b , eb , rb | c , ec =
-      (b , c) , trans (cong (λ m → m >>=T λ b′ → evalᴰ fmt ρ y a >>=T λ c′ → returnT (b′ , c′)) eb)
-                      (cong (λ m → m >>=T λ c′ → returnT (b , c′)) ec)
+      (b , c) , trans (cong (λ t → bindBlock t (λ b′ → evalᴰ fmt ρ y a >>=∞ λ c′ → return∞ (b′ , c′))) eb)
+                      (cong (λ t → bindBlock t (λ c′ → return∞ (b , c′))) ec)
               , rb
     pair-l false py ()
 path-ok .(⟨ x , y ⟩) (pv-pair x y) (Snd ∷ p₀) p eq a = pair-r (plumbing? x) refl eq
@@ -130,8 +130,8 @@ path-ok .(⟨ x , y ⟩) (pv-pair x y) (Snd ∷ p₀) p eq a = pair-r (plumbing?
     pair-r : ∀ (b : Bool) → plumbing? x ≡ b → pair-path b y p₀ ≡ just p → PathAt ⟨ x , y ⟩ (Snd ∷ p₀) p a
     pair-r true  px eq′ with plumbing-val x px a | path-sound y p₀ p eq′ a
     ... | b , eb | c , ec , rc =
-      (b , c) , trans (cong (λ m → m >>=T λ b′ → evalᴰ fmt ρ y a >>=T λ c′ → returnT (b′ , c′)) eb)
-                      (cong (λ m → m >>=T λ c′ → returnT (b , c′)) ec)
+      (b , c) , trans (cong (λ t → bindBlock t (λ b′ → evalᴰ fmt ρ y a >>=∞ λ c′ → return∞ (b′ , c′))) eb)
+                      (cong (λ t → bindBlock t (λ c′ → return∞ (b , c′))) ec)
               , rc
     pair-r false px ()
 path-ok .(⟨ x , y ⟩) (pv-pair x y) [] p () a
@@ -140,7 +140,7 @@ path-ok .(f ∘ g) (pv-comp f g) p₀ p eq a = comp (recognise-path-through f p�
     comp : ∀ (r : Maybe InputPath) → recognise-path-through f p₀ ≡ r → rp-comp g r ≡ just p → PathAt (f ∘ g) p₀ p a
     comp (just pf) ef eg with path-sound g pf p eg a
     ... | c , ec , rc with path-sound f p₀ pf ef c
-    ...   | b , eb , rb = b , trans (cong (λ m → m >>=T evalᴰ fmt ρ f) ec) eb , trans rb rc
+    ...   | b , eb , rb = b , trans (cong (λ t → bindBlock t (evalᴰ fmt ρ f)) ec) eb , trans rb rc
     comp nothing ef ()
 path-ok m (pv-other m) p₀ p () a
 
@@ -218,10 +218,20 @@ private
 ------------------------------------------------------------------------
 
 private
-  -- re-association is the monad's associativity
-  assoc : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z)
-        → (m >>=T λ x → f x >>=T g) ≡ ((m >>=T f) >>=T g)
-  assoc m f g = sym (>>=T-assoc m f g)
+  -- A bind that returns at once ran both parts at once.
+  now-inv  : ∀ {X Y : Set} (l : T (X ⊎ T∞ X)) (k : X → T∞ Y) {v : Y}
+           → bindBlock l k ≡ ret (inj₁ v) → Σ X (λ x → (l ≡ ret (inj₁ x)) × (force (k x) ≡ ret (inj₁ v)))
+  now-inv (ret (inj₁ x)) k e = x , refl , e
+  now-inv (ret (inj₂ m)) k ()
+  now-inv (Once.Lang.Trace.call o a c) k ()
+  now-inv (Once.Lang.Trace.halt o a)   k ()
+
+  -- …so re-association, which is not `≡` on runs, is on runs that return at once.
+  now-assoc : ∀ {X Y Z : Set} (m : T∞ X) (g : X → T∞ Y) (f : Y → T∞ Z) {v : Z}
+            → force ((m >>=∞ g) >>=∞ f) ≡ ret (inj₁ v) → force (m >>=∞ λ x → g x >>=∞ f) ≡ ret (inj₁ v)
+  now-assoc m g f e with now-inv (force (m >>=∞ g)) f e
+  ... | y , e₁ , e₂ with now-inv (force m) g e₁
+  ...   | x , em , eg rewrite em | eg = e₂
 
   <-≤ : ∀ {a b c : ℕ} → a < b → b ≤ c → a < c
   <-≤ p q = Data.Nat.Properties.<-≤-trans p q
@@ -257,39 +267,38 @@ private
                    (Data.Nat.Properties.≤-reflexive (e X Y H))
 
   -- a literal's right-hand side means `tt` and no event
-  term-at : ∀ {X} (rhs : IR X II.Unit) (v : TView rhs) → it-at rhs v ≡ true → ∀ a → evalᴰ fmt ρ rhs a ≡ returnT tt
+  term-at : ∀ {X} (rhs : IR X II.Unit) (v : TView rhs) → it-at rhs v ≡ true → ∀ a → force (evalᴰ fmt ρ rhs a) ≡ ret (inj₁ tt)
   term-at .terminal       tv-term     _ a = refl
   term-at .(terminal ∘ g) (tv-comp {Z = Z} g) e a with plumbing-val g e a
-  ... | c , ec = trans (cong (λ (m : T ⟦ Z ⟧ᴰᴵ) → m >>=T evalᴰ fmt ρ (terminal {Z})) ec)
-                       (>>=T-identityˡ c (evalᴰ fmt ρ (terminal {Z})))
+  ... | c , ec = trans (cong (λ t → bindBlock t (evalᴰ fmt ρ (terminal {Z}))) ec)
+                       refl
   term-at rhs (tv-other rhs) () a
 
-  term-val : ∀ {X} (rhs : IR X II.Unit) → is-terminal? rhs ≡ true → ∀ a → evalᴰ fmt ρ rhs a ≡ returnT tt
+  term-val : ∀ {X} (rhs : IR X II.Unit) → is-terminal? rhs ≡ true → ∀ a → force (evalᴰ fmt ρ rhs a) ≡ ret (inj₁ tt)
   term-val rhs = term-at rhs (t-view rhs)
 
   -- a pair of values
   -- after a step that returns `c`, the composite means its head at `c`
-  through : ∀ {W X Z} {h : IR W X} {a : ⟦ W ⟧ᴰᴵ} {c : ⟦ X ⟧ᴰᴵ} → evalᴰ fmt ρ h a ≡ returnT c
-          → (f : IR X Z) {b : ⟦ Z ⟧ᴰᴵ} → evalᴰ fmt ρ (f ∘ h) a ≡ returnT b → evalᴰ fmt ρ f c ≡ returnT b
+  through : ∀ {W X Z} {h : IR W X} {a : ⟦ W ⟧ᴰᴵ} {c : ⟦ X ⟧ᴰᴵ} → force (evalᴰ fmt ρ h a) ≡ ret (inj₁ c)
+          → (f : IR X Z) {b : ⟦ Z ⟧ᴰᴵ} → force (evalᴰ fmt ρ (f ∘ h) a) ≡ ret (inj₁ b) → force (evalᴰ fmt ρ f c) ≡ ret (inj₁ b)
   through {h = h} {a} {c} ec f e =
-    trans (sym (>>=T-identityˡ c (evalᴰ fmt ρ f)))
-          (trans (sym (cong (λ m → m >>=T evalᴰ fmt ρ f) ec)) e)
+    trans (sym (cong (λ t → bindBlock t (evalᴰ fmt ρ f)) ec)) e
 
   pair-val : ∀ {X Y Z} (x : IR X Y) (y : IR X Z) (a : ⟦ X ⟧ᴰᴵ) {bx by}
-           → evalᴰ fmt ρ x a ≡ returnT bx → evalᴰ fmt ρ y a ≡ returnT by
-           → evalᴰ fmt ρ ⟨ x , y ⟩ a ≡ returnT (bx , by)
+           → force (evalᴰ fmt ρ x a) ≡ ret (inj₁ bx) → force (evalᴰ fmt ρ y a) ≡ ret (inj₁ by)
+           → force (evalᴰ fmt ρ ⟨ x , y ⟩ a) ≡ ret (inj₁ (bx , by))
   pair-val x y a {bx} ex ey =
-    trans (cong (λ m → m >>=T λ b′ → evalᴰ fmt ρ y a >>=T λ c′ → returnT (b′ , c′)) ex)
-          (cong (λ m → m >>=T λ c′ → returnT (bx , c′)) ey)
+    trans (cong (λ t → bindBlock t (λ b′ → evalᴰ fmt ρ y a >>=∞ λ c′ → return∞ (b′ , c′))) ex)
+          (cong (λ t → bindBlock t (λ c′ → return∞ (bx , c′))) ey)
 
 BodyAt : ∀ (sh : InputShape) {B} → IR ⌊ shape-as-type sh ⌋ B → ∀ {n} → MArithIR sh n → ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ → Set
 BodyAt sh {B} ir body a =
-  Σ (⟦ B ⟧ᴰᴵ) (λ b → (evalᴰ fmt ρ ir a ≡ returnT b) × (rd [] B b ≡ just (block-semM body fmt (toM sh a))))
+  Σ (⟦ B ⟧ᴰᴵ) (λ b → (force (evalᴰ fmt ρ ir a) ≡ ret (inj₁ b)) × (rd [] B b ≡ just (block-semM body fmt (toM sh a))))
 
 BinAt : ∀ (sh : InputShape) {Y} → IR ⌊ shape-as-type sh ⌋ Y → ∀ {n} → MArithIR sh n → MArithIR sh n
       → ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ → Set
 BinAt sh {Y} e ra rb a =
-  Σ (⟦ Y ⟧ᴰᴵ) (λ b → (evalᴰ fmt ρ e a ≡ returnT b)
+  Σ (⟦ Y ⟧ᴰᴵ) (λ b → (force (evalᴰ fmt ρ e a) ≡ ret (inj₁ b))
                    × (rd (Fst ∷ []) Y b ≡ just (block-semM ra fmt (toM sh a)))
                    × (rd (Snd ∷ []) Y b ≡ just (block-semM rb fmt (toM sh a))))
 
@@ -319,13 +328,13 @@ body-sound (suc k) sh ir lt eq a = body-at k sh ir (rb-view ir) lt eq a
 
 body-at k sh .((f ∘ g) ∘ h) (v-reassoc f g h) lt eq a
   with body-sound k sh (f ∘ (g ∘ h)) (<-≤ (reassoc-< f g h) (Data.Nat.Properties.≤-pred lt)) eq a
-... | b , eb , rb = b , trans (assoc (evalᴰ fmt ρ h a) (evalᴰ fmt ρ g) (evalᴰ fmt ρ f)) eb , rb
+... | b , eb , rb = b , now-assoc (evalᴰ fmt ρ h a) (evalᴰ fmt ρ g) (evalᴰ fmt ρ f) eb , rb
 body-at k sh .(SigOp (mk-info' nm s bA cB) ∘ e) (v-sigop (mk-info' nm s bA cB) e) lt eq a =
   sig-at k sh nm s bA cB e (<-≤ (sz-sigop (mk-info' nm s bA cB) e) (Data.Nat.Properties.≤-pred lt)) eq a
 body-at k sh .(const fits-int v ∘ rhs) (v-cint v rhs) lt eq a = lit (is-terminal? rhs) refl eq
   where
     lit : ∀ (t : Bool) → is-terminal? rhs ≡ t → ∀ {body} → lit-at t v ≡ just body → BodyAt sh (const fits-int v ∘ rhs) body a
-    lit true et refl = _ , cong (λ m → m >>=T evalᴰ fmt ρ (const fits-int v)) (term-val rhs et a) , refl
+    lit true et refl = _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (const fits-int v))) (term-val rhs et a) , refl
 body-at k sh ir (v-other ir) lt eq a = path (recognise-path ir) refl eq
   where
     path : ∀ (r : Maybe InputPath) → recognise-path ir ≡ r → ∀ {body} → path-at sh NInt r ≡ just body → BodyAt sh ir body a
@@ -345,12 +354,12 @@ sig-at k sh nm (primV p-neg) bA@b-Int cB@b-Int e lt eq a = neg (recognise-body s
     neg : ∀ (r : Maybe _) → recognise-body sh e ≡ r → ∀ {body} → unop aneg r ≡ just body
         → BodyAt sh (SigOp (mk-info' nm (primV p-neg) bA cB) ∘ e) body a
     neg (just r) er refl with body-sound k sh e lt er a
-    ... | b , eb , rb = _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-neg) bA cB))) eb
+    ... | b , eb , rb = _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-neg) bA cB)))) eb
                           , cong (λ x → just (W.⊝_ fmt x)) (just-injective rb)
 
 bin-case k sh nm p c op e lt (just (ra , rb)) er refl a with bin-sound k sh e lt er a
 ... | (b₁ , b₂) , eb , r₁ , r₂ =
-  _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) (b-Prod b-Int b-Int) b-Int))) eb
+  _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) (b-Prod b-Int b-Int) b-Int)))) eb
     , trans (cong₂ (λ x y → just (primSem p fmt (x , y))) (just-injective r₁) (just-injective r₂))
             (cong just (sym (op ra rb (toM sh a))))
 
@@ -377,8 +386,8 @@ bin-at k sh .(⟨ x , y ⟩ ∘ h) (bv-dist x y h) lt eq a = dist (plumbing? h) 
              | body-sound k sh (y ∘ h) (Data.Nat.Properties.<-trans (sz-distʳ x y h) lt) ey a
         ... | c , ec | bx , ebx , rbx | by , eby , rby =
           (bx , by)
-          , trans (cong (λ m → m >>=T evalᴰ fmt ρ ⟨ x , y ⟩) ec)
-                  (trans (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩))
+          , trans (cong (λ t → bindBlock t (evalᴰ fmt ρ ⟨ x , y ⟩)) ec)
+                  (trans refl
                          (pair-val x y c (through {h = h} {a = a} ec x ebx) (through {h = h} {a = a} ec y eby)))
           , rbx , rby
 bin-at k sh .id bv-id lt eq a = ids (typePath? sh NInt (Fst ∷ [])) refl (typePath? sh NInt (Snd ∷ [])) refl eq
@@ -419,13 +428,13 @@ fbody-sound (suc k) sh ir lt eq a = fbody-at k sh ir (rb-view ir) lt eq a
 
 fbody-at k sh .((f ∘ g) ∘ h) (v-reassoc f g h) lt eq a
   with fbody-sound k sh (f ∘ (g ∘ h)) (<-≤ (reassoc-< f g h) (Data.Nat.Properties.≤-pred lt)) eq a
-... | b , eb , rb = b , trans (assoc (evalᴰ fmt ρ h a) (evalᴰ fmt ρ g) (evalᴰ fmt ρ f)) eb , rb
+... | b , eb , rb = b , now-assoc (evalᴰ fmt ρ h a) (evalᴰ fmt ρ g) (evalᴰ fmt ρ f) eb , rb
 fbody-at k sh .(SigOp (mk-info' nm s bA cB) ∘ e) (v-sigop (mk-info' nm s bA cB) e) lt eq a =
   fsig-at k sh nm s bA cB e (<-≤ (sz-sigop (mk-info' nm s bA cB) e) (Data.Nat.Properties.≤-pred lt)) eq a
 fbody-at k sh .(const fits-float v ∘ rhs) (v-cflt v rhs) lt eq a = lit (is-terminal? rhs) refl eq
   where
     lit : ∀ (t : Bool) → is-terminal? rhs ≡ t → ∀ {body} → flit-at t v ≡ just body → BodyAt sh (const fits-float v ∘ rhs) body a
-    lit true et refl = _ , cong (λ m → m >>=T evalᴰ fmt ρ (const fits-float v)) (term-val rhs et a) , refl
+    lit true et refl = _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (const fits-float v))) (term-val rhs et a) , refl
 fbody-at k sh ir (v-other ir) lt eq a = path (recognise-path ir) refl eq
   where
     path : ∀ (r : Maybe InputPath) → recognise-path ir ≡ r → ∀ {body} → path-at sh NFloat r ≡ just body → BodyAt sh ir body a
@@ -444,12 +453,12 @@ fsig-at k sh nm (primV p-i2f) bA@b-Int cB@b-Float e lt eq a = conv (recognise-bo
     conv : ∀ (r : Maybe _) → recognise-body sh e ≡ r → ∀ {body} → unop ai2f r ≡ just body
          → BodyAt sh (SigOp (mk-info' nm (primV p-i2f) bA cB) ∘ e) body a
     conv (just r) er refl with body-sound k sh e lt er a
-    ... | b , eb , rb = _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-i2f) bA cB))) eb
+    ... | b , eb , rb = _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-i2f) bA cB)))) eb
                           , cong (λ x → just (Once.Spec.Float.Arith.i2f (float-format fmt) (W.toℤ fmt x))) (just-injective rb)
 
 fbin-case k sh nm p c op e lt (just (ra , rb)) er refl a with fbin-sound k sh e lt er a
 ... | (b₁ , b₂) , eb , r₁ , r₂ =
-  _ , cong (λ m → m >>=T evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) (b-Prod b-Float b-Float) b-Float))) eb
+  _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (SigOp (mk-info' nm (primV p) (b-Prod b-Float b-Float) b-Float)))) eb
     , trans (cong₂ (λ x y → just (primSem p fmt (x , y))) (just-injective r₁) (just-injective r₂))
             (cong just (sym (op ra rb (toM sh a))))
 
@@ -476,8 +485,8 @@ fbin-at k sh .(⟨ x , y ⟩ ∘ h) (bv-dist x y h) lt eq a = dist (plumbing? h)
              | fbody-sound k sh (y ∘ h) (Data.Nat.Properties.<-trans (sz-distʳ x y h) lt) ey a
         ... | c , ec | bx , ebx , rbx | by , eby , rby =
           (bx , by)
-          , trans (cong (λ m → m >>=T evalᴰ fmt ρ ⟨ x , y ⟩) ec)
-                  (trans (>>=T-identityˡ c (evalᴰ fmt ρ ⟨ x , y ⟩))
+          , trans (cong (λ t → bindBlock t (evalᴰ fmt ρ ⟨ x , y ⟩)) ec)
+                  (trans refl
                          (pair-val x y c (through {h = h} {a = a} ec x ebx) (through {h = h} {a = a} ec y eby)))
           , rbx , rby
 fbin-at k sh .id bv-id lt eq a = ids (typePath? sh NFloat (Fst ∷ [])) refl (typePath? sh NFloat (Snd ∷ [])) refl eq
@@ -498,13 +507,15 @@ fbin-at k sh e (bv-other e) lt () a
 
 private
   -- the block SigOp means the block, at the input
-  block-int : ∀ (sh : InputShape) (body : MArithIR sh NInt) (a : ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ)
-            → evalᴰ fmt ρ (SigOp (block-info body)) a ≡ returnT (block-semM body fmt (toM sh a))
-  block-int sh body a = refl
+  -- A block is an internal pure operation: it means its value at ANY call
+  -- environment.
+  block-int : ∀ (ρ₀ : CallEnv) (sh : InputShape) (body : MArithIR sh NInt) (a : ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ)
+            → force (evalᴰ fmt ρ₀ (SigOp (block-info body)) a) ≡ ret (inj₁ (block-semM body fmt (toM sh a)))
+  block-int ρ₀ sh body a = refl
 
-  block-flt : ∀ (sh : InputShape) (body : MArithIR sh NFloat) (a : ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ)
-            → evalᴰ fmt ρ (SigOp (block-info body)) a ≡ returnT (block-semM body fmt (toM sh a))
-  block-flt sh body a = refl
+  block-flt : ∀ (ρ₀ : CallEnv) (sh : InputShape) (body : MArithIR sh NFloat) (a : ⟦ ⌊ shape-as-type sh ⌋ ⟧ᴰᴵ)
+            → force (evalᴰ fmt ρ₀ (SigOp (block-info body)) a) ≡ ret (inj₁ (block-semM body fmt (toM sh a)))
+  block-flt ρ₀ sh body a = refl
 
   just-int : ∀ {b c : Carrier} → rd [] II.Int b ≡ just c → b ≡ c
   just-int = just-injective
@@ -512,20 +523,59 @@ private
   just-flt : ∀ {b c : Carrier} → rd [] II.Float b ≡ just c → b ≡ c
   just-flt = just-injective
 
-lift-sound : ∀ {A B} (ir ir′ : IR A B) (blk : ArithBlock) → try-lift ir ≡ just (ir′ , blk) → evalᴰ fmt ρ ir′ ≡ evalᴰ fmt ρ ir
+-- plan 0.119 D5: the lifted block (at any call environment) returns at once
+-- what the recognised subtree returns at once — the same first block. (Not
+-- `≡` of meanings: `T∞` runs built differently are never equal.)
+lift-sound : ∀ {A B} (ir ir′ : IR A B) (blk : ArithBlock) → try-lift ir ≡ just (ir′ , blk)
+           → ∀ (ρ₀ : CallEnv) a → force (evalᴰ fmt ρ₀ ir′ a) ≡ force (evalᴰ fmt ρ ir a)
 lift-sound {A} {II.Int} ir ir′ blk eq with shape-of A
 ... | just (sh , refl) with recognise-body sh ir in er
 ...   | just body with has-op body
 ...     | true with eq
-...       | refl = extensionality λ a → with-body (body-sound (suc (sz ir)) sh ir (s≤s ≤-refl) er a)
+...       | refl = λ ρ₀ a → with-body ρ₀ (body-sound (suc (sz ir)) sh ir (s≤s ≤-refl) er a)
   where
-    with-body : ∀ {a} → BodyAt sh ir body a → evalᴰ fmt ρ (block-as-ir refl body) a ≡ evalᴰ fmt ρ ir a
-    with-body {a} (b , eb , rb) = trans (block-int sh body a) (sym (trans eb (cong returnT (just-int rb))))
+    with-body : ∀ ρ₀ {a} → BodyAt sh ir body a → force (evalᴰ fmt ρ₀ (block-as-ir refl body) a) ≡ force (evalᴰ fmt ρ ir a)
+    with-body ρ₀ {a} (b , eb , rb) = trans (block-int ρ₀ sh body a) (sym (trans eb (cong (λ v → ret (inj₁ v)) (just-int rb))))
 lift-sound {A} {II.Float} ir ir′ blk eq with shape-of A
 ... | just (sh , refl) with recognise-body-float sh ir in er
 ...   | just body with has-op body
 ...     | true with eq
-...       | refl = extensionality λ a → with-body (fbody-sound (suc (sz ir)) sh ir (s≤s ≤-refl) er a)
+...       | refl = λ ρ₀ a → with-body ρ₀ (fbody-sound (suc (sz ir)) sh ir (s≤s ≤-refl) er a)
   where
-    with-body : ∀ {a} → BodyAt sh ir body a → evalᴰ fmt ρ (block-as-ir refl body) a ≡ evalᴰ fmt ρ ir a
-    with-body {a} (b , eb , rb) = trans (block-flt sh body a) (sym (trans eb (cong returnT (just-flt rb))))
+    with-body : ∀ ρ₀ {a} → BodyAt sh ir body a → force (evalᴰ fmt ρ₀ (block-as-ir refl body) a) ≡ force (evalᴰ fmt ρ ir a)
+    with-body ρ₀ {a} (b , eb , rb) = trans (block-flt ρ₀ sh body a) (sym (trans eb (cong (λ v → ret (inj₁ v)) (just-flt rb))))
+
+------------------------------------------------------------------------
+-- plan 0.119 D5: the strengthened form the rewrite's relation reads — both
+-- return the same value at once, and the node's objects are base types.
+------------------------------------------------------------------------
+
+open import Once.IRTy using (IsBaseTypeI)
+private
+  shape-base : ∀ (sh : InputShape) → IsBaseTypeI ⌊ shape-as-type sh ⌋
+  shape-base shape-unit       = IsBaseTypeI.base-Unit
+  shape-base shape-int        = IsBaseTypeI.base-Int
+  shape-base shape-float      = IsBaseTypeI.base-Float
+  shape-base (shape-pair l r) = IsBaseTypeI.base-Prod (shape-base l) (shape-base r)
+
+lift-now : ∀ {A B} (ir ir′ : IR A B) (blk : ArithBlock) → try-lift ir ≡ just (ir′ , blk)
+         → IsBaseTypeI A × IsBaseTypeI B
+           × (∀ (ρ₀ : CallEnv) a → Σ ⟦ B ⟧ᴰᴵ (λ v → (force (evalᴰ fmt ρ₀ ir′ a) ≡ ret (inj₁ v)) × (force (evalᴰ fmt ρ ir a) ≡ ret (inj₁ v))))
+lift-now {A} {II.Int} ir ir′ blk eq with shape-of A
+... | just (sh , refl) with recognise-body sh ir in er
+...   | just body with has-op body
+...     | true with eq
+...       | refl = shape-base sh , IsBaseTypeI.base-Int , λ ρ₀ a → with-body ρ₀ (body-sound (suc (sz ir)) sh ir (s≤s ≤-refl) er a)
+  where
+    with-body : ∀ ρ₀ {a} → BodyAt sh ir body a
+              → Σ _ (λ v → (force (evalᴰ fmt ρ₀ (block-as-ir refl body) a) ≡ ret (inj₁ v)) × (force (evalᴰ fmt ρ ir a) ≡ ret (inj₁ v)))
+    with-body ρ₀ {a} (b , eb , rb) = _ , block-int ρ₀ sh body a , trans eb (cong (λ v → ret (inj₁ v)) (just-int rb))
+lift-now {A} {II.Float} ir ir′ blk eq with shape-of A
+... | just (sh , refl) with recognise-body-float sh ir in er
+...   | just body with has-op body
+...     | true with eq
+...       | refl = shape-base sh , IsBaseTypeI.base-Float , λ ρ₀ a → with-body ρ₀ (fbody-sound (suc (sz ir)) sh ir (s≤s ≤-refl) er a)
+  where
+    with-body : ∀ ρ₀ {a} → BodyAt sh ir body a
+              → Σ _ (λ v → (force (evalᴰ fmt ρ₀ (block-as-ir refl body) a) ≡ ret (inj₁ v)) × (force (evalᴰ fmt ρ ir a) ≡ ret (inj₁ v)))
+    with-body ρ₀ {a} (b , eb , rb) = _ , block-flt ρ₀ sh body a , trans eb (cong (λ v → ret (inj₁ v)) (just-flt rb))

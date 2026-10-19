@@ -3,162 +3,259 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.RewritePreserves — THE ARITH LIFTING PRESERVES A PROGRAM'S
--- MEANING (D165, restated at the meaning in plan 0.103 6a″).
+-- MEANING (D165, restated at the meaning in plan 0.103 6a″; over `T∞` runs in
+-- plan 0.119 D5).
 --
 -- `rewrite-ir` replaces a recognised closed arithmetic subtree by one
--- `arith.block.<digest>` SigOp and otherwise walks the IR. Every IR former's
--- meaning is a function of its children's (`evalᴰ` is compositional), so the
--- walk preserves meaning by induction; a lifted block means the subtree it
--- replaced (`lift-sound`); and the program's table, rewritten entry by entry,
--- is the same call environment.
+-- `arith.block.<digest>` SigOp and otherwise walks the IR. The IR means `T∞`
+-- runs, which are compared step for step (`RelS`), never by `≡` — so the
+-- statement is a logical relation (`ValueRel.RelD`): the rewritten term at a
+-- call environment and the original at a related one take related inputs to
+-- related runs. A lifted block returns at once what the subtree returns at once
+-- (`lift-now`); every other former is a congruence; the program's table,
+-- rewritten entry by entry, is a related call environment; so the programs'
+-- runs are related, and have the same trace (`TraceTr.RelS-tr`).
 ------------------------------------------------------------------------
 
 module Once.Adequacy.RewritePreserves where
 
-open import Data.Nat using (ℕ)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Nullary using (yes; no)
 
-open import Once.Postulates using (extensionality)
-import Once.Adequacy.LiftSound
+import Once.Adequacy.LiftSound as LS
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR
-open import Once.IRTy using (⌊_⌋; ⌈_⌉F; ⌈⟧TI-commute; ⌈_⌉; _≟IRTy_)
+open import Once.IRTy using (IRTy; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; ⟦_⟧TI; _≟IRTy_; IsBaseTypeI; WellFormedFI)
+import Once.IRTy as II
+open import Once.IRTy.WF using (wf-⌈⌉; base-⌊⌋)
 open import Once.CanonicalName using (_≟ᶜ_)
-open import Relation.Nullary using (yes; no)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift; bare-at)
-open import Once.Lang.Trace using ()
-open import Once.Denotation.TraceMonadLaws using (>>=T-identityˡ)
-open import Once.Lang.Trace using (T; _>>=T_; returnT; projTrace; Interp; pureHalf)
-open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Lang.Trace using (FFIAnswers)
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ)
-import Once.Denotation.ValueDomain as ValueDomain
-open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at; runIR)
+open import Once.Lang.Trace using (T; ret; call; halt; Interp; pureHalf; FFIAnswers; fmapT; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.Lang.Iterative using (T∞; force; return∞; _>>=∞_; embed; fmap∞)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open SigOpInfo using (baseA; conB)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ; sigOpT; module CallEnv)
+open CallEnv using (callsE; ffiE)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at; runIR; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
-open import Once.Semantics.Machine
-open import Once.Lang.Stream
-open import Once.Denotation.ValueDomain
-import Once.Denotation.DenotTrace
-open import Once.IRTy.WF using (wf-⌈⌉)
-open import Once.Lang.Trace using (fmapT)
-import Once.Denotation.Behavior
-open Once.Denotation.Behavior.Behavior using (at)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed)
+open RelS using (forceS)
+open import Once.Denotation.ValueRel
+open import Once.Lang.StreamInf using (anaFᴵ; in-νᴵ; module νᴵ)
+open νᴵ using (forceᴵ)
+open import Once.Lang.Type using (μ-type; ν-type)
+open import Once.Lang.FunctorMeaning using (translateF)
+import Once.Lang.Type.WellFormed as LW
+open import Once.Spec.Word using (Carrier)
+open import Once.Lang.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
+open import Once.Semantics.Machine using (sem-cata; sem-In; sem-Out; coerce-ν-out; coerce-ν-in)
 open import Once.Compile using (rewrite-program; rewrite-table; rewrite-fun)
-
--- A lifted arith block means the subtree it replaced (`LiftSound`).
-lift-sound : ∀ (fmt : TargetNum) (ρ : CallEnv) {A B} (ir ir′ : IR A B) (blk : ArithBlock)
-           → try-lift ir ≡ just (ir′ , blk) → evalᴰ fmt ρ ir′ ≡ evalᴰ fmt ρ ir
-lift-sound fmt ρ = LS.lift-sound
-  where module LS = Once.Adequacy.LiftSound fmt ρ
+open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
+open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
 
 ------------------------------------------------------------------------
--- The walk preserves meaning
+-- IR base types: related is equal, and equal is related.
 ------------------------------------------------------------------------
 
-module _ (fmt : TargetNum) (ρ : CallEnv) where
-  private
-    E : ∀ {A B} → IR A B → _
-    E = evalᴰ fmt ρ
+base-eqI : ∀ {A} → IsBaseTypeI A → ∀ {x y : ⟦ A ⟧ᴰᴵ} → RelD ⌈ A ⌉ x y → x ≡ y
+base-eqI II.base-Unit       _ = refl
+base-eqI II.base-Void {()}
+base-eqI II.base-Int        r = r
+base-eqI II.base-Float      r = r
+base-eqI (II.base-Prod a b) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with base-eqI a r₁ | base-eqI b r₂
+... | refl | refl = refl
+base-eqI (II.base-Sum a b) {inj₁ x} {inj₁ y} r = cong inj₁ (base-eqI a r)
+base-eqI (II.base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eqI b r)
+base-eqI (II.base-Sum a b) {inj₁ _} {inj₂ _} ()
+base-eqI (II.base-Sum a b) {inj₂ _} {inj₁ _} ()
 
-  rewrite-sound : ∀ {A B} (ir : IR A B) → E (proj₁ (rewrite-ir ir)) ≡ E ir
-  rw-at-sound   : ∀ {A B} (ir : IR A B) (d : Maybe (IR A B × ArithBlock)) → try-lift ir ≡ d
-                → E (proj₁ (rw-at ir d)) ≡ E ir
-  walk-sound    : ∀ {A B} (ir : IR A B) → E (proj₁ (walk ir)) ≡ E ir
+base-reflI : ∀ {A} → IsBaseTypeI A → ∀ (x : ⟦ A ⟧ᴰᴵ) → RelD ⌈ A ⌉ x x
+base-reflI II.base-Unit       x = tt
+base-reflI II.base-Void       ()
+base-reflI II.base-Int        x = refl
+base-reflI II.base-Float      x = refl
+base-reflI (II.base-Prod a b) (x , y) = base-reflI a x , base-reflI b y
+base-reflI (II.base-Sum a b)  (inj₁ x) = base-reflI a x
+base-reflI (II.base-Sum a b)  (inj₂ y) = base-reflI b y
 
-  -- Plan 0.108: a bare primitive is lifted as `SigOp si ∘ id`, which means
-  -- `SigOp si` by the monad's left identity.
-  bare-sound : ∀ {X Y} (si : SigOpInfo X Y) (d : Maybe (IR ⌊ X ⌋ ⌊ Y ⌋ × ArithBlock))
-             → try-lift (SigOp si ∘ id) ≡ d → E (proj₁ (bare-at si d)) ≡ E (SigOp si)
-  bare-sound si (just (ir′ , blk)) eq =
-    trans (lift-sound fmt ρ (SigOp si ∘ id) ir′ blk eq)
-          (extensionality λ a → >>=T-identityˡ a (E (SigOp si)))
-  bare-sound si nothing eq = refl
+-- A first-order layer over μ: related is equal, and equal is related.
+fo-eq : ∀ {F G} → WellFormedFI F → ∀ {x y : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ} → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x y → x ≡ y
+fo-eq (II.wf-K b)       r = base-eqI b r
+fo-eq II.wf-Id          r = r
+fo-eq (II.wf-Sum f g) {inj₁ x} {inj₁ y} r = cong inj₁ (fo-eq f r)
+fo-eq (II.wf-Sum f g) {inj₂ x} {inj₂ y} r = cong inj₂ (fo-eq g r)
+fo-eq (II.wf-Sum f g) {inj₁ _} {inj₂ _} ()
+fo-eq (II.wf-Sum f g) {inj₂ _} {inj₁ _} ()
+fo-eq (II.wf-Prod f g) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with fo-eq f r₁ | fo-eq g r₂
+... | refl | refl = refl
 
-  rewrite-sound ir = rw-at-sound ir (try-lift ir) refl
-
-  rw-at-sound ir (just (ir′ , blk)) eq = lift-sound fmt ρ ir ir′ blk eq
-  rw-at-sound ir nothing           eq = walk-sound ir
-
-  walk-sound id       = refl
-  walk-sound (g ∘ f)  = extensionality λ a →
-    cong₂ (λ X Y → X a >>=T Y) (rewrite-sound f) (rewrite-sound g)
-  walk-sound fst      = refl
-  walk-sound snd      = refl
-  walk-sound ⟨ f , g ⟩ = extensionality λ a →
-    cong₂ (λ X Y → X a >>=T λ b → Y a >>=T λ c → returnT (b , c)) (rewrite-sound f) (rewrite-sound g)
-  walk-sound inl      = refl
-  walk-sound inr      = refl
-  walk-sound (case f g) = extensionality λ
-    { (inj₁ a) → cong (λ X → X a) (rewrite-sound f)
-    ; (inj₂ b) → cong (λ X → X b) (rewrite-sound g) }
-  walk-sound terminal = refl
-  walk-sound initial  = extensionality λ ()
-  walk-sound (curry f) = extensionality λ a →
-    cong (λ X → returnT (λ b → X (a , b))) (rewrite-sound f)
-  walk-sound apply    = refl
-  walk-sound (In w)   = refl
-  walk-sound (out-μ w) = refl
-  walk-sound (Cata {F} w {E′} {C} alg) = extensionality λ a →
-    cong (λ X → sem-cata (wf-⌈⌉ w) X (proj₂ a)) (alg≡ (proj₁ a))
-    where
-      alg≡ : ∀ env → cata-ev-algᴰ fmt ρ {F} {E′} {C} w (proj₁ (rewrite-ir alg)) env ≡ cata-ev-algᴰ fmt ρ {F} {E′} {C} w alg env
-      alg≡ env = extensionality λ fc →
-        cong (λ X → seqF ⌈ F ⌉F fc >>=T λ layer →
-                      X (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C)) (coerce-functor⁻¹-D (wf-⌈⌉ w) ⌈ C ⌉ layer)))
-             (rewrite-sound alg)
-  walk-sound (Out w)  = refl
-  walk-sound (in-ν w) = refl
-  walk-sound (Ana {F} w {E′} {A′} c) = extensionality λ a →
-    cong (λ X → returnT (anaFᵈ ⌈ F ⌉F
-                           (λ a′ → fmapT (λ x → coerce-functor-D (wf-⌈⌉ w) ⌈ A′ ⌉
-                                                  (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A′) x))
-                                         (X (proj₁ a , a′)))
-                           (proj₂ a)))
-         (rewrite-sound c)
-  walk-sound (const p v) = refl
-  walk-sound (SigOp si)  = bare-sound si (try-lift (SigOp si ∘ id)) refl
-  walk-sound (Call f)    = refl
+fo-refl : ∀ {F G} → WellFormedFI F → ∀ (x : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ) → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x x
+fo-refl (II.wf-K b)      x        = base-reflI b x
+fo-refl II.wf-Id         x        = refl
+fo-refl (II.wf-Sum f g)  (inj₁ x) = fo-refl f x
+fo-refl (II.wf-Sum f g)  (inj₂ y) = fo-refl g y
+fo-refl (II.wf-Prod f g) (x , y)  = fo-refl f x , fo-refl g y
 
 ------------------------------------------------------------------------
--- The rewritten table is the same call environment
+-- Runs.
 ------------------------------------------------------------------------
 
-calls-sound : ∀ (fmt : TargetNum) (φ : FFIAnswers) (tbl : List IRFun)
-            → tableCalls fmt φ (rewrite-table tbl) ≡ tableCalls fmt φ tbl
-calls-sound fmt φ []       = refl
-calls-sound fmt φ (e ∷ es) =
-  extensionality λ f → extensionality λ A → extensionality λ B → extensionality λ a →
-    at-sound f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) a
+-- Two runs that return at once, related values.
+RelS-now : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {m′ : T∞ Y} {v v′}
+         → force m ≡ ret (inj₁ v) → force m′ ≡ ret (inj₁ v′) → R v v′ → RelS R m m′
+forceS (RelS-now {R = R} {m = m} {m′} e e′ r) = subst₂′ e e′ (s-ret r)
   where
-    ih  = calls-sound fmt φ es
-    ihE : tableEnv fmt φ (rewrite-table es) ≡ tableEnv fmt φ es
-    ihE = cong (λ c → callEnv c φ) ih
-    at-sound : ∀ f A B d₁ d₂ d₃ a
-             → tableEnv-at fmt φ (rewrite-fun e) (rewrite-table es) f A B d₁ d₂ d₃ a ≡ tableEnv-at fmt φ e es f A B d₁ d₂ d₃ a
-    at-sound f A B (yes _) (yes p) (yes q) a =
-      cong (subst (λ Y → T (ValueDomain.⟦_⟧ᴰᴵ Y)) q)
-        (trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (fbody e))) _) ihE)
-               (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt φ es) (fbody e))))
-    at-sound f A B (yes _) (yes _) (no _)  a = cong (λ c → c f A B a) ih
-    at-sound f A B (yes _) (no _)  _       a = cong (λ c → c f A B a) ih
-    at-sound f A B (no _)  _       _       a = cong (λ c → c f A B a) ih
+    subst₂′ : ∀ {a b c d} → a ≡ c → b ≡ d → RelSB R c d → RelSB R a b
+    subst₂′ refl refl h = h
 
-table-sound : ∀ (fmt : TargetNum) (φ : FFIAnswers) (tbl : List IRFun) → tableEnv fmt φ (rewrite-table tbl) ≡ tableEnv fmt φ tbl
-table-sound fmt φ tbl = cong (λ c → callEnv c φ) (calls-sound fmt φ tbl)
+-- A finite tree is related to itself, call for call.
+RelT′-refl : ∀ {X} {R : X → X → Set} → (∀ x → R x x) → ∀ (t : T X) → RelT′ R t t
+RelT′-refl h (ret x)      = rel-ret (h x)
+RelT′-refl h (call o a k) = rel-call (λ b → RelT′-refl h (k b))
+RelT′-refl h (halt o a)   = rel-halt
 
 ------------------------------------------------------------------------
--- THE THEOREM
+-- The relation on call environments, and the rewrite's soundness.
 ------------------------------------------------------------------------
 
--- D320: …and the same tree, so the same TRACE (calls and how the run ended).
-rewrite-program-tree : ∀ (fmt : TargetNum) (ι : Interp) (p : Once.Denotation.Program.IRProgram)
-                     → runIR fmt (pureHalf ι) (rewrite-program p) ≡ runIR fmt (pureHalf ι) p
-rewrite-program-tree fmt ι p =
-  trans (cong (λ ρ → evalᴰ fmt ρ (proj₁ (rewrite-ir (main p))) _) (table-sound fmt (pureHalf ι) (table p)))
-        (cong (λ X → X _) (rewrite-sound fmt (tableEnv fmt (pureHalf ι) (table p)) (main p)))
+module _ (fmt : TargetNum) where
+
+  RelEnv : CallEnv → CallEnv → Set
+  RelEnv ρ ρ′ = (∀ f (A B : IRTy) {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (callsE ρ f A B a) (callsE ρ′ f A B a′))
+              × (ffiE ρ ≡ ffiE ρ′)
+
+  module _ {ρ ρ′ : CallEnv} (re : RelEnv ρ ρ′) where
+    private
+      E  : ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
+      E  = evalᴰ fmt ρ
+      E′ : ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
+      E′ = evalᴰ fmt ρ′
+
+    rewrite-rel : ∀ {A B} (ir : IR A B) {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (E (proj₁ (rewrite-ir ir)) a) (E′ ir a′)
+    rw-at-rel   : ∀ {A B} (ir : IR A B) (d : Maybe (IR A B × ArithBlock)) → try-lift ir ≡ d
+                → ∀ {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (E (proj₁ (rw-at ir d)) a) (E′ ir a′)
+    walk-rel    : ∀ {A B} (ir : IR A B) {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (E (proj₁ (walk ir)) a) (E′ ir a′)
+    sigop-rel   : ∀ {X Y} (si : SigOpInfo X Y) {a a′} → RelD ⌈ ⌊ X ⌋ ⌉ a a′ → RelS (RelD ⌈ ⌊ Y ⌋ ⌉) (E (SigOp si) a) (E′ (SigOp si) a′)
+
+    -- A lifted subtree: the block and the subtree return the same value at
+    -- once; the subtree's input and output are base types.
+    lifted : ∀ {A B} (ir ir′ : IR A B) (blk : ArithBlock) → try-lift ir ≡ just (ir′ , blk)
+           → ∀ {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ B ⌉) (E ir′ a) (E′ ir a′)
+    lifted ir ir′ blk eq {a} r with LS.lift-now fmt ρ′ ir ir′ blk eq
+    ... | bA , bB , now with base-eqI bA r
+    ...   | refl with now ρ a
+    ...     | v , e₁ , e₂ = RelS-now e₁ e₂ (base-reflI bB v)
+
+    rewrite-rel ir = rw-at-rel ir (try-lift ir) refl
+
+    rw-at-rel ir (just (ir′ , blk)) eq r = lifted ir ir′ blk eq r
+    rw-at-rel ir nothing            eq r = walk-rel ir r
+
+    sigop-rel si {a} r with base-eqI (base-⌊⌋ (baseA si)) r
+    ... | refl rewrite proj₂ re =
+      RelS-embed (RelT′-refl (base-reflI (base-⌊⌋ (conB si))) _)
+
+    walk-rel id         r = relS-ret r
+    walk-rel (g ∘ f)    r = RelS-bind (rewrite-rel f r) (λ r′ → rewrite-rel g r′)
+    walk-rel fst        r = relS-ret (proj₁ r)
+    walk-rel snd        r = relS-ret (proj₂ r)
+    walk-rel ⟨ f , g ⟩  r = RelS-bind (rewrite-rel f r) (λ rb → RelS-bind (rewrite-rel g r) (λ rc → relS-ret (rb , rc)))
+    walk-rel inl        r = relS-ret r
+    walk-rel inr        r = relS-ret r
+    walk-rel (case f g) {inj₁ a} {inj₁ a′} r = rewrite-rel f r
+    walk-rel (case f g) {inj₂ b} {inj₂ b′} r = rewrite-rel g r
+    walk-rel (case f g) {inj₁ _} {inj₂ _} ()
+    walk-rel (case f g) {inj₂ _} {inj₁ _} ()
+    walk-rel terminal   r = relS-ret tt
+    walk-rel initial {()}
+    walk-rel (curry f)  r = relS-ret (λ r′ → rewrite-rel f (r , r′))
+    walk-rel apply      r = proj₁ r (proj₂ r)
+    walk-rel (In {F} w) r rewrite fo-eq w r = relS-ret refl
+    walk-rel (out-μ {F} w) {x} r rewrite r =
+      relS-ret (RelD-subst (sym (⌈⟧TI-commute F (II.μ-type F)))
+                 (cfD⁻¹-rel (wf-⌈⌉ w) ⌈ II.μ-type F ⌉ (frefl (wf-⌈⌉ w) _)))
+      where
+        frefl : ∀ {G} (wg : LW.WellFormedF G) (l : ⟦ G ⟧F′ ⟦ ⌈ II.μ-type F ⌉ ⟧ᴰ)
+              → FRel (RelD ⌈ II.μ-type F ⌉) G l l
+        frefl (LW.wf-K b) l = fr-K
+        frefl LW.wf-Id l = fr-Id refl
+        frefl (LW.wf-Sum wf wg) (inj₁ l) = fr-inl (frefl wf l)
+        frefl (LW.wf-Sum wf wg) (inj₂ l) = fr-inr (frefl wg l)
+        frefl (LW.wf-Prod wf wg) (l , l′) = fr-pair (frefl wf l) (frefl wg l′)
+    walk-rel (Cata {F} w {E₀} {C} alg) {e , x} {e′ , x′} (re′ , refl) =
+      sem-cata-rel (wf-⌈⌉ w) (λ fr → alg-step fr) x
+      where
+        alg-step : ∀ {l₁ l₂} → FRel (RelS (RelD ⌈ C ⌉)) ⌈ F ⌉F l₁ l₂
+                 → RelS (RelD ⌈ C ⌉) (cata-ev-algᴰ fmt ρ w (proj₁ (rewrite-ir alg)) e l₁) (cata-ev-algᴰ fmt ρ′ w alg e′ l₂)
+        alg-step fr =
+          RelS-bind (seqF∞-rel ⌈ F ⌉F fr)
+            (λ fl → rewrite-rel alg (re′ , RelD-subst (sym (⌈⟧TI-commute F C)) (cfD⁻¹-rel (wf-⌈⌉ w) ⌈ C ⌉ fl)))
+    walk-rel (Out {F} w) {v} {v′} r =
+      RelS-fmap (StreamRel.forceR r)
+        (λ l → RelD-subst (sym (⌈⟧TI-commute F (II.ν-type F)))
+                 (cfD⁻¹-rel (wf-⌈⌉ w) ⌈ II.ν-type F ⌉ (cμout-rel (wf-⌈⌉ w) (layer→srel (translateF Carrier Carrier ⌈ F ⌉F) l))))
+    walk-rel (in-ν {F} w) r =
+      relS-ret (in-rel (cμin-rel ⌈ F ⌉F (cfD-rel (wf-⌈⌉ w) ⌈ II.ν-type F ⌉ (RelD-subst (⌈⟧TI-commute F (II.ν-type F)) r))))
+    walk-rel (Ana {F} w {E₀} {A₀} c) {e , s} {e′ , s′} (re′ , rs) =
+      relS-ret (anaᴵ-rel (λ r → RelS-fmap (RelS-fmap (rewrite-rel c (re′ , r))
+                                            (λ q → cfD-rel (wf-⌈⌉ w) ⌈ A₀ ⌉ (RelD-subst (⌈⟧TI-commute F A₀) q)))
+                                          (cμin-rel ⌈ F ⌉F))
+                         rs)
+    walk-rel (const II.fits-int v)   r = relS-ret refl
+    walk-rel (const II.fits-float v) r = relS-ret refl
+    walk-rel (SigOp si) r = bare-rel (try-lift (SigOp si ∘ id)) refl
+      where
+        bare-rel : ∀ d → try-lift (SigOp si ∘ id) ≡ d → RelS _ (E (proj₁ (bare-at si d)) _) (E′ (SigOp si) _)
+        -- `SigOp si ∘ id` returns at once exactly when `SigOp si` does (its
+        -- first block is the same block).
+        bare-rel (just (ir′ , blk)) eq with LS.lift-now fmt ρ′ (SigOp si ∘ id) ir′ blk eq
+        ... | bA , bB , now with base-eqI bA r
+        ...   | refl with now ρ _
+        ...     | v , e₁ , e₂ = RelS-now e₁ e₂ (base-reflI bB v)
+        bare-rel nothing            eq = sigop-rel si r
+    walk-rel (Call {A} {B} f) r = proj₁ re f A B r
+
+------------------------------------------------------------------------
+-- The table, rewritten entry by entry, is a related call environment; so the
+-- program's runs are related, and have the same trace.
+------------------------------------------------------------------------
+
+module _ (fmt : TargetNum) (φ : FFIAnswers) where
+
+  table-rel : ∀ (tbl : List IRFun) → RelEnv fmt (tableEnv fmt φ (rewrite-table tbl)) (tableEnv fmt φ tbl)
+  calls-rel : ∀ (tbl : List IRFun) f (A B : IRTy) {a a′} → RelD ⌈ A ⌉ a a′
+            → RelS (RelD ⌈ B ⌉) (tableCalls fmt φ (rewrite-table tbl) f A B a) (tableCalls fmt φ tbl f A B a′)
+  table-rel tbl = calls-rel tbl , refl
+
+  calls-rel []       f A B r = RelS-embed rel-halt
+  calls-rel (e ∷ es) f A B r = at (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) r
+    where
+      hit : ∀ {A B} (p : fdom e ≡ A) (q : fcod e ≡ B) {a a′} → RelD ⌈ A ⌉ a a′
+          → RelS (RelD ⌈ B ⌉)
+              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ (rewrite-table es)) (proj₁ (rewrite-ir (fbody e))) (subst ⟦_⟧ᴰᴵ (sym p) a)))
+              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ es) (fbody e) (subst ⟦_⟧ᴰᴵ (sym p) a′)))
+      hit refl refl r = rewrite-rel fmt (table-rel es) (fbody e) r
+      at : ∀ d₁ d₂ d₃ {a a′} → RelD ⌈ A ⌉ a a′
+         → RelS (RelD ⌈ B ⌉) (tableEnv-at fmt φ (rewrite-fun e) (rewrite-table es) f A B d₁ d₂ d₃ a)
+                              (tableEnv-at fmt φ e es f A B d₁ d₂ d₃ a′)
+      at (yes _) (yes p) (yes q) r = hit p q r
+      at (yes _) (yes _) (no _)  r = calls-rel es f A B r
+      at (yes _) (no _)  _       r = calls-rel es f A B r
+      at (no _)  _       _       r = calls-rel es f A B r
+
+  program-rel : ∀ (p : IRProgram) → RelS (RelD ⌈ II.Unit ⌉) (runIR fmt φ (rewrite-program p)) (runIR fmt φ p)
+  program-rel p = rewrite-rel fmt (table-rel (table p)) (main p) tt
+
+-- D320 / plan 0.119 D5: the rewritten program has the same TRACE.
+rewrite-program-trace : ∀ (fmt : TargetNum) (ι : Interp) (p : IRProgram)
+                      → trT∞ ι [] (runIR fmt (pureHalf ι) (rewrite-program p)) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) p)
+rewrite-program-trace fmt ι p = RelS-tr ι [] (program-rel fmt (pureHalf ι) p)

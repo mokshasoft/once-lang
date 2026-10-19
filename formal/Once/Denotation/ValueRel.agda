@@ -1,0 +1,294 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Denotation.ValueRel — when two values of the IR's domain behave alike
+-- (plan 0.119 D5).
+--
+-- The IR means `T∞` arrows, and two runs are compared step for step
+-- (`RelS`), never by `≡`: a coinductive record has no η, so two meanings built
+-- differently are not equal even when every observation agrees. A value
+-- relation follows the type: first-order data must be EQUAL; an arrow takes
+-- related arguments to related runs; a stream's forced layers are related runs
+-- of related layers (coinductively). It is the relation an IR-to-IR
+-- transformation (the arith lowering) is proved against.
+------------------------------------------------------------------------
+
+module Once.Denotation.ValueRel where
+
+open import Data.Empty using (⊥)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong)
+
+open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many)
+open import Once.Lang.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
+open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Spec.Word using (Carrier)
+open import Once.Lang.Value Carrier Carrier using (⟦_⟧F)
+open import Once.Lang.Iterative using (T∞)
+open import Once.Lang.StreamInf using (νᴵ; module νᴵ)
+open νᴵ using (forceᴵ)
+open import Once.Denotation.TraceMonadInfLaws using (RelS)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
+
+------------------------------------------------------------------------
+-- Streams: forced layers are related runs; a layer's constants are equal and
+-- its recursive positions related streams.
+------------------------------------------------------------------------
+
+record StreamRel (H : SFunctor) (x y : νᴵ H) : Set
+LayerRel : ∀ (H G : SFunctor) → ⟦ G ⟧SF (νᴵ H) → ⟦ G ⟧SF (νᴵ H) → Set
+
+record StreamRel H x y where
+  coinductive
+  field forceR : RelS (LayerRel H H) (forceᴵ x) (forceᴵ y)
+
+LayerRel H (SK B)     x        y        = x ≡ y
+LayerRel H SId        x        y        = StreamRel H x y
+LayerRel H (G₁ S⊕ G₂) (inj₁ x) (inj₁ y) = LayerRel H G₁ x y
+LayerRel H (G₁ S⊕ G₂) (inj₂ x) (inj₂ y) = LayerRel H G₂ x y
+LayerRel H (G₁ S⊕ G₂) (inj₁ _) (inj₂ _) = ⊥
+LayerRel H (G₁ S⊕ G₂) (inj₂ _) (inj₁ _) = ⊥
+LayerRel H (G₁ S⊗ G₂) (x , y)  (x′ , y′) = LayerRel H G₁ x x′ × LayerRel H G₂ y y′
+
+------------------------------------------------------------------------
+-- The relation, by type.
+------------------------------------------------------------------------
+
+RelD : ∀ (A : Type) → ⟦ A ⟧ᴰ → ⟦ A ⟧ᴰ → Set
+RelD Unit        _ _ = ⊤
+RelD Void        () _
+RelD (A * B) (a , b) (a′ , b′) = RelD A a a′ × RelD B b b′
+RelD (A + B) (inj₁ a) (inj₁ a′) = RelD A a a′
+RelD (A + B) (inj₂ b) (inj₂ b′) = RelD B b b′
+RelD (A + B) (inj₁ _) (inj₂ _)  = ⊥
+RelD (A + B) (inj₂ _) (inj₁ _)  = ⊥
+RelD (A ⇒[ mk-kind Zero π ] B) f g = RelS (RelD B) (f tt) (g tt)
+RelD (A ⇒[ mk-kind One  π ] B) f g = ∀ {a a′} → RelD A a a′ → RelS (RelD B) (f a) (g a′)
+RelD (A ⇒[ mk-kind Many π ] B) f g = ∀ {a a′} → RelD A a a′ → RelS (RelD B) (f a) (g a′)
+RelD (μ-type F)  x y = x ≡ y
+RelD (ν-type F _) x y = StreamRel (translateF Carrier Carrier F) x y
+RelD Int         x y = x ≡ y
+RelD Float       x y = x ≡ y
+RelD (rigid _ _) () _
+
+-- Transport along an equation of types.
+RelD-subst : ∀ {A B : Type} (e : A ≡ B) {x y : ⟦ A ⟧ᴰ}
+           → RelD A x y → RelD B (subst ⟦_⟧ᴰ e x) (subst ⟦_⟧ᴰ e y)
+RelD-subst refl r = r
+
+------------------------------------------------------------------------
+-- A relation lifted through a functor's layer: constants equal, recursive
+-- positions related.
+------------------------------------------------------------------------
+
+data FRel {X Y : Set} (R : X → Y → Set) : (F : Functor) → ⟦ F ⟧F X → ⟦ F ⟧F Y → Set where
+  fr-K    : ∀ {A x} → FRel R (K A) x x
+  fr-Id   : ∀ {x y} → R x y → FRel R Id x y
+  fr-inl  : ∀ {F G x y} → FRel R F x y → FRel R (F ⊕ G) (inj₁ x) (inj₁ y)
+  fr-inr  : ∀ {F G x y} → FRel R G x y → FRel R (F ⊕ G) (inj₂ x) (inj₂ y)
+  fr-pair : ∀ {F G x y x′ y′} → FRel R F x x′ → FRel R G y y′ → FRel R (F ⊗ G) (x , y) (x′ , y′)
+
+SRel : ∀ {X Y : Set} (R : X → Y → Set) (G : SFunctor) → ⟦ G ⟧SF X → ⟦ G ⟧SF Y → Set
+SRel R (SK B)    x        y        = x ≡ y
+SRel R SId       x        y        = R x y
+SRel R (F S⊕ G) (inj₁ x) (inj₁ y) = SRel R F x y
+SRel R (F S⊕ G) (inj₂ x) (inj₂ y) = SRel R G x y
+SRel R (F S⊕ G) (inj₁ _) (inj₂ _) = ⊥
+SRel R (F S⊕ G) (inj₂ _) (inj₁ _) = ⊥
+SRel R (F S⊗ G) (x , y)  (x′ , y′) = SRel R F x x′ × SRel R G y y′
+
+------------------------------------------------------------------------
+-- Base types: related is equal, and equal is related.
+------------------------------------------------------------------------
+
+open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
+                                             WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
+open import Once.Lang.Type using (⟦_⟧T)
+
+base-eq : ∀ {A} → IsBaseType A → ∀ {x y : ⟦ A ⟧ᴰ} → RelD A x y → x ≡ y
+base-eq base-Unit       _ = refl
+base-eq base-Void {()}
+base-eq base-Int        r = r
+base-eq base-Float      r = r
+base-eq (base-Prod a b) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with base-eq a r₁ | base-eq b r₂
+... | refl | refl = refl
+base-eq (base-Sum a b) {inj₁ x} {inj₁ y} r = cong inj₁ (base-eq a r)
+base-eq (base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eq b r)
+base-eq (base-Sum a b) {inj₁ _} {inj₂ _} ()
+base-eq (base-Sum a b) {inj₂ _} {inj₁ _} ()
+base-eq base-rigid {()}
+
+base-refl : ∀ {A} → IsBaseType A → ∀ (x : ⟦ A ⟧ᴰ) → RelD A x x
+base-refl base-Unit       x = tt
+base-refl base-Void       ()
+base-refl base-Int        x = refl
+base-refl base-Float      x = refl
+base-refl (base-Prod a b) (x , y) = base-refl a x , base-refl b y
+base-refl (base-Sum a b)  (inj₁ x) = base-refl a x
+base-refl (base-Sum a b)  (inj₂ y) = base-refl b y
+base-refl base-rigid      ()
+
+------------------------------------------------------------------------
+-- Runs: the monad's operations preserve relatedness.
+------------------------------------------------------------------------
+
+open import Once.Lang.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞)
+open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
+open RelS using (forceS)
+
+-- A larger relation relates more runs.
+RelS-mono  : ∀ {X Y} {R R′ : X → Y → Set} → (∀ {a b} → R a b → R′ a b) → ∀ {m m′} → RelS R m m′ → RelS R′ m m′
+RelSB-mono : ∀ {X Y} {R R′ : X → Y → Set} → (∀ {a b} → R a b → R′ a b) → ∀ {l l′} → RelSB R l l′ → RelSB R′ l l′
+forceS (RelS-mono h r) = RelSB-mono h (forceS r)
+RelSB-mono h (s-ret r)  = s-ret (h r)
+RelSB-mono h (s-next r) = s-next (RelS-mono h r)
+RelSB-mono h (s-call f) = s-call (λ b → RelSB-mono h (f b))
+RelSB-mono h s-halt     = s-halt
+
+RelS-fmap : ∀ {X Y X′ Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {m : T∞ X} {m′ : T∞ X′} {f : X → Y} {g : X′ → Y′}
+          → RelS R m m′ → (∀ {a b} → R a b → R′ (f a) (g b)) → RelS R′ (fmap∞ f m) (fmap∞ g m′)
+RelS-fmap h c = RelS-bind h (λ r → relS-ret (c r))
+
+seqF∞-rel : ∀ {X Y} {R : X → Y → Set} (G : Functor) {l : ⟦ G ⟧F (T∞ X)} {l′ : ⟦ G ⟧F (T∞ Y)}
+          → FRel (RelS R) G l l′ → RelS (FRel R G) (seqF∞ G l) (seqF∞ G l′)
+seqF∞-rel (K A)   fr-K        = relS-ret fr-K
+seqF∞-rel Id      (fr-Id r)   = RelS-mono fr-Id r
+seqF∞-rel (G ⊕ H) (fr-inl r)  = RelS-fmap (seqF∞-rel G r) fr-inl
+seqF∞-rel (G ⊕ H) (fr-inr r)  = RelS-fmap (seqF∞-rel H r) fr-inr
+seqF∞-rel (G ⊗ H) (fr-pair r s) =
+  RelS-bind (seqF∞-rel G r) (λ u → RelS-bind (seqF∞-rel H s) (λ v → relS-ret (fr-pair u v)))
+
+------------------------------------------------------------------------
+-- The functor coercions preserve relatedness (constants equal: base types).
+------------------------------------------------------------------------
+
+private
+  fr-K≡ : ∀ {X Y} {R : X → Y → Set} {A} {x y} → x ≡ y → FRel R (K A) x y
+  fr-K≡ refl = fr-K
+
+cfD-rel : ∀ {F} (wf : WellFormedF F) (C : Type) {x y : ⟦ ⟦ F ⟧T C ⟧ᴰ}
+        → RelD (⟦ F ⟧T C) x y → FRel (RelD C) F (coerce-functor-D wf C x) (coerce-functor-D wf C y)
+cfD-rel (wf-K b) C r = fr-K≡ (cong (forgetᵇ b) (base-eq b r))
+cfD-rel wf-Id C r = fr-Id r
+cfD-rel (wf-Sum wf wg) C {inj₁ x} {inj₁ y} r = fr-inl (cfD-rel wf C r)
+cfD-rel (wf-Sum wf wg) C {inj₂ x} {inj₂ y} r = fr-inr (cfD-rel wg C r)
+cfD-rel (wf-Sum wf wg) C {inj₁ _} {inj₂ _} ()
+cfD-rel (wf-Sum wf wg) C {inj₂ _} {inj₁ _} ()
+cfD-rel (wf-Prod wf wg) C {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = fr-pair (cfD-rel wf C r₁) (cfD-rel wg C r₂)
+
+cfD⁻¹-rel : ∀ {F} (wf : WellFormedF F) (C : Type) {x y : ⟦ F ⟧F ⟦ C ⟧ᴰ}
+          → FRel (RelD C) F x y → RelD (⟦ F ⟧T C) (coerce-functor⁻¹-D wf C x) (coerce-functor⁻¹-D wf C y)
+cfD⁻¹-rel (wf-K b) C {x} fr-K = base-refl b (injectᵇ b x)
+cfD⁻¹-rel wf-Id C (fr-Id r) = r
+cfD⁻¹-rel (wf-Sum wf wg) C (fr-inl r) = cfD⁻¹-rel wf C r
+cfD⁻¹-rel (wf-Sum wf wg) C (fr-inr r) = cfD⁻¹-rel wg C r
+cfD⁻¹-rel (wf-Prod wf wg) C (fr-pair r s) = cfD⁻¹-rel wf C r , cfD⁻¹-rel wg C s
+
+------------------------------------------------------------------------
+-- The source-functor ↔ semantic-functor coercions preserve relatedness.
+------------------------------------------------------------------------
+
+open import Once.Lang.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
+
+cμin-rel : ∀ (F : Functor) {X : Set} {R : X → X → Set} {x y : ⟦ F ⟧F X}
+         → FRel R F x y → SRel R (translateF Carrier Carrier F) (coerce-μ-in F X x) (coerce-μ-in F X y)
+cμin-rel (K A)   fr-K          = refl
+cμin-rel Id      (fr-Id r)     = r
+cμin-rel (F ⊕ G) (fr-inl r)    = cμin-rel F r
+cμin-rel (F ⊕ G) (fr-inr r)    = cμin-rel G r
+cμin-rel (F ⊗ G) (fr-pair r s) = cμin-rel F r , cμin-rel G s
+
+cμout-rel : ∀ {F} (wf : WellFormedF F) {X : Set} {R : X → X → Set} {x y : ⟦ translateF Carrier Carrier F ⟧SF X}
+          → SRel R (translateF Carrier Carrier F) x y → FRel R F (coerce-μ-out wf X x) (coerce-μ-out wf X y)
+cμout-rel (wf-K pA) e = fr-K≡ (cong (coerce-base-to-full pA) e)
+cμout-rel wf-Id r = fr-Id r
+cμout-rel (wf-Sum wf wg) {x = inj₁ x} {inj₁ y} r = fr-inl (cμout-rel wf r)
+cμout-rel (wf-Sum wf wg) {x = inj₂ x} {inj₂ y} r = fr-inr (cμout-rel wg r)
+cμout-rel (wf-Sum wf wg) {x = inj₁ _} {inj₂ _} ()
+cμout-rel (wf-Sum wf wg) {x = inj₂ _} {inj₁ _} ()
+cμout-rel (wf-Prod wf wg) {x = x₁ , x₂} {y₁ , y₂} (r , s) = fr-pair (cμout-rel wf r) (cμout-rel wg s)
+
+------------------------------------------------------------------------
+-- The fold: related algebras fold the same value to related results.
+------------------------------------------------------------------------
+
+open import Once.Lang.Polynomial using (μS; ⟨_⟩; cataS; sfmapCata)
+
+module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF A → A} {alg₂ : ⟦ G ⟧SF B → B}
+         (h : ∀ {l₁ l₂} → SRel R G l₁ l₂ → R (alg₁ l₁) (alg₂ l₂)) where
+  cataS-rel      : ∀ (x : μS G) → R (cataS alg₁ x) (cataS alg₂ x)
+  sfmapCata-rel  : ∀ (F : SFunctor) (x : ⟦ F ⟧SF (μS G)) → SRel R F (sfmapCata F alg₁ x) (sfmapCata F alg₂ x)
+  cataS-rel ⟨ x ⟩ = h (sfmapCata-rel G x)
+  sfmapCata-rel (SK B′)    x        = refl
+  sfmapCata-rel SId        x        = cataS-rel x
+  sfmapCata-rel (F S⊕ F′) (inj₁ x) = sfmapCata-rel F x
+  sfmapCata-rel (F S⊕ F′) (inj₂ y) = sfmapCata-rel F′ y
+  sfmapCata-rel (F S⊗ F′) (x , y)  = sfmapCata-rel F x , sfmapCata-rel F′ y
+
+------------------------------------------------------------------------
+-- The unfold: related coalgebras unfold related seeds to related streams.
+------------------------------------------------------------------------
+
+open import Once.Lang.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
+open import Once.Lang.Iterative using (force)
+open import Once.Lang.Trace using (T)
+open StreamRel
+
+module _ {H : SFunctor} {A B : Set} {RA : A → B → Set} {c₁ : A → T∞ (⟦ H ⟧SF A)} {c₂ : B → T∞ (⟦ H ⟧SF B)}
+         (hc : ∀ {a b} → RA a b → RelS (SRel RA H) (c₁ a) (c₂ b)) where
+  anaᴵ-rel     : ∀ {a b} → RA a b → StreamRel H (anaᴵ H c₁ a) (anaᴵ H c₂ b)
+  anaRun-rel   : ∀ {m₁ m₂} → RelS (SRel RA H) m₁ m₂ → RelS (LayerRel H H) (anaRun H c₁ m₁) (anaRun H c₂ m₂)
+  anaBlock-rel : ∀ {b₁ b₂} → RelSB (SRel RA H) b₁ b₂ → RelSB (LayerRel H H) (anaBlock H c₁ b₁) (anaBlock H c₂ b₂)
+  mapAna-rel   : ∀ (G : SFunctor) {l₁ l₂} → SRel RA G l₁ l₂ → LayerRel H G (mapAnaᴵ H G c₁ l₁) (mapAnaᴵ H G c₂ l₂)
+  forceR (anaᴵ-rel r) = anaRun-rel (hc r)
+  forceS (anaRun-rel r) = anaBlock-rel (forceS r)
+  anaBlock-rel (s-ret r)  = s-ret (mapAna-rel H r)
+  anaBlock-rel (s-next r) = s-next (anaRun-rel r)
+  anaBlock-rel (s-call f) = s-call (λ v → anaBlock-rel (f v))
+  anaBlock-rel s-halt     = s-halt
+  mapAna-rel (SK B′)    e = e
+  mapAna-rel SId        r = anaᴵ-rel r
+  mapAna-rel (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = mapAna-rel G₁ r
+  mapAna-rel (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = mapAna-rel G₂ r
+  mapAna-rel (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+  mapAna-rel (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+  mapAna-rel (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = mapAna-rel G₁ r , mapAna-rel G₂ s
+
+------------------------------------------------------------------------
+-- The fold of a source functor (`sem-cata`), and the stream constructor.
+------------------------------------------------------------------------
+
+open import Once.Lang.Value Carrier Carrier using (sem-cata)
+open import Once.Lang.StreamInf using (in-νᴵ)
+
+sem-cata-rel : ∀ {F} (wf : WellFormedF F) {A : Set} {R : A → A → Set} {alg₁ alg₂ : ⟦ F ⟧F A → A}
+             → (∀ {l₁ l₂} → FRel R F l₁ l₂ → R (alg₁ l₁) (alg₂ l₂))
+             → ∀ x → R (sem-cata wf alg₁ x) (sem-cata wf alg₂ x)
+sem-cata-rel wf h x = cataS-rel (λ sr → h (cμout-rel wf sr)) x
+
+-- A stream layer's relation IS the lifted stream relation.
+layer→srel : ∀ {H} (G : SFunctor) {l l′} → LayerRel H G l l′ → SRel (StreamRel H) G l l′
+layer→srel (SK B)     e = e
+layer→srel SId        r = r
+layer→srel (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = layer→srel G₁ r
+layer→srel (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = layer→srel G₂ r
+layer→srel (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+layer→srel (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+layer→srel (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = layer→srel G₁ r , layer→srel G₂ s
+
+srel→layer : ∀ {H} (G : SFunctor) {l l′} → SRel (StreamRel H) G l l′ → LayerRel H G l l′
+srel→layer (SK B)     e = e
+srel→layer SId        r = r
+srel→layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = srel→layer G₁ r
+srel→layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = srel→layer G₂ r
+srel→layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+srel→layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+srel→layer (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = srel→layer G₁ r , srel→layer G₂ s
+
+in-rel : ∀ {H} {l l′ : ⟦ H ⟧SF (νᴵ H)} → SRel (StreamRel H) H l l′ → StreamRel H (in-νᴵ l) (in-νᴵ l′)
+forceS (forceR (in-rel {H} r)) = s-ret (srel→layer H r)
