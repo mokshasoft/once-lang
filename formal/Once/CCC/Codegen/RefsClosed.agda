@@ -518,14 +518,15 @@ module _ (G : String → Set) where
     closes-++ bt R (proj₁ cb) (inj₁ (lab∈ (ℓ o (suc l)) d done∈) ∷ inj₁ (lab∈ (ℓ o l) d top∈) ∷ [])
     , proj₂ cb
     where
-      X = ir-to-trace' (suc (suc n)) (suc (suc l)) b
+      X = ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b
       bt = trace-of X ; bbs = bodies-of X
-      R = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷
-          load-indirect-suc ∷ store-at-slot (suc n) ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
-          load-from-slot n ∷ store-indirect ∷ load-from-slot (suc n) ∷ store-indirect-suc ∷
-          instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
+      R = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷ load-indirect-suc ∷
+          store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷ store-at-slot (suc (suc (suc n))) ∷
+          mov-to-input ∷ load-from-slot (suc n) ∷ store-indirect ∷
+          load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷ load-from-slot (suc (suc (suc n))) ∷
+          mov-to-input ∷ instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
           load-indirect-suc ∷ []
-      T = load-indirect ∷ store-at-slot n ∷ instr-ctrl (c-label (ℓ o l)) ∷ (bt ++ R)
+      T = load-indirect ∷ store-at-slot (suc n) ∷ instr-ctrl (c-label (ℓ o l)) ∷ (bt ++ R)
       L = blocks-layout bbs
       inT : T ⊆ T ++ L
       inT = ⊆-++ˡ T L
@@ -536,8 +537,8 @@ module _ (G : String → Set) where
       top∈ : instr-ctrl (c-label (ℓ o l)) ∈ T ++ L
       top∈ = inT (there (there (here refl)))
       done∈ : instr-ctrl (c-label (ℓ o (suc l))) ∈ T ++ L
-      done∈ = inT (RT (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))
-      cb = close b (suc (suc n)) (suc (suc l))
+      done∈ = inT (RT (there (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl))))))))))))))))
+      cb = close b (suc (suc (suc (suc n)))) (suc (suc l))
                  (defd-⊆ (++-⊆ bt L (⊆-trans btT inT) (⊆-++ʳ T L)) d) okb
   close (curry b) n l {D} d okb =
     inj₁ (thk∈ (ℓ o l) d thk∈U) ∷ []

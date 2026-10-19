@@ -152,7 +152,8 @@ frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 -- closure body, emitted at frontier 0 under the ν's own label.
 frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 -- the loop's two stashes, then the round above them.
-frontier-mono (Iter b)       n l = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (frontier-mono b _ _))
+frontier-mono (Iter b)       n l =
+  ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (≤-trans (n≤1+n (suc (suc n))) (≤-trans (n≤1+n (suc (suc (suc n)))) (frontier-mono b _ _))))
 frontier-mono (SigOp si)     n l = sigop-mono n (cmp-of (sem si))
 frontier-mono (Call _)      n l = ≤-refl
 frontier-mono (const fits-int _)   n l = ≤-refl
@@ -884,14 +885,16 @@ slots-below (Iter b) n l =
   segok-pre _ refl (sb-none refl ∷ sb-slot refl e< (λ _ ()) ∷ sb-none refl ∷ [])
     (segok-++ (slots-below b _ _)
       (segok-idle _ refl
-        (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl h (λ _ ()) ∷
-         sb-none refl ∷ sb-none refl ∷ sb-slot refl e< (λ _ ()) ∷ sb-none refl ∷
-         sb-slot refl h (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-         sb-none refl ∷ [])))
-  where h : suc (suc n) ≤ budget-of (ir-to-trace' n l (Iter b))
+        (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl s2< (λ _ ()) ∷
+         sb-none refl ∷ sb-slot refl h (λ _ ()) ∷ sb-none refl ∷ sb-slot refl e< (λ _ ()) ∷
+         sb-none refl ∷ sb-slot refl s2< (λ _ ()) ∷ sb-none refl ∷ sb-slot refl h (λ _ ()) ∷
+         sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])))
+  where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (Iter b))
         h = frontier-mono b _ _
-        e< : suc n ≤ budget-of (ir-to-trace' n l (Iter b))
-        e< = ≤-trans (m≤n⇒m≤1+n ≤-refl) h
+        s2< : suc (suc (suc n)) ≤ budget-of (ir-to-trace' n l (Iter b))
+        s2< = ≤-trans (m≤n⇒m≤1+n ≤-refl) h
+        e< : suc (suc n) ≤ budget-of (ir-to-trace' n l (Iter b))
+        e< = ≤-trans (m≤n⇒m≤1+n ≤-refl) s2<
 slots-below (SigOp si)     n l = sigop-below si n (cmp-of (sem si))
 slots-below (Call _)      n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-int _)   n l = segok-idle _ refl (sb-none refl ∷ [])

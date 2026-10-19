@@ -604,15 +604,15 @@ frag (Iter b) n l =
     , win-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl wBb )
   where
     ssl = suc (suc l)
-    Xb = ir-to-trace' (suc (suc n)) ssl b
+    Xb = ir-to-trace' (suc (suc (suc (suc n)))) ssl b
     lb = label-of Xb
     ssl≤lb : ssl ≤ lb
-    ssl≤lb = label-mono b (suc (suc n)) ssl
+    ssl≤lb = label-mono b (suc (suc (suc (suc n)))) ssl
     l<ssl : l < ssl
     l<ssl = ≤-trans (n<1+n l) (n≤1+n (suc l))
     w1 : Win (suc l) ssl (suc l ∷ [])
     w1 = (≤-refl , ≤-refl) ∷ []
-    Fb = frag b (suc (suc n)) ssl
+    Fb = frag b (suc (suc (suc (suc n)))) ssl
     dTb = proj₁ (proj₁ Fb) ; dBb = proj₁ (proj₂ (proj₁ Fb)) ; jb = proj₂ (proj₂ (proj₁ Fb))
     wTb = proj₁ (proj₂ Fb) ; wBb = proj₂ (proj₂ Fb)
 frag (In _)     n l = none
@@ -754,7 +754,7 @@ frag-nf (case f g) n l =
   where Xf = ir-to-trace' n (suc (suc l)) f
 frag-nf (Iter b) n l =
   nf (trace-of Xb) _ (proj₁ (frag-nf b _ _)) refl , proj₂ (frag-nf b _ _)
-  where Xb = ir-to-trace' (suc (suc n)) (suc (suc l)) b
+  where Xb = ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b
 frag-nf (In _)     n l = refl , refl
 frag-nf (out-μ _)  n l = refl , refl
 frag-nf (Cata {F} _ alg) n l =

@@ -304,7 +304,7 @@ frame-free-trace' (case f g) (hf , hg) n l =
       (++⁺ (frame-free-trace' g hg _ _)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (frame-free-trace' f hf _ _) (tt ∷ []))))
-frame-free-trace' (Iter b) hb n l = tt ∷ tt ∷ tt ∷ ++⁺ (frame-free-trace' b hb _ _) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+frame-free-trace' (Iter b) hb n l = tt ∷ tt ∷ tt ∷ ++⁺ (frame-free-trace' b hb _ _) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 frame-free-trace' (In _)  hm n l = tt ∷ []
 frame-free-trace' (out-μ _) hm n l = tt ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame), so its IH is

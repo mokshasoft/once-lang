@@ -1,0 +1,26 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.119 D5 (D317/D319): THE LOOP. `ana round` checked at `Eff A B` runs
+-- `round` from the seed until it ends with `inl b`; `inr a` is the next state.
+-- The round here is a pure block (it performs no event); the loop sums
+-- 10 + 9 + … + 1 from the state (10, 0), one silent step per round.
+--
+-- Expected: exit code 55.
+
+import I.Linux.Syscalls as S
+
+stop : Int * Int -> Unit -> Int + (Int * Int)
+stop p _ = inl (snd p)
+
+next : Int * Int -> Unit -> Int + (Int * Int)
+next p _ = inr (fst p - 1, snd p + fst p)
+
+step : Int * Int -> Int + (Int * Int)
+step p = case (next p) (stop p) (fst p == 0)
+
+loopSum : Eff (Int * Int) Int
+loopSum = ana step
+
+main : Eff Unit Unit
+main = compose exit@S (compose loopSum (\_ -> (10, 0)))

@@ -1209,35 +1209,33 @@ ir-to-trace' n l (Ana wf coalg) =
 -- ────────────────────────────────────────────────────────────────────
 -- Iter body — THE LOOP (D317/D319, plan 0.119 D5). Input1 is the pair
 -- `(e , a)`. The environment `e` is kept in a slot; each round runs `body`
--- on the current pair (its slots above the loop's two), then branches on the
+-- on the current pair (its slots above the loop's), then branches on the
 -- result's tag exactly as `case` does: `inl b` leaves with `b`; `inr a′`
--- builds the next pair `(e , a′)` (a fresh 2-cell block, as `⟨_,_⟩`'s) and
--- jumps back — the back edge is the round's control step.
+-- builds the next pair `(e , a′)` with `⟨_,_⟩`'s own nine-row tail (the same
+-- stash layout: `e` at `suc n`, `a′` at `suc (suc n)`, the node at
+-- `suc (suc (suc n))`), moves it to Input1 and jumps back — the back edge is
+-- the round's control step.
 --
---   load-indirect ∷ store-at-slot env ∷
---   c-label top ∷ body ++
---   mov-to-input ∷ c-branch-tag-zero done ∷
---   load-indirect-suc ∷ store-at-slot state ∷
---   instr-alloc-heap 2 ∷ mov-to-input ∷
---   load-from-slot env ∷ store-indirect ∷ load-from-slot state ∷ store-indirect-suc ∷
---   c-jmp top ∷ c-label done ∷ load-indirect-suc ∷ []
+--   load-indirect ∷ store-at-slot env ∷ c-label top ∷ body ++
+--   mov-to-input ∷ c-branch-tag-zero done ∷ load-indirect-suc ∷
+--   <pair tail> ∷ mov-to-input ∷ c-jmp top ∷
+--   c-label done ∷ load-indirect-suc ∷ []
 -- ────────────────────────────────────────────────────────────────────
 ir-to-trace' n l (Iter body) =
-  let l-top       = l
-      l-done      = suc l
-      env-stash   = n
-      state-stash = suc env-stash
-      (nb , l1 , bt , bb) = ir-to-trace' (suc state-stash) (suc (suc l)) body
+  let l-top = l
+      l-done = suc l
+      (nb , l1 , bt , bb) = ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) body
   in nb , l1 ,
-     (load-indirect ∷ store-at-slot env-stash ∷
+     (load-indirect ∷ store-at-slot (suc n) ∷
       instr-ctrl (c-label (ℓ o l-top)) ∷ []) ++
      bt ++
      (mov-to-input ∷
       instr-ctrl (c-branch-tag-zero (ℓ o l-done)) ∷
-      load-indirect-suc ∷ store-at-slot state-stash ∷
-      instr-alloc-heap 2 ∷ mov-to-input ∷
-      load-from-slot env-stash ∷ store-indirect ∷
-      load-from-slot state-stash ∷ store-indirect-suc ∷
+      load-indirect-suc ∷
+      store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷ store-at-slot (suc (suc (suc n))) ∷
+      mov-to-input ∷ load-from-slot (suc n) ∷ store-indirect ∷
+      load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷ load-from-slot (suc (suc (suc n))) ∷
+      mov-to-input ∷
       instr-ctrl (c-jmp (ℓ o l-top)) ∷
       instr-ctrl (c-label (ℓ o l-done)) ∷
       load-indirect-suc ∷ []) ,

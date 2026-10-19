@@ -271,7 +271,7 @@ alloc-min-trace' (case f g) n l =
       (++⁺ (alloc-min-trace' g _ _)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (alloc-min-trace' f _ _) (tt ∷ []))))
-alloc-min-trace' (Iter b) n l = tt ∷ tt ∷ tt ∷ ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+alloc-min-trace' (Iter b) n l = tt ∷ tt ∷ tt ∷ ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 alloc-min-trace' (In _)  n l = tt ∷ []
 alloc-min-trace' (out-μ _) n l = tt ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame).

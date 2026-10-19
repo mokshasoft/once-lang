@@ -562,10 +562,9 @@ labels-in (Ana _ c) n l =
 labels-in (Iter b) n l =
   li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl l<hi ∷
   ++⁺ (ls-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (labels-in b _ _))
-      (li-none refl ∷ li-lab refl (n≤1+n l) up ∷ li-none refl ∷ li-none refl ∷
-       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-       li-none refl ∷ li-lab refl ≤-refl l<hi ∷ li-lab refl (n≤1+n l) up ∷
-       li-none refl ∷ [])
+      (li-none refl ∷ li-lab refl (n≤1+n l) up ∷
+       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+       li-lab refl ≤-refl l<hi ∷ li-lab refl (n≤1+n l) up ∷ li-none refl ∷ [])
   where
     up : suc (suc l) ≤ label-of (ir-to-trace' n l (Iter b))
     up = label-mono b _ _
@@ -1306,7 +1305,7 @@ case-pieces : ∀ {A B C} (f : IR A C) (g : IR B C) (n l : ℕ)
                                               (label-of (ir-to-trace' n (suc (suc l)) f)) g))
                       (trace-of (ir-to-trace' n l (case f g)))
 iter-pieces : ∀ {E A B} (b : IR (E IT.* A) (B IT.+ A)) (n l : ℕ)
-            → Pieces2 l (suc (suc l)) (label-of (ir-to-trace' (suc (suc n)) (suc (suc l)) b))
+            → Pieces2 l (suc (suc l)) (label-of (ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b))
                       (trace-of (ir-to-trace' n l (Iter b)))
 
 
@@ -1370,18 +1369,17 @@ seg-agree (case f g) n l = pieces2-agree l (suc (suc l)) _ _ (case-pieces f g n 
 seg-agree (Iter b) n l = pieces2-agree l (suc (suc l)) _ _ (iter-pieces b n l)
 
 iter-pieces b n l =
-  p2cons (suc (suc l)) (label-of (ir-to-trace' (suc (suc n)) (suc (suc l)) b)) refl hdL
-         (λ st → ok-neu (slots-below b (suc (suc n)) (suc (suc l))) st)
+  p2cons (suc (suc l)) (label-of (ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b)) refl hdL
+         (λ st → ok-neu (slots-below b (suc (suc (suc (suc n)))) (suc (suc l))) st)
          (seg-agree b _ _) (labels-in b _ _) ≤-refl (label-mono b _ _) ≤-refl
     (p2nil refl tailL)
   where
     hdL : LabelsIn l (suc (suc l)) _
     hdL = li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ []
     tailL : LabelsIn l (suc (suc l)) _
-    tailL = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷
-            li-none refl ∷ []
+    tailL = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷
+            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+            li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ []
 
 
 case-pieces f g n l =
@@ -1918,24 +1916,24 @@ scope-ok (case f g) n l = mkScope blin blagr nceb ncbe
 scope-ok (Iter b) n l = mkScope blin blagr nceb ncbe
   where
     l2 = suc (suc l)
-    Bd = ir-to-trace' (suc (suc n)) l2 b
+    Bd = ir-to-trace' (suc (suc (suc (suc n)))) l2 b
     bt = trace-of Bd ; BB = blocks-layout (bodies-of Bd) ; lb = label-of Bd
-    Sb = scope-ok b (suc (suc n)) l2
+    Sb = scope-ok b (suc (suc (suc (suc n)))) l2
     l≤l2 : l ≤ l2
     l≤l2 = m≤n⇒m≤1+n (n≤1+n l)
-    p1 = load-indirect ∷ store-at-slot n ∷ instr-ctrl (c-label (ℓ o l)) ∷ []
-    p3 = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷
-         load-indirect-suc ∷ store-at-slot (suc n) ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
-         load-from-slot n ∷ store-indirect ∷ load-from-slot (suc n) ∷ store-indirect-suc ∷
-         instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
+    p1 = load-indirect ∷ store-at-slot (suc n) ∷ instr-ctrl (c-label (ℓ o l)) ∷ []
+    p3 = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷ load-indirect-suc ∷
+         store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷ store-at-slot (suc (suc (suc n))) ∷
+         mov-to-input ∷ load-from-slot (suc n) ∷ store-indirect ∷
+         load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷ load-from-slot (suc (suc (suc n))) ∷
+         mov-to-input ∷ instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
          load-indirect-suc ∷ []
     p1L : LabelsIn l l2 p1
     p1L = li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ []
     p3L : LabelsIn l l2 p3
-    p3L = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ li-none refl ∷
-          li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-          li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷
-          li-none refl ∷ []
+    p3L = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷
+          li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+          li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ []
     blin : LabelsIn l lb BB
     blin = ls-weaken l≤l2 ≤-refl (ScopeOK.bl-in Sb)
     blagr : SegAgree BB

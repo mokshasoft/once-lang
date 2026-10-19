@@ -254,7 +254,7 @@ calls-trace' (in-ν _)     n l _ =
 calls-trace' (Ana _ c)      n l _ =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 calls-trace' (Iter b)       n l lb =
-  tt ∷ tt ∷ tt ∷ ++⁺ (calls-trace' b _ _ lb) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+  tt ∷ tt ∷ tt ∷ ++⁺ (calls-trace' b _ _ lb) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 calls-trace' (SigOp si)     n l _ = sigop-calls si n (cmp-of (sem si))
 calls-trace' (Call {A} {B} f) n l lk = (A , B , lk) ∷ []
 calls-trace' (const fits-int _)   n l _ = tt ∷ []

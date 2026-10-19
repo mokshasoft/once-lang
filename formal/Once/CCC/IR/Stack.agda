@@ -118,7 +118,7 @@ ir-stack-requirement (in-ν _) = 1
 -- Ana: produces ν-value lazily, needs stack for coalgebra
 ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg ℕ.+ pair-slots
 -- Iter: the round runs above the loop's two stash slots (env, next state).
-ir-stack-requirement (Iter body) = ir-stack-requirement body ℕ.+ pair-slots
+ir-stack-requirement (Iter body) = ir-stack-requirement body ℕ.+ 4
 -- Hylo: fused cata ∘ ana, combines both requirements
 -- Fuse: μ-anchored fusion (correct by construction)
 -- Guard/Unguard removed: productivity follows from IR totality
