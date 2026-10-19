@@ -108,7 +108,7 @@ validSyntaxTests = testGroup "Valid syntax"
             [ "signature exit : Act Int Unit"
             ]
       result <- parseSource source
-      assertParsed result ["exit : Eff Int Unit"]
+      assertParsed result ["exit : Act Int Unit"]
 
   , testCase "a halting signature says Void" $ do
       -- Plan 0.98 E / D226: an external op that never returns is typed by its
@@ -117,7 +117,7 @@ validSyntaxTests = testGroup "Valid syntax"
             [ "signature ex : Act Int Void"
             ]
       result <- parseSource source
-      assertParsedContains result "ex : Eff Int Void"
+      assertParsedContains result "ex : Act Int Void"
 
   , testCase "the effect-shape annotation is gone" $ do
       -- `! halts` / `! emits` were deleted with the SigEffect table (plan 0.98 E):
