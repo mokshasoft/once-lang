@@ -630,9 +630,75 @@ groundOr t' with isGround t'
 ... | inj₁ g = just (inj₁ (extractGround t' g))
 ... | inj₂ _ = just (inj₂ (renameVars t'))
 
+-- | D321: the least type puts `Void` wherever the body leaves a summand
+-- open. A variable that occurs in no arrow's domain (at any depth: the
+-- principal type keeps every domain) is one the body never constrains, so
+-- its least instance is `Void`. Expr-free, like the other finalizers.
+mutual
+  domVars : PolyType → List String
+  domVars (a P* b)       = domVars a ++ᴸ domVars b
+  domVars (a P+ b)       = domVars a ++ᴸ domVars b
+  domVars (a P⇒[ _ ] b)  = allVars a ++ᴸ domVars b
+  domVars (PEff a b)     = allVars a ++ᴸ domVars b
+  domVars (PAct a b)     = allVars a ++ᴸ domVars b
+  domVars (Pμ-type F)    = domVarsF F
+  domVars (Pν-type F _)  = domVarsF F
+  {-# CATCHALL #-}
+  domVars _              = []
+
+  domVarsF : PolyFunctor → List String
+  domVarsF (PK A)   = domVars A
+  domVarsF PId      = []
+  domVarsF (F P⊕ G) = domVarsF F ++ᴸ domVarsF G
+  domVarsF (F P⊗ G) = domVarsF F ++ᴸ domVarsF G
+
+  allVars : PolyType → List String
+  allVars (PTVar x)      = x ∷ []
+  allVars (a P* b)       = allVars a ++ᴸ allVars b
+  allVars (a P+ b)       = allVars a ++ᴸ allVars b
+  allVars (a P⇒[ _ ] b)  = allVars a ++ᴸ allVars b
+  allVars (PEff a b)     = allVars a ++ᴸ allVars b
+  allVars (PAct a b)     = allVars a ++ᴸ allVars b
+  allVars (Pμ-type F)    = allVarsF F
+  allVars (Pν-type F _)  = allVarsF F
+  {-# CATCHALL #-}
+  allVars _              = []
+
+  allVarsF : PolyFunctor → List String
+  allVarsF (PK A)   = allVars A
+  allVarsF PId      = []
+  allVarsF (F P⊕ G) = allVarsF F ++ᴸ allVarsF G
+  allVarsF (F P⊗ G) = allVarsF F ++ᴸ allVarsF G
+
+memberS : String → List String → Bool
+memberS x []       = false
+memberS x (y ∷ ys) = does (x ≟ y) ∨ memberS x ys
+
+mutual
+  closeOpen : List String → PolyType → PolyType
+  closeOpen ds (PTVar x)      = if memberS x ds then PTVar x else PVoid
+  closeOpen ds (a P* b)       = closeOpen ds a P* closeOpen ds b
+  closeOpen ds (a P+ b)       = closeOpen ds a P+ closeOpen ds b
+  closeOpen ds (a P⇒[ q ] b)  = closeOpen ds a P⇒[ q ] closeOpen ds b
+  closeOpen ds (PEff a b)     = PEff (closeOpen ds a) (closeOpen ds b)
+  closeOpen ds (PAct a b)     = PAct (closeOpen ds a) (closeOpen ds b)
+  closeOpen ds (Pμ-type F)    = Pμ-type (closeOpenF ds F)
+  closeOpen ds (Pν-type F φ)  = Pν-type (closeOpenF ds F) φ
+  {-# CATCHALL #-}
+  closeOpen ds t              = t
+
+  closeOpenF : List String → PolyFunctor → PolyFunctor
+  closeOpenF ds (PK A)   = PK (closeOpen ds A)
+  closeOpenF ds PId      = PId
+  closeOpenF ds (F P⊕ G) = closeOpenF ds F P⊕ closeOpenF ds G
+  closeOpenF ds (F P⊗ G) = closeOpenF ds F P⊗ closeOpenF ds G
+
+closeUnconstrained : PolyType → PolyType
+closeUnconstrained t = closeOpen (domVars t) t
+
 finishP : Result → Maybe (Type ⊎ PolyType)
 finishP nothing = nothing
-finishP (just (t , _ , s)) = groundOr (zonk fuelD s t)
+finishP (just (t , _ , s)) = groundOr (closeUnconstrained (zonk fuelD s t))
 
 -- | THE oracle. `inj₁` = the body's principal type is ground; `inj₂` =
 -- it is a proper schema (generalize at the def boundary — route to the

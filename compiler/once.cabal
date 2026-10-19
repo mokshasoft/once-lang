@@ -143,6 +143,7 @@ library
       MAlonzo.Code.Once.Adequacy.ModuleLaws
       MAlonzo.Code.Once.Adequacy.NameClash
       MAlonzo.Code.Once.Adequacy.OutErased
+      MAlonzo.Code.Once.Adequacy.PrincipalDecide
       MAlonzo.Code.Once.Adequacy.ProgramLinked
       MAlonzo.Code.Once.Adequacy.ResolveBridge
       MAlonzo.Code.Once.Adequacy.ResolveFaithful
@@ -330,6 +331,7 @@ library
       MAlonzo.Code.Once.CCC.Machine.FlatLeft
       MAlonzo.Code.Once.Denotation.TraceTr
       MAlonzo.Code.Once.Lang.Out
+      MAlonzo.Code.Once.Lang.Principal
       MAlonzo.Code.Once.Metatheory.Trace
       MAlonzo.Code.Once.Spec.Delay
       MAlonzo.Code.Once.Spec.Grade

@@ -10,5 +10,5 @@ import I.Linux.Syscalls as S
 f : Int -> Int
 f x = x % (x - x)
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (f 7)

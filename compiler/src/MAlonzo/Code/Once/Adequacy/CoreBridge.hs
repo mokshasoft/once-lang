@@ -61,7 +61,7 @@ du_typedSig'45'ef_14 v0 v1
   = case coe v0 of
       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v2
         -> coe
-             MAlonzo.Code.Once.Lang.Module.du_teleSig_116 (coe v2) (coe v1)
+             MAlonzo.Code.Once.Lang.Module.du_teleSig_118 (coe v2) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoreBridge.typedSig
 d_typedSig_24 ::
@@ -105,7 +105,7 @@ du_typedProgram'45'ef_38 v0 v1 v2
         -> case coe v2 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
-                    MAlonzo.Code.Once.Lang.Core.Translate.d_toProgram'8320'_1402
+                    MAlonzo.Code.Once.Lang.Core.Translate.d_toProgram'8320'_1414
                     (coe v3) (coe v1) (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -187,7 +187,7 @@ d_trIRAt_106 v0 v1 v2
          (coe
             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
             (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20))
-         (coe MAlonzo.Code.Once.Compile.d_mainCall_906)
+         (coe MAlonzo.Code.Once.Compile.d_mainCall_1024)
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
 -- Once.Adequacy.CoreBridge.core-ef-tr
 d_core'45'ef'45'tr_126 ::
@@ -222,26 +222,26 @@ du_core'45'ef'45'tr_126 v0 v1 v2 v3 v4 v5
                 (coe
                    MAlonzo.Code.Once.Lang.Trace.C_interp_192
                    (coe
-                      MAlonzo.Code.Once.Lang.Module.du_teleSig_116 (coe v3) (coe v1))
+                      MAlonzo.Code.Once.Lang.Module.du_teleSig_118 (coe v3) (coe v1))
                    (coe v5))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe
                    MAlonzo.Code.Once.Lang.Core.Telescope.d_runCore_146
                    (coe
-                      MAlonzo.Code.Once.Lang.Module.du_teleSig_116 (coe v3) (coe v1))
+                      MAlonzo.Code.Once.Lang.Module.du_teleSig_118 (coe v3) (coe v1))
                    (coe v0)
                    (coe
                       MAlonzo.Code.Once.Lang.Core.Translate.d_toProgram_862
                       (coe
-                         MAlonzo.Code.Once.Lang.Module.du_teleSig_116 (coe v3) (coe v1))
+                         MAlonzo.Code.Once.Lang.Module.du_teleSig_118 (coe v3) (coe v1))
                       (coe (0 :: Integer))
                       (coe MAlonzo.Code.Once.Lang.Core.PolyTy.C_'91''93'_830)
                       (coe
                          MAlonzo.Code.Once.Lang.Module.C_scope_20
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                         (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_52)
+                         (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_112)
                          (coe
-                            MAlonzo.Code.Once.Compile.d_telePolys_394
+                            MAlonzo.Code.Once.Compile.d_telePolys_454
                             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
                       (coe v3) (coe MAlonzo.Code.Once.Lang.Core.Telescope.C_'91''93'_16)
                       (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_68)
@@ -256,12 +256,12 @@ du_core'45'ef'45'tr_126 v0 v1 v2 v3 v4 v5
                       (coe
                          MAlonzo.Code.Once.Adequacy.TeleWalk.du_φ_14
                          (coe
-                            MAlonzo.Code.Once.Lang.Module.du_teleSig_116 (coe v3) (coe v1))
+                            MAlonzo.Code.Once.Lang.Module.du_teleSig_118 (coe v3) (coe v1))
                          (coe v5))
                       (coe
-                         MAlonzo.Code.Once.Compile.d_tableOf'45'go_948
+                         MAlonzo.Code.Once.Compile.d_tableOf'45'go_1066
                          (coe
-                            MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_332
+                            MAlonzo.Code.Once.Adequacy.FunBundle.du_bundle'8594'compiled_348
                             (coe v3) (coe v4))
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
                    (coe
@@ -270,7 +270,7 @@ du_core'45'ef'45'tr_126 v0 v1 v2 v3 v4 v5
                    (coe
                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20))
-                   (coe MAlonzo.Code.Once.Compile.d_mainCall_906)
+                   (coe MAlonzo.Code.Once.Compile.d_mainCall_1024)
                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoreBridge._.I′
@@ -312,7 +312,7 @@ du_P_146 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Lang.Core.Translate.d_toProgram_862
       (coe
-         MAlonzo.Code.Once.Lang.Module.du_teleSig_116 (coe v0) (coe v1))
+         MAlonzo.Code.Once.Lang.Module.du_teleSig_118 (coe v0) (coe v1))
       (coe (0 :: Integer))
       (coe MAlonzo.Code.Once.Lang.Core.PolyTy.C_'91''93'_830)
       (coe
@@ -376,7 +376,7 @@ du_program'45'core'45'tr_196 ::
 du_program'45'core'45'tr_196 v0 v1 v2 v3 v4
   = let v5
           = coe
-              MAlonzo.Code.Once.Adequacy.FunBundle.du_node'45'ef_1094
+              MAlonzo.Code.Once.Adequacy.FunBundle.du_node'45'ef_1242
               (coe
                  MAlonzo.Code.Once.Parser.d_guardDistinct_538
                  (coe
@@ -420,7 +420,7 @@ du_ι_238 ::
 du_ι_238 v0 v1
   = coe
       MAlonzo.Code.Once.Lang.Trace.C_interp_192
-      (coe MAlonzo.Code.Once.Lang.Module.d_moduleSig_132 (coe v0))
+      (coe MAlonzo.Code.Once.Lang.Module.d_moduleSig_134 (coe v0))
       (coe v1)
 -- Once.Adequacy.CoreBridge._.ir≡
 d_ir'8801'_240 ::

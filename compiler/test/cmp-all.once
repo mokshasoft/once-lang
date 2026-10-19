@@ -23,6 +23,6 @@ yes _ = 1
 bit : Unit + Unit -> Int
 bit = case no yes
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (bit (2 < 5) + 2 * bit (5 <= 5) + 4 * bit (2 > 5) + 8 * bit (5 >= 2)
                + 16 * bit (3 == 3) + 32 * bit (3 != 3) + 64 * bit ((0 - 1) < 0))

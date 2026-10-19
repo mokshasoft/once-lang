@@ -27,5 +27,5 @@ mkNu = ana id
 -- describes. Writing it point-free as `force : Nu (K Int) -> Int; force = Out`
 -- instead TYPECHECKS AND EMITS NOTHING — the link then fails on an undefined
 -- `once_5force`. See D197: that is a real hole, and this test found it.
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (Out (mkNu 42))

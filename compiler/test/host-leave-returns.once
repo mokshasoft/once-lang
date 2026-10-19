@@ -8,5 +8,5 @@
 --
 -- Expected: exit code 0.
 
-main : Eff Unit Unit
+main : Unit -> Unit
 main = \u -> u

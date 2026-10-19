@@ -19,5 +19,5 @@ val = In 42
 getInt : Mu (K Int) -> Int
 getInt = cata id
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (getInt val)

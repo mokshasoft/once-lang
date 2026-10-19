@@ -109,12 +109,12 @@ typeMismatchTests = testGroup "Type mismatches"
 
 mainTypeTests :: TestTree
 mainTypeTests = testGroup "Main function validation"
-  [ testCase "main with Eff Unit Unit is valid" $ do
-      -- The canonical main type is `Eff Unit Unit`
-      -- (fixed by validateMain; see Once.Denotation.Behavior). `Eff Unit Int`
+  [ testCase "main at a type below Eff Unit Unit is valid" $ do
+      -- D315: `main` is at its principal type and used at `Eff Unit Unit`;
+      -- `id`'s principal type here is the pure `Unit -> Unit`. `Eff Unit Int`
       -- is NOT valid — the trailing object must be Unit.
       let source = T.unlines
-            [ "main : Eff Unit Unit"
+            [ "main : Unit -> Unit"
             , "main = id"
             ]
       result <- typeCheckSource source

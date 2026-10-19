@@ -9,5 +9,5 @@ import I.Linux.Syscalls as S
 
 -- Use exit directly applied to the value
 -- exit@S : Eff Int Unit, when applied to Int, yields Eff Unit Unit
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (id 42)

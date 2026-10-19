@@ -14,8 +14,8 @@
 
 import I.Linux.Syscalls as S
 
-mkSum : Int -> Int + Int
+mkSum : Int -> Int + Void
 mkSum x = inl x
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (destruct (mkSum 42) of { Left x -> x ; Right y -> 99 })

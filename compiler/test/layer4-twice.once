@@ -2,5 +2,5 @@
 import I.Linux.Syscalls as S
 twice : (Int -> Int) -> Int -> Int
 twice f x = f (f x)
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (twice id 42)

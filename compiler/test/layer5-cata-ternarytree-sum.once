@@ -27,5 +27,5 @@ sumTri = cata (case id triOp)
 t : Mu (K Int + (Id * Id * Id))
 t = In (inr ((In (inl 40), In (inl 0)), In (inl 2)))
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (sumTri t)

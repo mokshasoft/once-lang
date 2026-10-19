@@ -24,5 +24,5 @@ sumNE = cata (case id addPair)
 xs : Mu (K Int + (K Int * Id))
 xs = In (inr (40, In (inl 2)))
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (sumNE xs)

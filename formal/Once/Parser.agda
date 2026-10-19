@@ -368,9 +368,11 @@ extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) _ with pr
 {-# CATCHALL #-}
 extractFunctions-go aliases (_ ∷ rest) pending = extractFunctions-go aliases rest pending
 
+-- D315: a sig-less `main` is at its INFERRED type, like any definition (the
+-- compiler then uses it at `Eff Unit Unit`); it is a FunInfo, never a schema.
 extractFunctions-sigless aliases name body rest (yes _) =
   extractFunctions-consFun (extractFunctions-go aliases rest nothing)
-    (mkFunInfo name (just (Unit ⇒[ mk-kind Many eff ] Unit)) body false)
+    (mkFunInfo name nothing body false)
 extractFunctions-sigless aliases name body rest (no _) with siglessSchema body
 ... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) name pty body
 ... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing body false)

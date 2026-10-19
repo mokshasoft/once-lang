@@ -29,5 +29,5 @@ leaf = In (inl unit)
 t : Mu (K Unit + (Id * (K Int * Id)))
 t = In (inr (leaf, (42, leaf)))
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (sumNode t)

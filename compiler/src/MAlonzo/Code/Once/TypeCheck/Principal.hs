@@ -2973,11 +2973,211 @@ d_groundOr_2198 v0
                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
                    (coe d_renameVars_1968 (coe v0)))
          _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.TypeCheck.Principal.domVars
+d_domVars_2212 ::
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_domVars_2212 v0
+  = let v1 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.Lang.Type.Poly.C__P'42'__24 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_domVars_2212 (coe v2)) (coe d_domVars_2212 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C__P'43'__26 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_domVars_2212 (coe v2)) (coe d_domVars_2212 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C__P'8658''91'_'93'__28 v2 v3 v4
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_domVars_2212 (coe v4))
+         MAlonzo.Code.Once.Lang.Type.Poly.C_PEff_30 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_domVars_2212 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C_PAct_32 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_domVars_2212 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C_Pμ'45'type_34 v2
+           -> coe d_domVarsF_2214 (coe v2)
+         MAlonzo.Code.Once.Lang.Type.Poly.C_Pν'45'type_36 v2 v3
+           -> coe d_domVarsF_2214 (coe v2)
+         _ -> coe v1)
+-- Once.TypeCheck.Principal.domVarsF
+d_domVarsF_2214 ::
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyFunctor_8 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_domVarsF_2214 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PK_12 v1
+        -> coe d_domVars_2212 (coe v1)
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PId_14
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'8853'__16 v1 v2
+        -> coe
+             MAlonzo.Code.Data.List.Base.du__'43''43'__32
+             (coe d_domVarsF_2214 (coe v1)) (coe d_domVarsF_2214 (coe v2))
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'8855'__18 v1 v2
+        -> coe
+             MAlonzo.Code.Data.List.Base.du__'43''43'__32
+             (coe d_domVarsF_2214 (coe v1)) (coe d_domVarsF_2214 (coe v2))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.TypeCheck.Principal.allVars
+d_allVars_2216 ::
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_allVars_2216 v0
+  = let v1 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.Lang.Type.Poly.C__P'42'__24 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_allVars_2216 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C__P'43'__26 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_allVars_2216 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C__P'8658''91'_'93'__28 v2 v3 v4
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_allVars_2216 (coe v4))
+         MAlonzo.Code.Once.Lang.Type.Poly.C_PEff_30 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_allVars_2216 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C_PAct_32 v2 v3
+           -> coe
+                MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                (coe d_allVars_2216 (coe v2)) (coe d_allVars_2216 (coe v3))
+         MAlonzo.Code.Once.Lang.Type.Poly.C_Pμ'45'type_34 v2
+           -> coe d_allVarsF_2218 (coe v2)
+         MAlonzo.Code.Once.Lang.Type.Poly.C_Pν'45'type_36 v2 v3
+           -> coe d_allVarsF_2218 (coe v2)
+         MAlonzo.Code.Once.Lang.Type.Poly.C_PTVar_42 v2
+           -> coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
+                (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+         _ -> coe v1)
+-- Once.TypeCheck.Principal.allVarsF
+d_allVarsF_2218 ::
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyFunctor_8 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_allVarsF_2218 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PK_12 v1
+        -> coe d_allVars_2216 (coe v1)
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PId_14
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'8853'__16 v1 v2
+        -> coe
+             MAlonzo.Code.Data.List.Base.du__'43''43'__32
+             (coe d_allVarsF_2218 (coe v1)) (coe d_allVarsF_2218 (coe v2))
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'8855'__18 v1 v2
+        -> coe
+             MAlonzo.Code.Data.List.Base.du__'43''43'__32
+             (coe d_allVarsF_2218 (coe v1)) (coe d_allVarsF_2218 (coe v2))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.TypeCheck.Principal.memberS
+d_memberS_2290 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] -> Bool
+d_memberS_2290 v0 v1
+  = case coe v1 of
+      [] -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      (:) v2 v3
+        -> coe
+             MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+             (coe
+                MAlonzo.Code.Relation.Nullary.Decidable.Core.d_does_28
+                (coe
+                   MAlonzo.Code.Data.String.Properties.d__'8799'__54 (coe v0)
+                   (coe v2)))
+             (coe d_memberS_2290 (coe v0) (coe v3))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.TypeCheck.Principal.closeOpen
+d_closeOpen_2300 ::
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10
+d_closeOpen_2300 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'42'__24 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C__P'42'__24
+             (coe d_closeOpen_2300 (coe v0) (coe v2))
+             (coe d_closeOpen_2300 (coe v0) (coe v3))
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'43'__26 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C__P'43'__26
+             (coe d_closeOpen_2300 (coe v0) (coe v2))
+             (coe d_closeOpen_2300 (coe v0) (coe v3))
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'8658''91'_'93'__28 v2 v3 v4
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C__P'8658''91'_'93'__28
+             (coe d_closeOpen_2300 (coe v0) (coe v2)) (coe v3)
+             (coe d_closeOpen_2300 (coe v0) (coe v4))
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PEff_30 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C_PEff_30
+             (coe d_closeOpen_2300 (coe v0) (coe v2))
+             (coe d_closeOpen_2300 (coe v0) (coe v3))
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PAct_32 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C_PAct_32
+             (coe d_closeOpen_2300 (coe v0) (coe v2))
+             (coe d_closeOpen_2300 (coe v0) (coe v3))
+      MAlonzo.Code.Once.Lang.Type.Poly.C_Pμ'45'type_34 v2
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C_Pμ'45'type_34
+             (coe d_closeOpenF_2302 (coe v0) (coe v2))
+      MAlonzo.Code.Once.Lang.Type.Poly.C_Pν'45'type_36 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C_Pν'45'type_36
+             (coe d_closeOpenF_2302 (coe v0) (coe v2)) (coe v3)
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PTVar_42 v2
+        -> coe
+             MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+             (coe d_memberS_2290 (coe v2) (coe v0)) (coe v1)
+             (coe MAlonzo.Code.Once.Lang.Type.Poly.C_PVoid_22)
+      _ -> coe v1
+-- Once.TypeCheck.Principal.closeOpenF
+d_closeOpenF_2302 ::
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyFunctor_8 ->
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyFunctor_8
+d_closeOpenF_2302 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PK_12 v2
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C_PK_12
+             (coe d_closeOpen_2300 (coe v0) (coe v2))
+      MAlonzo.Code.Once.Lang.Type.Poly.C_PId_14 -> coe v1
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'8853'__16 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C__P'8853'__16
+             (coe d_closeOpenF_2302 (coe v0) (coe v2))
+             (coe d_closeOpenF_2302 (coe v0) (coe v3))
+      MAlonzo.Code.Once.Lang.Type.Poly.C__P'8855'__18 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Type.Poly.C__P'8855'__18
+             (coe d_closeOpenF_2302 (coe v0) (coe v2))
+             (coe d_closeOpenF_2302 (coe v0) (coe v3))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.TypeCheck.Principal.closeUnconstrained
+d_closeUnconstrained_2372 ::
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10
+d_closeUnconstrained_2372 v0
+  = coe d_closeOpen_2300 (coe d_domVars_2212 (coe v0)) (coe v0)
 -- Once.TypeCheck.Principal.finishP
-d_finishP_2212 ::
+d_finishP_2376 ::
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_finishP_2212 v0
+d_finishP_2376 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
@@ -2985,19 +3185,22 @@ d_finishP_2212 v0
                -> case coe v3 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                       -> coe
-                           d_groundOr_2198 (coe d_zonk_88 (coe d_fuelD_970) (coe v5) (coe v2))
+                           d_groundOr_2198
+                           (coe
+                              d_closeUnconstrained_2372
+                              (coe d_zonk_88 (coe d_fuelD_970) (coe v5) (coe v2)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Principal.principal
-d_principal_2218 ::
+d_principal_2382 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_principal_2218 v0 v1
+d_principal_2382 v0 v1
   = coe
-      d_finishP_2212
+      d_finishP_2376
       (coe
          d_pInfer_1452
          (coe
@@ -3011,10 +3214,10 @@ d_principal_2218 v0 v1
          (coe (0 :: Integer))
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
 -- Once.TypeCheck.Principal.pgProj
-d_pgProj_2224 ::
+d_pgProj_2388 ::
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Maybe MAlonzo.Code.Once.Lang.Type.T_Type_8
-d_pgProj_2224 v0
+d_pgProj_2388 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
@@ -3026,17 +3229,17 @@ d_pgProj_2224 v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Principal.principalGround
-d_principalGround_2228 ::
+d_principalGround_2392 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   Maybe MAlonzo.Code.Once.Lang.Type.T_Type_8
-d_principalGround_2228 v0 v1
-  = coe d_pgProj_2224 (coe d_principal_2218 (coe v0) (coe v1))
+d_principalGround_2392 v0 v1
+  = coe d_pgProj_2388 (coe d_principal_2382 (coe v0) (coe v1))
 -- Once.TypeCheck.Principal.pgSchema
-d_pgSchema_2234 ::
+d_pgSchema_2398 ::
   Maybe MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Maybe MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10
-d_pgSchema_2234 v0
+d_pgSchema_2398 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
@@ -3048,12 +3251,12 @@ d_pgSchema_2234 v0
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Principal.siglessSchema
-d_siglessSchema_2238 ::
+d_siglessSchema_2402 ::
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   Maybe MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10
-d_siglessSchema_2238 v0
+d_siglessSchema_2402 v0
   = coe
-      d_pgSchema_2234
+      d_pgSchema_2398
       (coe
-         d_principal_2218
+         d_principal_2382
          (coe MAlonzo.Code.Once.TypeCheck.Classify.d_emptyCtx_330) (coe v0))

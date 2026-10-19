@@ -3,5 +3,5 @@
 import I.Linux.Syscalls as S
 tripleId : Int -> Int
 tripleId = id . id . id
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (tripleId 42)

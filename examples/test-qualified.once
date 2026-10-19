@@ -9,5 +9,5 @@
 import I.Linux.Syscalls as S
 
 -- Function using qualified name
-testExit : Eff Unit Unit
+testExit : Act Unit Void
 testExit = exit0@S

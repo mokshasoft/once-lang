@@ -9,5 +9,5 @@ import I.Linux.Syscalls as S
 f : Int -> Int
 f x = x * 8
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (f 6)

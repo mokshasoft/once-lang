@@ -23,12 +23,12 @@ xs : Mu (K Unit + (K Int * Id))
 xs = In (inr (3, In (inr (5, In (inl unit)))))
 
 -- algebra : (Unit + (Int * Unit)) ->[eff] Unit  (nil: unit; cons: emit head)
-emitAll : Eff (Mu (K Unit + (K Int * Id))) Unit
+emitAll : Act (Mu (K Unit + (K Int * Id))) Unit
 emitAll = cata (case terminal (compose emit@E fst))
 
 -- The fold, as a morphism `main` can compose with.
-runAll : Eff Unit Unit
+runAll : Act Unit Unit
 runAll = emitAll xs
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = compose exit@S (compose (\_ -> 7) runAll)

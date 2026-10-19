@@ -12,5 +12,5 @@ import I.Linux.Syscalls as S
 swap : Int * Int -> Int * Int
 swap p = (snd p, fst p)
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (fst (swap (99, 42)))

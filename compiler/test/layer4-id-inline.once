@@ -3,5 +3,5 @@
 -- Expected: exit code 42.
 import I.Linux.Syscalls as S
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (id 42)

@@ -42,10 +42,10 @@ generatorTypingTests = testGroup "generators type-check in check mode"
   , accepts "terminal" [ "f : Int -> Unit", "f = terminal" ]
   , accepts "compose"  [ "f : Int -> Int", "f = compose id id" ]
   , accepts "pair"     [ "f : Int -> (Int * Int)", "f = pair id id" ]
-  , accepts "inl"      [ "f : Int -> (Int + Int)", "f = inl" ]
-  , accepts "inr"      [ "f : Int -> (Int + Int)", "f = inr" ]
+  , accepts "inl"      [ "f : Int -> (Int + Void)", "f = inl" ]
+  , accepts "inr"      [ "f : Int -> (Void + Int)", "f = inr" ]
   , accepts "case"     [ "f : (Int + Int) -> Int", "f = case id id" ]
-  , accepts "initial"  [ "f : Void -> Int", "f = initial" ]
+  , accepts "initial"  [ "f : Void -> Void", "f = initial" ]
   , accepts "curry"
       [ "h : (Int * Int) -> Int"
       , "h p = fst p"

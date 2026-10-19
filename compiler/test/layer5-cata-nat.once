@@ -23,5 +23,5 @@ toInt = cata (case zeroI incI)
 three : Mu (K Unit + Id)
 three = In (inr (In (inr (In (inr (In (inl unit)))))))
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (toInt three)

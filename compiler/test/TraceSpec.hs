@@ -57,24 +57,24 @@ traceTests = testGroup "Effect traces (observable)"
   -- machine is right and the spec is not; these tests are what will keep the
   -- machine right while the denotation is corrected to match it.
   , traceTest "a negated literal emits its negative, not its magnitude"
-      [ "emitNeg : Eff Unit Unit"
+      [ "emitNeg : Act Unit Unit"
       , "emitNeg = emit@E (-5)"
       ]
       [ "main = compose exit@S (compose (\\_ -> 7) emitNeg)" ]
       [-5] 7
 
   , traceTest "subtraction below zero emits a negative, not zero"
-      [ "emitNeg : Eff Unit Unit"
+      [ "emitNeg : Act Unit Unit"
       , "emitNeg = emit@E (3 - 8)"
       ]
       [ "main = compose exit@S (compose (\\_ -> 7) emitNeg)" ]
       [-5] 7
 
   , traceTest "negative and positive arguments keep their order and signs"
-      [ "emitA : Eff Unit Unit"
+      [ "emitA : Act Unit Unit"
       , "emitA = emit@E (0 - 1)"
       , ""
-      , "emitB : Eff Unit Unit"
+      , "emitB : Act Unit Unit"
       , "emitB = emit@E 2"
       ]
       [ "main = compose exit@S (compose (\\_ -> 7) (compose emitB emitA))" ]
@@ -113,10 +113,10 @@ traceTests = testGroup "Effect traces (observable)"
   -- the emitted word is the ARGUMENT `5`, so the arm genuinely read the binder
   -- rather than closing over a constant baked in at the arm.
   , traceTest "a compose arm captures an enclosing binder (D127)"
-      [ "emitCaptured : Int -> Eff Unit Unit"
+      [ "emitCaptured : Int -> Act Unit Unit"
       , "emitCaptured = \\x -> compose emit@E (\\_ -> x)"
       , ""
-      , "emitFive : Eff Unit Unit"
+      , "emitFive : Act Unit Unit"
       , "emitFive = emitCaptured 5"
       ]
       [ "main = compose exit@S (compose (\\_ -> 7) emitFive)" ]
@@ -133,7 +133,7 @@ traceTest name helpers mainLines emitted exitCode =
           [ "import I.Linux.Syscalls as S"
           , "import I.Test.Emit as E"
           , ""
-          ] ++ helpers ++ [ "", "main : Eff Unit Unit" ] ++ mainLines
+          ] ++ helpers ++ [ "", "main : Act Unit Void" ] ++ mainLines
     result <- buildAndRunTrace (slug name) source
     case result of
       Left err -> assertFailure err

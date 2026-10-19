@@ -108,10 +108,10 @@ program lit = T.unlines
   [ "import I.Linux.Syscalls as S"
   , "import I.Test.Emit as E"
   , ""
-  , "emitLit : Eff Unit Unit"
+  , "emitLit : Act Unit Unit"
   , T.pack ("emitLit = emit@E " ++ lit)
   , ""
-  , "main : Eff Unit Unit"
+  , "main : Act Unit Void"
   , "main = compose exit@S (compose (\\_ -> 7) emitLit)"
   ]
 
@@ -215,10 +215,10 @@ checkWrap arch = do
       [ "import I.Linux.Syscalls as S"
       , "import I.Test.Emit as E"
       , ""
-      , "emitSum : Eff Unit Unit"
+      , "emitSum : Act Unit Unit"
       , T.pack ("emitSum = emit@E (" ++ show a ++ " + " ++ show b ++ ")")
       , ""
-      , "main : Eff Unit Unit"
+      , "main : Act Unit Void"
       , "main = compose exit@S (compose (\\_ -> 7) emitSum)"
       ]
 

@@ -11,14 +11,16 @@
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
-stop : Int * Int -> Unit -> Int + (Int * Int)
+stop : Int * Int -> Unit -> Int + Void
 stop p _ = inl (snd p)
 
-next : Int * Int -> Unit -> Int + (Int * Int)
+next : Int * Int -> Unit -> Void + (Int * Int)
 next p _ = inr (fst p - 1, snd p + fst p)
 
+-- `stop` and `next` are at their principal types (D321: a summand the body
+-- leaves open is `Void`); the annotated `case` widens both to the round's.
 step : Int * Int -> Int + (Int * Int)
-step p = case (next p) (stop p) (fst p == 0)
+step p = (case (next p) (stop p) : Unit + Unit -> Int + (Int * Int)) (fst p == 0)
 
 round : Act (Int * Int) (Int + (Int * Int))
 round = compose step (compose snd (pair (compose emit@E fst) id))
@@ -26,5 +28,5 @@ round = compose step (compose snd (pair (compose emit@E fst) id))
 loopEmit : Eff (Int * Int) Int
 loopEmit = ana round
 
-main : Eff Unit Unit
+main : Eff Unit Void
 main = compose exit@S (compose loopEmit (\_ -> (3, 0)))

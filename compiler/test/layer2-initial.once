@@ -11,11 +11,13 @@
 
 import I.Linux.Syscalls as S
 
-absurdToInt : Void -> Int
-absurdToInt = initial
+-- D321: `initial`'s principal type over the domain `Void` is `Void -> Void`;
+-- the use is widened to `Int` by the annotation.
+fromVoid : Void -> Void
+fromVoid = initial
 
 pickInt : Int + Void -> Int
-pickInt s = destruct s of { Left x -> x ; Right v -> absurdToInt v }
+pickInt s = destruct s of { Left x -> x ; Right v -> (fromVoid v : Int) }
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (pickInt ((inl 42) : Int + Void))

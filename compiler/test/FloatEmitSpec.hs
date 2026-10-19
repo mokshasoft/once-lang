@@ -122,10 +122,10 @@ program lit = T.unlines
   [ "import I.Linux.Syscalls as S"
   , "import I.Test.Emit as E"
   , ""
-  , "emitLit : Eff Unit Unit"
+  , "emitLit : Act Unit Unit"
   , T.pack ("emitLit = compose emitF@E (\\_ -> " ++ lit ++ ")")
   , ""
-  , "main : Eff Unit Unit"
+  , "main : Act Unit Void"
   , "main = compose exit@S (compose (\\_ -> 7) emitLit)"
   ]
 
@@ -244,10 +244,10 @@ arithProgram expr = T.unlines
   [ "import I.Linux.Syscalls as S"
   , "import I.Test.Emit as E"
   , ""
-  , "emitExpr : Eff Unit Unit"
+  , "emitExpr : Act Unit Unit"
   , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
   , ""
-  , "main : Eff Unit Unit"
+  , "main : Act Unit Void"
   , "main = compose exit@S (compose (\\_ -> 7) emitExpr)"
   ]
 

@@ -1,5 +1,5 @@
 -- Layer 4 test: id compose chain (plan-promised passing case)
 import I.Linux.Syscalls as S
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S ((id . id . id) 42)

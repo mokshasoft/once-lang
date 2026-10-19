@@ -28,12 +28,12 @@ t : Mu (K Int + (Id * Id))
 t = In (inr (In (inl 40), In (inl 2)))
 
 -- algebra : (Int + (Unit * Unit)) ->[eff] Unit  (leaf: emit it; node: unit)
-emitTree : Eff (Mu (K Int + (Id * Id))) Unit
+emitTree : Act (Mu (K Int + (Id * Id))) Unit
 emitTree = cata (case emit@E terminal)
 
 -- The fold, as a morphism `main` can compose with.
-runTree : Eff Unit Unit
+runTree : Act Unit Unit
 runTree = emitTree t
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = compose exit@S (compose (\_ -> 7) runTree)

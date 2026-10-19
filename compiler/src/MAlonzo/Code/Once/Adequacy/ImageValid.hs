@@ -240,7 +240,7 @@ d_tag_148 ::
 d_tag_148 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-      (coe MAlonzo.Code.Once.Compile.d_block'45'symbol_1026 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_block'45'symbol_1144 (coe v0))
       (coe v0)
 -- Once.Adequacy.ImageValid.tagged-asm
 d_tagged'45'asm_156 ::
@@ -294,7 +294,7 @@ d_block'45'syms'45'asm_180 v0
   = coe
       du_fst'45'all_168
       (coe
-         MAlonzo.Code.Once.Compile.d_dedup'45'blocks_1024
+         MAlonzo.Code.Once.Compile.d_dedup'45'blocks_1142
          (coe
             MAlonzo.Code.Data.List.Base.du_map_22 (coe d_tag_148) (coe v0)))
       (coe
@@ -387,13 +387,14 @@ d_prog'45'defs'45'valid_190 v0
             MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
             (coe
                MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_38
-               (coe MAlonzo.Code.Once.Compile.d_image'45'of_1068 (coe v0)))
+               (coe MAlonzo.Code.Once.Compile.d_image'45'of_1186 (coe v0)))
             (coe
                d_adefs'45'asm_66
-               (coe MAlonzo.Code.Once.Compile.d_image'45'of_1068 (coe v0)))
+               (coe MAlonzo.Code.Once.Compile.d_image'45'of_1186 (coe v0)))
             (coe
                d_block'45'syms'45'asm_180
-               (coe MAlonzo.Code.Once.Compile.d_program'45'blocks_996 (coe v0)))))
+               (coe
+                  MAlonzo.Code.Once.Compile.d_program'45'blocks_1114 (coe v0)))))
 -- Once.Adequacy.ImageValid.lib-defs-valid
 d_lib'45'defs'45'valid_196 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
@@ -407,18 +408,18 @@ d_lib'45'defs'45'valid_196 v0
          (coe
             MAlonzo.Code.Once.CCC.Codegen.ImageSymbols.d_adefs_38
             (coe
-               MAlonzo.Code.Once.Compile.d_lib'45'image_1112
-               (coe MAlonzo.Code.Once.Compile.d_moduleTable_966 (coe v0))))
+               MAlonzo.Code.Once.Compile.d_lib'45'image_1230
+               (coe MAlonzo.Code.Once.Compile.d_moduleTable_1084 (coe v0))))
          (coe
             d_adefs'45'asm_66
             (coe
-               MAlonzo.Code.Once.Compile.d_lib'45'image_1112
-               (coe MAlonzo.Code.Once.Compile.d_moduleTable_966 (coe v0))))
+               MAlonzo.Code.Once.Compile.d_lib'45'image_1230
+               (coe MAlonzo.Code.Once.Compile.d_moduleTable_1084 (coe v0))))
          (coe
             d_block'45'syms'45'asm_180
             (coe
-               MAlonzo.Code.Once.Compile.d_lib'45'blocks_1120
-               (coe MAlonzo.Code.Once.Compile.d_moduleTable_966 (coe v0)))))
+               MAlonzo.Code.Once.Compile.d_lib'45'blocks_1238
+               (coe MAlonzo.Code.Once.Compile.d_moduleTable_1084 (coe v0)))))
 -- Once.Adequacy.ImageValid.sigop-syms-asm
 d_sigop'45'syms'45'asm_208 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -524,13 +525,13 @@ d_externs'45'valid_248 ::
 d_externs'45'valid_248 v0
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_filter'8314'_1242
-      (coe MAlonzo.Code.Once.Compile.d_is'45'extern'63'_1046 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_is'45'extern'63'_1164 (coe v0))
       (coe
-         MAlonzo.Code.Once.Compile.d_calls'45'of_1036
-         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_992 (coe v0)))
+         MAlonzo.Code.Once.Compile.d_calls'45'of_1154
+         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_1110 (coe v0)))
       (coe
          d_calls'45'asm_218
-         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_992 (coe v0)))
+         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_1110 (coe v0)))
 -- Once.Adequacy.ImageValid.prog-externs-valid
 d_prog'45'externs'45'valid_254 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->

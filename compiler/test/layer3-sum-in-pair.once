@@ -7,5 +7,5 @@
 
 import I.Linux.Syscalls as S
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (destruct (snd (1, ((inr 42) : Int + Int))) of { Left x -> 99 ; Right y -> y })

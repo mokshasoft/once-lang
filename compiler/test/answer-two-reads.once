@@ -10,8 +10,8 @@
 
 import I.Linux.Syscalls as S
 
-dupOut : Eff Unit Int
+dupOut : Act Unit Int
 dupOut = compose fd_dup@S (\_ -> 1)
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = compose exit@S (compose (\p -> snd p - fst p) (pair dupOut dupOut))

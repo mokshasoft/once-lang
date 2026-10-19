@@ -25,5 +25,5 @@ sumPairs = cata (case zeroI consOp)
 xs : Mu (K Unit + ((K Int * K Int) * Id))
 xs = In (inr ((20, 22), In (inl unit)))
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (sumPairs xs)

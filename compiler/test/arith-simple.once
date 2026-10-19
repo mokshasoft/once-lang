@@ -11,5 +11,5 @@
 
 import I.Linux.Syscalls as S
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (3 + 5 * 2)

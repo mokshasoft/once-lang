@@ -32,7 +32,6 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Functor.Decide
 import qualified MAlonzo.Code.Once.Lang.Syntax
 import qualified MAlonzo.Code.Once.Lang.Type
-import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Lang.Type.Honest
 import qualified MAlonzo.Code.Once.Lang.Type.Poly
 import qualified MAlonzo.Code.Once.Lang.Typing.Scope
@@ -880,23 +879,14 @@ d_extractFunctions'45'sigless_220 v0 v1 v2 v3 v4
                           (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                        (coe
                           C_mkFunInfo_114 (coe v1)
-                          (coe
-                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                             (coe
-                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
-                                (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
-                                (coe
-                                   MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
-                                   (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                                   (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
-                                (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)))
-                          (coe v2) (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)))
+                          (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18) (coe v2)
+                          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)))
              else coe
                     seq (coe v6)
                     (let v7
-                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2234
+                           = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2398
                                (coe
-                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2212
+                                  MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2376
                                   (coe
                                      MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1452
                                      (coe

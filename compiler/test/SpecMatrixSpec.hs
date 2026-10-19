@@ -19,10 +19,31 @@ import Backend.Common (runOnce, testStrataDir)
 
 specMatrixTests :: TestTree
 specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
-  [ testGroup "main (D227 amendment, D253)"
-      [ testCase "a signature-less main that is not Eff Unit Unit is rejected" $ do
+  [ testGroup "main (D253, D315)"
+      [ testCase "a signature-less main whose type is not below Eff Unit Unit is rejected" $ do
           r <- checkExe [ "main = 5" ]
           assertBool "Should reject a main of type Int" (isLeft r)
+      ]
+
+  , testGroup "a signature is the body's principal type (D314, D321)"
+      [ testCase "a summand the body leaves open must be Void" $ do
+          r <- checkLib [ "f : Int -> Int + Int", "f = inl" ]
+          assertBool "Should reject a sum wider than the body's" (isLeft r)
+      , testCase "the least sum is accepted" $ do
+          r <- checkLib [ "f : Int -> Int + Void", "f = inl" ]
+          r @?= Right ()
+      , testCase "a grade above the body's is rejected" $ do
+          r <- checkLib [ "f : Act Int Int", "f x = x + 1" ]
+          assertBool "Should reject Act for a pure body" (isLeft r)
+      , testCase "a schema wider than the body's is rejected" $ do
+          r <- checkLib [ "f : a -> a + b", "f = inl" ]
+          assertBool "Should reject a free summand in a schema" (isLeft r)
+      , testCase "main at its principal type is accepted (D315)" $ do
+          r <- checkExe [ "import I.Linux.Syscalls as S", "", "main : Act Unit Void", "main = compose exit@S (\\_ -> 0)" ]
+          r @?= Right ()
+      , testCase "main at Eff Unit Unit over an Act body is rejected (D315)" $ do
+          r <- checkExe [ "import I.Linux.Syscalls as S", "", "main : Eff Unit Unit", "main = compose exit@S (\\_ -> 0)" ]
+          assertBool "Should reject a main wider than its body" (isLeft r)
       ]
 
   , testGroup "polymorphism (D236–D243)"
@@ -77,7 +98,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
           r <- checkLib
             [ "import I.Test.Emit as E"
             , ""
-            , "e1 : Eff Int Unit"
+            , "e1 : Act Int Unit"
             , "e1 = compose emit@E (\\_ -> 1)"
             , ""
             , "both : Int -> (Unit * Unit)"
@@ -88,27 +109,32 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
           r <- checkLib
             [ "import I.Test.Emit as E"
             , ""
-            , "e1 : Eff Int Unit"
+            , "e1 : Act Int Unit"
             , "e1 = compose emit@E (\\_ -> 1)"
             , ""
-            , "both : Eff Int (Unit * Unit)"
+            , "both : Act Int (Unit * Unit)"
             , "both = pair e1 e1"
             ]
           r @?= Right ()
-      , testCase "a pure function where an effectful one is expected is accepted (pure <: eff)" $ do
+      -- D314/D321: a signature is the body's principal type, so the
+      -- subsumption is at a USE: `inc`'s pure arrow where `compose` at `act`
+      -- expects an `act` one.
+      , testCase "a pure function where an effectful one is expected is accepted (pure <: act)" $ do
           r <- checkLib
-            [ "inc : Int -> Int"
+            [ "import I.Test.Emit as E"
+            , ""
+            , "inc : Int -> Int"
             , "inc x = x + 1"
             , ""
-            , "h : Eff Int Int"
-            , "h = inc"
+            , "h : Act Int Unit"
+            , "h = compose emit@E inc"
             ]
           r @?= Right ()
       , testCase "an effectful function where a pure one is expected is rejected" $ do
           r <- checkLib
             [ "import I.Test.Emit as E"
             , ""
-            , "effInc : Eff Int Int"
+            , "effInc : Act Int Int"
             , "effInc = compose (\\_ -> 1) emit@E"
             , ""
             , "p : Int -> Int"
@@ -128,7 +154,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
           r <- checkLib
             [ "signature tick : Act Unit Unit"
             , ""
-            , "g : Eff Unit Unit"
+            , "g : Act Unit Unit"
             , "g = tick"
             ]
           r @?= Right ()
@@ -147,7 +173,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
 checkLib :: [T.Text] -> IO (Either String ())
 checkLib = build ["--lib"]
 
--- An executable build: `main` must be `Eff Unit Unit`.
+-- An executable build: `main` is used at `Eff Unit Unit` (D315).
 checkExe :: [T.Text] -> IO (Either String ())
 checkExe = build []
 

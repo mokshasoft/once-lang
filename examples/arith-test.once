@@ -14,5 +14,5 @@ import I.Math.Int as I
 import I.Math.Float as F
 
 -- Verify imports work - exit cleanly
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit0@S

@@ -574,7 +574,7 @@ d_loopWarnings_408 ::
 d_loopWarnings_408 v0
   = coe
       du_go_416
-      (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_832 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_950 (coe v0))
 -- Once.Warnings._.go
 d_go_416 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->

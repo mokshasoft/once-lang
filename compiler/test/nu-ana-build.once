@@ -40,5 +40,5 @@ mkNu = ana id
 useNu : Nu (K Int) -> Int
 useNu = compose (\u -> 42) terminal
 
-main : Eff Unit Unit
+main : Act Unit Void
 main = exit@S (useNu (mkNu 7))
