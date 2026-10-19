@@ -148,7 +148,7 @@ d_mapWith'8712'_26 v0 v1 v2 v3
       v2 v3
 -- Once.Adequacy.ImageWF.prog-defs
 d_prog'45'defs_28 ::
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_prog'45'defs_28 v0
   = coe
@@ -217,7 +217,7 @@ d_calls'45'ok_70 v0 v1
          (coe
             MAlonzo.Code.Once.Compile.d_rewrite'45'program_894
             (coe
-               MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+               MAlonzo.Code.Once.Denotation.Program.C_irProgram_396
                (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
                (coe v1))))
       (\ v2 v3 ->
@@ -238,10 +238,10 @@ d_calls'45'ok_70 v0 v1
 d_p_80 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386
 d_p_80 v0 v1
   = coe
-      MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+      MAlonzo.Code.Once.Denotation.Program.C_irProgram_396
       (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0)) (coe v1)
 -- Once.Adequacy.ImageWF._.split
 d_split_84 ::
@@ -316,7 +316,7 @@ du_table'45'ok_112 v0 v1
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'leaves_128
+                MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'leaves_134
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fbody_22 (coe v2))
@@ -325,7 +325,7 @@ du_table'45'ok_112 v0 v1
                    (coe
                       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8315'_626
                       (coe
-                         MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_96
+                         MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_100
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fbody_22 (coe v2)))
@@ -337,7 +337,7 @@ du_table'45'ok_112 v0 v1
                    (coe
                       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8315'_626
                       (coe
-                         MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_96
+                         MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_100
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v2))
                          (coe MAlonzo.Code.Once.Denotation.Program.d_fbody_22 (coe v2)))
@@ -358,39 +358,39 @@ du_prog'45'sigops_128 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'leaves_128
+         MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'leaves_134
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe
-            MAlonzo.Code.Once.Denotation.Program.d_main_388
+            MAlonzo.Code.Once.Denotation.Program.d_main_394
             (coe du_rp_138 (coe v0) (coe v1)))
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
             (coe
                MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8315'_626
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_96
+                  MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_100
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                   (coe
-                     MAlonzo.Code.Once.Denotation.Program.d_main_388
+                     MAlonzo.Code.Once.Denotation.Program.d_main_394
                      (coe du_rp_138 (coe v0) (coe v1))))
                (coe d_calls'45'ok_70 (coe v0) (coe v1)))))
       (coe
          du_table'45'ok_112
          (coe
-            MAlonzo.Code.Once.Denotation.Program.d_table_386
+            MAlonzo.Code.Once.Denotation.Program.d_table_392
             (coe du_rp_138 (coe v0) (coe v1)))
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
             (coe
                MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8315'_626
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_96
+                  MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_100
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                   (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                   (coe
-                     MAlonzo.Code.Once.Denotation.Program.d_main_388
+                     MAlonzo.Code.Once.Denotation.Program.d_main_394
                      (coe du_rp_138 (coe v0) (coe v1))))
                (coe d_calls'45'ok_70 (coe v0) (coe v1)))))
 -- Once.Adequacy.ImageWF._.rp
@@ -398,16 +398,16 @@ d_rp_138 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386
 d_rp_138 v0 v1 ~v2 = du_rp_138 v0 v1
 du_rp_138 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386
 du_rp_138 v0 v1
   = coe
       MAlonzo.Code.Once.Compile.d_rewrite'45'program_894
       (coe
-         MAlonzo.Code.Once.Denotation.Program.C_irProgram_390
+         MAlonzo.Code.Once.Denotation.Program.C_irProgram_396
          (coe MAlonzo.Code.Once.Compile.d_moduleTable_868 (coe v0))
          (coe v1))

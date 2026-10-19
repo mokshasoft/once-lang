@@ -374,7 +374,7 @@ d_start'45'asm_186
                      (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))
 -- Once.Adequacy.ImageValid.prog-defs-valid
 d_prog'45'defs'45'valid_190 ::
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_prog'45'defs'45'valid_190 v0
   = coe
@@ -453,28 +453,28 @@ du_sigop'45'syms'45'asm_208 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ImageValid.calls-asm
 d_calls'45'asm_218 ::
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_calls'45'asm_218 v0
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_96
+         MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_100
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
-         (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v0)))
+         (coe MAlonzo.Code.Once.Denotation.Program.d_main_394 (coe v0)))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'all_206
+         MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'all_216
          (\ v1 v2 v3 -> coe du_h_232 v3)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
-         (coe MAlonzo.Code.Once.Denotation.Program.d_main_388 (coe v0)))
+         (coe MAlonzo.Code.Once.Denotation.Program.d_main_394 (coe v0)))
       (coe
          du_tbl_240
-         (coe MAlonzo.Code.Once.Denotation.Program.d_table_386 (coe v0)))
+         (coe MAlonzo.Code.Once.Denotation.Program.d_table_392 (coe v0)))
 -- Once.Adequacy.ImageValid._.h
 d_h_232 ::
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
@@ -491,7 +491,7 @@ du_h_232 v0
          (coe MAlonzo.Code.Once.SigOp.Info.d_sem_112 (coe v0)))
 -- Once.Adequacy.ImageValid._.tbl
 d_tbl_240 ::
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_tbl_240 ~v0 v1 = du_tbl_240 v1
@@ -505,12 +505,12 @@ du_tbl_240 v0
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_96
+                MAlonzo.Code.Once.CCC.Codegen.NodesOK.d_leaf'45'syms_100
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v1))
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v1))
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fbody_22 (coe v1)))
              (coe
-                MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'all_206
+                MAlonzo.Code.Once.CCC.Codegen.NodesOK.du_leaf'45'syms'45'all_216
                 (\ v3 v4 v5 -> coe du_h_232 v5)
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fdom_18 (coe v1))
                 (coe MAlonzo.Code.Once.Denotation.Program.d_fcod_20 (coe v1))
@@ -519,7 +519,7 @@ du_tbl_240 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ImageValid.externs-valid
 d_externs'45'valid_248 ::
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_externs'45'valid_248 v0
   = coe
@@ -533,7 +533,7 @@ d_externs'45'valid_248 v0
          (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_894 (coe v0)))
 -- Once.Adequacy.ImageValid.prog-externs-valid
 d_prog'45'externs'45'valid_254 ::
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_380 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_prog'45'externs'45'valid_254 v0
   = coe

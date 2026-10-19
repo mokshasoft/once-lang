@@ -59,7 +59,7 @@ du_bindM'45'id'737'_64 v0 v1 v2
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> erased
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
         -> coe
-             MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.du_'8776''8734''45'id'737'_396
+             MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.du_'8776''8734''45'id'737'_126
              (coe v1) (coe v2)
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> erased
       _ -> MAlonzo.RTE.mazUnreachableError

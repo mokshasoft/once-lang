@@ -615,8 +615,38 @@ du_ana'7580'_410 v0 v1 v2 v3
          (coe
             MAlonzo.Code.Once.Lang.Core.Syntax.C_var_66
             (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))
+-- Once.Lang.Core.Derived.loopᶜ
+d_loop'7580'_422 ::
+  MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62 ->
+  MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
+d_loop'7580'_422 ~v0 ~v1 v2 v3 = du_loop'7580'_422 v2 v3
+du_loop'7580'_422 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62 ->
+  MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
+du_loop'7580'_422 v0 v1
+  = coe
+      MAlonzo.Code.Once.Lang.Core.Syntax.C_let'8242'_72
+      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v1)
+      (coe
+         MAlonzo.Code.Once.Lang.Core.Syntax.C_lam_68 (coe v0)
+         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38)
+         (coe
+            MAlonzo.Code.Once.Lang.Core.Syntax.C_iter_96
+            (coe
+               MAlonzo.Code.Once.Lang.Core.Syntax.C_var_66
+               (coe
+                  MAlonzo.Code.Data.Fin.Base.C_suc_16
+                  (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))
+            (coe
+               MAlonzo.Code.Once.Lang.Core.Syntax.C_var_66
+               (coe MAlonzo.Code.Data.Fin.Base.C_zero_12))))
 -- Once.Lang.Core.Derived.effAppᶜ
-d_effApp'7580'_422 ::
+d_effApp'7580'_430 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -625,14 +655,14 @@ d_effApp'7580'_422 ::
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
-d_effApp'7580'_422 ~v0 ~v1 ~v2 ~v3 v4 v5 v6
-  = du_effApp'7580'_422 v4 v5 v6
-du_effApp'7580'_422 ::
+d_effApp'7580'_430 ~v0 ~v1 ~v2 ~v3 v4 v5 v6
+  = du_effApp'7580'_430 v4 v5 v6
+du_effApp'7580'_430 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
-du_effApp'7580'_422 v0 v1 v2
+du_effApp'7580'_430 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Lang.Core.Syntax.C_lam_68
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
@@ -642,21 +672,21 @@ du_effApp'7580'_422 v0 v1 v2
          (coe MAlonzo.Code.Once.Lang.Core.Syntax.du_wk_274 v1)
          (coe MAlonzo.Code.Once.Lang.Core.Syntax.du_wk_274 v2))
 -- Once.Lang.Core.Derived.applyEffᶜ
-d_applyEff'7580'_432 ::
+d_applyEff'7580'_440 ::
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
-d_applyEff'7580'_432 ~v0 ~v1 v2 v3 v4
-  = du_applyEff'7580'_432 v2 v3 v4
-du_applyEff'7580'_432 ::
+d_applyEff'7580'_440 ~v0 ~v1 v2 v3 v4
+  = du_applyEff'7580'_440 v2 v3 v4
+du_applyEff'7580'_440 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
-du_applyEff'7580'_432 v0 v1 v2
+du_applyEff'7580'_440 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Lang.Core.Syntax.C_lam_68
       (coe
@@ -691,18 +721,18 @@ du_applyEff'7580'_432 v0 v1 v2
                      MAlonzo.Code.Data.Fin.Base.C_suc_16
                      (coe MAlonzo.Code.Data.Fin.Base.C_zero_12))))))
 -- Once.Lang.Core.Derived.outEffᶜ
-d_outEff'7580'_442 ::
+d_outEff'7580'_450 ::
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
-d_outEff'7580'_442 ~v0 ~v1 v2 v3 = du_outEff'7580'_442 v2 v3
-du_outEff'7580'_442 ::
+d_outEff'7580'_450 ~v0 ~v1 v2 v3 = du_outEff'7580'_450 v2 v3
+du_outEff'7580'_450 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Finite_40 ->
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
   MAlonzo.Code.Once.Lang.Core.Syntax.T_Tm_62
-du_outEff'7580'_442 v0 v1
+du_outEff'7580'_450 v0 v1
   = coe
       MAlonzo.Code.Once.Lang.Core.Syntax.C_lam_68
       (coe MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 (coe v1) (coe v0))

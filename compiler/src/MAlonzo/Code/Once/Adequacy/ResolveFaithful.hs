@@ -27,8 +27,8 @@ import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Phase
 import qualified MAlonzo.Code.Once.Denotation.SourceDenote
 import qualified MAlonzo.Code.Once.Lang.Context
+import qualified MAlonzo.Code.Once.Lang.Iterative
 import qualified MAlonzo.Code.Once.Lang.Syntax
-import qualified MAlonzo.Code.Once.Lang.Trace
 import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Lang.Type.Poly
@@ -67,7 +67,7 @@ d_σR_12 v0 v1 v2 v3 v4 v5
               (coe (0 :: Integer))
               (coe MAlonzo.Code.Once.Lang.Context.C_'8709'_8) (coe v7)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
+                 MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4060
                  (coe v7) (coe v2) (coe v3) (coe v4) (coe v5)
                  (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v6))
               (coe v0) (coe d_σ'8320'_10 (coe v0) (coe v1))
@@ -82,10 +82,10 @@ d_sigOp'45'σ'45'irrel_46 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -135,10 +135,10 @@ d_bind2'45'faithful_342 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   () ->
   () ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -164,7 +164,8 @@ d_binop'45'le'45'faithful_404 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -191,7 +192,8 @@ d_Ea_436 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
@@ -229,7 +231,8 @@ d_Eb_438 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
@@ -264,7 +267,8 @@ d_binop'45'faithful_498 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -291,7 +295,8 @@ d_thunk'45'binop'45'faithful_578 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -318,7 +323,8 @@ d_Ea_612 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
@@ -356,7 +362,8 @@ d_Eb_614 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
@@ -394,7 +401,8 @@ d_inner_624 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -417,7 +425,7 @@ d_unop'45'faithful_658 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

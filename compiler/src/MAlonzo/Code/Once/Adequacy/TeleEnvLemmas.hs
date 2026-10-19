@@ -26,10 +26,13 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Induction.WellFounded
 import qualified MAlonzo.Code.Once.Adequacy.ResolveFaithful
+import qualified MAlonzo.Code.Once.Adequacy.SourceRefl
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
+import qualified MAlonzo.Code.Once.Denotation.EvalRel
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Denotation.Realize
 import qualified MAlonzo.Code.Once.Denotation.SourceDenote
+import qualified MAlonzo.Code.Once.IR.Ref
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Lang.Context
 import qualified MAlonzo.Code.Once.Lang.Res
@@ -117,7 +120,7 @@ du_spliceClosed_66 v0 v1 v2 v3 v4 v5 v6 v7
                     (coe
                        MAlonzo.Code.Once.Surface.Syntax.C_closed_410
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
+                          MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4060
                           (coe v2) (coe v4) (coe v0) (coe v1) (coe (0 :: Integer))
                           (coe
                              MAlonzo.Code.Once.Denotation.Realize.d_realize_20
@@ -169,7 +172,7 @@ du_polyVal_86 v0 v1 v2 v3 v4
                            du_spliceClosed_66 (coe v0) (coe v1) (coe v3) (coe v8) (coe v9)
                            (coe v2) (coe v0 v2)
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                                  (coe v0 v2) (coe v9))
@@ -390,7 +393,7 @@ d_refIR'45'cong_394 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_refIR'45'cong_394 = erased
 -- Once.Adequacy.TeleEnvLemmas.tableEnv-later
-d_tableEnv'45'later_554 ::
+d_tableEnv'45'later_572 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -403,9 +406,9 @@ d_tableEnv'45'later_554 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tableEnv'45'later_554 = erased
+d_tableEnv'45'later_572 = erased
 -- Once.Adequacy.TeleEnvLemmas.callSD-later
-d_callSD'45'later_600 ::
+d_callSD'45'later_618 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -421,9 +424,9 @@ d_callSD'45'later_600 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_callSD'45'later_600 = erased
+d_callSD'45'later_618 = erased
 -- Once.Adequacy.TeleEnvLemmas.calls-same
-d_calls'45'same_634 ::
+d_calls'45'same_652 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -439,11 +442,11 @@ d_calls'45'same_634 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> AgdaAny
-d_calls'45'same_634 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9
-  = du_calls'45'same_634 v9
-du_calls'45'same_634 ::
+d_calls'45'same_652 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9
+  = du_calls'45'same_652 v9
+du_calls'45'same_652 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> AgdaAny
-du_calls'45'same_634 v0
+du_calls'45'same_652 v0
   = case coe v0 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
       (:) v1 v2
@@ -451,5 +454,157 @@ du_calls'45'same_634 v0
              seq (coe v1)
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
-                (coe du_calls'45'same_634 (coe v2)))
+                (coe du_calls'45'same_652 (coe v2)))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.TeleEnvLemmas.σ₀-self
+d_σ'8320''45'self_690 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_σ'8320''45'self_690 v0 ~v1 v2 v3
+  = du_σ'8320''45'self_690 v0 v2 v3
+du_σ'8320''45'self_690 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_σ'8320''45'self_690 v0 v1 v2
+  = coe
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
+      (coe
+         (\ v3 v4 ->
+            MAlonzo.Code.Once.Denotation.EvalRel.d_liftFn'45'rel_1302
+              (coe v0) (coe v1) (coe v1) (coe v2)
+              (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20) (coe v4)
+              (coe
+                 MAlonzo.Code.Once.IR.Ref.d_refIR_8 (coe v4)
+                 (coe MAlonzo.Code.Once.Spec.Name.d_bare_14 (coe v3)))
+              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
+-- Once.Adequacy.TeleEnvLemmas.σW-self
+d_σW'45'self_706 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+   AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
+  [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_332) ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_σW'45'self_706 v0 v1 v2 v3 v4 v5
+  = coe
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+      (coe
+         MAlonzo.Code.Once.Denotation.EvalRel.d_table'45'self_656 (coe v0)
+         (coe v1) (coe v2))
+      (coe
+         (\ v6 v7 ->
+            coe
+              MAlonzo.Code.Once.Adequacy.SourceRefl.du_SD'45'rel_352 (coe v0)
+              (coe
+                 MAlonzo.Code.Once.Denotation.SourceDenote.C_defsSem_88
+                 (coe
+                    MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
+                    (coe
+                       MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
+                       (coe v1) (coe v2))
+                    (coe
+                       MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
+                       (coe
+                          MAlonzo.Code.Once.Denotation.SourceDenote.d_calls_80
+                          (coe
+                             MAlonzo.Code.Once.Adequacy.ResolveFaithful.d_σ'8320'_10 (coe v0)
+                             (coe
+                                MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
+                                (coe
+                                   MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
+                                   (coe v1) (coe v2))
+                                (coe
+                                   MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
+                                   (coe
+                                      MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
+                                      (coe v1) (coe v2))))))))
+                 (coe
+                    MAlonzo.Code.Once.Denotation.SourceDenote.d_refs_86
+                    (coe
+                       MAlonzo.Code.Once.Adequacy.ResolveFaithful.d_σ'8320'_10 (coe v0)
+                       (coe
+                          MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
+                          (coe
+                             MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
+                             (coe v1) (coe v2))
+                          (coe
+                             MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
+                             (coe
+                                MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
+                                (coe v1) (coe v2)))))))
+              (coe
+                 MAlonzo.Code.Once.Denotation.SourceDenote.C_defsSem_88
+                 (coe
+                    MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
+                    (coe
+                       MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
+                       (coe v1) (coe v2))
+                    (coe
+                       MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
+                       (coe
+                          MAlonzo.Code.Once.Denotation.SourceDenote.d_calls_80
+                          (coe
+                             MAlonzo.Code.Once.Adequacy.ResolveFaithful.d_σ'8320'_10 (coe v0)
+                             (coe
+                                MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
+                                (coe
+                                   MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
+                                   (coe v1) (coe v2))
+                                (coe
+                                   MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
+                                   (coe
+                                      MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
+                                      (coe v1) (coe v2))))))))
+                 (coe
+                    MAlonzo.Code.Once.Denotation.SourceDenote.d_refs_86
+                    (coe
+                       MAlonzo.Code.Once.Adequacy.ResolveFaithful.d_σ'8320'_10 (coe v0)
+                       (coe
+                          MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
+                          (coe
+                             MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
+                             (coe v1) (coe v2))
+                          (coe
+                             MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
+                             (coe
+                                MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
+                                (coe v1) (coe v2)))))))
+              (coe
+                 du_σ'8320''45'self_690 (coe v0)
+                 (coe
+                    MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
+                    (coe
+                       MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
+                       (coe v1) (coe v2))
+                    (coe
+                       MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
+                       (coe
+                          MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
+                          (coe v1) (coe v2))))
+                 (coe
+                    MAlonzo.Code.Once.Denotation.EvalRel.d_table'45'self_656 (coe v0)
+                    (coe v1) (coe v2)))
+              (coe (0 :: Integer))
+              (coe MAlonzo.Code.Once.Lang.Context.C_'8709'_8) (coe v7)
+              (coe
+                 MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4060
+                 (coe v7) (coe v3) (coe v4) (coe v5) (coe (0 :: Integer))
+                 (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v6))
+              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))

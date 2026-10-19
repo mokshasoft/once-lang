@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
+import qualified MAlonzo.Code.Once.Lang.Iterative
 import qualified MAlonzo.Code.Once.Lang.Res
 import qualified MAlonzo.Code.Once.Lang.Trace
 import qualified MAlonzo.Code.Once.Lang.Type
@@ -85,10 +86,13 @@ d_tableCalls_32 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
 d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
   = case coe v2 of
-      [] -> coe MAlonzo.Code.Once.Lang.Trace.du_unlinkedT_228
+      []
+        -> coe
+             MAlonzo.Code.Once.Lang.Iterative.du_embed_136
+             (coe MAlonzo.Code.Once.Lang.Trace.du_unlinkedT_228)
       (:) v7 v8
         -> coe
              d_tableEnv'45'at_42 (coe v0) (coe v1) (coe v7) (coe v8) (coe v3)
@@ -119,7 +123,7 @@ d_tableEnv'45'at_42 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
 d_tableEnv'45'at_42 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v7 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v11 v12
@@ -205,37 +209,37 @@ d_Linked_268 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
 d_Linked_268 = erased
 -- Once.Denotation.Program.IRProgram
-d_IRProgram_380 = ()
-data T_IRProgram_380
-  = C_irProgram_390 [T_IRFun_6] MAlonzo.Code.Once.IR.T_IR_16
+d_IRProgram_386 = ()
+data T_IRProgram_386
+  = C_irProgram_396 [T_IRFun_6] MAlonzo.Code.Once.IR.T_IR_16
 -- Once.Denotation.Program.IRProgram.table
-d_table_386 :: T_IRProgram_380 -> [T_IRFun_6]
-d_table_386 v0
+d_table_392 :: T_IRProgram_386 -> [T_IRFun_6]
+d_table_392 v0
   = case coe v0 of
-      C_irProgram_390 v1 v2 -> coe v1
+      C_irProgram_396 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Program.IRProgram.main
-d_main_388 :: T_IRProgram_380 -> MAlonzo.Code.Once.IR.T_IR_16
-d_main_388 v0
+d_main_394 :: T_IRProgram_386 -> MAlonzo.Code.Once.IR.T_IR_16
+d_main_394 v0
   = case coe v0 of
-      C_irProgram_390 v1 v2 -> coe v2
+      C_irProgram_396 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Program.runIR
-d_runIR_392 ::
+d_runIR_398 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
    AgdaAny -> MAlonzo.Code.Once.Lang.Res.T_Res_8) ->
-  T_IRProgram_380 -> MAlonzo.Code.Once.Lang.Trace.T_T_110
-d_runIR_392 v0 v1 v2
+  T_IRProgram_386 -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
+d_runIR_398 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_120 (coe v0)
-      (coe d_tableEnv_26 (coe v0) (coe v1) (coe d_table_386 (coe v2)))
+      (coe d_tableEnv_26 (coe v0) (coe v1) (coe d_table_392 (coe v2)))
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
-      (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe d_main_388 (coe v2))
+      (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe d_main_394 (coe v2))
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
 -- Once.Denotation.Program.LinkedProgram
-d_LinkedProgram_400 ::
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> T_IRProgram_380 -> ()
-d_LinkedProgram_400 = erased
+d_LinkedProgram_406 ::
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> T_IRProgram_386 -> ()
+d_LinkedProgram_406 = erased

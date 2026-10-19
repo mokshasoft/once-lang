@@ -115,18 +115,19 @@ data T_Expr_8
     C_cata_520 MAlonzo.Code.Once.Lang.Context.T_Usage_46
                MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 T_Expr_8 |
     C_ana_536 MAlonzo.Code.Once.Lang.Context.T_Usage_46
-              MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 T_Expr_8
+              MAlonzo.Code.Once.Lang.Type.WellFormed.T_WellFormedF_48 T_Expr_8 |
+    C_loop_548 MAlonzo.Code.Once.Lang.Context.T_Usage_46 T_Expr_8
 -- Once.Surface.Syntax.svar→expr
-d_svar'8594'expr_546 ::
+d_svar'8594'expr_558 ::
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_SVar_112 -> T_Expr_8
-d_svar'8594'expr_546 ~v0 ~v1 ~v2 ~v3 v4 = du_svar'8594'expr_546 v4
-du_svar'8594'expr_546 ::
+d_svar'8594'expr_558 ~v0 ~v1 ~v2 ~v3 v4 = du_svar'8594'expr_558 v4
+du_svar'8594'expr_558 ::
   MAlonzo.Code.Once.Lang.Context.T_SVar_112 -> T_Expr_8
-du_svar'8594'expr_546 v0
+du_svar'8594'expr_558 v0
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Context.C_svar_120 v3 -> coe C_var_16 v3
       _ -> MAlonzo.RTE.mazUnreachableError

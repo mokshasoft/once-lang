@@ -22,20 +22,20 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.IR
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Lang.Iterative
 import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Spec.Numerics
 
--- Once.Adequacy.LiftFnReduce.subst-T-returnT
-d_subst'45'T'45'returnT_24 ::
+-- Once.Adequacy.LiftFnReduce.subst-T-return∞
+d_subst'45'T'45'return'8734'_24 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   () ->
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45'T'45'returnT_24 = erased
+d_subst'45'T'45'return'8734'_24 = erased
 -- Once.Adequacy.LiftFnReduce.subst-arrowᴰ
 d_subst'45'arrow'7472'_48 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
@@ -46,7 +46,7 @@ d_subst'45'arrow'7472'_48 ::
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_subst'45'arrow'7472'_48 = erased
 -- Once.Adequacy.LiftFnReduce.pair-subst⁻
@@ -120,8 +120,8 @@ d_subst'45'bind_164 ::
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_subst'45'bind_164 = erased
 -- Once.Adequacy.LiftFnReduce.subst-pair-bind
@@ -134,8 +134,8 @@ d_subst'45'pair'45'bind_194 ::
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_subst'45'pair'45'bind_194 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-id
@@ -209,8 +209,8 @@ d_lift'45'inj'8321''45'red_308 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-   MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_lift'45'inj'8321''45'red_308 = erased
@@ -228,8 +228,8 @@ d_lift'45'inj'8322''45'red_346 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-   MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_lift'45'inj'8322''45'red_346 = erased
@@ -280,7 +280,7 @@ d_curry'45'red_452 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-   MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_curry'45'red_452 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-curry
@@ -294,48 +294,72 @@ d_liftFn'45'curry_472 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_liftFn'45'curry_472 = erased
--- Once.Adequacy.LiftFnReduce.liftFn-eff-apply
-d_liftFn'45'eff'45'apply_492 ::
+-- Once.Adequacy.LiftFnReduce.liftFn-apply₁
+d_liftFn'45'apply'8321'_492 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_liftFn'45'eff'45'apply_492 = erased
--- Once.Adequacy.LiftFnReduce._.P
-d_P_502 ::
+d_liftFn'45'apply'8321'_492 = erased
+-- Once.Adequacy.LiftFnReduce.liftFn-curry₁
+d_liftFn'45'curry'8321'_514 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8
-d_P_502 ~v0 ~v1 v2 v3 = du_P_502 v2 v3
-du_P_502 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8
-du_P_502 v0 v1
-  = coe
-      MAlonzo.Code.Once.Lang.Type.C__'42'__24
-      (coe
-         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v0)
-         (coe
-            MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
-            (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-            (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
-         (coe v1))
-      (coe v0)
--- Once.Adequacy.LiftFnReduce.liftFn-curry-fst
-d_liftFn'45'curry'45'fst_528 ::
-  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_liftFn'45'curry'45'fst_528 = erased
+d_liftFn'45'curry'8321'_514 = erased
+-- Once.Adequacy.LiftFnReduce.apply-red₀
+d_apply'45'red'8320'_538 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  () ->
+  () ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_apply'45'red'8320'_538 = erased
+-- Once.Adequacy.LiftFnReduce.curry-red₀
+d_curry'45'red'8320'_564 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  () ->
+  () ->
+  () ->
+  () ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  (MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_curry'45'red'8320'_564 = erased
+-- Once.Adequacy.LiftFnReduce.liftFn-apply₀
+d_liftFn'45'apply'8320'_578 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_liftFn'45'apply'8320'_578 = erased
+-- Once.Adequacy.LiftFnReduce.liftFn-curry₀
+d_liftFn'45'curry'8320'_600 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_liftFn'45'curry'8320'_600 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-case-inj₁
-d_liftFn'45'case'45'inj'8321'_560 ::
+d_liftFn'45'case'45'inj'8321'_624 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -344,9 +368,9 @@ d_liftFn'45'case'45'inj'8321'_560 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_liftFn'45'case'45'inj'8321'_560 = erased
+d_liftFn'45'case'45'inj'8321'_624 = erased
 -- Once.Adequacy.LiftFnReduce.liftFn-case-inj₂
-d_liftFn'45'case'45'inj'8322'_588 ::
+d_liftFn'45'case'45'inj'8322'_652 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -355,4 +379,135 @@ d_liftFn'45'case'45'inj'8322'_588 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_liftFn'45'case'45'inj'8322'_588 = erased
+d_liftFn'45'case'45'inj'8322'_652 = erased
+-- Once.Adequacy.LiftFnReduce.Now
+d_Now_670 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  () ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 -> AgdaAny -> ()
+d_Now_670 = erased
+-- Once.Adequacy.LiftFnReduce.now-bind
+d_now'45'bind_686 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  () ->
+  () ->
+  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  AgdaAny ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_now'45'bind_686 = erased
+-- Once.Adequacy.LiftFnReduce.now-id
+d_now'45'id_696 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_now'45'id_696 = erased
+-- Once.Adequacy.LiftFnReduce.now-fst
+d_now'45'fst_706 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_now'45'fst_706 = erased
+-- Once.Adequacy.LiftFnReduce.now-snd
+d_now'45'snd_718 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_now'45'snd_718 = erased
+-- Once.Adequacy.LiftFnReduce.now-terminal
+d_now'45'terminal_730 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_now'45'terminal_730 = erased
+-- Once.Adequacy.LiftFnReduce.now-∘
+d_now'45''8728'_748 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  AgdaAny ->
+  AgdaAny ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_now'45''8728'_748 = erased
+-- Once.Adequacy.LiftFnReduce.force-∘
+d_force'45''8728'_776 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  AgdaAny ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_force'45''8728'_776 = erased
+-- Once.Adequacy.LiftFnReduce.now-pair
+d_now'45'pair_804 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  AgdaAny ->
+  AgdaAny ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_now'45'pair_804 = erased
+-- Once.Adequacy.LiftFnReduce.force-apply
+d_force'45'apply_850 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  AgdaAny ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_force'45'apply_850 = erased
+-- Once.Adequacy.LiftFnReduce.force-apply₁
+d_force'45'apply'8321'_894 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  AgdaAny ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_force'45'apply'8321'_894 = erased

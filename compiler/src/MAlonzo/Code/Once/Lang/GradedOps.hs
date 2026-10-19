@@ -243,7 +243,7 @@ du_fmapM_76 v0 v1 v2
         -> coe MAlonzo.Code.Once.Lang.Trace.du_fmapT_170 (coe v1) (coe v2)
       MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
         -> coe
-             MAlonzo.Code.Once.Lang.Iterative.du_fmap'8734'_432 (coe v1)
+             MAlonzo.Code.Once.Lang.Iterative.du_fmap'8734'_358 (coe v1)
              (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.GradedOps.injB
@@ -425,7 +425,7 @@ du_seqM_244 v0 v1 v2
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> coe v2
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
         -> coe
-             MAlonzo.Code.Once.Lang.Iterative.du_seqF'8734'_444 (coe v1)
+             MAlonzo.Code.Once.Lang.Iterative.du_seqF'8734'_370 (coe v1)
              (coe v2)
       MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18
         -> coe MAlonzo.Code.Once.Lang.Stream.du_seqF_34 (coe v1) (coe v2)
@@ -915,7 +915,7 @@ du_sigOpRef'7515'_606 v0 v1 v2 v3 v4
                                     -> coe
                                          (\ v15 ->
                                             coe
-                                              MAlonzo.Code.Once.Lang.Iterative.du_embed_132
+                                              MAlonzo.Code.Once.Lang.Iterative.du_embed_136
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                                                  (coe d_injB_92 (coe v12) (coe v9))
@@ -970,7 +970,7 @@ du_sigOpRef'7515'_606 v0 v1 v2 v3 v4
                                     -> coe
                                          (\ v15 ->
                                             coe
-                                              MAlonzo.Code.Once.Lang.Iterative.du_embed_132
+                                              MAlonzo.Code.Once.Lang.Iterative.du_embed_136
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                                                  (coe d_injB_92 (coe v12) (coe v9))
@@ -1022,7 +1022,7 @@ du_sigOpRef'7515'_606 v0 v1 v2 v3 v4
                                     -> coe
                                          (\ v15 ->
                                             coe
-                                              MAlonzo.Code.Once.Lang.Iterative.du_embed_132
+                                              MAlonzo.Code.Once.Lang.Iterative.du_embed_136
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Trace.du_fmapT_170
                                                  (coe d_injB_92 (coe v12) (coe v9))

@@ -33,7 +33,7 @@ d_refIR_8 v0 v1
           = coe
               MAlonzo.Code.Once.IR.C__'8728'__28
               (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
-              (coe MAlonzo.Code.Once.IR.C_Call_138 v1)
+              (coe MAlonzo.Code.Once.IR.C_Call_146 v1)
               (coe MAlonzo.Code.Once.IR.C_terminal_72) in
     coe
       (case coe v0 of
@@ -47,7 +47,7 @@ d_refIR_8 v0 v1
                               (coe
                                  MAlonzo.Code.Once.IR.C__'8728'__28
                                  (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
-                                 (coe MAlonzo.Code.Once.IR.C_Call_138 v1)
+                                 (coe MAlonzo.Code.Once.IR.C_Call_146 v1)
                                  (coe MAlonzo.Code.Once.IR.C_snd_48))
                        MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
                          -> coe
@@ -55,7 +55,7 @@ d_refIR_8 v0 v1
                               (coe
                                  MAlonzo.Code.Once.IR.C__'8728'__28
                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v3))
-                                 (coe MAlonzo.Code.Once.IR.C_Call_138 v1)
+                                 (coe MAlonzo.Code.Once.IR.C_Call_146 v1)
                                  (coe MAlonzo.Code.Once.IR.C_snd_48))
                        MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                          -> coe
@@ -63,7 +63,7 @@ d_refIR_8 v0 v1
                               (coe
                                  MAlonzo.Code.Once.IR.C__'8728'__28
                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v3))
-                                 (coe MAlonzo.Code.Once.IR.C_Call_138 v1)
+                                 (coe MAlonzo.Code.Once.IR.C_Call_146 v1)
                                  (coe MAlonzo.Code.Once.IR.C_snd_48))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> MAlonzo.RTE.mazUnreachableError

@@ -209,15 +209,15 @@ d_push'8846''8322''8315'_212 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_push'8846''8322''8315'_212 = erased
--- Once.Adequacy.AnaErased.subst-T-returnT
-d_subst'45'T'45'returnT_224 ::
+-- Once.Adequacy.AnaErased.subst-T-return∞
+d_subst'45'T'45'return'8734'_224 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   () ->
   () ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45'T'45'returnT_224 = erased
+d_subst'45'T'45'return'8734'_224 = erased
 -- Once.Adequacy.AnaErased.pushᴵ+₁
 d_push'7477''43''8321'_242 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->

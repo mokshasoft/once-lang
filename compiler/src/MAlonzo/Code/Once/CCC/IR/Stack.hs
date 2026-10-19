@@ -171,42 +171,52 @@ d_ir'45'stack'45'requirement_40 v0 v1 v2
                            (coe d_pair'45'slots_8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_126 v4 v5 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_SigOp_132 v3 v4 v5 -> coe (0 :: Integer)
-      MAlonzo.Code.Once.IR.C_Call_138 v5 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_Iter_130 v6
+        -> case coe v0 of
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v7 v8
+               -> coe
+                    addInt (coe (4 :: Integer))
+                    (coe
+                       d_ir'45'stack'45'requirement_40 (coe v0)
+                       (coe MAlonzo.Code.Once.IRTy.C__'43'__22 (coe v1) (coe v8))
+                       (coe v6))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.IR.C_const_134 v4 v5 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_SigOp_140 v3 v4 v5 -> coe (0 :: Integer)
+      MAlonzo.Code.Once.IR.C_Call_146 v5 -> coe (0 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.IR.Stack.ir-scratch-requirement
-d_ir'45'scratch'45'requirement_64 ::
+d_ir'45'scratch'45'requirement_66 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
-d_ir'45'scratch'45'requirement_64 v0 v1
+d_ir'45'scratch'45'requirement_66 v0 v1
   = coe d_ir'45'stack'45'requirement_40 (coe v0) (coe v1)
 -- Once.CCC.IR.Stack.∘-stack-req
-d_'8728''45'stack'45'req_76 ::
+d_'8728''45'stack'45'req_78 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8728''45'stack'45'req_76 = erased
+d_'8728''45'stack'45'req_78 = erased
 -- Once.CCC.IR.Stack.⟨,⟩-stack-req
-d_'10216''44''10217''45'stack'45'req_92 ::
+d_'10216''44''10217''45'stack'45'req_94 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'10216''44''10217''45'stack'45'req_92 = erased
+d_'10216''44''10217''45'stack'45'req_94 = erased
 -- Once.CCC.IR.Stack.sigOp-stack-req
-d_sigOp'45'stack'45'req_104 ::
+d_sigOp'45'stack'45'req_106 ::
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigOp'45'stack'45'req_104 = erased
+d_sigOp'45'stack'45'req_106 = erased
 -- Once.CCC.IR.Stack.⟨,⟩-capacity-for-pair
-d_'10216''44''10217''45'capacity'45'for'45'pair_120 ::
+d_'10216''44''10217''45'capacity'45'for'45'pair_122 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -216,10 +226,10 @@ d_'10216''44''10217''45'capacity'45'for'45'pair_120 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_'10216''44''10217''45'capacity'45'for'45'pair_120 ~v0 ~v1 ~v2 ~v3
+d_'10216''44''10217''45'capacity'45'for'45'pair_122 ~v0 ~v1 ~v2 ~v3
                                                     ~v4 ~v5 ~v6 v7
-  = du_'10216''44''10217''45'capacity'45'for'45'pair_120 v7
-du_'10216''44''10217''45'capacity'45'for'45'pair_120 ::
+  = du_'10216''44''10217''45'capacity'45'for'45'pair_122 v7
+du_'10216''44''10217''45'capacity'45'for'45'pair_122 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_'10216''44''10217''45'capacity'45'for'45'pair_120 v0 = coe v0
+du_'10216''44''10217''45'capacity'45'for'45'pair_122 v0 = coe v0

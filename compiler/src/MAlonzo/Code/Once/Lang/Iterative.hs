@@ -17,13 +17,8 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Agda.Builtin.List
-import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
-import qualified MAlonzo.Code.Agda.Builtin.Unit
-import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Lang.Event
 import qualified MAlonzo.Code.Once.Lang.Polynomial
 import qualified MAlonzo.Code.Once.Lang.Res
 import qualified MAlonzo.Code.Once.Lang.Trace
@@ -184,328 +179,290 @@ d_'10214'μ'10215'_52 = erased
 d_'10214'ν'10215'_54 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> ()
 d_'10214'ν'10215'_54 = erased
--- Once.Lang.Iterative.T∞F
-d_T'8734'F_60 a0 a1 = ()
-data T_T'8734'F_60
-  = C_ret'8734'_66 AgdaAny |
-    C_call'8734'_70 MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 AgdaAny
-                    (AgdaAny -> AgdaAny) |
-    C_halt'8734'_74 MAlonzo.Code.Once.Lang.Trace.T_HaltOp_76 AgdaAny
 -- Once.Lang.Iterative.T∞
-d_T'8734'_78 a0 = ()
-data T_T'8734'_78 = C_constructor_86 T_T'8734'F_60
+d_T'8734'_58 a0 = ()
+data T_T'8734'_58
+  = C_constructor_66 MAlonzo.Code.Once.Lang.Trace.T_T_110
 -- Once.Lang.Iterative.T∞.force
-d_force_84 :: T_T'8734'_78 -> T_T'8734'F_60
-d_force_84 v0
+d_force_64 :: T_T'8734'_58 -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+d_force_64 v0
   = case coe v0 of
-      C_constructor_86 v1 -> coe v1
+      C_constructor_66 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Iterative.return∞
-d_return'8734'_90 :: () -> AgdaAny -> T_T'8734'_78
-d_return'8734'_90 ~v0 v1 = du_return'8734'_90 v1
-du_return'8734'_90 :: AgdaAny -> T_T'8734'_78
-du_return'8734'_90 v0
-  = coe C_constructor_86 (coe C_ret'8734'_66 (coe v0))
--- Once.Lang.Iterative._>>=∞_
-d__'62''62''61''8734'__98 ::
-  () ->
-  () -> T_T'8734'_78 -> (AgdaAny -> T_T'8734'_78) -> T_T'8734'_78
-d__'62''62''61''8734'__98 ~v0 ~v1 v2 v3
-  = du__'62''62''61''8734'__98 v2 v3
-du__'62''62''61''8734'__98 ::
-  T_T'8734'_78 -> (AgdaAny -> T_T'8734'_78) -> T_T'8734'_78
-du__'62''62''61''8734'__98 v0 v1
+d_return'8734'_70 :: () -> AgdaAny -> T_T'8734'_58
+d_return'8734'_70 ~v0 v1 = du_return'8734'_70 v1
+du_return'8734'_70 :: AgdaAny -> T_T'8734'_58
+du_return'8734'_70 v0
   = coe
-      C_constructor_86
-      (coe du_bind'8734'F_104 (coe d_force_84 (coe v0)) (coe v1))
--- Once.Lang.Iterative.bind∞F
-d_bind'8734'F_104 ::
+      C_constructor_66
+      (coe
+         MAlonzo.Code.Once.Lang.Trace.C_ret_114
+         (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe v0)))
+-- Once.Lang.Iterative._>>=∞_
+d__'62''62''61''8734'__78 ::
   () ->
-  () -> T_T'8734'F_60 -> (AgdaAny -> T_T'8734'_78) -> T_T'8734'F_60
-d_bind'8734'F_104 ~v0 ~v1 v2 v3 = du_bind'8734'F_104 v2 v3
-du_bind'8734'F_104 ::
-  T_T'8734'F_60 -> (AgdaAny -> T_T'8734'_78) -> T_T'8734'F_60
-du_bind'8734'F_104 v0 v1
+  () -> T_T'8734'_58 -> (AgdaAny -> T_T'8734'_58) -> T_T'8734'_58
+d__'62''62''61''8734'__78 ~v0 ~v1 v2 v3
+  = du__'62''62''61''8734'__78 v2 v3
+du__'62''62''61''8734'__78 ::
+  T_T'8734'_58 -> (AgdaAny -> T_T'8734'_58) -> T_T'8734'_58
+du__'62''62''61''8734'__78 v0 v1
+  = coe
+      C_constructor_66
+      (coe du_bindBlock_84 (coe d_force_64 (coe v0)) (coe v1))
+-- Once.Lang.Iterative.bindBlock
+d_bindBlock_84 ::
+  () ->
+  () ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  (AgdaAny -> T_T'8734'_58) -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+d_bindBlock_84 ~v0 ~v1 v2 v3 = du_bindBlock_84 v2 v3
+du_bindBlock_84 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  (AgdaAny -> T_T'8734'_58) -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+du_bindBlock_84 v0 v1
   = case coe v0 of
-      C_ret'8734'_66 v2 -> coe d_force_84 (coe v1 v2)
-      C_call'8734'_70 v2 v3 v4
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v2
+        -> case coe v2 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3
+               -> coe d_force_64 (coe v1 v3)
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
+               -> coe
+                    MAlonzo.Code.Once.Lang.Trace.C_ret_114
+                    (coe
+                       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+                       (coe du__'62''62''61''8734'__78 (coe v3) (coe v1)))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Lang.Trace.C_call_118 v2 v3 v4
         -> coe
-             C_call'8734'_70 (coe v2) (coe v3)
-             (coe (\ v5 -> coe du__'62''62''61''8734'__98 (coe v4 v5) (coe v1)))
-      C_halt'8734'_74 v2 v3 -> coe v0
+             MAlonzo.Code.Once.Lang.Trace.C_call_118 (coe v2) (coe v3)
+             (coe (\ v5 -> coe du_bindBlock_84 (coe v4 v5) (coe v1)))
+      MAlonzo.Code.Once.Lang.Trace.C_halt_122 v2 v3 -> coe v0
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Lang.Iterative.embedBlock
+d_embedBlock_118 ::
+  () ->
+  () ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110
+d_embedBlock_118 ~v0 ~v1 v2 = du_embedBlock_118 v2
+du_embedBlock_118 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110
+du_embedBlock_118 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v1
+        -> coe
+             MAlonzo.Code.Once.Lang.Trace.C_ret_114
+             (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe v1))
+      MAlonzo.Code.Once.Lang.Trace.C_call_118 v1 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Lang.Trace.C_call_118 (coe v1) (coe v2)
+             (coe (\ v4 -> coe du_embedBlock_118 (coe v3 v4)))
+      MAlonzo.Code.Once.Lang.Trace.C_halt_122 v1 v2 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Iterative.embed
-d_embed_132 ::
-  () -> MAlonzo.Code.Once.Lang.Trace.T_T_110 -> T_T'8734'_78
-d_embed_132 ~v0 v1 = du_embed_132 v1
-du_embed_132 ::
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 -> T_T'8734'_78
-du_embed_132 v0
-  = coe
-      C_constructor_86
-      (case coe v0 of
-         MAlonzo.Code.Once.Lang.Trace.C_ret_114 v1
-           -> coe C_ret'8734'_66 (coe v1)
-         MAlonzo.Code.Once.Lang.Trace.C_call_118 v1 v2 v3
-           -> coe
-                C_call'8734'_70 (coe v1) (coe v2)
-                (coe (\ v4 -> coe du_embed_132 (coe v3 v4)))
-         MAlonzo.Code.Once.Lang.Trace.C_halt_122 v1 v2
-           -> coe C_halt'8734'_74 (coe v1) (coe v2)
-         _ -> MAlonzo.RTE.mazUnreachableError)
--- Once.Lang.Iterative.NodeEq
-d_NodeEq_158 a0 a1 a2 a3 a4 a5 a6 = ()
-data T_NodeEq_158
-  = C_ret'8776''8734'_174 AgdaAny |
-    C_call'8776''8734'_186 (AgdaAny -> AgdaAny) |
-    C_halt'8776''8734'_192
--- Once.Lang.Iterative.TreeEq∞
-d_TreeEq'8734'_202 a0 a1 a2 a3 = ()
-data T_TreeEq'8734'_202 = C_constructor_216 T_NodeEq_158
--- Once.Lang.Iterative.TreeEq∞.force≈
-d_force'8776'_214 :: T_TreeEq'8734'_202 -> T_NodeEq_158
-d_force'8776'_214 v0
-  = case coe v0 of
-      C_constructor_216 v1 -> coe v1
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Lang.Iterative.events∞
-d_events'8734'_220 ::
+d_embed_136 ::
+  () -> MAlonzo.Code.Once.Lang.Trace.T_T_110 -> T_T'8734'_58
+d_embed_136 ~v0 v1 = du_embed_136 v1
+du_embed_136 ::
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 -> T_T'8734'_58
+du_embed_136 v0
+  = coe C_constructor_66 (coe du_embedBlock_118 (coe v0))
+-- Once.Lang.Iterative.loop
+d_loop_144 ::
   () ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  T_T'8734'_78 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
-d_events'8734'_220 ~v0 v1 v2 v3 v4
-  = du_events'8734'_220 v1 v2 v3 v4
-du_events'8734'_220 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  T_T'8734'_78 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
-du_events'8734'_220 v0 v1 v2 v3
-  = case coe v3 of
-      0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      _ -> let v4 = subInt (coe v3) (coe (1 :: Integer)) in
-           coe
-             (coe
-                du_eventsF_224 (coe v0) (coe v1) (coe d_force_84 (coe v2))
-                (coe v4))
--- Once.Lang.Iterative.eventsF
-d_eventsF_224 ::
   () ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  T_T'8734'F_60 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
-d_eventsF_224 ~v0 v1 v2 v3 v4 = du_eventsF_224 v1 v2 v3 v4
-du_eventsF_224 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  T_T'8734'F_60 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
-du_eventsF_224 v0 v1 v2 v3
-  = case coe v2 of
-      C_ret'8734'_66 v4
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      C_call'8734'_70 v4 v5 v6
-        -> coe
-             du_eventsC_230 (coe v0) (coe v1) (coe v4) (coe v5) (coe v6)
-             (coe
-                MAlonzo.Code.Once.Lang.Trace.d_callAnswer_330 (coe v0) (coe v1)
-                (coe v4) (coe v5))
-             (coe v3)
-      C_halt'8734'_74 v4 v5
-        -> coe
-             MAlonzo.Code.Data.List.Base.du_'91'_'93'_270
-             (coe
-                MAlonzo.Code.Once.Lang.Trace.d_haltEvent_102 (coe v4) (coe v5))
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Lang.Iterative.eventsC
-d_eventsC_230 ::
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  AgdaAny -> T_T'8734'_58
+d_loop_144 ~v0 ~v1 v2 v3 = du_loop_144 v2 v3
+du_loop_144 ::
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  AgdaAny -> T_T'8734'_58
+du_loop_144 v0 v1
+  = coe C_constructor_66 (coe du_loopBlock_150 (coe v0) (coe v0 v1))
+-- Once.Lang.Iterative.loopBlock
+d_loopBlock_150 ::
   () ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 ->
-  AgdaAny ->
-  (AgdaAny -> T_T'8734'_78) ->
-  Maybe AgdaAny ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
-d_eventsC_230 ~v0 v1 v2 v3 v4 v5 v6 v7
-  = du_eventsC_230 v1 v2 v3 v4 v5 v6 v7
-du_eventsC_230 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
-  MAlonzo.Code.Once.Lang.Trace.T_CallOp_56 ->
-  AgdaAny ->
-  (AgdaAny -> T_T'8734'_78) ->
-  Maybe AgdaAny ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
-du_eventsC_230 v0 v1 v2 v3 v4 v5 v6
-  = case coe v5 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
-        -> coe
-             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Lang.Trace.d_callEvent_94 (coe v2) (coe v3))
-             (coe
-                du_events'8734'_220 (coe v0)
-                (coe
-                   MAlonzo.Code.Data.List.Base.du__'43''43'__32 (coe v1)
-                   (coe
-                      MAlonzo.Code.Data.List.Base.du_'91'_'93'_270
-                      (coe
-                         MAlonzo.Code.Once.Lang.Trace.d_callEvent_94 (coe v2) (coe v3))))
-                (coe v4 v7) (coe v6))
-      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe
-             MAlonzo.Code.Data.List.Base.du_'91'_'93'_270
-             (coe
-                MAlonzo.Code.Once.Lang.Trace.d_haltEvent_102
-                (coe MAlonzo.Code.Once.Lang.Trace.d_unlinkedOp_224)
-                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Lang.Iterative.ν∞
-d_ν'8734'_304 a0 = ()
-data T_ν'8734'_304 = C_constructor_312 T_T'8734'_78
--- Once.Lang.Iterative.ν∞.force∞
-d_force'8734'_310 :: T_ν'8734'_304 -> T_T'8734'_78
-d_force'8734'_310 v0
-  = case coe v0 of
-      C_constructor_312 v1 -> coe v1
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Lang.Iterative.ana∞
-d_ana'8734'_318 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () -> (AgdaAny -> T_T'8734'_78) -> AgdaAny -> T_ν'8734'_304
-d_ana'8734'_318 v0 ~v1 v2 v3 = du_ana'8734'_318 v0 v2 v3
-du_ana'8734'_318 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> T_T'8734'_78) -> AgdaAny -> T_ν'8734'_304
-du_ana'8734'_318 v0 v1 v2
-  = coe
-      C_constructor_312
-      (coe du_anaTree'8734'_324 (coe v0) (coe v1) (coe v1 v2))
--- Once.Lang.Iterative.anaTree∞
-d_anaTree'8734'_324 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () -> (AgdaAny -> T_T'8734'_78) -> T_T'8734'_78 -> T_T'8734'_78
-d_anaTree'8734'_324 v0 ~v1 v2 v3 = du_anaTree'8734'_324 v0 v2 v3
-du_anaTree'8734'_324 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> T_T'8734'_78) -> T_T'8734'_78 -> T_T'8734'_78
-du_anaTree'8734'_324 v0 v1 v2
-  = coe
-      C_constructor_86
-      (coe
-         du_anaLayer'8734'_330 (coe v0) (coe v1) (coe d_force_84 (coe v2)))
--- Once.Lang.Iterative.anaLayer∞
-d_anaLayer'8734'_330 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () -> (AgdaAny -> T_T'8734'_78) -> T_T'8734'F_60 -> T_T'8734'F_60
-d_anaLayer'8734'_330 v0 ~v1 v2 v3 = du_anaLayer'8734'_330 v0 v2 v3
-du_anaLayer'8734'_330 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> T_T'8734'_78) -> T_T'8734'F_60 -> T_T'8734'F_60
-du_anaLayer'8734'_330 v0 v1 v2
-  = case coe v2 of
-      C_ret'8734'_66 v3
-        -> coe
-             C_ret'8734'_66
-             (coe du_mapAna'8734'_338 (coe v0) (coe v0) (coe v1) (coe v3))
-      C_call'8734'_70 v3 v4 v5
-        -> coe
-             C_call'8734'_70 (coe v3) (coe v4)
-             (coe
-                (\ v6 -> coe du_anaTree'8734'_324 (coe v0) (coe v1) (coe v5 v6)))
-      C_halt'8734'_74 v3 v4 -> coe v2
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Lang.Iterative.mapAna∞
-d_mapAna'8734'_338 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  () -> (AgdaAny -> T_T'8734'_78) -> AgdaAny -> AgdaAny
-d_mapAna'8734'_338 v0 v1 ~v2 v3 v4
-  = du_mapAna'8734'_338 v0 v1 v3 v4
-du_mapAna'8734'_338 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  (AgdaAny -> T_T'8734'_78) -> AgdaAny -> AgdaAny
-du_mapAna'8734'_338 v0 v1 v2 v3
+  () ->
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110
+d_loopBlock_150 ~v0 ~v1 v2 v3 = du_loopBlock_150 v2 v3
+du_loopBlock_150 ::
+  (AgdaAny -> MAlonzo.Code.Once.Lang.Trace.T_T_110) ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110
+du_loopBlock_150 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Lang.Polynomial.C_SK_8 -> coe v3
-      MAlonzo.Code.Once.Lang.Polynomial.C_SId_10
-        -> coe du_ana'8734'_318 (coe v0) (coe v2) (coe v3)
-      MAlonzo.Code.Once.Lang.Polynomial.C__S'8853'__12 v4 v5
-        -> case coe v3 of
-             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v6
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v2
+        -> case coe v2 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3 -> coe v1
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
                -> coe
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                    (coe du_mapAna'8734'_338 (coe v0) (coe v4) (coe v2) (coe v6))
-             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v6
-               -> coe
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                    (coe du_mapAna'8734'_338 (coe v0) (coe v5) (coe v2) (coe v6))
+                    MAlonzo.Code.Once.Lang.Trace.C_ret_114
+                    (coe
+                       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+                       (coe du_loop_144 (coe v0) (coe v3)))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Polynomial.C__S'8855'__14 v4 v5
-        -> case coe v3 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
-               -> coe
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe du_mapAna'8734'_338 (coe v0) (coe v4) (coe v2) (coe v6))
-                    (coe du_mapAna'8734'_338 (coe v0) (coe v5) (coe v2) (coe v7))
+      MAlonzo.Code.Once.Lang.Trace.C_call_118 v2 v3 v4
+        -> coe
+             MAlonzo.Code.Once.Lang.Trace.C_call_118 (coe v2) (coe v3)
+             (coe (\ v5 -> coe du_loopBlock_150 (coe v0) (coe v4 v5)))
+      MAlonzo.Code.Once.Lang.Trace.C_halt_122 v2 v3 -> coe v1
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Lang.Iterative.NowB
+d_NowB_182 :: () -> MAlonzo.Code.Once.Lang.Trace.T_T_110 -> ()
+d_NowB_182 = erased
+-- Once.Lang.Iterative.nowB
+d_nowB_188 ::
+  () -> MAlonzo.Code.Once.Lang.Trace.T_T_110 -> AgdaAny -> AgdaAny
+d_nowB_188 ~v0 v1 ~v2 = du_nowB_188 v1
+du_nowB_188 :: MAlonzo.Code.Once.Lang.Trace.T_T_110 -> AgdaAny
+du_nowB_188 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v1
+        -> case coe v1 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v2 -> coe v2
              _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Lang.Iterative.Now
+d_Now_194 :: () -> T_T'8734'_58 -> ()
+d_Now_194 = erased
+-- Once.Lang.Iterative.valueNow
+d_valueNow_202 :: () -> T_T'8734'_58 -> AgdaAny -> AgdaAny
+d_valueNow_202 ~v0 v1 ~v2 = du_valueNow_202 v1
+du_valueNow_202 :: T_T'8734'_58 -> AgdaAny
+du_valueNow_202 v0 = coe du_nowB_188 (coe d_force_64 (coe v0))
+-- Once.Lang.Iterative.iterRun
+d_iterRun_212 ::
+  () ->
+  () -> (AgdaAny -> T_T'8734'_58) -> T_T'8734'_58 -> T_T'8734'_58
+d_iterRun_212 ~v0 ~v1 v2 v3 = du_iterRun_212 v2 v3
+du_iterRun_212 ::
+  (AgdaAny -> T_T'8734'_58) -> T_T'8734'_58 -> T_T'8734'_58
+du_iterRun_212 v0 v1
+  = coe
+      C_constructor_66
+      (coe du_iterBlock_218 (coe v0) (coe d_force_64 (coe v1)))
+-- Once.Lang.Iterative.iterBlock
+d_iterBlock_218 ::
+  () ->
+  () ->
+  (AgdaAny -> T_T'8734'_58) ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110
+d_iterBlock_218 ~v0 ~v1 v2 v3 = du_iterBlock_218 v2 v3
+du_iterBlock_218 ::
+  (AgdaAny -> T_T'8734'_58) ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Lang.Trace.T_T_110
+du_iterBlock_218 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v2
+        -> case coe v2 of
+             MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3
+               -> case coe v3 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
+                      -> coe MAlonzo.Code.Once.Lang.Trace.C_ret_114 (coe v3)
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
+                      -> coe
+                           MAlonzo.Code.Once.Lang.Trace.C_ret_114
+                           (coe
+                              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+                              (coe du_iterRun_212 (coe v0) (coe v0 v4)))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
+               -> coe
+                    MAlonzo.Code.Once.Lang.Trace.C_ret_114
+                    (coe
+                       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+                       (coe du_iterRun_212 (coe v0) (coe v3)))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Lang.Trace.C_call_118 v2 v3 v4
+        -> coe
+             MAlonzo.Code.Once.Lang.Trace.C_call_118 (coe v2) (coe v3)
+             (coe (\ v5 -> coe du_iterBlock_218 (coe v0) (coe v4 v5)))
+      MAlonzo.Code.Once.Lang.Trace.C_halt_122 v2 v3 -> coe v1
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Lang.Iterative.iter∞
+d_iter'8734'_256 ::
+  () -> () -> (AgdaAny -> T_T'8734'_58) -> AgdaAny -> T_T'8734'_58
+d_iter'8734'_256 ~v0 ~v1 v2 v3 = du_iter'8734'_256 v2 v3
+du_iter'8734'_256 ::
+  (AgdaAny -> T_T'8734'_58) -> AgdaAny -> T_T'8734'_58
+du_iter'8734'_256 v0 v1 = coe du_iterRun_212 (coe v0) (coe v0 v1)
+-- Once.Lang.Iterative.BlockEq
+d_BlockEq_266 a0 a1 a2 a3 = ()
+data T_BlockEq_266
+  = C_ret'8776'_276 AgdaAny |
+    C_call'8776'_288 (AgdaAny -> T_BlockEq_266) | C_halt'8776'_294
+-- Once.Lang.Iterative.StepEq
+d_StepEq_304 a0 a1 a2 a3 a4 a5 = ()
+data T_StepEq_304
+  = C_done'8776'_318 AgdaAny | C_next'8776'_324 AgdaAny
+-- Once.Lang.Iterative.TreeEq∞
+d_TreeEq'8734'_334 a0 a1 a2 a3 = ()
+data T_TreeEq'8734'_334 = C_constructor_348 T_BlockEq_266
+-- Once.Lang.Iterative.TreeEq∞.force≈
+d_force'8776'_346 :: T_TreeEq'8734'_334 -> T_BlockEq_266
+d_force'8776'_346 v0
+  = case coe v0 of
+      C_constructor_348 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Iterative._.⟦_⟧F
-d_'10214'_'10215'F_426 ::
+d_'10214'_'10215'F_352 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> () -> ()
-d_'10214'_'10215'F_426 = erased
+d_'10214'_'10215'F_352 = erased
 -- Once.Lang.Iterative.fmap∞
-d_fmap'8734'_432 ::
-  () -> () -> (AgdaAny -> AgdaAny) -> T_T'8734'_78 -> T_T'8734'_78
-d_fmap'8734'_432 ~v0 ~v1 v2 v3 = du_fmap'8734'_432 v2 v3
-du_fmap'8734'_432 ::
-  (AgdaAny -> AgdaAny) -> T_T'8734'_78 -> T_T'8734'_78
-du_fmap'8734'_432 v0 v1
+d_fmap'8734'_358 ::
+  () -> () -> (AgdaAny -> AgdaAny) -> T_T'8734'_58 -> T_T'8734'_58
+d_fmap'8734'_358 ~v0 ~v1 v2 v3 = du_fmap'8734'_358 v2 v3
+du_fmap'8734'_358 ::
+  (AgdaAny -> AgdaAny) -> T_T'8734'_58 -> T_T'8734'_58
+du_fmap'8734'_358 v0 v1
   = coe
-      du__'62''62''61''8734'__98 (coe v1)
-      (coe (\ v2 -> coe du_return'8734'_90 (coe v0 v2)))
+      du__'62''62''61''8734'__78 (coe v1)
+      (coe (\ v2 -> coe du_return'8734'_70 (coe v0 v2)))
 -- Once.Lang.Iterative.seqF∞
-d_seqF'8734'_444 ::
+d_seqF'8734'_370 ::
   MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
-  () -> AgdaAny -> T_T'8734'_78
-d_seqF'8734'_444 v0 ~v1 v2 = du_seqF'8734'_444 v0 v2
-du_seqF'8734'_444 ::
-  MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> AgdaAny -> T_T'8734'_78
-du_seqF'8734'_444 v0 v1
+  () -> AgdaAny -> T_T'8734'_58
+d_seqF'8734'_370 v0 ~v1 v2 = du_seqF'8734'_370 v0 v2
+du_seqF'8734'_370 ::
+  MAlonzo.Code.Once.Lang.Type.T_Functor_6 -> AgdaAny -> T_T'8734'_58
+du_seqF'8734'_370 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Type.C_K_12 v2
-        -> coe du_return'8734'_90 (coe v1)
+        -> coe du_return'8734'_70 (coe v1)
       MAlonzo.Code.Once.Lang.Type.C_Id_14 -> coe v1
       MAlonzo.Code.Once.Lang.Type.C__'8853'__16 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
                -> coe
-                    du_fmap'8734'_432 (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38)
-                    (coe du_seqF'8734'_444 (coe v2) (coe v4))
+                    du_fmap'8734'_358 (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38)
+                    (coe du_seqF'8734'_370 (coe v2) (coe v4))
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
                -> coe
-                    du_fmap'8734'_432 (coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42)
-                    (coe du_seqF'8734'_444 (coe v3) (coe v4))
+                    du_fmap'8734'_358 (coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42)
+                    (coe du_seqF'8734'_370 (coe v3) (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.C__'8855'__18 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
-                    du__'62''62''61''8734'__98
-                    (coe du_seqF'8734'_444 (coe v2) (coe v4))
+                    du__'62''62''61''8734'__78
+                    (coe du_seqF'8734'_370 (coe v2) (coe v4))
                     (coe
                        (\ v6 ->
                           coe
-                            du__'62''62''61''8734'__98
-                            (coe du_seqF'8734'_444 (coe v3) (coe v5))
+                            du__'62''62''61''8734'__78
+                            (coe du_seqF'8734'_370 (coe v3) (coe v5))
                             (coe
                                (\ v7 ->
                                   coe
-                                    du_return'8734'_90
+                                    du_return'8734'_70
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6)
                                        (coe v7))))))

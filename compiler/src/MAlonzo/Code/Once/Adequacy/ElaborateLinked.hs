@@ -293,38 +293,46 @@ du_linked'45'mono_88 v0 v1 v2 v3 v4
                            (coe v9) (coe v4)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_126 v6 v7
+      MAlonzo.Code.Once.IR.C_Iter_130 v8
+        -> case coe v1 of
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v9 v10
+               -> coe
+                    du_linked'45'mono_88 (coe v0) (coe v1)
+                    (coe MAlonzo.Code.Once.IRTy.C__'43'__22 (coe v2) (coe v10))
+                    (coe v8) (coe v4)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.IR.C_const_134 v6 v7
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
-      MAlonzo.Code.Once.IR.C_SigOp_132 v5 v6 v7 -> coe v4
-      MAlonzo.Code.Once.IR.C_Call_138 v7 -> coe v0 v7 v1 v2 v4
+      MAlonzo.Code.Once.IR.C_SigOp_140 v5 v6 v7 -> coe v4
+      MAlonzo.Code.Once.IR.C_Call_146 v7 -> coe v0 v7 v1 v2 v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.decl-[]
-d_decl'45''91''93'_182 ::
+d_decl'45''91''93'_188 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 -> AgdaAny -> AgdaAny
-d_decl'45''91''93'_182 ~v0 ~v1 ~v2 ~v3 v4 ~v5
-  = du_decl'45''91''93'_182 v4
-du_decl'45''91''93'_182 ::
+d_decl'45''91''93'_188 ~v0 ~v1 ~v2 ~v3 v4 ~v5
+  = du_decl'45''91''93'_188 v4
+du_decl'45''91''93'_188 ::
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 -> AgdaAny
-du_decl'45''91''93'_182 v0
+du_decl'45''91''93'_188 v0
   = coe seq (coe v0) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
 -- Once.Adequacy.ElaborateLinked.linked-σ
-d_linked'45'σ_204 ::
+d_linked'45'σ_210 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-d_linked'45'σ_204 ~v0 ~v1 v2 v3 v4 v5
-  = du_linked'45'σ_204 v2 v3 v4 v5
-du_linked'45'σ_204 ::
+d_linked'45'σ_210 ~v0 ~v1 v2 v3 v4 v5
+  = du_linked'45'σ_210 v2 v3 v4 v5
+du_linked'45'σ_210 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-du_linked'45'σ_204 v0 v1 v2 v3
+du_linked'45'σ_210 v0 v1 v2 v3
   = case coe v2 of
       MAlonzo.Code.Once.IR.C_id_20
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
@@ -333,8 +341,8 @@ du_linked'45'σ_204 v0 v1 v2 v3
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe du_linked'45'σ_204 (coe v5) (coe v1) (coe v7) (coe v9))
-                    (coe du_linked'45'σ_204 (coe v0) (coe v5) (coe v8) (coe v10))
+                    (coe du_linked'45'σ_210 (coe v5) (coe v1) (coe v7) (coe v9))
+                    (coe du_linked'45'σ_210 (coe v0) (coe v5) (coe v8) (coe v10))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v7 v8
         -> case coe v1 of
@@ -343,8 +351,8 @@ du_linked'45'σ_204 v0 v1 v2 v3
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe du_linked'45'σ_204 (coe v0) (coe v9) (coe v7) (coe v11))
-                           (coe du_linked'45'σ_204 (coe v0) (coe v10) (coe v8) (coe v12))
+                           (coe du_linked'45'σ_210 (coe v0) (coe v9) (coe v7) (coe v11))
+                           (coe du_linked'45'σ_210 (coe v0) (coe v10) (coe v8) (coe v12))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_fst_42
@@ -362,8 +370,8 @@ du_linked'45'σ_204 v0 v1 v2 v3
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe du_linked'45'σ_204 (coe v9) (coe v1) (coe v7) (coe v11))
-                           (coe du_linked'45'σ_204 (coe v10) (coe v1) (coe v8) (coe v12))
+                           (coe du_linked'45'σ_210 (coe v9) (coe v1) (coe v7) (coe v11))
+                           (coe du_linked'45'σ_210 (coe v10) (coe v1) (coe v8) (coe v12))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_terminal_72
@@ -374,7 +382,7 @@ du_linked'45'σ_204 v0 v1 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'8667'__24 v8 v9
                -> coe
-                    du_linked'45'σ_204
+                    du_linked'45'σ_210
                     (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v8)) (coe v9)
                     (coe v7) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -390,7 +398,7 @@ du_linked'45'σ_204 v0 v1 v2 v3
                -> case coe v10 of
                     MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v11
                       -> coe
-                           du_linked'45'σ_204
+                           du_linked'45'σ_210
                            (coe
                               MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v9)
                               (coe
@@ -408,57 +416,65 @@ du_linked'45'σ_204 v0 v1 v2 v3
                -> case coe v1 of
                     MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v11
                       -> coe
-                           du_linked'45'σ_204 (coe v0)
+                           du_linked'45'σ_210 (coe v0)
                            (coe
                               MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v11) (coe v10))
                            (coe v8) (coe v3)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_const_126 v5 v6
+      MAlonzo.Code.Once.IR.C_Iter_130 v7
+        -> case coe v0 of
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+               -> coe
+                    du_linked'45'σ_210 (coe v0)
+                    (coe MAlonzo.Code.Once.IRTy.C__'43'__22 (coe v1) (coe v9)) (coe v7)
+                    (coe v3)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.IR.C_const_134 v5 v6
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
-      MAlonzo.Code.Once.IR.C_SigOp_132 v4 v5 v6
+      MAlonzo.Code.Once.IR.C_SigOp_140 v4 v5 v6
         -> coe
-             du_decl'45''91''93'_182
+             du_decl'45''91''93'_188
              (coe MAlonzo.Code.Once.SigOp.Info.d_sem_112 (coe v6))
-      MAlonzo.Code.Once.IR.C_Call_138 v6 -> coe v3
+      MAlonzo.Code.Once.IR.C_Call_146 v6 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.linkedAt-++
-d_linkedAt'45''43''43'_260 ::
+d_linkedAt'45''43''43'_270 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 -> AgdaAny -> AgdaAny
-d_linkedAt'45''43''43'_260 v0 ~v1 v2 v3 v4 v5
-  = du_linkedAt'45''43''43'_260 v0 v2 v3 v4 v5
-du_linkedAt'45''43''43'_260 ::
+d_linkedAt'45''43''43'_270 v0 ~v1 v2 v3 v4 v5
+  = du_linkedAt'45''43''43'_270 v0 v2 v3 v4 v5
+du_linkedAt'45''43''43'_270 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 -> AgdaAny -> AgdaAny
-du_linkedAt'45''43''43'_260 v0 v1 v2 v3 v4
+du_linkedAt'45''43''43'_270 v0 v1 v2 v3 v4
   = case coe v0 of
       [] -> coe v4
       (:) v5 v6
         -> coe
              du_linkedAt'45'cons_18 (coe v5) (coe v1) (coe v2) (coe v3)
              (coe
-                du_linkedAt'45''43''43'_260 (coe v6) (coe v1) (coe v2) (coe v3)
+                du_linkedAt'45''43''43'_270 (coe v6) (coe v1) (coe v2) (coe v3)
                 (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.linkedAt-[]
-d_linkedAt'45''91''93'_282 ::
+d_linkedAt'45''91''93'_292 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20 -> AgdaAny
-d_linkedAt'45''91''93'_282 ~v0 ~v1 ~v2 ~v3 ~v4
-  = du_linkedAt'45''91''93'_282
-du_linkedAt'45''91''93'_282 :: AgdaAny
-du_linkedAt'45''91''93'_282 = MAlonzo.RTE.mazUnreachableError
+d_linkedAt'45''91''93'_292 ~v0 ~v1 ~v2 ~v3 ~v4
+  = du_linkedAt'45''91''93'_292
+du_linkedAt'45''91''93'_292 :: AgdaAny
+du_linkedAt'45''91''93'_292 = MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.Refs
-d_Refs_298 ::
+d_Refs_308 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -470,22 +486,22 @@ d_Refs_298 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> ()
-d_Refs_298 = erased
+d_Refs_308 = erased
 -- Once.Adequacy.ElaborateLinked.DeclIn
-d_DeclIn_708 ::
+d_DeclIn_726 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()
-d_DeclIn_708 = erased
+d_DeclIn_726 = erased
 -- Once.Adequacy.ElaborateLinked.RefLinked
-d_RefLinked_716 ::
+d_RefLinked_734 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()
-d_RefLinked_716 = erased
+d_RefLinked_734 = erased
 -- Once.Adequacy.ElaborateLinked.Refs-map
-d_Refs'45'map_760 ::
+d_Refs'45'map_778 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()) ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -509,10 +525,10 @@ d_Refs'45'map_760 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> AgdaAny -> AgdaAny
-d_Refs'45'map_760 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 v7 v8 ~v9 ~v10 ~v11
+d_Refs'45'map_778 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 v7 v8 ~v9 ~v10 ~v11
                   v12 v13 v14
-  = du_Refs'45'map_760 v6 v7 v8 v12 v13 v14
-du_Refs'45'map_760 ::
+  = du_Refs'45'map_778 v6 v7 v8 v12 v13 v14
+du_Refs'45'map_778 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -521,7 +537,7 @@ du_Refs'45'map_760 ::
    MAlonzo.Code.Once.Lang.Type.T_Type_8 -> AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> AgdaAny -> AgdaAny
-du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
+du_Refs'45'map_778 v0 v1 v2 v3 v4 v5
   = case coe v4 of
       MAlonzo.Code.Once.Surface.Syntax.C_var_16 v8
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
@@ -529,7 +545,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
         -> case coe v3 of
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v16 v17 v18
                -> coe
-                    du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v18) (coe v15)
+                    du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v18) (coe v15)
                     (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_app_50 v8 v9 v10 v12 v13 v14
@@ -538,7 +554,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe
                           MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v10)
                           (coe
@@ -547,7 +563,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                           (coe v3))
                        (coe v13) (coe v15))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v10) (coe v14)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v10) (coe v14)
                        (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_effApp_68 v8 v9 v10 v13 v14 v15
@@ -560,7 +576,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                              -> coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                   (coe
-                                     du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                     du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                      (coe
                                         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v10)
                                         (coe
@@ -570,7 +586,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                                         (coe v18))
                                      (coe v14) (coe v21))
                                   (coe
-                                     du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v10)
+                                     du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v10)
                                      (coe v15) (coe v22))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -583,35 +599,35 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
-                              du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v14) (coe v12)
+                              du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v14) (coe v12)
                               (coe v16))
                            (coe
-                              du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v15) (coe v13)
+                              du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v15) (coe v13)
                               (coe v17))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_fst''_94 v10 v11
         -> coe
-             du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+             du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v3) (coe v10))
              (coe v11) (coe v5)
       MAlonzo.Code.Once.Surface.Syntax.C_snd''_106 v9 v11
         -> coe
-             du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+             du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v9) (coe v3))
              (coe v11) (coe v5)
       MAlonzo.Code.Once.Surface.Syntax.C_inl''_118 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Lang.Type.C__'43'__26 v12 v13
                -> coe
-                    du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v12) (coe v11)
+                    du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v12) (coe v11)
                     (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_inr''_130 v11
         -> case coe v3 of
              MAlonzo.Code.Once.Lang.Type.C__'43'__26 v12 v13
                -> coe
-                    du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v13) (coe v11)
+                    du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v13) (coe v11)
                     (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_case''_152 v8 v9 v10 v11 v12 v13 v14 v16 v17 v18
@@ -622,16 +638,16 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
-                              du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                              du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                               (coe MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v13) (coe v14))
                               (coe v16) (coe v19))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v3) (coe v17)
+                                 du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v3) (coe v17)
                                  (coe v21))
                               (coe
-                                 du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
+                                 du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
                                  (coe v22)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -639,7 +655,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
       MAlonzo.Code.Once.Surface.Syntax.C_absurd_168 v10
         -> coe
-             du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+             du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Lang.Type.C_Void_22) (coe v10) (coe v5)
       MAlonzo.Code.Once.Surface.Syntax.C_let''_184 v8 v9 v10 v11 v13 v14
         -> case coe v5 of
@@ -647,10 +663,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v11) (coe v13)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v11) (coe v13)
                        (coe v15))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v3) (coe v14)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v3) (coe v14)
                        (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_int_190 v8
@@ -663,10 +679,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_sub_218 v8 v9 v10 v11
@@ -675,10 +691,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_mul_228 v8 v9 v10 v11
@@ -687,10 +703,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_fadd_238 v8 v9 v10 v11
@@ -699,10 +715,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_fsub_248 v8 v9 v10 v11
@@ -711,10 +727,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_fmul_258 v8 v9 v10 v11
@@ -723,10 +739,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_fdiv_268 v8 v9 v10 v11
@@ -735,15 +751,15 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_i2f_276 v9
         -> coe
-             du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+             du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v9) (coe v5)
       MAlonzo.Code.Once.Surface.Syntax.C_div_286 v8 v9 v10 v11
         -> case coe v5 of
@@ -751,10 +767,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_mod''_296 v8 v9 v10 v11
@@ -763,15 +779,15 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_neg_304 v9
         -> coe
-             du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+             du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v9) (coe v5)
       MAlonzo.Code.Once.Surface.Syntax.C_lt_314 v8 v9 v10 v11
         -> case coe v5 of
@@ -779,10 +795,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_le_324 v8 v9 v10 v11
@@ -791,10 +807,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_gt_334 v8 v9 v10 v11
@@ -803,10 +819,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_ge_344 v8 v9 v10 v11
@@ -815,10 +831,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_eq_354 v8 v9 v10 v11
@@ -827,10 +843,10 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_ne_364 v8 v9 v10 v11
@@ -839,15 +855,15 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v10) (coe v12))
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_coerce_376 v9 v11 v12
         -> coe
-             du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v9) (coe v12)
+             du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v9) (coe v12)
              (coe v5)
       MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384 v9 v10
         -> coe v0 v9 v3 v5
@@ -856,7 +872,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
       MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v8 -> coe v2 v8 v3 v5
       MAlonzo.Code.Once.Surface.Syntax.C_closed_410 v9
         -> coe
-             du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)
+             du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v3) (coe v9)
              (coe v5)
       MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_422 v11
         -> coe v5
@@ -866,7 +882,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v13)
                     (coe
-                       du_Refs'45'map_760 (coe v0) (coe v1) (coe v2) (coe v9) (coe v12)
+                       du_Refs'45'map_778 (coe v0) (coe v1) (coe v2) (coe v9) (coe v12)
                        (coe v14))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_comp''_452 v8 v9 v11 v14 v15
@@ -879,7 +895,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                              -> coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                   (coe
-                                     du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                     du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                      (coe
                                         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v11)
                                         (coe
@@ -889,7 +905,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                                         (coe v18))
                                      (coe v14) (coe v21))
                                   (coe
-                                     du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                     du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                      (coe
                                         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v16)
                                         (coe
@@ -913,7 +929,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                          (coe
-                                            du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                            du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                (coe v19)
@@ -924,7 +940,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                                                (coe v18))
                                             (coe v14) (coe v23))
                                          (coe
-                                            du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                            du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                (coe v20)
@@ -950,7 +966,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                          (coe
-                                            du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                            du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                (coe v16)
@@ -961,7 +977,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                                                (coe v21))
                                             (coe v14) (coe v23))
                                          (coe
-                                            du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                            du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                                (coe v16)
@@ -983,7 +999,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                       -> case coe v19 of
                            MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v21 v22
                              -> coe
-                                  du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                  du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                   (coe
                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                      (coe
@@ -1004,7 +1020,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                       -> case coe v15 of
                            MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78 v18 v19
                              -> coe
-                                  du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                                  du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                                   (coe
                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                      (coe
@@ -1024,7 +1040,7 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                -> case coe v17 of
                     MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 v18 v19
                       -> coe
-                           du_Refs'45'map_760 (coe v0) (coe v1) (coe v2)
+                           du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
                            (coe
                               MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v15)
                               (coe
@@ -1037,9 +1053,23 @@ du_Refs'45'map_760 v0 v1 v2 v3 v4 v5
                            (coe v14) (coe v5)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Surface.Syntax.C_loop_548 v8 v11
+        -> case coe v3 of
+             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v12 v13 v14
+               -> coe
+                    du_Refs'45'map_778 (coe v0) (coe v1) (coe v2)
+                    (coe
+                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
+                       (coe
+                          MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_36))
+                       (coe MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v14) (coe v12)))
+                    (coe v11) (coe v5)
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.Linked-subst
-d_Linked'45'subst_1322 ::
+d_Linked'45'subst_1350 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   () ->
@@ -1049,30 +1079,30 @@ d_Linked'45'subst_1322 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-d_Linked'45'subst_1322 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9
-  = du_Linked'45'subst_1322 v9
-du_Linked'45'subst_1322 :: AgdaAny -> AgdaAny
-du_Linked'45'subst_1322 v0 = coe v0
+d_Linked'45'subst_1350 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9
+  = du_Linked'45'subst_1350 v9
+du_Linked'45'subst_1350 :: AgdaAny -> AgdaAny
+du_Linked'45'subst_1350 v0 = coe v0
 -- Once.Adequacy.ElaborateLinked.linked-[]
-d_linked'45''91''93'_1340 ::
+d_linked'45''91''93'_1368 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-d_linked'45''91''93'_1340 ~v0 ~v1 v2 v3
-  = du_linked'45''91''93'_1340 v2 v3
-du_linked'45''91''93'_1340 ::
+d_linked'45''91''93'_1368 ~v0 ~v1 v2 v3
+  = du_linked'45''91''93'_1368 v2 v3
+du_linked'45''91''93'_1368 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-du_linked'45''91''93'_1340 v0 v1
+du_linked'45''91''93'_1368 v0 v1
   = coe
       du_linked'45'mono_88
-      (\ v2 v3 v4 v5 -> coe du_linkedAt'45''91''93'_282) (coe v0)
+      (\ v2 v3 v4 v5 -> coe du_linkedAt'45''91''93'_292) (coe v0)
       (coe v1)
 -- Once.Adequacy.ElaborateLinked.restrictEnv-cf
-d_restrictEnv'45'cf_1362 ::
+d_restrictEnv'45'cf_1390 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -1080,14 +1110,14 @@ d_restrictEnv'45'cf_1362 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 -> AgdaAny
-d_restrictEnv'45'cf_1362 ~v0 ~v1 v2 v3 v4 ~v5 v6
-  = du_restrictEnv'45'cf_1362 v2 v3 v4 v6
-du_restrictEnv'45'cf_1362 ::
+d_restrictEnv'45'cf_1390 ~v0 ~v1 v2 v3 v4 ~v5 v6
+  = du_restrictEnv'45'cf_1390 v2 v3 v4 v6
+du_restrictEnv'45'cf_1390 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 -> AgdaAny
-du_restrictEnv'45'cf_1362 v0 v1 v2 v3
+du_restrictEnv'45'cf_1390 v0 v1 v2 v3
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Context.C_'8709'_8
         -> coe seq (coe v3) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1101,20 +1131,20 @@ du_restrictEnv'45'cf_1362 v0 v1 v2 v3
                              -> case coe v13 of
                                   MAlonzo.Code.Once.Lang.Context.C_z'8804'z_164
                                     -> coe
-                                         du_restrictEnv'45'cf_1362 (coe v5) (coe v17) (coe v20)
+                                         du_restrictEnv'45'cf_1390 (coe v5) (coe v17) (coe v20)
                                          (coe v14)
                                   MAlonzo.Code.Once.Lang.Context.C_z'8804'o_166
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                          (coe
-                                            du_restrictEnv'45'cf_1362 (coe v5) (coe v17) (coe v20)
+                                            du_restrictEnv'45'cf_1390 (coe v5) (coe v17) (coe v20)
                                             (coe v14))
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                                   MAlonzo.Code.Once.Lang.Context.C_z'8804'm_168
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                          (coe
-                                            du_restrictEnv'45'cf_1362 (coe v5) (coe v17) (coe v20)
+                                            du_restrictEnv'45'cf_1390 (coe v5) (coe v17) (coe v20)
                                             (coe v14))
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                                   MAlonzo.Code.Once.Lang.Context.C_o'8804'o_170
@@ -1123,7 +1153,7 @@ du_restrictEnv'45'cf_1362 v0 v1 v2 v3
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe
-                                               du_restrictEnv'45'cf_1362 (coe v5) (coe v17)
+                                               du_restrictEnv'45'cf_1390 (coe v5) (coe v17)
                                                (coe v20) (coe v14))
                                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1133,7 +1163,7 @@ du_restrictEnv'45'cf_1362 v0 v1 v2 v3
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe
-                                               du_restrictEnv'45'cf_1362 (coe v5) (coe v17)
+                                               du_restrictEnv'45'cf_1390 (coe v5) (coe v17)
                                                (coe v20) (coe v14))
                                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1143,7 +1173,7 @@ du_restrictEnv'45'cf_1362 v0 v1 v2 v3
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe
-                                               du_restrictEnv'45'cf_1362 (coe v5) (coe v17)
+                                               du_restrictEnv'45'cf_1390 (coe v5) (coe v17)
                                                (coe v20) (coe v14))
                                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1153,38 +1183,38 @@ du_restrictEnv'45'cf_1362 v0 v1 v2 v3
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.projUsed-cf
-d_projUsed'45'cf_1432 ::
+d_projUsed'45'cf_1460 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> AgdaAny
-d_projUsed'45'cf_1432 ~v0 ~v1 v2 v3 = du_projUsed'45'cf_1432 v2 v3
-du_projUsed'45'cf_1432 ::
+d_projUsed'45'cf_1460 ~v0 ~v1 v2 v3 = du_projUsed'45'cf_1460 v2 v3
+du_projUsed'45'cf_1460 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> AgdaAny
-du_projUsed'45'cf_1432 v0 v1
+du_projUsed'45'cf_1460 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Context.C__'44'_'94'__12 v3 v4 v5
         -> case coe v1 of
              MAlonzo.Code.Data.Fin.Base.C_zero_12
                -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
              MAlonzo.Code.Data.Fin.Base.C_suc_16 v7
-               -> coe du_projUsed'45'cf_1432 (coe v3) (coe v7)
+               -> coe du_projUsed'45'cf_1460 (coe v3) (coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.eraseCtx-cf
-d_eraseCtx'45'cf_1456 ::
+d_eraseCtx'45'cf_1484 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 -> AgdaAny
-d_eraseCtx'45'cf_1456 ~v0 ~v1 v2 ~v3 v4
-  = du_eraseCtx'45'cf_1456 v2 v4
-du_eraseCtx'45'cf_1456 ::
+d_eraseCtx'45'cf_1484 ~v0 ~v1 v2 ~v3 v4
+  = du_eraseCtx'45'cf_1484 v2 v4
+du_eraseCtx'45'cf_1484 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 -> AgdaAny
-du_eraseCtx'45'cf_1456 v0 v1
+du_eraseCtx'45'cf_1484 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Lang.Context.C_'8709'_8
         -> coe seq (coe v1) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1195,14 +1225,14 @@ du_eraseCtx'45'cf_1456 v0 v1
                     MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                           (coe du_eraseCtx'45'cf_1456 (coe v3) (coe v8))
+                           (coe du_eraseCtx'45'cf_1484 (coe v3) (coe v8))
                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe du_eraseCtx'45'cf_1456 (coe v3) (coe v8))
+                              (coe du_eraseCtx'45'cf_1484 (coe v3) (coe v8))
                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
@@ -1210,14 +1240,14 @@ du_eraseCtx'45'cf_1456 v0 v1
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe du_eraseCtx'45'cf_1456 (coe v3) (coe v8))
+                              (coe du_eraseCtx'45'cf_1484 (coe v3) (coe v8))
                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.bindEnv-cf
-d_bindEnv'45'cf_1502 ::
+d_bindEnv'45'cf_1530 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -1225,24 +1255,24 @@ d_bindEnv'45'cf_1502 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 -> AgdaAny
-d_bindEnv'45'cf_1502 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6
-  = du_bindEnv'45'cf_1502 v6
-du_bindEnv'45'cf_1502 ::
+d_bindEnv'45'cf_1530 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6
+  = du_bindEnv'45'cf_1530 v6
+du_bindEnv'45'cf_1530 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 -> AgdaAny
-du_bindEnv'45'cf_1502 v0
+du_bindEnv'45'cf_1530 v0
   = coe seq (coe v0) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
 -- Once.Adequacy.ElaborateLinked.coeIR-cf
-d_coeIR'45'cf_1516 ::
+d_coeIR'45'cf_1544 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 -> AgdaAny
-d_coeIR'45'cf_1516 ~v0 v1 v2 v3 = du_coeIR'45'cf_1516 v1 v2 v3
-du_coeIR'45'cf_1516 ::
+d_coeIR'45'cf_1544 ~v0 v1 v2 v3 = du_coeIR'45'cf_1544 v1 v2 v3
+du_coeIR'45'cf_1544 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 -> AgdaAny
-du_coeIR'45'cf_1516 v0 v1 v2
+du_coeIR'45'cf_1544 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'void_30
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
@@ -1263,12 +1293,12 @@ du_coeIR'45'cf_1516 v0 v1 v2
                                   MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                         (coe du_coeIR'45'cf_1516 (coe v15) (coe v20) (coe v11))
+                                         (coe du_coeIR'45'cf_1544 (coe v15) (coe v20) (coe v11))
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                                   MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                         (coe du_coeIR'45'cf_1516 (coe v15) (coe v20) (coe v11))
+                                         (coe du_coeIR'45'cf_1544 (coe v15) (coe v20) (coe v11))
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1278,13 +1308,13 @@ du_coeIR'45'cf_1516 v0 v1 v2
                                                (coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                   (coe
-                                                     du_coeIR'45'cf_1516 (coe v18) (coe v13)
+                                                     du_coeIR'45'cf_1544 (coe v18) (coe v13)
                                                      (coe v10))
                                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
                                   MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                         (coe du_coeIR'45'cf_1516 (coe v15) (coe v20) (coe v11))
+                                         (coe du_coeIR'45'cf_1544 (coe v15) (coe v20) (coe v11))
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
@@ -1294,7 +1324,7 @@ du_coeIR'45'cf_1516 v0 v1 v2
                                                (coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                   (coe
-                                                     du_coeIR'45'cf_1516 (coe v18) (coe v13)
+                                                     du_coeIR'45'cf_1544 (coe v18) (coe v13)
                                                      (coe v10))
                                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -1310,11 +1340,11 @@ du_coeIR'45'cf_1516 v0 v1 v2
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe du_coeIR'45'cf_1516 (coe v9) (coe v11) (coe v7))
+                              (coe du_coeIR'45'cf_1544 (coe v9) (coe v11) (coe v7))
                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe du_coeIR'45'cf_1516 (coe v10) (coe v12) (coe v8))
+                              (coe du_coeIR'45'cf_1544 (coe v10) (coe v12) (coe v8))
                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1328,11 +1358,11 @@ du_coeIR'45'cf_1516 v0 v1 v2
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                              (coe du_coeIR'45'cf_1516 (coe v9) (coe v11) (coe v7)))
+                              (coe du_coeIR'45'cf_1544 (coe v9) (coe v11) (coe v7)))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                              (coe du_coeIR'45'cf_1516 (coe v10) (coe v12) (coe v8)))
+                              (coe du_coeIR'45'cf_1544 (coe v10) (coe v12) (coe v8)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'μ_76
@@ -1343,7 +1373,7 @@ du_coeIR'45'cf_1516 v0 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.runCoe-linked
-d_runCoe'45'linked_1550 ::
+d_runCoe'45'linked_1578 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -1351,21 +1381,21 @@ d_runCoe'45'linked_1550 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-d_runCoe'45'linked_1550 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7
-  = du_runCoe'45'linked_1550 v3 v4 v5 v7
-du_runCoe'45'linked_1550 ::
+d_runCoe'45'linked_1578 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7
+  = du_runCoe'45'linked_1578 v3 v4 v5 v7
+du_runCoe'45'linked_1578 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   AgdaAny -> AgdaAny
-du_runCoe'45'linked_1550 v0 v1 v2 v3
+du_runCoe'45'linked_1578 v0 v1 v2 v3
   = coe
-      du_go_1570 (coe v0) (coe v1) (coe v2) (coe v3)
+      du_go_1598 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
          MAlonzo.Code.Once.Surface.CoerceIR.d_voidFree'63'_294 (coe v0)
          (coe v1) (coe v2))
 -- Once.Adequacy.ElaborateLinked._.go
-d_go_1570 ::
+d_go_1598 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -1375,15 +1405,15 @@ d_go_1570 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 -> AgdaAny
-d_go_1570 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7 v8
-  = du_go_1570 v3 v4 v5 v7 v8
-du_go_1570 ::
+d_go_1598 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7 v8
+  = du_go_1598 v3 v4 v5 v7 v8
+du_go_1598 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   AgdaAny ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 -> AgdaAny
-du_go_1570 v0 v1 v2 v3 v4
+du_go_1598 v0 v1 v2 v3 v4
   = case coe v4 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
         -> if coe v5
@@ -1393,16 +1423,16 @@ du_go_1570 v0 v1 v2 v3 v4
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          du_linked'45''91''93'_1340
+                          du_linked'45''91''93'_1368
                           (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v0))
                           (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v1))
                           (MAlonzo.Code.Once.Surface.CoerceIR.d_coeIR_32
                              (coe v0) (coe v1) (coe v2))
-                          (coe du_coeIR'45'cf_1516 (coe v0) (coe v1) (coe v2)))
+                          (coe du_coeIR'45'cf_1544 (coe v0) (coe v1) (coe v2)))
                        (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.eff-decl
-d_eff'45'decl_1590 ::
+d_eff'45'decl_1618 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -1412,14 +1442,14 @@ d_eff'45'decl_1590 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
-d_eff'45'decl_1590 v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 ~v8
-  = du_eff'45'decl_1590 v0 v5 v6 v7
-du_eff'45'decl_1590 ::
+d_eff'45'decl_1618 v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 ~v8
+  = du_eff'45'decl_1618 v0 v5 v6 v7
+du_eff'45'decl_1618 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 -> AgdaAny
-du_eff'45'decl_1590 v0 v1 v2 v3
+du_eff'45'decl_1618 v0 v1 v2 v3
   = case coe v1 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v4 v5
         -> if coe v4
@@ -1438,7 +1468,7 @@ du_eff'45'decl_1590 v0 v1 v2 v3
                        _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked.sigOp-linked
-d_sigOp'45'linked_1626 ::
+d_sigOp'45'linked_1654 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   Integer ->
@@ -1448,14 +1478,14 @@ d_sigOp'45'linked_1626 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 -> AgdaAny
-d_sigOp'45'linked_1626 v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 v7 v8
-  = du_sigOp'45'linked_1626 v0 v4 v7 v8
-du_sigOp'45'linked_1626 ::
+d_sigOp'45'linked_1654 v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 v7 v8
+  = du_sigOp'45'linked_1654 v0 v4 v7 v8
+du_sigOp'45'linked_1654 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 -> AgdaAny
-du_sigOp'45'linked_1626 v0 v1 v2 v3
+du_sigOp'45'linked_1654 v0 v1 v2 v3
   = case coe v2 of
       MAlonzo.Code.Once.Lang.Type.WellFormed.C_con'45'base_38 v5
         -> coe
@@ -1485,7 +1515,7 @@ du_sigOp'45'linked_1626 v0 v1 v2 v3
                                 -> coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                      (coe
-                                        du_eff'45'decl_1590 (coe v0)
+                                        du_eff'45'decl_1618 (coe v0)
                                         (coe MAlonzo.Code.Once.Lang.Type.d_isVoid'63'_84 (coe v11))
                                         (coe MAlonzo.Code.Once.Lang.Type.d_isUnit'63'_88 (coe v11))
                                         (coe v3))
@@ -1494,7 +1524,7 @@ du_sigOp'45'linked_1626 v0 v1 v2 v3
                                 -> coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                      (coe
-                                        du_eff'45'decl_1590 (coe v0)
+                                        du_eff'45'decl_1618 (coe v0)
                                         (coe MAlonzo.Code.Once.Lang.Type.d_isVoid'63'_84 (coe v11))
                                         (coe MAlonzo.Code.Once.Lang.Type.d_isUnit'63'_88 (coe v11))
                                         (coe v3))
@@ -1504,27 +1534,27 @@ du_sigOp'45'linked_1626 v0 v1 v2 v3
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked._.L
-d_L_1796 ::
+d_L_1824 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()
-d_L_1796 = erased
+d_L_1824 = erased
 -- Once.Adequacy.ElaborateLinked._.cf
-d_cf_1804 ::
+d_cf_1832 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-d_cf_1804 ~v0 ~v1 v2 v3 = du_cf_1804 v2 v3
-du_cf_1804 ::
+d_cf_1832 ~v0 ~v1 v2 v3 = du_cf_1832 v2 v3
+du_cf_1832 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
-du_cf_1804 v0 v1 = coe du_linked'45''91''93'_1340 (coe v0) (coe v1)
+du_cf_1832 v0 v1 = coe du_linked'45''91''93'_1368 (coe v0) (coe v1)
 -- Once.Adequacy.ElaborateLinked._.rE
-d_rE_1818 ::
+d_rE_1846 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   Integer ->
@@ -1533,15 +1563,15 @@ d_rE_1818 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 -> AgdaAny
-d_rE_1818 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7 = du_rE_1818 v3 v4 v5 v7
-du_rE_1818 ::
+d_rE_1846 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7 = du_rE_1846 v3 v4 v5 v7
+du_rE_1846 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Context.T__'8849''7512'__178 -> AgdaAny
-du_rE_1818 v0 v1 v2 v3
+du_rE_1846 v0 v1 v2 v3
   = coe
-      du_cf_1804
+      du_cf_1832
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
          (coe
             MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -1555,9 +1585,9 @@ du_rE_1818 v0 v1 v2 v3
       (coe
          MAlonzo.Code.Once.Surface.Elaborate.du_restrictEnv_84 (coe v0)
          (coe v1) (coe v2) (coe v3))
-      (coe du_restrictEnv'45'cf_1362 (coe v0) (coe v1) (coe v2) (coe v3))
+      (coe du_restrictEnv'45'cf_1390 (coe v0) (coe v1) (coe v2) (coe v3))
 -- Once.Adequacy.ElaborateLinked._.bE
-d_bE_1838 ::
+d_bE_1866 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   Integer ->
@@ -1566,15 +1596,15 @@ d_bE_1838 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 -> AgdaAny
-d_bE_1838 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7 = du_bE_1838 v3 v4 v5 v7
-du_bE_1838 ::
+d_bE_1866 ~v0 ~v1 ~v2 v3 v4 v5 ~v6 v7 = du_bE_1866 v3 v4 v5 v7
+du_bE_1866 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 -> AgdaAny
-du_bE_1838 v0 v1 v2 v3
+du_bE_1866 v0 v1 v2 v3
   = coe
-      du_cf_1804
+      du_cf_1832
       (coe
          MAlonzo.Code.Once.IRTy.C__'42'__20
          (coe
@@ -1592,9 +1622,9 @@ du_bE_1838 v0 v1 v2 v3
                (coe MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v0) (coe v2))
                (coe MAlonzo.Code.Once.Lang.Context.C__'8759'__52 v3 v1))))
       (coe MAlonzo.Code.Once.Surface.Elaborate.du_bindEnv_242 (coe v3))
-      (coe du_bindEnv'45'cf_1502 (coe v3))
+      (coe du_bindEnv'45'cf_1530 (coe v3))
 -- Once.Adequacy.ElaborateLinked._.elaborate-linked′
-d_elaborate'45'linked'8242'_1862 ::
+d_elaborate'45'linked'8242'_1890 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -1603,9 +1633,9 @@ d_elaborate'45'linked'8242'_1862 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> AgdaAny -> AgdaAny
-d_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 ~v5 v6 v7 v8
-  = du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v6 v7 v8
-du_elaborate'45'linked'8242'_1862 ::
+d_elaborate'45'linked'8242'_1890 v0 v1 v2 v3 v4 ~v5 v6 v7 v8
+  = du_elaborate'45'linked'8242'_1890 v0 v1 v2 v3 v4 v6 v7 v8
+du_elaborate'45'linked'8242'_1890 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -1613,11 +1643,11 @@ du_elaborate'45'linked'8242'_1862 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> AgdaAny -> AgdaAny
-du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
+du_elaborate'45'linked'8242'_1890 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v6 of
       MAlonzo.Code.Once.Surface.Syntax.C_var_16 v10
         -> coe
-             du_cf_1804
+             du_cf_1832
              (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                 (coe
                    MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -1632,7 +1662,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Once.Surface.Elaborate.du_projUsed_154 (coe v4)
                 (coe v10))
-             (coe du_projUsed'45'cf_1432 (coe v4) (coe v10))
+             (coe du_projUsed'45'cf_1460 (coe v4) (coe v10))
       MAlonzo.Code.Once.Surface.Syntax.C_lam_34 v11 v17
         -> case coe v5 of
              MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v18 v19 v20
@@ -1645,7 +1675,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                      (coe
-                                        du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                        du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                         (coe addInt (coe (1 :: Integer)) (coe v3))
                                         (coe
                                            MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -1658,7 +1688,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                          (coe
-                                            du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                            du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                             (coe v2) (coe addInt (coe (1 :: Integer)) (coe v3))
                                             (coe
                                                MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -1667,7 +1697,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                                   MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
                                     -> coe
-                                         du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                         du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                          (coe v2) (coe addInt (coe (1 :: Integer)) (coe v3))
                                          (coe
                                             MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -1680,7 +1710,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                     -> coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                          (coe
-                                            du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                            du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                             (coe v2) (coe addInt (coe (1 :: Integer)) (coe v3))
                                             (coe
                                                MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -1689,7 +1719,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                                   MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
                                     -> coe
-                                         du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                         du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                          (coe v2) (coe addInt (coe (1 :: Integer)) (coe v3))
                                          (coe
                                             MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -1697,7 +1727,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                          (coe v20) (coe v17) (coe v7)
                                   MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
                                     -> coe
-                                         du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                         du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                          (coe v2) (coe addInt (coe (1 :: Integer)) (coe v3))
                                          (coe
                                             MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -1718,7 +1748,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                 du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                  (coe v3) (coe v4)
                                  (coe
                                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
@@ -1740,7 +1770,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                    du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                     (coe v3) (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
@@ -1751,7 +1781,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                        (coe v5))
                                     (coe v15) (coe v17))
                                  (coe
-                                    du_rE_1818 (coe v4)
+                                    du_rE_1846 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v10)
                                        (coe
@@ -1767,10 +1797,10 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                    du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                     (coe v3) (coe v4) (coe v12) (coe v16) (coe v18))
                                  (coe
-                                    du_rE_1818 (coe v4)
+                                    du_rE_1846 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v10)
                                        (coe
@@ -1810,7 +1840,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                    du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                     (coe v3) (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
@@ -1821,7 +1851,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                        (coe v5))
                                     (coe v15) (coe v17))
                                  (coe
-                                    du_rE_1818 (coe v4)
+                                    du_rE_1846 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v10)
                                        (coe
@@ -1837,10 +1867,10 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                    du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                     (coe v3) (coe v4) (coe v12) (coe v16) (coe v18))
                                  (coe
-                                    du_rE_1818 (coe v4)
+                                    du_rE_1846 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v10)
                                        (coe
@@ -1887,7 +1917,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                            (coe
-                                              du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                              du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                               (coe v2) (coe v3) (coe v4)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -1900,7 +1930,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                  (coe v20))
                                               (coe v16) (coe v23))
                                            (coe
-                                              du_cf_1804
+                                              du_cf_1832
                                               (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                                  (coe
                                                     MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -1930,7 +1960,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                        MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                                                     (coe v11)))
                                               (coe
-                                                 du_restrictEnv'45'cf_1362 (coe v4)
+                                                 du_restrictEnv'45'cf_1390 (coe v4)
                                                  (coe
                                                     MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                     (coe v10)
@@ -1951,11 +1981,11 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                            (coe
-                                              du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                              du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                               (coe v2) (coe v3) (coe v4) (coe v12) (coe v17)
                                               (coe v24))
                                            (coe
-                                              du_cf_1804
+                                              du_cf_1832
                                               (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                                  (coe
                                                     MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -1980,7 +2010,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                  MAlonzo.Code.Once.Surface.Elaborate.du_env'691'ω_220
                                                  (coe v4) (coe v10) (coe v11))
                                               (coe
-                                                 du_restrictEnv'45'cf_1362 (coe v4)
+                                                 du_restrictEnv'45'cf_1390 (coe v4)
                                                  (coe
                                                     MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                     (coe v10)
@@ -2031,10 +2061,10 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                 du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                  (coe v3) (coe v4) (coe v16) (coe v14) (coe v18))
                               (coe
-                                 du_cf_1804
+                                 du_cf_1832
                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -2053,7 +2083,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                     MAlonzo.Code.Once.Surface.Elaborate.du_env'737'_180 (coe v4)
                                     (coe v10) (coe v11))
                                  (coe
-                                    du_restrictEnv'45'cf_1362 (coe v4)
+                                    du_restrictEnv'45'cf_1390 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v10)
                                        (coe v11))
@@ -2064,10 +2094,10 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                 du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                  (coe v3) (coe v4) (coe v17) (coe v15) (coe v19))
                               (coe
-                                 du_cf_1804
+                                 du_cf_1832
                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -2086,7 +2116,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                     MAlonzo.Code.Once.Surface.Elaborate.du_env'691'_200 (coe v4)
                                     (coe v10) (coe v11))
                                  (coe
-                                    du_restrictEnv'45'cf_1362 (coe v4)
+                                    du_restrictEnv'45'cf_1390 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v10)
                                        (coe v11))
@@ -2101,7 +2131,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe
-                du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v4)
                 (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v5) (coe v12))
                 (coe v13) (coe v7))
@@ -2110,7 +2140,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe
-                du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v4)
                 (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v11) (coe v5))
                 (coe v13) (coe v7))
@@ -2121,7 +2151,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                       du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                        (coe v3) (coe v4) (coe v14) (coe v13) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_inr''_130 v13
@@ -2131,7 +2161,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                       du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                        (coe v3) (coe v4) (coe v15) (coe v13) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_case''_152 v10 v11 v12 v13 v14 v15 v16 v18 v19 v20
@@ -2146,7 +2176,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                    du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                     (coe addInt (coe (1 :: Integer)) (coe v3))
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -2154,13 +2184,13 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                     (coe v5) (coe v19) (coe v23))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                    (coe du_bE_1838 (coe v4) (coe v11) (coe v15) (coe v13))
+                                    (coe du_bE_1866 (coe v4) (coe v11) (coe v15) (coe v13))
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                           (coe
-                                             du_rE_1818 (coe v4)
+                                             du_rE_1846 (coe v4)
                                              (coe
                                                 MAlonzo.Code.Once.Lang.Context.du__'8852''7512'__100
                                                 (coe v11) (coe v12))
@@ -2173,7 +2203,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                    du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                     (coe addInt (coe (1 :: Integer)) (coe v3))
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4)
@@ -2181,13 +2211,13 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                     (coe v5) (coe v20) (coe v24))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                    (coe du_bE_1838 (coe v4) (coe v12) (coe v16) (coe v14))
+                                    (coe du_bE_1866 (coe v4) (coe v12) (coe v16) (coe v14))
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                           (coe
-                                             du_rE_1818 (coe v4)
+                                             du_rE_1846 (coe v4)
                                              (coe
                                                 MAlonzo.Code.Once.Lang.Context.du__'8852''7512'__100
                                                 (coe v11) (coe v12))
@@ -2233,7 +2263,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_rE_1818 (coe v4)
+                                    du_rE_1846 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v10)
                                        (coe
@@ -2251,14 +2281,14 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                     (coe
-                                       du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                       du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                        (coe v3) (coe v4)
                                        (coe
                                           MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v15)
                                           (coe v16))
                                        (coe v18) (coe v21))
                                     (coe
-                                       du_rE_1818 (coe v4)
+                                       du_rE_1846 (coe v4)
                                        (coe
                                           MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                           (coe v10)
@@ -2281,7 +2311,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe
-                du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v4) (coe MAlonzo.Code.Once.Lang.Type.C_Void_22)
                 (coe v12) (coe v7))
       MAlonzo.Code.Once.Surface.Syntax.C_let''_184 v10 v11 v12 v13 v15 v16
@@ -2290,7 +2320,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                -> case coe v7 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                       -> coe
-                           du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                           du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                            (coe addInt (coe (1 :: Integer)) (coe v3))
                            (coe
                               MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4) (coe v13))
@@ -2302,18 +2332,18 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
-                              du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                              du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                               (coe addInt (coe (1 :: Integer)) (coe v3))
                               (coe
                                  MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4) (coe v13))
                               (coe v5) (coe v16) (coe v18))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe du_bE_1838 (coe v4) (coe v11) (coe v13) (coe v12))
+                              (coe du_bE_1866 (coe v4) (coe v11) (coe v13) (coe v12))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_rE_1818 (coe v4)
+                                    du_rE_1846 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v11)
                                        (coe
@@ -2329,10 +2359,10 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                     (coe
-                                       du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                       du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                        (coe v3) (coe v4) (coe v13) (coe v15) (coe v17))
                                     (coe
-                                       du_rE_1818 (coe v4)
+                                       du_rE_1846 (coe v4)
                                        (coe
                                           MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                           (coe v11)
@@ -2368,18 +2398,18 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
-                              du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                              du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                               (coe addInt (coe (1 :: Integer)) (coe v3))
                               (coe
                                  MAlonzo.Code.Once.Lang.Context.du__'44'__16 (coe v4) (coe v13))
                               (coe v5) (coe v16) (coe v18))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                              (coe du_bE_1838 (coe v4) (coe v11) (coe v13) (coe v12))
+                              (coe du_bE_1866 (coe v4) (coe v11) (coe v13) (coe v12))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    du_rE_1818 (coe v4)
+                                    du_rE_1846 (coe v4)
                                     (coe
                                        MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v11)
                                        (coe
@@ -2395,10 +2425,10 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                     (coe
-                                       du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                       du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                        (coe v3) (coe v4) (coe v13) (coe v15) (coe v17))
                                     (coe
-                                       du_rE_1818 (coe v4)
+                                       du_rE_1846 (coe v4)
                                        (coe
                                           MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                           (coe v11)
@@ -2446,7 +2476,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2458,7 +2488,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2470,7 +2500,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2482,7 +2512,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2494,7 +2524,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2506,7 +2536,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2518,7 +2548,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2528,7 +2558,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe
-                du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v4) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                 (coe v11) (coe v7))
       MAlonzo.Code.Once.Surface.Syntax.C_div_286 v10 v11 v12 v13
@@ -2538,7 +2568,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2550,7 +2580,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2560,7 +2590,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe
-                du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v4) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                 (coe v11) (coe v7))
       MAlonzo.Code.Once.Surface.Syntax.C_lt_314 v10 v11 v12 v13
@@ -2570,7 +2600,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2582,7 +2612,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2594,7 +2624,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2606,7 +2636,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2618,7 +2648,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
@@ -2630,19 +2660,19 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                     (coe
-                       d_bin_1882 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
+                       d_bin_1910 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v10)
                        (coe v11) (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v12) (coe v13)
                        (coe v14) (coe v15))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_coerce_376 v11 v13 v14
         -> coe
-             du_runCoe'45'linked_1550 (coe v11) (coe v5) (coe v13)
+             du_runCoe'45'linked_1578 (coe v11) (coe v5) (coe v13)
              (coe
-                du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                 (coe v3) (coe v4) (coe v11) (coe v14) (coe v7))
       MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384 v11 v12
-        -> coe du_sigOp'45'linked_1626 (coe v0) (coe v5) (coe v12) (coe v7)
+        -> coe du_sigOp'45'linked_1654 (coe v0) (coe v5) (coe v12) (coe v7)
       MAlonzo.Code.Once.Surface.Syntax.C_closure_392 v11
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
@@ -2655,7 +2685,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
-                du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                 (coe (0 :: Integer))
                 (coe MAlonzo.Code.Once.Lang.Context.C_'8709'_8) (coe v5) (coe v11)
                 (coe v7))
@@ -2666,10 +2696,10 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_cf_1804 (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v14))
+                       du_cf_1832 (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v14))
                        (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v16)) v13
                        (coe
-                          du_linked'45'σ_204
+                          du_linked'45'σ_210
                           (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v14))
                           (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v16)) (coe v13)
                           (coe v7)))
@@ -2681,20 +2711,20 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       du_cf_1804 (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v11))
+                       du_cf_1832 (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v11))
                        (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v5)) v13
                        (coe
-                          du_linked'45'σ_204
+                          du_linked'45'σ_210
                           (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v11))
                           (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v5)) (coe v13)
                           (coe v15)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                          du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                           (coe v3) (coe v4) (coe v11) (coe v14) (coe v16))
                        (coe
-                          du_rE_1818 (coe v4)
+                          du_rE_1846 (coe v4)
                           (coe
                              MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                              (coe MAlonzo.Code.Once.Lang.Context.d_zeroUsage_56 (coe v3))
@@ -2757,7 +2787,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                           du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                            (coe v2) (coe v3) (coe v4)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -2769,7 +2799,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                               (coe v20))
                                            (coe v16) (coe v23))
                                         (coe
-                                           du_cf_1804
+                                           du_cf_1832
                                            (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -2798,7 +2828,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                  (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
                                                  (coe v11)))
                                            (coe
-                                              du_restrictEnv'45'cf_1362 (coe v4)
+                                              du_restrictEnv'45'cf_1390 (coe v4)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                  (coe v10)
@@ -2819,7 +2849,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1)
+                                           du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1)
                                            (coe v2) (coe v3) (coe v4)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -2831,7 +2861,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                               (coe v13))
                                            (coe v17) (coe v24))
                                         (coe
-                                           du_cf_1804
+                                           du_cf_1832
                                            (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -2856,7 +2886,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                               MAlonzo.Code.Once.Surface.Elaborate.du_env'691'ω_220
                                               (coe v4) (coe v10) (coe v11))
                                            (coe
-                                              du_restrictEnv'45'cf_1362 (coe v4)
+                                              du_restrictEnv'45'cf_1390 (coe v4)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                  (coe v10)
@@ -2967,7 +2997,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                (coe
-                                                  du_elaborate'45'linked'8242'_1862 (coe v0)
+                                                  du_elaborate'45'linked'8242'_1890 (coe v0)
                                                   (coe v1) (coe v2) (coe v3) (coe v4)
                                                   (coe
                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -2980,7 +3010,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      (coe v20))
                                                   (coe v16) (coe v25))
                                                (coe
-                                                  du_cf_1804
+                                                  du_cf_1832
                                                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -3000,7 +3030,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      MAlonzo.Code.Once.Surface.Elaborate.du_env'737'_180
                                                      (coe v4) (coe v10) (coe v11))
                                                   (coe
-                                                     du_restrictEnv'45'cf_1362 (coe v4)
+                                                     du_restrictEnv'45'cf_1390 (coe v4)
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                         (coe v10) (coe v11))
@@ -3011,7 +3041,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                (coe
-                                                  du_elaborate'45'linked'8242'_1862 (coe v0)
+                                                  du_elaborate'45'linked'8242'_1890 (coe v0)
                                                   (coe v1) (coe v2) (coe v3) (coe v4)
                                                   (coe
                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -3024,7 +3054,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      (coe v20))
                                                   (coe v17) (coe v26))
                                                (coe
-                                                  du_cf_1804
+                                                  du_cf_1832
                                                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -3044,7 +3074,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      MAlonzo.Code.Once.Surface.Elaborate.du_env'691'_200
                                                      (coe v4) (coe v10) (coe v11))
                                                   (coe
-                                                     du_restrictEnv'45'cf_1362 (coe v4)
+                                                     du_restrictEnv'45'cf_1390 (coe v4)
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                         (coe v10) (coe v11))
@@ -3094,7 +3124,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                (coe
-                                                  du_elaborate'45'linked'8242'_1862 (coe v0)
+                                                  du_elaborate'45'linked'8242'_1890 (coe v0)
                                                   (coe v1) (coe v2) (coe v3) (coe v4)
                                                   (coe
                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -3107,7 +3137,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      (coe v23))
                                                   (coe v16) (coe v25))
                                                (coe
-                                                  du_cf_1804
+                                                  du_cf_1832
                                                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -3127,7 +3157,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      MAlonzo.Code.Once.Surface.Elaborate.du_env'737'_180
                                                      (coe v4) (coe v10) (coe v11))
                                                   (coe
-                                                     du_restrictEnv'45'cf_1362 (coe v4)
+                                                     du_restrictEnv'45'cf_1390 (coe v4)
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                         (coe v10) (coe v11))
@@ -3138,7 +3168,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                (coe
-                                                  du_elaborate'45'linked'8242'_1862 (coe v0)
+                                                  du_elaborate'45'linked'8242'_1890 (coe v0)
                                                   (coe v1) (coe v2) (coe v3) (coe v4)
                                                   (coe
                                                      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -3151,7 +3181,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      (coe v24))
                                                   (coe v17) (coe v26))
                                                (coe
-                                                  du_cf_1804
+                                                  du_cf_1832
                                                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -3171,7 +3201,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                                      MAlonzo.Code.Once.Surface.Elaborate.du_env'691'_200
                                                      (coe v4) (coe v10) (coe v11))
                                                   (coe
-                                                     du_restrictEnv'45'cf_1362 (coe v4)
+                                                     du_restrictEnv'45'cf_1390 (coe v4)
                                                      (coe
                                                         MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76
                                                         (coe v10) (coe v11))
@@ -3209,7 +3239,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
                                   (coe
-                                     du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                     du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                      (coe v3) (coe v4)
                                      (coe
                                         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -3244,7 +3274,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                      (coe
-                                        du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                        du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                         (coe v3) (coe v4)
                                         (coe
                                            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -3258,7 +3288,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                            (coe v18))
                                         (coe v15) (coe v7))
                                      (coe
-                                        du_rE_1818 (coe v4)
+                                        du_rE_1846 (coe v4)
                                         (coe
                                            MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                                            (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
@@ -3287,7 +3317,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+                                 du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
                                  (coe v3) (coe v4)
                                  (coe
                                     MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v17)
@@ -3300,7 +3330,7 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                        (coe v17)))
                                  (coe v16) (coe v7))
                               (coe
-                                 du_rE_1818 (coe v4)
+                                 du_rE_1846 (coe v4)
                                  (coe
                                     MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                                     (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v10))
@@ -3310,9 +3340,44 @@ du_elaborate'45'linked'8242'_1862 v0 v1 v2 v3 v4 v5 v6 v7
                                     (coe v10))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Surface.Syntax.C_loop_548 v10 v13
+        -> case coe v5 of
+             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v14 v15 v16
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                    (coe
+                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                       (coe
+                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
+                    (coe
+                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                       (coe
+                          du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
+                          (coe v3) (coe v4)
+                          (coe
+                             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v14)
+                             (coe
+                                MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+                                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_36))
+                             (coe MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v16) (coe v14)))
+                          (coe v13) (coe v7))
+                       (coe
+                          du_rE_1846 (coe v4)
+                          (coe
+                             MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
+                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v10))
+                          (coe v10)
+                          (coe
+                             MAlonzo.Code.Once.Lang.Context.du_'8849''7512''45''42'Many_304
+                             (coe v10))))
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ElaborateLinked._.bin
-d_bin_1882 ::
+d_bin_1910 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -3325,16 +3390,16 @@ d_bin_1882 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_bin_1882 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+d_bin_1910 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
          (coe
-            du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+            du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
             (coe v3) (coe v4) (coe v7) (coe v9) (coe v11))
          (coe
-            du_cf_1804
+            du_cf_1832
             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                (coe
                   MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -3352,7 +3417,7 @@ d_bin_1882 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                MAlonzo.Code.Once.Surface.Elaborate.du_env'737'_180 (coe v4)
                (coe v5) (coe v6))
             (coe
-               du_restrictEnv'45'cf_1362 (coe v4)
+               du_restrictEnv'45'cf_1390 (coe v4)
                (coe
                   MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v5)
                   (coe v6))
@@ -3363,10 +3428,10 @@ d_bin_1882 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
          (coe
-            du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+            du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
             (coe v3) (coe v4) (coe v8) (coe v10) (coe v12))
          (coe
-            du_cf_1804
+            du_cf_1832
             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                (coe
                   MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -3384,7 +3449,7 @@ d_bin_1882 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                MAlonzo.Code.Once.Surface.Elaborate.du_env'691'_200 (coe v4)
                (coe v5) (coe v6))
             (coe
-               du_restrictEnv'45'cf_1362 (coe v4)
+               du_restrictEnv'45'cf_1390 (coe v4)
                (coe
                   MAlonzo.Code.Once.Lang.Context.du__'43''7512'__76 (coe v5)
                   (coe v6))
@@ -3393,7 +3458,7 @@ d_bin_1882 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                   MAlonzo.Code.Once.Lang.Context.du_'8849''7512''45''43''691'_240
                   (coe v5) (coe v6)))))
 -- Once.Adequacy.ElaborateLinked._.elaborate-linked
-d_elaborate'45'linked_2578 ::
+d_elaborate'45'linked_2616 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -3403,14 +3468,14 @@ d_elaborate'45'linked_2578 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_elaborate'45'linked_2578 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_elaborate'45'linked_2616 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         du_elaborate'45'linked'8242'_1862 (coe v0) (coe v1) (coe v2)
+         du_elaborate'45'linked'8242'_1890 (coe v0) (coe v1) (coe v2)
          (coe v3) (coe v4) (coe v6) (coe v7) (coe v8))
       (coe
-         du_cf_1804
+         du_cf_1832
          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
             (coe
                MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
@@ -3421,6 +3486,6 @@ d_elaborate'45'linked_2578 v0 v1 v2 v3 v4 v5 v6 v7 v8
                (coe
                   MAlonzo.Code.Once.Lang.Context.du__'8638'__136 (coe v4) (coe v5))))
          (coe
-            MAlonzo.Code.Once.Surface.Elaborate.du_eraseCtx_988 (coe v4)
+            MAlonzo.Code.Once.Surface.Elaborate.du_eraseCtx_1008 (coe v4)
             (coe v5))
-         (coe du_eraseCtx'45'cf_1456 (coe v4) (coe v5)))
+         (coe du_eraseCtx'45'cf_1484 (coe v4) (coe v5)))

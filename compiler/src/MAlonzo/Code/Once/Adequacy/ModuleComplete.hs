@@ -100,7 +100,7 @@ du_compileFunBody'45'complete_48 v0 v1 v2 v3 v4 v5 v6
       (coe
          du_succ_78 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
          (coe
-            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6204
+            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
             (coe
                MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                (coe v0) (coe v1))
@@ -144,19 +144,19 @@ du_succ_78 v0 v1 v2 v3 v4 v5 v6
                    MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
                    (coe
-                      MAlonzo.Code.Once.Optimize.d_optimize_1228
+                      MAlonzo.Code.Once.Optimize.d_optimize_1248
                       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
                          (coe
                             MAlonzo.Code.Once.Lang.Context.du_'10214'_'10215''7580'_38
                             (coe MAlonzo.Code.Once.Lang.Context.C_'8709'_8)))
                       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48 (coe v4))
                       (coe
-                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1030
+                         MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1050
                          (coe (0 :: Integer))
                          (coe MAlonzo.Code.Once.Lang.Context.C_'8709'_8)
                          (coe MAlonzo.Code.Once.Lang.Context.C_'91''93'_48) (coe v4)
                          (coe
-                            MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
+                            MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4060
                             (coe v4) (coe v1) (coe v2)
                             (coe
                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -176,12 +176,12 @@ du_succ_78 v0 v1 v2 v3 v4 v5 v6
                                (coe v5) (coe v4)
                                (coe MAlonzo.Code.Once.Lang.Context.C_'91''93'_48) (coe v8)))))
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1030
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1050
                       (coe (0 :: Integer))
                       (coe MAlonzo.Code.Once.Lang.Context.C_'8709'_8)
                       (coe MAlonzo.Code.Once.Lang.Context.C_'91''93'_48) (coe v4)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4048
+                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_4060
                          (coe v4) (coe v1) (coe v2)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

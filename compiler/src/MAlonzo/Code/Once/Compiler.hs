@@ -724,22 +724,22 @@ d_arch'45'correctness_100 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
    [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2582) ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2528) ->
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
    [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2582) ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2528) ->
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
    [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2582) ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2528) ->
   MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Adequacy.Compile.T_ArchCorrect_104
+  MAlonzo.Code.Once.Adequacy.Compile.T_ArchCorrect_96
 d_arch'45'correctness_100 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                           v13 v14 v15 v16 v17 v18 v19 v20 v21
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.d_arch'45'correctness_478
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.d_arch'45'correctness_502
       (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
       (coe v7) (coe v8) (coe v9) (coe v10) (coe v11) (coe v12) (coe v13)
       (coe v14) (coe v15) (coe v16) (coe v17) (coe v18) (coe v19)
@@ -915,32 +915,32 @@ d_once'45'compiler_102 ::
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
    [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2582) ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2528) ->
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
    [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2582) ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2528) ->
   (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
    [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2582) ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_BlockRuns_2528) ->
   MAlonzo.Code.Once.Spec.Correct.T_CorrectCompiler_6
 d_once'45'compiler_102 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                        v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24
   = coe
       MAlonzo.Code.Once.Spec.Correct.C_constructor_108
-      (coe MAlonzo.Code.Once.Adequacy.Compile.du_sigOfT_820)
+      (coe MAlonzo.Code.Once.Adequacy.Compile.du_sigOfT_786)
       (coe
-         MAlonzo.Code.Once.Adequacy.Compile.du_'10214'_'10215''7496''7477'_826)
+         MAlonzo.Code.Once.Adequacy.Compile.du_'10214'_'10215''7496''7477'_792)
       (\ v25 v26 v27 ->
          coe
-           MAlonzo.Code.Once.Adequacy.Compile.du_exec_866
+           MAlonzo.Code.Once.Adequacy.Compile.du_exec_832
            (coe MAlonzo.Code.Once.Lang.Trace.C_interp_192 (coe v26) (coe v27))
            (coe v25))
-      (coe MAlonzo.Code.Once.Adequacy.Compile.du_compile_280)
-      (MAlonzo.Code.Once.Adequacy.Compile.d_correct'7496'_1418
+      (coe MAlonzo.Code.Once.Adequacy.Compile.du_compile_246)
+      (MAlonzo.Code.Once.Adequacy.Compile.d_correct'7496'_1380
          (coe
-            MAlonzo.Code.Once.Adequacy.ArchCorrectness.d_arch'45'correctness_478
+            MAlonzo.Code.Once.Adequacy.ArchCorrectness.d_arch'45'correctness_502
             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
             (coe v7) (coe v8) (coe v9) (coe v10) (coe v11) (coe v12) (coe v13)
             (coe v14) (coe v15) (coe v16) (coe v17) (coe v18) (coe v19)
