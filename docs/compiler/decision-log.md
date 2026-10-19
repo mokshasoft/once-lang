@@ -18954,3 +18954,32 @@ cannot pick one.
   a fault, or a pc off the code is the end `halted`. The concrete model halts at a call with no answer
   (the call resolver's `halting`); before, it returned past every call, `exit` included, which made the
   external-call contract demand `false ≡ true` at every reachable `exit`.
+
+## D321 — A PRINCIPAL TYPE IS LEAST OVER ITS DOMAINS (2026-10-19)
+
+**Decided by the user, 2026-10-19** (plan 0.119 §7 D6's decision point, option (b)). **Amends**: D314's
+"a signature is the body's principal type" (what "principal" means). **Relates**: D007, D225–D227 (`Void`
+is the bottom, arrows contravariant), D072 (sig-less definitions), OCP-0009 / PLAN-BIDI (a kernel term is
+typed from its declared type).
+
+### Problem
+`Principal` asked that a body check at no strictly smaller type under `<:`. With `Void` the bottom and
+domains contravariant, a body need not have a least type: `f : Void -> Int; f = \x -> 3` was rejected (it
+also checks at `Int -> Int`, a strict subtype), while `Int -> Int` and `Unit -> Int` were both accepted
+and incomparable. A least arrow type would need a greatest domain, a top type Once does not have. Deciding
+the old notion is inference with subtyping constraints (a principal TYPING, context inferred too; Jim 1996,
+Wells 2002), which fails or explodes with subtyping and a bottom.
+
+### Decision
+1. A term is a morphism out of a GIVEN object: its domains are the signature's annotation. A principal
+   type is least over those domains — smaller only in codomains, grades, and `Void` for a whole type.
+2. `Spec.Sub` gains `A <:ᶜ B` (`<:` with every domain kept); `Spec.Surface.Program.Principal` uses it.
+3. Rejected: (a) keep minimality over `<:` (searching the supertypes of every `Void` in a domain; the
+   wrong universal property); (c) also reject `Void` in a domain (`Void -> Int` is the unique map out of
+   the initial object, a legitimate function).
+
+### Consequences
+* The checker computes the least codomain/grade over the given domains (what bidirectional checking
+  synthesizes); `Bridges.sound` needs the checker to compare a signature with that type exactly.
+* Most programs' `main` signature becomes its principal type (e.g. `Act Unit Void` when the body ends in
+  `exit`), used at `Eff Unit Unit` by `<:` (D315).

@@ -12,8 +12,8 @@
 --     definitions before it): each body checked at its type
 --     (`Spec.Surface.Typing`) and elaborated to a core term, typed by the core
 --     judgment over its type variables. A definition's type is its body's
---     principal type (it checks at no strictly smaller type); a signature
---     only confirms it (D314, D007).
+--     principal type over its domains (it checks at no strictly smaller type
+--     with the same domains); a signature only confirms it (D314, D007).
 --   * Its ENTRY: the definition named `main`, used at `Eff Unit Unit` (D315,
 --     `Spec.Core.Program`).
 ------------------------------------------------------------------------
@@ -34,7 +34,7 @@ open import Once.Spec.Grade using (Many; mk-kind; pure; act; eff)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Type
   using (Ty; Fun; KCtx; base; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; Occurs; OccursF)
-open import Once.Spec.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:ᶜ_)
 open import Once.Spec.Signature
   using (BTy; unit; void; int; float; DeclType; constant; value; operation; _∶_; Signature; WellFormed; OneName)
 import Once.Spec.Signature as BT
@@ -176,10 +176,13 @@ module _ (Σ : Signature) where
       typed : CoreTyping._⊩_⊢[_]_∷_!_ Σ S (kinds sc) ∅ [] term (type sc) pure
 
   -- The schema is the body's principal type: it checks at no strictly smaller
-  -- type.
+  -- type with the same domains. The domains are the schema's annotation (a
+  -- body is a morphism out of a given object); minimality over them would ask
+  -- for a greatest domain, which need not exist (`Void -> Int` also checks at
+  -- `Int -> Int`, while `Int -> Int` and `Unit -> Int` are incomparable).
   Principal : ∀ {s} (S : Defs s) (nm : Fin s → CanonicalName) (sc : Schema) (e : Expr) → Set
   Principal S nm sc e =
-    ∀ {A t} → A <: type sc
+    ∀ {A t} → A <:ᶜ type sc
     → SurfaceTyping._⊢_⇐_↝_ Σ S nm (kinds sc) SurfaceTyping.∅ e A t
     → CoreTyping._⊩_⊢[_]_∷_!_ Σ S (kinds sc) ∅ [] t A pure
     → A ≡ type sc

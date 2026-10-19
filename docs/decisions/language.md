@@ -256,11 +256,12 @@ entry updates the rule it changes here, in the same commit.
 - **`let` and a top-level definition are interderivable**; a defined name
   unfolds to its definiens and folds back. (D284)
 - **Signatures are optional assertions that confirm the principal type**: a
-  definition's type IS its body's principal type, and a signature must equal
-  it — never a supertype (two signatures on one body would make two
+  definition's type IS its body's principal type — the least type over the
+  signature's domains (domains are annotations; smaller only in codomains,
+  grades and `Void`, D321) — and a signature must equal it — never a supertype (two signatures on one body would make two
   functions: `Act` is a finite tree, `Eff` a `T∞` tree). A sig-less definition
   gets its principal type from an untrusted oracle and is then checked by the
-  unification-free kernel. (D314, D072, D007)
+  unification-free kernel. (D321, D314, D072, D007)
 
 ## 8. Polymorphism and modules
 

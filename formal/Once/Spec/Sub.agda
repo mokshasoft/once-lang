@@ -19,6 +19,11 @@
 -- One rule per head of the left type and no transitivity rule, so each
 -- `A <: B` has at most one derivation: every derivation denotes the same
 -- conversion.
+--
+-- `A <:ᶜ B`: `A <: B` with every domain kept — smaller only in what a term
+-- produces (codomains, grades, `Void` for a whole type). A term is a morphism
+-- out of a given object: its domains are annotations, and its principal type
+-- is the least codomain over them (`Spec.Surface.Program.Principal`).
 ------------------------------------------------------------------------
 
 module Once.Spec.Sub where
@@ -26,7 +31,7 @@ module Once.Spec.Sub where
 open import Once.Spec.Grade using (mk-kind; fin; _⊑π_)
 open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 
-infix 4 _<:_
+infix 4 _<:_ _<:ᶜ_
 
 data _<:_ {m} : Ty m → Ty m → Set where
   sub-void  : ∀ {B} → Void <: B
@@ -41,3 +46,17 @@ data _<:_ {m} : Ty m → Ty m → Set where
   sub-+     : ∀ {A A′ B B′} → A <: A′ → B <: B′ → (A + B) <: (A′ + B′)
   sub-μ     : ∀ {F} → μ F <: μ F
   sub-ν     : ∀ {F f f′} → fin f ⊑π fin f′ → ν F f <: ν F f′
+
+data _<:ᶜ_ {m} : Ty m → Ty m → Set where
+  subᶜ-void  : ∀ {B} → Void <:ᶜ B
+  subᶜ-var   : ∀ {i} → var i <:ᶜ var i
+  subᶜ-unit  : Unit <:ᶜ Unit
+  subᶜ-int   : Int <:ᶜ Int
+  subᶜ-float : Float <:ᶜ Float
+  subᶜ-arr   : ∀ {A B B′ q π π′}
+             → B <:ᶜ B′ → π ⊑π π′
+             → (A ⇒[ mk-kind q π ] B) <:ᶜ (A ⇒[ mk-kind q π′ ] B′)
+  subᶜ-*     : ∀ {A A′ B B′} → A <:ᶜ A′ → B <:ᶜ B′ → (A * B) <:ᶜ (A′ * B′)
+  subᶜ-+     : ∀ {A A′ B B′} → A <:ᶜ A′ → B <:ᶜ B′ → (A + B) <:ᶜ (A′ + B′)
+  subᶜ-μ     : ∀ {F} → μ F <:ᶜ μ F
+  subᶜ-ν     : ∀ {F f f′} → fin f ⊑π fin f′ → ν F f <:ᶜ ν F f′
