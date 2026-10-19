@@ -50,7 +50,7 @@ open import Once.IR.Ref using (refIR)
 import Once.Lang.Context as Srf
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
-open import Once.Lang.Trace using (T)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; module CallEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; cohᴰ)
 open CallEnv using (callsE)
@@ -166,18 +166,18 @@ imprel-transport σ₁ σ₂ ((n , U) ∷ rest) {e , ι} (h , hs) (r , rs) =
 refIR-cong : ∀ (U : Type) (f : CanonicalName) (ρ₁ ρ₂ : CallEnv)
   → (∀ (A B : IRTy) (a : ⟦ A ⟧ᴰᴵ) → callsE ρ₁ f A B a ≡ callsE ρ₂ f A B a)
   → evalᴰ fmt ρ₁ (refIR U f) tt ≡ evalᴰ fmt ρ₂ (refIR U f) tt
-refIR-cong (A ⇒[ mk-kind Zero π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Lang.Trace.returnT g) (extensionality λ b → h _ _ b)
-refIR-cong (A ⇒[ mk-kind One  π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Lang.Trace.returnT g) (extensionality λ b → h _ _ b)
-refIR-cong (A ⇒[ mk-kind Many π ] B) f ρ₁ ρ₂ h = cong (λ g → Once.Lang.Trace.returnT g) (extensionality λ b → h _ _ b)
-refIR-cong Unit         f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong Void         f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong (A * B)      f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong (A + B)      f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong (μ-type F)   f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong (ν-type F π) f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong Int          f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong Float        f ρ₁ ρ₂ h = h _ _ tt
-refIR-cong (rigid k i)  f ρ₁ ρ₂ h = h _ _ tt
+refIR-cong (A ⇒[ mk-kind Zero π ] B) f ρ₁ ρ₂ h = cong return∞ (extensionality λ b → cong (return∞ b >>=∞_) (extensionality (h _ _)))
+refIR-cong (A ⇒[ mk-kind One  π ] B) f ρ₁ ρ₂ h = cong return∞ (extensionality λ b → cong (return∞ b >>=∞_) (extensionality (h _ _)))
+refIR-cong (A ⇒[ mk-kind Many π ] B) f ρ₁ ρ₂ h = cong return∞ (extensionality λ b → cong (return∞ b >>=∞_) (extensionality (h _ _)))
+refIR-cong Unit         f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong Void         f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong (A * B)      f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong (A + B)      f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong (μ-type F)   f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong (ν-type F π) f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong Int          f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong Float        f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong (rigid k i)  f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
 
 -- Entries declared later, of other names, do not change a call.
 tableEnv-later : ∀ (later pre : List IRFun) (f : CanonicalName) → All (λ e → fname e ≢ f) later
@@ -190,7 +190,7 @@ callSD-later : ∀ (later pre : List IRFun) (P : PolyCtx) (I : String → TopCtx
   → All (λ e → fname e ≢ bare x) later
   → MB.callSD fmt (σW (later ++ pre) P I uf) x U ≡ MB.callSD fmt (σW pre P I uf) x U
 callSD-later later pre P I uf x U nes =
-  cong (subst T (cohᴰ U)) (refIR-cong U (bare x) _ _ (tableEnv-later later pre (bare x) nes))
+  cong (subst T∞ (cohᴰ U)) (refIR-cong U (bare x) _ _ (tableEnv-later later pre (bare x) nes))
 
 -- Two walk environments over one table make the same calls.
 calls-same : ∀ (tbl : List IRFun) (P P′ : PolyCtx) (I I′ : String → TopCtx) (uf uf′ : Imports) (imps : Imports)
