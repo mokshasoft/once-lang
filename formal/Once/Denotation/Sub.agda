@@ -6,7 +6,7 @@
 --
 -- Each `p : A <: B` denotes a conversion `⟦ p ⟧<: : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ`. `Void`
 -- converts by `¡` (there is nothing to convert); an arrow converts its argument
--- backwards and its RESULT forwards under `fmapT`, which leaves the trace alone;
+-- backwards and its RESULT forwards under `fmap∞`, which leaves the trace alone;
 -- the grade is erased, as `⟦_⟧ᴰ` erases it.
 --
 -- Coherence has two halves. `Once.Lang.Laws.SubLaws.<:-unique` says each `A <: B` has
@@ -32,10 +32,8 @@ open import Once.Lang.Type.Sub
 open import Once.Type.Sub
 open import Once.Lang.Laws.SubLaws
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
--- `fmapT` is a functor and congruent: the tree's laws (plan 0.105).
-open import Once.Lang.Trace using (T; ret; call; halt; fmapT; _>>=T_)
-open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-∘; fmapT-cong)
-open import Once.Postulates using (extensionality)
+-- `fmap∞` is a functor and congruent: the tree's laws (plan 0.105).
+open import Once.Lang.Iterative using (T∞; fmap∞)
 
 ------------------------------------------------------------------------
 -- The conversion a derivation denotes.
@@ -46,9 +44,9 @@ open import Once.Postulates using (extensionality)
 ⟦ sub-unit   ⟧<: x = x
 ⟦ sub-int    ⟧<: x = x
 ⟦ sub-float  ⟧<: x = x
-⟦ sub-arr {q = Zero} a b _ ⟧<: f = λ u → fmapT ⟦ b ⟧<: (f u)
-⟦ sub-arr {q = One}  a b _ ⟧<: f = λ x → fmapT ⟦ b ⟧<: (f (⟦ a ⟧<: x))
-⟦ sub-arr {q = Many} a b _ ⟧<: f = λ x → fmapT ⟦ b ⟧<: (f (⟦ a ⟧<: x))
+⟦ sub-arr {q = Zero} a b _ ⟧<: f = λ u → fmap∞ ⟦ b ⟧<: (f u)
+⟦ sub-arr {q = One}  a b _ ⟧<: f = λ x → fmap∞ ⟦ b ⟧<: (f (⟦ a ⟧<: x))
+⟦ sub-arr {q = Many} a b _ ⟧<: f = λ x → fmap∞ ⟦ b ⟧<: (f (⟦ a ⟧<: x))
 ⟦ sub-prod a b ⟧<: (x , y) = ⟦ a ⟧<: x , ⟦ b ⟧<: y
 ⟦ sub-sum a b ⟧<: (inj₁ x) = inj₁ (⟦ a ⟧<: x)
 ⟦ sub-sum a b ⟧<: (inj₂ y) = inj₂ (⟦ b ⟧<: y)
@@ -59,58 +57,25 @@ open import Once.Postulates using (extensionality)
 -- Coherence, semantic half: reflexivity is the identity …
 ------------------------------------------------------------------------
 
-<:-refl-id : ∀ A (x : ⟦ A ⟧ᴰ) → ⟦ <:-refl A ⟧<: x ≡ x
-<:-refl-id Type.Unit   x = refl
-<:-refl-id Type.Void   ()
-<:-refl-id Type.Int    x = refl
-<:-refl-id Type.Float  x = refl
-<:-refl-id (A ⇒[ mk-kind Zero π ] B) f = extensionality λ u →
-  trans (fmapT-cong (<:-refl-id B) (f u)) (fmapT-id (f u))
-<:-refl-id (A ⇒[ mk-kind One π ] B) f = extensionality λ x →
-  trans (cong (λ y → fmapT ⟦ <:-refl B ⟧<: (f y)) (<:-refl-id A x))
-        (trans (fmapT-cong (<:-refl-id B) (f x)) (fmapT-id (f x)))
-<:-refl-id (A ⇒[ mk-kind Many π ] B) f = extensionality λ x →
-  trans (cong (λ y → fmapT ⟦ <:-refl B ⟧<: (f y)) (<:-refl-id A x))
-        (trans (fmapT-cong (<:-refl-id B) (f x)) (fmapT-id (f x)))
-<:-refl-id (A Type.* B) (x , y) = cong₂ _,_ (<:-refl-id A x) (<:-refl-id B y)
-<:-refl-id (A Type.+ B) (inj₁ x) = cong inj₁ (<:-refl-id A x)
-<:-refl-id (A Type.+ B) (inj₂ y) = cong inj₂ (<:-refl-id B y)
-<:-refl-id (Type.μ-type F) x = refl
-<:-refl-id (Type.ν-type F _) x = refl
+-- plan 0.119 D5: the coercions' laws hold up to the IR's value relation
+-- (`ValueRel.RelD`): an arrow's coercion maps a run, and runs are compared
+-- step for step, never by `≡`.
+open import Once.Denotation.ValueRel using (RelD; RelS-fmap; RelS-fmapˡ)
+open import Data.Unit using (tt)
 
-------------------------------------------------------------------------
--- … and transitivity is composition.
-------------------------------------------------------------------------
-
-<:-trans-∘ : ∀ {A B C} (p : A <: B) (q : B <: C) (x : ⟦ A ⟧ᴰ)
-           → ⟦ <:-trans p q ⟧<: x ≡ ⟦ q ⟧<: (⟦ p ⟧<: x)
-<:-trans-∘ sub-void   q ()
-<:-trans-∘ sub-unit   q x = refl
-<:-trans-∘ sub-int    q x = refl
-<:-trans-∘ sub-float  q x = refl
-<:-trans-∘ (sub-arr {q = Zero} a b _) (sub-arr a′ b′ _) f = extensionality λ u →
-  trans (fmapT-cong (<:-trans-∘ b b′) (f u)) (sym (fmapT-∘ ⟦ b′ ⟧<: ⟦ b ⟧<: (f u)))
-<:-trans-∘ (sub-arr {q = One} a b _) (sub-arr a′ b′ _) f = extensionality λ x →
-  trans (cong (λ y → fmapT ⟦ <:-trans b b′ ⟧<: (f y)) (<:-trans-∘ a′ a x))
-        (trans (fmapT-cong (<:-trans-∘ b b′) (f (⟦ a ⟧<: (⟦ a′ ⟧<: x))))
-               (sym (fmapT-∘ ⟦ b′ ⟧<: ⟦ b ⟧<: (f (⟦ a ⟧<: (⟦ a′ ⟧<: x))))))
-<:-trans-∘ (sub-arr {q = Many} a b _) (sub-arr a′ b′ _) f = extensionality λ x →
-  trans (cong (λ y → fmapT ⟦ <:-trans b b′ ⟧<: (f y)) (<:-trans-∘ a′ a x))
-        (trans (fmapT-cong (<:-trans-∘ b b′) (f (⟦ a ⟧<: (⟦ a′ ⟧<: x))))
-               (sym (fmapT-∘ ⟦ b′ ⟧<: ⟦ b ⟧<: (f (⟦ a ⟧<: (⟦ a′ ⟧<: x))))))
-<:-trans-∘ (sub-prod a b) (sub-prod a′ b′) (x , y) =
-  cong₂ _,_ (<:-trans-∘ a a′ x) (<:-trans-∘ b b′ y)
-<:-trans-∘ (sub-sum a b) (sub-sum a′ b′) (inj₁ x) = cong inj₁ (<:-trans-∘ a a′ x)
-<:-trans-∘ (sub-sum a b) (sub-sum a′ b′) (inj₂ y) = cong inj₂ (<:-trans-∘ b b′ y)
-<:-trans-∘ sub-μ q x = refl
-<:-trans-∘ (sub-ν _) (sub-ν _) x = refl
-
-------------------------------------------------------------------------
--- Plan 0.94 §4: the middle type through `Void` is irrelevant.
---
--- `compose f g` with `g : A ⇒ Void` checks at ANY middle `B`, by converting
--- `g`'s result `Void <: B`. Whatever `B` and `f` are, the composite means `g`'s
--- own result converted straight to `C`: a computation into `Void` can only have
--- stopped, so the bind never reaches `f`.
-------------------------------------------------------------------------
-
+<:-refl-rel : ∀ A {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A (⟦ <:-refl A ⟧<: x) y
+<:-refl-rel Type.Unit   r = r
+<:-refl-rel Type.Void   {()}
+<:-refl-rel Type.Int    r = r
+<:-refl-rel Type.Float  r = r
+<:-refl-rel (A ⇒[ mk-kind Zero π ] B) r = RelS-fmapˡ r (<:-refl-rel B)
+<:-refl-rel (A ⇒[ mk-kind One π ] B)  r = λ ra → RelS-fmapˡ (r (<:-refl-rel A ra)) (<:-refl-rel B)
+<:-refl-rel (A ⇒[ mk-kind Many π ] B) r = λ ra → RelS-fmapˡ (r (<:-refl-rel A ra)) (<:-refl-rel B)
+<:-refl-rel (A Type.* B) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = <:-refl-rel A r₁ , <:-refl-rel B r₂
+<:-refl-rel (A Type.+ B) {inj₁ x} {inj₁ y} r = <:-refl-rel A r
+<:-refl-rel (A Type.+ B) {inj₂ x} {inj₂ y} r = <:-refl-rel B r
+<:-refl-rel (A Type.+ B) {inj₁ _} {inj₂ _} ()
+<:-refl-rel (A Type.+ B) {inj₂ _} {inj₁ _} ()
+<:-refl-rel (Type.μ-type F) r = r
+<:-refl-rel (Type.ν-type F _) r = r
+<:-refl-rel (Type.rigid _ _) {()}

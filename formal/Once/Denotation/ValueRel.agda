@@ -137,7 +137,7 @@ base-refl base-rigid      ()
 -- Runs: the monad's operations preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞)
+open import Once.Lang.Iterative using (return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
 
@@ -153,6 +153,17 @@ RelSB-mono h s-halt     = s-halt
 RelS-fmap : ∀ {X Y X′ Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {m : T∞ X} {m′ : T∞ X′} {f : X → Y} {g : X′ → Y′}
           → RelS R m m′ → (∀ {a b} → R a b → R′ (f a) (g b)) → RelS R′ (fmap∞ f m) (fmap∞ g m′)
 RelS-fmap h c = RelS-bind h (λ r → relS-ret (c r))
+
+-- Mapping one side.
+RelS-fmapˡ  : ∀ {X X′ Y} {R : X → Y → Set} {R′ : X′ → Y → Set} {f : X → X′} {m : T∞ X} {m′ : T∞ Y}
+            → RelS R m m′ → (∀ {a b} → R a b → R′ (f a) b) → RelS R′ (fmap∞ f m) m′
+RelSB-fmapˡ : ∀ {X X′ Y} {R : X → Y → Set} {R′ : X′ → Y → Set} {f : X → X′} {l l′}
+            → RelSB R l l′ → (∀ {a b} → R a b → R′ (f a) b) → RelSB R′ (bindBlock l (λ x → return∞ (f x))) l′
+forceS (RelS-fmapˡ r h) = RelSB-fmapˡ (forceS r) h
+RelSB-fmapˡ (s-ret r)  h = s-ret (h r)
+RelSB-fmapˡ (s-next r) h = s-next (RelS-fmapˡ r h)
+RelSB-fmapˡ (s-call g) h = s-call (λ b → RelSB-fmapˡ (g b) h)
+RelSB-fmapˡ s-halt     h = s-halt
 
 seqF∞-rel : ∀ {X Y} {R : X → Y → Set} (G : Functor) {l : ⟦ G ⟧F (T∞ X)} {l′ : ⟦ G ⟧F (T∞ Y)}
           → FRel (RelS R) G l l′ → RelS (FRel R G) (seqF∞ G l) (seqF∞ G l′)

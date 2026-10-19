@@ -170,3 +170,14 @@ RelSB-≈ʳ (ret≈ (done≈ refl)) (s-ret r)  = s-ret r
 RelSB-≈ʳ (ret≈ (next≈ e))    (s-next h) = s-next (RelS-≈ʳ e h)
 RelSB-≈ʳ (call≈ f)           (s-call h) = s-call (λ b → RelSB-≈ʳ (f b) (h b))
 RelSB-≈ʳ halt≈               s-halt     = s-halt
+
+-- `embed` is a monad morphism (up to bisimilarity): a finite bind embeds as the
+-- bind of the embeddings.
+embed-bindB : ∀ {X Y} (m : T X) (k : X → T Y)
+            → BlockEq (StepEq _≡_ (TreeEq∞ _≡_)) (embedBlock (m >>=T k)) (bindBlock (embedBlock m) (λ x → embed (k x)))
+embed-bindB (ret x)      k = ≈∞-reflB (λ _ → refl) (embedBlock (k x))
+embed-bindB (call o a c) k = call≈ (λ b → embed-bindB (c b) k)
+embed-bindB (halt o a)   k = halt≈
+
+embed-bind : ∀ {X Y} (m : T X) (k : X → T Y) → TreeEq∞ _≡_ (embed (m >>=T k)) (embed m >>=∞ λ x → embed (k x))
+force≈ (embed-bind m k) = embed-bindB m k

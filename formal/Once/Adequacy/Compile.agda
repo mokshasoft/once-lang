@@ -62,7 +62,7 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToMod
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Adequacy.RewritePreserves using (rewrite-program-tree)
+open import Once.Adequacy.RewritePreserves using (rewrite-program-trace)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 
@@ -499,7 +499,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- PLAN 0.107 / D320: THE CHAIN, over the FILE. Assembled, the well-formed
     -- file runs its program (`as`, the one trust); running the file has the
     -- trace of the rewritten program (`file-tr`: calls and end); the arith pass
-    -- preserves the program's tree (`rewrite-program-tree`). Every link but the
+    -- preserves the program's trace (`rewrite-program-trace`). Every link but the
     -- first is a proof.
     file-correct :
       ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
@@ -510,11 +510,9 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     file-correct arch m F ir eq mi ls =
       subst (_≋ ⟦ just P ⟧IRᵗ (arch-numerics arch) ι)
             (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) m F eq)))
-            (subst (λ t → run-file arch ι F ≋ runTrIR t)
-                   (rewrite-program-tree (arch-numerics arch) ι P)
-                   (ArchCorrect.file-tr (arch-correct ι arch) m F eq ir mi ls))
+            (WB-trans trans (ArchCorrect.file-tr (arch-correct ι arch) m F eq ir mi ls)
+                            (rewrite-program-trace (arch-numerics arch) ι P))
       where P = irProgram (moduleTable m) ir
-            runTrIR = Once.Denotation.TraceTr.runTr ι Data.List.List.[]
 
     --------------------------------------------------------------------
     -- The grand theorem — by composition of the per-stage postulates.

@@ -35,11 +35,12 @@ open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind)
 open import Once.Lang.Type using (Type; Unit; _⇒[_]_; ⟦_⟧T)
 open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Surface.Syntax using (Expr)
-open import Once.Lang.Trace using (T; returnT; _>>=T_; fmapT)
+open import Once.Lang.Trace using (T; fmapT)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; CallEnv; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
-open import Once.Lang.Stream using (seqF; anaFᵈ)
+open import Once.Lang.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰ; coerce-functor⁻¹-D; cohᴰ; coerce-functor-D)
 open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
@@ -74,14 +75,14 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 
 ------------------------------------------------------------------------
 -- The `Cata` fold's per-layer trace+value algebra, over a ⟦_⟧ˢ algebra
--- CLOSURE (`⟦⟦F⟧T C⟧ᴰ → T ⟦C⟧ᴰ`) rather than an IR — the elaborate-free
+-- CLOSURE (`⟦⟦F⟧T C⟧ᴰ → T∞ ⟦C⟧ᴰ`) rather than an IR — the elaborate-free
 -- analogue of `DenotTrace.cata-ev-algᴰ`. Carrier pairs the post-order
 -- event trace with the folded (pure) value; children's events precede this
 -- layer's algebra events (`projTrace (algClo …)`), value via `forget ∘ valueT`.
 ------------------------------------------------------------------------
 
 -- Takes the algebra COMPUTATION `T (closure)` (= `⟦alg⟧ˢ tt`) and binds it
--- per layer (`algComp >>=T λ algClo → algClo (inject z)`), THREADING the
+-- per layer (`algComp >>=∞ λ algClo → algClo (inject z)`), THREADING the
 -- algebra's build trace per layer — mirroring exactly what `DenotTrace`'s
 -- `cata-ev-algᴰ` does with `evalᴰ alg (inject z)`. (It does NOT pre-extract a
 -- closure and drop its build trace; that discard was the flaw that forced a
@@ -89,26 +90,26 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- `faithful`'s cata case follow from the algebra IH + monad-assoc alone, and
 -- handles an effectful build correctly — the trace agrees per layer on both
 -- sides.)
--- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF`) before
+-- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF∞`) before
 -- the algebra runs, mirroring `DenotTrace.cata-ev-algᴰ`. The `ℕ` is gone —
 -- the budget lives in `T`, so the children share it instead of each getting
 -- the full `n` and having their traces concatenated.
-cata-ev-algˢ : ∀ {F C} → WellFormedF F → T (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
-             → ⟦ F ⟧F (T ⟦ C ⟧ᴰ) → T ⟦ C ⟧ᴰ
+cata-ev-algˢ : ∀ {F C} → WellFormedF F → T∞ (⟦ ⟦ F ⟧T C ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
+             → ⟦ F ⟧F (T∞ ⟦ C ⟧ᴰ) → T∞ ⟦ C ⟧ᴰ
 cata-ev-algˢ {F} {C} wf algComp fc =
-  seqF F fc >>=T λ layer →
-    algComp >>=T λ algClo → algClo (coerce-functor⁻¹-D wf C layer)
+  seqF∞ F fc >>=∞ λ layer →
+    algComp >>=∞ λ algClo → algClo (coerce-functor⁻¹-D wf C layer)
 
 ------------------------------------------------------------------------
 -- `liftD` — the surface denotation of a PRE-BUILT CCC morphism `ir : IR ⌊A⌋ ⌊B⌋`
--- (the meaning of `lift-morphism`/`morph-app`). `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
--- `cohᴰ` transports it to the surface Kleisli arrow `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind
+-- (the meaning of `lift-morphism`/`morph-app`). `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T∞ ⟦⌊B⌋⟧ᴰᴵ`;
+-- `cohᴰ` transports it to the surface Kleisli arrow `⟦A⟧ᴰ → T∞ ⟦B⟧ᴰ` (grade-blind
 -- erasure). Named so adequacy proofs (`RealizeAgrees`/`CataFold`) can refer to the
 -- transported form without re-importing the `⟦_⟧ˢ`-mixfix (Plan 0.52 M2).
 ------------------------------------------------------------------------
 
-liftD : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
-liftD fmt ρ {A} {B} ir = returnT (liftFn fmt ρ {A} {B} ir)
+liftD : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T∞ (⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ)
+liftD fmt ρ {A} {B} ir = return∞ (liftFn fmt ρ {A} {B} ir)
 
 ------------------------------------------------------------------------
 -- Plan 0.103 phase 1c: the DEFINITIONS ENVIRONMENT of an open surface term.
@@ -132,23 +133,23 @@ record DefsSem : Set where
   constructor defsSem
   field
     calls : CallEnv
-    refs  : (x : String) (A : Type) → T ⟦ A ⟧ᴰ
+    refs  : (x : String) (A : Type) → T∞ ⟦ A ⟧ᴰ
 
 open DefsSem
 
 internalDefs : TargetNum → CallEnv → DefsSem
-internalDefs fmt ρ = defsSem ρ (λ x A → subst T (cohᴰ A) (evalᴰ fmt ρ (refIR A (bare x)) tt))
+internalDefs fmt ρ = defsSem ρ (λ x A → subst T∞ (cohᴰ A) (evalᴰ fmt ρ (refIR A (bare x)) tt))
 
 -- A SigOp applied at the source: its contract's computation at the
 -- first-order argument (plan 0.105), read into the value domain — the IR's
 -- `evalᴰ (SigOp si)` without the IRTy transports (`CataErased.liftFn-SigOp`).
 -- A pure FFI contract reads the call environment's pure half.
-sigOpˢ : ∀ {A B} → TargetNum → DefsSem → SigOpInfo A B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) si (forgetᵇ (baseA si) a))
+sigOpˢ : ∀ {A B} → TargetNum → DefsSem → SigOpInfo A B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) si (forgetᵇ (baseA si) a)))
 
 ------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
--- into `T`; `apply`/`let`/`case` thread the trace via `_>>=T_`.
+-- into `T`; `apply`/`let`/`case` thread the trace via `_>>=∞_`.
 ------------------------------------------------------------------------
 
 -- Plan 0.73 (D113): the format, threaded as an explicit argument. A float
@@ -159,70 +160,70 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- D142/D143: over the RUNTIME environment `Γ ↾ Ψ`, for the same reason
 -- `elaborate` is. See the note above `lookupᴰUsed`.
 ⟦_⟧ˢ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
-     → Expr Γ Ψ A → TargetNum → DefsSem → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ → T ⟦ A ⟧ᴰ
-⟦ var {Γ = Γ} i ⟧ˢ fmt σ dγ = returnT (lookupᴰUsed Γ i dγ)
+     → Expr Γ Ψ A → TargetNum → DefsSem → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
+⟦ var {Γ = Γ} i ⟧ˢ fmt σ dγ = return∞ (lookupᴰUsed Γ i dγ)
 -- The arrow's declared quantity `q` decides whether the meaning takes an
 -- argument; the binder's usage in the body `q'` decides whether it enters the
 -- body's environment. At an ERASED arrow there is no argument to receive, so
 -- the body runs on the unextended environment.
-⟦ lam {Γ = Γ} {q' = Zero} {A = A} Zero _ e ⟧ˢ fmt σ dγ = returnT (λ _ → ⟦ e ⟧ˢ fmt σ (bindᴰ0 {Γ = Γ} {A = A} dγ))
-⟦ lam {Γ = Γ} {q' = Zero} {A = A} One _ e ⟧ˢ fmt σ dγ = returnT (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ0 {Γ = Γ} {A = A} dγ))
-⟦ lam {Γ = Γ} {q' = Zero} {A = A} Many _ e ⟧ˢ fmt σ dγ = returnT (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ0 {Γ = Γ} {A = A} dγ))
-⟦ lam {Γ = Γ} {q' = One} {A = A} One  _ e ⟧ˢ fmt σ dγ = returnT (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} One  dγ a))
-⟦ lam {Γ = Γ} {q' = One} {A = A} Many _ e ⟧ˢ fmt σ dγ = returnT (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} One  dγ a))
-⟦ lam {Γ = Γ} {q' = Many} {A = A} Many _ e ⟧ˢ fmt σ dγ = returnT (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} Many dγ a))
+⟦ lam {Γ = Γ} {q' = Zero} {A = A} Zero _ e ⟧ˢ fmt σ dγ = return∞ (λ _ → ⟦ e ⟧ˢ fmt σ (bindᴰ0 {Γ = Γ} {A = A} dγ))
+⟦ lam {Γ = Γ} {q' = Zero} {A = A} One _ e ⟧ˢ fmt σ dγ = return∞ (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ0 {Γ = Γ} {A = A} dγ))
+⟦ lam {Γ = Γ} {q' = Zero} {A = A} Many _ e ⟧ˢ fmt σ dγ = return∞ (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ0 {Γ = Γ} {A = A} dγ))
+⟦ lam {Γ = Γ} {q' = One} {A = A} One  _ e ⟧ˢ fmt σ dγ = return∞ (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} One  dγ a))
+⟦ lam {Γ = Γ} {q' = One} {A = A} Many _ e ⟧ˢ fmt σ dγ = return∞ (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} One  dγ a))
+⟦ lam {Γ = Γ} {q' = Many} {A = A} Many _ e ⟧ˢ fmt σ dγ = return∞ (λ a → ⟦ e ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} Many dγ a))
 -- D143: at an ERASED arrow the argument is not evaluated — the meaning takes
 -- no argument, so `vf` is applied to `tt`. This is the semantic counterpart of
 -- the elaborator not emitting `x` at all.
 ⟦ app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} f x ⟧ˢ fmt σ dγ =
-  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) dγ) >>=T λ vf → vf tt
+  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) dγ) >>=∞ λ vf → vf tt
 ⟦ app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} f x ⟧ˢ fmt σ dγ =
-  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) dγ) >>=T λ vf →
-  ⟦ x ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx
+  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) dγ) >>=∞ λ vf →
+  ⟦ x ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) dγ) >>=∞ λ vx → vf vx
 ⟦ app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x ⟧ˢ fmt σ dγ =
-  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
-  ⟦ x ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx
+  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=∞ λ vf →
+  ⟦ x ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=∞ λ vx → vf vx
 ⟦ pair {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → returnT (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → return∞ (va , vb)
 -- D127: the combinators. These are the SAME four expressions as the
 -- corresponding `⟦_⟧ᶜ` clauses in `Once.Denotation.Meaning`, and that is not a
 -- coincidence to be maintained by hand — `realize-agrees` is what holds them
 -- together, and it now compares like with like at every combinator.
 ⟦ comp' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g ⟧ˢ fmt σ dγ =
-  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
-  ⟦ g ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vg →
-  returnT (λ a → vg a >>=T vf)
+  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=∞ λ vf →
+  ⟦ g ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=∞ λ vg →
+  return∞ (λ a → vg a >>=∞ vf)
 ⟦ copair' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g ⟧ˢ fmt σ dγ =
-  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ vf →
-  ⟦ g ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vg →
-  returnT (λ ab → [ vf , vg ]′ ab)
+  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ vf →
+  ⟦ g ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vg →
+  return∞ (λ ab → [ vf , vg ]′ ab)
 ⟦ fork' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g ⟧ˢ fmt σ dγ =
-  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ vf →
-  ⟦ g ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vg →
-  returnT (λ a → vf a >>=T λ b → vg a >>=T λ c → returnT (b , c))
-⟦ curry' f ⟧ˢ fmt σ     dγ = ⟦ f ⟧ˢ fmt σ dγ >>=T λ vf →
-                           returnT (λ a → returnT (λ b → vf (a , b)))
-⟦ fst' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → returnT (proj₁ v)
-⟦ snd' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → returnT (proj₂ v)
-⟦ inl' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → returnT (inj₁ v)
-⟦ inr' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → returnT (inj₂ v)
+  ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ vf →
+  ⟦ g ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vg →
+  return∞ (λ a → vf a >>=∞ λ b → vg a >>=∞ λ c → return∞ (b , c))
+⟦ curry' f ⟧ˢ fmt σ     dγ = ⟦ f ⟧ˢ fmt σ dγ >>=∞ λ vf →
+                           return∞ (λ a → return∞ (λ b → vf (a , b)))
+⟦ fst' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → return∞ (proj₁ v)
+⟦ snd' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → return∞ (proj₂ v)
+⟦ inl' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → return∞ (inj₁ v)
+⟦ inr' e ⟧ˢ fmt σ       dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → return∞ (inj₂ v)
 ⟦ case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r ⟧ˢ fmt σ dγ =
-  ⟦ s ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ) >>=T λ v →
+  ⟦ s ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ) >>=∞ λ v →
   [ (λ a → ⟦ l ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} qℓ (restrictᴰ {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) a))
   , (λ b → ⟦ r ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = B} qr (restrictᴰ {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) b)) ]′ v
-⟦ unit ⟧ˢ fmt σ         dγ = returnT tt
-⟦ absurd e ⟧ˢ fmt σ     dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → ⊥-elim v
+⟦ unit ⟧ˢ fmt σ         dγ = return∞ tt
+⟦ absurd e ⟧ˢ fmt σ     dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → ⊥-elim v
 -- D143: at `q = Zero` the bound value is ERASED — `e1` is not evaluated, and
 -- the body runs on the unextended environment. The semantic counterpart of the
 -- elaborator not emitting `e1`.
 ⟦ let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {A = A} e1 e2 ⟧ˢ fmt σ dγ =
   ⟦ e2 ⟧ˢ fmt σ (bindᴰ0 {Γ = Γ} {A = A} (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) dγ))
 ⟦ let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {A = A} e1 e2 ⟧ˢ fmt σ dγ =
-  ⟦ e1 ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) dγ) >>=T λ v1 →
+  ⟦ e1 ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) dγ) >>=∞ λ v1 →
   ⟦ e2 ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} One (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) dγ) v1)
 ⟦ let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} e1 e2 ⟧ˢ fmt σ dγ =
-  ⟦ e1 ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) dγ) >>=T λ v1 →
+  ⟦ e1 ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) dγ) >>=∞ λ v1 →
   ⟦ e2 ⟧ˢ fmt σ (bindᴰ {Γ = Γ} {A = A} Many (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) dγ) v1)
 -- D054: an `Int` literal MEANS its two's-complement machine word, via
 -- `Once.Word.fromℤ` — the same function the elaborator's `intLit` and the
@@ -233,7 +234,7 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- `Word64`. `Int` is signed two's complement (D054), so `-5` denotes
 -- `2^w - 5` and is width-relative exactly as a float literal is
 -- format-relative. This is the same clause as `⟦ float … ⟧`, one type over.
-⟦ int n ⟧ˢ fmt σ        dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
+⟦ int n ⟧ˢ fmt σ        dγ = return∞ (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- A float literal denotes ITSELF. This is 0.72 P2's payoff at the denotation:
 -- `⟦ Float ⟧` IS `Dyadic`, so there is no encoder, no rounding and no abstract
 -- `semM` between the literal and its meaning — unlike `str` below. The IR side
@@ -242,7 +243,7 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- D113: a float literal MEANS its encoding at the target's format. This is
 -- the clause that makes the source denotation target-relative, and the only
 -- one that does.
-⟦ float d ⟧ˢ fmt σ      dγ = returnT (round (float-format fmt) d)
+⟦ float d ⟧ˢ fmt σ      dγ = return∞ (round (float-format fmt) d)
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
 -- so the literal's value can't be the clean `s`; denote via its own SigOp
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).
@@ -250,77 +251,77 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- denote them through the SAME contract (`sigOpˢ`) — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
 -- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.
 ⟦ add {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ add-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ add-info (va , vb)
 ⟦ sub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ sub-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ sub-info (va , vb)
 ⟦ mul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ mul-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ mul-info (va , vb)
 -- PLAN 0.75 F4: the float family, structurally identical to the integer one.
 ⟦ fadd {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fadd-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fadd-info (va , vb)
 ⟦ fsub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fsub-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fsub-info (va , vb)
 ⟦ fmul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fmul-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fmul-info (va , vb)
 ⟦ fdiv {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ fdiv-info (va , vb)
-⟦ i2f a ⟧ˢ fmt σ       dγ = ⟦ a ⟧ˢ fmt σ dγ >>=T λ va → sigOpˢ fmt σ i2f-info va
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fdiv-info (va , vb)
+⟦ i2f a ⟧ˢ fmt σ       dγ = ⟦ a ⟧ˢ fmt σ dγ >>=∞ λ va → sigOpˢ fmt σ i2f-info va
 ⟦ div {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ div-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ div-info (va , vb)
 ⟦ mod' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ mod-info (va , vb)
-⟦ neg e ⟧ˢ fmt σ        dγ = ⟦ e ⟧ˢ fmt σ dγ >>=T λ v → sigOpˢ fmt σ neg-info v
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ mod-info (va , vb)
+⟦ neg e ⟧ˢ fmt σ        dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ neg-info v
 ⟦ lt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ lt-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ lt-info (va , vb)
 ⟦ le {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ le-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ le-info (va , vb)
 ⟦ gt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ gt-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ gt-info (va , vb)
 ⟦ ge {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ ge-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ ge-info (va , vb)
 ⟦ eq {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ eq-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ eq-info (va , vb)
 ⟦ ne {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=T λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=T λ vb → sigOpˢ fmt σ ne-info (va , vb)
+  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
+  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ ne-info (va , vb)
 -- effApp: a SUSPENDED effect (`Unit ⇒[eff] B`) — the Eff design (D018). The
 -- effectful application is deferred into the Unit-thunk; its trace fires when the
 -- thunk is applied (at the top-level main run), threaded by `T`. No fork: the old
 -- immediate-vs-suspended mismatch was SS.eval (retired) vs the IR; one semantics
 -- now, and the Eff type IS suspended.
 ⟦ effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x ⟧ˢ fmt σ dγ =
-  returnT (λ _ → ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
-                 ⟦ x ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx)
+  return∞ (λ _ → ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=∞ λ vf →
+                 ⟦ x ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=∞ λ vx → vf vx)
 -- IR embedding: `lift-morphism`/`morph-app` inject a PRE-BUILT CCC morphism into
 -- the surface; their meaning IS the IR's denotation `evalᴰ ir` (definitionally
 -- matching elaborate, which maps them straight to `ir`). Not the IR-pivot — these
 -- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
--- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
--- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure).
+-- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T∞ ⟦⌊B⌋⟧ᴰᴵ`;
+-- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T∞ ⟦B⟧ᴰ` (grade-blind erasure).
 ⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ fmt σ dγ = liftD fmt (calls σ) {A} {B} ir
 -- D226: a conversion along `p` maps the RESULT by `⟦ p ⟧<:`; the trace is
 -- untouched. At the grade instance (the former `arr'`) this is the identity
 -- up to `<:-refl-id`.
-⟦ coerce p e ⟧ˢ fmt σ   dγ = fmapT ⟦ p ⟧<: (⟦ e ⟧ˢ fmt σ dγ)
+⟦ coerce p e ⟧ˢ fmt σ   dγ = fmap∞ ⟦ p ⟧<: (⟦ e ⟧ˢ fmt σ dγ)
 ⟦ morph-app {Γ = Γ} {Ψ = Ψₑ} {A = A} {B = B} ir e ⟧ˢ fmt σ dγ =
   ⟦ e ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψₑ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψₑ))) dγ)
-  >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt (calls σ) ir (subst (λ z → z) (sym (cohᴰ A)) v))
+  >>=∞ λ v → subst T∞ (cohᴰ B) (evalᴰ fmt (calls σ) ir (subst (λ z → z) (sym (cohᴰ A)) v))
 -- Cata: the structural fold. D131 — the algebra is OBTAINED ONCE, here, and
--- the fold sees a PURE closure (`returnT valg`) at every layer. It used to
+-- the fold sees a PURE closure (`return∞ valg`) at every layer. It used to
 -- pass `⟦ alg ⟧ˢ fmt σ tt` — a computation — straight into `cata-ev-algˢ`, which
 -- re-ran it per layer; an algebra that emits while being BUILT then emitted
 -- once per layer. Binding it here is the same rule every other combinator arm
@@ -328,8 +329,8 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- Plan 0.113 B1: the algebra's usage is scaled by ω; it reads the environment
 -- through the `⊑ᵘ-*Many` restriction (as D232's scaled arms do).
 ⟦ cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf alg ⟧ˢ fmt σ dγ =
-  ⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ valg →
-  returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (returnT valg)) x)
+  ⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=∞ λ valg →
+  return∞ (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (return∞ valg)) x)
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
 -- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.
@@ -343,9 +344,9 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- `cata`'s algebra is — and as the elaboration (`anaM ∘ ecoalg`) does; every
 -- forced layer applies the same closure.
 ⟦ ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf coalg ⟧ˢ fmt σ dγ =
-  ⟦ coalg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=T λ clo →
-  returnT (λ a → returnT (anaFᵈ F
-            (λ a' → fmapT (coerce-functor-D wf A) (clo a'))
+  ⟦ coalg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=∞ λ clo →
+  return∞ (λ a → return∞ (anaFᴵ F
+            (λ a' → fmap∞ (coerce-functor-D wf A) (clo a'))
             a))
 -- Effect primitives (sigOp/closure/poly): named external ops resolved to
 -- their contract infos, meant through the SAME `sigOpˢ` the IR's SigOp means
@@ -357,16 +358,16 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.pure ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
+  return∞ (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
 -- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff) name base-Unit bCod) tt)
+  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff) name base-Unit bCod) tt)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Lang.Type.Grade.act ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.act) name base-Unit bCod) tt)
+  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.act) name base-Unit bCod) tt)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
+  return∞ (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  returnT (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom bCod) arg)
+  return∞ (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom bCod) arg)
 -- VALUE-position references (non-arrow sigOp): a pure FFI contract
 -- (`value-info` is `ffiV`), so the reference is the interpretation's value.
 -- Matches elaborate's `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays
@@ -376,6 +377,6 @@ sigOpˢ fmt σ si a = fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) 
 -- D246: a reference to a module ENTRY is a CALL of it (the IR's `Call`), so it
 -- reads the CALL environment; a spliced telescope reference (`poly`) reads the
 -- reference environment.
-⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt σ dγ = subst T (cohᴰ A) (evalᴰ fmt (calls σ) (refIR A (bare name)) tt)
+⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt σ dγ = subst T∞ (cohᴰ A) (evalᴰ fmt (calls σ) (refIR A (bare name)) tt)
 ⟦ poly name PT ⟧ˢ fmt σ dγ = refs σ name PT
 ⟦ closed e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ tt

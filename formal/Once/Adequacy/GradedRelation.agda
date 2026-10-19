@@ -11,7 +11,10 @@
 -- pure arrow (a total function against a Kleisli one) and at a pure ν (plain
 -- codata against a suspension of computations). A pure value is related to a
 -- Kleisli computation when the computation emits nothing and returns a related
--- value — `RelGM pure B v m = RelGT B (returnT v) m`.
+-- value — `RelGM pure B v m = RelS (RelGV B) (return∞ v) m`. Plan 0.119 D5: the
+-- implementation side is a `T∞` run (the IR is ungraded), so every grade's
+-- meaning is compared, after its lift into `T∞` (`toT∞`), step for step
+-- (`RelS`); the streams likewise, coinductively.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Numerics using (TargetNum)
@@ -33,52 +36,56 @@ open import Once.Lang.GradedOps using (fmapM; prjB; injB; embνᵃ; mapEmbνᵃ)
 open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
-open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
 open import Once.Lang.Stream using (νᵈ; module νᵈ)
+open import Once.Lang.StreamInf using (νᴵ; module νᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forgetᵇ; injectᵇ)
 open νᵈ using (forceᵈ)
-open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
-open Once.Denotation.ValueDomainLaws._∼ᵈ_ using (force-∼)
-open import Once.Lang.Graded using (M; ⟦_⟧ᵛ; νᵖ; bindM; returnM; _>>=ᵖ_)
-open import Once.Lang.Iterative using (T∞; return∞)
+open νᴵ using (forceᴵ)
+open import Once.Lang.Graded using (M; ⟦_⟧ᵛ; νᵖ; bindM; returnM; _>>=ᵖ_; toT∞)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; TreeEq∞; force≈; BlockEq; ret≈; StepEq; done≈)
 open Once.Lang.Iterative.T∞ using (force)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; RelT∞′-bind; RelT∞′-≈)
-open import Once.Lang.Trace using (call; halt; rel-call; rel-halt)
+open import Once.Denotation.TraceMonadInfLaws
+  using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; relS-ret; RelS-bind; RelS-≈ˡ; embed-bind)
+open RelS using (forceS)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open Once.Lang.Graded.νᵖ using (forceᵖ)
 
 ------------------------------------------------------------------------
--- Pure codata against effectful codata: the heterogeneous bisimulation.
--- The pure side's layer is always there and emits nothing, so the Kleisli
--- side's force must emit nothing and return a related layer.
+-- Codata: the Spec's streams against the IR's (whose layers are `T∞` runs).
 ------------------------------------------------------------------------
 
--- Plan 0.105: the Kleisli force is a TREE related to the pure layer's `ret` —
--- so it makes no call and returns a related layer.
-record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᵈ F) : Set where
+-- A pure stream's layer is there at once: the IR's force returns a related
+-- layer, silently.
+record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᴵ F) : Set where
   coinductive
   field
-    force-∼ᵖᵈ : RelT′ (⟦ F ⟧SF-rel (_∼ᵖᵈ_ {F})) (ret (forceᵖ x)) (forceᵈ y)
+    force-∼ᵖᵈ : RelS (⟦ F ⟧SF-rel (_∼ᵖᵈ_ {F})) (return∞ (forceᵖ x)) (forceᴵ y)
 
 open _∼ᵖᵈ_
 
+-- An `act` stream's layer is a finite block: the IR's force makes the same
+-- calls, step for step, ending in a related layer.
+record _∼ᵈ_ {F : SFunctor} (x : νᵈ F) (y : νᴵ F) : Set where
+  coinductive
+  field
+    force-∼ : RelS (⟦ F ⟧SF-rel (_∼ᵈ_ {F})) (embed (forceᵈ x)) (forceᴵ y)
+
+open _∼ᵈ_
 
 ------------------------------------------------------------------------
 -- The relation, by recursion on the type.
 ------------------------------------------------------------------------
 
 RelGV : ∀ (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᴰ → Set
-RelGT : ∀ (A : Type) → T ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
 
--- A grade-`π` Spec meaning against a Kleisli computation. An effectful one is
--- a tree of `T∞` (D312) against the IR's finite one.
-RelGM : ∀ (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → T ⟦ A ⟧ᴰ → Set
-RelGM pure A m t = RelGT A (returnT m) t
-RelGM act  A m t = RelGT A m t
-RelGM eff  A m t = RelT∞′ (RelGV A) m t
+-- A grade-`π` Spec meaning against the IR's run: its lift into `T∞`, step for
+-- step.
+RelGM : ∀ (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
+RelGM π A m t = RelS (RelGV A) (toT∞ π m) t
 
--- Plan 0.105: related computations are related TREES (`RelT′`).
-RelGT A t₁ t₂ = RelT′ (RelGV A) t₁ t₂
+-- A finite block against the IR's run.
+RelGT : ∀ (A : Type) → T ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
+RelGT A t₁ t₂ = RelGM act A t₁ t₂
 
 RelGV Unit        _ _ = ⊤
 RelGV Void        () _
@@ -103,58 +110,72 @@ RelGV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelGV A a b → RelGM π 
 -- The monad lemmas.
 ------------------------------------------------------------------------
 
-RelGT-return : ∀ {A} {x y} → RelGV A x y → RelGT A (returnT x) (returnT y)
-RelGT-return rv = rel-ret rv
+private
+  -- Runs with the same first block relate to the same runs.
+  sameˡ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n : T∞ Y} → force m ≡ force m′ → RelS R m′ n → RelS R m n
+  forceS (sameˡ e r) = subst (λ b → RelSB _ b _) (sym e) (forceS r)
 
-RelGT-bind : ∀ {A B} {t₁ : T ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → T ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
+  ret≈ˡ : ∀ {X} {x y : X} → x ≡ y → TreeEq∞ _≡_ (return∞ x) (return∞ y)
+  force≈ (ret≈ˡ e) = ret≈ (done≈ e)
+
+RelGT-return : ∀ {A} {x y} → RelGV A x y → RelGT A (returnT x) (return∞ y)
+forceS (RelGT-return rv) = s-ret rv
+
+RelGT-bind : ∀ {A B} {t₁ : T ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → T ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
            → RelGT A t₁ t₂
            → (∀ {a b} → RelGV A a b → RelGT B (f a) (g b))
-           → RelGT B (t₁ >>=T f) (t₂ >>=T g)
-RelGT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk =
-  RelT′-bind (RelGV A) (RelGV B) rt (λ a b r → rk r)
+           → RelGT B (t₁ >>=T f) (t₂ >>=∞ g)
+RelGT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk = RelS-≈ˡ (embed-bind t₁ f) (RelS-bind rt rk)
 
--- The PURE bind against a Kleisli one: the pure side's value is its
--- continuation's (`>>=ᵖ-β`), and `returnT v >>=T k` is `k v` definitionally.
-RelGᵖ-bind : ∀ {A B} {m : ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
-           → RelGT A (returnT m) t₂
-           → (∀ {a b} → RelGV A a b → RelGT B (returnT (k a)) (g b))
-           → RelGT B (returnT (m >>=ᵖ k)) (t₂ >>=T g)
+-- The PURE bind against the IR's: the pure side's value is its continuation's
+-- (`>>=ᵖ-β`).
+RelGᵖ-bind : ∀ {A B} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+           → RelGM pure A m t₂
+           → (∀ {a b} → RelGV A a b → RelGM pure B (k a) (g b))
+           → RelGM pure B (m >>=ᵖ k) (t₂ >>=∞ g)
 RelGᵖ-bind {A} {B} {m} {t₂} {k} {g} rt rk =
-  subst (λ v → RelGT B (returnT v) (t₂ >>=T g)) (sym (>>=ᵖ-β m k))
-        (RelGT-bind {A} {B} {returnT m} {t₂} {λ a → returnT (k a)} {g} rt rk)
+  RelS-≈ˡ (ret≈ˡ (>>=ᵖ-β m k)) (sameˡ refl (RelS-bind rt rk))
 
--- A pure bind feeding an EFFECTFUL continuation (a suspension's body: its
--- pieces are values, its last step runs): a tree of `T∞` (D312) against the
--- Kleisli one.
-RelGᵖᵉ-bind : ∀ {A B} {X : Set} {P : X → T ⟦ B ⟧ᴰ → Set} {m : ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → X} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
-            → RelGT A (returnT m) t₂
+-- A pure bind feeding any continuation: the IR's run returns a related value at
+-- once, which the continuation receives.
+RelGᵖᵉ-bind : ∀ {A B} {X : Set} {P : X → T∞ ⟦ B ⟧ᴰ → Set} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → X} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+            → RelGM pure A m t₂
             → (∀ {a b} → RelGV A a b → P (k a) (g b))
-            → P (m >>=ᵖ k) (t₂ >>=T g)
-RelGᵖᵉ-bind {A} {B} {P = P} {m} {ret y} {k} {g} (rel-ret r) rk =
-  subst (λ t → P t (g y)) (sym (>>=ᵖ-β m k)) (rk r)
+            → (∀ {x t t′} → force t ≡ force t′ → P x t′ → P x t)
+            → P (m >>=ᵖ k) (t₂ >>=∞ g)
+RelGᵖᵉ-bind {A} {B} {P = P} {m} {t₂} {k} {g} rt rk tr = go (force t₂) refl (forceS rt)
+  where
+    go : ∀ (b : _) → force t₂ ≡ b → RelSB (RelGV A) (Once.Lang.Trace.ret (inj₁ m)) b → P (m >>=ᵖ k) (t₂ >>=∞ g)
+    go .(Once.Lang.Trace.ret (inj₁ _)) e (s-ret {y = y} r) =
+      tr (cong (λ bl → Once.Lang.Iterative.bindBlock bl g) e)
+         (subst (λ x → P x (g y)) (sym (>>=ᵖ-β m k)) (rk r))
 
 -- The two, at any grade.
-RelGM-bind : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t₂ : T ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
+RelGM-bind : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
            → RelGM π A m t₂
            → (∀ {a b} → RelGV A a b → RelGM π B (k a) (g b))
-           → RelGM π B (bindM π m k) (t₂ >>=T g)
+           → RelGM π B (bindM π m k) (t₂ >>=∞ g)
 RelGM-bind pure {A} {B} {m} {t₂} {k} {g} = RelGᵖ-bind {A} {B} {m} {t₂} {k} {g}
 RelGM-bind act  {A} {B} {m} {t₂} {k} {g} = RelGT-bind {A} {B} {m} {t₂} {k} {g}
-RelGM-bind eff  {A} {B} {m} {t₂} {k} {g} = RelT∞′-bind
+RelGM-bind eff  rm rk = RelS-bind rm rk
 
 -- The graded map: both sides map their result along related functions.
-RelGM-fmap : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t : T ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
+RelGM-fmap : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
            → RelGM π A m t
            → (∀ {a b} → RelGV A a b → RelGV B (f a) (g b))
-           → RelGM π B (fmapM π f m) (fmapT g t)
-RelGM-fmap pure {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
-RelGM-fmap act  {A} {B} rm h = RelT′-fmap (RelGV A) (RelGV B) (λ _ _ r → h r) rm
-RelGM-fmap eff  rm h = RelT∞′-bind rm (λ r → rel∞-ret (h r))
+           → RelGM π B (fmapM π f m) (fmap∞ g t)
+RelGM-fmap pure {A} {B} {m} rm h = sameˡ refl (RelS-bind rm (λ r → relS-ret (h r)))
+RelGM-fmap act  {A} {B} {m} {f = f} rm h =
+  RelS-≈ˡ (embed-bind m (λ x → ret (f x))) (RelS-bind rm (λ r → embed-ret (h r)))
+  where
+    embed-ret : ∀ {x y} → RelGV B (f x) y → RelS (RelGV B) (embed (ret (f x))) (return∞ y)
+    forceS (embed-ret r) = s-ret r
+RelGM-fmap eff  rm h = RelS-bind rm (λ r → relS-ret (h r))
 
-RelGM-return : ∀ {π} (u : pure ⊑π π) {A} {x y} → RelGV A x y → RelGM π A (returnM u x) (returnT y)
-RelGM-return ⊑-pure {A} rv = RelGT-return {A} rv
-RelGM-return ⊑-pa   {A} rv = RelGT-return {A} rv
-RelGM-return ⊑-pe   {A} rv = rel∞-ret rv
+RelGM-return : ∀ {π} (u : pure ⊑π π) {A} {x y} → RelGV A x y → RelGM π A (returnM u x) (return∞ y)
+RelGM-return ⊑-pure rv = relS-ret rv
+RelGM-return ⊑-pa {A} rv = RelGT-return {A} rv
+RelGM-return ⊑-pe   rv = relS-ret rv
 
 ------------------------------------------------------------------------
 -- The FFI boundary. Contracts are first-order (plan 0.105), so at a base type
@@ -186,15 +207,20 @@ injB-rel base-rigid  ()
 
 -- `pure ⊑ act` at ν: embedding a pure stream keeps it related.
 mutual
-  embνᵃ-∼ : ∀ {H : SFunctor} {x : νᵖ H} {y : νᵈ H} → x ∼ᵖᵈ y → embνᵃ x ∼ᵈ y
+  embνᵃ-∼ : ∀ {H : SFunctor} {x : νᵖ H} {y : νᴵ H} → x ∼ᵖᵈ y → embνᵃ x ∼ᵈ y
   force-∼ (embνᵃ-∼ {H} r) = embLayerᵃ H (force-∼ᵖᵈ r)
 
-  embLayerᵃ : ∀ (H : SFunctor) {l : ⟦ H ⟧SF (νᵖ H)} {m : T (⟦ H ⟧SF (νᵈ H))}
-           → RelT′ (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (ret l) m
-           → RelT′ (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (ret (mapEmbνᵃ H H l)) m
-  embLayerᵃ H (rel-ret rr) = rel-ret (mapEmbνᵃ-∼ H H rr)
+  embLayerᵃ : ∀ (H : SFunctor) {l : ⟦ H ⟧SF (νᵖ H)} {m : T∞ (⟦ H ⟧SF (νᴵ H))}
+           → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (return∞ l) m
+           → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (embed (ret (mapEmbνᵃ H H l))) m
+  forceS (embLayerᵃ H r) = embLayerBᵃ H (forceS r)
 
-  mapEmbνᵃ-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (νᵖ H)} {l′ : ⟦ G ⟧SF (νᵈ H)}
+  embLayerBᵃ : ∀ (H : SFunctor) {l : ⟦ H ⟧SF (νᵖ H)} {b}
+            → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (ret (inj₁ l)) b
+            → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (ret (inj₁ (mapEmbνᵃ H H l))) b
+  embLayerBᵃ H (s-ret rr) = s-ret (mapEmbνᵃ-∼ H H rr)
+
+  mapEmbνᵃ-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (νᵖ H)} {l′ : ⟦ G ⟧SF (νᴵ H)}
             → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) (mapEmbνᵃ H G l) l′
   mapEmbνᵃ-∼ H (SK B)     r = r
   mapEmbνᵃ-∼ H SId        r = embνᵃ-∼ r
@@ -205,7 +231,7 @@ mutual
   mapEmbνᵃ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbνᵃ-∼ H G₁ r₁ , mapEmbνᵃ-∼ H G₂ r₂
 
 -- A pure meaning, embedded at any grade (what a lambda's body is, D250).
-RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
+RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
 RelGM-ret ⊑-pure r = r
-RelGM-ret ⊑-pa   r = r
-RelGM-ret ⊑-pe   (rel-ret r) = rel∞-ret r
+RelGM-ret ⊑-pa   r = sameˡ refl r
+RelGM-ret ⊑-pe   r = r

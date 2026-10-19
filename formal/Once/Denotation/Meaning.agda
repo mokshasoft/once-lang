@@ -40,14 +40,17 @@ open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Lang.Name using (showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Data.Maybe using (just)
-open import Once.Lang.Trace using (T; returnT; _>>=T_; fmapT; Interp; module Interp)
+open import Once.Lang.Trace using (T; fmapT; Interp; module Interp)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed)
+open import Once.Lang.StreamInf using (anaFᴵ; module νᴵ)
+open νᴵ using (forceᴵ)
 open Interp using (sig; impl)
 open import Data.List.Membership.Propositional using (_∈_)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Lang.Stream using (anaFᵈ; seqF; module νᵈ)
+
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ; coerce-functor⁻¹-D; coerce-functor-D)
-open νᵈ using (forceᵈ)
+
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (lookupᴰUsed)
 open import Once.Lang.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
@@ -99,20 +102,20 @@ open import Once.Lang.Typing
 -- of SD's `cata-ev-algᴰ` (`evalᴰ alg` replaced by the direct algebra `dalg`).
 -- DEFINITIONALLY matches `evalᴰ (Cata wf alg)` when `dalg = evalᴰ alg`, so the
 -- `bridgeᵈ` cata case reduces to the (recursive) morphism bridge.
--- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF`) before
+-- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF∞`) before
 -- the algebra runs, so the children share ONE budget. The `ℕ` is gone — it
 -- lives in `T` now. Mirrors `DenotTrace.cata-ev-algᴰ` exactly.
 -- Plan 0.105: the layer crosses by the FIRST-ORDER coercion, so it takes the
 -- functor's well-formedness (as `DenotTrace.cata-ev-algᴰ` does).
-cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → WellFormedF F → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
-               → ⟦ F ⟧F (T ⟦ A ⟧ᴰ) → T ⟦ A ⟧ᴰ
+cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → WellFormedF F → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
+               → ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ) → T∞ ⟦ A ⟧ᴰ
 cata-ev-algᴰ-D {F} {A} wf dalg fc =
-  seqF F fc >>=T λ layer → dalg (coerce-functor⁻¹-D wf A layer)
+  seqF∞ F fc >>=∞ λ layer → dalg (coerce-functor⁻¹-D wf A layer)
 
 -- `⟦ μ-type F ⟧ᴰ` IS the machine's μ (first-order data), so the fold reads it
 -- as it is.
 cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
-         → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
+         → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
 cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 
 -- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
@@ -120,11 +123,11 @@ cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
 -- other side of `⌈_⌉`).
 out-sem : ∀ {F : Functor} {π : Once.Lang.Type.Grade.Finite} → WellFormedF F
-        → ⟦ Once.Lang.Type.ν-type F π ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Lang.Type.ν-type F π) ⟧ᴰ
+        → ⟦ Once.Lang.Type.ν-type F π ⟧ᴰ → T∞ ⟦ ⟦ F ⟧T (Once.Lang.Type.ν-type F π) ⟧ᴰ
 out-sem {F} {π} wf v =
-  fmapT (λ layer → coerce-functor⁻¹-D wf (Once.Lang.Type.ν-type F π)
+  fmap∞ (λ layer → coerce-functor⁻¹-D wf (Once.Lang.Type.ν-type F π)
                      (coerce-ν-out wf _ layer))
-        (forceᵈ v)
+        (forceᴵ v)
 
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level,
 -- through the first-order layer coercion (plan 0.105: `forget` is gone; a μ
@@ -135,9 +138,9 @@ in-value {F} wf x = sem-In F (coerce-functor-D wf (μ-type F) x)
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free — a pure
 -- FFI contract (`value-info` is `ffiV`, plan 0.105), so its value is the
 -- interpretation's pure half at the argument.
-named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → IsBaseType A → IsBaseType B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → IsBaseType A → IsBaseType B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 named-sem {A} {B} fmt φ cn bA bB a =
-  fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a))
+  embed (fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a)))
 
 ------------------------------------------------------------------------
 -- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
@@ -152,29 +155,29 @@ svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 
 -- A closed named/sigop value reference, IR-free: the contract's computation
 -- (`sigOpT`, the IR's own dispatch), read into the value domain.
-sigOpValᴰ : ∀ {B} → TargetNum → FFIAnswers → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
-sigOpValᴰ fmt φ si = fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt)
+sigOpValᴰ : ∀ {B} → TargetNum → FFIAnswers → SigOpInfo Unit B → T∞ ⟦ B ⟧ᴰ
+sigOpValᴰ fmt φ si = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt))
 
 -- An EXTERNAL sigop reference (`t-var-resolved/import`). At an ARROW
 -- type the reference is a first-order function POINTER whose effect fires on
 -- APPLICATION (`arrow-info` respects the arrow's `Purity`). Split on the
 -- WITNESS (not `A`'s shape) so `con-base` reduces at an abstract base `A`.
-sigOpRefᴰ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T ⟦ A ⟧ᴰ
+sigOpRefᴰ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T∞ ⟦ A ⟧ᴰ
 sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
 -- D143: at an ERASED arrow the symbol never receives its argument, so the
 -- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Lang.Type.Grade.pure} bDom bCod) =
-  returnT (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
+  return∞ (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
 -- plan 0.113 A3: only a PURE erased arrow is a value; an effectful one is a call
 -- with the erased slot `tt` (as `Elaborate` and `SourceDenote`).
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Lang.Type.Grade.eff} bDom bCod) =
-  returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff) cn base-Unit bCod) tt))
+  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff) cn base-Unit bCod) tt)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Lang.Type.Grade.act} bDom bCod) =
-  returnT (λ _ → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.act) cn base-Unit bCod) tt))
+  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.act) cn base-Unit bCod) tt)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
-  returnT (λ arg → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg)))
+  return∞ (λ arg → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg))))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =
-  returnT (λ arg → fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom bCod) (forgetᵇ bDom arg)))
+  return∞ (λ arg → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom bCod) (forgetᵇ bDom arg))))
 
 returnᵖ : ∀ {X : Set} → X → X
 returnᵖ x = x
