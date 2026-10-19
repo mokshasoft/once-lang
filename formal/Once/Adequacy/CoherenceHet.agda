@@ -169,7 +169,7 @@ module _ {Γ : Ctx n} where
   lam-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B}
             (≤p : (q₁ ≤q q) ≡ true) (≤p′ : (q₁′ ≤q q) ≡ true)
         → x ≅ x′ → lam {π = π} q ≤p x ≅ lam q ≤p′ x′
-  lam-h {q = q} {π = π} {x′ = x′} ≤p ≤p′ (≅i refl refl h) = ≅i refl refl (≈-trans (lam-cong q ≤p h) (≈-intro (cong (λ z → ⟦ lam {π = π} q z x′ ⟧ˢ fmt) (uip ≤p ≤p′))))
+  lam-h {q = q} {π = π} {x′ = x′} ≤p ≤p′ (≅i refl refl h) = ≅i refl refl (≈-trans (lam-cong q ≤p h) (≡→≈ (cong (λ z → lam {π = π} q z x′) (uip ≤p ≤p′))))
 
   -- Domain-given lambdas: the body's type is an output, so it may differ.
   lamd-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B′}
@@ -181,13 +181,13 @@ module _ {Γ : Ctx n} where
            {a′ : Expr Γ Ψ′ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
          → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
   cata-h w w′ {a′ = a′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (cata-cong w h) (≈-intro (cong (λ v → ⟦ cata {Γ = Γ} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WellFormedF-irrelevant w w′))))
 
   ana-h : ∀ {F} {φ : T.Finite} (w w′ : WellFormedF F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
           {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
         → a ≅ a′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} w a ≅ ana w′ a′
   ana-h {π₀ = π₀} {φ = φ} w w′ {a′ = a′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (ana-cong w h) (≈-intro (cong (λ v → ⟦ ana {Γ = Γ} {π₀ = π₀} {φ = φ} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (ana-cong w h) (≡→≈ (cong (λ v → ana {Γ = Γ} {π₀ = π₀} {φ = φ} v a′) (WellFormedF-irrelevant w w′))))
 
   -- A fold's carrier is its algebra's codomain, so equal algebras give one carrier.
   private
@@ -253,7 +253,7 @@ module _ {Γ : Ctx n} where
          → coerce p x ≅ x′ → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam {π = π} Many ≤p x) ≅ lam Many ≤p′ x′
   lamc-h {π = π} {x = x} {x′ = x′} ≤p ≤p′ p (≅i refl refl h) =
     ≅i refl refl (≈-trans (≈-sym (lam-coerce ≤p p x))
-                  (≈-trans (lam-cong Many ≤p h) (≈-intro (cong (λ z → ⟦ lam {π = π} Many z x′ ⟧ˢ fmt) (uip ≤p ≤p′)))))
+                  (≈-trans (lam-cong Many ≤p h) (≡→≈ (cong (λ z → lam {π = π} Many z x′) (uip ≤p ≤p′)))))
 
   cg-h : {f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)} {fc : Expr Γ Ψ₁′ (M ⇒[ mk-kind Many π ] B′)}
          {g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M)} {g′ : Expr Γ Ψ₂′ (A ⇒[ mk-kind Many π ] M)} (p : B <: B′)
@@ -300,7 +300,7 @@ module _ {Γ : Ctx n} where
     ≅i refl refl
       (≈-trans (coerce-uniq _ (sub-arr (<:-refl _) p₀ (⊑π-refl _)) _)
        (≈-trans (≈-sym (cata-coerce w d p₀ g₀ a))
-        (≈-trans (cata-cong w h) (≈-intro (cong (λ v → ⟦ cata {Γ = Γ} v a′ ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))))
+        (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WellFormedF-irrelevant w w′))))))
 
   -- A domain-given term, synthesizing: both sides convert the synthesized arrow.
   di-h : {x : Expr Γ Ψ (A₀ ⇒[ mk-kind Many π₀ ] B)} {y : Expr Γ Ψ′ (A′ ⇒[ mk-kind q π′ ] B′)}
@@ -482,13 +482,13 @@ module _ {ctx : NamedCtx} where
             {d : ctx ⊢ᵢ e ∶ ν-type F T.pure ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pure ⨾ Ψ′}
         → RI d ≅ RI d′ → RI (t-Out-app-infer w refl d) ≅ RI (t-Out-app-infer w′ refl d′)
   out-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-app-infer v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-app-infer v refl d′)) (WellFormedF-irrelevant w w′))))
 
   outeff-h : ∀ {F F′} {Ψ Ψ′ : U} (w : WellFormedF F) (w′ : WellFormedF F′)
                {d : ctx ⊢ᵢ e ∶ ν-type F T.act ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.act ⨾ Ψ′}
            → RI d ≅ RI d′ → RI (t-Out-eff-app-infer w refl d) ≅ RI (t-Out-eff-app-infer w′ refl d′)
   outeff-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RI (t-Out-eff-app-infer v refl d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-eff-app-infer v refl d′)) (WellFormedF-irrelevant w w′))))
 
   applychk-h : ∀ {A A′ B} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
                  {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B) * A′) ⨾ Ψ′}
@@ -505,7 +505,7 @@ module _ {ctx : NamedCtx} where
   In-h : ∀ {F} {Ψ Ψ′ : U} (w w′ : WellFormedF F) {d : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ′}
        → RC d ≅ RC d′ → RC (t-In-app-check w d) ≅ RC (t-In-app-check w′ d′)
   In-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≈-intro (cong (λ v → ⟦ RC (t-In-app-check v d′) ⟧ˢ fmt) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RC (t-In-app-check v d′)) (WellFormedF-irrelevant w w′))))
 
   inlapp-h : ∀ {A B} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′}
            → RC d ≅ RC d′ → RC (t-inl-app-check {B = B} d) ≅ RC (t-inl-app-check d′)

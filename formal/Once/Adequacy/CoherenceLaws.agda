@@ -89,6 +89,10 @@ record _≈_ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (a b : Expr Γ Ψ A) : Set wher
 ≈-trans {Γ = Γ} {Ψ} {A} (≈-intro e) (≈-intro f) =
   ≈-intro (λ σ rσ r → RelS-trans (RelD-trans A) (e σ rσ r) (f σ rσ (RelD-rightself ⟦ Γ ↾ Ψ ⟧ᶜ r)))
 
+-- Equal terms mean the same.
+≡→≈ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a b : Expr Γ Ψ A} → a ≡ b → a ≈ b
+≡→≈ refl = ≈-refl
+
 ------------------------------------------------------------------------
 -- Congruence
 ------------------------------------------------------------------------

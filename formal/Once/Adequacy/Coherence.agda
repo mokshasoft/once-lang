@@ -49,6 +49,9 @@ open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open SD using (⟦_⟧ˢ)
 open import Once.Adequacy.CoherenceLaws fmt
+open import Once.Adequacy.SourceRefl fmt using (RelDefs)
+open import Once.Denotation.ValueRel using (RelD)
+open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open _≈_ using (≈-out)
 open import Once.Adequacy.CoherenceLawsWrap fmt
 open import Once.Adequacy.CoherenceHet fmt
@@ -187,8 +190,11 @@ mutual
 -- A4: two derivations of one judgment mean the same.
 ------------------------------------------------------------------------
 
+-- Plan 0.119 D5: in a self-related definitions environment, at related
+-- environments, the two realizations have related runs.
 realize-invariant :
   ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (σ : SD.DefsSem) (dγ : _)
-  → ⟦ RC d₁ ⟧ˢ fmt σ dγ ≡ ⟦ RC d₂ ⟧ˢ fmt σ dγ
-realize-invariant d₁ d₂ σ dγ = cong-app (cong-app (≈-out (≅-≈ (coh-cc (route-cc d₁ d₂)))) σ) dγ
+    (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (σ : SD.DefsSem) → RelDefs σ σ → ∀ {dγ dγ′}
+  → RelD Surface.⟦ NamedCtx.debruijn ctx Surface.↾ Ψ ⟧ᶜ dγ dγ′
+  → RelS (RelD A) (⟦ RC d₁ ⟧ˢ fmt σ dγ) (⟦ RC d₂ ⟧ˢ fmt σ dγ′)
+realize-invariant d₁ d₂ σ rσ r = ≈-out (≅-≈ (coh-cc (route-cc d₁ d₂))) σ rσ r
