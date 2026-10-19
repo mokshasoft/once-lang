@@ -19,7 +19,7 @@ open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.GradedAnaBridge (fmt : TargetNum) where
 
-open import Data.Product using (_,_)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
@@ -31,61 +31,74 @@ open import Once.Lang.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
 open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Lang.Stream using (νᵈ; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ)
+open import Once.Lang.Stream using (νᵈ; anaᵈ; anaTree; mapAnaᵈ)
+open import Once.Lang.StreamInf using (νᴵ; anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; coerce-functor-D)
-open import Once.Denotation.ValueDomainLaws using (CoalgRel; anaᵈ-∼)
-open import Once.Lang.Trace using (T; ret; returnT; fmapT; _>>=T_; RelT′; rel-ret)
-open import Once.Denotation.TraceMonadLaws using (fmapT-∘; RelT′-fmap)
-open import Once.Lang.Graded using (⟦_⟧ᵛ; returnM)
-open import Once.Denotation.GradedDomainLaws using (bindM-idˡ)
+open import Once.Lang.Trace using (T; ret; call; halt; fmapT; _>>=T_)
+open import Once.Lang.Graded using (⟦_⟧ᵛ)
 open import Once.Lang.GradedOps using (cfᵛ; anaᵖ; mapAnaᵖ; ana-semᵛ)
 open import Once.Adequacy.GradedRelation fmt
-  using (RelGV; RelGT; RelGM; RelGT-bind; _∼ᵖᵈ_; prjB-rel; module _∼ᵖᵈ_)
+  using (RelGV; RelGT; RelGM; _∼ᵖᵈ_; _∼ᵈ_; prjB-rel; module _∼ᵖᵈ_; module _∼ᵈ_)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
-open import Once.Lang.Trace using (rel-call; rel-halt)
-open import Once.Lang.Iterative using (T∞; fmap∞; return∞; _>>=∞_)
-open Once.Lang.Iterative.T∞ using (force)
-open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; rel∞-ret; RelT∞′-bind; RelT∞′-≈)
-open import Once.Lang.Trace using (call; halt)
+open _∼ᵈ_ using (force-∼)
+open import Once.Lang.Iterative using (T∞; fmap∞; return∞; _>>=∞_; embed; embedBlock; bindBlock)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-≈ˡ; embed-bind)
+open RelS using (forceS)
+open import Once.Denotation.ValueRel using (RelS-fmapˡ; RelS-fmapʳ; retargetˡ)
 
 ------------------------------------------------------------------------
--- Pure codata against effectful codata, by coinduction.
+-- The unfolds: a Spec unfold against the IR's, coalgebras related on related
+-- seeds (plan 0.119 D5: the IR's coalgebra is a `T∞` run).
 ------------------------------------------------------------------------
 
-mutual
-  anaᵖ-∼ : ∀ (H : SFunctor) {X Y : Set} {R : X → Y → Set}
-             {c₁ : X → ⟦ H ⟧SF X} {c₂ : Y → T (⟦ H ⟧SF Y)}
-         → CoalgRel H R (λ x → returnT (c₁ x)) c₂
-         → ∀ {a b} → R a b → anaᵖ H c₁ a ∼ᵖᵈ anaᵈ H c₂ b
-  force-∼ᵖᵈ (anaᵖ-∼ H cr r) = anaTreeᵖ H cr (cr r)
+module _ (H : SFunctor) {X Y : Set} {R : X → Y → Set} where
 
-  -- The Kleisli side's force is related to a `ret`, so it is one: no call, a
-  -- related layer.
-  anaTreeᵖ : ∀ (H : SFunctor) {X Y : Set} {R : X → Y → Set}
-               {c₁ : X → ⟦ H ⟧SF X} {c₂ : Y → T (⟦ H ⟧SF Y)}
-           → CoalgRel H R (λ x → returnT (c₁ x)) c₂
-           → ∀ {l} {m : T (⟦ H ⟧SF Y)}
-           → RelT′ (⟦ H ⟧SF-rel R) (ret l) m
-           → RelT′ (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (ret (mapAnaᵖ H H c₁ l)) (anaTree H c₂ m)
-  anaTreeᵖ H cr (rel-ret rr) = rel-ret (mapAnaᵖ-∼ H H cr rr)
+  -- A pure Spec unfold: its layer is there at once.
+  module _ {c₁ : X → ⟦ H ⟧SF X} {c₂ : Y → T∞ (⟦ H ⟧SF Y)}
+           (cr : ∀ {x y} → R x y → RelS (⟦ H ⟧SF-rel R) (return∞ (c₁ x)) (c₂ y)) where
+    anaᵖ-∼    : ∀ {a b} → R a b → anaᵖ H c₁ a ∼ᵖᵈ anaᴵ H c₂ b
+    anaRunᵖ   : ∀ {l m} → RelS (⟦ H ⟧SF-rel R) (return∞ l) m
+              → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (return∞ (mapAnaᵖ H H c₁ l)) (anaRun H c₂ m)
+    anaBlockᵖ : ∀ {l b} → RelSB (⟦ H ⟧SF-rel R) (ret (inj₁ l)) b
+              → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (ret (inj₁ (mapAnaᵖ H H c₁ l))) (anaBlock H c₂ b)
+    mapAnaᵖ-∼ : ∀ (G : SFunctor) {x : ⟦ G ⟧SF X} {y : ⟦ G ⟧SF Y}
+              → ⟦ G ⟧SF-rel R x y → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) (mapAnaᵖ H G c₁ x) (mapAnaᴵ H G c₂ y)
+    force-∼ᵖᵈ (anaᵖ-∼ r) = anaRunᵖ (cr r)
+    forceS (anaRunᵖ h) = anaBlockᵖ (forceS h)
+    anaBlockᵖ (s-ret rr) = s-ret (mapAnaᵖ-∼ H rr)
+    mapAnaᵖ-∼ (SK B)     rel = rel
+    mapAnaᵖ-∼ SId        rel = anaᵖ-∼ rel
+    mapAnaᵖ-∼ (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} rel = mapAnaᵖ-∼ G₁ rel
+    mapAnaᵖ-∼ (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} rel = mapAnaᵖ-∼ G₂ rel
+    mapAnaᵖ-∼ (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+    mapAnaᵖ-∼ (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+    mapAnaᵖ-∼ (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapAnaᵖ-∼ G₁ r₁ , mapAnaᵖ-∼ G₂ r₂
 
-  mapAnaᵖ-∼ : ∀ (H G : SFunctor) {X Y : Set} {R : X → Y → Set}
-                {c₁ : X → ⟦ H ⟧SF X} {c₂ : Y → T (⟦ H ⟧SF Y)}
-            → CoalgRel H R (λ x → returnT (c₁ x)) c₂
-            → ∀ {x : ⟦ G ⟧SF X} {y : ⟦ G ⟧SF Y}
-            → ⟦ G ⟧SF-rel R x y
-            → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) (mapAnaᵖ H G c₁ x) (mapAnaᵈ H G c₂ y)
-  mapAnaᵖ-∼ H (SK B)     cr rel = rel
-  mapAnaᵖ-∼ H SId        cr rel = anaᵖ-∼ H cr rel
-  mapAnaᵖ-∼ H (G₁ S⊕ G₂) cr {inj₁ _} {inj₁ _} rel = mapAnaᵖ-∼ H G₁ cr rel
-  mapAnaᵖ-∼ H (G₁ S⊕ G₂) cr {inj₂ _} {inj₂ _} rel = mapAnaᵖ-∼ H G₂ cr rel
-  mapAnaᵖ-∼ H (G₁ S⊕ G₂) cr {inj₁ _} {inj₂ _} ()
-  mapAnaᵖ-∼ H (G₁ S⊕ G₂) cr {inj₂ _} {inj₁ _} ()
-  mapAnaᵖ-∼ H (G₁ S⊗ G₂) cr {_ , _} {_ , _} (r₁ , r₂) =
-    mapAnaᵖ-∼ H G₁ cr r₁ , mapAnaᵖ-∼ H G₂ cr r₂
+  -- An `act` Spec unfold: its layer is a finite block, embedded.
+  module _ {c₁ : X → T (⟦ H ⟧SF X)} {c₂ : Y → T∞ (⟦ H ⟧SF Y)}
+           (cr : ∀ {x y} → R x y → RelS (⟦ H ⟧SF-rel R) (embed (c₁ x)) (c₂ y)) where
+    anaᵈ-∼    : ∀ {a b} → R a b → anaᵈ H c₁ a ∼ᵈ anaᴵ H c₂ b
+    anaRunᵈ   : ∀ {t m} → RelS (⟦ H ⟧SF-rel R) (embed t) m
+              → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (embed (anaTree H c₁ t)) (anaRun H c₂ m)
+    anaBlockᵈ : ∀ (t : T (⟦ H ⟧SF X)) {b} → RelSB (⟦ H ⟧SF-rel R) (embedBlock t) b
+              → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (embedBlock (anaTree H c₁ t)) (anaBlock H c₂ b)
+    mapAnaᵈ-∼ : ∀ (G : SFunctor) {x : ⟦ G ⟧SF X} {y : ⟦ G ⟧SF Y}
+              → ⟦ G ⟧SF-rel R x y → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) (mapAnaᵈ H G c₁ x) (mapAnaᴵ H G c₂ y)
+    force-∼ (anaᵈ-∼ {a} r) = anaRunᵈ {t = c₁ a} (cr r)
+    forceS (anaRunᵈ {t} h) = anaBlockᵈ t (forceS h)
+    anaBlockᵈ (ret l)      (s-ret rr) = s-ret (mapAnaᵈ-∼ H rr)
+    anaBlockᵈ (call o a k) (s-call f) = s-call (λ v → anaBlockᵈ (k v) (f v))
+    anaBlockᵈ (halt o a)   s-halt     = s-halt
+    mapAnaᵈ-∼ (SK B)     rel = rel
+    mapAnaᵈ-∼ SId        rel = anaᵈ-∼ rel
+    mapAnaᵈ-∼ (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} rel = mapAnaᵈ-∼ G₁ rel
+    mapAnaᵈ-∼ (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} rel = mapAnaᵈ-∼ G₂ rel
+    mapAnaᵈ-∼ (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+    mapAnaᵈ-∼ (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+    mapAnaᵈ-∼ (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapAnaᵈ-∼ G₁ r₁ , mapAnaᵈ-∼ G₂ r₂
 
 ------------------------------------------------------------------------
--- The coalgebra's layer, read into the S-functor on both sides.
+-- The ν-in coercions, heterogeneously (as `out-relᵍ`, the other way).
 ------------------------------------------------------------------------
 
 in-relᵍ : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
@@ -102,61 +115,54 @@ in-relᵍ (wf-Sum wfF wfG) {inj₁ _} {inj₂ _} ()
 in-relᵍ (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} ()
 in-relᵍ (wf-Prod wfF wfG) {_ , _} {_ , _} (rF , rG) = in-relᵍ wfF rF , in-relᵍ wfG rG
 
--- A related computation, mapped by the two layer readings (the Kleisli one in
--- two steps, as `⟦ ana ⟧ˢ` and the coalgebra build it), stays related.
-in-relᵍ-T : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
-              {g : ⟦ ⟦ G ⟧T A ⟧ᵛ → ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᵛ}
-              (eg : ∀ l → g l ≡ coerce-ν-in G ⟦ A ⟧ᵛ (cfᵛ A wf l))
-              {m₁ : T ⟦ ⟦ G ⟧T A ⟧ᵛ} {m₂ : T ⟦ ⟦ G ⟧T A ⟧ᴰ}
-            → RelT′ (RelGV (⟦ G ⟧T A)) m₁ m₂
-            → RelT′ (⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A))
-                (fmapT g m₁)
-                (fmapT (coerce-ν-in G ⟦ A ⟧ᴰ) (fmapT (coerce-functor-D wf A) m₂))
-in-relᵍ-T {A} {G} wf {g} eg {m₁} {m₂} rm =
-  subst (RelT′ (⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A)) (fmapT g m₁))
-        (sym (fmapT-∘ (coerce-ν-in G ⟦ A ⟧ᴰ) (coerce-functor-D wf A) m₂))
-        (RelT′-fmap (RelGV (⟦ G ⟧T A)) (⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A))
-          (λ l₁ l₂ rl → subst (λ z → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A) z
-                                       (coerce-ν-in G ⟦ A ⟧ᴰ (coerce-functor-D wf A l₂)))
-                              (sym (eg l₁)) (in-relᵍ wf rl))
-          rm)
+-- The IR side's two layer maps, against a run related at the layer type: the
+-- Spec value, coerced in, is related to the mapped IR layer.
+in-run : ∀ {A : Type} {G : Functor} (wf : WellFormedF G) {Z : Set} {m : T∞ Z} {S : Z → ⟦ ⟦ G ⟧T A ⟧ᴰ → Set}
+           {n : T∞ ⟦ ⟦ G ⟧T A ⟧ᴰ} (val : Z → ⟦ ⟦ G ⟧T A ⟧ᵛ)
+       → (∀ {z r} → S z r → RelGV (⟦ G ⟧T A) (val z) r)
+       → RelS S m n
+       → RelS (λ z r″ → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A) (coerce-ν-in G ⟦ A ⟧ᵛ (cfᵛ A wf (val z))) r″)
+              m (fmap∞ (coerce-ν-in G ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wf A) n))
+in-run {A} {G} wf val h rn =
+  RelS-fmapʳ (RelS-fmapʳ {R′ = λ z r′ → Σ[ r ∈ _ ] (r′ ≡ coerce-functor-D wf A r) × RelGV (⟦ G ⟧T A) (val z) r}
+                         rn (λ {z} {r} s → r , refl , h s))
+             (λ { (r , refl , rv) → in-relᵍ wf rv })
 
 ------------------------------------------------------------------------
--- The unfold, at each coalgebra grade `π` and construction grade `π₀`. The
--- Spec's coalgebra is a VALUE `c₁` (its term was evaluated once, D273); SD's is
--- a computation `cT` bound in each layer; the premise relates the computation
--- to a silent return of `c₁`.
+-- THE UNFOLD BRIDGE: the coalgebra's Spec meaning and the IR's closure related,
+-- related seeds unfold to related streams.
 ------------------------------------------------------------------------
 
--- SD's unfold, as `⟦ ana ⟧ˢ` builds it.
-anaSD : ∀ {A : Type} (F : Functor) → WellFormedF F → (π : Purity)
-      → T ⟦ A ⇒[ mk-kind Many π ] ⟦ F ⟧T A ⟧ᴰ → ⟦ A ⟧ᴰ → νᵈ (translateF Carrier Carrier F)
-anaSD {A} F wf π cT = anaFᵈ F (λ a′ → fmapT (coerce-functor-D wf A) (cT >>=T λ clo → clo a′))
-
--- The unfold builds a stream VALUE (the rule embeds it at its construction
--- grade), so the bridge relates two values.
 ana-bridgeᵍ : ∀ (φ : Finite) {A : Type} {F : Functor} (wfF : WellFormedF F)
-                (c₁ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᵛ) (cT : T ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ)
-            → RelGT (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) (returnT c₁) cT
+                (c₁ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᵛ) (c₂ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ)
+            → RelGV (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c₁ c₂
             → ∀ {a b} → RelGV A a b
-            → RelGV (ν-type F φ) (ana-semᵛ φ wfF c₁ a) (anaSD F wfF (fin φ) cT b)
-ana-bridgeᵍ pure {A} {F} wfF c₁ cT rc {a} {b} rab = anaᵖ-∼ H cr rab
+            → RelGV (ν-type F φ) (ana-semᵛ φ wfF c₁ a) (anaFᴵ F (λ a′ → fmap∞ (coerce-functor-D wfF A) (c₂ a′)) b)
+ana-bridgeᵍ pure {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵖ-∼ (translateF Carrier Carrier F) cr rab
   where
-    H = translateF Carrier Carrier F
-    cr : CoalgRel H (RelGV A)
-           (λ x → returnT (coerce-ν-in F _ (cfᵛ A wfF (c₁ x))))
-           (λ y → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (fmapT (coerce-functor-D wfF A) (cT >>=T λ clo → clo y)))
-    cr {x} {y} r = in-relᵍ-T wfF (λ l → refl) kr
-      where
-        kr = RelGT-bind {A = A ⇒[ mk-kind Many pure ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A} {t₁ = returnT c₁} {t₂ = cT} {f = λ clo → returnT (clo x)} {g = λ clo → clo y}
-                        rc (λ rfg → rfg r)
-ana-bridgeᵍ act {A} {F} wfF c₁ cT rc {a} {b} rab = anaᵈ-∼ H cr rab
+    cr : ∀ {x y} → RelGV A x y → RelS (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV A))
+                                       (return∞ (coerce-ν-in F _ (cfᵛ A wfF (c₁ x))))
+                                       (fmap∞ (coerce-ν-in F ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wfF A) (c₂ y)))
+    cr {x} r = retargetˡ refl (RelS-fmapˡ {f = λ l → coerce-ν-in F _ (cfᵛ A wfF l)}
+                                          (in-run wfF (λ l → l) (λ s → s) (rc r)) (λ z → z))
+ana-bridgeᵍ act {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵈ-∼ (translateF Carrier Carrier F) cr rab
   where
-    H = translateF Carrier Carrier F
-    cr : CoalgRel H (RelGV A)
-           (λ x → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wfF l)) (c₁ x))
-           (λ y → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (fmapT (coerce-functor-D wfF A) (cT >>=T λ clo → clo y)))
-    cr {x} {y} r = in-relᵍ-T wfF (λ l → refl) kr
+    g : ⟦ ⟦ F ⟧T A ⟧ᵛ → ⟦ translateF Carrier Carrier F ⟧SF ⟦ A ⟧ᵛ
+    g l = coerce-ν-in F _ (cfᵛ A wfF l)
+    -- `embed` is a monad morphism: a mapped finite block embeds as the map of
+    -- its embedding.
+    emb-map : ∀ {S : _ → _ → Set} (t : T ⟦ ⟦ F ⟧T A ⟧ᵛ) {n}
+            → RelS (λ l r → S (g l) r) (embed t) n → RelS S (embed (fmapT g t)) n
+    emb-map t h = RelS-≈ˡ (embed-bind t (λ l → ret (g l))) (emb-fmap h)
       where
-        kr = RelGT-bind {A = A ⇒[ mk-kind Many act ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A} {t₁ = returnT c₁} {t₂ = cT} {f = λ clo → clo x} {g = λ clo → clo y}
-                        rc (λ rfg → rfg r)
+        emb-fmap  : ∀ {S : _ → _ → Set} {m n} → RelS (λ l r → S (g l) r) m n → RelS S (m >>=∞ λ l → embed (ret (g l))) n
+        emb-fmapB : ∀ {S : _ → _ → Set} {b b′} → RelSB (λ l r → S (g l) r) b b′ → RelSB S (bindBlock b λ l → embed (ret (g l))) b′
+        forceS (emb-fmap h) = emb-fmapB (forceS h)
+        emb-fmapB (s-ret r)  = s-ret r
+        emb-fmapB (s-next h) = s-next (emb-fmap h)
+        emb-fmapB (s-call f) = s-call (λ v → emb-fmapB (f v))
+        emb-fmapB s-halt     = s-halt
+    cr : ∀ {x y} → RelGV A x y → RelS (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV A))
+                                       (embed (fmapT g (c₁ x)))
+                                       (fmap∞ (coerce-ν-in F ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wfF A) (c₂ y)))
+    cr {x} r = emb-map (c₁ x) (in-run wfF (λ l → l) (λ s → s) (rc r))
