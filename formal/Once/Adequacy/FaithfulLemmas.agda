@@ -2,471 +2,304 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.FaithfulLemmas — reusable coherence lemmas for the
--- `faithful` proof's recursion-scheme cases (`cata`/`ana`).
+-- Once.Adequacy.FaithfulLemmas — the `faithful` proof's recursion-scheme
+-- cases (`cata`/`ana`), as relations (plan 0.119 D5).
 --
--- Extracted from `SourceFaithful` (per the extract-proofs-from-where
--- discipline) so each lemma's typecheck cost stays bounded and so the
--- pieces are independently reusable:
+-- Both sides bind the (co)algebra once, so each case is a bind congruence
+-- over the (co)algebra's own faithfulness plus one per-closure fact: what
+-- `cataM`/`anaM` MEAN applied to a closure related to the source's.
 --
---   * `forget-inject`     — `forget ∘ inject ≡ id` (round-trip; the
---                           monadic/pure value domains agree on injected
---                           values). Induction on the type.
+--   * `cataM-fold`  — the IR fold over the erased functor is related to the
+--                     source fold (`CataErased.cata-erased-rel`).
+--   * `anaM-unfold` — the IR unfold, read across the coherence, is a stream
+--                     related to the source's (`ValueRel.anaᴵ-rel`): its
+--                     coalgebra takes related seeds to related layers, and on
+--                     a layer the erased coercion chain IS the source's
+--                     (`AnaErased.coerce-νin-erase-D`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
--- rather than a per-lemma argument because everything here is a PROOF —
--- downstream uses these as facts and never reduces them — so the "recursive
--- function in a parameterised module stops reducing" trap does not apply. The
--- denotations themselves take it as an explicit argument.
+-- rather than a per-lemma argument because everything here is a PROOF.
 open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.FaithfulLemmas (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Data.Unit using (tt)
-open import Data.Product using (_,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-sym-subst; subst-subst-sym)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst; subst-sym-subst; subst-subst-sym; subst-∘)
 
 open import Once.Lang.Type.Grade using (Purity; mk-kind; Many; Finite; fin)
 open import Once.Lang.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
-import Once.Semantics.Machine as Val
-open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; terminal; id; Ana)
+import Once.Lang.Type as TT
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; Ana)
 open import Once.Lang.Type.WellFormed using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
-open import Once.Denotation.Meaning using (cata-sem)
-open import Once.Adequacy.CataErased fmt ρ using (evalᴰ-Cata-erased; pairᴰ-subst⁻; subst-T-fmap)
-open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘)
+open import Once.Adequacy.CataErased fmt ρ using (cata-erased-rel; pairᴰ-subst⁻)
+open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘; liftFn-pair; liftFn-fst; liftFn-snd)
 open import Once.Adequacy.AnaErased fmt ρ using (VE0ᴰ; coerce-νin-erase-D)
-open import Once.Semantics.Machine using
-  (coerce-ν-in; tF-coh; ⟦_⟧F)
+open import Once.Semantics.Machine using (coerce-ν-in; tF-coh; ⟦_⟧F)
 open import Once.Lang.Polynomial using (⟦_⟧SF; SFunctor)
-open import Once.Lang.Stream using (anaFᵈ)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor-D; subst-νᵈ-cong; anaᵈ-erase-full)
-open import Once.Lang.Context using (Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
+open import Once.Lang.StreamInf using (νᴵ; anaᴵ; anaFᴵ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
+open import Once.Lang.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; _*ᵘ_; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Denotation.Phase using (restrictᴰ)
 open import Once.Surface.Elaborate using (elaborate; cataM; anaM; restrictEnv)
-import Once.Compile as C
 import Once.IR as IR
-open import Once.Lang.Trace using (T; returnT; _>>=T_; fmapT)
-open import Once.Denotation.TraceMonadLaws using (>>=T-assoc; fmapT-∘; fmapT-cong)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
+open import Once.Semantics.Machine using (sem-cata)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
+open import Once.Denotation.ValueRel using (RelD; SRel; StreamRel; RelS-mono; RelS-fmap; RelS-substˡ; retargetˡ; retargetʳ; anaᴵ-rel; cfD-rel; cμin-rel)
 open import Once.Lang.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.Denotation.SourceDenote as SD
-
--- Plan 0.103 phase 1c: these lemmas relate the surface meaning to the
--- ELABORATED IR, which lowers an unresolved definition reference to an
--- internal call — so they hold in the compiled program's environment.
-σ₀ : SD.DefsSem
-σ₀ = SD.internalDefs fmt ρ
 open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr
 
 ------------------------------------------------------------------------
--- Closure-bridge — replaces the retired `build-pure`. The elaborated
--- closed-morphism IR (`apply ∘ ⟨ elab morph ∘ terminal , id ⟩`) applied to
--- `w` equals BINDING the source morphism computation `⟦morph⟧ˢ tt` and
--- applying it to `w`. Pure monad reduction (the `returnT`/`terminal`
--- left-identities are definitional; the only residual is `++ []`, i.e.
--- `++-identityʳ`), given the morphism IH. NO purity assumption — the
--- algebra's build trace is THREADED, not discarded. This is exactly what
--- lets `cata`/`ana` drop `build-pure` once `⟦_⟧ˢ` threads the algebra
--- computation per layer (matching `evalᴰ`'s per-layer `evalᴰ alg`).
+-- Transport helpers (all by matching the equation to `refl`).
 ------------------------------------------------------------------------
 
--- Transport commutes with closure application + bind (all by `refl`): applying a
--- `cohᴰ`-transported closure `T`-value to a `cohᴰ`-back-transported argument, then
--- transporting the result, equals the untransported apply-bind.
-transport-apply-bind : ∀ {DI DT EI ET : Set} (pD : DI ≡ DT) (pE : EI ≡ ET)
-    (h : T (DT → T ET)) (w : DT)
-  → subst T pE ((subst T (sym (cong₂ (λ x y → x → T y) pD pE)) h)
-                  >>=T (λ vf → vf (subst (λ z → z) (sym pD) w)))
-    ≡ (h >>=T (λ clo → clo w))
-transport-apply-bind refl refl h w = refl
+private
+  ≡ˢ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n : T∞ Y} → m ≡ m′ → RelS R m′ n → RelS R m n
+  ≡ˢ refl h = h
 
--- Transport through `returnT` / through an arrow closure (both `refl`).
-subst-T-returnT : ∀ {X Y : Set} (eq : X ≡ Y) (g : X)
-  → subst T eq (returnT g) ≡ returnT (subst (λ z → z) eq g)
-subst-T-returnT refl g = refl
+  subst-T-return∞ : ∀ {X Y : Set} (eq : X ≡ Y) (g : X)
+    → subst T∞ eq (return∞ g) ≡ return∞ (subst (λ z → z) eq g)
+  subst-T-return∞ refl g = refl
 
-subst-arrow : ∀ {DI DT EI ET : Set} (pD : DI ≡ DT) (pE : EI ≡ ET) (g : DI → T EI)
-  → subst (λ z → z) (cong₂ (λ x y → x → T y) pD pE) g
-    ≡ (λ x → subst T pE (g (subst (λ z → z) (sym pD) x)))
-subst-arrow refl refl g = refl
+  subst-arrow : ∀ {DI DT EI ET : Set} (pD : DI ≡ DT) (pE : EI ≡ ET) (g : DI → T∞ EI)
+    → subst (λ z → z) (cong₂ (λ x y → x → T∞ y) pD pE) g
+      ≡ (λ x → subst T∞ pE (g (subst (λ z → z) (sym pD) x)))
+  subst-arrow refl refl g = refl
 
--- D143: `apply ∘ ⟨ … ⟩` requires `⌊D ⇒[kk] E⌋ ≡ ⌊D⌋ ⇛ ⌊E⌋`, which holds only
--- at a NON-erased arrow — `⌊_⌋` sends a `Zero`-graded one to `Unit ⇛ ⌊E⌋`.
--- `Many` is what every consumer (the `ana` coalgebra) instantiates.
--- plan 0.97: ONE equation of computations. The budget-indexed form and the
--- `-fun` wrapper that recovered this from it are both gone — with `T` a
--- record, equal-at-every-budget IS equality, so the index was carrying
--- nothing.
-morph-app-bridge : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
-                     (ih : liftFn fmt ρ {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate IR.Heap morph) tt ≡ SD.⟦ morph ⟧ˢ fmt σ₀ tt)
-                     (w : ⟦ D ⟧ᴰ)
-                   → liftFn fmt ρ {D} {E} (apply ∘ ⟨ elaborate IR.Heap morph ∘ terminal , id ⟩) w
-                     ≡ (SD.⟦ morph ⟧ˢ fmt σ₀ tt >>=T (λ clo → clo w))
-morph-app-bridge {D} {E} {π} morph ih w =
-  trans (cong (λ X → subst T (cohᴰ E) X) app-⟨⟩-clean)
-    (trans (cong (λ h → subst T (cohᴰ E) (h >>=T (λ vf → vf w'))) ih-evalᴰ)
-           (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ fmt σ₀ tt) w))
-  where
-    w' = subst (λ z → z) (sym (cohᴰ D)) w
-    -- The elaborated closed-morphism `apply ∘ ⟨ morph ∘ terminal , id ⟩` applied to `w'`
-    -- monad-reduces (`terminal`/`id` = `returnT`) to the morphism's computation
-    -- with its value paired against `w'`, then applied: ONE associativity law
-    -- (plan 0.105: equality of computations is equality of trees).
-    app-⟨⟩-clean : evalᴰ fmt ρ (apply ∘ ⟨ elaborate IR.Heap morph ∘ terminal , id ⟩) w'
-                   ≡ (evalᴰ fmt ρ (elaborate IR.Heap morph) tt >>=T (λ vf → vf w'))
-    app-⟨⟩-clean = >>=T-assoc (evalᴰ fmt ρ (elaborate IR.Heap morph) tt)
-                              (λ b → returnT (b , w')) (evalᴰ fmt ρ (apply {⌊ D ⌋} {⌊ E ⌋}))
-    -- `ih` in `evalᴰ`-form: `evalᴰ (elaborate morph) tt ≡ subst T (sym cohᴰ(D⇒E)) (SD.⟦morph⟧ˢ tt)`.
-    ih-evalᴰ : evalᴰ fmt ρ (elaborate IR.Heap morph) tt
-               ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ fmt σ₀ tt)
-    ih-evalᴰ = trans (sym (subst-sym-subst (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))))
-                     (cong (subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E)))) ih)
+  RelS-substˡ⁻ : ∀ {X X′ Y} {R : X′ → Y → Set} (E : X ≡ X′) {m : T∞ X} {n : T∞ Y}
+               → RelS R (subst T∞ E m) n → RelS (λ a b → R (subst (λ Z → Z) E a) b) m n
+  RelS-substˡ⁻ refl h = h
 
--- (`morph-app-bridge-fun` is retired: it recovered the computation equation
--- from the budget-indexed one, and the budget-indexed one no longer exists.)
-morph-app-bridge-fun = morph-app-bridge
+  -- A run transported along an indexed family, related through the transport.
+  RelS-substF : ∀ {I : Set₁} (P : I → Set) {i j : I} (e : i ≡ j) {Y : Set} {R : P j → Y → Set} {m : T∞ (P i)} {n : T∞ Y}
+              → RelS (λ a b → R (subst P e a) b) m n → RelS R (subst (λ k → T∞ (P k)) e m) n
+  RelS-substF P refl h = h
+
+  RelS-substF₀ : ∀ {I : Set} (P : I → Set) {i j : I} (e : i ≡ j) {Y : Set} {R : P j → Y → Set} {m : T∞ (P i)} {n : T∞ Y}
+               → RelS (λ a b → R (subst P e a) b) m n → RelS R (subst (λ k → T∞ (P k)) e m) n
+  RelS-substF₀ P refl h = h
+
+  evalᴰ-subst-cod : ∀ {X o₁ o₂ : II.IRTy} (eq : o₁ ≡ o₂) (ir : IR X o₁) (v : ⟦ X ⟧ᴰᴵ)
+    → evalᴰ fmt ρ (subst (λ o → IR X o) eq ir) v ≡ subst (λ o → T∞ ⟦ o ⟧ᴰᴵ) eq (evalᴰ fmt ρ ir v)
+  evalᴰ-subst-cod refl ir v = refl
+
+  -- `coerce-ν-in` is natural in the carrier.
+  coerce-ν-in-subst : ∀ (G : Functor) {X Y : Set} (eq : X ≡ Y) (v : ⟦ G ⟧F X)
+    → subst (λ Z → ⟦ translateF Carrier Carrier G ⟧SF Z) eq (coerce-ν-in G X v)
+      ≡ coerce-ν-in G Y (subst (λ Z → ⟦ G ⟧F Z) eq v)
+  coerce-ν-in-subst G refl v = refl
+
+  -- An unfold transported along a functor and a carrier equation is the unfold
+  -- of the transported coalgebra.
+  ana-erase : ∀ {H₁ H₂ : SFunctor} (heq : H₁ ≡ H₂) {A₁ A₂ : Set} (ceq : A₁ ≡ A₂)
+                (c : A₁ → T∞ (⟦ H₁ ⟧SF A₁)) (a : A₁)
+    → subst (λ z → z) (cong νᴵ heq) (anaᴵ H₁ c a)
+      ≡ anaᴵ H₂ (λ a₂ → subst (λ H → T∞ (⟦ H ⟧SF A₂)) heq
+                         (subst (λ Z → T∞ (⟦ H₁ ⟧SF Z)) ceq (c (subst (λ z → z) (sym ceq) a₂))))
+                (subst (λ z → z) ceq a)
+  ana-erase refl refl c a = refl
 
 ------------------------------------------------------------------------
--- `cata`-faithfulness. Both sides fold with `sem-cata` over a per-layer
--- algebra; after the `⟦_⟧ˢ` threading restructure, `cata-ev-algᴰ n algIR`
--- and `cata-ev-algˢ n (⟦alg⟧ˢ tt)` agree per layer by the closure-bridge —
--- the case reduces to the algebra IH + monad reduction, NO `build-pure`.
+-- Applying a carried closure (`apply ∘ ⟨ fst , snd ⟩`) is application.
 ------------------------------------------------------------------------
 
+apply-rel : ∀ {A B : Type} {π} {c c′ : ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ} {z z′ : ⟦ A ⟧ᴰ}
+          → RelD (A ⇒[ mk-kind Many π ] B) c c′ → RelD A z z′
+          → RelS (RelD B) (liftFn fmt ρ {(A ⇒[ mk-kind Many π ] B) TT.* A} {B} (apply ∘ ⟨ fst , snd ⟩) (c , z)) (c′ z′)
+apply-rel {A} {B} {π} {c} {c′} {z} {z′} r rz =
+  ≡ˢ (trans (cong-app (liftFn-∘ {B = AB TT.* A} {C = B} {A = AB TT.* A} apply ⟨ fst , snd ⟩) (c , z))
+            (trans (cong (_>>=∞ liftFn fmt ρ {AB TT.* A} {B} apply)
+                         (trans (cong-app (liftFn-pair {A = AB TT.* A} {B = AB} {C = A} fst snd) (c , z))
+                                (cong₂ (λ m₁ m₂ → m₁ >>=∞ λ u → m₂ >>=∞ λ w → return∞ (u , w))
+                                       (cong-app (liftFn-fst {A = AB} {B = A}) (c , z))
+                                       (cong-app (liftFn-snd {A = AB} {B = A}) (c , z)))))
+                   (cong (λ h → (return∞ c >>=∞ λ u → return∞ z >>=∞ λ w → return∞ (u , w)) >>=∞ h)
+                         (liftFn-apply {A = A} {B = B} {π = π}))))
+     (retargetˡ refl (r rz))
+  where AB = A ⇒[ mk-kind Many π ] B
+
 ------------------------------------------------------------------------
--- D131: what `cataM` MEANS applied to an obtained algebra closure.
---
--- `cataM wf m = curry (Cata (wf-⌊⌋ wf) (subst … (apply ∘ ⟨ fst , snd ⟩)))`, so
--- applying it to a closure `c` gives the fold whose per-layer algebra is
--- "apply `c`". That is the whole content of the parameterized fold: the
--- closure is obtained ONCE, by the caller, and the fold carries it. Same
--- transport shape as the old `elab-cata-reduce`, with the closure as the
--- environment instead of the algebra being inlined.
+-- `cata`. D131: `cataM wf m = curry (Cata (wf-⌊⌋ wf) (subst … (apply ∘ ⟨ fst
+-- , snd ⟩)))`, so applied to a closure it is the fold whose per-layer algebra
+-- is "apply the closure"; the source binds its algebra once and folds with the
+-- returned closure (`cata-ev-algˢ … (return∞ valg)`).
 ------------------------------------------------------------------------
+
 cataM-fold : ∀ {F : Functor} {A : Type} {π : Purity} (wfF : WellFormedF F)
-               (c : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ)
-           → liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {μ-type F ⇒[ mk-kind Many π ] A}
-                    (cataM {F} {A} wfF IR.Heap) c
-             ≡ returnT (cata-sem wfF c)
-cataM-fold {F} {A} {π} wfF c =
-  trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ (μ-type F)) (cohᴰ A))
-                         (λ b → evalᴰ fmt ρ (innerCata) (c' , b)))
-        (cong returnT
-          (trans (subst-arrow (cohᴰ (μ-type F)) (cohᴰ A) (λ b → evalᴰ fmt ρ innerCata (c' , b)))
-                 (extensionality (λ x →
-                    trans (trans (cong (λ W → subst T (cohᴰ A) (evalᴰ fmt ρ innerCata W))
-                                       (sym (pairᴰ-subst⁻ (cohᴰ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-                                                          (cohᴰ (μ-type F)) c x)))
-                                 (evalᴰ-Cata-erased {A} {F} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} wfF applyIR c x))
-                          (cong (λ g → cata-sem wfF g x)
-                                (extensionality apply-closure))))))
+               {c c′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
+           → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) c c′
+           → RelS (RelD (μ-type F ⇒[ mk-kind Many π ] A))
+                  (liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {μ-type F ⇒[ mk-kind Many π ] A}
+                          (cataM {F} {A} wfF IR.Heap) c)
+                  (return∞ (λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (return∞ c′)) x))
+cataM-fold {F} {A} {π} wfF {c} {c′} r =
+  ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ (μ-type F)) (cohᴰ A))
+                             (λ b → evalᴰ fmt ρ innerCata (c₀ , b)))
+            (cong return∞ (subst-arrow (cohᴰ (μ-type F)) (cohᴰ A) (λ b → evalᴰ fmt ρ innerCata (c₀ , b)))))
+     (relS-ret λ { {x} refl →
+        ≡ˢ (cong (λ W → subst T∞ (cohᴰ A) (evalᴰ fmt ρ innerCata W))
+                 (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ (μ-type F)) c x)))
+           (cata-erased-rel {A} {F} {Arr} wfF applyIR c (λ z → return∞ c′ >>=∞ λ k → k z)
+              (λ {z} {z′} rz → retargetʳ {n′ = c′ z′} refl (apply-rel {⟦ F ⟧T A} {A} {π} {c} {c′} r rz)) x) })
   where
-    c' = subst (λ z → z) (sym (cohᴰ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))) c
-    applyIR : IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ II.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
+    Arr = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A
+    c₀ = subst (λ z → z) (sym (cohᴰ Arr)) c
+    applyIR : IR (⌊ Arr ⌋ II.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
     applyIR = IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩
-    -- Applying the carried closure IS the algebra: `⟨fst,snd⟩` is pair-η and
-    -- `liftFn apply` is application, so the fold's per-layer algebra is `c`.
-    apply-closure : ∀ (z : ⟦ ⟦ F ⟧T A ⟧ᴰ)
-                  → liftFn fmt ρ {(⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Once.Lang.Type.* (⟦ F ⟧T A)} {A}
-                           applyIR (c , z)
-                    ≡ c z
-    apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {π})
-    innerCata = IR.Cata (wf-⌊⌋ wfF)
-                     (subst (λ o → IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ II.* o) ⌊ A ⌋)
-                            (⌊⟧T-commute F A) applyIR)
+    innerCata = IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR (⌊ Arr ⌋ II.* o) ⌊ A ⌋) (⌊⟧T-commute F A) applyIR)
 
--- D131: the elaboration is `cataM ∘ ealg` and BOTH sides bind the algebra once,
--- so this is a bind-congruence over a shared computation plus one per-closure
--- fold equality. PLAN 0.101 (D265): the algebra lives in the context, so its
--- own faithfulness (`ih`) is at the SAME environment `dγ`.
--- Plan 0.113 B1: the cata's usage is `Many *ᵘ Ψ`; the algebra reads the
--- environment through `⊑ᵘ-*Many` on both sides (`restrictEnv` / `restrictᴰ`), so
--- the hypothesis is about that COMPOSITE — `SourceFaithful` discharges it with
--- `liftFn-restrictEnv` and the algebra's own faithfulness.
+-- PLAN 0.101 (D265): the algebra lives in the context; plan 0.113 B1: it reads
+-- the environment through `⊑ᵘ-*Many` on both sides, so the hypothesis is about
+-- that composite.
 cata-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-              (dγ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
-              (ih : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
-                      (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ
-                    ≡ SD.⟦ alg ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))
-            → liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
-                (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ
-              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
-cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ ih =
-  trans split fold-step
-  where
-    ealg   = elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)
-    dγ′    = restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ
-    cataM' = cataM {F} {A} wf IR.Heap
-    -- `liftFn`'s surface implicits cannot be inferred through `⌊_⌋`, so pin
-    -- them once here.
-    liftCataM = liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
-                           {μ-type F ⇒[ mk-kind Many π ] A} cataM'
-
-    split : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
-                   (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ
-          ≡ (SD.⟦ alg ⟧ˢ fmt σ₀ dγ′ >>=T liftCataM)
-    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} cataM' ealg))
-                  (cong (λ t → t >>=T liftCataM) ih)
-
-    -- Per obtained closure the fold agrees — `cataM-fold`.
-    fold-step : (SD.⟦ alg ⟧ˢ fmt σ₀ dγ′ >>=T liftCataM)
-              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt σ₀ dγ
-    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt σ₀ dγ′ >>=T g)
-                     (extensionality (λ c → cataM-fold {F} {A} {π} wf c))
+              (dγ dγ′ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
+            → RelS (RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
+                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
+                      (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ)
+                   (SD.⟦ alg ⟧ˢ fmt (SD.internalDefs fmt ρ) (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ′))
+            → RelS (RelD (μ-type F ⇒[ mk-kind Many π ] A))
+                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+                      (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ)
+                   (SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
+cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ dγ′ ih =
+  ≡ˢ (cong-app (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A}
+                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (cataM {F} {A} wf IR.Heap)
+                         (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
+     (RelS-bind ih (cataM-fold {F} {A} {π} wf))
 
 ------------------------------------------------------------------------
--- `ana`-faithfulness. Dual of `cata`. The TRACE side bridges
--- `ana-events` (IR coalgebra, `DenotTrace`) to the threaded `ana-eventsˢ`
--- (`⟦coalg⟧ˢ tt`, `SourceDenote`) by induction on the unfold depth, using
--- the per-layer closure-bridge; the VALUE side (`sem-ana`) matches because
--- `valueT … 0` of the threaded `step` reduces to the once-built closure
--- value. NO `build-pure`.
+-- `ana`. D273: `anaM wf m = curry (Ana (wf-⌊⌋ wf) (subst … (apply ∘ ⟨ fst ,
+-- snd ⟩)))`; the unfold's per-layer coalgebra is "apply the closure".
 ------------------------------------------------------------------------
 
--- `evalᴰ` of a codomain-`subst`ed IR transports the result (dual of
--- `CataErased.evalᴰ-subst-dom`). `valueT`/`projTrace` of a value-`subst`ed
--- `T` split trace (unchanged) from value (transported).
-evalᴰ-subst-cod : ∀ {X o₁ o₂ : II.IRTy} (eq : o₁ ≡ o₂) (ir : IR X o₁) (v : ⟦ X ⟧ᴰᴵ)
-  → evalᴰ fmt ρ (subst (λ o → IR X o) eq ir) v ≡ subst T (cong ⟦_⟧ᴰᴵ eq) (evalᴰ fmt ρ ir v)
-evalᴰ-subst-cod refl ir v = refl
-
--- A family-form `subst` over a mapped computation moves into the map.
-subst-fam-fmap : ∀ {W : Set₁} (P : W → Set) {w w' : W} (eq : w ≡ w') {X : Set} (f : X → P w) (m : T X)
-  → subst (λ Z → T (P Z)) eq (fmapT f m) ≡ fmapT (λ x → subst P eq (f x)) m
-subst-fam-fmap P refl f m = refl
-
--- `coerce-ν-in` is natural in the carrier, so a carrier transport passes
--- through it.
-coerce-ν-in-subst : ∀ (G : Functor) {X Y : Set} (eq : X ≡ Y) (v : ⟦ G ⟧F X)
-  → subst (λ Z → ⟦ translateF Carrier Carrier G ⟧SF Z) eq (coerce-ν-in G X v)
-    ≡ coerce-ν-in G Y (subst (λ Z → ⟦ G ⟧F Z) eq v)
-coerce-ν-in-subst G refl v = refl
-
--- plan 0.98: the `valueT`-transport lemma is GONE. A transport moves the
--- RESULT, not a value — `subst-T-resT` (CataErased) is its replacement, and it
--- needs no "there is a value" side condition because `mapRes` has none.
--- D179: `ana`-faithfulness is now ONE claim. Both sides denote `anaᵈ` over
--- their own coalgebra and emit nothing, so the old split — an `ana-events`
--- trace bridge PLUS a `sem-ana` value bridge, reconciled by hand — is gone.
--- It existed only because a pure ν could not carry the coalgebra's effects,
--- which forced the trace to be rebuilt beside the value.
---
--- D143: same restriction as `morph-app-bridge` — the coalgebra is applied
--- through `apply`, so its arrow must be NON-erased.
--- D273: what `anaM` MEANS applied to an obtained coalgebra closure — `cataM-fold`'s
--- mirror. `anaM wf m = curry (Ana (wf-⌊⌋ wf) (subst … (apply ∘ ⟨ fst , snd ⟩)))`,
--- so the unfold's per-layer coalgebra is "apply `c`" at the SAME closure.
 anaM-unfold : ∀ {F : Functor} {A : Type} {π₀ : Purity} {φ : Finite} (wf : WellFormedF F)
-                (c : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ)
-            → liftFn fmt ρ {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
-                     (anaM {F} {A} {φ} wf IR.Heap) c
-              ≡ returnT (λ a → returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D wf A) (c a')) a))
-anaM-unfold {F} {A} {π₀} {φ} wf c =
-  trans elab-ana-reduce (cong returnT per-a)
+                {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ}
+            → RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c c′
+            → RelS (RelD (A ⇒[ mk-kind Many π₀ ] ν-type F φ))
+                   (liftFn fmt ρ {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
+                           (anaM {F} {A} {φ} wf IR.Heap) c)
+                   (return∞ (λ a → return∞ (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a)))
+anaM-unfold {F} {A} {π₀} {φ} wf {c} {c′} r =
+  ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ (ν-type F φ))) (λ b → evalᴰ fmt ρ Ana-IR (c₀ , b)))
+            (cong return∞ (subst-arrow (cohᴰ A) (cohᴰ (ν-type F φ)) (λ b → evalᴰ fmt ρ Ana-IR (c₀ , b)))))
+     (relS-ret λ {a} {a′} ra →
+        ≡ˢ (subst-T-return∞ (cohᴰ (ν-type F φ)) (anaFᴵ ⌈ eraseF F ⌉F cE (seedOf a)))
+           (relS-ret (stream ra)))
   where
     Arr = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A
-    c' = subst (λ z → z) (sym (cohᴰ Arr)) c
+    H   = translateF Carrier Carrier F
+    H₁  = translateF Carrier Carrier ⌈ eraseF F ⌉F
+    c₀ = subst (λ z → z) (sym (cohᴰ Arr)) c
     applyIR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ⟦ F ⟧T A ⌋
     applyIR = IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩
     coalg' = subst (λ o → IR (⌊ Arr ⌋ II.* ⌊ A ⌋) o) (⌊⟧T-commute F A) applyIR
     Ana-IR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ν-type F φ ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
-    elab-ana-reduce : liftFn fmt ρ {Arr} {A ⇒[ mk-kind Many π₀ ] ν-type F φ} (anaM {F} {A} {φ} wf IR.Heap) c
-                      ≡ returnT (λ a → subst T (cohᴰ (ν-type F φ))
-                                         (evalᴰ fmt ρ Ana-IR (c' , subst (λ z → z) (sym (cohᴰ A)) a)))
-    elab-ana-reduce =
-      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F φ))) (λ b → evalᴰ fmt ρ Ana-IR (c' , b)))
-             (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F φ)) (λ b → evalᴰ fmt ρ Ana-IR (c' , b)))))
-
-    -- Applying the carried closure IS the coalgebra (pair-η, then application).
-    apply-closure : ∀ (z : ⟦ A ⟧ᴰ)
-                  → liftFn fmt ρ {Arr Once.Lang.Type.* A} {⟦ F ⟧T A} applyIR (c , z) ≡ c z
-    apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {A} {⟦ F ⟧T A} {fin φ})
-
-    -- The IR-side coalgebra, as `anaFᵈ` receives it.
-    cE : ⟦ ⌊ A ⌋ ⟧ᴰᴵ → T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-    cE = λ a' → fmapT (λ x → coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉
-                               (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) x))
-                      (evalᴰ fmt ρ coalg' (c' , a'))
-
-    -- The surface-side coalgebra.
-    cS : ⟦ A ⟧ᴰ → T (⟦ F ⟧F ⟦ A ⟧ᴰ)
-    cS = λ a' → fmapT (coerce-functor-D wf A) (c a')
-
-    -- THE content of `ana`-faithfulness, now that both sides are `anaᵈ`: the
-    -- two coalgebras agree after the erasure transports. Everything else is
-    -- `anaᵈ-erase-full`, which is a `refl` once both equations are matched.
-    coalg-agree :
-        subst (λ H → ⟦ A ⟧ᴰ → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F)
-          (λ x → subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
-                   ((λ y → fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE y))
-                      (subst (λ z → z) (sym (cohᴰ A)) x)))
-        ≡ (λ y → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS y))
-    -- Push the functor-index transport into the function's codomain.
-    push-subst-fn : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂)
-                      (f : ⟦ A ⟧ᴰ → T (⟦ H₁ ⟧SF ⟦ A ⟧ᴰ))
-                  → subst (λ H → ⟦ A ⟧ᴰ → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) eq f
-                    ≡ (λ x → subst (λ H → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) eq (f x))
-    push-subst-fn refl f = refl
-
-    -- THE content, pointwise in the seed. Both sides are a `fmapT` over the
-    -- SAME underlying computation (`morph-app-bridge-fun` identifies them);
-    -- what differs is the coercion chain on the value, which is exactly
-    -- `coerce-νin-erase-D`.
-    -- The seed, transported to the IR's erased carrier.
     seedOf : ⟦ A ⟧ᴰ → ⟦ ⌊ A ⌋ ⟧ᴰᴵ
     seedOf x = subst (λ z → z) (sym (cohᴰ A)) x
 
-    -- The IR side's computation IS the shared one, up to `coalg'`'s codomain
-    -- transport.
-    e-eq : ∀ (x : ⟦ A ⟧ᴰ)
-         → evalᴰ fmt ρ coalg' (c' , seedOf x)
-           ≡ subst T (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) (evalᴰ fmt ρ applyIR (c' , seedOf x))
-    e-eq x = evalᴰ-subst-cod (⌊⟧T-commute F A) applyIR (c' , seedOf x)
+    f₂ : ⟦ II.⟦ eraseF F ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A ⌋ ⟧ᴰᴵ
+    f₂ x = coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) x)
 
-    -- The surface side's computation is the shared one too: applying `c`.
-    s-eq : ∀ (x : ⟦ A ⟧ᴰ)
-         → c x ≡ subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ applyIR (c' , seedOf x))
-    s-eq x =
-      sym (trans (cong (λ W → subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ applyIR W))
-                       (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ A) c x)))
-                 (apply-closure x))
+    -- The IR-side coalgebra, as `anaFᴵ` receives it.
+    cE : ⟦ ⌊ A ⌋ ⟧ᴰᴵ → T∞ (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+    cE = λ a' → fmap∞ f₂ (evalᴰ fmt ρ coalg' (c₀ , a'))
 
-    per-x-D179 : ∀ (x : ⟦ A ⟧ᴰ)
-      → subst (λ H → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F)
-          (subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
-            (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf x))))
-        ≡ fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)
-    -- plan 0.98: TWO obligations became ONE. 0.97 proved the stop flag and the
-    -- value separately (`st` by eight `subst-T-stop` steps, `vl` by the
-    -- `coerce-νin-erase-D` chain) and `T-ext` consumed both. With the value
-    -- inside `Res` there is a single result field, and the coercion chain that
-    -- acted on the value now acts UNDER `mapRes` — so the flag half comes for
-    -- free: `mapRes` cannot turn a `stopped` into a `returns`.
-    -- Plan 0.105: both sides are the SHARED computation `M` with a coercion
-    -- chain mapped over its leaves (transports of a tree are maps of its
-    -- leaves), and the two chains agree pointwise — `coerce-νin-erase-D`.
-    per-x-D179 x =
-      trans lhs (trans (fmapT-cong (coerce-νin-erase-D wf A) M) (sym rhs))
-      where
-        M = evalᴰ fmt ρ applyIR (c' , seedOf x)
+    -- The IR coalgebra, read across the coherence.
+    c₁ : ⟦ A ⟧ᴰ → T∞ (⟦ H ⟧SF ⟦ A ⟧ᴰ)
+    c₁ a₂ = subst (λ G → T∞ (⟦ G ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F)
+              (subst (λ Z → T∞ (⟦ H₁ ⟧SF Z)) (cohᴰ A)
+                (fmap∞ (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf a₂))))
 
-        fM : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ
-        fM w = coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ
-                 (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A w))
+    c₂ : ⟦ A ⟧ᴰ → T∞ (⟦ H ⟧SF ⟦ A ⟧ᴰ)
+    c₂ a′ = fmap∞ (coerce-ν-in F ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wf A) (c′ a′))
 
-        fI : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF ⟦ A ⟧ᴰ
-        fI w = coerce-ν-in ⌈ eraseF F ⌉F ⟦ A ⟧ᴰ
-                 (subst (λ Z → ⟦ ⌈ eraseF F ⌉F ⟧F Z) (cohᴰ A)
-                   (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A w)))
+    -- On a layer, the IR's coercion chain IS the source's (`coerce-νin-erase-D`).
+    layer : ∀ (x : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ) (y : ⟦ ⟦ F ⟧T A ⟧ᴰ) → RelD (⟦ F ⟧T A) (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) x) y
+          → SRel (RelD A) H
+              (subst (λ G → ⟦ G ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)
+                (subst (λ Z → ⟦ H₁ ⟧SF Z) (cohᴰ A)
+                  (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ (f₂ (subst ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) x)))))
+              (coerce-ν-in F ⟦ A ⟧ᴰ (coerce-functor-D wf A y))
+    layer x y rx =
+      subst (λ L → SRel (RelD A) H L (coerce-ν-in F ⟦ A ⟧ᴰ (coerce-functor-D wf A y)))
+            (sym (trans (cong (subst (λ G → ⟦ G ⟧SF ⟦ A ⟧ᴰ) (tF-coh F))
+                              (trans (coerce-ν-in-subst ⌈ eraseF F ⌉F (cohᴰ A) _)
+                                     (cong (λ w → coerce-ν-in ⌈ eraseF F ⌉F ⟦ A ⟧ᴰ
+                                                    (subst (λ Z → ⟦ ⌈ eraseF F ⌉F ⟧F Z) (cohᴰ A)
+                                                      (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉
+                                                        (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) w))))
+                                           (subst-∘ {P = λ z → z} {f = ⟦_⟧ᴰᴵ} (⌊⟧T-commute F A)))))
+                        (coerce-νin-erase-D wf A x)))
+            (cμin-rel F (cfD-rel wf A rx))
 
-        -- The IR side: the coalgebra's computation is `M` up to its codomain
-        -- transport, then the carrier and the functor transports.
-        inner : fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf x)) ≡ fmapT fM M
-        inner =
-          trans (cong (λ m → fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-                               (fmapT (λ y → coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉
-                                               (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) y)) m))
-                      (trans (e-eq x) (subst-T-fmap (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) M)))
-          (trans (cong (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ))
-                       (fmapT-∘ _ (subst (λ z → z) (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A))) M))
-                 (fmapT-∘ (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) _ M))
+    -- The two coalgebras take related seeds to related layers. The relations
+    -- record which IR value a layer came from.
+    R₄ : ⟦ II.⟦ eraseF F ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F ⟧T A ⟧ᴰ → Set
+    R₄ x′ y = Σ[ x ∈ ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ ] (x′ ≡ subst ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) x)
+                                         × RelD (⟦ F ⟧T A) (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) x) y
 
-        lhs : subst (λ H → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F)
-                (subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
-                  (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf x))))
-            ≡ fmapT (λ w → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) (fI w)) M
-        lhs =
-          trans (cong (λ m → subst (λ H → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F)
-                               (subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A) m))
-                      inner)
-          (trans (cong (subst (λ H → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F))
-                       (trans (subst-fam-fmap (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A) fM M)
-                              (fmapT-cong (λ w → coerce-ν-in-subst ⌈ eraseF F ⌉F (cohᴰ A)
-                                                   (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A w))) M)))
-                 (subst-fam-fmap (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) fI M))
+    R₃ : ⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A ⌋ ⟧ᴰᴵ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
+    R₃ u v = Σ[ x ∈ ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ ] Σ[ y ∈ ⟦ ⟦ F ⟧T A ⟧ᴰ ]
+               (u ≡ f₂ (subst ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) x)) × (v ≡ coerce-functor-D wf A y)
+             × RelD (⟦ F ⟧T A) (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) x) y
 
-        -- The surface side: its computation is `M` too (the IH, via `s-eq`).
-        rhs : fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)
-            ≡ fmapT (λ w → coerce-ν-in F ⟦ A ⟧ᴰ (coerce-functor-D wf A (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) w))) M
-        rhs =
-          trans (cong (λ m → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (fmapT (coerce-functor-D wf A) m))
-                      (trans (s-eq x) (subst-T-fmap (cohᴰ (⟦ F ⟧T A)) M)))
-          (trans (cong (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ)) (fmapT-∘ (coerce-functor-D wf A) _ M))
-                 (fmapT-∘ (coerce-ν-in F ⟦ A ⟧ᴰ) _ M))
-    coalg-agree =
-      trans (push-subst-fn (tF-coh F)
-              (λ x → subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
-                       (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-                              (cE (subst (λ z → z) (sym (cohᴰ A)) x)))))
-            (extensionality per-x-D179)
+    hc : ∀ {a a′} → RelD A a a′ → RelS (SRel (RelD A) H) (c₁ a) (c₂ a′)
+    hc {a} {a′} ra =
+      RelS-substF (λ G → ⟦ G ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)
+        (RelS-substF (λ Z → ⟦ H₁ ⟧SF Z) (cohᴰ A)
+          (RelS-fmap {R = R₃}
+            (RelS-fmap {R = R₄}
+              (≡ˢ (evalᴰ-subst-cod (⌊⟧T-commute F A) applyIR (c₀ , seedOf a))
+                  (RelS-substF₀ ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) {R = R₄}
+                    (RelS-mono (λ {x} {y} rx → x , refl , rx)
+                      (RelS-substˡ⁻ (cohᴰ (⟦ F ⟧T A))
+                        (≡ˢ (cong (λ W → subst T∞ (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ applyIR W))
+                                  (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ A) c a)))
+                            (apply-rel {A} {⟦ F ⟧T A} {fin φ} {c} {c′} r ra))))))
+              (λ { {_} {y} (x , refl , rx) → x , y , refl , refl , rx }))
+            (λ { (x , y , refl , refl , rx) → layer x y rx })))
 
-    ana-agree : ∀ (a : ⟦ A ⟧ᴰ)
-              → subst (λ z → z) (cohᴰ (ν-type F φ))
-                  (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a))
-                ≡ anaFᵈ F cS a
-    ana-agree a =
-      trans (subst-νᵈ-cong (tF-coh F) (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a)))
-        (trans (anaᵈ-erase-full (tF-coh F) (cohᴰ A)
-                  (λ y → fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE y))
-                  (λ y → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS y))
-                  (subst (λ z → z) (sym (cohᴰ A)) a)
-                  coalg-agree)
-               (cong (anaFᵈ F cS) (subst-subst-sym (cohᴰ A))))
+    stream : ∀ {a a′} → RelD A a a′
+           → StreamRel H (subst (λ z → z) (cohᴰ (ν-type F φ)) (anaFᴵ ⌈ eraseF F ⌉F cE (seedOf a)))
+                         (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′)
+    stream {a} {a′} ra =
+      subst (λ s → StreamRel H s (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′))
+            (sym (trans (ana-erase (tF-coh F) (cohᴰ A) _ (seedOf a))
+                        (cong (anaᴵ H c₁) (subst-subst-sym {P = λ z → z} (cohᴰ A)))))
+            (anaᴵ-rel hc ra)
 
-    per-a : (λ a → subst T (cohᴰ (ν-type F φ))
-                     (evalᴰ fmt ρ Ana-IR (c' , subst (λ z → z) (sym (cohᴰ A)) a)))
-            ≡ (λ a → returnT (anaFᵈ F cS a))
-    per-a = extensionality (λ a →
-      trans (subst-T-returnT (cohᴰ (ν-type F φ))
-               (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a)))
-            (cong returnT (ana-agree a)))
-
--- D131 / D273: the elaboration is `anaM ∘ ecoalg` and BOTH sides bind the
--- coalgebra once, so this is `cata-body`'s shape: a bind-congruence over a shared
--- computation plus the per-closure unfold equality. The coalgebra lives in the
--- context, so its own faithfulness (`ih`) is at the SAME environment `dγ`.
+-- D131 / D273: `cata-body`'s shape.
 ana-body : ∀ {m} {Γ : Ctx m} {Ψ : Usage m} {F : Functor} {A} {π₀ : Purity} {φ : Finite}
              (wf : WellFormedF F)
              (coalg : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A))
-             (dγ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
-             (ih : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A}
-                     (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ
-                   ≡ SD.⟦ coalg ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ))
-           → liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
-               (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg)) dγ
-             ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg ⟧ˢ fmt σ₀ dγ
-ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg dγ ih =
-  trans split unfold-step
-  where
-    ecoalg = elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)
-    dγ′    = restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ
-    anaM'  = anaM {F} {A} {φ} wf IR.Heap
-    liftAnaM = liftFn fmt ρ {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A}
-                            {A ⇒[ mk-kind Many π₀ ] ν-type F φ} anaM'
-
-    split : liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
-                   (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg)) dγ
-          ≡ (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ′ >>=T liftAnaM)
-    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A}
-                                                {C = A ⇒[ mk-kind Many π₀ ] ν-type F φ}
-                                                {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} anaM' ecoalg))
-                  (cong (λ t → t >>=T liftAnaM) ih)
-
-    unfold-step : (SD.⟦ coalg ⟧ˢ fmt σ₀ dγ′ >>=T liftAnaM)
-                ≡ SD.⟦ ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg ⟧ˢ fmt σ₀ dγ
-    unfold-step = cong (λ g → SD.⟦ coalg ⟧ˢ fmt σ₀ dγ′ >>=T g)
-                       (extensionality (λ c → anaM-unfold {F} {A} {π₀} {φ} wf c))
+             (dγ dγ′ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
+           → RelS (RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A))
+                  (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A}
+                     (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ)
+                  (SD.⟦ coalg ⟧ˢ fmt (SD.internalDefs fmt ρ) (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ′))
+           → RelS (RelD (A ⇒[ mk-kind Many π₀ ] ν-type F φ))
+                  (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
+                     (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg)) dγ)
+                  (SD.⟦ ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
+ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg dγ dγ′ ih =
+  ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {C = A ⇒[ mk-kind Many π₀ ] ν-type F φ}
+                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (anaM {F} {A} {φ} wf IR.Heap)
+                         (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
+     (RelS-bind ih (anaM-unfold {F} {A} {π₀} {φ} wf))
