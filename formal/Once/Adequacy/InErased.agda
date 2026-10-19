@@ -7,7 +7,7 @@
 -- `realize`'s `In` builds a μ value via the ERASED functor `⌈eraseF F⌉F`
 -- (`eval (In (wf-⌊⌋ wfF) …) = sem-In ⌈eraseF F⌉F ∘ coerce-functor …`), while the
 -- meaning uses the SURFACE functor `F` (`in-value = sem-In F ∘ coerce-functor`).
--- `liftFn-In` reduces the transported `In` denotation to `returnT (in-value v)`.
+-- `liftFn-In` reduces the transported `In` denotation to `return∞ (in-value v)`.
 -- Framed as a combinator reduction (like `LiftFnReduce.liftFn-fst`): the TRACE
 -- is `[]` (`rec-trace-D (In) = []`), the RESULT is `returns` of the coherence
 -- `in-res` (the μ-twin of `AnaErased.coerce-νin-erase`, wrapped by
@@ -38,12 +38,12 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Lang.Polynomial using (μS; ⟨_⟩; ⟦_⟧SF)
 import Once.Lang.Polynomial
 open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
-open import Once.Lang.Trace using (T; returnT)
+open import Once.Lang.Iterative using (T∞; return∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)
 open import Once.Adequacy.CataErased fmt ρ using (evalᴰ-subst-dom)
-open import Once.Adequacy.AnaErased fmt ρ using (coerce-νin-erase-D; subst-T-returnT)
+open import Once.Adequacy.AnaErased fmt ρ using (coerce-νin-erase-D; subst-T-return∞)
 import Once.IR as IR
 
 -- `coerce-μ-in G X x` computes structurally, IGNORING the carrier `X`, so it
@@ -87,19 +87,19 @@ subst-⟦⟧ᴰᴵ-fix : ∀ {X Y : IRTy} (p : X ≡ Y) (x : ⟦ X ⟧ᴰᴵ)
 subst-⟦⟧ᴰᴵ-fix refl x = refl
 
 -- The combinator reduction (like `LiftFnReduce.liftFn-fst`): `liftFn` of the
--- transported `In` is `returnT (in-value v)`. Plan 0.105: one equation of
+-- transported `In` is `return∞ (in-value v)`. Plan 0.105: one equation of
 -- trees — the domain transport peels (`evalᴰ-subst-dom`), the result
 -- transport moves into the `ret` leaf, and what remains is the μ-twin of
 -- `AnaErased.coerce-νin-erase-D` at the value.
 liftFn-In : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
-  → liftFn fmt ρ {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ returnT (in-value wfF v)
+  → liftFn fmt ρ {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ return∞ (in-value wfF v)
 liftFn-In {F} wfF v =
-  trans (cong (subst T (cohᴰ (μ-type F)))
+  trans (cong (subst T∞ (cohᴰ (μ-type F)))
               (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF)) v′))
-  (trans (cong (λ arg → subst T (cohᴰ (μ-type F)) (evalᴰ fmt ρ (IR.In (wf-⌊⌋ wfF)) arg))
+  (trans (cong (λ arg → subst T∞ (cohᴰ (μ-type F)) (evalᴰ fmt ρ (IR.In (wf-⌊⌋ wfF)) arg))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ-type F)) v′))
-  (trans (subst-T-returnT (cohᴰ (μ-type F)) _)
-  (cong returnT
+  (trans (subst-T-return∞ (cohᴰ (μ-type F)) _)
+  (cong return∞
     (trans (subst-id-μS (tF-coh F) _)
     (trans (⟨⟩-subst-nat (tF-coh F) _)
            (cong ⟨_⟩

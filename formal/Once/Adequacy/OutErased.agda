@@ -13,10 +13,10 @@
 --   * `In-ir`'s transport is on the DOMAIN (the layer type is the input), so
 --     `InErased` peels it with `evalᴰ-subst-dom`. `Out-ir`'s is on the
 --     CODOMAIN, which needs the mirror lemma `evalᴰ-subst-cod`.
---   * `In` emits nothing, so `in-trace` is `[]`. `Out` emits whatever forcing
---     the suspension emits, so there is no constant to prove — the trace half
---     is an EQUALITY between the two sides' traces, both of which are the
---     forced computation's own.
+--   * `In` returns at once. `Out` runs whatever forcing the suspension runs,
+--     so the statement relates two runs (plan 0.119 D5: `RelS (RelD _)`, step
+--     for step): the IR's forced layer and the meaning's are related, and the
+--     layer maps agree on a layer (`νout-erase-D`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Numerics using (TargetNum)
@@ -40,17 +40,15 @@ import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Lang.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Machine using (tF-coh; base-coh; coerce-ν-out)
-open import Once.Lang.Trace using (T; fmapT)
-open import Once.Denotation.TraceMonadLaws using (fmapT-id; fmapT-∘; fmapT-cong; RelT′-refl)
-open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl)
-open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Data.Empty using (⊥-elim)
-open import Once.Lang.Stream using (νᵈ; module νᵈ)
+open import Data.Product using (Σ-syntax; _×_)
+open import Once.Lang.Iterative using (T∞; fmap∞)
+open import Once.Lang.StreamInf using (νᴵ; module νᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor⁻¹-D)
-open νᵈ using (forceᵈ)
+open νᴵ using (forceᴵ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (out-sem)
-open import Once.Adequacy.CataErased fmt ρ using (subst-T-fmap)
+open import Once.Denotation.TraceMonadInfLaws using (RelS)
+open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel; RelS-mono; RelS-fmap; RelS-substˡ; cfD⁻¹-rel; cμout-rel; layer→srel)
 open import Once.Adequacy.AnaErased fmt ρ using (push-⊎fam₁; push-⊎fam₂; push-×fam; push⊎₁; push⊎₂; push×; push⊎₁⁻; push⊎₂⁻; push×⁻)
 import Once.IR as IR
 
@@ -67,21 +65,25 @@ Out-ir {F} {π} wfF = subst (λ o → IR.IR ⌊ ν-type F π ⌋ o)
 evalᴰ-subst-cod : ∀ {A : IRTy} {o₁ o₂ : IRTy} (eq : o₁ ≡ o₂)
     (m : IR.IR A o₁) (z : ⟦ A ⟧ᴰᴵ)
   → evalᴰ fmt ρ (subst (λ o → IR.IR A o) eq m) z
-    ≡ subst (λ o → T ⟦ o ⟧ᴰᴵ) eq (evalᴰ fmt ρ m z)
+    ≡ subst (λ o → T∞ ⟦ o ⟧ᴰᴵ) eq (evalᴰ fmt ρ m z)
 evalᴰ-subst-cod refl m z = refl
 
--- A transport of the IRTy-indexed computation maps its leaves (plan 0.105).
-subst-TI-fmap : ∀ {o₁ o₂ : IRTy} (p : o₁ ≡ o₂) (h : T ⟦ o₁ ⟧ᴰᴵ)
-  → subst (λ o → T ⟦ o ⟧ᴰᴵ) p h ≡ fmapT (subst ⟦_⟧ᴰᴵ p) h
-subst-TI-fmap refl h = sym (fmapT-id h)
+-- Forcing a ν transported BACKWARDS along the coherence is the forced run,
+-- transported — `forceᴵ` is a field, so a transport of the record is a
+-- transport of it.
+force-subst : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᴵ H₂)
+  → forceᴵ (subst id (sym (cong νᴵ p)) v)
+    ≡ subst (λ H → T∞ (⟦ H ⟧SF (νᴵ H))) (sym p) (forceᴵ v)
+force-subst refl v = refl
 
--- Forcing a ν transported BACKWARDS along the coherence maps the forced
--- tree's leaves the same way — `forceᵈ` is a field, so a transport of the
--- record is a transport of it.
-force-subst-fmap : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H₂)
-  → forceᵈ (subst id (sym (cong νᵈ p)) v)
-    ≡ fmapT (subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym p)) (forceᵈ v)
-force-subst-fmap refl v = sym (fmapT-id (forceᵈ v))
+-- A run transported along an indexed family, related through the transport.
+RelS-substF : ∀ {I : Set₁} (P : I → Set) {i j : I} (e : i ≡ j) {Y : Set} {R : P j → Y → Set} {m : T∞ (P i)} {n : T∞ Y}
+            → RelS (λ a b → R (subst P e a) b) m n → RelS R (subst (λ k → T∞ (P k)) e m) n
+RelS-substF P refl h = h
+
+RelS-substF₀ : ∀ {I : Set} (P : I → Set) {i j : I} (e : i ≡ j) {Y : Set} {R : P j → Y → Set} {m : T∞ (P i)} {n : T∞ Y}
+             → RelS (λ a b → R (subst P e a) b) m n → RelS R (subst (λ k → T∞ (P k)) e m) n
+RelS-substF₀ P refl h = h
 
 ------------------------------------------------------------------------
 -- Transport vocabulary the OUT direction needs and the IN direction did not
@@ -93,10 +95,10 @@ force-subst-fmap refl v = sym (fmapT-id (forceᵈ v))
 -- the `sym` direction. All match-to-refl.
 ------------------------------------------------------------------------
 
-subst-diag-ν⁻ : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂) (z : ⟦ H₂ ⟧SF (νᵈ H₂))
-  → subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym eq) z
-    ≡ subst (λ H → ⟦ H ⟧SF (νᵈ H₁)) (sym eq)
-        (subst (λ C → ⟦ H₂ ⟧SF C) (sym (cong νᵈ eq)) z)
+subst-diag-ν⁻ : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂) (z : ⟦ H₂ ⟧SF (νᴵ H₂))
+  → subst (λ H → ⟦ H ⟧SF (νᴵ H)) (sym eq) z
+    ≡ subst (λ H → ⟦ H ⟧SF (νᴵ H₁)) (sym eq)
+        (subst (λ C → ⟦ H₂ ⟧SF C) (sym (cong νᴵ eq)) z)
 subst-diag-ν⁻ refl z = refl
 
 pushS⊕₁⁻ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor}
@@ -313,32 +315,53 @@ base-out (X Once.Lang.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
     OUT z = subst id (cohᴰ (⟦ F Once.Lang.Type.⊗ G ⟧T A))
               (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Lang.Type.⊗ G) A)) z)
 
--- THE `Out` EQUATION (plan 0.105): the IR's `Out`, through the erasure
--- transports, IS the direct `out-sem` — one equation of trees. Each transport
--- maps the forced tree's leaves, the maps fuse (`fmapT-∘`), and the leaf maps
--- agree pointwise (`νout-erase-D`).
-liftFn-Out : ∀ {F : Functor} {π : Finite} (wfF : WellFormedF F) (v : ⟦ ν-type F π ⟧ᴰ)
-  → liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v ≡ out-sem {π = π} wfF v
-liftFn-Out {F} {π} wfF v =
-  trans (subst-T-fmap (cohᴰ (⟦ F ⟧T (ν-type F π))) (evalᴰ fmt ρ (Out-ir wfF) v′))
-  (trans (cong (fmapT (subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))))
-               (trans (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF)) v′)
-                      (subst-TI-fmap (sym (⌊⟧T-commute F (ν-type F π))) (evalᴰ fmt ρ (IR.Out (wf-⌊⌋ wfF)) v′))))
-  (trans (fmapT-∘ (subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))) (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π))))
-                  (evalᴰ fmt ρ (IR.Out (wf-⌊⌋ wfF)) v′))
-  (trans (fmapT-∘ OUT (out-layer-gen F wfF (ν-type F π)) (forceᵈ v′))
-  (trans (cong (fmapT (λ ℓ → OUT (out-layer-gen F wfF (ν-type F π) ℓ))) (force-subst-fmap (tF-coh F) v))
-  (trans (fmapT-∘ (λ ℓ → OUT (out-layer-gen F wfF (ν-type F π) ℓ))
-                  (subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym (tF-coh F))) (forceᵈ v))
-         (fmapT-cong (λ ℓ → trans (cong (λ z → OUT (out-layer-gen F wfF (ν-type F π) z))
-                                         (subst-diag-ν⁻ (tF-coh F) ℓ))
-                                   (νout-erase-D F wfF (ν-type F π) ℓ))
-                     (forceᵈ v)))))))
+-- THE `Out` RELATION: the IR's `Out`, through the erasure transports, runs
+-- the forced layer of a related stream and maps it as `out-sem` does. The
+-- forced runs are related (`StreamRel.forceR`); on a layer the IR's map, read
+-- back, IS the meaning's (`νout-erase-D`), and the meaning's map takes related
+-- layers to related values.
+liftFn-Out : ∀ {F : Functor} {π : Finite} (wfF : WellFormedF F) {v v′ : ⟦ ν-type F π ⟧ᴰ}
+  → RelD (ν-type F π) v v′
+  → RelS (RelD (⟦ F ⟧T (ν-type F π))) (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) (out-sem {π = π} wfF v′)
+liftFn-Out {F} {π} wfF {v} {v′} r =
+  ≡ˢ (cong (subst T∞ (cohᴰ X))
+        (trans (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF)) v₀)
+               (cong (λ m → subst (λ o → T∞ ⟦ o ⟧ᴰᴵ) (sym (⌊⟧T-commute F (ν-type F π))) (fmap∞ g₀ m))
+                     (force-subst (tF-coh F) v))))
+     (RelS-substˡ (cohᴰ X)
+       (RelS-substF₀ ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π)))
+         (RelS-fmap {R = R₀}
+           (RelS-substF (λ H → ⟦ H ⟧SF (νᴵ H)) (sym (tF-coh F))
+             (RelS-mono (λ {ℓ} lr → ℓ , refl , lr) (StreamRel.forceR r)))
+           (λ { {_} {b} (ℓ , refl , lr) → step ℓ b lr }))))
   where
-    v′ = subst id (sym (cohᴰ (ν-type F π))) v
-    OUT : ⟦ IT.⟦ eraseF F ⟧TI ⌊ ν-type F π ⌋ ⟧ᴰᴵ → ⟦ ⟦ F ⟧T (ν-type F π) ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F ⟧T (ν-type F π)))
-              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π))) z)
+    X  = ⟦ F ⟧T (ν-type F π)
+    H  = translateF Carrier Carrier F
+    v₀ = subst id (sym (cohᴰ (ν-type F π))) v
+    g₀ = λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute (eraseF F) (IT.ν-type (eraseF F))))
+                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ IT.ν-type (eraseF F) ⌉
+                       (coerce-ν-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ layer))
+    g₁ = λ layer → coerce-functor⁻¹-D wfF (ν-type F π) (coerce-ν-out wfF _ layer)
+
+    R₀ : _ → _ → Set
+    R₀ a b = Σ[ ℓ ∈ ⟦ H ⟧SF (νᴵ H) ] (a ≡ subst (λ G → ⟦ G ⟧SF (νᴵ G)) (sym (tF-coh F)) ℓ) × LayerRel H H ℓ b
+
+    ≡ˢ : ∀ {A B} {R : A → B → Set} {m m′ : T∞ A} {n : T∞ B} → m ≡ m′ → RelS R m′ n → RelS R m n
+    ≡ˢ refl h = h
+
+    ≡ᴰ : ∀ {u u′ w : ⟦ X ⟧ᴰ} → u ≡ u′ → RelD X u′ w → RelD X u w
+    ≡ᴰ refl h = h
+
+    step : ∀ ℓ b → LayerRel H H ℓ b
+         → RelD X (subst id (cohᴰ X) (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π)))
+                     (g₀ (subst (λ G → ⟦ G ⟧SF (νᴵ G)) (sym (tF-coh F)) ℓ))))
+                  (g₁ b)
+    step ℓ b lr =
+      ≡ᴰ (trans (cong (λ z → subst id (cohᴰ X) (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π)))
+                                (out-layer-gen F wfF (ν-type F π) z)))
+                      (subst-diag-ν⁻ (tF-coh F) ℓ))
+                (νout-erase-D F wfF (ν-type F π) ℓ))
+         (cfD⁻¹-rel wfF (ν-type F π) (cμout-rel wfF (layer→srel H lr)))
 
 ------------------------------------------------------------------------
 -- The bridge's two halves, packaged

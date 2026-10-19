@@ -50,7 +50,7 @@ open import Once.Semantics.Machine
   using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; tF-coh; coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
 open import Once.Lang.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Lang.Trace using (T; returnT)
+open import Once.Lang.Iterative using (T∞; return∞)
 open import Once.Lang.Stream
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
@@ -125,9 +125,9 @@ push⊎₂⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B')
   → subst id (sym (cong₂ _⊎_ p q)) (inj₂ b) ≡ inj₂ (subst id (sym q) b)
 push⊎₂⁻ refl refl b = refl
 
-subst-T-returnT : ∀ {X Y : Set} (eq : X ≡ Y) (x : X)
-  → subst T eq (returnT x) ≡ returnT (subst id eq x)
-subst-T-returnT refl x = refl
+subst-T-return∞ : ∀ {X Y : Set} (eq : X ≡ Y) (x : X)
+  → subst T∞ eq (return∞ x) ≡ return∞ (subst id eq x)
+subst-T-return∞ refl x = refl
 
 -- plan 0.98: the `resT-lift` twin. `inject` at an arrow lifts a `Res` rather
 -- than returning a value, so this is what the arrow clauses transport with.

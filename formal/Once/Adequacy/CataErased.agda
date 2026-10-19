@@ -8,13 +8,11 @@
 -- for the `Cata` recursion scheme. After M2 the IR's `Cata` folds the ERASED
 -- functor `⌈eraseF F⌉F` at carrier `⟦⌊A⌋⟧ᴰᴵ` (`evalᴰ (Cata …)` via `wf-⌈⌉`),
 -- while the surface/meaning fold runs over `F` at `⟦A⟧ᴰ`. This module proves
--- they coincide once bridged by `liftFn` (grade-blind `cohᴰ` transport) and the
--- SET-level functor round-trip `tF-coh : translateF ⌈eraseF F⌉F ≡ translateF F`.
---
--- The single export `evalᴰ-Cata-erased` lets the relational fold congruences
--- (`CataBridge.cata-bridge`, `FaithfulLemmas.cataM-fold`) stay at the SAME functor
--- `F` and SAME carrier `⟦A⟧ᴰ` — their original proofs are reused unchanged,
--- with this lemma discharging the erasure round-trip up front.
+-- they are related (plan 0.119 D5: `RelS (RelD A)`, runs compared step for
+-- step) once bridged by `liftFn` (grade-blind `cohᴰ` transport) and the
+-- SET-level functor round-trip `tF-coh : translateF ⌈eraseF F⌉F ≡ translateF F`:
+-- an IR algebra related to a semantic one folds every value to related runs
+-- (`cata-erased-rel`).
 --
 -- Own module (minimal, distinct-suffix `⟦_⟧` imports) mirroring `CataFold`/
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
@@ -37,8 +35,11 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Lang.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Lang.Trace using (T; fmapT; RelT′; rel-ret; rel-call; rel-halt)
-open import Once.Denotation.TraceMonadLaws using (fmapT-id; RelT′-bind; RelT′-fmap; RelT′-≡; ≡-RelT′)
+open import Once.Lang.Trace using (fmapT)
+open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
+open import Once.Denotation.ValueRel using (RelD; SRel; RelS-mono; RelS-fmap; RelS-substˡ; cataS-rel)
+open import Once.Denotation.ValueRel using () renaming (base-refl to base-reflᴰ)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (evalᴰ; cata-ev-algᴰ)
@@ -51,7 +52,6 @@ open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; w
 open import Once.Lang.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
-open import Once.Lang.Stream using (seqF)
 open import Once.Denotation.ValueDomain using (injectᵇ; forgetᵇ; ⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor⁻¹-D)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (conB; baseA)
@@ -59,7 +59,6 @@ open import Once.IRTy using (eraseF; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 open import Once.Lang.Value Carrier Carrier using (coerce-base-to-full)
 open import Once.Semantics.ValueIR Carrier Carrier using (base-coh)
-open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Postulates using (extensionality)
 open import Data.Sum using (_⊎_)
 import Once.Lang.Type as TT
@@ -70,16 +69,6 @@ import Once.IR as IR
 ------------------------------------------------------------------------
 -- Generic transport helpers (both by matching the equation to `refl`).
 ------------------------------------------------------------------------
-
--- Plan 0.105: `T` is the interaction tree, so two computations are equal when
--- their trees are, and a transport of the result type is a map of the leaves.
-subst-T-fmap : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) → subst T eq h ≡ fmapT (subst (λ z → z) eq) h
-subst-T-fmap refl h = sym (fmapT-id h)
-
--- A transport that undoes the one inside a map cancels it.
-subst-T-fmap-cancel : ∀ {X Y Z : Set} (eq : X ≡ Y) (f : Z → Y) (m : T Z)
-  → subst T eq (fmapT (λ v → subst (λ z → z) (sym eq) (f v)) m) ≡ fmapT f m
-subst-T-fmap-cancel refl f m = refl
 
 subst-cong-μS : ∀ {G₁ G₂ : SFunctor} (eq : G₁ ≡ G₂) (x : μS G₁)
   → subst (λ z → z) (cong μS eq) x ≡ subst μS eq x
@@ -114,22 +103,6 @@ pairᴰ-subst⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A') 
   → subst (λ z → z) (sym (cong₂ (λ x y → x × y) p q)) (a , b)
     ≡ (subst (λ z → z) (sym p) a , subst (λ z → z) (sym q) b)
 pairᴰ-subst⁻ refl refl a b = refl
-
--- The IR-carrier cata trace-algebra is DEFINITIONALLY the Type-carrier one
--- (`cata-ev-algᴰ-D`) over the embedded functor `⌈F⌉F`, fed the algebra
--- `evalᴰ alg` pre-composed with the `⌈⟧TI-commute` re-embedding. Collapses the
--- IR-vs-meaning fold asymmetry so both sides become uniform `cata-sem` folds.
--- D131: the environment rides along as a value; the collapse is still `refl`,
--- because the per-layer algebra is `evalᴰ alg` PARTIALLY APPLIED to it.
--- D179: the carrier is now `T ⟦C⟧ᴰ` and the budget rides in it, so the `ℕ`
--- parameter is gone from both sides. The collapse is still `refl`.
-cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy} (wf : II.WellFormedFI F)
-    (alg : IR.IR (E II.* ⟦ F ⟧TI C) C) (env : ⟦ E ⟧ᴰᴵ)
-    (fc : ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ))
-  → cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg env fc
-    ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉} (wf-⌈⌉ wf)
-        (λ z → evalᴰ fmt ρ alg (env , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
-cata-ev-algᴰ-is-D wf alg env fc = refl
 
 ------------------------------------------------------------------------
 -- `subst`-push helpers: a functor transport `sym (cong₂ _S⊕_/_S⊗_ …)` over a
@@ -232,112 +205,142 @@ base-z (base-Sum {A} {B} pA pB) (inj₂ b)
   = cong inj₂ (base-z pB b)
 base-z base-rigid ()
 
+-- Forward pushes (the transports `cohᴰ` performs at a sum and a product).
+push-⊎₁⁺ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A)
+  → subst (λ z → z) (cong₂ _⊎_ p q) (inj₁ a) ≡ inj₁ (subst (λ z → z) p a)
+push-⊎₁⁺ refl refl a = refl
+
+push-⊎₂⁺ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B)
+  → subst (λ z → z) (cong₂ _⊎_ p q) (inj₂ b) ≡ inj₂ (subst (λ z → z) q b)
+push-⊎₂⁺ refl refl b = refl
+
+push-×⁺ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A) (b : B)
+  → subst (λ z → z) (cong₂ _×_ p q) (a , b) ≡ (subst (λ z → z) p a , subst (λ z → z) q b)
+push-×⁺ refl refl a b = refl
+
+-- A run transported along an equation of carriers, read back.
+RelS-substˡ⁻ : ∀ {X X′ Y} {R : X′ → Y → Set} (E : X ≡ X′) {m : T∞ X} {n : T∞ Y}
+             → RelS R (subst T∞ E m) n → RelS (λ a b → R (subst (λ Z → Z) E a) b) m n
+RelS-substˡ⁻ refl h = h
+
 module _ {A' : Type} where
 
-  -- D179: the fold's carrier is a COMPUTATION, so this relates two of them:
-  -- equal traces and corresponding values, at every budget. The trace and
-  -- value halves can no longer be proved separately — the two sides run their
-  -- children at budgets computed from their own traces, so the budgets line up
-  -- only once the traces are known equal. `RelT′` bundles them for that reason.
-  RelC : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → T ⟦ A' ⟧ᴰ → Set
-  RelC = RelT′ (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r)
+  -- The fold's carrier is a run; an IR run and a meaning run are related when
+  -- they are, step for step, with the IR value read across `cohᴰ`.
+  RelC : T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → T∞ ⟦ A' ⟧ᴰ → Set
+  RelC = RelS (λ l r → RelD A' (subst (λ z → z) (cohᴰ A') l) r)
 
-  -- D179: ONE lemma where there were two (`layer-events` for the trace half,
-  -- `layer-z` for the value half). With a computation carrier they cannot be
-  -- separated — see `RelC`. Proved below by induction on `WellFormedF` (plan 0.113 A2).
+  -- A layer of the erased functor, read back into `⟦ G ⟧T A'`'s IR domain.
+  L : ∀ {G : Functor} → WellFormedF G → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ ⌊ ⟦ G ⟧T A' ⌋ ⟧ᴰᴵ
+  L {G} wfG l =
+    subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
+      (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF G) ⌊ A' ⌋))
+        (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l))
+
+  -- An IR layer and a meaning layer are related when their values are.
   LayerRel : ∀ {G : Functor} → WellFormedF G → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ G ⟧F ⟦ A' ⟧ᴰ → Set
-  LayerRel {G} wfG l r =
-      subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
-        (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF G) ⌊ A' ⌋))
-          (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l))
-    ≡ subst (λ z → z) (sym (cohᴰ (⟦ G ⟧T A')))
-        (coerce-functor⁻¹-D wfG A' r)
+  LayerRel {G} wfG l r = RelD (⟦ G ⟧T A') (subst (λ z → z) (cohᴰ (⟦ G ⟧T A')) (L wfG l)) (coerce-functor⁻¹-D wfG A' r)
 
-  -- Plan 0.113 A2: PROVED again (master proved `layer-events`/`layer-z`; D179
-  -- merged them into this relation and left it a postulate). `seqF` is a
-  -- traversal, so the computation-level relation reduces, functor case by case,
-  -- to a VALUE step over arbitrary related values — master's `layer-z` cases,
-  -- now stated for any `l`/`r` — through `RelT′-fmap` / `RelT′-bind`.
-  RelT′-mono : ∀ {X Y : Set} {R S : X → Y → Set} → (∀ {x y} → R x y → S x y)
-             → ∀ {m n} → RelT′ R m n → RelT′ S m n
-  RelT′-mono f (rel-ret r)  = rel-ret (f r)
-  RelT′-mono f (rel-call k) = rel-call (λ b → RelT′-mono f (k b))
-  RelT′-mono f rel-halt     = rel-halt
-
-  id-step : ∀ {l : ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : ⟦ A' ⟧ᴰ} → subst (λ z → z) (cohᴰ A') l ≡ r → LayerRel wf-Id l r
-  id-step {l} e = trans (sym (subst-sym-subst (cohᴰ A') {l})) (cong (subst (λ z → z) (sym (cohᴰ A'))) e)
+  private
+    ≡ˡᴰ : ∀ X {u u′ w : ⟦ X ⟧ᴰ} → u ≡ u′ → RelD X u′ w → RelD X u w
+    ≡ˡᴰ X refl r = r
 
   sum₁-step : ∀ {Fa Gb} (wfF : WellFormedF Fa) (wfG : WellFormedF Gb) l r
             → LayerRel wfF l r → LayerRel (wf-Sum wfF wfG) (inj₁ l) (inj₁ r)
-  sum₁-step {Fa} {Gb} wfF wfG l r e
-    rewrite pushᴰ-+₁ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
-                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)
-          | pushᴰᴵ-+₁ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l))
-          | push-⊎₁ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) (coerce-functor⁻¹-D wfF A' r)
-    = cong inj₁ e
+  sum₁-step {Fa} {Gb} wfF wfG l r e =
+    ≡ˡᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')
+      (trans (cong (subst (λ z → z) (cohᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')))
+                   (trans (cong (subst ⟦_⟧ᴰᴵ (sym (cong₂ II._+_ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A'))))
+                                (pushᴰ-+₁ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
+                                          (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)))
+                          (pushᴰᴵ-+₁ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A') _)))
+             (push-⊎₁⁺ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) _))
+      e
 
   sum₂-step : ∀ {Fa Gb} (wfF : WellFormedF Fa) (wfG : WellFormedF Gb) l r
             → LayerRel wfG l r → LayerRel (wf-Sum wfF wfG) (inj₂ l) (inj₂ r)
-  sum₂-step {Fa} {Gb} wfF wfG l r e
-    rewrite pushᴰ-+₂ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
-                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l)
-          | pushᴰᴵ-+₂ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l))
-          | push-⊎₂ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) (coerce-functor⁻¹-D wfG A' r)
-    = cong inj₂ e
+  sum₂-step {Fa} {Gb} wfF wfG l r e =
+    ≡ˡᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')
+      (trans (cong (subst (λ z → z) (cohᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')))
+                   (trans (cong (subst ⟦_⟧ᴰᴵ (sym (cong₂ II._+_ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A'))))
+                                (pushᴰ-+₂ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
+                                          (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l)))
+                          (pushᴰᴵ-+₂ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A') _)))
+             (push-⊎₂⁺ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) _))
+      e
 
   prod-step : ∀ {Fa Gb} (wfF : WellFormedF Fa) (wfG : WellFormedF Gb) l r l′ r′
             → LayerRel wfF l r → LayerRel wfG l′ r′ → LayerRel (wf-Prod wfF wfG) (l , l′) (r , r′)
-  prod-step {Fa} {Gb} wfF wfG l r l′ r′ e e′
-    rewrite pushᴰ-* (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
-                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)
-                     (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l′)
-          | pushᴰᴵ-* (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l))
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)) (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l′))
-          | push-× (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A'))
-                   (coerce-functor⁻¹-D wfF A' r) (coerce-functor⁻¹-D wfG A' r′)
-    = cong₂ _,_ e e′
+  prod-step {Fa} {Gb} wfF wfG l r l′ r′ e e′ =
+    ≡ˡᴰ (⟦ Fa ⟧T A' TT.* ⟦ Gb ⟧T A')
+      (trans (cong (subst (λ z → z) (cohᴰ (⟦ Fa ⟧T A' TT.* ⟦ Gb ⟧T A')))
+                   (trans (cong (subst ⟦_⟧ᴰᴵ (sym (cong₂ II._*_ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A'))))
+                                (pushᴰ-* (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
+                                         (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)
+                                         (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l′)))
+                          (pushᴰᴵ-* (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A') _ _)))
+             (push-×⁺ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) _ _))
+      (e , e′)
+
+  -- A constant layer: the IR value is the meaning's, read back (`base-z`).
+  base-step : ∀ {B} (ib : IsBaseType B) (y : ⟦ Carrier , Carrier ⟧-base B)
+            → RelD B (subst (λ z → z) (cohᴰ B)
+                        (injectᵇ (base-⌈⌉ (base-⌊⌋ ib)) (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) (subst (λ z → z) (sym (base-coh B)) y))))
+                     (injectᵇ ib (coerce-base-to-full ib y))
+  base-step {B} ib y =
+    ≡ˡᴰ B (trans (cong (subst (λ z → z) (cohᴰ B)) (base-z ib y)) (subst-subst-sym {P = λ z → z} (cohᴰ B)))
+          (base-reflᴰ ib _)
 
   layer-rel : ∀ {G} (wfG : WellFormedF G)
-      {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
-      {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ A' ⟧ᴰ)}
-    → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
-    → RelT′ (LayerRel wfG)
-        (seqF ⌈ eraseF G ⌉F
+      {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
+      {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (T∞ ⟦ A' ⟧ᴰ)}
+    → SRel RelC (translateF Carrier Carrier G) y₁ y₂
+    → RelS (LayerRel wfG)
+        (seqF∞ ⌈ eraseF G ⌉F
           (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _
             (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁)))
-        (seqF G (coerce-μ-out wfG _ y₂))
-  layer-rel {TT.K B} (wf-K ib) {y} {.y} refl =
-    rel-ret (trans (cong (λ v → injectᵇ (base-⌈⌉ (base-⌊⌋ ib)) (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) v))
-                         (subst-SK (base-coh B) y))
-                   (base-z ib y))
-  layer-rel wf-Id rc = RelT′-mono id-step rc
+        (seqF∞ G (coerce-μ-out wfG _ y₂))
+  layer-rel {TT.K B} (wf-K ib) {y} {.y} refl
+    rewrite subst-SK {X = T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} (base-coh B) y = relS-ret (base-step ib y)
+  layer-rel wf-Id rc = rc
   layer-rel (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₁ x₁} {inj₁ x₂} rsf
     rewrite subst-S⊕-inj₁ (tF-coh Fa) (tF-coh Gb) x₁ =
-    RelT′-fmap (LayerRel wfF) (LayerRel (wf-Sum wfF wfG)) (sum₁-step wfF wfG) (layer-rel wfF rsf)
+    RelS-fmap (layer-rel wfF rsf) (λ {l} {r} → sum₁-step wfF wfG l r)
   layer-rel (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₂ y₁} {inj₂ y₂} rsf
     rewrite subst-S⊕-inj₂ (tF-coh Fa) (tF-coh Gb) y₁ =
-    RelT′-fmap (LayerRel wfG) (LayerRel (wf-Sum wfF wfG)) (sum₂-step wfF wfG) (layer-rel wfG rsf)
+    RelS-fmap (layer-rel wfG rsf) (λ {l} {r} → sum₂-step wfF wfG l r)
   layer-rel (wf-Sum wfF wfG) {inj₁ _} {inj₂ _} ()
   layer-rel (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} ()
   layer-rel (wf-Prod {F = Fa} {G = Gb} wfF wfG) {x₁ , z₁} {x₂ , z₂} (rf , rg)
     rewrite subst-S⊗ (tF-coh Fa) (tF-coh Gb) x₁ z₁ =
-    RelT′-bind (LayerRel wfF) (LayerRel (wf-Prod wfF wfG)) (layer-rel wfF rf) λ l r e →
-    RelT′-bind (LayerRel wfG) (LayerRel (wf-Prod wfF wfG)) (layer-rel wfG rg) λ l′ r′ e′ →
-    rel-ret (prod-step wfF wfG l r l′ r′ e e′)
+    RelS-bind (layer-rel wfF rf) λ {l} {r} e →
+    RelS-bind (layer-rel wfG rg) λ {l′} {r′} e′ →
+    relS-ret (prod-step wfF wfG l r l′ r′ e e′)
 
-  evalᴰ-Cata-erased : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
-      (mir : IR.IR (⌊ Eˢ ⌋ II.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
-    → liftFn fmt ρ {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
-                    (subst (λ o → IR.IR (⌊ Eˢ ⌋ II.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
-             (env , w)
-      ≡ cata-sem wfF (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
-  evalᴰ-Cata-erased {F} {Eˢ} wfF mir env w = body
+  -- THE ERASED FOLD. An IR algebra related to a semantic one folds every value
+  -- to a run related to the meaning's fold.
+  cata-erased-rel : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
+      (mir : IR.IR (⌊ Eˢ ⌋ II.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ)
+      (g : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T∞ ⟦ A' ⟧ᴰ)
+    → (∀ {z z′} → RelD (⟦ F ⟧T A') z z′ → RelS (RelD A') (liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (g z′))
+    → ∀ (w : ⟦ μ-type F ⟧ᴰ)
+    → RelS (RelD A') (liftFn fmt ρ {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
+                        (subst (λ o → IR.IR (⌊ Eˢ ⌋ II.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
+                        (env , w))
+                     (cata-sem wfF g w)
+  cata-erased-rel {F} {Eˢ} wfF mir env g hg w =
+    ≡ˢ (trans (cong (λ W → subst T∞ (cohᴰ A') (evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir') W))
+                    (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
+              (cong (subst T∞ (cohᴰ A')) Lr≡))
+       (RelS-substˡ (cohᴰ A') (cataS-rel {R = RelC} algR w))
     where
+      ≡ˢ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n : T∞ Y} → m ≡ m′ → RelS R m′ n → RelS R m n
+      ≡ˢ refl h = h
+
       mir' : IR.IR (⌊ Eˢ ⌋ II.* ⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
       mir' = subst (λ o → IR.IR (⌊ Eˢ ⌋ II.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir
+
+      env₀ = subst (λ t → t) (sym (cohᴰ Eˢ)) env
 
       w' : ⟦ ⌊ μ-type F ⌋ ⟧ᴰᴵ
       w' = subst (λ z → z) (sym (cohᴰ (μ-type F))) w
@@ -346,96 +349,47 @@ module _ {A' : Type} where
       seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
                       (subst-subst-sym {P = λ z → z} (cong μS (tF-coh F)))
 
-      -- plan 0.97: ONE equation of computations, where there used to be a
-      -- budget-indexed family of pair equations. `T` is a record, so the
-      -- conclusion is assembled by eta (`to-subst-eq`) from the SAME
-      -- relation `rc` the fold already produces — the trace and value halves
-      -- no longer have to be re-paired by hand at every budget.
-      body : liftFn fmt ρ {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF) mir') (env , w)
-           ≡ cata-sem wfF (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
-      body = trans (cong (λ W → subst T (cohᴰ A')
-                             (evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir') W))
-                          (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
-             (trans (cong (subst T (cohᴰ A')) Lr≡) (to-subst-eq rc))
-        where
-          dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
-          dalg_L z = evalᴰ fmt ρ mir' ( subst (λ t → t) (sym (cohᴰ Eˢ)) env
-                                     , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z )
+      algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
+      algL y = cata-ev-algᴰ fmt ρ (wf-⌊⌋ wfF) mir' env₀ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
 
-          algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
-          algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} (wf-⌈⌉ (wf-⌊⌋ wfF)) dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
+      algL' : ⟦ translateF Carrier Carrier F ⟧SF (T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
+      algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
-          algL' : ⟦ translateF Carrier Carrier F ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
-          algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
+      Lr≡ : evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir') (env₀ , w') ≡ cataS {translateF Carrier Carrier F} algL' w
+      Lr≡ = trans (cataS-subst-functor (tF-coh F) algL w')
+                  (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
 
-          algM : ⟦ translateF Carrier Carrier F ⟧SF (T ⟦ A' ⟧ᴰ) → T ⟦ A' ⟧ᴰ
-          algM y = cata-ev-algᴰ-D {F} {A'} wfF (λ z → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
+      -- the algebra's step, at a related layer
+      step : ∀ x y → LayerRel wfF x y
+           → RelC (evalᴰ fmt ρ mir' (env₀ , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋))
+                                              (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ x)))
+                  (g (coerce-functor⁻¹-D wfF A' y))
+      step x y lr =
+        ≡ˢ (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir env₀ _)
+           (RelS-substˡ⁻ (cohᴰ A')
+             (≡ˢ (cong (λ W → subst T∞ (cohᴰ A') (evalᴰ fmt ρ mir W))
+                       (sym (trans (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _)
+                                   (cong (env₀ ,_) (subst-sym-subst {P = λ z → z} (cohᴰ (⟦ F ⟧T A')))))))
+                 (hg lr)))
 
-          -- D179: an equality of COMPUTATIONS now — the fold produces a `T`
-          -- directly, so there is no budget to apply here.
-          Lr≡ : evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir')
-                      (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') ≡ cataS {translateF Carrier Carrier F} algL' w
-          Lr≡ = trans (cataS-subst-functor (tF-coh F) algL w')
-                      (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
-
-          -- D179: one `RelT′-bind`. The head is `seqF` of the two layers
-          -- (`layer-rel`); the continuation is the algebra, whose two sides
-          -- are related by the SAME `step-eq` chain as before — with
-          -- `layer-z` replaced by `layer-rel`'s value half at budget `k`.
-          from-subst-eq : ∀ {l : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : T ⟦ A' ⟧ᴰ}
-                        → subst T (cohᴰ A') l ≡ r → RelC l r
-          from-subst-eq {l} eq = ≡-RelT′ (subst (λ z → z) (cohᴰ A')) l (trans (sym (subst-T-fmap (cohᴰ A') l)) eq)
-
-          to-subst-eq : ∀ {l : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : T ⟦ A' ⟧ᴰ}
-                      → RelC l r → subst T (cohᴰ A') l ≡ r
-          to-subst-eq {l} rel = trans (subst-T-fmap (cohᴰ A') l) (RelT′-≡ (subst (λ z → z) (cohᴰ A')) rel)
-
-          algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
-          algR-full {y₁} {y₂} rsf =
-            RelT′-bind (LayerRel wfF) (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r)
-              {m = mL} {m′ = mM} {f = contL} {f′ = contM}
-              (layer-rel wfF rsf)
-              (λ x y lr → from-subst-eq (step-eq x y lr))
-            where
-              mL : T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
-              mL = seqF ⌈ eraseF F ⌉F
-                     (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _
-                       (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁))
-              mM : T (⟦ F ⟧F ⟦ A' ⟧ᴰ)
-              mM = seqF F (coerce-μ-out wfF _ y₂)
-
-              contL = λ layer → dalg_L (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ layer)
-              contM = λ layer → liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir
-                                  (env , coerce-functor⁻¹-D wfF A' layer)
-
-              -- plan 0.98: stated at the VALUES. The budget was only ever a way to
-              -- NAME them, and `valueT` cannot name a value that may not
-              -- exist — the caller now supplies the two the head returned.
-              step-eq : ∀ x y → LayerRel wfF x y
-                      → subst T (cohᴰ A') (contL (x)) ≡ contM (y)
-              step-eq x y lr =
-                trans (cong (subst T (cohᴰ A'))
-                        (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir
-                           (subst (λ t → t) (sym (cohᴰ Eˢ)) env)
-                           (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋))
-                                  (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ (x)))))
-                  (trans (cong (λ Z → subst T (cohᴰ A')
-                                  (evalᴰ fmt ρ mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z))) lr)
-                         (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt ρ mir W))
-                               (sym (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _))))
-
-          rc : RelC (cataS {translateF Carrier Carrier F} algL' w) (cataS {translateF Carrier Carrier F} algM w)
-          rc = cataS-rel RelC algR-full w
+      algR : ∀ {y₁ y₂} → SRel RelC (translateF Carrier Carrier F) y₁ y₂
+           → RelC (algL' y₁) (cata-ev-algᴰ-D wfF g (coerce-μ-out wfF _ y₂))
+      algR rsf = RelS-bind (layer-rel wfF rsf) (λ {x} {y} lr → step x y lr)
 
 -- A SigOp's lifted meaning is its contract's computation at the first-order
 -- argument, read into the value domain (plan 0.105: no emission rule, no
 -- `semM` — the tree node IS the event).
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B)
   → liftFn fmt ρ {A} {B} (IR.SigOp info)
-    ≡ (λ arg → fmapT (injectᵇ (conB info)) (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info) arg)))
+    ≡ (λ arg → embed (fmapT (injectᵇ (conB info)) (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info) arg))))
 liftFn-SigOp {A} {B} info = extensionality λ arg →
-  trans (subst-T-fmap-cancel (cohᴰ B) (injectᵇ (conB info))
+  trans (cancel (cohᴰ B) (injectᵇ (conB info))
            (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info)
               (subst (λ z → z) (cohᴰ A) (subst (λ z → z) (sym (cohᴰ A)) arg)))))
-        (cong (λ w → fmapT (injectᵇ (conB info)) (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info) w)))
+        (cong (λ w → embed (fmapT (injectᵇ (conB info)) (sigOpT fmt (ffiE ρ) info (forgetᵇ (baseA info) w))))
               (subst-subst-sym {P = λ z → z} (cohᴰ A)))
+  where
+    -- A transport that undoes the one inside a map cancels it.
+    cancel : ∀ {X Y Z : Set} (eq : X ≡ Y) (f : Z → Y) m
+           → subst T∞ eq (embed (fmapT (λ v → subst (λ z → z) (sym eq) (f v)) m)) ≡ embed (fmapT f m)
+    cancel refl f m = refl
