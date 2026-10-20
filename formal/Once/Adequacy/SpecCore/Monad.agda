@@ -18,7 +18,7 @@ open import Once.Spec.Signature using (Signature)
 
 module Once.Adequacy.SpecCore.Monad (Σ : Signature) where
 
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Lang.Type.Grade as LG
@@ -29,6 +29,7 @@ import Once.Lang.GradedOps as LOps
 import Once.Lang.Trace as LTr
 import Once.Lang.Iterative as LI
 import Once.Spec.Effect Σ as SE
+import Once.Spec.Polynomial as SPoly
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
@@ -114,3 +115,28 @@ module _ {X X′ : Set} {R : X → X′ → Set} where
   sub-R LS.⊑-act  SG.⊑-act  pr-act  pr-act  r = r
   sub-R LS.⊑-pa   SG.⊑-pa   pr-pure pr-act  r = ret r
   sub-R LS.⊑-ae   SG.⊑-ae   pr-act  pr-eff  r = embed-R r
+
+------------------------------------------------------------------------
+-- The loop
+------------------------------------------------------------------------
+
+module _ {X X′ : Set} {R S : X → X′ → Set} (rs : ∀ {x x′} → R x x′ → S x x′) where
+
+  TR-map : ∀ {m m′} → TR R m m′ → TR S m m′
+  TR-map (ret r)      = ret (rs r)
+  TR-map (call c a k) = call c a (λ b → TR-map (k b))
+  TR-map (halt x a)   = halt x a
+
+-- Related rounds give related loops: a copattern step over the block.
+module _ {A A′ B B′ : Set} {RA : A → A′ → Set} {RB : B → B′ → Set}
+         {c : A → LTr.T (B ⊎ A)} {c′ : A′ → SE.T (B′ ⊎ A′)}
+         (h : ∀ {a a′} → RA a a′ → TR (SumR RB RA) (c a) (c′ a′)) where
+
+  loop-R  : ∀ {a a′} → RA a a′ → T∞R RB (LI.loop c a) (SE.loop c′ a′)
+  loopB-R : ∀ {t t′} → TR (SumR RB RA) t t′
+          → TR (SumR RB (T∞R RB)) (LI.loopBlock c t) (SE.treeA (SPoly.SK B′ SPoly.S⊕ SPoly.SId) c′ t′)
+  force∞ (loop-R r) = loopB-R (h r)
+  loopB-R (ret (left rb))  = ret (left rb)
+  loopB-R (ret (right ra)) = ret (right (loop-R ra))
+  loopB-R (call o ra k)    = call o ra (λ rb → loopB-R (k rb))
+  loopB-R (halt x a)       = halt x a

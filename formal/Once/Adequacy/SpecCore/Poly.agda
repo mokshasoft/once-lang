@@ -269,6 +269,12 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   eqᵍ-let : ∀ q π₁ π₂ → SG.positionGrade (qS q) (πS π₁) SG.·p πS π₂ ≡ πS (LG.positionGrade q π₁ LG.·p π₂)
   eqᵍ-let q π₁ π₂ = sym (trans (·p-S (LG.positionGrade q π₁) π₂) (cong (SG._·p πS π₂) (positionGrade-S q π₁)))
 
+  eqᵘ-many : ∀ {n} (Ψ₁ Ψ₂ : LC.Usage n) → SG.Many SCx.*ᵘ uS Ψ₁ SCx.+ᵘ uS Ψ₂ ≡ uS (LG.Many LC.*ᵘ Ψ₁ LC.+ᵘ Ψ₂)
+  eqᵘ-many Ψ₁ Ψ₂ = sym (trans (uS-+ (LG.Many LC.*ᵘ Ψ₁) Ψ₂) (cong (SCx._+ᵘ uS Ψ₂) (uS-* LG.Many Ψ₁)))
+
+  eqᵍ-3 : ∀ π₁ π₂ π → πS π₁ SG.·p πS π₂ SG.·p πS π ≡ πS (π₁ LG.·p π₂ LG.·p π)
+  eqᵍ-3 π₁ π₂ π = sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (·p-S π₂ π)))
+
   -- The Spec's typing of a translated term.
   trD : ∀ {a n} {Δ : LP.KCtx a} {Γ : PT.PCtx a n} {Ψ t A π}
       → PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π
@@ -293,11 +299,10 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   trD (PT.⊢absurd d) = S⊢.⊢absurd (trD d)
   trD (PT.⊢roll {F = F} wf d) = S⊢.⊢roll (wfS wf) (atS refl (ptyS-⟦⟧ F (LP.μ-type F)) refl (trD d))
   trD (PT.⊢fold {Ψa = Ψa} {Ψt} {π} {π₁} {π₂} {F} {A} _ wf da dt) =
-    atS (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψa) Ψt) (cong (SCx._+ᵘ uS Ψt) (uS-* LG.Many Ψa)))) refl
-       (sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (·p-S π₂ π))))
+    atS (eqᵘ-many Ψa Ψt) refl (eqᵍ-3 π₁ π₂ π)
        (S⊢.⊢fold (wfS wf) (atS refl (cong (λ X → X ST.⇒[ _ ] _) (ptyS-⟦⟧ F A)) refl (trD da)) (trD dt))
   trD (PT.⊢unfold {Ψc = Ψc} {Ψs} {φ} {π₁} {π₂} {F} {A} wf dc ds) =
-    atS (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψc) Ψs) (cong (SCx._+ᵘ uS Ψs) (uS-* LG.Many Ψc)))) refl (sym (·p-S π₁ π₂))
+    atS (eqᵘ-many Ψc Ψs) refl (eqᵍ-· π₁ π₂)
        (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin φ (ptyS-⟦⟧ F A)) refl (trD dc)) (trD ds))
     where
       arr-fin : ∀ {A′ X Y} φ → X ≡ Y
@@ -308,8 +313,7 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
     atS refl (sym (ptyS-⟦⟧ F (LP.ν-type F φ))) (sym (trans (·p-S π₁ (LG.fin φ)) (cong (πS π₁ SG.·p_) (πS-fin φ))))
        (S⊢.⊢out (wfS wf) (trD d))
   trD (PT.⊢iter {Ψf = Ψf} {Ψs} {π₁} {π₂} df ds) =
-    atS (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψf) Ψs) (cong (SCx._+ᵘ uS Ψs) (uS-* LG.Many Ψf)))) refl
-       (sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (·p-S π₂ LG.eff))))
+    atS (eqᵘ-many Ψf Ψs) refl (eqᵍ-3 π₁ π₂ LG.eff)
        (S⊢.⊢iter (trD df) (trD ds))
   trD (PT.⊢coerce p d) = S⊢.⊢coerce (subS p) (trD d)
   trD PT.⊢lit-int = atS (sym uS-zero) refl refl S⊢.⊢lit-int
