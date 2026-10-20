@@ -3633,8 +3633,492 @@ du_casec'45'h_984 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                           (coe v13) (coe v19) (coe v22)))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.CoherenceHet._.casej-h
+d_casej'45'h_1040 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  T__'8773'__384 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+d_casej'45'h_1040 v0 v1 v2 v3 v4 v5 ~v6 v7 ~v8 v9 ~v10 v11 ~v12 v13
+                  ~v14 v15 ~v16 v17 ~v18 v19 ~v20 v21 v22 v23 v24 v25 v26 v27 v28 v29
+                  v30 v31
+  = du_casej'45'h_1040
+      v0 v1 v2 v3 v4 v5 v7 v9 v11 v13 v15 v17 v19 v21 v22 v23 v24 v25 v26
+      v27 v28 v29 v30 v31
+du_casej'45'h_1040 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  T__'8773'__384 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+du_casej'45'h_1040 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+                   v14 v15 v16 v17 v18 v19 v20 v21 v22 v23
+  = case coe v22 of
+      C_'8773'i_402 v26
+        -> case coe v23 of
+             C_'8773'i_402 v29
+               -> coe
+                    du_casej'45'at_1098 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                    (coe v5) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+                    (coe v12) (coe v13) (coe v14) (coe v15) (coe v16) (coe v17)
+                    (coe v18) (coe v19) (coe v20) (coe v21) (coe C_'8773'i_402 v26)
+                    (coe C_'8773'i_402 v29)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.CoherenceHet._._.casej-at
+d_casej'45'at_1098 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  T__'8773'__384 ->
+  MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__64 ->
+  MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__64 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  T__'8773'__384 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+d_casej'45'at_1098 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+                   ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 ~v23 ~v24
+                   ~v25 v26 v27 v28 v29 ~v30 v31 ~v32 v33 ~v34 v35 ~v36 v37 ~v38 v39
+                   v40 ~v41 v42 v43 v44 v45 v46 v47 v48 v49 ~v50 v51 v52 v53
+  = du_casej'45'at_1098
+      v0 v1 v2 v26 v27 v28 v29 v31 v33 v35 v37 v39 v40 v42 v43 v44 v45
+      v46 v47 v48 v49 v51 v52 v53
+du_casej'45'at_1098 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  T__'8773'__384 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+du_casej'45'at_1098 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+                    v14 v15 v16 v17 v18 v19 v20 v21 v22 v23
+  = coe
+      du_case'45'h_508 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      (coe v12) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v13)
+      (coe v14)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376 v5
+         (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v5) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v19)))
+         v15)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376 v5
+         (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v5) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v20)))
+         v16)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376 v11
+         (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v11) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v19)))
+         v17)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376 v11
+         (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v11) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v20)))
+         v18)
+      (coe v21)
+      (coe
+         du_coerce'45'h_606 (coe v0)
+         (coe addInt (coe (1 :: Integer)) (coe v1))
+         (coe
+            MAlonzo.Code.Once.Lang.Context.C__'44'_'94'__12 v2 v3
+            (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14))
+         (coe MAlonzo.Code.Once.Lang.Context.C__'8759'__52 v9 v7) (coe v5)
+         (coe v12) (coe v15) (coe v16)
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v5) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v19)))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v5) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v20)))
+         (coe v22))
+      (coe
+         du_coerce'45'h_606 (coe v0)
+         (coe addInt (coe (1 :: Integer)) (coe v1))
+         (coe
+            MAlonzo.Code.Once.Lang.Context.C__'44'_'94'__12 v2 v4
+            (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14))
+         (coe MAlonzo.Code.Once.Lang.Context.C__'8759'__52 v10 v8) (coe v11)
+         (coe v12) (coe v17) (coe v18)
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v11) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v19)))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+            (coe v11) (coe v12)
+            (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v20)))
+         (coe v23))
+-- Once.Adequacy.CoherenceHet._.copairj-h
+d_copairj'45'h_1130 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+d_copairj'45'h_1130 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8 v9 v10 ~v11 v12
+                    ~v13 v14 ~v15 v16 v17 v18 v19 v20 v21 v22 v23
+  = du_copairj'45'h_1130
+      v0 v1 v2 v3 v4 v5 v6 v9 v10 v12 v14 v16 v17 v18 v19 v20 v21 v22 v23
+du_copairj'45'h_1130 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+du_copairj'45'h_1130 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+                     v14 v15 v16 v17 v18
+  = case coe v17 of
+      C_'8773'i_402 v21
+        -> case coe v18 of
+             C_'8773'i_402 v24
+               -> coe
+                    du_copairj'45'at_1162 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+                    (coe v5) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11)
+                    (coe v12) (coe v13) (coe v14) (coe v15) (coe v16)
+                    (coe C_'8773'i_402 v21) (coe C_'8773'i_402 v24)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.CoherenceHet._._.copairj-at
+d_copairj'45'at_1162 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__64 ->
+  MAlonzo.Code.Once.Adequacy.CoherenceLaws.T__'8776'__64 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+d_copairj'45'at_1162 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+                     ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 v20 v21 v22 v23 ~v24 v25
+                     v26 ~v27 v28 v29 ~v30 v31 v32 v33 v34 v35 v36 ~v37 v38 v39
+  = du_copairj'45'at_1162
+      v0 v1 v2 v20 v21 v22 v23 v25 v26 v28 v29 v31 v32 v33 v34 v35 v36
+      v38 v39
+du_copairj'45'at_1162 ::
+  MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'8852'_'8788'__240 ->
+  T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
+du_copairj'45'at_1162 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+                      v14 v15 v16 v17 v18
+  = coe
+      du_copair'45'h_570 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      (coe v5) (coe v10) (coe v7) (coe v8)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v4)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v6))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v4))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v6) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v15)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         v11)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v4)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v6))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v4))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v6) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v16)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         v12)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v8)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v9))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v8))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v9) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v15)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         v13)
+      (coe
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_376
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v8)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v9))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v8))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v9) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v16)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         v14)
+      (coe
+         du_coerce'45'h_606 (coe v0) (coe v1) (coe v2) (coe v3)
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v4)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v6))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v4)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v10))
+         (coe v11) (coe v12)
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v4))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v6) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v15)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v4))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v6) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v16)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         (coe v17))
+      (coe
+         du_coerce'45'h_606 (coe v0) (coe v1) (coe v2) (coe v7)
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v8)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v9))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v8)
+            (coe
+               MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5))
+            (coe v10))
+         (coe v13) (coe v14)
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v8))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v9) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v15)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         (coe
+            MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v8))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''7580''8658''60''58'_190
+               (coe v9) (coe v10)
+               (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v16)))
+            (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94 (coe v5)))
+         (coe v18))
 -- Once.Adequacy.CoherenceHet._.forkc-h
-d_forkc'45'h_1008 ::
+d_forkc'45'h_1184 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -3655,11 +4139,11 @@ d_forkc'45'h_1008 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-d_forkc'45'h_1008 v0 v1 v2 v3 v4 v5 v6 ~v7 v8 v9 v10 ~v11 v12 v13
+d_forkc'45'h_1184 v0 v1 v2 v3 v4 v5 v6 ~v7 v8 v9 v10 ~v11 v12 v13
                   v14 v15 v16 v17 v18 v19 v20
-  = du_forkc'45'h_1008
+  = du_forkc'45'h_1184
       v0 v1 v2 v3 v4 v5 v6 v8 v9 v10 v12 v13 v14 v15 v16 v17 v18 v19 v20
-du_forkc'45'h_1008 ::
+du_forkc'45'h_1184 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -3678,7 +4162,7 @@ du_forkc'45'h_1008 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-du_forkc'45'h_1008 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+du_forkc'45'h_1184 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                    v14 v15 v16 v17 v18
   = case coe v17 of
       C_'8773'i_402 v21
@@ -3841,7 +4325,7 @@ du_forkc'45'h_1008 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.catac-h
-d_catac'45'h_1036 ::
+d_catac'45'h_1212 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -3858,11 +4342,11 @@ d_catac'45'h_1036 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   T__'8773'__384 -> T__'8773'__384
-d_catac'45'h_1036 v0 v1 v2 v3 v4 v5 ~v6 v7 v8 v9 v10 v11 v12 v13
+d_catac'45'h_1212 v0 v1 v2 v3 v4 v5 ~v6 v7 v8 v9 v10 v11 v12 v13
                   v14 v15
-  = du_catac'45'h_1036
+  = du_catac'45'h_1212
       v0 v1 v2 v3 v4 v5 v7 v8 v9 v10 v11 v12 v13 v14 v15
-du_catac'45'h_1036 ::
+du_catac'45'h_1212 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -3878,7 +4362,7 @@ du_catac'45'h_1036 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   T__'8773'__384 -> T__'8773'__384
-du_catac'45'h_1036 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
+du_catac'45'h_1212 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                    v14
   = case coe v13 of
       MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52 v22 v23 v24
@@ -4110,7 +4594,7 @@ du_catac'45'h_1036 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.di-h
-d_di'45'h_1070 ::
+d_di'45'h_1246 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -4132,11 +4616,11 @@ d_di'45'h_1070 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   T__'8773'__384 -> T__'8773'__384
-d_di'45'h_1070 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8 ~v9 ~v10 ~v11 v12 v13
+d_di'45'h_1246 v0 v1 v2 v3 v4 v5 v6 ~v7 ~v8 ~v9 ~v10 ~v11 v12 v13
                v14 v15 v16 v17 v18 v19 v20
-  = du_di'45'h_1070
+  = du_di'45'h_1246
       v0 v1 v2 v3 v4 v5 v6 v12 v13 v14 v15 v16 v17 v18 v19 v20
-du_di'45'h_1070 ::
+du_di'45'h_1246 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
@@ -4153,7 +4637,7 @@ du_di'45'h_1070 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   T__'8773'__384 -> T__'8773'__384
-du_di'45'h_1070 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
+du_di'45'h_1246 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                 v15
   = case coe v15 of
       C_'8773'i_402 v18
@@ -4248,12 +4732,12 @@ du_di'45'h_1070 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                    (coe v10)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.U
-d_U_1088 ::
+d_U_1264 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 -> ()
-d_U_1088 = erased
+d_U_1264 = erased
 -- Once.Adequacy.CoherenceHet._.resolved-go
-d_resolved'45'go_1110 ::
+d_resolved'45'go_1286 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -4267,23 +4751,23 @@ d_resolved'45'go_1110 ::
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-d_resolved'45'go_1110 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
-  = du_resolved'45'go_1110 v0 v1 v2 v3 v11
-du_resolved'45'go_1110 ::
+d_resolved'45'go_1286 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
+  = du_resolved'45'go_1286 v0 v1 v2 v3 v11
+du_resolved'45'go_1286 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-du_resolved'45'go_1110 v0 v1 v2 v3 v4
+du_resolved'45'go_1286 v0 v1 v2 v3 v4
   = coe
       du_'8773''45'refl_414 (coe v0)
       (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v1))
       (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_debruijn_122 (coe v1))
       (coe v3) (coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384 v2 v4)
 -- Once.Adequacy.CoherenceHet._.resolved-h
-d_resolved'45'h_1146 ::
+d_resolved'45'h_1322 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -4296,20 +4780,20 @@ d_resolved'45'h_1146 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-d_resolved'45'h_1146 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
-  = du_resolved'45'h_1146 v0 v1 v2 v3 v10
-du_resolved'45'h_1146 ::
+d_resolved'45'h_1322 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 v10
+  = du_resolved'45'h_1322 v0 v1 v2 v3 v10
+du_resolved'45'h_1322 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-du_resolved'45'h_1146 v0 v1 v2 v3 v4
+du_resolved'45'h_1322 v0 v1 v2 v3 v4
   = coe
-      du_resolved'45'go_1110 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      du_resolved'45'go_1286 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
 -- Once.Adequacy.CoherenceHet._.own-go
-d_own'45'go_1182 ::
+d_own'45'go_1358 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4322,16 +4806,16 @@ d_own'45'go_1182 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_own'45'go_1182 v0 v1 v2 v3 ~v4 ~v5 ~v6 v7 ~v8 ~v9 ~v10 ~v11
-  = du_own'45'go_1182 v0 v1 v2 v3 v7
-du_own'45'go_1182 ::
+d_own'45'go_1358 v0 v1 v2 v3 ~v4 ~v5 ~v6 v7 ~v8 ~v9 ~v10 ~v11
+  = du_own'45'go_1358 v0 v1 v2 v3 v7
+du_own'45'go_1358 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-du_own'45'go_1182 v0 v1 v2 v3 v4
+du_own'45'go_1358 v0 v1 v2 v3 v4
   = coe
       du_'8773''45'refl_414 (coe v0)
       (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v1))
@@ -4351,7 +4835,7 @@ du_own'45'go_1182 v0 v1 v2 v3 v4
             (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v1)))
          (coe MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v4))
 -- Once.Adequacy.CoherenceHet._.own-h
-d_own'45'h_1206 ::
+d_own'45'h_1382 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4363,20 +4847,20 @@ d_own'45'h_1206 ::
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_own'45'h_1206 v0 v1 v2 v3 ~v4 ~v5 ~v6 v7 ~v8 ~v9 ~v10
-  = du_own'45'h_1206 v0 v1 v2 v3 v7
-du_own'45'h_1206 ::
+d_own'45'h_1382 v0 v1 v2 v3 ~v4 ~v5 ~v6 v7 ~v8 ~v9 ~v10
+  = du_own'45'h_1382 v0 v1 v2 v3 v7
+du_own'45'h_1382 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-du_own'45'h_1206 v0 v1 v2 v3 v4
+du_own'45'h_1382 v0 v1 v2 v3 v4
   = coe
-      du_own'45'go_1182 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      du_own'45'go_1358 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
 -- Once.Adequacy.CoherenceHet._.local-go
-d_local'45'go_1240 ::
+d_local'45'go_1416 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4389,16 +4873,16 @@ d_local'45'go_1240 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_local'45'go_1240 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 ~v9 ~v10 ~v11
-  = du_local'45'go_1240 v0 v1 v2 v3 v5 v7
-du_local'45'go_1240 ::
+d_local'45'go_1416 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 ~v9 ~v10 ~v11
+  = du_local'45'go_1416 v0 v1 v2 v3 v5 v7
+du_local'45'go_1416 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Context.T_SVar_112 -> T__'8773'__384
-du_local'45'go_1240 v0 v1 v2 v3 v4 v5
+du_local'45'go_1416 v0 v1 v2 v3 v4 v5
   = coe
       du_'8773''45'refl_414 (coe v0)
       (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v1))
@@ -4409,7 +4893,7 @@ du_local'45'go_1240 v0 v1 v2 v3 v4 v5
          v3 v4
          (coe MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'local_62 v5))
 -- Once.Adequacy.CoherenceHet._.local-h
-d_local'45'h_1264 ::
+d_local'45'h_1440 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4421,21 +4905,21 @@ d_local'45'h_1264 ::
   MAlonzo.Code.Once.Lang.Context.T_SVar_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_local'45'h_1264 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 ~v9 ~v10
-  = du_local'45'h_1264 v0 v1 v2 v3 v5 v7
-du_local'45'h_1264 ::
+d_local'45'h_1440 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 ~v9 ~v10
+  = du_local'45'h_1440 v0 v1 v2 v3 v5 v7
+du_local'45'h_1440 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Once.Lang.Context.T_SVar_112 -> T__'8773'__384
-du_local'45'h_1264 v0 v1 v2 v3 v4 v5
+du_local'45'h_1440 v0 v1 v2 v3 v4 v5
   = coe
-      du_local'45'go_1240 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      du_local'45'go_1416 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
       (coe v5)
 -- Once.Adequacy.CoherenceHet._.import-go
-d_import'45'go_1294 ::
+d_import'45'go_1470 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4452,17 +4936,17 @@ d_import'45'go_1294 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_import'45'go_1294 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11
+d_import'45'go_1470 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11
                     ~v12 ~v13
-  = du_import'45'go_1294 v0 v1 v2 v3 v9
-du_import'45'go_1294 ::
+  = du_import'45'go_1470 v0 v1 v2 v3 v9
+du_import'45'go_1470 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-du_import'45'go_1294 v0 v1 v2 v3 v4
+du_import'45'go_1470 v0 v1 v2 v3 v4
   = coe
       du_'8773''45'refl_414 (coe v0)
       (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v1))
@@ -4475,7 +4959,7 @@ du_import'45'go_1294 v0 v1 v2 v3 v4
             (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v1)))
          (coe MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v4))
 -- Once.Adequacy.CoherenceHet._.import-h
-d_import'45'h_1322 ::
+d_import'45'h_1498 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4491,42 +4975,42 @@ d_import'45'h_1322 ::
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_import'45'h_1322 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11
+d_import'45'h_1498 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11
                    ~v12
-  = du_import'45'h_1322 v0 v1 v2 v3 v9
-du_import'45'h_1322 ::
+  = du_import'45'h_1498 v0 v1 v2 v3 v9
+du_import'45'h_1498 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
   T__'8773'__384
-du_import'45'h_1322 v0 v1 v2 v3 v4
+du_import'45'h_1498 v0 v1 v2 v3 v4
   = coe
-      du_import'45'go_1294 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      du_import'45'go_1470 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
 -- Once.Adequacy.CoherenceHet._.poly-ty
-d_poly'45'ty_1346 ::
+d_poly'45'ty_1522 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_poly'45'ty_1346 v0 v1 v2 v3 ~v4 ~v5
-  = du_poly'45'ty_1346 v0 v1 v2 v3
-du_poly'45'ty_1346 ::
+d_poly'45'ty_1522 v0 v1 v2 v3 ~v4 ~v5
+  = du_poly'45'ty_1522 v0 v1 v2 v3
+du_poly'45'ty_1522 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T__'8773'__384
-du_poly'45'ty_1346 v0 v1 v2 v3
+du_poly'45'ty_1522 v0 v1 v2 v3
   = coe
       du_'8773''45'refl_414 (coe v0)
       (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v1))
       (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_debruijn_122 (coe v1))
       (coe v3) (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v2)
 -- Once.Adequacy.CoherenceHet._.polyinf-go
-d_polyinf'45'go_1376 ::
+d_polyinf'45'go_1552 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4543,18 +5027,18 @@ d_polyinf'45'go_1376 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_polyinf'45'go_1376 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+d_polyinf'45'go_1552 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
                      ~v12 ~v13 ~v14 ~v15
-  = du_polyinf'45'go_1376 v0 v1 v2 v3
-du_polyinf'45'go_1376 ::
+  = du_polyinf'45'go_1552 v0 v1 v2 v3
+du_polyinf'45'go_1552 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T__'8773'__384
-du_polyinf'45'go_1376 v0 v1 v2 v3
-  = coe du_poly'45'ty_1346 (coe v0) (coe v1) (coe v2) (coe v3)
+du_polyinf'45'go_1552 v0 v1 v2 v3
+  = coe du_poly'45'ty_1522 (coe v0) (coe v1) (coe v2) (coe v3)
 -- Once.Adequacy.CoherenceHet._.polyinf-h
-d_polyinf'45'h_1430 ::
+d_polyinf'45'h_1606 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -4578,18 +5062,18 @@ d_polyinf'45'h_1430 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T__'8773'__384
-d_polyinf'45'h_1430 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+d_polyinf'45'h_1606 v0 v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
                     ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22
-  = du_polyinf'45'h_1430 v0 v1 v2 v3
-du_polyinf'45'h_1430 ::
+  = du_polyinf'45'h_1606 v0 v1 v2 v3
+du_polyinf'45'h_1606 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 -> T__'8773'__384
-du_polyinf'45'h_1430 v0 v1 v2 v3
-  = coe du_polyinf'45'go_1376 (coe v0) (coe v1) (coe v2) (coe v3)
+du_polyinf'45'h_1606 v0 v1 v2 v3
+  = coe du_polyinf'45'go_1552 (coe v0) (coe v1) (coe v2) (coe v3)
 -- Once.Adequacy.CoherenceHet._.arith-h
-d_arith'45'h_1462 ::
+d_arith'45'h_1638 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -4606,10 +5090,10 @@ d_arith'45'h_1462 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-d_arith'45'h_1462 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
+d_arith'45'h_1638 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
                   v14 v15 v16
-  = du_arith'45'h_1462 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
-du_arith'45'h_1462 ::
+  = du_arith'45'h_1638 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
+du_arith'45'h_1638 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -4622,7 +5106,7 @@ du_arith'45'h_1462 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-du_arith'45'h_1462 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+du_arith'45'h_1638 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v4 of
       MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
         -> case coe v11 of
@@ -4781,7 +5265,7 @@ du_arith'45'h_1462 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.farith-h
-d_farith'45'h_1506 ::
+d_farith'45'h_1682 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -4798,10 +5282,10 @@ d_farith'45'h_1506 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-d_farith'45'h_1506 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12
+d_farith'45'h_1682 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12
                    v13 v14 v15 v16
-  = du_farith'45'h_1506 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
-du_farith'45'h_1506 ::
+  = du_farith'45'h_1682 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
+du_farith'45'h_1682 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -4814,7 +5298,7 @@ du_farith'45'h_1506 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-du_farith'45'h_1506 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+du_farith'45'h_1682 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v4 of
       MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
         -> case coe v11 of
@@ -4942,7 +5426,7 @@ du_farith'45'h_1506 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.il-h
-d_il'45'h_1546 ::
+d_il'45'h_1722 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -4959,10 +5443,10 @@ d_il'45'h_1546 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-d_il'45'h_1546 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
+d_il'45'h_1722 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
                v14 v15 v16
-  = du_il'45'h_1546 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
-du_il'45'h_1546 ::
+  = du_il'45'h_1722 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
+du_il'45'h_1722 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -4975,7 +5459,7 @@ du_il'45'h_1546 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-du_il'45'h_1546 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+du_il'45'h_1722 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v4 of
       MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
         -> case coe v11 of
@@ -5167,7 +5651,7 @@ du_il'45'h_1546 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.ir-h
-d_ir'45'h_1586 ::
+d_ir'45'h_1762 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5184,10 +5668,10 @@ d_ir'45'h_1586 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-d_ir'45'h_1586 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
+d_ir'45'h_1762 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
                v14 v15 v16
-  = du_ir'45'h_1586 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
-du_ir'45'h_1586 ::
+  = du_ir'45'h_1762 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
+du_ir'45'h_1762 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5200,7 +5684,7 @@ du_ir'45'h_1586 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-du_ir'45'h_1586 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+du_ir'45'h_1762 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v4 of
       MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
         -> case coe v11 of
@@ -5392,7 +5876,7 @@ du_ir'45'h_1586 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.cmp-h
-d_cmp'45'h_1626 ::
+d_cmp'45'h_1802 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5409,10 +5893,10 @@ d_cmp'45'h_1626 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-d_cmp'45'h_1626 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
+d_cmp'45'h_1802 v0 v1 v2 v3 v4 ~v5 ~v6 v7 ~v8 v9 ~v10 v11 v12 v13
                 v14 v15 v16
-  = du_cmp'45'h_1626 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
-du_cmp'45'h_1626 ::
+  = du_cmp'45'h_1802 v0 v1 v2 v3 v4 v7 v9 v11 v12 v13 v14 v15 v16
+du_cmp'45'h_1802 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5425,7 +5909,7 @@ du_cmp'45'h_1626 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384 -> T__'8773'__384
-du_cmp'45'h_1626 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+du_cmp'45'h_1802 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = case coe v4 of
       MAlonzo.Code.Once.Lang.Syntax.C_OpLt_18
         -> case coe v11 of
@@ -5615,7 +6099,7 @@ du_cmp'45'h_1626 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.idapp-h
-d_idapp'45'h_1664 ::
+d_idapp'45'h_1840 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5626,9 +6110,9 @@ d_idapp'45'h_1664 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_idapp'45'h_1664 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9
-  = du_idapp'45'h_1664 v0 v1 v2 v3 v5 v7 v8 v9
-du_idapp'45'h_1664 ::
+d_idapp'45'h_1840 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9
+  = du_idapp'45'h_1840 v0 v1 v2 v3 v5 v7 v8 v9
+du_idapp'45'h_1840 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5637,7 +6121,7 @@ du_idapp'45'h_1664 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_idapp'45'h_1664 v0 v1 v2 v3 v4 v5 v6 v7
+du_idapp'45'h_1840 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v7 of
       C_'8773'i_402 v10
         -> coe
@@ -5656,7 +6140,7 @@ du_idapp'45'h_1664 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe v10))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.fstapp-h
-d_fstapp'45'h_1684 ::
+d_fstapp'45'h_1860 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5669,9 +6153,9 @@ d_fstapp'45'h_1684 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_fstapp'45'h_1684 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 v10 v11
-  = du_fstapp'45'h_1684 v0 v1 v2 v3 v5 v7 v9 v10 v11
-du_fstapp'45'h_1684 ::
+d_fstapp'45'h_1860 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 v10 v11
+  = du_fstapp'45'h_1860 v0 v1 v2 v3 v5 v7 v9 v10 v11
+du_fstapp'45'h_1860 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5681,7 +6165,7 @@ du_fstapp'45'h_1684 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_fstapp'45'h_1684 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_fstapp'45'h_1860 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       C_'8773'i_402 v11
         -> coe
@@ -5706,7 +6190,7 @@ du_fstapp'45'h_1684 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.sndapp-h
-d_sndapp'45'h_1704 ::
+d_sndapp'45'h_1880 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5719,9 +6203,9 @@ d_sndapp'45'h_1704 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_sndapp'45'h_1704 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 v10 v11
-  = du_sndapp'45'h_1704 v0 v1 v2 v3 v5 v7 v9 v10 v11
-du_sndapp'45'h_1704 ::
+d_sndapp'45'h_1880 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 v10 v11
+  = du_sndapp'45'h_1880 v0 v1 v2 v3 v5 v7 v9 v10 v11
+du_sndapp'45'h_1880 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5731,7 +6215,7 @@ du_sndapp'45'h_1704 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_sndapp'45'h_1704 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_sndapp'45'h_1880 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       C_'8773'i_402 v11
         -> coe
@@ -5756,7 +6240,7 @@ du_sndapp'45'h_1704 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.termapp-h
-d_termapp'45'h_1720 ::
+d_termapp'45'h_1896 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5767,9 +6251,9 @@ d_termapp'45'h_1720 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_termapp'45'h_1720 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9
-  = du_termapp'45'h_1720 v0 v1 v2 v3 v5 v7 v8 v9
-du_termapp'45'h_1720 ::
+d_termapp'45'h_1896 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9
+  = du_termapp'45'h_1896 v0 v1 v2 v3 v5 v7 v8 v9
+du_termapp'45'h_1896 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5778,7 +6262,7 @@ du_termapp'45'h_1720 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_termapp'45'h_1720 v0 v1 v2 v3 v4 v5 v6 v7
+du_termapp'45'h_1896 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v7 of
       C_'8773'i_402 v10
         -> coe
@@ -5798,7 +6282,7 @@ du_termapp'45'h_1720 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe v10))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.apply-h
-d_apply'45'h_1740 ::
+d_apply'45'h_1916 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5811,9 +6295,9 @@ d_apply'45'h_1740 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_apply'45'h_1740 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 v10 v11
-  = du_apply'45'h_1740 v0 v1 v2 v3 v5 v7 v9 v10 v11
-du_apply'45'h_1740 ::
+d_apply'45'h_1916 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 v10 v11
+  = du_apply'45'h_1916 v0 v1 v2 v3 v5 v7 v9 v10 v11
+du_apply'45'h_1916 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5823,7 +6307,7 @@ du_apply'45'h_1740 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_apply'45'h_1740 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_apply'45'h_1916 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       C_'8773'i_402 v11
         -> coe
@@ -5875,7 +6359,7 @@ du_apply'45'h_1740 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.applyeff-h
-d_applyeff'45'h_1768 ::
+d_applyeff'45'h_1944 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5892,10 +6376,10 @@ d_applyeff'45'h_1768 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_applyeff'45'h_1768 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 ~v10 ~v11
+d_applyeff'45'h_1944 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8 v9 ~v10 ~v11
                      ~v12 v13 v14 v15
-  = du_applyeff'45'h_1768 v0 v1 v2 v3 v5 v7 v9 v13 v14 v15
-du_applyeff'45'h_1768 ::
+  = du_applyeff'45'h_1944 v0 v1 v2 v3 v5 v7 v9 v13 v14 v15
+du_applyeff'45'h_1944 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5906,7 +6390,7 @@ du_applyeff'45'h_1768 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_applyeff'45'h_1768 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+du_applyeff'45'h_1944 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v9 of
       C_'8773'i_402 v12
         -> coe
@@ -5974,7 +6458,7 @@ du_applyeff'45'h_1768 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                 (coe v12))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.out-h
-d_out'45'h_1788 ::
+d_out'45'h_1964 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -5987,9 +6471,9 @@ d_out'45'h_1788 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_out'45'h_1788 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9 v10 v11
-  = du_out'45'h_1788 v0 v1 v2 v3 v5 v7 v8 v9 v10 v11
-du_out'45'h_1788 ::
+d_out'45'h_1964 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9 v10 v11
+  = du_out'45'h_1964 v0 v1 v2 v3 v5 v7 v8 v9 v10 v11
+du_out'45'h_1964 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6000,7 +6484,7 @@ du_out'45'h_1788 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_out'45'h_1788 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+du_out'45'h_1964 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v9 of
       C_'8773'i_402 v12
         -> coe
@@ -6052,7 +6536,7 @@ du_out'45'h_1788 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v4)))
                    (coe
-                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'app'45'infer_352 v3 v4
+                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'app'45'infer_356 v3 v4
                       v5 v7))
                 (coe
                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_434 v4
@@ -6099,7 +6583,7 @@ du_out'45'h_1788 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v4)))
                    (coe
-                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'app'45'infer_352 v3 v4
+                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'app'45'infer_356 v3 v4
                       v6 v8))
                 (coe
                    MAlonzo.Code.Once.Adequacy.CoherenceLawsWrap.d_morph'45'app'45'cong_854
@@ -6160,7 +6644,7 @@ du_out'45'h_1788 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          v4 v8))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.outeff-h
-d_outeff'45'h_1816 ::
+d_outeff'45'h_1992 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6173,9 +6657,9 @@ d_outeff'45'h_1816 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_outeff'45'h_1816 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9 v10 v11
-  = du_outeff'45'h_1816 v0 v1 v2 v3 v5 v7 v8 v9 v10 v11
-du_outeff'45'h_1816 ::
+d_outeff'45'h_1992 v0 v1 v2 v3 ~v4 v5 ~v6 v7 v8 v9 v10 v11
+  = du_outeff'45'h_1992 v0 v1 v2 v3 v5 v7 v8 v9 v10 v11
+du_outeff'45'h_1992 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6186,7 +6670,7 @@ du_outeff'45'h_1816 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_outeff'45'h_1816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+du_outeff'45'h_1992 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v9 of
       C_'8773'i_402 v12
         -> coe
@@ -6252,7 +6736,7 @@ du_outeff'45'h_1816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v4)))
                    (coe
-                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'eff'45'app'45'infer_364
+                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'eff'45'app'45'infer_368
                       v3 v4 v5 v7))
                 (coe
                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_434 v4
@@ -6315,7 +6799,7 @@ du_outeff'45'h_1816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v4)))
                    (coe
-                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'eff'45'app'45'infer_364
+                      MAlonzo.Code.Once.Lang.Typing.C_t'45'Out'45'eff'45'app'45'infer_368
                       v3 v4 v6 v8))
                 (coe
                    MAlonzo.Code.Once.Adequacy.CoherenceLawsWrap.d_morph'45'app'45'cong_854
@@ -6408,7 +6892,7 @@ du_outeff'45'h_1816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          v4 v8))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.applychk-h
-d_applychk'45'h_1842 ::
+d_applychk'45'h_2018 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6420,9 +6904,9 @@ d_applychk'45'h_1842 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-d_applychk'45'h_1842 v0 v1 v2 v3 ~v4 v5 v6 ~v7 v8 v9 v10
-  = du_applychk'45'h_1842 v0 v1 v2 v3 v5 v6 v8 v9 v10
-du_applychk'45'h_1842 ::
+d_applychk'45'h_2018 v0 v1 v2 v3 ~v4 v5 v6 ~v7 v8 v9 v10
+  = du_applychk'45'h_2018 v0 v1 v2 v3 v5 v6 v8 v9 v10
+du_applychk'45'h_2018 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6432,7 +6916,7 @@ du_applychk'45'h_1842 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   T__'8773'__384 -> T__'8773'__384
-du_applychk'45'h_1842 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_applychk'45'h_2018 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       C_'8773'i_402 v11
         -> coe
@@ -6484,7 +6968,7 @@ du_applychk'45'h_1842 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.applyic-h
-d_applyic'45'h_1866 ::
+d_applyic'45'h_2042 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6500,10 +6984,10 @@ d_applyic'45'h_1866 ::
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T__'8773'__384 -> T__'8773'__384
-d_applyic'45'h_1866 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 v8 ~v9 v10 v11 v12
+d_applyic'45'h_2042 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 v8 ~v9 v10 v11 v12
                     ~v13 v14
-  = du_applyic'45'h_1866 v0 v1 v2 v3 v5 v8 v10 v11 v12 v14
-du_applyic'45'h_1866 ::
+  = du_applyic'45'h_2042 v0 v1 v2 v3 v5 v8 v10 v11 v12 v14
+du_applyic'45'h_2042 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6514,7 +6998,7 @@ du_applyic'45'h_1866 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 ->
   T__'8773'__384 -> T__'8773'__384
-du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+du_applyic'45'h_2042 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v9 of
       C_'8773'i_402 v12
         -> coe
@@ -6560,7 +7044,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                       (coe
-                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_324 v3
+                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_328 v3
                          v5 v6)))
                 (coe
                    MAlonzo.Code.Once.Surface.Syntax.C_coerce_376 v4
@@ -6591,7 +7075,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                       (coe
-                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_324 v3
+                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_328 v3
                          v5 v6)))
                 (coe
                    du_RC_226 v1
@@ -6619,7 +7103,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                    (coe
-                      MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'check_720 v3 v5 v7))
+                      MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'check_724 v3 v5 v7))
                 (coe
                    MAlonzo.Code.Once.Adequacy.CoherenceLawsWrap.du_coerce'45'uniq_1538
                    (coe v0)
@@ -6654,7 +7138,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                       (coe
-                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_324 v3
+                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_328 v3
                          v5 v6)))
                 (coe
                    MAlonzo.Code.Once.Adequacy.CoherenceLaws.d_'8776''45'trans_146
@@ -6699,7 +7183,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                          (coe
-                            MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_324 v3
+                            MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_328 v3
                             v5 v6)))
                    (coe
                       du_RI_224 v1
@@ -6727,7 +7211,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                       (coe
-                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_324 v3
+                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_328 v3
                          v5 v6))
                    (coe
                       du_RC_226 v1
@@ -6755,7 +7239,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                             MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                       (coe
-                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'check_720 v3 v5 v7))
+                         MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'check_724 v3 v5 v7))
                    (coe
                       MAlonzo.Code.Once.Adequacy.CoherenceLawsWrap.du_coerce'45'refl_1472
                       (coe v0)
@@ -6788,7 +7272,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v5)))
                          (coe
-                            MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_324 v3
+                            MAlonzo.Code.Once.Lang.Typing.C_t'45'apply'45'app'45'infer_328 v3
                             v5 v6)))
                    (coe
                       MAlonzo.Code.Once.Adequacy.CoherenceLawsWrap.d_morph'45'app'45'cong_854
@@ -6838,7 +7322,7 @@ du_applyic'45'h_1866 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                       (coe v12))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.In-h
-d_In'45'h_1886 ::
+d_In'45'h_2062 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6850,9 +7334,9 @@ d_In'45'h_1886 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-d_In'45'h_1886 v0 v1 v2 v3 v4 ~v5 v6 v7 v8 v9 v10
-  = du_In'45'h_1886 v0 v1 v2 v3 v4 v6 v7 v8 v9 v10
-du_In'45'h_1886 ::
+d_In'45'h_2062 v0 v1 v2 v3 v4 ~v5 v6 v7 v8 v9 v10
+  = du_In'45'h_2062 v0 v1 v2 v3 v4 v6 v7 v8 v9 v10
+du_In'45'h_2062 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -6863,7 +7347,7 @@ du_In'45'h_1886 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-du_In'45'h_1886 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
+du_In'45'h_2062 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v9 of
       C_'8773'i_402 v12
         -> coe
@@ -6907,7 +7391,7 @@ du_In'45'h_1886 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v4)))
                    (coe
-                      MAlonzo.Code.Once.Lang.Typing.C_t'45'In'45'app'45'check_708 v4 v5
+                      MAlonzo.Code.Once.Lang.Typing.C_t'45'In'45'app'45'check_712 v4 v5
                       v7))
                 (coe
                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_434 v4
@@ -6948,7 +7432,7 @@ du_In'45'h_1886 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          MAlonzo.Code.Once.Lang.Context.du__'42''7512'__88
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v4)))
                    (coe
-                      MAlonzo.Code.Once.Lang.Typing.C_t'45'In'45'app'45'check_708 v4 v6
+                      MAlonzo.Code.Once.Lang.Typing.C_t'45'In'45'app'45'check_712 v4 v6
                       v8))
                 (coe
                    MAlonzo.Code.Once.Adequacy.CoherenceLawsWrap.d_morph'45'app'45'cong_854
@@ -6997,7 +7481,7 @@ du_In'45'h_1886 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          v4 v8))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.inlapp-h
-d_inlapp'45'h_1910 ::
+d_inlapp'45'h_2086 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -7008,9 +7492,9 @@ d_inlapp'45'h_1910 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-d_inlapp'45'h_1910 v0 v1 v2 v3 v4 v5 ~v6 v7 v8 v9
-  = du_inlapp'45'h_1910 v0 v1 v2 v3 v4 v5 v7 v8 v9
-du_inlapp'45'h_1910 ::
+d_inlapp'45'h_2086 v0 v1 v2 v3 v4 v5 ~v6 v7 v8 v9
+  = du_inlapp'45'h_2086 v0 v1 v2 v3 v4 v5 v7 v8 v9
+du_inlapp'45'h_2086 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -7020,7 +7504,7 @@ du_inlapp'45'h_1910 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-du_inlapp'45'h_1910 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_inlapp'45'h_2086 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       C_'8773'i_402 v11
         -> coe
@@ -7041,7 +7525,7 @@ du_inlapp'45'h_1910 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.inrapp-h
-d_inrapp'45'h_1926 ::
+d_inrapp'45'h_2102 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -7052,9 +7536,9 @@ d_inrapp'45'h_1926 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-d_inrapp'45'h_1926 v0 v1 v2 v3 v4 v5 ~v6 v7 v8 v9
-  = du_inrapp'45'h_1926 v0 v1 v2 v3 v4 v5 v7 v8 v9
-du_inrapp'45'h_1926 ::
+d_inrapp'45'h_2102 v0 v1 v2 v3 v4 v5 ~v6 v7 v8 v9
+  = du_inrapp'45'h_2102 v0 v1 v2 v3 v4 v5 v7 v8 v9
+du_inrapp'45'h_2102 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -7064,7 +7548,7 @@ du_inrapp'45'h_1926 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-du_inrapp'45'h_1926 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_inrapp'45'h_2102 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       C_'8773'i_402 v11
         -> coe
@@ -7085,7 +7569,7 @@ du_inrapp'45'h_1926 v0 v1 v2 v3 v4 v5 v6 v7 v8
                 (coe v11))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.initapp-h
-d_initapp'45'h_1940 ::
+d_initapp'45'h_2116 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -7095,9 +7579,9 @@ d_initapp'45'h_1940 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-d_initapp'45'h_1940 v0 v1 v2 v3 v4 ~v5 v6 v7 v8
-  = du_initapp'45'h_1940 v0 v1 v2 v3 v4 v6 v7 v8
-du_initapp'45'h_1940 ::
+d_initapp'45'h_2116 v0 v1 v2 v3 v4 ~v5 v6 v7 v8
+  = du_initapp'45'h_2116 v0 v1 v2 v3 v4 v6 v7 v8
+du_initapp'45'h_2116 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
@@ -7106,7 +7590,7 @@ du_initapp'45'h_1940 ::
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   T__'8773'__384 -> T__'8773'__384
-du_initapp'45'h_1940 v0 v1 v2 v3 v4 v5 v6 v7
+du_initapp'45'h_2116 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v7 of
       C_'8773'i_402 v10
         -> coe
@@ -7126,7 +7610,7 @@ du_initapp'45'h_1940 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe v10))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CoherenceHet._.polydc-go
-d_polydc'45'go_1964 ::
+d_polydc'45'go_2140 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7139,9 +7623,9 @@ d_polydc'45'go_1964 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 -> T__'8773'__384
-d_polydc'45'go_1964 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 v10 v11
-  = du_polydc'45'go_1964 v0 v1 v2 v3 v4 v6 v10 v11
-du_polydc'45'go_1964 ::
+d_polydc'45'go_2140 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 v10 v11
+  = du_polydc'45'go_2140 v0 v1 v2 v3 v4 v6 v10 v11
+du_polydc'45'go_2140 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7150,7 +7634,7 @@ du_polydc'45'go_1964 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 -> T__'8773'__384
-du_polydc'45'go_1964 v0 v1 v2 v3 v4 v5 v6 v7
+du_polydc'45'go_2140 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       C_'8773'i_402
       (MAlonzo.Code.Once.Adequacy.CoherenceLaws.d_'8776''45'trans_146
@@ -7370,7 +7854,7 @@ du_polydc'45'go_1964 v0 v1 v2 v3 v4 v5 v6 v7
                   (coe v4))
                (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v2))))
 -- Once.Adequacy.CoherenceHet._.polydd-go
-d_polydd'45'go_1992 ::
+d_polydd'45'go_2168 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7384,9 +7868,9 @@ d_polydd'45'go_1992 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 -> T__'8773'__384
-d_polydd'45'go_1992 v0 v1 v2 v3 v4 ~v5 v6 v7 ~v8 ~v9 ~v10 ~v11 v12
-  = du_polydd'45'go_1992 v0 v1 v2 v3 v4 v6 v7 v12
-du_polydd'45'go_1992 ::
+d_polydd'45'go_2168 v0 v1 v2 v3 v4 ~v5 v6 v7 ~v8 ~v9 ~v10 ~v11 v12
+  = du_polydd'45'go_2168 v0 v1 v2 v3 v4 v6 v7 v12
+du_polydd'45'go_2168 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7395,7 +7879,7 @@ du_polydd'45'go_1992 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 -> T__'8773'__384
-du_polydd'45'go_1992 v0 v1 v2 v3 v4 v5 v6 v7
+du_polydd'45'go_2168 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       C_'8773'i_402
       (coe
@@ -7422,7 +7906,7 @@ du_polydd'45'go_1992 v0 v1 v2 v3 v4 v5 v6 v7
             v7)
          (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v2))
 -- Once.Adequacy.CoherenceHet._.polydc-h
-d_polydc'45'h_2044 ::
+d_polydc'45'h_2220 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7452,10 +7936,10 @@ d_polydc'45'h_2044 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 -> T__'8773'__384
-d_polydc'45'h_2044 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
+d_polydc'45'h_2220 v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
                    ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 v23 v24
-  = du_polydc'45'h_2044 v0 v1 v2 v3 v4 v6 v23 v24
-du_polydc'45'h_2044 ::
+  = du_polydc'45'h_2220 v0 v1 v2 v3 v4 v6 v23 v24
+du_polydc'45'h_2220 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7464,12 +7948,12 @@ du_polydc'45'h_2044 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26 -> T__'8773'__384
-du_polydc'45'h_2044 v0 v1 v2 v3 v4 v5 v6 v7
+du_polydc'45'h_2220 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      du_polydc'45'go_1964 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      du_polydc'45'go_2140 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
       (coe v5) (coe v6) (coe v7)
 -- Once.Adequacy.CoherenceHet._.polydd-h
-d_polydd'45'h_2116 ::
+d_polydd'45'h_2292 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7503,11 +7987,11 @@ d_polydd'45'h_2116 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 -> T__'8773'__384
-d_polydd'45'h_2116 v0 v1 v2 v3 v4 ~v5 v6 v7 ~v8 ~v9 ~v10 ~v11 ~v12
+d_polydd'45'h_2292 v0 v1 v2 v3 v4 ~v5 v6 v7 ~v8 ~v9 ~v10 ~v11 ~v12
                    ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 ~v23 ~v24 ~v25
                    ~v26 ~v27 v28
-  = du_polydd'45'h_2116 v0 v1 v2 v3 v4 v6 v7 v28
-du_polydd'45'h_2116 ::
+  = du_polydd'45'h_2292 v0 v1 v2 v3 v4 v6 v7 v28
+du_polydd'45'h_2292 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -7516,7 +8000,7 @@ du_polydd'45'h_2116 ::
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
   MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 -> T__'8773'__384
-du_polydd'45'h_2116 v0 v1 v2 v3 v4 v5 v6 v7
+du_polydd'45'h_2292 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      du_polydd'45'go_1992 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+      du_polydd'45'go_2168 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
       (coe v5) (coe v6) (coe v7)

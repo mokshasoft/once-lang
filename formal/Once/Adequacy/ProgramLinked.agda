@@ -194,7 +194,7 @@ realize-refs-i (t-pair da db)    = realize-refs-i da , realize-refs-i db
 realize-refs-i (t-neg d)         = realize-refs-i d
 realize-refs-i (t-neg-float i f l p) = tt
 realize-refs-i (t-let d₁ d₂)     = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-case ds dl dr) = realize-refs-i ds , realize-refs-i dl , realize-refs-i dr
+realize-refs-i (t-case ds dl dr _) = realize-refs-i ds , realize-refs-i dl , realize-refs-i dr
 realize-refs-i (t-binop-arith {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
 realize-refs-i (t-binop-arith {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
 realize-refs-i (t-binop-arith {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
@@ -277,7 +277,7 @@ realize-refs-d d-fst      = tt
 realize-refs-d d-snd      = tt
 realize-refs-d d-terminal = tt
 realize-refs-d d-initial  = tt
-realize-refs-d (d-case df dg) = realize-refs-d df , realize-refs-d dg
+realize-refs-d (d-case df dg _) = realize-refs-d df , realize-refs-d dg
 realize-refs-d (d-pair df dg) = realize-refs-d df , realize-refs-d dg
 realize-refs-d (d-cata wfF dalg) = realize-refs-i dalg
 

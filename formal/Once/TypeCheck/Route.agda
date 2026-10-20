@@ -26,6 +26,7 @@
 module Once.TypeCheck.Route where
 
 import Once.Lang.Name
+open import Once.Lang.Type.Sub using (_⊔_≔_)
 open import Relation.Binary.PropositionalEquality using (refl)
 import Relation.Binary.PropositionalEquality
 import Data.Maybe
@@ -73,10 +74,11 @@ mutual
     ii-let : ∀ {x Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {d₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁′}
                {d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q Surface.Usage.∷ Ψ₂)} {d₂′ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B′ ⨾ (q′ Surface.Usage.∷ Ψ₂′)}
            → Rii d₁ d₁′ → Rii d₂ d₂′ → Rii (t-let d₁ d₂) (t-let d₁′ d₂′)
-    ii-case : ∀ {xL xR qL qL′ qR qR′ Ψs Ψs′ Ψl Ψl′ Ψr Ψr′} {s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs} {s′ : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs′}
+    ii-case : ∀ {xL xR qL qL′ qR qR′ Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ Cᵣ Cᵣ′ D D′} {s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs} {s′ : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs′}
                 {l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL Surface.Usage.∷ Ψl)} {l′ : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ Surface.Usage.∷ Ψl′)}
-                {r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ C ⨾ (qR Surface.Usage.∷ Ψr)} {r′ : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ C′ ⨾ (qR′ Surface.Usage.∷ Ψr′)}
-            → Rii s s′ → Rii l l′ → Rii r r′ → Rii (t-case s l r) (t-case s′ l′ r′)
+                {r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR Surface.Usage.∷ Ψr)} {r′ : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ′ ⨾ (qR′ Surface.Usage.∷ Ψr′)}
+                {J : C ⊔ Cᵣ ≔ D} {J′ : C′ ⊔ Cᵣ′ ≔ D′}
+            → Rii s s′ → Rii l l′ → Rii r r′ → Rii (t-case s l r J) (t-case s′ l′ r′ J′)
     ii-arith : ∀ {op a a′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {d₁ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂′}
              → Rii d₁ d₁′ → Rii d₂ d₂′ → Rii (t-binop-arith {op = op} a d₁ d₂) (t-binop-arith a′ d₁′ d₂′)
     ii-farith : ∀ {op a a′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {d₁ : ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂′}
@@ -208,9 +210,10 @@ mutual
     dc-snd : ∀ {u u′} → Rdc {ctx} (d-snd {A = A} {B = B} {π = π} {u = u}) (t-snd-check {u = u′})
     dc-terminal : ∀ {u u′} → Rdc {ctx} (d-terminal {A = A} {π = π} {u = u}) (t-terminal-morph-check {u = u′})
     dc-initial : ∀ {u u′} → Rdc {ctx} (d-initial {π = π} {u = u}) (t-initial-morph-check {A = A} {u = u′})
-    dc-case : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₁′}
-                {dg : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᶜ e₂ ∶ (B ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₂′}
-            → Rdc df df′ → Rdc dg dg′ → Rdc (d-case df dg) (t-case-copair-check df′ dg′)
+    dc-case : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Cg D} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₁′}
+                {dg : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ Cg ⨾ Ψ₂} {dg′ : ctx ⊢ᶜ e₂ ∶ (B ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₂′}
+                {J : C ⊔ Cg ≔ D}
+            → Rdc df df′ → Rdc dg dg′ → Rdc (d-case df dg J) (t-case-copair-check df′ dg′)
     dc-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B₁) ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᶜ e₂ ∶ (A ⇒[ T.mk-kind T.Many π ] C₁) ⨾ Ψ₂′}
             → Rdc df df′ → Rdc dg dg′ → Rdc (d-pair df dg) (t-pair-morph-check df′ dg′)
@@ -244,9 +247,10 @@ mutual
     dd-snd : ∀ {u u′} → Rdd {ctx} (d-snd {A = A} {B = B} {π = π} {u = u}) (d-snd {u = u′})
     dd-terminal : ∀ {u u′} → Rdd {ctx} (d-terminal {A = A} {π = π} {u = u}) (d-terminal {u = u′})
     dd-initial : ∀ {u u′} → Rdd {ctx} (d-initial {π = π} {u = u}) (d-initial {u = u′})
-    dd-case : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C′ ⨾ Ψ₁′}
-                {dg : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ C′ ⨾ Ψ₂′}
-            → Rdd df df′ → Rdd dg dg′ → Rdd (d-case df dg) (d-case df′ dg′)
+    dd-case : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Cg Cg′ D D′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C′ ⨾ Ψ₁′}
+                {dg : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ Cg ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ Cg′ ⨾ Ψ₂′}
+                {J : C ⊔ Cg ≔ D} {J′ : C′ ⊔ Cg′ ≔ D′}
+            → Rdd df df′ → Rdd dg dg′ → Rdd (d-case df dg J) (d-case df′ dg′ J′)
     dd-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B′ ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C′ ⨾ Ψ₂′}
             → Rdd df df′ → Rdd dg dg′ → Rdd (d-pair df dg) (d-pair df′ dg′)

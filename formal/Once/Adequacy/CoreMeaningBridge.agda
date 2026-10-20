@@ -109,7 +109,8 @@ open import Once.Lang.Iterative using (loop)
 open import Once.Lang.Environment using (restrictᵛ)
 open import Once.Lang.Core.Syntax S
 open import Once.Lang.Type.Sub using (_⊑π_; sub-arr)
-open import Once.Lang.Type.Sub using (<:-refl)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:; _⊔_≔_)
+open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Lang.Core.Typing S
 open import Once.Lang.Core.DerivedTyping S
 import Once.Lang.Laws.CoreRenameSem S as RS
@@ -474,14 +475,17 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag (t-let {q = Many} d₁ d₂) dγ = bindC (bridge-i V ag d₁ _) (λ v → bridge-i V ag d₂ _)
   -- D276: the core arm runs at the join through `⊢sub-use`, i.e. restricted
   -- after binding; the surface binds after restricting. Same environment.
-  bridge-i V ag (t-case {ctx = ctx} {A = A} {B = B} {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr) dγ =
+  -- D322: each arm converted into the join, on both sides.
+  bridge-i V ag (t-case {ctx = ctx} {A = A} {B = B} {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr J) dγ =
     bindC (bridge-i V ag ds _)
-      (λ { (inj₁ a) → trans (bridge-i V ag dl _)
+      (λ { (inj₁ a) → cong ⟦ <:ᶜ⇒<: (⊔-left J) ⟧<:ᵛ
+                        (trans (bridge-i V ag dl _)
                             (cong (GM.⟦ proj₂ (elabᵢ V dl) ⟧ fmt δ)
-                                  (sym (EA.restrict-bind {Γ = Γc} {A = A} qL qL (⊑ᵘ-keep qL (Once.Lang.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) (Once.Lang.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) x a)))
-         ; (inj₂ b) → trans (bridge-i V ag dr _)
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = A} qL qL (⊑ᵘ-keep qL (Once.Lang.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)) (Once.Lang.Context.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) x a))))
+         ; (inj₂ b) → cong ⟦ <:ᶜ⇒<: (⊔-right J) ⟧<:ᵛ
+                        (trans (bridge-i V ag dr _)
                             (cong (GM.⟦ proj₂ (elabᵢ V dr) ⟧ fmt δ)
-                                  (sym (EA.restrict-bind {Γ = Γc} {A = B} qR qR (⊑ᵘ-keep qR (Once.Lang.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) (Once.Lang.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) x b))) })
+                                  (sym (EA.restrict-bind {Γ = Γc} {A = B} qR qR (⊑ᵘ-keep qR (Once.Lang.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)) (Once.Lang.Context.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) x b)))) })
     where Γc = NamedCtx.debruijn ctx
           x  = restrictᵛ {Γ = Γc} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ
   bridge-i V ag (t-binop-arith {op = OpAdd} _ d₁ d₂) dγ = binK (bridge-i V ag d₁ _) (bridge-i V ag d₂ _)
@@ -576,9 +580,11 @@ module _ {δ : GM.DefSem} where
   bridge-d V ag (d-snd {u = u}) dγ = refl
   bridge-d V ag d-terminal dγ = refl
   bridge-d V ag (d-initial {π = π}) dγ = extensionality λ ()
-  bridge-d V ag (d-case df dg) dγ =
-    trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
-          (sym (Comb.case-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))
+  bridge-d V ag (d-case {A = A} {B = B} {π = π} df dg J) dγ =
+    trans (bindC (cong ⟦ pf ⟧<:ᵛ (bridge-d V ag df _)) (λ vf → bindC (cong ⟦ pg ⟧<:ᵛ (bridge-d V ag dg _)) (λ vg → refl)))
+          (sym (Comb.case-sem {δ = δ} (⊢coerce pf (proj₂ (elabᵈ V df))) (⊢coerce pg (proj₂ (elabᵈ V dg))) dγ))
+    where pf = sub-arr {q = Many} (<:-refl A) (<:ᶜ⇒<: (⊔-left J)) (⊑π-refl π)
+          pg = sub-arr {q = Many} (<:-refl B) (<:ᶜ⇒<: (⊔-right J)) (⊑π-refl π)
   bridge-d V ag (d-pair df dg) dγ =
     trans (bindC (bridge-d V ag df _) (λ vf → bindC (bridge-d V ag dg _) (λ vg → refl)))
           (sym (Comb.pair-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) dγ))

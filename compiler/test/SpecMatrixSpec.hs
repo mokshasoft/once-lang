@@ -9,6 +9,7 @@ module SpecMatrixSpec (specMatrixTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Data.List (isInfixOf)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Exit (ExitCode (..))
@@ -44,6 +45,41 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
       , testCase "main at Eff Unit Unit over an Act body is rejected (D315)" $ do
           r <- checkExe [ "import I.Linux.Syscalls as S", "", "main : Eff Unit Unit", "main = compose exit@S (\\_ -> 0)" ]
           assertBool "Should reject a main wider than its body" (isLeft r)
+      ]
+
+  , testGroup "a case is at the join of its branches (D322)"
+      [ testCase "branches leaving different summands open meet at their join" $ do
+          r <- checkLib
+            [ "stop : Int -> Int + Void", "stop x = inl x", ""
+            , "next : Int -> Void + Int", "next x = inr x", ""
+            , "pick : Int -> Int + Int"
+            , "pick x = destruct (x < 0) of { Left u -> stop x ; Right u -> next x }" ]
+          r @?= Right ()
+      , testCase "a branch at Void joins the other branch's type" $ do
+          r <- checkLib
+            [ "fromVoid : Void -> Void", "fromVoid = initial", ""
+            , "pickInt : Int + Void -> Int"
+            , "pickInt s = destruct s of { Left x -> x ; Right v -> fromVoid v }" ]
+          r @?= Right ()
+      , testCase "branches with no upper bound are rejected" $ do
+          r <- checkLib [ "f : Int + Int -> Int", "f s = destruct s of { Left x -> x ; Right y -> () }" ]
+          assertBool "Should reject branches at Int and Unit" (isLeft r)
+      , testCase "arrows out of different domains have no join" $ do
+          r <- checkLib
+            [ "g : Int -> Int", "g x = x", ""
+            , "h : Unit -> Int", "h u = 1", ""
+            , "f : Int + Int -> Void -> Int"
+            , "f s = destruct s of { Left x -> g ; Right y -> h }" ]
+          assertBool "Should reject arrow branches with different domains" (isLeft r)
+      , testCase "a body states a wider type by an annotation" $ do
+          r <- checkLib [ "two : Int + Unit", "two = (inl 2 : Int + Unit)" ]
+          r @?= Right ()
+      , testCase "a wider signature is rejected, naming both fixes" $ do
+          r <- checkLib [ "two : Int + Unit", "two = inl 2" ]
+          case r of
+            Left msg -> assertBool ("Should name the annotation fix: " ++ msg)
+                          ("more precise than its signature" `isInfixOf` msg && "annotation" `isInfixOf` msg)
+            Right () -> assertFailure "Should reject a signature wider than the body"
       ]
 
   , testGroup "polymorphism (D236–D243)"

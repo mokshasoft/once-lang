@@ -32,7 +32,9 @@ open import Once.Lang.Type.Grade as T using (mk-kind; Many; Purity; Quantity; _�
 import Once.Lang.Type.Poly as T
 open import Once.Lang.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
 open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
-open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:; _⊔_≔_)
+open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
+open import Once.Lang.Type.Join using (join-unique)
 open import Once.Lang.Syntax as Raw using (RawExpr)
 open import Once.Spec.Name using (NotGenerator)
 open import Once.Lang.Name using (showCanonical)
@@ -287,6 +289,50 @@ module _ {Γ : Ctx n} where
           → coerce (sub-arr (<:-refl (A + B)) p (⊑π-refl π)) (copair' f g) ≅ copair' f′ g′
   casec-h {f = f} {g = g} p (≅i refl refl h) (≅i refl refl k) =
     ≅i refl refl (≈-trans (≈-sym (copair-coerce p (⊑π-refl _) f g)) (copair-cong h k))
+
+  -- D322: two derivations' arms at equal types meet at the same join (it is
+  -- unique), so the two cases convert their arms alike.
+  casej-h : ∀ {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : Usage n} {qL qL′ qR qR′} {Cᵣ Cᵣ′ D D′ : Type}
+            {s : Expr Γ Ψs (A + B)} {s′ : Expr Γ Ψs′ (A + B)}
+            {l : Expr (Γ , A ^ Many) (qL ∷ Ψl) C} {l′ : Expr (Γ , A ^ Many) (qL′ ∷ Ψl′) C′}
+            {r : Expr (Γ , B ^ Many) (qR ∷ Ψr) Cᵣ} {r′ : Expr (Γ , B ^ Many) (qR′ ∷ Ψr′) Cᵣ′}
+            (J : C ⊔ Cᵣ ≔ D) (J′ : C′ ⊔ Cᵣ′ ≔ D′)
+          → s ≅ s′ → l ≅ l′ → r ≅ r′
+          → case' s (coerce (<:ᶜ⇒<: (⊔-left J)) l) (coerce (<:ᶜ⇒<: (⊔-right J)) r)
+            ≅ case' s′ (coerce (<:ᶜ⇒<: (⊔-left J′)) l′) (coerce (<:ᶜ⇒<: (⊔-right J′)) r′)
+  casej-h J J′ hs hl@(≅i refl refl _) hr@(≅i refl refl _) = casej-at J J′ (join-unique J J′) hs hl hr
+    where
+      casej-at : ∀ {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : Usage n} {qL qL′ qR qR′} {Cᵣ D D′ : Type}
+                 {s : Expr Γ Ψs (A + B)} {s′ : Expr Γ Ψs′ (A + B)}
+                 {l : Expr (Γ , A ^ Many) (qL ∷ Ψl) C} {l′ : Expr (Γ , A ^ Many) (qL′ ∷ Ψl′) C}
+                 {r : Expr (Γ , B ^ Many) (qR ∷ Ψr) Cᵣ} {r′ : Expr (Γ , B ^ Many) (qR′ ∷ Ψr′) Cᵣ}
+                 (J : C ⊔ Cᵣ ≔ D) (J′ : C ⊔ Cᵣ ≔ D′) → D ≡ D′
+               → s ≅ s′ → l ≅ l′ → r ≅ r′
+               → case' s (coerce (<:ᶜ⇒<: (⊔-left J)) l) (coerce (<:ᶜ⇒<: (⊔-right J)) r)
+                 ≅ case' s′ (coerce (<:ᶜ⇒<: (⊔-left J′)) l′) (coerce (<:ᶜ⇒<: (⊔-right J′)) r′)
+      casej-at J J′ refl hs hl hr = case-h hs (coerce-h _ _ hl) (coerce-h _ _ hr)
+
+  copairj-h : ∀ {Cg Cg′ D D′ : Type}
+              {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)} {f′ : Expr Γ Ψ₁′ (A ⇒[ mk-kind Many π ] C′)}
+              {g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] Cg)} {g′ : Expr Γ Ψ₂′ (B ⇒[ mk-kind Many π ] Cg′)}
+              (J : C ⊔ Cg ≔ D) (J′ : C′ ⊔ Cg′ ≔ D′)
+            → f ≅ f′ → g ≅ g′
+            → copair' (coerce (sub-arr (<:-refl A) (<:ᶜ⇒<: (⊔-left J)) (⊑π-refl π)) f)
+                      (coerce (sub-arr (<:-refl B) (<:ᶜ⇒<: (⊔-right J)) (⊑π-refl π)) g)
+              ≅ copair' (coerce (sub-arr (<:-refl A) (<:ᶜ⇒<: (⊔-left J′)) (⊑π-refl π)) f′)
+                        (coerce (sub-arr (<:-refl B) (<:ᶜ⇒<: (⊔-right J′)) (⊑π-refl π)) g′)
+  copairj-h J J′ hf@(≅i refl refl _) hg@(≅i refl refl _) = copairj-at J J′ (join-unique J J′) hf hg
+    where
+      copairj-at : ∀ {Cg D D′ : Type}
+                   {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)} {f′ : Expr Γ Ψ₁′ (A ⇒[ mk-kind Many π ] C)}
+                   {g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] Cg)} {g′ : Expr Γ Ψ₂′ (B ⇒[ mk-kind Many π ] Cg)}
+                   (J : C ⊔ Cg ≔ D) (J′ : C ⊔ Cg ≔ D′) → D ≡ D′
+                 → f ≅ f′ → g ≅ g′
+                 → copair' (coerce (sub-arr (<:-refl A) (<:ᶜ⇒<: (⊔-left J)) (⊑π-refl π)) f)
+                           (coerce (sub-arr (<:-refl B) (<:ᶜ⇒<: (⊔-right J)) (⊑π-refl π)) g)
+                   ≅ copair' (coerce (sub-arr (<:-refl A) (<:ᶜ⇒<: (⊔-left J′)) (⊑π-refl π)) f′)
+                             (coerce (sub-arr (<:-refl B) (<:ᶜ⇒<: (⊔-right J′)) (⊑π-refl π)) g′)
+      copairj-at J J′ refl hf hg = copair-h (coerce-h _ _ hf) (coerce-h _ _ hg)
 
   forkc-h : {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {f′ : Expr Γ Ψ₁′ (A ⇒[ mk-kind Many π ] B′)}
             {g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)} {g′ : Expr Γ Ψ₂′ (A ⇒[ mk-kind Many π ] C′)}

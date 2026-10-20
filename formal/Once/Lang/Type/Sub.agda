@@ -23,6 +23,10 @@
 -- each `A <: B` has at most one derivation: subtyping is a thin category, and
 -- every derivation denotes the same conversion. Reflexivity and transitivity
 -- are admissible (`Spec.Metatheory`).
+--
+-- `A <:ᶜ B`: `A <: B` with every domain kept (`Spec.Sub._<:ᶜ_`, D321).
+-- `A ⊔ B ≔ C`: `C` is the join of `A` and `B` in `<:ᶜ` (D322): two branches
+-- of one `case` meet there. `Once.Lang.Type.Join` decides it.
 ------------------------------------------------------------------------
 
 module Once.Lang.Type.Sub where
@@ -31,7 +35,7 @@ open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; _·p_; 
 open import Once.Lang.Type
   using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 
-infix 4 _⊑π_ _<:_
+infix 4 _⊑π_ _<:_ _<:ᶜ_ _⊔_≔_
 
 -- The effect order: the chain `pure ⊑ act ⊑ eff` (D314), one derivation per
 -- pair.
@@ -82,3 +86,47 @@ data _<:_ : Type → Type → Set where
 <:-refl (ν-type F φ) = sub-ν (⊑π-refl (fin φ))
 <:-refl (rigid _ _) = sub-rigid
 
+data _<:ᶜ_ : Type → Type → Set where
+  subᶜ-void   : ∀ {B} → Void <:ᶜ B
+  subᶜ-unit   : Unit <:ᶜ Unit
+  subᶜ-int    : Int <:ᶜ Int
+  subᶜ-float  : Float <:ᶜ Float
+  subᶜ-arr    : ∀ {A B B′ q π π′}
+              → B <:ᶜ B′ → π ⊑π π′
+              → (A ⇒[ mk-kind q π ] B) <:ᶜ (A ⇒[ mk-kind q π′ ] B′)
+  subᶜ-prod   : ∀ {A A′ B B′} → A <:ᶜ A′ → B <:ᶜ B′ → (A * B) <:ᶜ (A′ * B′)
+  subᶜ-sum    : ∀ {A A′ B B′} → A <:ᶜ A′ → B <:ᶜ B′ → (A + B) <:ᶜ (A′ + B′)
+  subᶜ-μ      : ∀ {F} → μ-type F <:ᶜ μ-type F
+  subᶜ-ν      : ∀ {F φ φ′} → fin φ ⊑π fin φ′ → ν-type F φ <:ᶜ ν-type F φ′
+  subᶜ-rigid  : ∀ {k i} → rigid k i <:ᶜ rigid k i
+
+-- Keeping the domains is a special case of converting.
+<:ᶜ⇒<: : ∀ {A B} → A <:ᶜ B → A <: B
+<:ᶜ⇒<: subᶜ-void        = sub-void
+<:ᶜ⇒<: subᶜ-unit        = sub-unit
+<:ᶜ⇒<: subᶜ-int         = sub-int
+<:ᶜ⇒<: subᶜ-float       = sub-float
+<:ᶜ⇒<: (subᶜ-arr {A = A} b g) = sub-arr (<:-refl A) (<:ᶜ⇒<: b) g
+<:ᶜ⇒<: (subᶜ-prod a b)  = sub-prod (<:ᶜ⇒<: a) (<:ᶜ⇒<: b)
+<:ᶜ⇒<: (subᶜ-sum a b)   = sub-sum (<:ᶜ⇒<: a) (<:ᶜ⇒<: b)
+<:ᶜ⇒<: subᶜ-μ           = sub-μ
+<:ᶜ⇒<: (subᶜ-ν g)       = sub-ν g
+<:ᶜ⇒<: subᶜ-rigid       = sub-rigid
+
+<:ᶜ-refl : ∀ A → A <:ᶜ A
+<:ᶜ-refl Unit   = subᶜ-unit
+<:ᶜ-refl Void   = subᶜ-void
+<:ᶜ-refl Int    = subᶜ-int
+<:ᶜ-refl Float  = subᶜ-float
+<:ᶜ-refl (A ⇒[ mk-kind q π ] B) = subᶜ-arr (<:ᶜ-refl B) (⊑π-refl π)
+<:ᶜ-refl (A * B) = subᶜ-prod (<:ᶜ-refl A) (<:ᶜ-refl B)
+<:ᶜ-refl (A + B) = subᶜ-sum (<:ᶜ-refl A) (<:ᶜ-refl B)
+<:ᶜ-refl (μ-type F) = subᶜ-μ
+<:ᶜ-refl (ν-type F φ) = subᶜ-ν (⊑π-refl (fin φ))
+<:ᶜ-refl (rigid _ _) = subᶜ-rigid
+
+record _⊔_≔_ (A B C : Type) : Set where
+  field
+    left  : A <:ᶜ C
+    right : B <:ᶜ C
+    least : ∀ {D} → A <:ᶜ D → B <:ᶜ D → C <:ᶜ D

@@ -177,7 +177,7 @@ du_cfb'45'doOpt_84 v0 v1 v2 v3 v4 v5 v6
          (coe MAlonzo.Code.Once.TypeCheck.Classify.d_tsig_338 (coe v1)))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
             (coe v1) (coe v2))
@@ -588,7 +588,7 @@ du_ce'45'poly'45'p'45'doOpt_356 v0 v1 v2 v3 v4 v5
          (coe
             MAlonzo.Code.Once.Compile.du_checkOK_428
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                   (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v1))

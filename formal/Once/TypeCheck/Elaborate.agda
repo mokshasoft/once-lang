@@ -76,8 +76,10 @@ open import Once.Spec.Float.Decimal using (decimalOf)
 import Once.Spec.Float.Decimal as Decimal
 open import Once.Lang.Type.Sub using (_<:_; _⊑π_; sub-arr)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
-open import Once.Lang.Type.Sub using (<:-refl)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Lang.Type.Join using (Join?; joined; apart; join?; sound)
+open Once.Lang.Type.Sub._⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
 open import Once.Lang.Type.Instance using (KindedInstance)
@@ -1223,6 +1225,43 @@ inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (failure err , _) = fa
 inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) =
   success B _ (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂ , t-let w₁ w₂
 
+-- D322: the branches meet at their join, each converted into it; branches
+-- with no upper bound are a mismatch.
+inferElabV-RDestruct-join : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+  (A B : Type) {Ψs : Surface.Usage (NamedCtx.size ctx)}
+  (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Lang.Type.+ B)) (ds : ℕ)
+  (wS : ctx ⊢ᵢ scrut ∶ (A Once.Lang.Type.+ B) ⨾ Ψs)
+  {C₁ : Type} {qℓ : _} {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
+  (eLE : SExpr (NamedCtx.debruijn (extendNamedCtx ctx xL A)) (qℓ ∷ᵘ Ψₗ) C₁) (dL : ℕ)
+  (wL : (extendNamedCtx ctx xL A) ⊢ᵢ eL ∶ C₁ ⨾ (qℓ ∷ᵘ Ψₗ))
+  {C₂ : Type} {qr : _} {Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
+  (eRE : SExpr (NamedCtx.debruijn (extendNamedCtx ctx xR B)) (qr ∷ᵘ Ψᵣ) C₂) (dR fR : ℕ)
+  (wR : (extendNamedCtx ctx xR B) ⊢ᵢ eR ∶ C₂ ⨾ (qr ∷ᵘ Ψᵣ))
+  → Join? C₁ C₂
+  → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
+inferElabV-RDestruct-join ctx scrut xL eL xR eR A B scrutE ds wS eLE dL wL eRE dR fR wR (joined C J) =
+  success C _ (Surface.case' scrutE (Surface.coerce (<:ᶜ⇒<: (⊔-left (sound J))) eLE) (Surface.coerce (<:ᶜ⇒<: (⊔-right (sound J))) eRE))
+          (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR (sound J)
+inferElabV-RDestruct-join ctx scrut xL eL xR eR A B scrutE ds wS eLE dL wL eRE dR fR wR (apart _) =
+  failure CaseBranchMismatch , tt
+
+-- D322: the arms of a copair meet at the join of their outputs, each
+-- converted into it; arms with no upper bound are a mismatch.
+given-case-join : (ctx : NamedCtx) (f g : RawExpr) (A B : Type) (π : Once.Lang.Type.Grade.Purity)
+  {C : Type} {Ψf : Surface.Usage (NamedCtx.size ctx)}
+  (fE : SExpr (NamedCtx.debruijn ctx) Ψf (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] C))
+  (df : ℕ) (wF : ctx ⊢ᵈ f ∶ A ⇒[ π ]↦ C ⨾ Ψf)
+  {C′ : Type} {Ψg : Surface.Usage (NamedCtx.size ctx)}
+  (gE : SExpr (NamedCtx.debruijn ctx) Ψg (B Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] C′))
+  (dg frg : ℕ) (wG : ctx ⊢ᵈ g ∶ B ⇒[ π ]↦ C′ ⨾ Ψg)
+  → Join? C C′
+  → VerifiedGivenResult ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g) (A Once.Lang.Type.+ B) π
+given-case-join ctx f g A B π {C} fE df wF {C′} gE dg frg wG (apart _) = failure (TypeMismatch C C′) , tt
+given-case-join ctx f g A B π fE df wF gE dg frg wG (joined D J) =
+  success D _ (Surface.copair' (Surface.coerce (sub-arr (<:-refl A) (<:ᶜ⇒<: (⊔-left (sound J))) (⊑π-refl π)) fE)
+                               (Surface.coerce (sub-arr (<:-refl B) (<:ᶜ⇒<: (⊔-right (sound J))) (⊑π-refl π)) gE))
+          (suc (df Data.Nat.⊔ dg)) frg , d-case wF wG (sound J)
+
 inferElabV-RDestruct-auxR : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
   (A B : Type) {Ψs : Surface.Usage (NamedCtx.size ctx)}
   (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Lang.Type.+ B)) (ds fs : ℕ)
@@ -1233,10 +1272,9 @@ inferElabV-RDestruct-auxR : (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL
   → VerifiedInferResult (extendNamedCtx ctx xR B) eR
   → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
 inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS eLE dL fL wL (failure err , _) = failure err , tt
-inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS {C₁ = C₁} eLE dL fL wL (success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR)
-  with C₁ ≟T C₂
-... | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE) (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
-... | no _     = failure CaseBranchMismatch , tt
+inferElabV-RDestruct-auxR ctx scrut xL eL xR eR A B scrutE ds fs wS {C₁ = C₁} eLE dL fL wL (success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , wR) =
+  inferElabV-RDestruct-join ctx scrut xL eL xR eR A B scrutE ds wS eLE dL wL eRE dR fR wR (join? C₁ C₂)
+
 
 -- Plan 0.50: resolved external ref. The canonical name `cn` is carried
 -- straight into the `SigOpInfo` (NO `bare`, NO String render) — so the
@@ -2116,10 +2154,7 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success C Ψf fE df frf , wF with elabGivenV ctx g B π
   ...   | failure err , _ = failure err , tt
-  ...   | success C′ Ψg gE dg frg , wG with C′ ≟T C
-  ...     | no _ = failure (TypeMismatch C C′) , tt
-  ...     | yes refl =
-              success C _ (Surface.copair' fE gE) (suc (df Data.Nat.⊔ dg)) frg , d-case wF wG
+  ...   | success C′ Ψg gE dg frg , wG = given-case-join ctx f g A B π fE df wF gE dg frg wG (join? C C′)
   {-# CATCHALL #-}
   elabGivenApp ctx .(Raw.RApp (Raw.RResolved (gen "case")) f) g _ π (ahv-case-applied {f}) _ =
     failure (BuiltinTypeMismatch "case") , tt

@@ -17,6 +17,7 @@
 
 module Once.TypeCheck.RouteBuild where
 
+open import Once.Lang.Type.Sub using (_⊔_≔_)
 open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List.Relation.Unary.All using (_∷_)
@@ -81,13 +82,13 @@ mutual
         → A ≡ A′ → Rii (t-let d₁ d₂) (t-let d₁′ d₂′)
   let-r d₁ d₂ d₁′ d₂′ refl = ii-let (route-ii d₁ d₁′) (route-ii d₂ d₂′)
 
-  case-r : ∀ {ctx xL xR e₁ e₂ e₃ A A′ B B′ C C′ qL qL′ qR qR′} {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : U ctx}
+  case-r : ∀ {ctx xL xR e₁ e₂ e₃ A A′ B B′ C C′ Cᵣ Cᵣ′ D D′ qL qL′ qR qR′} {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : U ctx}
            (s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs) (l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL Surface.Usage.∷ Ψl))
-           (r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ C ⨾ (qR Surface.Usage.∷ Ψr))
+           (r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR Surface.Usage.∷ Ψr)) (J : C ⊔ Cᵣ ≔ D)
            (s′ : ctx ⊢ᵢ e₁ ∶ (A′ + B′) ⨾ Ψs′) (l′ : extendNamedCtx ctx xL A′ ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ Surface.Usage.∷ Ψl′))
-           (r′ : extendNamedCtx ctx xR B′ ⊢ᵢ e₃ ∶ C′ ⨾ (qR′ Surface.Usage.∷ Ψr′))
-         → (A + B) ≡ (A′ + B′) → Rii (t-case s l r) (t-case s′ l′ r′)
-  case-r s l r s′ l′ r′ refl = ii-case (route-ii s s′) (route-ii l l′) (route-ii r r′)
+           (r′ : extendNamedCtx ctx xR B′ ⊢ᵢ e₃ ∶ Cᵣ′ ⨾ (qR′ Surface.Usage.∷ Ψr′)) (J′ : C′ ⊔ Cᵣ′ ≔ D′)
+         → (A + B) ≡ (A′ + B′) → Rii (t-case s l r J) (t-case s′ l′ r′ J′)
+  case-r s l r J s′ l′ r′ J′ refl = ii-case (route-ii s s′) (route-ii l l′) (route-ii r r′)
 
   app-r : ∀ {ctx e₁ e₂ A A′ B B′ q q′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
           (h : classifyAppHead e₁ ≡ nothing) (f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ₁) (x : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂)
@@ -172,7 +173,7 @@ mutual
   route-ii (t-neg-float _ _ _ _) (t-neg ())
   route-ii (t-neg-float _ _ _ _) (t-neg-float _ _ _ _) = ii-neg-float
   route-ii (t-let d₁ d₂) (t-let d₁′ d₂′) = let-r d₁ d₂ d₁′ d₂′ (proj₁ (agree-ii d₁ d₁′))
-  route-ii (t-case dS dL dR) (t-case dS′ dL′ dR′) = case-r dS dL dR dS′ dL′ dR′ (proj₁ (agree-ii dS dS′))
+  route-ii (t-case dS dL dR J) (t-case dS′ dL′ dR′ J′) = case-r dS dL dR J dS′ dL′ dR′ J′ (proj₁ (agree-ii dS dS′))
   route-ii (t-binop-arith _ d₁ d₂) (t-binop-arith _ d₁′ d₂′) = ii-arith (route-ii d₁ d₁′) (route-ii d₂ d₂′)
   route-ii (t-binop-arith _ d₁ d₂) (t-binop-arith-float _ d₁′ d₂′) = ⊥-elim (ex (agree-ii d₁ d₁′) λ { (() , _) })
   route-ii (t-binop-arith _ d₁ d₂) (t-binop-arith-float-il _ d₁′ d₂′) = ⊥-elim (ex (agree-ii d₂ d₂′) λ { (() , _) })
@@ -346,7 +347,7 @@ mutual
   route-dc d-snd t-snd-check = dc-snd
   route-dc d-terminal t-terminal-morph-check = dc-terminal
   route-dc d-initial t-initial-morph-check = dc-initial
-  route-dc (d-case df dg) (t-case-copair-check df′ dg′) = dc-case (route-dc df df′) (route-dc dg dg′)
+  route-dc (d-case df dg _) (t-case-copair-check df′ dg′) = dc-case (route-dc df df′) (route-dc dg dg′)
   route-dc (d-pair df dg) (t-pair-morph-check df′ dg′) = dc-pair (route-dc df df′) (route-dc dg dg′)
   route-dc (d-cata _ a) (t-cata-check _ a′) = dc-cata (route-ic a a′)
   route-dc (d-poly _ _ _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = dc-poly
@@ -358,7 +359,7 @@ mutual
   route-di d-snd d = ⊥-elim (noinf-snd d)
   route-di d-terminal d = ⊥-elim (noinf-terminal d)
   route-di d-initial d = ⊥-elim (noinf-initial d)
-  route-di (d-case _ _) d = ⊥-elim (noinf-case d)
+  route-di (d-case _ _ _) d = ⊥-elim (noinf-case d)
   route-di (d-pair _ _) d = ⊥-elim (noinf-pair d)
   route-di (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
   route-di (d-poly ln _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
@@ -374,7 +375,7 @@ mutual
   route-dd d-snd d-snd = dd-snd
   route-dd d-terminal d-terminal = dd-terminal
   route-dd d-initial d-initial = dd-initial
-  route-dd (d-case df dg) (d-case df′ dg′) = dd-case (route-dd df df′) (route-dd dg dg′)
+  route-dd (d-case df dg _) (d-case df′ dg′ _) = dd-case (route-dd df df′) (route-dd dg dg′)
   route-dd (d-pair df dg) (d-pair df′ dg′) = dd-pair (route-dd df df′) (route-dd dg dg′)
   route-dd (d-cata _ a) (d-cata _ a′) = dd-cata (route-ii a a′)
   route-dd (d-poly _ _ _ _ _ _ _ _) (d-poly _ _ _ _ _ _ _ _) = dd-poly

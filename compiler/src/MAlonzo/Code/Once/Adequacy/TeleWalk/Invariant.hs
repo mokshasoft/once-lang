@@ -1179,7 +1179,7 @@ du_D'8242'_468 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Adequacy.TelePosition.du_sound'45'of_334
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
          (coe du_ctx_452 (coe v0))
          (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v1)) (coe v2))
 -- Once.Adequacy.TeleWalk.Invariant.MonoStep.M
@@ -1336,7 +1336,7 @@ du_chain_472 v0 v1 v2 v3 v4 v5 v6 v7
                   (coe
                      MAlonzo.Code.Once.Adequacy.TelePosition.du_sound'45'of_334
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
                         (coe
                            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                            (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v3))
@@ -1462,7 +1462,7 @@ du_chain_472 v0 v1 v2 v3 v4 v5 v6 v7
                (coe MAlonzo.Code.Once.Lang.Context.C_'91''93'_48)
                (coe du_D'8242'_468 (coe v3) (coe v5) (coe v6)))))
       (coe
-         MAlonzo.Code.Once.Adequacy.Coherence.d_realize'45'invariant_1108
+         MAlonzo.Code.Once.Adequacy.Coherence.d_realize'45'invariant_1130
          (coe v0)
          (coe
             MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
@@ -4363,7 +4363,7 @@ du_cr_790 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_cr_790 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
       (coe
          MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
          (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v0))
@@ -4460,7 +4460,7 @@ du_relSD_794 ::
   MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.T_RelS_378
 du_relSD_794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
   = coe
-      MAlonzo.Code.Once.Adequacy.Coherence.d_realize'45'invariant_1108
+      MAlonzo.Code.Once.Adequacy.Coherence.d_realize'45'invariant_1130
       (coe v0)
       (coe
          MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130

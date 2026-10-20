@@ -69,6 +69,8 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Lang.Type.Sub using (_⊔_≔_)
+open import Once.Lang.Type.Join using (join?-complete)
 open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
 open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
@@ -753,35 +755,35 @@ infer-complete-RDestruct :
     {Ψs : Surface.Usage (Classify.NamedCtx.size ctx)}
     {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A + B)}
     {ds fs : ℕ}
-    (C : Type) {qℓ qr : Quantity}
+    (C₁ C₂ C : Type) (J : C₁ ⊔ C₂ ≔ C) {qℓ qr : Quantity}
     {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eLE : SExpr (Classify.NamedCtx.debruijn
                     (Classify.extendNamedCtx ctx xL A))
-                 (qℓ Surface.Usage.∷ Ψₗ) C}
+                 (qℓ Surface.Usage.∷ Ψₗ) C₁}
     {dL fL : ℕ}
     {Ψᵣ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eRE : SExpr (Classify.NamedCtx.debruijn
                     (Classify.extendNamedCtx ctx xR B))
-                 (qr Surface.Usage.∷ Ψᵣ) C}
+                 (qr Surface.Usage.∷ Ψᵣ) C₂}
     {dR fR : ℕ}
   → inferElab ctx scrut ≡ success (A + B) Ψs scrutE ds fs
   → inferElab (Classify.extendNamedCtx ctx xL A) eL
-      ≡ success C (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
+      ≡ success C₁ (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
   → inferElab (Classify.extendNamedCtx ctx xR B) eR
-      ≡ success C (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
+      ≡ success C₂ (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
         ≡ success C (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
-infer-complete-RDestruct {ctx} scrut xL eL xR eR {A = A} {B = B} C eqS eqL eqR
+infer-complete-RDestruct {ctx} scrut xL eL xR eR {A = A} {B = B} C₁ C₂ C J eqS eqL eqR
   with inferElabV ctx scrut | eqS
 ... | success (_ + _) _ _ _ _ , _ | refl
     with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
 ...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
       with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
-...     | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
-        with C ≟T C
-...       | yes refl = _ , _ , _ , refl
-...       | no  ¬eq  = ⊥-elim (¬eq refl)
+...     | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl =
+  -- D322: the checker's join decision finds the derivation's join.
+  _ , _ , _ , cong (λ x → proj₁ (E.inferElabV-RDestruct-join _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x))
+                   (proj₂ (join?-complete J))
 
 ------------------------------------------------------------------------
 -- Generic RApp

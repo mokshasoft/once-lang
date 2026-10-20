@@ -21,6 +21,8 @@
 -- related at all is `ModeSub`.
 ------------------------------------------------------------------------
 
+open import Once.Lang.Type.Sub using (_⊔_≔_; <:ᶜ⇒<:)
+open import Once.Lang.Laws.SubLaws using (<:-trans)
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.Coherence (fmt : TargetNum) where
@@ -79,7 +81,7 @@ mutual
   coh-ii (ii-neg r) = neg-h (coh-ii r)
   coh-ii ii-neg-float = ≅-refl
   coh-ii (ii-let r₁ r₂) = let-h (coh-ii r₁) (coh-ii r₂)
-  coh-ii (ii-case r₁ r₂ r₃) = case-h (coh-ii r₁) (coh-ii r₂) (coh-ii r₃)
+  coh-ii (ii-case {J = J} {J′ = J′} r₁ r₂ r₃) = casej-h J J′ (coh-ii r₁) (coh-ii r₂) (coh-ii r₃)
   coh-ii (ii-arith {a = a} {a′ = a′} {d₁ = d₁} {d₁′ = d₁′} {d₂ = d₂} {d₂′ = d₂′} r₁ r₂) = arith-h a a′ {d₁ = d₁} {d₁′ = d₁′} {d₂ = d₂} {d₂′ = d₂′} (coh-ii r₁) (coh-ii r₂)
   coh-ii (ii-farith {a = a} {a′ = a′} {d₁ = d₁} {d₁′ = d₁′} {d₂ = d₂} {d₂′ = d₂′} r₁ r₂) = farith-h a a′ {d₁ = d₁} {d₁′ = d₁′} {d₂ = d₂} {d₂′ = d₂′} (coh-ii r₁) (coh-ii r₂)
   coh-ii (ii-il {a = a} {a′ = a′} {d₁ = d₁} {d₁′ = d₁′} {d₂ = d₂} {d₂′ = d₂′} r₁ r₂) = il-h a a′ {d₁ = d₁} {d₁′ = d₁′} {d₂ = d₂} {d₂′ = d₂′} (coh-ii r₁) (coh-ii r₂)
@@ -159,7 +161,14 @@ mutual
   coh-dc dc-snd p = ≅-of (≈-trans (coerce-uniq _ (<:-refl _) _) (coerce-refl _))
   coh-dc dc-terminal p = ≅-of (≈-trans (coerce-uniq _ (<:-refl _) _) (coerce-refl _))
   coh-dc dc-initial p = ≅-of (≈-trans (coerce-uniq _ (sub-arr sub-void sub-void (⊑π-refl _)) _) (initial-coerce _))
-  coh-dc (dc-case r₁ r₂) p = casec-h p (coh-dc r₁ p) (coh-dc r₂ p)
+  -- D322: each arm is converted into the join and then to the checked type.
+  coh-dc (dc-case {J = J} r₁ r₂) p =
+    casec-h p (twice-h (sub-arr (<:-refl _) l (⊑π-refl _)) (sub-arr (<:-refl _) p (⊑π-refl _))
+                       (sub-arr (<:-refl _) (<:-trans l p) (⊑π-refl _)) (coh-dc r₁ (<:-trans l p)))
+              (twice-h (sub-arr (<:-refl _) r (⊑π-refl _)) (sub-arr (<:-refl _) p (⊑π-refl _))
+                       (sub-arr (<:-refl _) (<:-trans r p) (⊑π-refl _)) (coh-dc r₂ (<:-trans r p)))
+    where l = <:ᶜ⇒<: (_⊔_≔_.left J)
+          r = <:ᶜ⇒<: (_⊔_≔_.right J)
   coh-dc (dc-pair r₁ r₂) (sub-prod pb pc) = forkc-h pb pc (coh-dc r₁ pb) (coh-dc r₂ pc)
   coh-dc (dc-cata {w = w} {w′ = w′} {a = a} {a′ = a′} r) p = catac-h w w′ p (MS.ic-sub a a′) (coh-ic r (MS.ic-sub a a′))
   coh-dc {ctx = ctx} (dc-poly {x = x} {p = q₀} {p′ = q₀′} {as = as} {ki = θ , e , _} {ki′ = θ′ , e′ , _} {gr = gr} {inc = inc}) p =
@@ -181,7 +190,7 @@ mutual
   coh-dd dd-snd = ≅-refl
   coh-dd dd-terminal = ≅-refl
   coh-dd dd-initial = ≅-refl
-  coh-dd (dd-case r₁ r₂) = copair-h (coh-dd r₁) (coh-dd r₂)
+  coh-dd (dd-case {J = J} {J′ = J′} r₁ r₂) = copairj-h J J′ (coh-dd r₁) (coh-dd r₂)
   coh-dd (dd-pair r₁ r₂) = fork-h (coh-dd r₁) (coh-dd r₂)
   coh-dd (dd-cata {w = w} {w′ = w′} r) = catad-h w w′ (coh-ii r)
   coh-dd {ctx = ctx} (dd-poly {x = x} {p = q₀} {p′ = q₀′} {as = as} {as′ = as′} {ki = θ , e , _} {ki′ = θ′ , e′ , _} {gr = gr} {gr′ = gr′} {inc = inc}) =

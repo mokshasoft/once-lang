@@ -48,6 +48,7 @@ import Once.Lang.Typing.Scope as Classify
 import Once.TypeCheck.Error as Error
 open import Once.Lang.Typing
 import Once.TypeCheck.Elaborate as E
+open import Once.Lang.Type.Join using (join?-complete)
 import Data.Unit
 open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
 open import Once.Functor.Decide using (isConcrete?; isConcrete?-complete)
@@ -276,7 +277,7 @@ given-infer-route (t-pair _ _) A π _ = refl
 given-infer-route (t-neg _) A π _ = refl
 given-infer-route (t-neg-float _ _ _ _) A π _ = refl
 given-infer-route (t-let _ _) A π _ = refl
-given-infer-route (t-case _ _ _) A π _ = refl
+given-infer-route (t-case _ _ _ _) A π _ = refl
 given-infer-route (t-binop-arith _ _ _) A π _ = refl
 given-infer-route (t-binop-arith-float _ _ _) A π _ = refl
 given-infer-route (t-binop-arith-float-il _ _ _) A π _ = refl
@@ -660,8 +661,8 @@ mutual
     let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
     in checkElab-fallback-RLet x e₁ e₂ B eqI sb
   iFromInferSub (t-case {scrut = scrut} {eL = eL} {eR = eR}
-                     {xL = xL} {xR = xR} {C = C} dS dL dR) =
-    let (_ , _ , _ , eqI) = infer-complete (t-case dS dL dR)
+                     {xL = xL} {xR = xR} {C = C} dS dL dR J) =
+    let (_ , _ , _ , eqI) = infer-complete (t-case dS dL dR J)
     in checkElab-fallback-RDestruct scrut xL eL xR eR C eqI
   iFromInferSub (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-arith arithEq d₁ d₂)
@@ -765,12 +766,12 @@ mutual
         (_ , _ , _ , eq₂) = infer-complete d₂
     in infer-complete-RLet x e₁ e₂ eq₁ eq₂
   infer-complete
-    (t-case {scrut = scrut} {eL = eL} {eR = eR} {xL = xL} {xR = xR} {C = C}
-            dS dL dR) =
+    (t-case {scrut = scrut} {eL = eL} {eR = eR} {xL = xL} {xR = xR} {Cₗ = Cₗ} {Cᵣ = Cᵣ} {C = C}
+            dS dL dR J) =
     let (_ , _ , _ , eqS) = infer-complete dS
         (_ , _ , _ , eqL) = infer-complete dL
         (_ , _ , _ , eqR) = infer-complete dR
-    in infer-complete-RDestruct scrut xL eL xR eR C eqS eqL eqR
+    in infer-complete-RDestruct scrut xL eL xR eR Cₗ Cᵣ C J eqS eqL eqR
   infer-complete
     (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
     let (_ , _ , _ , eq₁) = infer-complete d₁
@@ -861,7 +862,7 @@ mutual
   spine-complete f x () dX d-snd
   spine-complete f x () dX d-terminal
   spine-complete f x () dX d-initial
-  spine-complete f x eqAH dX dF@(d-case _ _) =
+  spine-complete f x eqAH dX dF@(d-case _ _ _) =
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX dF@(d-pair _ _) =
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
@@ -906,14 +907,13 @@ mutual
   given-complete (d-snd {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
   given-complete (d-terminal {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
   given-complete (d-initial {u = u}) = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
-  given-complete {ctx} (d-case {f = f} {g = g} {A = A} {B = B} {C = C} {π = π} df dg)
+  given-complete {ctx} (d-case {f = f} {g = g} {A = A} {B = B} {π = π} df dg J)
     with elabGivenV ctx f A π | given-complete df
   ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
       with elabGivenV ctx g B π | given-complete dg
-  ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl)
-        with C ≟T C
-  ...     | yes refl = _ , _ , _ , refl
-  ...     | no ¬p = ⊥-elim (¬p refl)
+  ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) =
+    -- D322: the checker's join decision finds the derivation's join.
+    _ , _ , _ , cong (λ x → proj₁ (E.given-case-join _ _ _ _ _ _ _ _ _ _ _ _ _ x)) (proj₂ (join?-complete J))
   given-complete {ctx} (d-pair {f = f} {g = g} {A = A} {π = π} df dg)
     with elabGivenV ctx f A π | given-complete df
   ... | success _ _ _ _ _ , _ | (_ , _ , _ , refl)

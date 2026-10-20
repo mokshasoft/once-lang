@@ -22,6 +22,7 @@
 module Once.TypeCheck.ModeSub where
 
 import Once.TypeCheck.Classify
+open import Once.Lang.Type.Join using (least-<:)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁)
@@ -80,7 +81,7 @@ di-dom d-fst d = ⊥-elim (noinf-fst d)
 di-dom d-snd d = ⊥-elim (noinf-snd d)
 di-dom d-terminal d = ⊥-elim (noinf-terminal d)
 di-dom d-initial d = ⊥-elim (noinf-initial d)
-di-dom (d-case _ _) d = ⊥-elim (noinf-case d)
+di-dom (d-case _ _ _) d = ⊥-elim (noinf-case d)
 di-dom (d-pair _ _) d = ⊥-elim (noinf-pair d)
 di-dom (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
 di-dom (d-poly ln _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
@@ -163,7 +164,7 @@ mutual
   dc-sub d-snd t-snd-check = <:-refl _
   dc-sub d-terminal t-terminal-morph-check = <:-refl _
   dc-sub d-initial t-initial-morph-check = sub-void
-  dc-sub (d-case df dg) (t-case-copair-check df′ dg′) = dc-sub df df′
+  dc-sub (d-case df dg J) (t-case-copair-check df′ dg′) = least-<: J (dc-sub df df′) (dc-sub dg dg′)
   dc-sub (d-pair df dg) (t-pair-morph-check df′ dg′) = sub-prod (dc-sub df df′) (dc-sub dg dg′)
   dc-sub (d-cata _ a) (t-cata-check _ a′) = sub-cod (ic-sub a a′)
   dc-sub (d-poly _ _ p _ as inc (θ , e , _) _) (t-var-poly-instantiate _ _ p′ _ (θ′ , e′ , _)) =

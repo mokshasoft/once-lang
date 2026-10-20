@@ -108,7 +108,7 @@ du_compileFunBody'45'sound_96 v0 v1 v2 v3
          (coe
             du_compileFunBody'45'aux'45'success_36
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                   (coe v0) (coe v1))
@@ -739,7 +739,7 @@ du_pstep_572 v0 v1 v2 v3 v4 v5
       (coe
          du_step_552 (coe v0) (coe v1) (coe v2) (coe v3)
          (coe
-            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
             (coe du_ctx_544 (coe v1))
             (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v2))
             (coe

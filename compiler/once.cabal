@@ -423,6 +423,7 @@ library
       MAlonzo.Code.Once.Lang.Laws.CoreRenameSem
       MAlonzo.Code.Once.Lang.Laws.Grade
       MAlonzo.Code.Once.Lang.Laws.ModeAgreement
+      MAlonzo.Code.Once.Lang.Laws.Order
       MAlonzo.Code.Once.Lang.Laws.SubLaws
       MAlonzo.Code.Once.Lang.Lexing
       MAlonzo.Code.Once.Lang.Module
@@ -440,6 +441,7 @@ library
       MAlonzo.Code.Once.Lang.Type.DecEq
       MAlonzo.Code.Once.Lang.Type.Grade
       MAlonzo.Code.Once.Lang.Type.Honest
+      MAlonzo.Code.Once.Lang.Type.Join
       MAlonzo.Code.Once.Lang.Type.Instance
       MAlonzo.Code.Once.Lang.Type.Poly
       MAlonzo.Code.Once.Lang.Type.Sub

@@ -37,8 +37,9 @@ open import Once.Lang.Type
 open import Once.Lang.Type.Poly
 open import Once.Type
 open ArrowKind using (quantity)
-open import Once.Lang.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Lang.Type.Sub using (_<:_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
 open import Once.Lang.Type.Sub using (<:-refl)
+open import Once.Lang.Type.Join using (Joins; j-refl; j-voidˡ; j-voidʳ; j-prod; j-sum; j-arr; j-ν; sound; complete)
 open import Once.Lang.Type.Instance using (KindedInstance)
 open import Once.Lang.Type.WellFormed using (RigidFree; rf-⇒)
 open import Once.Type.Rigid using (extractGround-rf)
@@ -93,6 +94,20 @@ open import Once.Lang.Typing
 ρ̂-<: sub-μ            = sub-μ
 ρ̂-<: (sub-ν g)        = sub-ν g
 ρ̂-<: (sub-rigid {k} {i}) = <:-refl (ρ̂ (rigid k i))
+
+-- A join is preserved (D322): it keeps every domain, so it is built from the
+-- type formers alone, and its image is the join of the images.
+ρ̂-Joins : ∀ {A B C} → Joins A B C → Joins (ρ̂ A) (ρ̂ B) (ρ̂ C)
+ρ̂-Joins j-refl       = j-refl
+ρ̂-Joins j-voidˡ      = j-voidˡ
+ρ̂-Joins j-voidʳ      = j-voidʳ
+ρ̂-Joins (j-prod r s) = j-prod (ρ̂-Joins r) (ρ̂-Joins s)
+ρ̂-Joins (j-sum r s)  = j-sum (ρ̂-Joins r) (ρ̂-Joins s)
+ρ̂-Joins (j-arr r)    = j-arr (ρ̂-Joins r)
+ρ̂-Joins j-ν          = j-ν
+
+ρ̂-⊔ : ∀ {A B C} → A ⊔ B ≔ C → ρ̂ A ⊔ ρ̂ B ≔ ρ̂ C
+ρ̂-⊔ J = sound (ρ̂-Joins (complete J))
 
 -- Instances compose: an instance of a schema, substituted, is an instance.
 mutual
@@ -219,7 +234,7 @@ mutual
   subst-i′ ir (t-neg d)            = t-neg (subst-i′ ir d)
   subst-i′ ir (t-neg-float i f l p) = t-neg-float i f l p
   subst-i′ ir (t-let d₁ d₂)        = t-let (subst-i′ ir d₁) (subst-i′ ir d₂)
-  subst-i′ ir (t-case ds dl dr)    = t-case (subst-i′ ir ds) (subst-i′ ir dl) (subst-i′ ir dr)
+  subst-i′ ir (t-case ds dl dr J)  = t-case (subst-i′ ir ds) (subst-i′ ir dl) (subst-i′ ir dr) (ρ̂-⊔ J)
   subst-i′ ir (t-binop-arith o d₁ d₂)          = t-binop-arith o (subst-i′ ir d₁) (subst-i′ ir d₂)
   subst-i′ ir (t-binop-arith-float o d₁ d₂)    = t-binop-arith-float o (subst-i′ ir d₁) (subst-i′ ir d₂)
   subst-i′ ir (t-binop-arith-float-il o d₁ d₂) = t-binop-arith-float-il o (subst-i′ ir d₁) (subst-i′ ir d₂)
@@ -286,7 +301,7 @@ mutual
   subst-d′ ir (d-snd {u = u})                = d-snd {u = u}
   subst-d′ ir (d-terminal {u = u})           = d-terminal {u = u}
   subst-d′ ir (d-initial {u = u})            = d-initial {u = u}
-  subst-d′ ir (d-case df dg)       = d-case (subst-d′ ir df) (subst-d′ ir dg)
+  subst-d′ ir (d-case df dg J)     = d-case (subst-d′ ir df) (subst-d′ ir dg) (ρ̂-⊔ J)
   subst-d′ ir (d-pair df dg)       = d-pair (subst-d′ ir df) (subst-d′ ir dg)
   subst-d′ ir (d-cata {F = F} {A = A} {π = π} {u = u} wf da) =
     d-cata {u = u} (ρ̂-wf wf) (cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A) ⇝ᵢ subst-i′ ir da)

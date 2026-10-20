@@ -197,7 +197,7 @@ d_firstChecking_36 v0 v1 v2
         -> coe
              d_fc'45'step_44 (coe v0) (coe v1) (coe v3) (coe v4)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338 (coe v0)
                 (coe v1) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.fc-step
@@ -456,7 +456,7 @@ du_compileFunBody_180 v0 v1 v2 v3 v4 v5 v6
          (coe MAlonzo.Code.Once.TypeCheck.Classify.d_tsig_338 (coe v1)))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
             (coe v1) (coe v2))
@@ -635,7 +635,7 @@ d_inferType'45'validate_340 v0 v1 v2 v3
         -> let v5
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6222
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6346
                         (coe v0) (coe v1) (coe v4)) in
            coe
              (case coe v5 of
@@ -657,7 +657,7 @@ d_inferType_376 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6206
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6330
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                     (coe v0) (coe v1))
@@ -1052,22 +1052,40 @@ d_ce'45'mono'45'p_544 v0 v1 v2 v3 v4 v5 v6
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                ("The type of `" :: Data.Text.Text)
+                ("`" :: Data.Text.Text)
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (MAlonzo.Code.Once.Parser.d_funName_106 (coe v3))
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      ("`, " :: Data.Text.Text)
+                      ("` is more precise than its signature " :: Data.Text.Text)
                       (coe
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (MAlonzo.Code.Once.Type.d_showType_34 (coe v5))
                          (coe
                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                            (", is not its principal type: the body also checks at "
-                             ::
-                             Data.Text.Text)
-                            (MAlonzo.Code.Once.Type.d_showType_34 (coe v7)))))))
+                            (": the body also checks at " :: Data.Text.Text)
+                            (coe
+                               MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                               (MAlonzo.Code.Once.Type.d_showType_34 (coe v7))
+                               (coe
+                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                  (". A signature states the body's own type: write the more precise one, or give the body"
+                                   ::
+                                   Data.Text.Text)
+                                  (coe
+                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                     (" the wider type with an annotation, " :: Data.Text.Text)
+                                     (coe
+                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                        (MAlonzo.Code.Once.Parser.d_funName_106 (coe v3))
+                                        (coe
+                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                           (" = (... : " :: Data.Text.Text)
+                                           (coe
+                                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                              (MAlonzo.Code.Once.Type.d_showType_34 (coe v5))
+                                              (")" :: Data.Text.Text))))))))))))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
              d_ce'45'mono'45'g_550 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
@@ -1161,23 +1179,28 @@ d_ce'45'poly'45'p_560 v0 v1 v2 v3 v4 v5
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                ("The schema of `" :: Data.Text.Text)
+                ("`" :: Data.Text.Text)
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (MAlonzo.Code.Once.Parser.d_pfunName_124 (coe v3))
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      ("` is not its principal type: the body also checks at "
+                      ("` is more precise than its schema: the body also checks at "
                        ::
                        Data.Text.Text)
-                      (MAlonzo.Code.Once.Type.d_showType_34 (coe v6)))))
+                      (coe
+                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                         (MAlonzo.Code.Once.Type.d_showType_34 (coe v6))
+                         (". A signature states the body's own type: write the more precise one"
+                          ::
+                          Data.Text.Text)))))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
              d_ce'45'poly_564 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
              (coe
                 du_checkOK_428
                 (coe
-                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
                    (coe
                       MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                       (coe d_ctop_450 (coe v2)) (coe d_cpolys_456 (coe v2)))
@@ -1341,7 +1364,7 @@ d_lw'45'mono_862 v0 v1 v2 v3
                          (coe d_ctop_450 (coe v0))))
                    (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v1)) (coe v4)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6214
+                      MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
                       (coe
                          MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                          (coe d_ctop_450 (coe v0)) (coe d_cpolys_456 (coe v0)))

@@ -25,6 +25,7 @@
 ------------------------------------------------------------------------
 module Once.Lang.Laws.ModeAgreement where
 
+open import Once.Lang.Type.Join using (join-unique)
 open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List.Relation.Unary.All using (_∷_)
@@ -263,9 +264,10 @@ mutual
   agree-ii (t-let d₁ d₂) (t-let d₁′ d₂′) with agree-ii d₁ d₁′
   ... | refl , refl with agree-ii d₂ d₂′
   ...   | refl , refl = refl , refl
-  agree-ii (t-case dS dL dR) (t-case dS′ dL′ dR′) with agree-ii dS dS′
+  agree-ii (t-case dS dL dR J) (t-case dS′ dL′ dR′ J′) with agree-ii dS dS′
   ... | refl , refl with agree-ii dL dL′ | agree-ii dR dR′
-  ...   | refl , refl | refl , refl = refl , refl
+  ...   | refl , refl | refl , refl with join-unique J J′
+  ...     | refl = refl , refl
   agree-ii (t-binop-arith _ d₁ d₂) (t-binop-arith _ d₁′ d₂′) with agree-ii d₁ d₁′ | agree-ii d₂ d₂′
   ... | refl , refl | refl , refl = refl , refl
   agree-ii (t-binop-arith _ d₁ d₂) (t-binop-arith-float _ d₁′ d₂′) with agree-ii d₁ d₁′
@@ -517,7 +519,7 @@ mutual
   agree-dc d-snd t-snd-check = refl
   agree-dc d-terminal t-terminal-morph-check = refl
   agree-dc d-initial t-initial-morph-check = refl
-  agree-dc (d-case df dg) (t-case-copair-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
+  agree-dc (d-case df dg _) (t-case-copair-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
   agree-dc (d-pair df dg) (t-pair-morph-check df′ dg′) = cong₂ _+ᵘ_ (agree-dc df df′) (agree-dc dg dg′)
   agree-dc (d-cata _ a) (t-cata-check _ c) = cong (T.Many *ᵘ_) (agree-ic a c)
   agree-dc (d-poly _ _ _ _ _ _ _ _) (t-var-poly-instantiate _ _ _ _ _) = refl
@@ -533,7 +535,7 @@ mutual
   agree-di d-snd d = ⊥-elim (noinf-snd d)
   agree-di d-terminal d = ⊥-elim (noinf-terminal d)
   agree-di d-initial d = ⊥-elim (noinf-initial d)
-  agree-di (d-case _ _) d = ⊥-elim (noinf-case d)
+  agree-di (d-case _ _ _) d = ⊥-elim (noinf-case d)
   agree-di (d-pair _ _) d = ⊥-elim (noinf-pair d)
   agree-di (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
   -- Plan 0.103 phase 2b: a non-ground telescope entry does not infer.
@@ -559,8 +561,9 @@ mutual
   agree-dd d-snd d-snd = refl , refl
   agree-dd d-terminal d-terminal = refl , refl
   agree-dd d-initial d-initial = refl , refl
-  agree-dd (d-case df dg) (d-case df′ dg′) with agree-dd df df′ | agree-dd dg dg′
-  ... | refl , refl | refl , refl = refl , refl
+  agree-dd (d-case df dg J) (d-case df′ dg′ J′) with agree-dd df df′ | agree-dd dg dg′
+  ... | refl , refl | refl , refl with join-unique J J′
+  ...   | refl = refl , refl
   agree-dd (d-pair df dg) (d-pair df′ dg′) with agree-dd df df′ | agree-dd dg dg′
   ... | refl , refl | refl , refl = refl , refl
   agree-dd (d-cata _ a) (d-cata _ a′) with cod-≡ (proj₁ (agree-ii a a′))

@@ -37,7 +37,7 @@ open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
 -- has to follow — the judgment no longer reaches into the IR or the elaborator.
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
+open import Once.Lang.Type.Sub using (_<:_; _⊑π_; _⊔_≔_)
 open import Once.Lang.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
 open import Once.Lang.Name using (showCanonical)
@@ -274,14 +274,16 @@ mutual
     -- Case / sum elimination
     ----------------------------------------------------------------
 
+    -- The branches meet at the join of their types (D322).
     t-case : ∀ {ctx : NamedCtx} {scrut eL eR : RawExpr}
              {xL xR : String}
-             {A B C : Type}
+             {A B Cₗ Cᵣ C : Type}
              {qL qR : Quantity}
              {Ψs Ψₗ Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
            → ctx ⊢ᵢ scrut ∶ (A Once.Lang.Type.+ B) ⨾ Ψs
-           → (extendNamedCtx ctx xL A) ⊢ᵢ eL ∶ C ⨾ (qL ∷ Ψₗ)
-           → (extendNamedCtx ctx xR B) ⊢ᵢ eR ∶ C ⨾ (qR ∷ Ψᵣ)
+           → (extendNamedCtx ctx xL A) ⊢ᵢ eL ∶ Cₗ ⨾ (qL ∷ Ψₗ)
+           → (extendNamedCtx ctx xR B) ⊢ᵢ eR ∶ Cᵣ ⨾ (qR ∷ Ψᵣ)
+           → Cₗ ⊔ Cᵣ ≔ C
            → ctx ⊢ᵢ RDestruct scrut xL eL xR eR ∶ C
                    ⨾ (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ))
 
@@ -926,11 +928,12 @@ mutual
     -- `B`, and `¡` is unique).
     d-initial  : ∀ {ctx : NamedCtx} {π : Once.Lang.Type.Grade.Purity} {u : Once.Lang.Type.Grade.pure ⊑π π}
                → ctx ⊢ᵈ RResolved (gen "initial") ∶ Void ⇒[ π ]↦ Void ⨾ Surface.zeroUsage
-    -- The copair: both branches determine the SAME output.
-    d-case     : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Lang.Type.Grade.Purity}
+    -- The copair: its output is the join of the branches' outputs (D322).
+    d-case     : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B Cf Cg C : Type} {π : Once.Lang.Type.Grade.Purity}
                    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-               → ctx ⊢ᵈ f ∶ A ⇒[ π ]↦ C ⨾ Ψ₁
-               → ctx ⊢ᵈ g ∶ B ⇒[ π ]↦ C ⨾ Ψ₂
+               → ctx ⊢ᵈ f ∶ A ⇒[ π ]↦ Cf ⨾ Ψ₁
+               → ctx ⊢ᵈ g ∶ B ⇒[ π ]↦ Cg ⨾ Ψ₂
+               → Cf ⊔ Cg ≔ C
                → ctx ⊢ᵈ RApp (RApp (RResolved (gen "case")) f) g ∶ (A + B) ⇒[ π ]↦ C ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
     d-pair     : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Lang.Type.Grade.Purity}
                    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}

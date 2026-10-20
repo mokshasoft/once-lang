@@ -48,7 +48,8 @@ open import Once.Lang.Type.Poly using (Ground; extractGround)
 open import Once.Lang.Type.Instance using (KindedInstance)
 open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Lang.Type.Sub using (⊑-pure; _<:_; sub-arr; ·p-diag)
-open import Once.Lang.Type.Sub using (<:-refl)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl; _⊔_≔_; <:ᶜ⇒<:)
+open _⊔_≔_ using (left; right)
 open import Once.Lang.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
@@ -214,9 +215,10 @@ elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
 elabᵢ V (t-neg d)         = lift1 (prim p-neg) (⊢prim p-neg) (elabᵢ V d)
 elabᵢ V (t-neg-float i f l p) = lit (lit-float (negate (decimalOf i f l))) , ⊢lit-float
 elabᵢ V (t-let d₁ d₂)     = let (e , ⊢e) = elabᵢ V d₁ ; (b , ⊢b) = elabᵢ V d₂ in let′ _ e b , ⊢let-pure _ ⊢e ⊢b
-elabᵢ V (t-case ds dl dr) =
+-- Each branch composed with its conversion into the join (D322).
+elabᵢ V (t-case ds dl dr J) =
   let (s , ⊢s) = elabᵢ V ds ; (l , ⊢l) = elabᵢ V dl ; (r , ⊢r) = elabᵢ V dr
-  in case _ _ s l r , ⊢case⊔ ⊢s ⊢l ⊢r
+  in case _ _ s (coerce _ _ l) (coerce _ _ r) , ⊢case⊔ ⊢s (⊢coerce (<:ᶜ⇒<: (left J)) ⊢l) (⊢coerce (<:ᶜ⇒<: (right J)) ⊢r)
 elabᵢ V (t-binop-arith {op = OpAdd} _ d₁ d₂) = bin p-add refl (elabᵢ V d₁) (elabᵢ V d₂)
 elabᵢ V (t-binop-arith {op = OpSub} _ d₁ d₂) = bin p-sub refl (elabᵢ V d₁) (elabᵢ V d₂)
 elabᵢ V (t-binop-arith {op = OpMul} _ d₁ d₂) = bin p-mul refl (elabᵢ V d₁) (elabᵢ V d₂)
@@ -294,6 +296,8 @@ elabᵈ V (d-fst {u = u}) = fstᶜ _ _ _ , ⊢fstᶜ u
 elabᵈ V (d-snd {u = u}) = sndᶜ _ _ _ , ⊢sndᶜ u
 elabᵈ V (d-terminal {u = u}) = terminalᶜ _ _ , ⊢terminalᶜ u
 elabᵈ V (d-initial {u = u}) = initialᶜ _ _ , ⊢initialᶜ u
-elabᵈ V (d-case df dg) = lift2 (caseᶜ _ _ _) ⊢caseᶜ (elabᵈ V df) (elabᵈ V dg)
+elabᵈ V (d-case df dg J) =
+  lift2 (caseᶜ _ _ _) ⊢caseᶜ (coerceE (sub-arr (<:-refl _) (<:ᶜ⇒<: (left J)) (⊑π-refl _)) (elabᵈ V df))
+                             (coerceE (sub-arr (<:-refl _) (<:ᶜ⇒<: (right J)) (⊑π-refl _)) (elabᵈ V dg))
 elabᵈ V (d-pair df dg) = lift2 (pairᶜ _ _) (⊢pairᶜ (·p-diag _)) (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V (d-cata {u = u} wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ u wf) (elabᵢ V dalg)

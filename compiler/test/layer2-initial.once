@@ -12,12 +12,12 @@
 import I.Linux.Syscalls as S
 
 -- D321: `initial`'s principal type over the domain `Void` is `Void -> Void`;
--- the use is widened to `Int` by the annotation.
+-- the destruct is at the join of its branches, `Int ⊔ Void = Int` (D322).
 fromVoid : Void -> Void
 fromVoid = initial
 
 pickInt : Int + Void -> Int
-pickInt s = destruct s of { Left x -> x ; Right v -> (fromVoid v : Int) }
+pickInt s = destruct s of { Left x -> x ; Right v -> fromVoid v }
 
 main : Act Unit Void
 main = exit@S (pickInt ((inl 42) : Int + Void))

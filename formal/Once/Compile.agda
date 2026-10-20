@@ -467,7 +467,9 @@ ce-mono m doOpt sc fi es (inj₂ ty)  =
 -- D314/D321: a definition is at its principal type; D315: `main` is then
 -- compiled at `Eff Unit Unit`.
 ce-mono-p m doOpt sc fi es ty (just X) =
-  inj₁ ("The type of `" ++ funName fi ++ "`, " ++ showType ty ++ ", is not its principal type: the body also checks at " ++ showType X)
+  inj₁ ("`" ++ funName fi ++ "` is more precise than its signature " ++ showType ty ++ ": the body also checks at "
+        ++ showType X ++ ". A signature states the body's own type: write the more precise one, or give the body"
+        ++ " the wider type with an annotation, " ++ funName fi ++ " = (... : " ++ showType ty ++ ")")
 ce-mono-p m doOpt sc fi es ty nothing =
   ce-mono-g m doOpt sc fi es (entryType (funName fi) ty) (rigidFree? (entryType (funName fi) ty))
 -- D243: a monomorphic definition's type is ground.
@@ -484,7 +486,8 @@ ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
 -- D243: a telescope definition is checked ONCE, at its schema with rigid
 -- parameters; its uses are instances of it.
 ce-poly-p m doOpt sc pfi es (just X) =
-  inj₁ ("The schema of `" ++ pfunName pfi ++ "` is not its principal type: the body also checks at " ++ showType X)
+  inj₁ ("`" ++ pfunName pfi ++ "` is more precise than its schema: the body also checks at " ++ showType X
+        ++ ". A signature states the body's own type: write the more precise one")
 ce-poly-p m doOpt sc pfi es nothing =
   ce-poly m doOpt sc pfi es
     (checkOK (TE.checkElabV (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))

@@ -43,6 +43,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Lang.Type using (Type)
 open import Once.Lang.Type.WellFormed using (IsConcrete)
 import Once.Lang.Type.Grade
+import Once.Lang.Type.Sub
+import Once.Lang.Type.Join
 import Once.Lang.Type
 import Once.Type
 import Once.Lang.Context
@@ -357,7 +359,8 @@ record VerifiedTypeChecker : Set₁ where
       → tcCheck ctx Raw.RUnit T ≡ failure err
       → err ≡ (TypeMismatch T Once.Lang.Type.Unit)
 
-    -- RDestruct branches with mismatched types → CaseBranchMismatch.
+    -- RDestruct branches with no common upper bound (no join, D322) →
+    -- CaseBranchMismatch.
     tc-err-case-branch-mismatch :
       ∀ (ctx : NamedCtx) (scrut : RawExpr)
         (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
@@ -370,7 +373,7 @@ record VerifiedTypeChecker : Set₁ where
           ≡ success C₁ (qℓ Once.Lang.Context.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
           ≡ success C₂ (qr Once.Lang.Context.Usage.∷ Ψᵣ) eRE dR fR
-      → ¬ (C₁ ≡ C₂)
+      → ¬ Once.Lang.Type.Join.UB C₁ C₂
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseBranchMismatch
 
@@ -740,20 +743,20 @@ record VerifiedTypeChecker : Set₁ where
         {Ψs : Surface.Usage (Classify.NamedCtx.size ctx)}
         {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A Once.Lang.Type.+ B)}
         {ds fs : _}
-        (C : Type) {qℓ qr : _}
+        (C₁ C₂ C : Type) (J : Once.Lang.Type.Sub._⊔_≔_ C₁ C₂ C) {qℓ qr : _}
         {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eLE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xL A))
-                     (qℓ Once.Lang.Context.Usage.∷ Ψₗ) C}
+                     (qℓ Once.Lang.Context.Usage.∷ Ψₗ) C₁}
         {dL fL : _}
         {Ψᵣ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eRE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xR B))
-                     (qr Once.Lang.Context.Usage.∷ Ψᵣ) C}
+                     (qr Once.Lang.Context.Usage.∷ Ψᵣ) C₂}
         {dR fR : _}
       → tcInfer ctx scrut ≡ success (A Once.Lang.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
-          ≡ success C (qℓ Once.Lang.Context.Usage.∷ Ψₗ) eLE dL fL
+          ≡ success C₁ (qℓ Once.Lang.Context.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
-          ≡ success C (qr Once.Lang.Context.Usage.∷ Ψᵣ) eRE dR fR
+          ≡ success C₂ (qr Once.Lang.Context.Usage.∷ Ψᵣ) eRE dR fR
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (Raw.RDestruct scrut xL eL xR eR)
             ≡ success C (Ψs Surface.+ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f

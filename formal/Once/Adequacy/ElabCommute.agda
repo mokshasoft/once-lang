@@ -184,7 +184,10 @@ mutual
   tm-i (t-neg d)          = cong (G.prim G.p-neg) (tm-i d)
   tm-i (t-neg-float i f l p) = refl
   tm-i (t-let d₁ d₂)      = cong₂ (G.let′ _) (tm-i d₁) (tm-i d₂)
-  tm-i (t-case ds dl dr)  = trans (cong₂ (λ a b → G.case _ _ a b _) (tm-i ds) (tm-i dl)) (cong (G.case _ _ _ _) (tm-i dr))
+  tm-i (t-case {Cₗ = Cₗ} {Cᵣ = Cᵣ} {C = C} {qL = qL} {qR = qR} ds dl dr _) =
+    trans (cong₂ (λ a b → G.case qL qR a b (G.coerce (ρ̂ Cᵣ) (ρ̂ C) (proj₁ (elabᵢ V (subst-i′ ir dr)))))
+                 (tm-i ds) (cong (G.coerce (ρ̂ Cₗ) (ρ̂ C)) (tm-i dl)))
+          (cong (G.case qL qR _ _) (cong (G.coerce (ρ̂ Cᵣ) (ρ̂ C)) (tm-i dr)))
   tm-i (t-binop-arith {op = OpAdd} o d₁ d₂) = cong (G.prim G.p-add) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
   tm-i (t-binop-arith {op = OpSub} o d₁ d₂) = cong (G.prim G.p-sub) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
   tm-i (t-binop-arith {op = OpMul} o d₁ d₂) = cong (G.prim G.p-mul) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
@@ -300,7 +303,11 @@ mutual
   tm-d d-snd               = refl
   tm-d d-terminal          = refl
   tm-d d-initial           = refl
-  tm-d (d-case df dg)      = arms (tm-d df) (tm-d dg)
+  tm-d (d-case {A = A} {B = B} {Cf = Cf} {Cg = Cg} {C = C} {π = π} df dg _) =
+    arms {f = G.coerce (A T.⇒[ mk-kind Many π ] Cf) (A T.⇒[ mk-kind Many π ] C) _}
+         {g = G.coerce (B T.⇒[ mk-kind Many π ] Cg) (B T.⇒[ mk-kind Many π ] C) _}
+         (cong (G.coerce (ρ̂ (A T.⇒[ mk-kind Many π ] Cf)) (ρ̂ (A T.⇒[ mk-kind Many π ] C))) (tm-d df))
+         (cong (G.coerce (ρ̂ (B T.⇒[ mk-kind Many π ] Cg)) (ρ̂ (B T.⇒[ mk-kind Many π ] C))) (tm-d dg))
   tm-d (d-pair df dg)      = arms (tm-d df) (tm-d dg)
   tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
     cong (λ u → G.let′ _ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
@@ -325,7 +332,9 @@ mutual
   dr-i (t-neg-float i f l p) = H.refl
   dr-i (t-let d₁ d₂)      =
     H.trans (≅let-pure refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂)) (H.≡-to-≅ (sym (ρ̂ᶜ-let-pure _ _ _)))
-  dr-i (t-case ds dl dx)  = ≅case⊔ refl (tm-i ds) (dr-i ds) refl (tm-i dl) (dr-i dl) refl (tm-i dx) (dr-i dx)
+  dr-i (t-case {Cₗ = Cₗ} {Cᵣ = Cᵣ} {C = C} ds dl dx _) =
+    ≅case⊔ refl (tm-i ds) (dr-i ds) refl (cong (G.coerce (ρ̂ Cₗ) (ρ̂ C)) (tm-i dl)) (≅coerce (tm-i dl) (dr-i dl))
+                                    refl (cong (G.coerce (ρ̂ Cᵣ) (ρ̂ C)) (tm-i dx)) (≅coerce (tm-i dx) (dr-i dx))
   dr-i (t-binop-arith {op = OpAdd} o d₁ d₂) =
     ≅1 _ _ (GT.⊢prim G.p-add) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
   dr-i (t-binop-arith {op = OpSub} o d₁ d₂) =
@@ -502,8 +511,10 @@ mutual
   dr-d d-snd               = H.refl
   dr-d d-terminal          = H.refl
   dr-d d-initial           = H.refl
-  dr-d (d-case df dg)      =
-    H.trans (≅2 _ _ DT.⊢caseᶜ refl (tm-d df) (dr-d df) refl (tm-d dg) (dr-d dg)) (H.sym (c-case (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg))))
+  dr-d (d-case {A = A} {B = B} {Cf = Cf} {Cg = Cg} {C = C} {π = π} df dg _) =
+    H.trans (≅2 _ _ DT.⊢caseᶜ refl (cong (G.coerce (ρ̂ (A T.⇒[ mk-kind Many π ] Cf)) (ρ̂ (A T.⇒[ mk-kind Many π ] C))) (tm-d df)) (≅coerce {A = ρ̂ (A T.⇒[ mk-kind Many π ] Cf)} {B = ρ̂ (A T.⇒[ mk-kind Many π ] C)} (tm-d df) (dr-d df))
+                              refl (cong (G.coerce (ρ̂ (B T.⇒[ mk-kind Many π ] Cg)) (ρ̂ (B T.⇒[ mk-kind Many π ] C))) (tm-d dg)) (≅coerce {A = ρ̂ (B T.⇒[ mk-kind Many π ] Cg)} {B = ρ̂ (B T.⇒[ mk-kind Many π ] C)} (tm-d dg) (dr-d dg)))
+            (H.sym (c-case (GT.⊢coerce _ (proj₂ (elabᵈ V df))) (GT.⊢coerce _ (proj₂ (elabᵈ V dg)))))
   dr-d (d-pair df dg)      =
     H.trans (≅2 _ _ (DT.⊢pairᶜ (·p-diag _)) refl (tm-d df) (dr-d df) refl (tm-d dg) (dr-d dg)) (H.sym (c-pair (·p-diag _) (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg))))
   dr-d (d-cata {F = F} {A = A} {π = π} {u = u} wf da) =

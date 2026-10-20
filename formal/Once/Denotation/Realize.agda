@@ -37,7 +37,8 @@ open import Once.Lang.Type.Grade using (Many; Purity; mk-kind; ≤q-Many)
 open import Once.Lang.Type using (Type; μ-type; ν-type; _⇒[_]_)
 open import Once.Lang.Type.Sub using (sub-arr)
 open import Once.Lang.Type.WellFormed using (con-fun)
-open import Once.Lang.Type.Sub using (<:-refl)
+open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl; _⊔_≔_; <:ᶜ⇒<:)
+open _⊔_≔_ using (left; right)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -169,7 +170,9 @@ realize-infer (t-neg d)         = neg (realize-infer d)
 -- no choice, and agreement with the elaborator is `refl`.
 realize-infer (t-neg-float i f l p) = float (negate (decimalOf i f l))
 realize-infer (t-let d₁ d₂)     = let' (realize-infer d₁) (realize-infer d₂)
-realize-infer (t-case ds dl dr) = case' (realize-infer ds) (realize-infer dl) (realize-infer dr)
+-- D322: each branch converted into the join.
+realize-infer (t-case ds dl dr J) =
+  case' (realize-infer ds) (coerce (<:ᶜ⇒<: (left J)) (realize-infer dl)) (coerce (<:ᶜ⇒<: (right J)) (realize-infer dr))
 -- arithmetic binops: pick the SExpr ctor by `op`; comparison ops make the
 -- `isArithmeticOp op ≡ true` premise absurd.
 realize-infer (t-binop-arith {op = OpAdd} _ d₁ d₂) = add  (realize-infer d₁) (realize-infer d₂)
@@ -277,6 +280,8 @@ realize-d d-fst      = lift-morphism IR.fst
 realize-d d-snd      = lift-morphism IR.snd
 realize-d d-terminal = lift-morphism IR.terminal
 realize-d d-initial  = lift-morphism IR.initial
-realize-d (d-case df dg) = copair' (realize-d df) (realize-d dg)
+realize-d (d-case df dg J) =
+  copair' (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (left J)) (⊑π-refl _)) (realize-d df))
+          (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (right J)) (⊑π-refl _)) (realize-d dg))
 realize-d (d-pair df dg) = fork'   (realize-d df) (realize-d dg)
 realize-d (d-cata wfF dalg) = cata wfF (realize-infer dalg)

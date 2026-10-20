@@ -31,7 +31,7 @@ open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_; yes; no)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃-syntax; _×_; _,_; proj₁)
+open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Lang.Type using (Type; Unit; Void; Int)
@@ -42,6 +42,7 @@ import Once.Lang.Type.Poly as T
 import Once.Type as T
 open import Once.Lang.Syntax as Raw using (RawExpr; RLam; RQualified)
 open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Lang.Type.Join using (UB; join?-apart)
 open import Once.Lang.Type.Sub using (sub-int; sub-unit)
 open import Once.Type.Sub using (_<:?_)
 open import Once.TypeCheck.Elaborate
@@ -198,7 +199,7 @@ case-branch-mismatch-is-CaseBranchMismatch :
       ≡ success C₁ (qℓ Once.Lang.Context.Usage.∷ Ψₗ) eLE dL fL
   → inferElab (Classify.extendNamedCtx ctx xR B) eR
       ≡ success C₂ (qr Once.Lang.Context.Usage.∷ Ψᵣ) eRE dR fR
-  → ¬ (C₁ ≡ C₂)
+  → ¬ UB C₁ C₂
   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
   → err ≡ CaseBranchMismatch
 case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ eqS eqL eqR ¬eq eqOuter
@@ -207,11 +208,14 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
     with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
 ...   | success _ (_ Once.Lang.Context.Usage.∷ _) _ _ _ , _ | refl
       with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
-...     | success _ (_ Once.Lang.Context.Usage.∷ _) _ _ _ , _ | refl
-        with C₁ ≟T C₂
-...       | yes ceq = ⊥-elim (¬eq ceq)
-...       | no _ with eqOuter
-...         | refl = refl
+...     | success _ (_ Once.Lang.Context.Usage.∷ _) _ _ _ , _ | refl =
+  -- D322: branches with no upper bound have no join.
+  sym (failure-inj (trans (sym (cong proj₁ (cong (Once.TypeCheck.Elaborate.inferElabV-RDestruct-join _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+                                                (proj₂ (join?-apart ¬eq)))))
+                          eqOuter))
+  where
+    failure-inj : ∀ {n} {Δ} {e e′} → _≡_ {A = InferElabResult {n} Δ} (failure e) (failure e′) → e ≡ e′
+    failure-inj refl = refl
 
 ------------------------------------------------------------------------
 -- Application type mismatch (generic RApp)
