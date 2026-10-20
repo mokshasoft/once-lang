@@ -126,31 +126,32 @@ open import Once.Lang.Core.AbsTy
 schemaOf : PolyType → Schema
 schemaOf sc = schema (arityOf sc) (kindsOf sc) (absTy (kindsOf sc) (rigidOf sc))
 
-private
-  module Var (sc : PolyType) {x : String} (m : x ∈ ftv sc) where
-    ps = params sc
-    mp = ∈-params sc m
-    j : Fin (arityOf sc)
-    j = fromℕ< (indexOf-< x ps mp)
+-- A parameter: its index, kind, abstraction and name (exported for the
+-- front-end bridge, plan 0.121 F6).
+module Var (sc : PolyType) {x : String} (m : x ∈ ftv sc) where
+  ps = params sc
+  mp = ∈-params sc m
+  j : Fin (arityOf sc)
+  j = fromℕ< (indexOf-< x ps mp)
 
-    kind-at : kindsOf sc j ≡ kindOf sc x
-    kind-at = cong (kindOf sc) (lookup-indexOf x ps mp)
+  kind-at : kindsOf sc j ≡ kindOf sc x
+  kind-at = cong (kindOf sc) (lookup-indexOf x ps mp)
 
-    -- The parameter's rigid constant abstracts to its variable.
-    abstracts : absTy (kindsOf sc) (rigidSubst sc x) ≡ var j
-    abstracts = go (indexOf x ps Data.Nat.<? arityOf sc)
-      where
-        k = kindOf sc x
-        i = indexOf x ps
-        kd : ∀ (j′ : Fin (arityOf sc)) → j′ ≡ j → (d : Dec (kindsOf sc j′ ≡ k)) → ar-kind (kindsOf sc) k i j′ d ≡ var j
-        kd j′ refl (yes _) = refl
-        kd j′ refl (no ¬e) = ⊥-elim (¬e kind-at)
-        go : (d : Dec (i < arityOf sc)) → ar-bound (kindsOf sc) k i d ≡ var j
-        go (yes p) = kd (fromℕ< p) refl (kindsOf sc (fromℕ< p) ≟tk k)
-        go (no ¬p) = ⊥-elim (¬p (indexOf-< x ps mp))
+  -- The parameter's rigid constant abstracts to its variable.
+  abstracts : absTy (kindsOf sc) (rigidSubst sc x) ≡ var j
+  abstracts = go (indexOf x ps Data.Nat.<? arityOf sc)
+    where
+      k = kindOf sc x
+      i = indexOf x ps
+      kd : ∀ (j′ : Fin (arityOf sc)) → j′ ≡ j → (d : Dec (kindsOf sc j′ ≡ k)) → ar-kind (kindsOf sc) k i j′ d ≡ var j
+      kd j′ refl (yes _) = refl
+      kd j′ refl (no ¬e) = ⊥-elim (¬e kind-at)
+      go : (d : Dec (i < arityOf sc)) → ar-bound (kindsOf sc) k i d ≡ var j
+      go (yes p) = kd (fromℕ< p) refl (kindsOf sc (fromℕ< p) ≟tk k)
+      go (no ¬p) = ⊥-elim (¬p (indexOf-< x ps mp))
 
-    lookup-at : lookup ps j ≡ x
-    lookup-at = lookup-indexOf x ps mp
+  lookup-at : lookup ps j ≡ x
+  lookup-at = lookup-indexOf x ps mp
 
 -- For every part `A` of the schema (its variables are parameters):
 --   * its rigid instance, abstracted, mentions no rigid constant;
