@@ -54,6 +54,12 @@ polyNames []                    = []
 polyNames (Parser.e-poly p ∷ es) = pfunName p ∷ polyNames es
 polyNames (Parser.e-fun _ ∷ es)  = polyNames es
 
+-- (each an entry's name)
+poly-names : ∀ {x} es → x ∈ polyNames es → x ∈ map Parser.entryNameOf es
+poly-names (Parser.e-poly _ ∷ es) (here refl) = here refl
+poly-names (Parser.e-poly _ ∷ es) (there m)   = there (poly-names es m)
+poly-names (Parser.e-fun _ ∷ es)  m           = there (poly-names es m)
+
 ------------------------------------------------------------------------
 -- `sigsAdjacent`, as a relation
 ------------------------------------------------------------------------

@@ -147,9 +147,11 @@ private
       rest-mem (here refl) = ⊥-elim (ne refl)
       rest-mem (there m′)  = m′
 
-  mem-toISig : ∀ {Σ c t} → (c ∶ t) ∈ Σ → (showCanonical c , declTy t) ∈ toISig Σ
-  mem-toISig {(c ∶ t) ∷ Σ} (here refl) = here refl
-  mem-toISig {_ ∷ Σ}       (there m)   = there (mem-toISig m)
+
+-- a declaration of Σ, in its table
+mem-toISig : ∀ {Σ c t} → (c ∶ t) ∈ Σ → (showCanonical c , declTy t) ∈ toISig Σ
+mem-toISig {(c ∶ t) ∷ Σ} (here refl) = here refl
+mem-toISig {_ ∷ Σ}       (there m)   = there (mem-toISig m)
 
 -- the FFI entries' facts, at a key of their table
 facts-at : ∀ {fs k T} → All FFIFacts fs → (k , T) ∈ entrySig fs → IsConcrete T × HonestFFI T × RigidFree T

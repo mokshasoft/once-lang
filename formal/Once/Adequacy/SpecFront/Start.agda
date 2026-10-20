@@ -33,7 +33,13 @@ open import Once.Lang.Contract using (ISig)
 import Once.Parser as Parser
 open import Once.Lang.Module using (entrySig)
 open import Once.Lang.Typing.Scope using (lookupImport)
-open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-all)
+open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-all; mem-toISig)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Membership.Propositional.Properties using (∈-map⁺)
+open import Once.Spec.Signature using (Signature; _∶_)
+open import Once.Spec.Name using (canonical)
+open import Once.Adequacy.SpecInterp using (toISig)
+open import Relation.Nullary using (¬_)
 
 private
   split : ∀ (xs ys : List String) → AllPairs _≢_ (xs ++ ys) → All (λ x → All (x ≢_) ys) xs × AllPairs _≢_ ys
@@ -81,3 +87,12 @@ nosig-rest fs es u =
 -- new to no definition
 fresh-start : ∀ es → All (λ x → All (x ≢_) ([] ++ [])) (names es)
 fresh-start es = All.tabulate (λ _ → [])
+
+-- A definition's name is not a declaration of Σ.
+not-sig : ∀ (Σ : Signature) fs es → toISig Σ ≡ entrySig fs → AllPairs _≢_ (names (fs ++ es))
+        → ∀ {x t} → x ∈ names es → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ)
+not-sig Σ fs es e u {x} mx M =
+  let (a , _) = split (names fs) (names es) (subst (AllPairs _≢_) (map-++ Parser.entryNameOf fs es) u)
+      mk = ∈-map⁺ proj₁ (subst (_ ∈_) e (mem-toISig M))
+      inF = All.lookup (keys-all {P = _∈ names fs} fs (All.tabulate (λ m → m))) mk
+  in All.lookup (All.lookup a inF) mx refl
