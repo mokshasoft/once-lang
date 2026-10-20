@@ -159,3 +159,112 @@ module _ {Fs} {s} (S : LP.Sig Fs s) where
   data CR {m} : ∀ {n} → PT.PCtx m n → SCx.Ctx m n → Set where
     cr-∅ : CR PT.∅ SCx.∅
     cr-▸ : ∀ {n} {Γ : PT.PCtx m n} {Γ′ A A′ q} → CR Γ Γ′ → PTR A A′ → CR (Γ PT., A ^ q) (Γ′ SCx.▸ A′)
+
+------------------------------------------------------------------------
+-- The canonical graphs, and each graph has one proof
+------------------------------------------------------------------------
+
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Once.Adequacy.SpecCore.Context using (uS)
+open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS)
+
+ur : ∀ {n} (Ψ : LC.Usage n) → UR Ψ (uS Ψ)
+ur LC.[]      = ur-[]
+ur (q LC.∷ Ψ) = ur-∷ (qr q) (ur Ψ)
+
+mutual
+  ptr : ∀ {m} (A : LP.Ty m) → PTR A (ptyS A)
+  ptr (LP.var i)       = p-var
+  ptr LP.Unit          = p-unit
+  ptr LP.Void          = p-void
+  ptr LP.Int           = p-int
+  ptr LP.Float         = p-float
+  ptr (A LP.* B)       = p-* (ptr A) (ptr B)
+  ptr (A LP.+ B)       = p-+ (ptr A) (ptr B)
+  ptr (A LP.⇒[ LG.mk-kind q π ] B) = p-⇒ (ptr A) (ptr B)
+  ptr (LP.μ-type F)    = p-μ (pfr F)
+  ptr (LP.ν-type F φ)  = p-ν (pfr F)
+  ptr (LP.rigid k i)   = p-rigid
+
+  pfr : ∀ {m} (F : LP.Fun m) → PFR F (pfunS F)
+  pfr (LP.K A)    = p-K (ptr A)
+  pfr LP.Id       = p-Id
+  pfr (F LP.⊕ G)  = p-⊕ (pfr F) (pfr G)
+  pfr (F LP.⊗ G)  = p-⊗ (pfr F) (pfr G)
+
+qr-+ : ∀ {p p′ q q′} → QR p p′ → QR q q′ → QR (p LG.+q q) (p′ SG.+q q′)
+qr-+ qr-zero b       = b
+qr-+ qr-one  qr-zero = qr-one
+qr-+ qr-one  qr-one  = qr-many
+qr-+ qr-one  qr-many = qr-many
+qr-+ qr-many b       = qr-many
+
+qr-* : ∀ {p p′ q q′} → QR p p′ → QR q q′ → QR (p LG.*q q) (p′ SG.*q q′)
+qr-* qr-zero b       = qr-zero
+qr-* qr-one  qr-zero = qr-zero
+qr-* qr-one  qr-one  = qr-one
+qr-* qr-one  qr-many = qr-many
+qr-* qr-many qr-zero = qr-zero
+qr-* qr-many qr-one  = qr-many
+qr-* qr-many qr-many = qr-many
+
+ur-+ : ∀ {n} {Ψ₁ Ψ₂ : LC.Usage n} {Φ₁ Φ₂} → UR Ψ₁ Φ₁ → UR Ψ₂ Φ₂ → UR (Ψ₁ LC.+ᵘ Ψ₂) (Φ₁ SCx.+ᵘ Φ₂)
+ur-+ ur-[]        ur-[]        = ur-[]
+ur-+ (ur-∷ a u)  (ur-∷ b v)   = ur-∷ (qr-+ a b) (ur-+ u v)
+
+ur-* : ∀ {n q q′} {Ψ : LC.Usage n} {Φ} → QR q q′ → UR Ψ Φ → UR (q LC.*ᵘ Ψ) (q′ SCx.*ᵘ Φ)
+ur-* a ur-[]       = ur-[]
+ur-* a (ur-∷ b u)  = ur-∷ (qr-* a b) (ur-* a u)
+
+PR-unique : ∀ {π π′} (p p′ : PR π π′) → p ≡ p′
+PR-unique pr-pure pr-pure = refl
+PR-unique pr-act  pr-act  = refl
+PR-unique pr-eff  pr-eff  = refl
+
+QR-unique : ∀ {q q′} (a b : QR q q′) → a ≡ b
+QR-unique qr-zero qr-zero = refl
+QR-unique qr-one  qr-one  = refl
+QR-unique qr-many qr-many = refl
+
+UR-unique : ∀ {n} {Ψ : LC.Usage n} {Φ} (u v : UR Ψ Φ) → u ≡ v
+UR-unique ur-[]      ur-[]      = refl
+UR-unique (ur-∷ a u) (ur-∷ b v) = cong₂ ur-∷ (QR-unique a b) (UR-unique u v)
+
+mutual
+  PTR-unique : ∀ {m} {A : LP.Ty m} {A′} (a b : PTR A A′) → a ≡ b
+  PTR-unique p-var     p-var       = refl
+  PTR-unique p-unit    p-unit      = refl
+  PTR-unique p-void    p-void      = refl
+  PTR-unique p-int     p-int       = refl
+  PTR-unique p-float   p-float     = refl
+  PTR-unique (p-* a b) (p-* a′ b′) = cong₂ p-* (PTR-unique a a′) (PTR-unique b b′)
+  PTR-unique (p-+ a b) (p-+ a′ b′) = cong₂ p-+ (PTR-unique a a′) (PTR-unique b b′)
+  PTR-unique (p-⇒ a b) (p-⇒ a′ b′) = cong₂ p-⇒ (PTR-unique a a′) (PTR-unique b b′)
+  PTR-unique (p-μ f)   (p-μ f′)    = cong p-μ (PFR-unique f f′)
+  PTR-unique (p-ν f)   (p-ν f′)    = cong p-ν (PFR-unique f f′)
+  PTR-unique p-rigid   p-rigid     = refl
+
+  PFR-unique : ∀ {m} {F : LP.Fun m} {F′} (f g : PFR F F′) → f ≡ g
+  PFR-unique (p-K a)   (p-K b)     = cong p-K (PTR-unique a b)
+  PFR-unique p-Id      p-Id        = refl
+  PFR-unique (p-⊕ f g) (p-⊕ f′ g′) = cong₂ p-⊕ (PFR-unique f f′) (PFR-unique g g′)
+  PFR-unique (p-⊗ f g) (p-⊗ f′ g′) = cong₂ p-⊗ (PFR-unique f f′) (PFR-unique g g′)
+
+mutual
+  GR-unique : ∀ {A A′} (a b : GR A A′) → a ≡ b
+  GR-unique g-unit    g-unit      = refl
+  GR-unique g-void    g-void      = refl
+  GR-unique g-int     g-int       = refl
+  GR-unique g-float   g-float     = refl
+  GR-unique (g-* a b) (g-* a′ b′) = cong₂ g-* (GR-unique a a′) (GR-unique b b′)
+  GR-unique (g-+ a b) (g-+ a′ b′) = cong₂ g-+ (GR-unique a a′) (GR-unique b b′)
+  GR-unique (g-⇒ a b) (g-⇒ a′ b′) = cong₂ g-⇒ (GR-unique a a′) (GR-unique b b′)
+  GR-unique (g-μ f)   (g-μ f′)    = cong g-μ (GF-unique f f′)
+  GR-unique (g-ν f)   (g-ν f′)    = cong g-ν (GF-unique f f′)
+  GR-unique g-rigid   g-rigid     = refl
+
+  GF-unique : ∀ {F F′} (f g : GF F F′) → f ≡ g
+  GF-unique (g-K a)   (g-K b)     = cong g-K (GR-unique a b)
+  GF-unique g-Id      g-Id        = refl
+  GF-unique (g-⊕ f g) (g-⊕ f′ g′) = cong₂ g-⊕ (GF-unique f f′) (GF-unique g g′)
+  GF-unique (g-⊗ f g) (g-⊗ f′ g′) = cong₂ g-⊗ (GF-unique f f′) (GF-unique g g′)

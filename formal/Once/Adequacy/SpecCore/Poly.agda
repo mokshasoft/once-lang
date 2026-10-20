@@ -239,61 +239,78 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   ref-resp (S₀ LP.▷ sc) (suc d) τ rs   = ref-resp S₀ d τ rs
 
   -- (a Spec typing, moved along equal usages, grades and types)
-  private
-    at : ∀ {a n} {Δ : ST.KCtx a} {Γ : SCx.Ctx a n} {Ψ Ψ′ t A A′ π π′} → Ψ ≡ Ψ′ → A ≡ A′ → π ≡ π′
+  atS : ∀ {a n} {Δ : ST.KCtx a} {Γ : SCx.Ctx a n} {Ψ Ψ′ t A A′ π π′} → Ψ ≡ Ψ′ → A ≡ A′ → π ≡ π′
        → S⊢._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π → S⊢._⊩_⊢[_]_∷_!_ Δ Γ Ψ′ t A′ π′
-    at refl refl refl d = d
+  atS refl refl refl d = d
+
+  -- (the equations the translation moves its typings along)
+  eqᵘ-var : ∀ {n} (i : Fin n) → SCx.singleUse i SG.One ≡ uS (LC.singleUse i LG.One)
+  eqᵘ-var i = sym (uS-single i LG.One)
+
+  eqᵘ-app : ∀ {n} (Ψ₁ : LC.Usage n) q Ψ₂ → uS Ψ₁ SCx.+ᵘ qS q SCx.*ᵘ uS Ψ₂ ≡ uS (Ψ₁ LC.+ᵘ q LC.*ᵘ Ψ₂)
+  eqᵘ-app Ψ₁ q Ψ₂ = sym (trans (uS-+ Ψ₁ (q LC.*ᵘ Ψ₂)) (cong (uS Ψ₁ SCx.+ᵘ_) (uS-* q Ψ₂)))
+
+  eqᵘ-+ : ∀ {n} (Ψ₁ Ψ₂ : LC.Usage n) → uS Ψ₁ SCx.+ᵘ uS Ψ₂ ≡ uS (Ψ₁ LC.+ᵘ Ψ₂)
+  eqᵘ-+ Ψ₁ Ψ₂ = sym (uS-+ Ψ₁ Ψ₂)
+
+  eqᵍ-· : ∀ π₁ π₂ → πS π₁ SG.·p πS π₂ ≡ πS (π₁ LG.·p π₂)
+  eqᵍ-· π₁ π₂ = sym (·p-S π₁ π₂)
+
+  eqᵍ-app : ∀ π₁ q π₂ π → πS π₁ SG.·p SG.positionGrade (qS q) (πS π₂) SG.·p πS π
+                        ≡ πS (π₁ LG.·p LG.positionGrade q π₂ LG.·p π)
+  eqᵍ-app π₁ q π₂ π = sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (trans (·p-S (LG.positionGrade q π₂) π)
+                                                     (cong (SG._·p πS π) (positionGrade-S q π₂)))))
+
+  eqᵍ-let : ∀ q π₁ π₂ → SG.positionGrade (qS q) (πS π₁) SG.·p πS π₂ ≡ πS (LG.positionGrade q π₁ LG.·p π₂)
+  eqᵍ-let q π₁ π₂ = sym (trans (·p-S (LG.positionGrade q π₁) π₂) (cong (SG._·p πS π₂) (positionGrade-S q π₁)))
 
   -- The Spec's typing of a translated term.
   trD : ∀ {a n} {Δ : LP.KCtx a} {Γ : PT.PCtx a n} {Ψ t A π}
       → PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π
       → S⊢._⊩_⊢[_]_∷_!_ (kindsS Δ) (pctxS Γ) (uS Ψ) (ptmS t) (ptyS A) (πS π)
-  trD {Γ = Γ} (PT.⊢var i) = at (sym (uS-single i LG.One)) (sym (lookupS Γ i)) refl (S⊢.⊢var i)
+  trD {Γ = Γ} (PT.⊢var i) = atS (eqᵘ-var i) (sym (lookupS Γ i)) refl (S⊢.⊢var i)
   trD (PT.⊢lam {q = q} {q′} le d) = S⊢.⊢lam (≤q-S q′ q le) (trD d)
   trD (PT.⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q} {π} {π₁} {π₂} df dx) =
-    at (sym (trans (uS-+ Ψ₁ (q LC.*ᵘ Ψ₂)) (cong (uS Ψ₁ SCx.+ᵘ_) (uS-* q Ψ₂)))) refl
-       (sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (trans (·p-S (LG.positionGrade q π₂) π)
-                                                     (cong (SG._·p πS π) (positionGrade-S q π₂))))))
-       (S⊢.⊢app (trD df) (at refl refl (positionGrade-S q π₂) (trD dx)))
+    atS (eqᵘ-app Ψ₁ q Ψ₂) refl (eqᵍ-app π₁ q π₂ π)
+       (S⊢.⊢app (trD df) (atS refl refl (positionGrade-S q π₂) (trD dx)))
   trD (PT.⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q} {π₁} {π₂} de db) =
-    at (sym (trans (uS-+ Ψ₂ (q LC.*ᵘ Ψ₁)) (cong (uS Ψ₂ SCx.+ᵘ_) (uS-* q Ψ₁)))) refl
-       (sym (trans (·p-S (LG.positionGrade q π₁) π₂) (cong (SG._·p πS π₂) (positionGrade-S q π₁))))
-       (S⊢.⊢let (at refl refl (positionGrade-S q π₁) (trD de)) (trD db))
-  trD PT.⊢unit = at (sym uS-zero) refl refl S⊢.⊢unit
+    atS (eqᵘ-app Ψ₂ q Ψ₁) refl (eqᵍ-let q π₁ π₂)
+       (S⊢.⊢let (atS refl refl (positionGrade-S q π₁) (trD de)) (trD db))
+  trD PT.⊢unit = atS (sym uS-zero) refl refl S⊢.⊢unit
   trD (PT.⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} da db) =
-    at (sym (uS-+ Ψ₁ Ψ₂)) refl (sym (·p-S π₁ π₂)) (S⊢.⊢pair (trD da) (trD db))
+    atS (eqᵘ-+ Ψ₁ Ψ₂) refl (eqᵍ-· π₁ π₂) (S⊢.⊢pair (trD da) (trD db))
   trD (PT.⊢fst d) = S⊢.⊢fst (trD d)
   trD (PT.⊢snd d) = S⊢.⊢snd (trD d)
   trD (PT.⊢inl d) = S⊢.⊢inl (trD d)
   trD (PT.⊢inr d) = S⊢.⊢inr (trD d)
   trD (PT.⊢case {Ψs = Ψs} {Ψ} {π₁ = π₁} {π₂} ds dl dr) =
-    at (sym (uS-+ Ψs Ψ)) refl (sym (·p-S π₁ π₂)) (S⊢.⊢case (trD ds) (trD dl) (trD dr))
+    atS (eqᵘ-+ Ψs Ψ) refl (eqᵍ-· π₁ π₂) (S⊢.⊢case (trD ds) (trD dl) (trD dr))
   trD (PT.⊢absurd d) = S⊢.⊢absurd (trD d)
-  trD (PT.⊢roll {F = F} wf d) = S⊢.⊢roll (wfS wf) (at refl (ptyS-⟦⟧ F (LP.μ-type F)) refl (trD d))
+  trD (PT.⊢roll {F = F} wf d) = S⊢.⊢roll (wfS wf) (atS refl (ptyS-⟦⟧ F (LP.μ-type F)) refl (trD d))
   trD (PT.⊢fold {Ψa = Ψa} {Ψt} {π} {π₁} {π₂} {F} {A} _ wf da dt) =
-    at (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψa) Ψt) (cong (SCx._+ᵘ uS Ψt) (uS-* LG.Many Ψa)))) refl
+    atS (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψa) Ψt) (cong (SCx._+ᵘ uS Ψt) (uS-* LG.Many Ψa)))) refl
        (sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (·p-S π₂ π))))
-       (S⊢.⊢fold (wfS wf) (at refl (cong (λ X → X ST.⇒[ _ ] _) (ptyS-⟦⟧ F A)) refl (trD da)) (trD dt))
+       (S⊢.⊢fold (wfS wf) (atS refl (cong (λ X → X ST.⇒[ _ ] _) (ptyS-⟦⟧ F A)) refl (trD da)) (trD dt))
   trD (PT.⊢unfold {Ψc = Ψc} {Ψs} {φ} {π₁} {π₂} {F} {A} wf dc ds) =
-    at (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψc) Ψs) (cong (SCx._+ᵘ uS Ψs) (uS-* LG.Many Ψc)))) refl (sym (·p-S π₁ π₂))
-       (S⊢.⊢unfold (wfS wf) (at refl (arr-fin φ (ptyS-⟦⟧ F A)) refl (trD dc)) (trD ds))
+    atS (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψc) Ψs) (cong (SCx._+ᵘ uS Ψs) (uS-* LG.Many Ψc)))) refl (sym (·p-S π₁ π₂))
+       (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin φ (ptyS-⟦⟧ F A)) refl (trD dc)) (trD ds))
     where
       arr-fin : ∀ {A′ X Y} φ → X ≡ Y
               → (A′ ST.⇒[ SG.mk-kind SG.Many (πS (LG.fin φ)) ] X) ≡ (A′ ST.⇒[ SG.mk-kind SG.Many (SG.fin (φS φ)) ] Y)
       arr-fin LG.pure refl = refl
       arr-fin LG.act  refl = refl
   trD (PT.⊢out {φ = φ} {π₁} {F} wf d) =
-    at refl (sym (ptyS-⟦⟧ F (LP.ν-type F φ))) (sym (trans (·p-S π₁ (LG.fin φ)) (cong (πS π₁ SG.·p_) (πS-fin φ))))
+    atS refl (sym (ptyS-⟦⟧ F (LP.ν-type F φ))) (sym (trans (·p-S π₁ (LG.fin φ)) (cong (πS π₁ SG.·p_) (πS-fin φ))))
        (S⊢.⊢out (wfS wf) (trD d))
   trD (PT.⊢iter {Ψf = Ψf} {Ψs} {π₁} {π₂} df ds) =
-    at (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψf) Ψs) (cong (SCx._+ᵘ uS Ψs) (uS-* LG.Many Ψf)))) refl
+    atS (sym (trans (uS-+ (LG.Many LC.*ᵘ Ψf) Ψs) (cong (SCx._+ᵘ uS Ψs) (uS-* LG.Many Ψf)))) refl
        (sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (·p-S π₂ LG.eff))))
        (S⊢.⊢iter (trD df) (trD ds))
   trD (PT.⊢coerce p d) = S⊢.⊢coerce (subS p) (trD d)
-  trD PT.⊢lit-int = at (sym uS-zero) refl refl S⊢.⊢lit-int
-  trD PT.⊢lit-float = at (sym uS-zero) refl refl S⊢.⊢lit-float
-  trD (PT.⊢prim p d) = at refl (sym (primCod-S p)) refl (S⊢.⊢prim (primS p) (at refl (primDom-S p) refl (trD d)))
-  trD (PT.⊢sigop c k h r mem) = at (sym uS-zero) (declS-S k h r) refl (S⊢.⊢sigop (sigop-S mem))
+  trD PT.⊢lit-int = atS (sym uS-zero) refl refl S⊢.⊢lit-int
+  trD PT.⊢lit-float = atS (sym uS-zero) refl refl S⊢.⊢lit-float
+  trD (PT.⊢prim p d) = atS refl (sym (primCod-S p)) refl (S⊢.⊢prim (primS p) (atS refl (primDom-S p) refl (trD d)))
+  trD (PT.⊢sigop c k h r mem) = atS (sym uS-zero) (declS-S k h r) refl (S⊢.⊢sigop (sigop-S mem))
   trD (PT.⊢sub-eff g d) = S⊢.⊢sub-eff (⊑π-S g) (trD d)
   trD (PT.⊢sub-use p d) = S⊢.⊢sub-use (⊑ᵘ-S p) (trD d)
-  trD (PT.⊢ref d τ rs) = at (sym uS-zero) (sym (ref-ty S d τ)) refl (S⊢.⊢ref d _ (ref-resp S d τ rs))
+  trD (PT.⊢ref d τ rs) = atS (sym uS-zero) (sym (ref-ty S d τ)) refl (S⊢.⊢ref d _ (ref-resp S d τ rs))
