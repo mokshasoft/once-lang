@@ -132,7 +132,7 @@ open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Denotation.Realize using (realize)
 open import Once.Surface.LoopWarn using (silentLoops)
 open import Once.Lang.Principal using (below)
-open import Once.Lang.Type.Sub using (_<:_)
+open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-unit; sub-void)
 open import Once.Type.Sub using (_<:?_)
 open import Data.Nat using (_<ᵇ_)
 
@@ -140,33 +140,22 @@ open import Data.Nat using (_<ᵇ_)
 -- Main function validation
 ------------------------------------------------------------------------
 
--- | Validate that main has type Eff Unit Unit.
---
--- The entry point is an effectful action that returns no meaningful
--- value; exit codes come from explicit `exit@<alias>` calls in the
--- body, not from `main`'s return. Admitting `Eff Unit A` for arbitrary
--- A would silently discard any non-Unit return and invites confusion
--- between "exit code" and "value to compose with".
-validateMain : Type → String ⊎ ⊤
-validateMain (Unit ⇒[ mk-kind Many eff ] Unit) = inj₂ tt
-{-# CATCHALL #-}
-validateMain ty = inj₁ ("main must have type Eff Unit Unit, but got: " ++ showType ty)
-
--- | D315 (plan 0.119 D6): `main` is typed at its PRINCIPAL type and used at
--- `Eff Unit Unit` by subtyping. A `main` whose type is below `Eff Unit Unit`
--- is compiled at `Eff Unit Unit` — its body checks there (checking is closed
--- upward), and that is the coercion the Spec's program applies. Any other
--- type is left as it is, and `validateMain` reports it.
+-- | D315 (plan 0.119 D6, plan 0.121 R7): `main` is typed and compiled at its
+-- PRINCIPAL type, like every definition, and used at `Eff Unit Unit` by
+-- subtyping: its type must be below `Eff Unit Unit`, and the program's entry
+-- converts (`mainEntry`). A `main` is never checked at `Eff Unit Unit`
+-- instead of its own type — checking is not closed upward (R6), and a body
+-- that only checks there is not what its signature says (R7).
 mainType : Type
 mainType = Unit ⇒[ mk-kind Many eff ] Unit
 
-entry-at : Bool → (ty : Type) → Dec (ty <: mainType) → Type
-entry-at true  ty (yes _) = mainType
-entry-at true  ty (no _)  = ty
-entry-at false ty _       = ty
+validateMain-at : (ty : Type) → Dec (ty <: mainType) → String ⊎ ⊤
+validateMain-at ty (yes _) = inj₂ tt
+validateMain-at ty (no _)  =
+  inj₁ ("main must be usable as Eff Unit Unit (its type below it), but its type is " ++ showType ty)
 
-entryType : String → Type → Type
-entryType name ty = entry-at (name == "main") ty (ty <:? mainType)
+validateMain : Type → String ⊎ ⊤
+validateMain ty = validateMain-at ty (ty <:? mainType)
 
 -- | D314/D321 (plan 0.119 D6): the first LOWERING of a definition's type at
 -- which its body also checks (`Once.Lang.Principal`); none means the type is
@@ -460,14 +449,13 @@ ce-prim-conc m doOpt sc fi es ty (just conc) (just _) (just _) =
 ce-mono m doOpt sc fi es (inj₁ err) = inj₁ err
 ce-mono m doOpt sc fi es (inj₂ ty)  =
   ce-mono-p m doOpt sc fi es ty (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) (below ty))
--- D314/D321: a definition is at its principal type; D315: `main` is then
--- compiled at `Eff Unit Unit`.
+-- D314/D321: a definition is at its principal type, and compiled there.
 ce-mono-p m doOpt sc fi es ty (just X) =
   inj₁ ("`" ++ funName fi ++ "` is more precise than its signature " ++ showType ty ++ ": the body also checks at "
         ++ showType X ++ ". A signature states the body's own type: write the more precise one, or give the body"
         ++ " the wider type with an annotation, " ++ funName fi ++ " = (... : " ++ showType ty ++ ")")
 ce-mono-p m doOpt sc fi es ty nothing =
-  ce-mono-g m doOpt sc fi es (entryType (funName fi) ty) (rigidFree? (entryType (funName fi) ty))
+  ce-mono-g m doOpt sc fi es ty (rigidFree? ty)
 -- D243: a monomorphic definition's type is ground.
 ce-mono-g m doOpt sc fi es ty nothing =
   inj₁ ("The type of `" ++ funName fi ++ "` mentions a type parameter: " ++ showType ty)
@@ -599,28 +587,26 @@ open import Data.Integer.Show renaming (show to showℤ)
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
-isEffUU? : (T : Type) → Maybe (T ≡ EffUU)
-isEffUU? T with T ≟T EffUU
-... | yes e = just e
-... | no _  = nothing
-
--- D253: `main` is an entry like any other; the program's own `main` is the CALL
--- of it.
-mainCall : IR ⌊ Unit ⌋ ⌊ Unit ⌋
-mainCall = Call (bare "main")
+-- D253: `main` is an entry like any other; the program's own `main` is the
+-- CALL of it, at `Eff Unit Unit` (D315): a `main` whose answer is `Void` never
+-- answers, and the call is converted by `initial` (R7).
+mainEntry : ∀ {ty} → ty <: EffUU → IR ⌊ Unit ⌋ ⌊ Unit ⌋
+mainEntry (sub-arr a sub-unit g) = Call (bare "main")
+mainEntry (sub-arr a sub-void g) = initial ∘ Call (bare "main")
+mainEntry sub-void               = initial ∘ Call (bare "main")
 
 findMain-here :
-  (cf : CompiledFun) → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ EffUU)
+  (cf : CompiledFun) → Dec (cfName cf ≡ bare "main") → Dec (cfType cf <: EffUU)
   → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-findMain-here cf (yes _) (just _) cont = just mainCall
-findMain-here cf (yes _) nothing  cont = cont
-findMain-here cf (no  _) _        cont = cont
+findMain-here cf (yes _) (yes p) cont = just (mainEntry p)
+findMain-here cf (yes _) (no _)  cont = cont
+findMain-here cf (no  _) _       cont = cont
 
--- | A module is a PROGRAM when it has an entry `main : Eff Unit Unit`.
+-- | A module is a PROGRAM when it has an entry `main` usable as `Eff Unit Unit`.
 findMain : List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 findMain []         = nothing
 findMain (cf ∷ rest) =
-  findMain-here cf (cfName cf ≟cn bare "main") (isEffUU? (cfType cf)) (findMain rest)
+  findMain-here cf (cfName cf ≟cn bare "main") (cfType cf <:? EffUU) (findMain rest)
 
 moduleToIR-aux : String ⊎ List CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR-aux (inj₁ _)    = nothing

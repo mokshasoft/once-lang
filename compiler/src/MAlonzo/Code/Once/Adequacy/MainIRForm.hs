@@ -21,12 +21,17 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Irrelevant
+import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Lang.Syntax
 import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Lang.Type.Grade
+import qualified MAlonzo.Code.Once.Lang.Type.Sub
+import qualified MAlonzo.Code.Once.Type.Sub
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
+import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
+import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
 -- Once.Adequacy.MainIRForm.EffUU
 d_EffUU_6 :: MAlonzo.Code.Once.Lang.Type.T_Type_8
@@ -39,14 +44,43 @@ d_EffUU_6
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
--- Once.Adequacy.MainIRForm.validateMain-EffUU
-d_validateMain'45'EffUU_10 ::
+-- Once.Adequacy.MainIRForm.validateMain-at-sub
+d_validateMain'45'at'45'sub_12 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
+d_validateMain'45'at'45'sub_12 ~v0 v1 ~v2
+  = du_validateMain'45'at'45'sub_12 v1
+du_validateMain'45'at'45'sub_12 ::
+  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
+du_validateMain'45'at'45'sub_12 v0
+  = case coe v0 of
+      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v1 v2
+        -> coe
+             seq (coe v1)
+             (case coe v2 of
+                MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v3 -> coe v3
+                _ -> MAlonzo.RTE.mazUnreachableError)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.MainIRForm.validateMain-sub
+d_validateMain'45'sub_22 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_validateMain'45'EffUU_10 = erased
--- Once.Adequacy.MainIRForm.compileFun-main-EffUU
-d_compileFun'45'main'45'EffUU_68 ::
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
+d_validateMain'45'sub_22 v0 ~v1 = du_validateMain'45'sub_22 v0
+du_validateMain'45'sub_22 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
+du_validateMain'45'sub_22 v0
+  = coe
+      du_validateMain'45'at'45'sub_12
+      (coe
+         MAlonzo.Code.Once.Type.Sub.d__'60''58''63'__160 (coe v0)
+         (coe d_EffUU_6))
+-- Once.Adequacy.MainIRForm.compileFun-main-sub
+d_compileFun'45'main'45'sub_40 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_TopCtx_332 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -55,29 +89,46 @@ d_compileFun'45'main'45'EffUU_68 ::
   MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_compileFun'45'main'45'EffUU_68 = erased
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
+d_compileFun'45'main'45'sub_40 ~v0 ~v1 ~v2 v3 ~v4 ~v5 ~v6
+  = du_compileFun'45'main'45'sub_40 v3
+du_compileFun'45'main'45'sub_40 ::
+  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
+du_compileFun'45'main'45'sub_40 v0
+  = let v1
+          = MAlonzo.Code.Once.Compile.d_validateMain'45'at_14
+              (coe v0)
+              (coe
+                 MAlonzo.Code.Once.Type.Sub.d__'60''58''63'__160 (coe v0)
+                 (coe MAlonzo.Code.Once.Compile.d_mainType_10)) in
+    coe
+      (case coe v1 of
+         MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v2 -> erased
+         MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v2
+           -> coe seq (coe v2) (coe du_validateMain'45'sub_22 (coe v0))
+         _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.MainIRForm.findMain-here-no
-d_findMain'45'here'45'no_128 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_298 ->
-  Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+d_findMain'45'here'45'no_100 ::
+  MAlonzo.Code.Once.Compile.T_CompiledFun_290 ->
+  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_findMain'45'here'45'no_128 = erased
+d_findMain'45'here'45'no_100 = erased
 -- Once.Adequacy.MainIRForm.bare-injective
-d_bare'45'injective_142 ::
+d_bare'45'injective_114 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bare'45'injective_142 = erased
+d_bare'45'injective_114 = erased
 -- Once.Adequacy.MainIRForm.findMain-skip
-d_findMain'45'skip_148 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_298 ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
+d_findMain'45'skip_120 ::
+  MAlonzo.Code.Once.Compile.T_CompiledFun_290 ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_290] ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_findMain'45'skip_148 = erased
+d_findMain'45'skip_120 = erased

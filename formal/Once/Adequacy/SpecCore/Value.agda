@@ -142,7 +142,6 @@ data SumR {X X′ Y Y′ : Set} (R : X → Y → Set) (S : X′ → Y′ → Set
 record T∞R {X Y : Set} (R : X → Y → Set) (m : LI.T∞ X) (m′ : SE.T∞ Y) : Set where
   coinductive
   field force∞ : TR (SumR R (T∞R R)) (LI.T∞.force m) (SE.force m′)
-open T∞R public
 
 -- A computation at a grade.
 MR : ∀ {π π′} → PR π π′ → ∀ {X Y : Set} → (X → Y → Set) → LGr.M π X → SE.M π′ Y → Set
@@ -157,12 +156,10 @@ MR pr-eff  R = T∞R R
 record νpR {F F′} (f : GF F F′) (v : LGr.νᵖ (translateF Carrier Carrier F)) (w : SE.νM SG.pureᶠ (SD.code F′)) : Set where
   coinductive
   field forceᵖR : LayerR f (νpR f) (LGr.νᵖ.forceᵖ v) (SE.νM.outν w)
-open νpR public
 
 record νdR {F F′} (f : GF F F′) (v : LSt.νᵈ (translateF Carrier Carrier F)) (w : SE.νM SG.actᶠ (SD.code F′)) : Set where
   coinductive
   field forceᵈR : TR (LayerR f (νdR f)) (LSt.νᵈ.forceᵈ v) (SE.νM.outν w)
-open νdR public
 
 ------------------------------------------------------------------------
 -- Values

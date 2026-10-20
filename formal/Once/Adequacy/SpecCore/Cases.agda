@@ -56,6 +56,8 @@ import Once.Spec.Core.Meaning Σ fmt S′ as SM
 import Once.Spec.Domain Σ as SD
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
+open νpR
+open νdR
 open import Once.Adequacy.SpecCore.Monad Σ
 open import Once.Adequacy.SpecCore.Env S Σ fmt
 open import Once.Adequacy.SpecCore.Fundamental S Σ sigop-S fmt

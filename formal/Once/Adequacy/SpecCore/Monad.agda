@@ -33,6 +33,7 @@ import Once.Spec.Polynomial as SPoly
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
+open T∞R
 
 ------------------------------------------------------------------------
 -- Blocks

@@ -192,15 +192,14 @@ ce-prim-sound doOpt sc fi es ep (just ty) et eq =
       ffi ep et c h g (ce-sound doOpt (C.extendSig sc (Parser.FunInfo.funName fi) ty) es eq′)
 
 ce-mono-sound doOpt sc fi es ep (inj₁ _) er ()
-ce-mono-sound doOpt sc fi es ep (inj₂ ty₀) er eq = pstep _ refl eq
+ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = pstep _ refl eq
   where
     ctx = ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)
-    ty = C.entryType (Parser.FunInfo.funName fi) ty₀
     -- D314/D321: the body checks at no type strictly below its type.
-    pstep : (mx : Maybe Type) → C.firstChecking ctx (Parser.FunInfo.funBody fi) (below ty₀) ≡ mx
-          → ∀ {cfs} → C.ce-mono-p IR.Heap doOpt sc fi es ty₀ mx ≡ inj₂ cfs
+    pstep : (mx : Maybe Type) → C.firstChecking ctx (Parser.FunInfo.funBody fi) (below ty) ≡ mx
+          → ∀ {cfs} → C.ce-mono-p IR.Heap doOpt sc fi es ty mx ≡ inj₂ cfs
           → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
-    grd : C.firstChecking ctx (Parser.FunInfo.funBody fi) (below ty₀) ≡ nothing
+    grd : C.firstChecking ctx (Parser.FunInfo.funBody fi) (below ty) ≡ nothing
         → (mg : Maybe (RigidFree ty)) → ∀ {cfs} → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ cfs
         → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
     pstep (just _) _ ()
@@ -218,7 +217,7 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty₀) er eq = pstep _ refl eq
         step (inj₂ ir) cf eq′ =
           let (Ψ , jud) = compileFun-sound doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                             (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf
-          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty₀) fc) refl g jud
+          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty) fc) g jud
                (ce-sound doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
 ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq

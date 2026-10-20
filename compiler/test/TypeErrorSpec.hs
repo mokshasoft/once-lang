@@ -137,6 +137,17 @@ mainTypeTests = testGroup "Main function validation"
             ]
       result <- typeCheckSource source
       assertBool "Should reject main with non-Unit input" (isLeft result)
+
+  , testCase "main's body is checked at main's own type" $ do
+      -- plan 0.121 R7 (D315): a pure-declared `main` with an effectful body
+      -- is ill-typed, though its body would check at `Eff Unit Unit`.
+      let source = T.unlines
+            [ "signature tick : Act Unit Unit"
+            , "main : Unit -> Unit"
+            , "main = tick"
+            ]
+      result <- typeCheckSource source
+      assertBool "Should reject an effectful body under a pure main" (isLeft result)
   ]
 
 ------------------------------------------------------------------------

@@ -26,9 +26,11 @@ import qualified MAlonzo.Code.Once.Lang.Contract
 import qualified MAlonzo.Code.Once.Lang.Core.Meaning
 import qualified MAlonzo.Code.Once.Lang.Core.PolyTy
 import qualified MAlonzo.Code.Once.Lang.Core.PolyTyping
+import qualified MAlonzo.Code.Once.Lang.GradedOps
 import qualified MAlonzo.Code.Once.Lang.Iterative
 import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Lang.Type.Grade
+import qualified MAlonzo.Code.Once.Lang.Type.Sub
 import qualified MAlonzo.Code.Once.Lang.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Numerics
 
@@ -159,59 +161,65 @@ d_noKinds_96 ::
 d_noKinds_96 ~v0 = du_noKinds_96
 du_noKinds_96 :: MAlonzo.Code.Once.Lang.Type.T_TKind_10
 du_noKinds_96 = MAlonzo.RTE.mazUnreachableError
+-- Once.Lang.Core.Telescope.MainEntry
+d_MainEntry_98 a0 = ()
+newtype T_MainEntry_98
+  = C_entry_102 MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
 -- Once.Lang.Core.Telescope.Program
-d_Program_100 a0 = ()
-data T_Program_100
-  = C_program_124 Integer
+d_Program_106 a0 = ()
+data T_Program_106
+  = C_program_130 Integer
                   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 T_Tele_12
-                  MAlonzo.Code.Data.Fin.Base.T_Fin_10
+                  MAlonzo.Code.Data.Fin.Base.T_Fin_10 T_MainEntry_98
 -- Once.Lang.Core.Telescope.Program.size
-d_size_114 :: T_Program_100 -> Integer
-d_size_114 v0
+d_size_120 :: T_Program_106 -> Integer
+d_size_120 v0
   = case coe v0 of
-      C_program_124 v1 v2 v3 v4 -> coe v1
+      C_program_130 v1 v2 v3 v4 v5 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Telescope.Program.sig
-d_sig_116 ::
-  T_Program_100 -> MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826
-d_sig_116 v0
+d_sig_122 ::
+  T_Program_106 -> MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826
+d_sig_122 v0
   = case coe v0 of
-      C_program_124 v1 v2 v3 v4 -> coe v2
+      C_program_130 v1 v2 v3 v4 v5 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Telescope.Program.defs
-d_defs_118 :: T_Program_100 -> T_Tele_12
-d_defs_118 v0
+d_defs_124 :: T_Program_106 -> T_Tele_12
+d_defs_124 v0
   = case coe v0 of
-      C_program_124 v1 v2 v3 v4 -> coe v3
+      C_program_130 v1 v2 v3 v4 v5 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Telescope.Program.main
-d_main_120 :: T_Program_100 -> MAlonzo.Code.Data.Fin.Base.T_Fin_10
-d_main_120 v0
+d_main_126 :: T_Program_106 -> MAlonzo.Code.Data.Fin.Base.T_Fin_10
+d_main_126 v0
   = case coe v0 of
-      C_program_124 v1 v2 v3 v4 -> coe v4
+      C_program_130 v1 v2 v3 v4 v5 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Lang.Core.Telescope.Program.mainTy
-d_mainTy_122 ::
-  T_Program_100 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mainTy_122 = erased
+-- Once.Lang.Core.Telescope.Program.isMain
+d_isMain_128 :: T_Program_106 -> T_MainEntry_98
+d_isMain_128 v0
+  = case coe v0 of
+      C_program_130 v1 v2 v3 v4 v5 -> coe v5
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Telescope.EntrySem
-d_EntrySem_126 ::
+d_EntrySem_132 ::
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Schema_808 -> ()
-d_EntrySem_126 = erased
+d_EntrySem_132 = erased
 -- Once.Lang.Core.Telescope.noResp
-d_noResp_132 ::
+d_noResp_138 ::
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8
-d_noResp_132 ~v0 = du_noResp_132
-du_noResp_132 ::
+d_noResp_138 ~v0 = du_noResp_138
+du_noResp_138 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8
-du_noResp_132 = MAlonzo.RTE.mazUnreachableError
+du_noResp_138 = MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Telescope.runEntry
-d_runEntry_136 ::
+d_runEntry_142 ::
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Schema_808 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  T_MainEntry_98 ->
   ((MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
     MAlonzo.Code.Once.Lang.Type.T_Type_8) ->
    (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
@@ -219,31 +227,43 @@ d_runEntry_136 ::
     MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8) ->
    AgdaAny) ->
   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
-d_runEntry_136 ~v0 ~v1 v2 = du_runEntry_136 v2
-du_runEntry_136 ::
-  ((MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-    MAlonzo.Code.Once.Lang.Type.T_Type_8) ->
-   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-    MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8) ->
-   AgdaAny) ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
-du_runEntry_136 v0
-  = coe
-      v0 (\ v1 -> coe du_noVars_94) (\ v1 -> coe du_noResp_132)
-      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+d_runEntry_142 v0 v1 v2
+  = case coe v1 of
+      C_entry_102 v4
+        -> case coe v0 of
+             MAlonzo.Code.Once.Lang.Core.PolyTy.C_schema_822 v5 v6 v7
+               -> coe
+                    MAlonzo.Code.Once.Lang.GradedOps.d_'10214'_'10215''60''58''7515'_492
+                    (MAlonzo.Code.Once.Lang.Core.PolyTy.d__'10218'_'10219'_344
+                       (coe (0 :: Integer)) (coe v7) (\ v8 -> coe du_noVars_94))
+                    (coe
+                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
+                       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
+                       (coe
+                          MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
+                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
+                       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20))
+                    v4 (coe v2 (\ v8 -> coe du_noVars_94) (\ v8 -> coe du_noResp_138))
+                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Telescope.runCore
-d_runCore_146 ::
+d_runCore_150 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  T_Program_100 ->
+  T_Program_106 ->
   MAlonzo.Code.Once.Lang.Contract.T_Impl_242 ->
   MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
-d_runCore_146 v0 v1 v2 v3
+d_runCore_150 v0 v1 v2 v3
   = case coe v2 of
-      C_program_124 v4 v5 v6 v7
+      C_program_130 v4 v5 v6 v7 v8
         -> coe
-             du_runEntry_136
+             d_runEntry_142
+             (coe
+                MAlonzo.Code.Once.Lang.Core.PolyTy.du__'33''33'__848 (coe v5)
+                (coe v7))
+             (coe v8)
              (coe
                 MAlonzo.Code.Once.Lang.Core.Meaning.d_defs_374
                 (d_teleSem_36

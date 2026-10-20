@@ -211,11 +211,10 @@ ce-syms-fun doOpt sc fi es true ep cfs eq with FunInfo.funType fi
 ce-syms-fun doOpt sc fi es false ep cfs eq
   with C.resolveFunType (C.ctop sc) (C.cpolys sc) (FunInfo.funType fi) (FunInfo.funBody fi)
 ... | inj₁ _ = case eq of λ ()
-... | inj₂ ty₀
-  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (FunInfo.funBody fi) (below ty₀)
+... | inj₂ ty
+  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (FunInfo.funBody fi) (below ty)
 ...   | just _ = case eq of λ ()
-...   | nothing with C.entryType (FunInfo.funName fi) ty₀
-...     | ty with rigidFree? ty
+...   | nothing with rigidFree? ty
 ...       | nothing = case eq of λ ()
 ...       | just _
     with C.compileFun IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)

@@ -86,7 +86,10 @@ open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; L
 open Once.Denotation.Program.IRFun using (fbody)
 open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; ModuleTyped-ef; EffUU; teleSig; moduleSig; moduleSig-ef)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
-open import Once.Compile using (moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; tableOf-go; irFunOf; mainCall)
+open import Once.Compile using (moduleToIR; moduleToIR-aux; moduleTable; tableOfResult; tableOf-go; irFunOf; mainEntry; findMain-here)
+open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-unit; sub-void)
+open import Once.Type.Sub using (_<:?_)
+open import Once.CanonicalName using (_≟ᶜ_)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
 open import Once.Adequacy.TelePosition
@@ -579,32 +582,54 @@ link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h g r
   with just-injective (trans (sym et) et′)
 ... | refl = link-walk rest rest-b pre (linv-sig (funName fi) ty g (u (here refl)) inv)
                (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m))
-link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf fc te eg ce cf rest-b) pre inv fr u
+link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf fc eg ce cf rest-b) pre inv fr u
 link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr D rest) (FB.bpoly fc ce rest-b) pre inv fr u =
   link-walk rest rest-b pre (linv-poly D (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
             (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr te g D rest)
-          (FB.bcons {ty = ty′} {Ψ = Usage.[]} {irFun = irFun} refl rf fc te′ eg ce cf rest-b) pre inv fr u
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr g D rest)
+          (FB.bcons {ty = ty′} {Ψ = Usage.[]} {irFun = irFun} refl rf fc eg ce cf rest-b) pre inv fr u
   with inj₂-injective (trans (sym er) rf)
-... | refl with trans (sym te) te′
 ... | refl = link-walk rest rest-b _
                (linv-entry (funName fi) ty irFun g
                   (dc-linked pre ty irFun (body-linked inv (funName fi) ty cf ce))
                   inv)
                (fresh-fun {csc = csc} {fi = fi} {ty = ty} {es = es} fr) u
 
--- The entry `main` is in the table, at `Eff Unit Unit`'s direct-call objects.
-main-linked : ∀ {csc es} (b : FB.FunBundle csc es) (pre : List IRFun) → FB.BMainExists b
-            → LinkedAt (tableOf-go (FB.bundle→compiled b) pre) (bare "main") ⌊ Unit ⌋ ⌊ Unit ⌋
+-- The program's entry is linked: it calls `main`, which the table holds at its
+-- own direct-call objects (D315: `main` at its type below `Eff Unit Unit`; a
+-- `main` answering `Void` is called through `initial`).
+private
+  entry-linked : ∀ {σ : ISig} {tbl ty} (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) (p : ty <: EffUU)
+               → LinkedAt tbl (bare "main")
+                   (IRFun.fdom (irFunOf (C.mkCompiledFun (bare "main") ty irFun)))
+                   (IRFun.fcod (irFunOf (C.mkCompiledFun (bare "main") ty irFun)))
+               → Linked σ tbl (mainEntry p)
+  entry-linked irFun (sub-arr sub-unit sub-unit g) lk = lk
+  entry-linked irFun (sub-arr sub-unit sub-void g) lk = tt , lk
+  entry-linked irFun sub-void                      lk = tt , lk
+
+main-linked : ∀ {σ : ISig} {csc es} (b : FB.FunBundle csc es) (pre : List IRFun) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+            → FB.bundle-find b ≡ just ir → Linked σ (tableOf-go (FB.bundle→compiled b) pre) ir
 main-linked FB.bnil pre ()
-main-linked (FB.bffi _ _ _ _ _ rest) pre w = main-linked rest pre w
-main-linked (FB.bpoly _ _ rest) pre w = main-linked rest pre w
-main-linked (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ _ rest) pre (inj₂ w) =
-  main-linked rest (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre) w
-main-linked (FB.bcons {fi = fi} {ty = .EffUU} {irFun = irFun} _ _ _ _ _ _ _ rest) pre (inj₁ (refl , refl , refl)) =
-  subst (λ t → LinkedAt t (bare "main") ⌊ Unit ⌋ ⌊ Unit ⌋) (sym (tableOf-go-++ (FB.bundle→compiled rest) [] (e ∷ pre)))
-        (linkedAt-++ (tableOf-go (FB.bundle→compiled rest) []) (e ∷ pre) (linkedAt-here e pre))
-  where e = irFunOf (C.mkCompiledFun (bare "main") EffUU irFun)
+main-linked (FB.bffi _ _ _ _ _ rest) pre q₀ = main-linked rest pre q₀
+main-linked (FB.bpoly _ _ rest) pre q₀ = main-linked rest pre q₀
+main-linked {σ} (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ rest) pre q₀ =
+  atMain (funName fi) refl (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) q₀
+  where
+    T = FB.bundle→compiled rest
+    atMain : ∀ x → x ≡ funName fi → ∀ nd td {ir}
+         → findMain-here (C.mkCompiledFun (bare x) ty irFun) nd td (FB.bundle-find rest) ≡ just ir
+         → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre)) ir
+    atMain x xe (yes n) (yes p) refl =
+      entry-linked irFun p
+        (subst (λ t → LinkedAt t (bare "main") _ _) (sym (tableOf-go-++ T [] (e′ ∷ pre)))
+          (linkedAt-++ (tableOf-go T []) (e′ ∷ pre) (subst (λ y → LinkedAt (e′ ∷ pre) y (IRFun.fdom e′) (IRFun.fcod e′)) n′
+                                                         (linkedAt-here e′ pre))))
+      where
+        n′ = n
+        e′ = irFunOf (C.mkCompiledFun (bare x) ty irFun)
+    atMain x xe (yes _) (no _)  {ir} q₀′ = subst (λ y → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare y) ty irFun) ∷ pre)) ir) (sym xe) (main-linked rest _ q₀′)
+    atMain x xe (no _)  _       {ir} q₀′ = subst (λ y → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare y) ty irFun) ∷ pre)) ir) (sym xe) (main-linked rest _ q₀′)
 
 ------------------------------------------------------------------------
 -- THE THEOREM
@@ -627,14 +652,11 @@ moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToProgram-linked m ir mi with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   subst (λ t → LinkedProgram (moduleSig m) (irProgram t ir)) (sym (cong tableOfResult ceq))
-    (subst (λ x → LinkedProgram (moduleSig m) (irProgram T x)) (sym ir≡)
-      ( main-linked b [] (FB.bundle-find-exists b bf)
-      , link-walk mt₀ b [] linv₀ (entries-distinct m ef , none-in-empty _) u))
+    ( main-linked b [] bf
+    , link-walk mt₀ b [] linv₀ (entries-distinct m ef , none-in-empty _) u)
   where
     T  = tableOf-go (FB.bundle→compiled b) []
     bf = trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi)
-    ir≡ : ir ≡ mainCall
-    ir≡ = FB.bundle-find-call b bf
     mt₀ = typed-ef m _ (AS.moduleToIR-typed m mi) ef
     -- the signatures the walk's typing reads are the module's
     u : ∀ {d} → d ∈ teleSig mt₀ → d ∈ moduleSig m

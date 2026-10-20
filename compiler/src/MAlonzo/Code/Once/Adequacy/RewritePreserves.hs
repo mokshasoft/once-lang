@@ -1366,13 +1366,13 @@ du_hit_586 v0 v1 v2 v3 v4 v5 v6
          (coe
             MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
             (coe v1)
-            (coe MAlonzo.Code.Once.Compile.d_rewrite'45'table_1090 (coe v3)))
+            (coe MAlonzo.Code.Once.Compile.d_rewrite'45'table_1078 (coe v3)))
          (coe
             MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
             (coe
                MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
                (coe v1)
-               (coe MAlonzo.Code.Once.Compile.d_rewrite'45'table_1090 (coe v3)))))
+               (coe MAlonzo.Code.Once.Compile.d_rewrite'45'table_1078 (coe v3)))))
       (coe
          MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
          (coe
@@ -1485,7 +1485,7 @@ d_program'45'rel_616 v0 v1 v2
             MAlonzo.Code.Once.Denotation.Program.d_tableCalls_32 (coe v0)
             (coe v1)
             (coe
-               MAlonzo.Code.Once.Compile.d_rewrite'45'table_1090
+               MAlonzo.Code.Once.Compile.d_rewrite'45'table_1078
                (coe MAlonzo.Code.Once.Denotation.Program.d_table_392 (coe v2))))
          (coe
             MAlonzo.Code.Once.Denotation.DenotTrace.d_ffiE_22
@@ -1493,7 +1493,7 @@ d_program'45'rel_616 v0 v1 v2
                MAlonzo.Code.Once.Denotation.Program.d_tableEnv_26 (coe v0)
                (coe v1)
                (coe
-                  MAlonzo.Code.Once.Compile.d_rewrite'45'table_1090
+                  MAlonzo.Code.Once.Compile.d_rewrite'45'table_1078
                   (coe MAlonzo.Code.Once.Denotation.Program.d_table_392 (coe v2))))))
       (coe
          MAlonzo.Code.Once.Denotation.DenotTrace.C_callEnv_24
@@ -1529,7 +1529,7 @@ d_rewrite'45'program'45'trace_626 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Denotation.Program.d_runIR_398 (coe v0)
          (coe MAlonzo.Code.Once.Lang.Trace.d_pureHalf_262 (coe v1))
-         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_1096 (coe v2)))
+         (coe MAlonzo.Code.Once.Compile.d_rewrite'45'program_1084 (coe v2)))
       (coe
          MAlonzo.Code.Once.Denotation.Program.d_runIR_398 (coe v0)
          (coe MAlonzo.Code.Once.Lang.Trace.d_pureHalf_262 (coe v1))

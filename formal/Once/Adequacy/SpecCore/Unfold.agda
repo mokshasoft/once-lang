@@ -30,6 +30,8 @@ import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
+open νpR
+open νdR
 
 module _ {F₀ F₀′} (f₀ : GF F₀ F₀′) {X X′ : Set} {RA : X → X′ → Set} where
 

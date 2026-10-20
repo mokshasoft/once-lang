@@ -46,6 +46,9 @@ open import Once.Lang.FunctorMeaning using (translateF)
 import Once.Lang.Core.PolyTyping S as PT
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
+open T∞R
+open νpR
+open νdR
 open import Once.Adequacy.SpecCore.Monad Σ
 open import Once.Adequacy.SpecCore.Type using (⊑π-S; ⊑φ-S)
 open import Once.Adequacy.SpecCore.Schema using (ptyS)

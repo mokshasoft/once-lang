@@ -70,7 +70,9 @@ import Once.Parser.Module.Core as Core
 import Data.String as String
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
-open import Once.Compile using (findMain; findMain-here; isEffUU?; mainCall; moduleToIR; moduleToIR-aux)
+open import Once.Compile using (findMain; findMain-here; mainEntry; moduleToIR; moduleToIR-aux)
+open import Once.Lang.Type.Sub using (_<:_)
+open import Once.Type.Sub using (_<:?_)
 open import Once.Adequacy.MainIRForm using (bare-injective)
 import Once.Adequacy.ModuleComplete as MC
 
@@ -87,15 +89,14 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
         → isConcrete? ty ≡ just c → honest? ty ≡ just h → rigidFree? ty ≡ just g
         → FunBundle (C.extendSig sc (funName fi) ty) es      -- D274: Σ grows
         → FunBundle sc (Parser.e-fun fi ∷ es)
-  bcons : ∀ {sc fi es ty₀ ty}
+  bcons : ∀ {sc fi es ty}
     {Ψ  : Usage (NamedCtx.size (ctxC sc))}
     {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ ty}
     {d f : ℕ}
     {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
     (ep : funIsPrimitive fi ≡ false) →
-    (rf : C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty₀) →
-    (fc : C.firstChecking (ctxC sc) (funBody fi) (below ty₀) ≡ nothing) →
-    (te : C.entryType (funName fi) ty₀ ≡ ty) →
+    (rf : C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty) →
+    (fc : C.firstChecking (ctxC sc) (funBody fi) (below ty) ≡ nothing) →
     {g : RigidFree ty} → (eg : rigidFree? ty ≡ just g) →
     (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f) →
     (cf : C.compileFun IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
@@ -164,8 +165,8 @@ compileFun-ce polys impsOf ctx ty fi irFun eq =
 bundle→typed : ∀ {sc es} → FunBundle sc es → ModTele (AS.scopeOf sc) es
 bundle→typed bnil = []
 bundle→typed (bffi {c = c} {h = h} {g = g} ep et _ _ _ rest) = ffi ep et c h g (bundle→typed rest)
-bundle→typed {sc} (bcons {fi = fi} {ty₀ = ty₀} {ty = ty} ep rf fc te {g} eg ce cf rest) =
-  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty₀) fc) te g (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
+bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf fc {g} eg ce cf rest) =
+  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty) fc) g (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
 bundle→typed {sc} (bpoly {pfi = pfi} fc ce rest) =
   poly (firstChecking-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) fc)
        (check-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
@@ -173,7 +174,7 @@ bundle→typed {sc} (bpoly {pfi = pfi} fc ce rest) =
 bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
 bundle→compiled bnil = []
 bundle→compiled (bffi _ _ _ _ _ rest) = bundle→compiled rest
-bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc te eg ce cf rest) =
+bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
   C.mkCompiledFun (bare (funName fi)) ty irFun ∷ bundle→compiled rest
 bundle→compiled (bpoly fc ce rest) = bundle→compiled rest
 
@@ -224,12 +225,10 @@ cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (hone
       in bffi {c = c} {h = h} {g = g} ep et ec eh eg b , beq
 
 cgb-mono sc fi es compiled ep (inj₁ _) er ()
-cgb-mono sc fi es compiled ep (inj₂ ty₀) er eq
-  with C.firstChecking (ctxC sc) (funBody fi) (below ty₀) in fc
+cgb-mono sc fi es compiled ep (inj₂ ty) er eq
+  with C.firstChecking (ctxC sc) (funBody fi) (below ty) in fc
 ... | just _ = case eq of λ ()
 ... | nothing
-  with C.entryType (funName fi) ty₀ in te
-... | ty
   with rigidFree? ty in eg
 ... | nothing = case eq of λ ()
 ... | just g
@@ -241,7 +240,7 @@ cgb-mono sc fi es compiled ep (inj₂ ty₀) er eq
 ...   | inj₂ rest =
         let (Ψ , se , d , f , ce) = compileFun-ce (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.ctop sc) ty fi irFun cf
             (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
-        in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er fc te eg ce cf b
+        in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er fc eg ce cf b
          , trans (cong (C.mkCompiledFun (bare (funName fi)) ty irFun ∷_) beq)
                  (inj₂-injective eq)
 
@@ -264,8 +263,8 @@ bundle→compiled≡compiled sc es compiled eq = proj₂ (ce-bundleP sc es compi
 BMainExists : ∀ {sc es} → FunBundle sc es → Set
 BMainExists bnil = ⊥
 BMainExists (bffi _ _ _ _ _ rest) = BMainExists rest
-BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ _ _ _ rest) =
-  ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ BMainExists rest
+BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ _ _ rest) =
+  ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty <: EffUU)) ⊎ BMainExists rest
 BMainExists (bpoly _ _ rest) = BMainExists rest
 
 -- D253: the program's `main` is the call of the entry `main : Eff Unit Unit`; the
@@ -273,60 +272,63 @@ BMainExists (bpoly _ _ rest) = BMainExists rest
 bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 bundle-find bnil = nothing
 bundle-find (bffi _ _ _ _ _ rest) = bundle-find rest
-bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc te eg ce cf rest) =
+bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
   findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
-    (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty) (bundle-find rest)
+    (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) (bundle-find rest)
 bundle-find (bpoly _ _ rest) = bundle-find rest
 
 find-agree : ∀ {sc es} (b : FunBundle sc es) → findMain (bundle→compiled b) ≡ bundle-find b
 find-agree bnil = refl
 find-agree (bffi _ _ _ _ _ rest) = find-agree rest
-find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc te eg ce cf rest) =
+find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
   cong (findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
-          (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty))
+          (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU))
        (find-agree rest)
 find-agree (bpoly _ _ rest) = find-agree rest
 
 bme→me : ∀ {sc es} (b : FunBundle sc es) → BMainExists b → MainIn (bundle→typed b)
 bme→me (bffi _ _ _ _ _ rest) w = bme→me rest w
-bme→me (bcons _ _ _ _ _ _ _ rest) (inj₁ (p , _ , e)) = inj₁ (p , e)
-bme→me (bcons _ _ _ _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
+bme→me (bcons _ _ _ _ _ _ rest) (inj₁ (p , _ , e)) = inj₁ (p , e)
+bme→me (bcons _ _ _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
 bme→me (bpoly _ _ rest) w = bme→me rest w
 
--- The program's `main` is only ever the call of the entry.
+-- The program's `main` is only ever the entry's call (`mainEntry`, D315).
+IsEntry : IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
+IsEntry ir = Σ-syntax Type (λ ty → Σ-syntax (ty <: EffUU) (λ p → ir ≡ mainEntry p))
+
 private
   here-call : ∀ (cf : C.CompiledFun) (nd : Dec (C.CompiledFun.cfName cf ≡ bare "main"))
-                (td : Maybe (C.CompiledFun.cfType cf ≡ EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
-            → (cont ≡ just ir → ir ≡ mainCall) → findMain-here cf nd td cont ≡ just ir → ir ≡ mainCall
-  here-call cf (yes _) (just _) cont ih refl = refl
-  here-call cf (yes _) nothing  cont ih eq   = ih eq
-  here-call cf (no _)  _        cont ih eq   = ih eq
+                (td : Dec (C.CompiledFun.cfType cf <: EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+            → (cont ≡ just ir → IsEntry ir) → findMain-here cf nd td cont ≡ just ir → IsEntry ir
+  here-call cf (yes _) (yes p) cont ih refl = _ , p , refl
+  here-call cf (yes _) (no _)  cont ih eq   = ih eq
+  here-call cf (no _)  _       cont ih eq   = ih eq
 
   here-exists : ∀ {sc es} (fi : FunInfo) {ty : Type} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} (rest : FunBundle (C.extendScope sc (funName fi) ty) es)
                 → funIsPrimitive fi ≡ false
-                → (nd : Dec (bare (funName fi) ≡ bare "main")) (td : Maybe (ty ≡ EffUU)) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+                → (nd : Dec (bare (funName fi) ≡ bare "main")) (td : Dec (ty <: EffUU)) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
                 → (bundle-find rest ≡ just ir → BMainExists rest)
                 → findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun) nd td (bundle-find rest) ≡ just ir
-                → ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty ≡ EffUU)) ⊎ BMainExists rest
-  here-exists fi rest ep (yes n) (just e) ih eq = inj₁ (bare-injective n , ep , e)
-  here-exists fi rest ep (yes _) nothing  ih eq = inj₂ (ih eq)
-  here-exists fi rest ep (no _)  _        ih eq = inj₂ (ih eq)
+                → ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty <: EffUU)) ⊎ BMainExists rest
+  here-exists fi rest ep (yes n) (yes e) ih eq = inj₁ (bare-injective n , ep , e)
+  here-exists fi rest ep (yes _) (no _)  ih eq = inj₂ (ih eq)
+  here-exists fi rest ep (no _)  _       ih eq = inj₂ (ih eq)
 
-bundle-find-call : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → bundle-find b ≡ just ir → ir ≡ mainCall
+bundle-find-call : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → bundle-find b ≡ just ir → IsEntry ir
 bundle-find-call bnil ()
 bundle-find-call (bffi _ _ _ _ _ rest) eq = bundle-find-call rest eq
 bundle-find-call (bpoly _ _ rest) eq = bundle-find-call rest eq
-bundle-find-call (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc te eg ce cf rest) eq =
+bundle-find-call (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) eq =
   here-call (C.mkCompiledFun (bare (funName fi)) ty irFun)
-    (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty) (bundle-find rest) (bundle-find-call rest) eq
+    (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) (bundle-find rest) (bundle-find-call rest) eq
 
 bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
   → bundle-find b ≡ just ir → BMainExists b
 bundle-find-exists bnil ()
 bundle-find-exists (bffi _ _ _ _ _ rest) eq = bundle-find-exists rest eq
 bundle-find-exists (bpoly _ _ rest) eq = bundle-find-exists rest eq
-bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc te eg ce cf rest) eq =
-  here-exists fi {irFun = irFun} rest ep (bare (funName fi) ≟ᶜ bare "main") (isEffUU? ty)
+bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) eq =
+  here-exists fi {irFun = irFun} rest ep (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU)
     (bundle-find-exists rest) eq
 
 ------------------------------------------------------------------------

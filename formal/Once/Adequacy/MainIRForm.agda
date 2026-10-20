@@ -27,11 +27,13 @@ open import Data.Maybe using (Maybe)
 open import Data.List using (List; _∷_)
 open import Once.Spec.Name using (bare)
 open import Once.CanonicalName using (_≟ᶜ_)
-open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Compile using (findMain; findMain-here; isEffUU?)
+open import Once.Compile using (findMain; findMain-here)
+open import Once.Lang.Type.Sub using (_<:_)
+open import Once.Type.Sub using (_<:?_)
 import Once.IR as IR
 
 open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many; pure; eff)
@@ -46,55 +48,28 @@ EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 ------------------------------------------------------------------------
--- (1) validateMain inversion: `validateMain ty ≡ inj₂ tt → ty ≡ EffUU`.
--- Every non-EffUU `ty` has a concrete mismatching component, so
--- `validateMain ty` reduces to `inj₁ …` and the equation is absurd.
+-- (1) validateMain inversion: `validateMain ty ≡ inj₂ tt → ty <: EffUU` (D315:
+-- `main` is usable as `Eff Unit Unit`).
 ------------------------------------------------------------------------
 
-validateMain-EffUU : ∀ (ty : Type) → C.validateMain ty ≡ inj₂ tt → ty ≡ EffUU
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] Unit) eq = refl
--- non-arrow heads
-validateMain-EffUU Unit       ()
-validateMain-EffUU Void       ()
-validateMain-EffUU Int        ()
-validateMain-EffUU Float      ()
-validateMain-EffUU (_ * _)    ()
-validateMain-EffUU (_ + _)    ()
-validateMain-EffUU (μ-type _) ()
-validateMain-EffUU (ν-type _ _) ()
--- arrow with domain Unit, kind (Many,eff), but codomain ≠ Unit
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] Void)         ()
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] Int)          ()
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] Float)        ()
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] (_ * _))      ()
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] (_ + _))      ()
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] (_ ⇒[ _ ] _)) ()
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] (μ-type _))   ()
-validateMain-EffUU (Unit ⇒[ mk-kind Many eff ] (ν-type _ _))   ()
--- arrow with domain Unit but kind ≠ (Many,eff)
-validateMain-EffUU (Unit ⇒[ mk-kind Many pure ] B) ()
-validateMain-EffUU (Unit ⇒[ mk-kind One π ] B)     ()
-validateMain-EffUU (Unit ⇒[ mk-kind Zero π ] B)    ()
--- arrow with domain ≠ Unit
-validateMain-EffUU (Void ⇒[ k ] B)         ()
-validateMain-EffUU (Int ⇒[ k ] B)          ()
-validateMain-EffUU (Float ⇒[ k ] B)        ()
-validateMain-EffUU ((_ * _) ⇒[ k ] B)      ()
-validateMain-EffUU ((_ + _) ⇒[ k ] B)      ()
-validateMain-EffUU ((_ ⇒[ _ ] _) ⇒[ k ] B) ()
-validateMain-EffUU ((μ-type _) ⇒[ k ] B)   ()
-validateMain-EffUU ((ν-type _ _) ⇒[ k ] B)   ()
+private
+  validateMain-at-sub : ∀ (ty : Type) (d : Dec (ty <: EffUU)) → C.validateMain-at ty d ≡ inj₂ tt → ty <: EffUU
+  validateMain-at-sub ty (yes p) _ = p
+  validateMain-at-sub ty (no _) ()
+
+validateMain-sub : ∀ (ty : Type) → C.validateMain ty ≡ inj₂ tt → ty <: EffUU
+validateMain-sub ty eq = validateMain-at-sub ty (ty <:? EffUU) eq
 
 ------------------------------------------------------------------------
--- (2) A successfully-compiled "main" has type EffUU.
+-- (2) A successfully-compiled "main" is usable as `Eff Unit Unit`.
 ------------------------------------------------------------------------
 
-compileFun-main-EffUU : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+compileFun-main-sub : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
-  ty ≡ EffUU
-compileFun-main-EffUU ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
-... | inj₂ tt  = validateMain-EffUU ty veq
+  ty <: EffUU
+compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
+... | inj₂ tt  = validateMain-sub ty veq
 ... | inj₁ err = case eq of λ ()
 
 ------------------------------------------------------------------------
@@ -102,7 +77,7 @@ compileFun-main-EffUU ctx polys impsOf ty body irFun eq with C.validateMain ty i
 ------------------------------------------------------------------------
 
 findMain-here-no : ∀ (cf : C.CompiledFun)
-  (mu : Maybe (C.CompiledFun.cfType cf ≡ EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋))
+  (mu : Dec (C.CompiledFun.cfType cf <: EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋))
   (¬p : ¬ (C.CompiledFun.cfName cf ≡ bare "main")) →
   findMain-here cf (no ¬p) mu cont ≡ cont
 findMain-here-no cf mu cont ¬p = refl
@@ -119,4 +94,4 @@ findMain-skip : ∀ (cf : C.CompiledFun) (rest : List C.CompiledFun) →
   ¬ (cfName cf ≡ bare "main") → findMain (cf ∷ rest) ≡ findMain rest
 findMain-skip cf rest ¬p with cfName cf ≟ᶜ bare "main"
 ... | yes p  = ⊥-elim (¬p p)
-... | no ¬q  = findMain-here-no cf (isEffUU? (cfType cf)) (findMain rest) ¬q
+... | no ¬q  = findMain-here-no cf (cfType cf <:? EffUU) (findMain rest) ¬q

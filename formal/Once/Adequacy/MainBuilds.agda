@@ -163,7 +163,7 @@ ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq =
 
 ce-mono-p-doOpt doOpt sc fi es ty (just _) ()
 ce-mono-p-doOpt doOpt sc fi es ty nothing eq =
-  ce-mono-g-doOpt doOpt sc fi es (C.entryType (Parser.FunInfo.funName fi) ty) (rigidFree? (C.entryType (Parser.FunInfo.funName fi) ty)) eq
+  ce-mono-g-doOpt doOpt sc fi es ty (rigidFree? ty) eq
 
 ce-mono-g-doOpt doOpt sc fi es ty nothing ()
 ce-mono-g-doOpt doOpt sc fi es ty (just _) eqg
