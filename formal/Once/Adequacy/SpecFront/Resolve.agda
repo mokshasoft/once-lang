@@ -169,3 +169,66 @@ module Decls (Σ : Signature) where
       subst-own : ∀ {o} {mo} → mo ≡ just o → All ImportedSig (signaturesWithOwner (just o) impDs)
                 → All ImportedSig (signaturesWithOwner mo impDs)
       subst-own refl a = a
+
+------------------------------------------------------------------------
+-- The tables
+------------------------------------------------------------------------
+
+open import Once.Parser.Module.Core using (Module; mkModule)
+import Data.List
+import Data.Maybe
+open import Once.Parser.Module.Resolve using (ModuleMap; collectAliases; collectUnaliased; sigNames; lookupModule)
+open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
+open import Relation.Binary.PropositionalEquality using (trans; cong₂; subst)
+
+-- The module maps: the same paths, each module's declarations as written in
+-- both grammars.
+ModRel : ModuleMap → SR.ModuleMap → Set
+ModRel = Pointwise (λ q q′ → (proj₁ q ≡ proj₁ q′) × Pointwise DEmb (Module.decls (proj₂ q)) (S.Module.decls (proj₂ q′)))
+
+private
+  -- a module the compiler finds, the Spec finds at the same path
+  find : ∀ {mm mm′ p ds} → ModRel mm mm′ → LR.FirstAt p (mkModule ds) mm
+       → Σ[ ds′ ∈ List S.Decl ] SR.FirstAt p (S.mkModule ds′) mm′ × Pointwise DEmb ds ds′
+  find ((refl , pw) ∷ _) LR.fa-here = _ , SR.fa-here , pw
+  find ((refl , _) ∷ mr) (LR.fa-there ne fa) = let (ds′ , fa′ , pw) = find mr fa in ds′ , SR.fa-there ne fa′ , pw
+
+  -- its exported names
+  names-eq : ∀ {ds ds′} → Pointwise DEmb ds ds′ → sigNames ds ≡ SR.exports ds′
+  names-eq [] = refl
+  names-eq (d-typesig ∷ pw)   = names-eq pw
+  names-eq (d-fundef _ ∷ pw)  = names-eq pw
+  names-eq (d-signature ∷ pw) = cong (_ ∷_) (names-eq pw)
+  names-eq (d-alias ∷ pw)     = names-eq pw
+  names-eq (d-import ∷ pw)    = names-eq pw
+
+  map-path : ∀ (p : List String) xs → Data.List.map (λ n → (n , p)) xs ≡ SR.mapPath p xs
+  map-path p []       = refl
+  map-path p (x ∷ xs) = cong (_ ∷_) (map-path p xs)
+
+-- The aliased imports.
+aliases-eq : ∀ {dsU ds′} → Pointwise DEmb dsU ds′ → collectAliases dsU ≡ SR.aliases ds′
+aliases-eq [] = refl
+aliases-eq (d-typesig ∷ pw)   = aliases-eq pw
+aliases-eq (d-fundef _ ∷ pw)  = aliases-eq pw
+aliases-eq (d-signature ∷ pw) = aliases-eq pw
+aliases-eq (d-alias ∷ pw)     = aliases-eq pw
+aliases-eq (d-import {a = just a} ∷ pw) = cong (_ ∷_) (aliases-eq pw)
+aliases-eq (d-import {a = nothing} ∷ pw) = aliases-eq pw
+
+-- The unaliased imports: every module an import names is found (the
+-- compiler's resolution looked it up).
+unaliased-of : ∀ {mm mm′ um am dsU dsR ds′} → ModRel mm mm′ → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+             → SR.Unaliased mm′ ds′ (collectUnaliased mm dsU)
+unaliased-of mr LR.rds-nil [] = SR.un-nil
+unaliased-of mr (LR.rds-cons LR.nim-fundef _ rds) (d-fundef _ ∷ pw) = SR.un-other SR.nu-def (unaliased-of mr rds pw)
+unaliased-of mr (LR.rds-cons LR.nim-typesig _ rds) (d-typesig ∷ pw) = SR.un-other SR.nu-tsig (unaliased-of mr rds pw)
+unaliased-of mr (LR.rds-cons LR.nim-sig _ rds) (d-signature ∷ pw) = SR.un-other SR.nu-sig (unaliased-of mr rds pw)
+unaliased-of mr (LR.rds-cons LR.nim-alias _ rds) (d-alias ∷ pw) = SR.un-other SR.nu-alias (unaliased-of mr rds pw)
+unaliased-of mr (LR.rds-import fa rds) (d-import {a = just a} ∷ pw) = SR.un-other SR.nu-aliased (unaliased-of mr rds pw)
+unaliased-of {mm = mm} {mm′} mr (LR.rds-import {impDs = impDs} {ds = rest} fa rds) (d-import {p = p} {a = nothing} ∷ pw)
+  rewrite lookupMod-complete mm p (mkModule impDs) fa =
+  let (ds″ , fa′ , pw′) = find mr fa in
+  subst (λ u → SR.Unaliased mm′ (S.DImport (S.mkImport p nothing) ∷ _) (u Data.List.++ collectUnaliased mm rest))
+        (sym (trans (cong (Data.List.map (λ n → (n , p))) (names-eq pw′)) (map-path p (SR.exports ds″))))
+        (SR.un-import fa′ (unaliased-of mr rds pw))
