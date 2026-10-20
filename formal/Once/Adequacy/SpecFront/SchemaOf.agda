@@ -337,31 +337,30 @@ schemaOf-S T = record
 -- What the front-end bridge asks of a telescope entry
 ------------------------------------------------------------------------
 
-private
-  ftv-empty : ∀ {xs : List String} → (∀ {x} → x ∈ xs → ⊥) → xs ≡ []
-  ftv-empty {[]}     _ = refl
-  ftv-empty {x ∷ xs} n = ⊥-elim (n (here refl))
+ftv-empty : ∀ {xs : List String} → (∀ {x} → x ∈ xs → ⊥) → xs ≡ []
+ftv-empty {[]}     _ = refl
+ftv-empty {x ∷ xs} n = ⊥-elim (n (here refl))
 
-  mutual
-    empty-ground : ∀ A → ftv A ≡ [] → Ground A
-    empty-ground PUnit  _ = tt
-    empty-ground PVoid  _ = tt
-    empty-ground PInt   _ = tt
-    empty-ground PFloat _ = tt
-    empty-ground (PTVar x) ()
-    empty-ground (A P* B)      e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
-    empty-ground (A P+ B)      e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
-    empty-ground (A P⇒[ q ] B) e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
-    empty-ground (PEff A B)    e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
-    empty-ground (PAct A B)    e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
-    empty-ground (Pμ-type F)   e = empty-groundF F e
-    empty-ground (Pν-type F φ) e = empty-groundF F e
+mutual
+  empty-ground : ∀ A → ftv A ≡ [] → Ground A
+  empty-ground PUnit  _ = tt
+  empty-ground PVoid  _ = tt
+  empty-ground PInt   _ = tt
+  empty-ground PFloat _ = tt
+  empty-ground (PTVar x) ()
+  empty-ground (A P* B)      e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
+  empty-ground (A P+ B)      e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
+  empty-ground (A P⇒[ q ] B) e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
+  empty-ground (PEff A B)    e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
+  empty-ground (PAct A B)    e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
+  empty-ground (Pμ-type F)   e = empty-groundF F e
+  empty-ground (Pν-type F φ) e = empty-groundF F e
 
-    empty-groundF : ∀ F → ftvF F ≡ [] → GroundF F
-    empty-groundF (PK A)   e = empty-ground A e
-    empty-groundF PId      _ = tt
-    empty-groundF (F P⊕ G) e = empty-groundF F (++-conicalˡ (ftvF F) (ftvF G) e) , empty-groundF G (++-conicalʳ (ftvF F) (ftvF G) e)
-    empty-groundF (F P⊗ G) e = empty-groundF F (++-conicalˡ (ftvF F) (ftvF G) e) , empty-groundF G (++-conicalʳ (ftvF F) (ftvF G) e)
+  empty-groundF : ∀ F → ftvF F ≡ [] → GroundF F
+  empty-groundF (PK A)   e = empty-ground A e
+  empty-groundF PId      _ = tt
+  empty-groundF (F P⊕ G) e = empty-groundF F (++-conicalˡ (ftvF F) (ftvF G) e) , empty-groundF G (++-conicalʳ (ftvF F) (ftvF G) e)
+  empty-groundF (F P⊗ G) e = empty-groundF F (++-conicalˡ (ftvF F) (ftvF G) e) , empty-groundF G (++-conicalʳ (ftvF F) (ftvF G) e)
 
 ground-arity : ∀ sc → Ground sc → arityOf sc ≡ 0
 ground-arity sc g = cong (λ l → length (nubFrom [] l)) (ftv-empty (ftv-ground sc g))
