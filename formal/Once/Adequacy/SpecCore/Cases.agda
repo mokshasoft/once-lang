@@ -62,6 +62,7 @@ open import Once.Adequacy.SpecCore.Fundamental S Σ sigop-S fmt
 open import Once.Adequacy.SpecCore.Conv S Σ using (conv-R)
 open import Once.Adequacy.SpecCore.Layer Σ
 import Once.Adequacy.SpecCore.Fold as Fold
+import Once.Adequacy.SpecCore.Unfold as Unfold
 import Once.Lang.Context as LC
 import Once.Lang.Type.Sub as LS
 
@@ -333,3 +334,71 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
       gA    = GR-inst (ptr A) g
       gAlg  = g-⇒ {q = LG.Many} {π = π} (GR-⟦⟧ g (pfr F) gA) gA
       gAlgX = subst (λ Z → GR (Z LT.⇒[ LG.mk-kind LG.Many π ] (A LP.⟪ σ ⟫)) _) (sym (LP.⟦⟧F-⟪⟫ F A σ)) gAlg
+
+  unfold : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψc Ψs φ π₁ π₂ F A c x} (wf : LP.WFFun Δ F)
+           (dc : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψc c (A LP.⇒[ LG.mk-kind LG.Many (LG.fin φ) ] LP.⟦ F ⟧F A) π₁)
+           (dx : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψs x A π₂) → Fund ρ ρ′ dc → Fund ρ ρ′ dx → Fund ρ ρ′ (PT.⊢unfold wf dc dx)
+  unfold {Γ = Γ} {Ψc} {Ψs} {LG.pure} {π₁} {π₂} {F} {A} wf dc dx ihc ihx {σ} {σ′} r r′ g e =
+    S-at ρ ρ′ g (eqᵘ-many Ψc Ψs) refl (eqᵍ-· π₁ π₂)
+         (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin LG.pure (ptyS-⟦⟧ F A)) refl (trD dc)) (trD dx)) (crΓ Γ)
+         (ur-+ (ur-* qr-many (ur Ψc)) (ur Ψs)) (ur _) gν gν (pr-· (pr π₁) (pr π₂)) (pr _) _
+         (λ e₀ → bindᵍ-R (pr π₁) (pr π₂)
+                   (L-at′ (λ X → A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.pure ] X) (LP.⟦⟧F-⟪⟫ F A σ)
+                          (PT.instantiate σ r dc) (pr π₁) gCX gC
+                          (S-at ρ ρ′ g refl (arr-fin LG.pure (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
+                                (GR-inst (ptr (A LP.⇒[ LG.mk-kind LG.Many LG.pure ] LP.⟦ F ⟧F A)) g) gCX (pr π₁) (pr π₁) _
+                                (ihc r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψc) e₀)))
+                   (λ rc → fmap-R (pr π₂) (ihx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
+                             (λ ra → Unfold.anaP-R Σ (GF-inst (pfr F) g)
+                                        (λ rx → in-R (GF-inst (pfr F) g) (cf-R g (pfr F) (LP.wf-⟪⟫ r wf) gA (rc rx))) ra)))
+         e
+    where
+      gA  = GR-inst (ptr A) g
+      gν  = GR-inst (ptr (LP.ν-type F LG.pure)) g
+      gC  = g-⇒ {q = LG.Many} {π = LG.pure} gA (GR-⟦⟧ g (pfr F) gA)
+      gCX = subst (λ Z → GR (A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.pure ] Z) _) (sym (LP.⟦⟧F-⟪⟫ F A σ)) gC
+  unfold {Γ = Γ} {Ψc} {Ψs} {LG.act} {π₁} {π₂} {F} {A} wf dc dx ihc ihx {σ} {σ′} r r′ g e =
+    S-at ρ ρ′ g (eqᵘ-many Ψc Ψs) refl (eqᵍ-· π₁ π₂)
+         (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin LG.act (ptyS-⟦⟧ F A)) refl (trD dc)) (trD dx)) (crΓ Γ)
+         (ur-+ (ur-* qr-many (ur Ψc)) (ur Ψs)) (ur _) gν gν (pr-· (pr π₁) (pr π₂)) (pr _) _
+         (λ e₀ → bindᵍ-R (pr π₁) (pr π₂)
+                   (L-at′ (λ X → A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.act ] X) (LP.⟦⟧F-⟪⟫ F A σ)
+                          (PT.instantiate σ r dc) (pr π₁) gCX gC
+                          (S-at ρ ρ′ g refl (arr-fin LG.act (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
+                                (GR-inst (ptr (A LP.⇒[ LG.mk-kind LG.Many LG.act ] LP.⟦ F ⟧F A)) g) gCX (pr π₁) (pr π₁) _
+                                (ihc r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψc) e₀)))
+                   (λ rc → fmap-R (pr π₂) (ihx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
+                             (λ ra → Unfold.anaA-R Σ (GF-inst (pfr F) g)
+                                        (λ rx → fmap-R pr-act (rc rx)
+                                                  (λ rl → in-R (GF-inst (pfr F) g) (cf-R g (pfr F) (LP.wf-⟪⟫ r wf) gA rl))) ra)))
+         e
+    where
+      gA  = GR-inst (ptr A) g
+      gν  = GR-inst (ptr (LP.ν-type F LG.act)) g
+      gC  = g-⇒ {q = LG.Many} {π = LG.act} gA (GR-⟦⟧ g (pfr F) gA)
+      gCX = subst (λ Z → GR (A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.act ] Z) _) (sym (LP.⟦⟧F-⟪⟫ F A σ)) gC
+
+------------------------------------------------------------------------
+-- The fundamental lemma, every rule
+------------------------------------------------------------------------
+
+module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) (defsR : DefsR ρ ρ′) (sigR : SigR ρ ρ′) where
+
+  allCases : Cases ρ ρ′
+  allCases = record
+    { c-roll      = roll ρ ρ′
+    ; c-fold      = fold ρ ρ′
+    ; c-unfold    = unfold ρ ρ′
+    ; c-out       = out ρ ρ′
+    ; c-iter      = iter ρ ρ′
+    ; c-coerce    = coerce ρ ρ′
+    ; c-lit-int   = lit-int ρ ρ′
+    ; c-lit-float = lit-float ρ ρ′
+    ; c-prim      = prim ρ ρ′
+    ; c-sigop     = sigop ρ ρ′ defsR sigR
+    ; c-ref       = ref ρ ρ′ defsR sigR
+    }
+
+  -- A compiler core derivation and its Spec translation mean related computations.
+  fundamental : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ t A π} (D : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π) → Fund ρ ρ′ D
+  fundamental = fund ρ ρ′ allCases

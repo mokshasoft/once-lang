@@ -278,6 +278,11 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   eqᵍ-out : ∀ π₁ φ → πS π₁ SG.·p SG.fin (φS φ) ≡ πS (π₁ LG.·p LG.fin φ)
   eqᵍ-out π₁ φ = sym (trans (·p-S π₁ (LG.fin φ)) (cong (πS π₁ SG.·p_) (πS-fin φ)))
 
+  arr-fin : ∀ {a} {A′ X Y : ST.Ty a} φ → X ≡ Y
+          → (A′ ST.⇒[ SG.mk-kind SG.Many (πS (LG.fin φ)) ] X) ≡ (A′ ST.⇒[ SG.mk-kind SG.Many (SG.fin (φS φ)) ] Y)
+  arr-fin LG.pure refl = refl
+  arr-fin LG.act  refl = refl
+
   -- The Spec's typing of a translated term.
   trD : ∀ {a n} {Δ : LP.KCtx a} {Γ : PT.PCtx a n} {Ψ t A π}
       → PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π
@@ -307,11 +312,6 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   trD (PT.⊢unfold {Ψc = Ψc} {Ψs} {φ} {π₁} {π₂} {F} {A} wf dc ds) =
     atS (eqᵘ-many Ψc Ψs) refl (eqᵍ-· π₁ π₂)
        (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin φ (ptyS-⟦⟧ F A)) refl (trD dc)) (trD ds))
-    where
-      arr-fin : ∀ {A′ X Y} φ → X ≡ Y
-              → (A′ ST.⇒[ SG.mk-kind SG.Many (πS (LG.fin φ)) ] X) ≡ (A′ ST.⇒[ SG.mk-kind SG.Many (SG.fin (φS φ)) ] Y)
-      arr-fin LG.pure refl = refl
-      arr-fin LG.act  refl = refl
   trD (PT.⊢out {φ = φ} {π₁} {F} wf d) =
     atS refl (sym (ptyS-⟦⟧ F (LP.ν-type F φ))) (eqᵍ-out π₁ φ)
        (S⊢.⊢out (wfS wf) (trD d))
