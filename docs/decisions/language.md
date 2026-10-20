@@ -395,22 +395,19 @@ with the code:
 2. **D317**: the loop is spelled `ana` at `Eff A B` (one name for both
    anamorphisms, chosen by the expected type); a name of its own is the
    alternative.
-3. **D072** (closed by D323): the oracle no longer types definitions; at most
-   it suggests a signature.
-4. **The Spec claims over D318's definitions** (finality of every stream,
-   the loop's unrolling, sameness as a partial equivalence respected by
-   `>>=`, the Freyd structure up to observation, the inhabited model and
-   world, functorial coercions) are stated and being proved (plan 0.120); the
-   earlier claims were proved in plan 0.119 B2 and D1.
-5. **Imported definitions** (D319): an import contributes only its module's
+3. **Imported definitions** (D319): an import contributes only its module's
    `signature` declarations; a program's definitions are its own module's.
    Dependent types need imported definitions with their bodies (a type
    computes through them; PLAN-REF on `origin/plan-ref`), named by their
    module's path. The Spec cannot yet state this.
-5. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical
+4. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical
    names").
-6. **Domains from the body** (D322's option 2): binder annotations
+5. **Domains from the body** (D322's option 2): binder annotations
    (`f (x : Int) = …`) would let a body declare its own context, so a λ could
    go without a signature (D323) — an extension, not decided.
-7. **D317 in flight**: the implementation follows the new Spec in plan 0.119
-   §7 D; until then the compiler's proofs are red against it.
+6. **The bridges to the Spec** (plan 0.121): the compiler follows the current
+   Spec; the proof that it is correct against it (the core meaning, the
+   telescope and the observation are proved; the front end is in progress)
+   replaces the proof against `Once.Lang` at the merge.
+7. **Lexing leniency** (D325): a stray `"` ends the tokens and a character
+   that starts no token is skipped; making either an error is a Spec change.

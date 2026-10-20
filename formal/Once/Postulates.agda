@@ -57,21 +57,11 @@ postulate
                    (∀ x → f x ≡ g x) → f ≡ g
 
 ------------------------------------------------------------------------
--- Postulates P2, P3: the fold's universal property (plan 0.112 D3)
-------------------------------------------------------------------------
---
--- `fold-unique` and `fold-fusion` (and P5, `unfold-out`, plan 0.116 E: unfold's
--- computation law — definitional up to the ν coercions), postulated in
--- `Once.Metatheory.Recursion`
--- (their statements need the meaning, which this module does not import).
---
--- NEEDED BY: nothing; they discharge the Spec's claims
---   (`Spec.Metatheory.Recursion`) on the apex.
--- JUSTIFICATION: induction on the (finite) μ tree; see that module.
--- IMPACT: if false, the Spec's claim about `fold` is false; no compiler
---   proof depends on them.
--- RUNTIME EFFECT: none (erased).
---
+-- P2, P3, P5 (retired): the fold's universal property (`fold-unique`,
+-- `fold-fusion`, plan 0.112 D3) and unfold's computation law (`unfold-out`,
+-- plan 0.116 E) — PROVED in `Once.Metatheory.Recursion`, by induction on the
+-- (finite) μ tree and by the ν coercions' definitions. The numbers are not
+-- reused.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------

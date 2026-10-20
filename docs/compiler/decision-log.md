@@ -19122,3 +19122,27 @@ entry's type, which the Spec does not (plan 0.121 §3.2, R2).
 * The compiler's lexer does the same (`lex-string-end`/`lex-skip` are matched by its relation proof).
 * Either could be made an error — a stray `"` or an unknown character rejected rather than ignored. That
   would be a Spec change (the lexer relation would become partial) and needs the user's approval.
+
+## D326 — THE TRUST BASE ON `freyd-spec`: WHAT CHANGED (2026-10-21)
+
+**Recorded** (plan 0.121 §1 item 6; MERGE.md "Trust base": every change explained). From plan 0.119 §7 D4.
+
+### Removed
+* **The step-budget postulates and `conc-fuel`** (`279585789`, D4a): `step-budget-x86-64`,
+  `step-budget-x86-32`, `step-budget-riscv64` with their `-adequate` companions, and `conc-fuel` on each of
+  the three targets — nine postulates. They said that a run reaches its end within a computable number of
+  machine steps, which is false for a program that runs forever (a server). The apex now compares TRACES:
+  the binary's trace is read off the machine by corecursion (`RunTraceMachine`, no fuel), the meaning's is
+  the core run's trace (`trT∞` of `runCore`), and the claim is weak bisimilarity (`SameBehaviour`). Nothing
+  bounds the steps any more.
+
+### Strengthened
+* **`BlockRuns`** (`ba9003dcd`, D4d; with `9ebd3d26b`, D4c): a callee's block that STOPS has not left the
+  program — `ValueRealized.stops` and `CalleeRun.stops` say `halted × left unchanged`. True of compiled
+  code: the only way out is the Host's `leave` at the end of `main` (D320, `c-leave`). It stays a
+  hypothesis of the apex (`once-certified`'s three `BlockRunsHyp`), discharged by plan 0.93.
+
+### Restated
+* **`opt-trace`** (the optimizer path's correctness, plan 0.39): still a postulate, now stated over traces
+  (`Tr ⊤`, weak bisimilarity) instead of fuelled event lists, matching the apex. Plan 0.39 owns its
+  discharge.

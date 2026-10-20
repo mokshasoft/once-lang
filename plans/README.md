@@ -1,9 +1,9 @@
 # Plans
 
-Open work only (29 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (27 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
-This index is a map and was last re-derived from the code on 2026-10-11.
+This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
 
 ## Trust base and the apex claim
 
@@ -22,16 +22,13 @@ This index is a map and was last re-derived from the code on 2026-10-11.
 
 | Plan | State | What remains |
 |---|---|---|
-| 0.120 the categorical review | CLOSED: D318 approved, metatheory green | plan 0.119 §7 D on the new Spec |
-| 0.114 the Spec stands alone | A (gate) done; B next | the Spec is `Once/Spec`, imports only itself, no re-exports/renaming/hiding, `--safe`, definitions only, reads as categorical semantics |
-| 0.59 oracle principality | open | C1/C3 coverage, P1–P4 (mgu, completeness, principality, diagnostics) |
+| 0.121 before the merge | open, top-down | the bridges (core meaning, telescope, observation done; front end next), the apex swap onto the Spec, `Once.Lang` deleted, docs; then the merge |
+| 0.119 the server loop | D5 done; D6 in 0.121 | the Spec bridges and the apex swap, carried by 0.121 |
 | 0.50 named defs are morphisms | ABI landed | retire `classifyAppHead` from the judgment (moved here by D293) |
 | 0.96 `IO` is not a language construct | not started | decide (§3), remove the parser sites |
 | 0.79 categorical laws | not started | decide whether source-level laws are Spec metatheory |
 | 0.112 categorical structures | draft | lawful structure records, then the renames |
 | 0.115 rejections check why | not started | about 68 bare `isLeft` test assertions |
-| 0.116 effects are Freyd | A next | coherence (one meaning per judgment) and Freyd (pure = central) on the apex; effects run once at `Zero` |
-| 0.117 total and productive | C next | T+P stated in the Spec; servers by guarded iteration over the completely iterative monad (D311) |
 
 ## Compiler and codegen
 
