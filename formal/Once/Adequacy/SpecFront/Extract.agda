@@ -47,7 +47,7 @@ open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; 
 open import Once.Parser.TypeAlias using (TypeAliasEnv; expandAliases)
 open import Once.Parser
   using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; extractFunctions-consFun; extractFunctions-consPoly;
-         projectSig)
+         projectSig; honestSig)
 
 -- A declaration the extractor passes over.
 data Passed : Decl → Set where
@@ -200,3 +200,27 @@ sigsFirst-split {al} ds xa =
          (Relation.Binary.PropositionalEquality.trans (Relation.Binary.PropositionalEquality.cong (fs₁ Data.List.++_) e₂)
            (Relation.Binary.PropositionalEquality.sym (Data.List.Properties.++-assoc fs₁ fs₂ r₂)))
      , Data.List.Relation.Unary.All.Properties.++⁺ f₁ f₂ , xa₂
+
+-- Signatures before the rest: the signatures' own entries, and the rest's.
+sigs-split′ : ∀ {al} (sigs rest : List Decl) {es} → All IsSig sigs → XAlign al (sigs ++ rest) es
+            → Σ[ fs ∈ List Entry ] Σ[ es′ ∈ List Entry ] (es ≡ fs Data.List.++ es′) × XAlign al sigs fs × XAlign al rest es′
+sigs-split′ [] rest [] xa = [] , _ , refl , xa-nil , xa
+sigs-split′ (DSignature x nothing T ∷ sigs) rest (is-sig ∷ as) (xa-sig ps xa) =
+  let (fs , es′ , e , xs , xr) = sigs-split′ sigs rest as xa in _ ∷ fs , es′ , Relation.Binary.PropositionalEquality.cong (_ ∷_) e , xa-sig ps xs , xr
+sigs-split′ (DSignature x (just o) T ∷ sigs) rest (is-sig ∷ as) (xa-isig ps xa) =
+  let (fs , es′ , e , xs , xr) = sigs-split′ sigs rest as xa in _ ∷ fs , es′ , Relation.Binary.PropositionalEquality.cong (_ ∷_) e , xa-isig ps xs , xr
+
+private
+  case-errT : ∀ {A : Set} {e : String} {ty : LT.Type} → (String ⊎ LT.Type ∋ inj₁ e) ≡ inj₂ ty → A
+  case-errT ()
+
+-- A signature's reading succeeded: ground, at its extraction.
+project-ok : ∀ al n T {ty} → projectSig al n T ≡ inj₂ ty
+           → Σ[ g ∈ Ground T ] (isGround T ≡ inj₁ g) × (ty ≡ expandAliases al (extractGround T g))
+project-ok al n T eq with isGround T in ig
+... | inj₂ _ = case-errT eq
+... | inj₁ g = g , refl , honest-ok eq
+  where
+    honest-ok : ∀ {mh ty} → Once.Parser.honestSig n (expandAliases al (extractGround T g)) mh ≡ inj₂ ty → ty ≡ expandAliases al (extractGround T g)
+    honest-ok {just _} refl = refl
+    honest-ok {nothing} ()

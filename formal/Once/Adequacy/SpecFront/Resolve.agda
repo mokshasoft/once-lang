@@ -181,18 +181,9 @@ open import Once.Parser.Module.Resolve using (ModuleMap; collectAliases; collect
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 open import Relation.Binary.PropositionalEquality using (trans; cong₂; subst)
 
--- The module maps: the same paths, each module's declarations as written in
--- both grammars.
-ModRel : ModuleMap → SR.ModuleMap → Set
-ModRel = Pointwise (λ q q′ → (proj₁ q ≡ proj₁ q′) × Pointwise DEmb (Module.decls (proj₂ q)) (S.Module.decls (proj₂ q′)))
+open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
 
 private
-  -- a module the compiler finds, the Spec finds at the same path
-  find : ∀ {mm mm′ p ds} → ModRel mm mm′ → LR.FirstAt p (mkModule ds) mm
-       → Σ[ ds′ ∈ List S.Decl ] SR.FirstAt p (S.mkModule ds′) mm′ × Pointwise DEmb ds ds′
-  find ((refl , pw) ∷ _) LR.fa-here = _ , SR.fa-here , pw
-  find ((refl , _) ∷ mr) (LR.fa-there ne fa) = let (ds′ , fa′ , pw) = find mr fa in ds′ , SR.fa-there ne fa′ , pw
-
   -- its exported names
   names-eq : ∀ {ds ds′} → Pointwise DEmb ds ds′ → sigNames ds ≡ SR.exports ds′
   names-eq [] = refl
