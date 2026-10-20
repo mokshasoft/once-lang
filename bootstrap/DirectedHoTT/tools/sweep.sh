@@ -328,6 +328,56 @@ for r in rels:
 declare -A BAD=()
 blocked=0; blockedl=()
 
+# ============================================================================
+# ★★ RESUME: A MODULE THAT PASSED WITH THESE EXACT INPUTS IS NOT RE-RUN.
+#
+#   A restart (mem-guard's, after a pause) used to re-run every module.
+#   Agda reuses the interfaces, so nothing is re-proved — but each process
+#   still loads its import closure, 6–7 s per module: ~20 min before the
+#   first new piece of work.  Measured 2026-10-18 (four starts in a row).
+#
+# ★ THE KEY IS CONTENT, NOT TIME.  key(m) = hash(salt, m's source, the keys
+#   of m's in-set imports) — so it covers m's whole in-set closure.  The salt
+#   covers everything else a check can read: the sources outside the set
+#   (`bootstrap/normalizer/`, and `formal/`, registered as the Once library),
+#   the `.agda-lib` files, `check.sh`, and the agda binary and stdlib it
+#   resolves (immutable /nix/store paths: the path IS the version).  The
+#   salt over-approximates; a change there costs one full walk, no more.
+#   A passing module writes its key to
+#   `_build/sweep-ok/`; a module whose stamp matches is reported `cached`.
+#   The stamps live in `_build`, so wiping the interfaces wipes them too.
+#
+# ⚠ `cached` means "passed before, with the same inputs" — the same claim
+#   Agda's own interface reuse makes.  It is counted and printed, never
+#   silent.  Force every module through agda with SWEEP_NO_CACHE=1.
+# ============================================================================
+STAMPS="$BOOT/_build/sweep-ok"; mkdir -p "$STAMPS"
+KEYS="$LOGDIR/keys.txt"
+SALT="$( { cd "$BOOT/.." && find bootstrap/normalizer formal -name '*.agda' -print0 | sort -z | xargs -0 cat; \
+           cat bootstrap/bootstrap.agda-lib formal/Once.agda-lib bootstrap/check.sh; command -v agda; \
+           find /nix/store -maxdepth 2 -name standard-library.agda-lib 2>/dev/null | head -1; } \
+         | sha256sum | cut -d' ' -f1)"
+SALT="$SALT" BOOT="$BOOT" python3 -c '
+import os, sys, hashlib
+boot, salt = os.environ["BOOT"], os.environ["SALT"]
+deps = {}
+for line in open(sys.argv[1], encoding="utf-8"):
+    r, *ds = line.split(); deps[r] = ds
+key = {}
+def k(r):
+    if r not in key:
+        h = hashlib.sha256(salt.encode())
+        h.update(open(os.path.join(boot, r), "rb").read())
+        for d in deps[r]: h.update(k(d).encode())
+        key[r] = h.hexdigest()
+    return key[r]
+for r in deps: print(r, k(r))
+' "$DEPS" > "$KEYS"
+declare -A KEY=()
+while read -r r kk; do KEY[$r]="$kk"; done < "$KEYS"
+stamp() { [ -n "${KEY[$1]:-}" ] && echo "${KEY[$1]}" > "$STAMPS/$2"; }
+cached=0
+
 fail=0; failed=(); TIMES=(); CTIMES=(); unmeasured=()
 # Progress: `[n/N]` before each module, the sweep's elapsed time after it.
 NMOD=${#TOBUILD[@]}; nmod=0; SWEEP_T0=$SECONDS
@@ -345,12 +395,16 @@ for rel in "${TOBUILD[@]:-}"; do
     printf '   %s %-46s BLOCKED (by %s)\n' "$(pos)" "$tag" "$by"
     BAD[$rel]="$by"; blocked=$((blocked+1)); blockedl+=("$tag"); continue
   fi
+  if [ -z "${SWEEP_NO_CACHE:-}" ] && [ -n "${KEY[$rel]:-}" ] \
+     && [ "$(cat "$STAMPS/$tag" 2>/dev/null)" = "${KEY[$rel]}" ]; then
+    printf '   %s %-46s cached\n' "$(pos)" "$tag"; cached=$((cached+1)); continue
+  fi
   rts="-A64m"; note=""
   needs_c "$f" && { rts="-A64m -c"; note=" (compacting GC, per header)"; }
   printf '   %s %-46s%s ' "$(pos)" "$tag" "$note"
   t0=$SECONDS
   if AGDA_RTS="$rts" "$CHECK" "$rel" >"$LOGDIR/$tag.log" 2>&1; then
-    d=$((SECONDS-t0))
+    d=$((SECONDS-t0)); stamp "$rel" "$tag"
     case "$rel" in
       DirectedHoTT/Comparison/*) CTIMES+=("$d $tag"); echo "ok  ${d}s  [comparison]$(total)" ;;
       *) TIMES+=("$d $tag")
@@ -393,7 +447,7 @@ for rel in "${TOBUILD[@]:-}"; do
         AGDA_RTS="$next" "$CHECK" "$rel" >"$LOGDIR/$tag.log" 2>&1
         rc=$?
         if [ "$rc" = 0 ]; then
-          d=$((SECONDS-t0)); TIMES+=("$d $tag"); echo "ok ($next) ${d}s$(total)"; break
+          d=$((SECONDS-t0)); TIMES+=("$d $tag"); stamp "$rel" "$tag"; echo "ok ($next) ${d}s$(total)"; break
         fi
         [ "$rc" = 143 ] || break
       done
@@ -464,7 +518,7 @@ fi
 
 echo
 if [ "$fail" -eq 0 ]; then
-  echo "== ALL GREEN (${#TOBUILD[@]} modules).  RED skipped: ${#RED[@]}."
+  echo "== ALL GREEN (${#TOBUILD[@]} modules, $cached of them cached).  RED skipped: ${#RED[@]}."
   exit 0
 fi
 echo "== $fail FAILED: ${failed[*]}" >&2
