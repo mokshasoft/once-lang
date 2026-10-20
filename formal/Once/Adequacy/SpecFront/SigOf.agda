@@ -56,15 +56,10 @@ import Once.Lang.Resolution as LR
 open import Once.Lang.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (toISig; declTy)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs)
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-of; decl-eq)
 open import Once.Adequacy.SpecFront.Align Data.List.[] ps using (expand-id)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
-
--- An FFI entry's facts (the typed telescope's).
-FFIFacts : Parser.Entry → Set
-FFIFacts (Parser.e-fun fi)  = (Parser.FunInfo.funIsPrimitive fi ≡ true) × Σ[ ty ∈ LT.Type ] (funType fi ≡ just ty) × IsConcrete ty × HonestFFI ty
-FFIFacts (Parser.e-poly _)  = ⊥
 
 private
   -- a signature's Spec reading, at the compiler's type
