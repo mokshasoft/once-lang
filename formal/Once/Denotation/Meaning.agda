@@ -324,7 +324,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 ⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ lk conc) fmt ρ dγ =
   sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} lk)
 -- D248: an own-module DEFINITION's reference is a call of it, and means it.
-⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
+⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} _ lk) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —
 -- read from the scope's import environment (an FFI entry's is its contract).
 ⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk

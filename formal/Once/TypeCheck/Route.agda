@@ -59,7 +59,7 @@ mutual
     ii-unit  : Rii {ctx} t-unit t-unit
     ii-unit-var : Rii {ctx} t-unit-var t-unit-var
     ii-resolved : ∀ {cn n n′ l l′ c c′} → Rii {ctx} (t-var-resolved {cn = cn} {T = T} n l c) (t-var-resolved {T = T′} n′ l′ c′)
-    ii-own : ∀ {x ns ns′ l l′ c c′} → Rii {ctx} (t-var-own {x = x} {T = T} ns l c) (t-var-own {T = T′} ns′ l′ c′)
+    ii-own : ∀ {x ns ns′ l l′} → Rii {ctx} (t-var-own {x = x} {T = T} ns l) (t-var-own {T = T′} ns′ l′)
     ii-local : ∀ {x Ψ Ψ′ eV eV′ l l′}
       → Rii {ctx} (t-var-local {x = x} {A = A} {Ψ = Ψ} {eV = eV} l) (t-var-local {A = A′} {Ψ = Ψ′} {eV = eV′} l′)
     ii-import : ∀ {x g g′ ln ln′ i i′ c c′} → Rii {ctx} (t-var-import {x = x} {T = T} g ln i c) (t-var-import {T = T′} g′ ln′ i′ c′)

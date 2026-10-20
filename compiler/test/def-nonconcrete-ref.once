@@ -1,0 +1,28 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D327: a definition is referred to at any type. `count` and `num` have no
+-- signature, so their types are the ones their bodies synthesize
+-- (`Mu (K Unit + Id) -> Int` and `Mu (K Unit + Id)`), neither of them
+-- concrete; `main` refers to both.
+--
+-- Expected observable: exit code 3.
+
+import I.Linux.Syscalls as S
+
+zeroI : Unit -> Int
+zeroI _ = 0
+incI : Int -> Int
+incI n = n + 1
+
+toInt : Mu (K Unit + Id) -> Int
+toInt = cata (case zeroI incI)
+
+three : Mu (K Unit + Id)
+three = In (inr (In (inr (In (inr (In (inl unit)))))))
+
+count = toInt
+num = three
+
+main : Act Unit Void
+main = exit@S (count num)

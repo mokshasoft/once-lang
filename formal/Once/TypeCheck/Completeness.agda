@@ -268,7 +268,7 @@ given-infer-route t-unit-var A π _ = refl
 given-infer-route {ctx} (t-var-local {x = x} _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
 given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π _ =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
-given-infer-route {ctx} (t-var-own {x = x} _ _ _) A π _ =
+given-infer-route {ctx} (t-var-own {x = x} _ _) A π _ =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x)))
 given-infer-route {ctx} (t-var-import {x = x} _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
 given-infer-route {ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
@@ -627,8 +627,8 @@ mutual
   iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc)
     in checkElab-fallback-RResolved {ctx} cn T eqI sb
-  iFromInferSub {ctx} (t-var-own {x = x} {T = T} ns eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-own ns eqImp conc)
+  iFromInferSub {ctx} (t-var-own {x = x} {T = T} ns eqImp) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-own ns eqImp)
     in checkElab-fallback-RResolved {ctx} (own x) T eqI sb
   iFromInferSub {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc)
@@ -733,8 +733,8 @@ mutual
     infer-complete-RVar-local {ctx} x eqLocal
   infer-complete {ctx} (t-var-resolved {cn = cn} ng eqImp conc) =
     infer-complete-RResolved {ctx} {cn} ng eqImp conc
-  infer-complete {ctx} (t-var-own ns eqImp conc) =
-    infer-complete-RResolved-own {ctx} ns eqImp conc
+  infer-complete {ctx} (t-var-own ns eqImp) =
+    infer-complete-RResolved-own {ctx} ns eqImp
   infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc) =
     infer-complete-RVar-import {ctx} x ¬gw eqLoc eqImp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the

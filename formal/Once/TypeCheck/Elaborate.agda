@@ -1360,11 +1360,6 @@ inferElabV-RResolved-own-aux :
   ∀ (ctx : NamedCtx) (x : String) → lookupImport (NamedCtx.sig ctx) x ≡ nothing → (lhs : Maybe Type)
   → lookupImport (NamedCtx.imports ctx) x ≡ lhs
   → VerifiedInferResult ctx (Raw.RResolved (own x))
-inferElabV-RResolved-own-value-aux :
-  ∀ (ctx : NamedCtx) (x : String) → lookupImport (NamedCtx.sig ctx) x ≡ nothing → (ty : Type)
-  → lookupImport (NamedCtx.imports ctx) x ≡ just ty
-  → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
-  → VerifiedInferResult ctx (Raw.RResolved (own x))
 
 -- Plan 0.50: resolved-ref lookup, keyed by the canonical dotted path.
 inferElabV-RResolved-aux :
@@ -1382,12 +1377,9 @@ inferElabV-RResolved-aux ctx cn ng nothing eq = inferElabV-RResolved-def ctx cn 
 inferElabV-RResolved-def ctx (own x) ns = inferElabV-RResolved-own-aux ctx x ns (lookupImport (NamedCtx.imports ctx) x) refl
 {-# CATCHALL #-}
 inferElabV-RResolved-def ctx cn _ = failure (UnboundVariable (showCanonical cn)) , tt
-inferElabV-RResolved-own-aux ctx x ns (just ty) eq = inferElabV-RResolved-own-value-aux ctx x ns ty eq (isConcrete? ty) refl
+-- D327: a definition's reference at any type (no concreteness gate).
+inferElabV-RResolved-own-aux ctx x ns (just ty) eq = success ty _ (Surface.closure x) 0 0 , t-var-own ns eq
 inferElabV-RResolved-own-aux ctx x ns nothing _ = failure (UnboundVariable x) , tt
-inferElabV-RResolved-own-value-aux ctx x ns ty eq (just conc) _ =
-  success ty _ (Surface.closure x) 0 0 , t-var-own ns eq conc
-inferElabV-RResolved-own-value-aux ctx x ns ty eq nothing _ =
-  failure (NonConcreteSigOpType x ty) , tt
 
 -- Plan 0.58: DE-WITH the import-value concreteness decision.
 -- D136: the reserved-word decision is DE-WITHED like the concreteness one,

@@ -145,10 +145,11 @@ mutual
     -- (`own x`, the resolver's `rv-own`/`name@this`) — a call of it (D246) —
     -- when no generator of that name is in Σ (Σ is read first, so the rules
     -- stay syntax-directed; D249's guard makes the names distinct anyway).
+    -- D327: at ANY type — a definition is not an FFI boundary (D071), so its
+    -- reference is never gated on `IsConcrete` (the Spec's `s-def`).
     t-var-own : ∀ {ctx : NamedCtx} {x : String} {T : Type}
               → lookupImport (NamedCtx.sig ctx) x ≡ nothing
               → lookupImport (NamedCtx.imports ctx) x ≡ just T
-              → IsConcrete T
               → ctx ⊢ᵢ RResolved (own x) ∶ T ⨾ zeroUsage
 
     -- D136: a RESERVED WORD is never a bare reference to an import or an

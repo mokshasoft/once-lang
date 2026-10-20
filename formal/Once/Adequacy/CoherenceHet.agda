@@ -379,14 +379,14 @@ module _ {ctx : NamedCtx} where
   resolved-h {cn = cn} n l c n′ l′ c′ = resolved-go {cn = cn} (trans (sym l) l′) n n′ l l′ c c′
 
   private
-    own-go : ∀ {x T T′ ns ns′ c c′} (eT : just T ≡ just T′)
+    own-go : ∀ {x T T′ ns ns′} (eT : just T ≡ just T′)
                (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-           → RI (t-var-own {ctx = ctx} ns l c) ≅ RI (t-var-own {ctx = ctx} ns′ l′ c′)
+           → RI (t-var-own {ctx = ctx} ns l) ≅ RI (t-var-own {ctx = ctx} ns′ l′)
     own-go refl l l′ = ≅-refl
 
-  own-h : ∀ {x T T′ ns ns′ c c′} (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-        → RI (t-var-own {ctx = ctx} ns l c) ≅ RI (t-var-own {ctx = ctx} ns′ l′ c′)
-  own-h {ns = ns} {ns′} {c} {c′} l l′ = own-go {ns = ns} {ns′} {c} {c′} (trans (sym l) l′) l l′
+  own-h : ∀ {x T T′ ns ns′} (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
+        → RI (t-var-own {ctx = ctx} ns l) ≅ RI (t-var-own {ctx = ctx} ns′ l′)
+  own-h {ns = ns} {ns′} l l′ = own-go {ns = ns} {ns′} (trans (sym l) l′) l l′
 
   private
     local-go : ∀ {x A A′} {Ψ Ψ′ : U} {eV eV′} (eq : just (A , Ψ , eV) ≡ just (A′ , Ψ′ , eV′))

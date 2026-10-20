@@ -51,7 +51,7 @@ module Once.Adequacy.SpecFront.Back
   -- a definition with no type variables, not a polymorphic one nor `main`: the definitions table's
   (h-mono : ∀ {d x} → nm d ≡ canonical (x ∷ []) → ¬ (x ∈ ps) → x ≢ "main"
           → (lookupImport sg x ≡ nothing)
-            × Σ[ T ∈ LT.Type ] (lookupImport imps x ≡ just T) × LW.IsConcrete T
+            × Σ[ T ∈ LT.Type ] (lookupImport imps x ≡ just T)
               × (∀ τ → TyR Δ T (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩)))
   -- a definition with type variables is a polymorphic one
   (h-ps : ∀ {d x} → nm d ≡ canonical (x ∷ []) → 0 < SC.Schema.arity (S′ SC.!! d) → x ∈ ps)
@@ -424,7 +424,7 @@ private
            → c ≢ canonical ("main" ∷ [])
            → BSyn Γn Γd (Once.Lang.Syntax.RResolved c) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
         at (x , ex) refl nop nm′ =
-          let (lks , T , lki , k , rT) = h-mono ex (nop ex) (λ x≡ → nm′ (trans ex (cong (λ y → canonical (y ∷ [])) x≡))) in bsyn (rT τ) (subst (λ c → C _ Γn Γd ⊢ᵢ Once.Lang.Syntax.RResolved c ∶ T ⨾ _) (sym ex) (t-var-own lks lki k)) zero-use
+          let (lks , T , lki , rT) = h-mono ex (nop ex) (λ x≡ → nm′ (trans ex (cong (λ y → canonical (y ∷ [])) x≡))) in bsyn (rT τ) (subst (λ c → C _ Γn Γd ⊢ᵢ Once.Lang.Syntax.RResolved c ∶ T ⨾ _) (sym ex) (t-var-own lks lki)) zero-use
 
     def-own : ∀ {x Φ} (d : Fin s) (τ : ST.TySub (SC.Schema.arity (S′ SC.!! d)) m) → ¬ (x ∈ names Γn) → x ∈ ps
             → nm d ≡ canonical (x ∷ []) → SC.Schema.arity (S′ SC.!! d) ≡ 0

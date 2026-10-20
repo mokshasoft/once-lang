@@ -357,7 +357,7 @@ mutual
     where
       res : EV.Declared (showCanonical cn) T → Syn L (SX.RResolved cn) T (L.sigop cn T)
       res (EV.declared h g mem) = syn (decl-R k h g) (r-sigop (decl-R k h g)) (SU.s-sigop ng (sigop-S mem))
-  fwdᵢ (t-var-own _ lk k) lr (x-res _ _) =
+  fwdᵢ (t-var-own _ lk) lr (x-res _ _) =
     ref0 (E.ImportAt.entryOf (E.View.imported V lk)) (proj₁ (h-imp lk)) (proj₂ (h-imp lk)) (E.ImportAt.instOf (E.View.imported V lk))
   fwdᵢ (t-var-import _ _ lk k) lr (x-own _ _) =
     ref0 (E.ImportAt.entryOf (E.View.imported V lk)) (proj₁ (h-imp lk)) (proj₂ (h-imp lk)) (E.ImportAt.instOf (E.View.imported V lk))

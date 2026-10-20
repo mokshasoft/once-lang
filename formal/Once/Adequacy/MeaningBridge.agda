@@ -795,7 +795,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
   bridge-i {ctx = ctx} (t-var-resolved {cn = cn} {T = A} _ lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
     sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-res ρ {cn = cn} lk) dγ₂ (proj₂ (proj₂ er))
   -- D248: an own-module DEFINITION's reference is a call of it, as a bare one.
-  bridge-i {ctx = ctx} (t-var-own {x = x} _ lk _) re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
+  bridge-i {ctx = ctx} (t-var-own {x = x} _ lk) re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
   -- D246: a module entry's reference is a CALL of it on the SD side and the
   -- entry's meaning on the Spec side — related by the import half of the
   -- environment relation.

@@ -45,7 +45,7 @@ open import Once.Lang.Name using (showCanonical)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
-open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV-RResolved-own-value-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
+open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
 import Once.Lang.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
@@ -227,10 +227,9 @@ infer-complete-RResolved-own :
   ∀ {ctx : NamedCtx} {x : String} {T : Type}
   → lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing
   → lookupImport (Classify.NamedCtx.imports ctx) x ≡ just T
-  → IsConcrete T
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved (own x)) ≡ success T zeroUsage eE d f
-infer-complete-RResolved-own {ctx} {x} {T} ns eq conc = view (classifyGen (own x)) refl
+infer-complete-RResolved-own {ctx} {x} {T} ns eq = view (classifyGen (own x)) refl
   where
     open Once.TypeCheck.ElaborateProofs using ()
     h1 : ∀ (ng : NotGenerator (own x)) (lhs : Maybe Type) (e′ : lookupImport (Classify.NamedCtx.sig ctx) x ≡ lhs)
@@ -241,17 +240,12 @@ infer-complete-RResolved-own {ctx} {x} {T} ns eq conc = view (classifyGen (own x
        → inferElabV-RResolved-own-aux ctx x ns (lookupImport (Classify.NamedCtx.imports ctx) x) refl
          ≡ inferElabV-RResolved-own-aux ctx x ns lhs e′
     h2 _ refl = refl
-    h3 : ∀ (mc : Maybe (IsConcrete T)) (ec : isConcrete? T ≡ mc)
-       → inferElabV-RResolved-own-value-aux ctx x ns T eq (isConcrete? T) refl
-         ≡ inferElabV-RResolved-own-value-aux ctx x ns T eq mc ec
-    h3 _ refl = refl
     view : (gv : GenView (own x)) → classifyGen (own x) ≡ gv
          → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (RResolved (own x)) ≡ success T zeroUsage eE d f
     view (gv-other ng) eqv = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx (own x) _ eqv)
         (trans (cong proj₁ (h1 ng _ ns))
-          (trans (cong proj₁ (h2 _ eq))
-                 (cong proj₁ (h3 _ (proj₂ (isConcrete?-complete conc))))))
+          (cong proj₁ (h2 _ eq)))
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.

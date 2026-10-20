@@ -207,7 +207,7 @@ elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = Once.Lang.Context.svar i} _) = var i , ⊢var i
 elabᵢ V (t-var-resolved {cn = cn} _ lk k) = sigE cn k (declares V lk)
-elabᵢ V (t-var-own _ lk k)                 = importE (imported V lk)
+elabᵢ V (t-var-own _ lk)                   = importE (imported V lk)
 elabᵢ V (t-var-import _ _ lk k)            = importE (imported V lk)
 elabᵢ V (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) = refE (entry V lp) (ground V lp g)
 elabᵢ V (t-annot _ d)     = elabᶜ V d

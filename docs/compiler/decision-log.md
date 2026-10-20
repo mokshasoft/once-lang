@@ -19146,3 +19146,30 @@ entry's type, which the Spec does not (plan 0.121 §3.2, R2).
 * **`opt-trace`** (the optimizer path's correctness, plan 0.39): still a postulate, now stated over traces
   (`Tr ⊤`, weak bisimilarity) instead of fuelled event lists, matching the apex. Plan 0.39 owns its
   discharge.
+
+## D327 — A DEFINITION IS REFERRED TO AT ANY TYPE (2026-10-21)
+
+**Follows** D071 (a same-module definition is not an FFI boundary) and the standing rule that FFI
+concreteness never gates a same-module definition, a closure or a `cata`. Found by plan 0.121 §3.6 (F5/F6).
+**Relates**: D323 (a definition without a signature has the type its body synthesizes), D324.
+
+### Problem
+The compiler's rule for a reference to an own monomorphic definition (`t-var-own`) required the
+definition's type to be CONCRETE (a base type, or an arrow between base types) — the FFI's register
+boundary. With D323 a definition without a signature has whatever type its body synthesizes, e.g.
+`size = cata alg : μF → Int`; such a definition could be declared, but no later definition could refer
+to it. The Spec's `s-def` refers to every earlier definition at its type, so the compiler rejected Spec
+programs (`complete` false), and the front-end bridge's scope fact for a monomorphic reference (F5) did not
+hold.
+
+### Decision
+`t-var-own` has no concreteness premise: a definition is referred to at its type, whatever it is. The
+elaborator's own-reference path (`inferElabV-RResolved-own-aux`) no longer decides `isConcrete?` and
+never reports `NonConcreteSigOpType` for a definition. `IsConcrete` stays where it belongs: on the
+signature's declarations (`t-var-resolved`) and the bare-name import rule.
+
+### Consequences
+* Proofs: the dropped witness is removed from every pattern (`Completeness`, `Route`, `RigidSubst`,
+  `ModeAgreement`, `Meaning`, `Realize`, the meaning and coherence bridges); none used it.
+* Extracted cone: the typechecker now accepts a reference to a definition at a non-concrete type. The
+  emitted code is the same `closure x` it emits for a concrete one; the exit suites confirm it.
