@@ -27,16 +27,17 @@ The analysis must cover each of the following.
   reverse. Every hunk that touches it needs a written justification. "The proof needed it" is
   never a justification. Legitimate reasons are a language-level decision in the decision log,
   or a pure addition that defines a new observable.
-- The Spec is its re-export closure, not a directory. Diff the generated list, never a
-  hand-written one:
-  `git diff master..HEAD --stat -- $(python3 formal/scripts/spec-closure.py)`
-- Every module in that closure is proof-free. A `-sound`/`-complete` proof is evidence that the
-  implementation meets the claim; it is not part of the claim. A proof added to a closure module
-  stops the merge.
-- If the closure count falls, suspect a lost `public` before believing the Spec shrank.
-- The closure is not the whole trust surface. Wherever a closure module imports
-  implementation code (see plan 0.114), the definitions it uses are part of what the Spec means
-  and are reviewed as Spec. `make metatheory-gate` lists the named exceptions.
+- The Spec is the directory `formal/Once/Spec` (D306): it imports only itself, re-exports nothing
+  and owns its definitions. Diff it as a directory:
+  `git diff master..HEAD --stat -- formal/Once/Spec`
+  and check `make spec-gate`, which fails if its import closure gains a module outside it.
+- Every Spec module is proof-free. A `-sound`/`-complete` proof is evidence that the
+  implementation meets the claim; it is not part of the claim. A proof added to the Spec stops
+  the merge. Properties of the language go in `Once.Spec.Metatheory` as statements, proved under
+  `Once/Metatheory`.
+- A meaning clause may omit or repeat a premise's meaning only if the premise is pure; an
+  effectful premise is bound exactly once, left to right (plan 0.116). Its effects then happen once,
+  in the order written, which the Spec's coherence and Freyd theorems rely on.
 
 **Top-level modules.** State which of these the diff touches, what changed and why:
 `Once.Spec`, `Once.Certified`, `Once.Compiler`, `Once.Compile`, the trusted base, and the core

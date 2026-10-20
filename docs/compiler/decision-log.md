@@ -19102,3 +19102,23 @@ entry's type, which the Spec does not (plan 0.121 §3.2, R2).
 * The compiler does not put `main` in scope for later definitions; its body may be compiled at
   `Eff Unit Unit` for the entry, which no other definition observes.
 * A program's only repetition is structured recursion: `cata`, and `ana` (the loop).
+
+## D325 — TWO LEXING BEHAVIOURS THE SPEC FIXES (2026-10-21)
+
+**Recorded** (plan 0.121 §1 item 4, from plan 0.114's borrowing 9). Both are already the approved Spec
+(`Spec/Surface/Lexing.agda`); this entry states them so a reader finds them as decisions, not accidents.
+**Relates**: D323's grammar (no string-literal expressions since plan 0.106), plan 0.121 §3.2 R5.
+
+### Decision
+1. **An unterminated string ends the token stream** (`lex-string-end`): a `"` with no closing `"` after
+   it lexes to no further tokens. The lexer is total — every text has exactly one token list — and a string
+   literal is not an expression of the language (R5), so a stray `"` can only make the parse fail or end
+   the module early; it never produces a token the parser would misread.
+2. **A character that starts no token is skipped** (`lex-skip`): a character that is not special, not a
+   digit and cannot start an identifier lexes to nothing. Again the lexer stays total; such a character can
+   only separate tokens.
+
+### Consequences
+* The compiler's lexer does the same (`lex-string-end`/`lex-skip` are matched by its relation proof).
+* Either could be made an error — a stray `"` or an unknown character rejected rather than ignored. That
+  would be a Spec change (the lexer relation would become partial) and needs the user's approval.
