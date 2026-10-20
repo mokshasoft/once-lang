@@ -56,7 +56,7 @@ import Once.Lang.Resolution as LR
 open import Once.Lang.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (toISig; declTy)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts)
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts; nonSigs-none)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-of; decl-eq)
 open import Once.Adequacy.SpecFront.Align Data.List.[] ps using (expand-id)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
@@ -196,14 +196,6 @@ imp-part {al} mr (LR.rds-import {imp = mkImport p a} {impDs = impDs} {ds' = dsR�
 ------------------------------------------------------------------------
 
 private
-  nonSigs-none : ∀ ds → All (λ d → ¬ IsSig d) (Parser.nonSigs ds)
-  nonSigs-none [] = []
-  nonSigs-none (DSignature _ _ _ ∷ ds) = nonSigs-none ds
-  nonSigs-none (DTypeSig _ _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
-  nonSigs-none (DFunDef _ _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
-  nonSigs-none (DTypeAlias _ _ _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
-  nonSigs-none (DImport _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
-
   -- the definitions' entries add nothing to the table
   defs-table : ∀ {al ds es} → XAlign al ds es → All (λ d → ¬ IsSig d) ds → entrySig es ≡ []
   defs-table xa-nil _ = refl

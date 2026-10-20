@@ -50,11 +50,11 @@ open import Once.Lang.Type.Sub using (_<:_)
 import Once.Type.Sub
 import Once.Lang.Core.Translate
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps using (_∷ⁿ_)
+import Once.Adequacy.SpecFront.Polys
 
 -- The entries: definitions (no FFI declaration), polymorphic exactly when one of `ps`.
 EntryKind : Parser.Entry → Set
-EntryKind (Parser.e-fun fi)   = (funIsPrimitive fi ≡ false) × ¬ (funName fi ∈ ps)
-EntryKind (Parser.e-poly pfi) = pfunName pfi ∈ ps
+EntryKind = Once.Adequacy.SpecFront.Polys.EntryKind ps
 
 record End : Set where
   constructor end

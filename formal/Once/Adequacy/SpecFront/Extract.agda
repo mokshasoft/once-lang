@@ -31,7 +31,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.String using (String; _≟_) renaming (_++_ to _++ˢ_)
 open import Data.Unit using (⊤)
 open import Data.Bool using (true; false)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Function using (_∋_)
 
@@ -176,6 +176,15 @@ own-sigs (DTypeSig _ _ ∷ ds) = own-sigs ds
 own-sigs (DFunDef _ _ ∷ ds) = own-sigs ds
 own-sigs (DTypeAlias _ _ _ ∷ ds) = own-sigs ds
 own-sigs (DImport _ ∷ ds) = own-sigs ds
+
+-- (and the rest none)
+nonSigs-none : ∀ ds → All (λ d → ¬ IsSig d) (Once.Parser.nonSigs ds)
+nonSigs-none [] = []
+nonSigs-none (DSignature _ _ _ ∷ ds) = nonSigs-none ds
+nonSigs-none (DTypeSig _ _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
+nonSigs-none (DFunDef _ _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
+nonSigs-none (DTypeAlias _ _ _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
+nonSigs-none (DImport _ ∷ ds) = (λ ()) ∷ nonSigs-none ds
 
 imported-sigs : ∀ ds → All IsSig (Once.Parser.importedSigs ds)
 imported-sigs [] = []
