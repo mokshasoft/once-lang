@@ -33,7 +33,10 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_)
 open import Data.String using (String; _≟_)
 open import Data.Empty using (⊥-elim)
-open import Relation.Nullary using (yes; no; ¬_; does; proof)
+open import Relation.Nullary using (Dec; yes; no; ¬_; does; proof)
+open import Data.Unit using (⊤; tt)
+open import Data.Product using (_×_; _,_)
+open import Once.Lang.ResolvedRefs using (GoodRefs; goodRefs?)
 open import Relation.Nullary.Reflects using (Reflects; invert)
 open import Relation.Nullary.Decidable using (dec-true; dec-false)
 open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
@@ -51,10 +54,9 @@ open import Once.Lang.Resolution
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser.Module.Core using (Module; mkModule; Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames;
-  resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux;
+  resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux; consDecl; consDecl-at;
   lookupModule; _path≟_; signaturesWithOwner; ownerOf;
   collectAliases; collectUnaliased)
-import Once.Adequacy.CanonResolve as CR
 
 ------------------------------------------------------------------------
 -- Decider bridge 1: binder scope is stdlib's `_∈?_` (`dec-true`/`dec-false`
@@ -280,22 +282,53 @@ resolves-complete ps um am bound (RFloat i f l p) = re-float
 resolvesDecl-sound : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
                      (d d' : Decl)
                    → ResolvesDecl polys um am d d' → canonDecl polys um am d ≡ d'
-resolvesDecl-sound polys um am _ _ (rd-fundef {name = n} rb) =
+resolvesDecl-sound polys um am _ _ (rd-fundef {name = n} rb _) =
   cong (DFunDef n) (resolves-sound polys um am [] _ _ rb)
 resolvesDecl-sound polys um am _ _ rd-typesig   = refl
 resolvesDecl-sound polys um am _ _ rd-signature = refl
 resolvesDecl-sound polys um am _ _ rd-typealias = refl
 resolvesDecl-sound polys um am _ _ rd-import    = refl
 
+-- R11: a definition's resolved body is good (the resolver's check).
+DeclGood : List String → Decl → Set
+DeclGood polys (DFunDef _ b) = GoodRefs polys b
+{-# CATCHALL #-}
+DeclGood polys _             = ⊤
+
 resolvesDecl-complete : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
-                        (d : Decl)
+                        (d : Decl) → DeclGood polys (canonDecl polys um am d)
                       → ResolvesDecl polys um am d (canonDecl polys um am d)
-resolvesDecl-complete polys um am (DFunDef n b) =
-  rd-fundef (resolves-complete polys um am [] b)
-resolvesDecl-complete polys um am (DTypeSig n t)      = rd-typesig
-resolvesDecl-complete polys um am (DSignature n o t) = rd-signature
-resolvesDecl-complete polys um am (DTypeAlias n ps t) = rd-typealias
-resolvesDecl-complete polys um am (DImport imp)       = rd-import
+resolvesDecl-complete polys um am (DFunDef n b) g =
+  rd-fundef (resolves-complete polys um am [] b) g
+resolvesDecl-complete polys um am (DTypeSig n t)      _ = rd-typesig
+resolvesDecl-complete polys um am (DSignature n o t)  _ = rd-signature
+resolvesDecl-complete polys um am (DTypeAlias n ps t) _ = rd-typealias
+resolvesDecl-complete polys um am (DImport imp)       _ = rd-import
+
+-- The resolver's check, either way.
+consDecl-ok : ∀ (polys : List String) {um am d d'} (tl : List Decl) → ResolvesDecl polys um am d d'
+            → consDecl polys d' tl ≡ inj₂ (d' ∷ tl)
+consDecl-ok polys tl (rd-fundef {name = n} {body' = b′} rb g) = at (goodRefs? polys b′)
+  where
+    at : (dg : Dec (GoodRefs polys b′)) → consDecl-at polys n b′ dg tl ≡ inj₂ (DFunDef n b′ ∷ tl)
+    at (yes _) = refl
+    at (no ¬g) = ⊥-elim (¬g g)
+consDecl-ok polys tl rd-typesig   = refl
+consDecl-ok polys tl rd-signature = refl
+consDecl-ok polys tl rd-typealias = refl
+consDecl-ok polys tl rd-import    = refl
+
+consDecl-inv : ∀ (polys : List String) (d : Decl) (tl ds' : List Decl) → consDecl polys d tl ≡ inj₂ ds'
+             → (ds' ≡ d ∷ tl) × DeclGood polys d
+consDecl-inv polys (DFunDef n b) tl ds' eq = at (goodRefs? polys b) eq
+  where
+    at : (dg : Dec (GoodRefs polys b)) → consDecl-at polys n b dg tl ≡ inj₂ ds' → (ds' ≡ DFunDef n b ∷ tl) × GoodRefs polys b
+    at (yes g) refl = refl , g
+    at (no _) ()
+consDecl-inv polys (DTypeSig n t)      tl _ refl = refl , tt
+consDecl-inv polys (DSignature n o t)  tl _ refl = refl , tt
+consDecl-inv polys (DTypeAlias n ps t) tl _ refl = refl , tt
+consDecl-inv polys (DImport imp)       tl _ refl = refl , tt
 
 ------------------------------------------------------------------------
 -- THE BRIDGE, at a module. Covers IMPORTS: `resolveDecls` replaces a
@@ -353,9 +386,9 @@ resolvesDecls-sound mm polys um am _ _ rds-nil = refl
 resolvesDecls-sound mm polys um am _ _ (rds-cons nim-typesig rd rds)
   rewrite resolvesDecls-sound mm polys um am _ _ rds
         | resolvesDecl-sound polys um am _ _ rd = refl
-resolvesDecls-sound mm polys um am _ _ (rds-cons nim-fundef rd rds)
-  rewrite resolvesDecls-sound mm polys um am _ _ rds
-        | resolvesDecl-sound polys um am _ _ rd = refl
+resolvesDecls-sound mm polys um am _ _ (rds-cons {d = d} {d' = d'} {ds' = ds'} nim-fundef rd rds) =
+  trans (cong (resolveDecls-cons-aux polys um am d) (resolvesDecls-sound mm polys um am _ _ rds))
+        (trans (cong (λ d″ → consDecl polys d″ ds') (resolvesDecl-sound polys um am _ _ rd)) (consDecl-ok polys ds' rd))
 resolvesDecls-sound mm polys um am _ _ (rds-cons nim-sig rd rds)
   rewrite resolvesDecls-sound mm polys um am _ _ rds
         | resolvesDecl-sound polys um am _ _ rd = refl
@@ -441,9 +474,11 @@ mutual
            → resolveDecls-cons-aux polys um am d rr ≡ inj₂ ds'
            → ResolvesDecls mm polys um am (d ∷ rest) ds'
   rdc-cons mm polys um am d nim rest ds' (inj₁ e) err ()
-  rdc-cons mm polys um am d nim rest _ (inj₂ tailDs) err refl =
-    rds-cons nim (resolvesDecl-complete polys um am d)
-             (resolvesDecls-complete mm polys um am rest tailDs err)
+  rdc-cons mm polys um am d nim rest ds' (inj₂ tailDs) err eq =
+    let (e , g) = consDecl-inv polys (canonDecl polys um am d) tailDs ds' eq
+    in subst (ResolvesDecls mm polys um am (d ∷ rest)) (sym e)
+             (rds-cons nim (resolvesDecl-complete polys um am d g)
+                       (resolvesDecls-complete mm polys um am rest tailDs err))
 
 resolveImports-ok : ∀ (mm : ModuleMap) (ds ds' : List Decl)
                   → resolveDecls (polyDefNames ds) (collectUnaliased mm ds)

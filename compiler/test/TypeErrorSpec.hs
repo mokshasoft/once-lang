@@ -232,6 +232,14 @@ scopeErrorTests = testGroup "Scope errors"
     -- plan 0.121 R10: a type signature is immediately followed by its
     -- definition, as written; an import between them separates them even
     -- when the imported module has no signatures (Derived.Nat has none).
+    -- plan 0.121 R11 (D324): no definition names `main`, bare or as `main@this`.
+  , rejects "a definition referring to main@this"
+      [ "f : Int -> Int"
+      , "f x = x"
+      , "main : Eff Unit Unit"
+      , "main = id"
+      , "g = main@this"
+      ]
   , rejects "an import between a type signature and its definition"
       [ "f : Int -> Int"
       , "import Derived.Nat"

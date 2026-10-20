@@ -37,6 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≢_)
 open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Name using (canonical; gen; GenWord)
+open import Once.Lang.ResolvedRefs using (GoodRefs)
 open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp;
   RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
   RBinOp; RUnaryOp; RAna)
@@ -205,8 +206,11 @@ data ResolvesExpr (ps : List String) (um : UnaliasedMap) (am : AliasMap)
 
 data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
                   : Decl → Decl → Set where
+  -- R11: the resolved body names neither `main` nor an own polymorphic
+  -- definition by its canonical name (`ResolvedRefs`).
   rd-fundef : ∀ {name body body'}
             → ResolvesExpr polys um am [] body body'
+            → GoodRefs polys body'
             → ResolvesDecl polys um am (DFunDef name body)
                                        (DFunDef name body')
   -- Signatures, aliases and imports carry no references. ENUMERATED rather

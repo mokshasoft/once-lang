@@ -45,6 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 
 open import Once.Parser.Module.Core
 open import Once.Lang.Syntax using (RLam; RawExpr)
+open import Once.Lang.ResolvedRefs using (GoodRefs; goodRefs?)
 open import Once.Lang.Type.Poly using (extractGround)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
@@ -400,6 +401,8 @@ resolveDecls-import-aux :
   → (lm : Maybe Module) → lookupModule mm (Import.path imp) ≡ lm
   → (rr : String ⊎ List Decl) → resolveDecls polys um am mm rest ≡ rr
   → String ⊎ List Decl
+consDecl : List String → Decl → List Decl → String ⊎ List Decl
+consDecl-at : (polys : List String) (name : String) (body : RawExpr) → Dec (GoodRefs polys body) → List Decl → String ⊎ List Decl
 resolveDecls-cons-aux :
   ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap) (d : Decl)
   → (rr : String ⊎ List Decl) → String ⊎ List Decl
@@ -421,7 +424,20 @@ resolveDecls-import-aux polys um am mm imp rest (just (mkModule impDs)) _ (inj�
   inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
 
 resolveDecls-cons-aux polys um am d (inj₁ err)    = inj₁ err
-resolveDecls-cons-aux polys um am d (inj₂ tailDs) = inj₂ (canonDecl polys um am d ∷ tailDs)
+resolveDecls-cons-aux polys um am d (inj₂ tailDs) = consDecl polys (canonDecl polys um am d) tailDs
+
+-- R11 (plan 0.121): a resolved definition names neither the entry `main` nor
+-- an own polymorphic definition by its canonical name (`ResolvedRefs`); the
+-- Spec's resolution never does. Such a body was rejected when typed; it is
+-- rejected here, where the name is resolved.
+consDecl polys (DFunDef name body) tl = consDecl-at polys name body (goodRefs? polys body) tl
+{-# CATCHALL #-}
+consDecl polys d tl = inj₂ (d ∷ tl)
+
+consDecl-at polys name body (yes _) tl = inj₂ (DFunDef name body ∷ tl)
+consDecl-at polys name body (no _)  tl =
+  inj₁ ("`" ++ name ++ "` refers to `main`, or to a polymorphic definition as name@this: neither is a "
+        ++ "definition a body can refer to by that name")
 
 -- | Public entry. Haskell populates the map, calls this, and feeds
 -- the resolved module to `compileResolved`.
