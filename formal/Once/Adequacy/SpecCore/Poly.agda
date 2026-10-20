@@ -168,11 +168,29 @@ kindS-base LT.k-any  ()
 -- Terms and derivations
 ------------------------------------------------------------------------
 
+-- Subtyping, over the definitions signature's terms' types.
+module SubS {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) where
+  import Once.Lang.Core.PolyTyping S as PT
+
+  subS : ∀ {a} {A B : LP.Ty a} → A PT.<:ₚ B → ptyS A SSub.<: ptyS B
+  subS PT.sub-var         = SSub.sub-var
+  subS PT.sub-void        = SSub.sub-void
+  subS PT.sub-unit        = SSub.sub-unit
+  subS PT.sub-int         = SSub.sub-int
+  subS PT.sub-float       = SSub.sub-float
+  subS PT.sub-rigid       = SSub.sub-unit
+  subS (PT.sub-arr x y g) = SSub.sub-arr (subS x) (subS y) (⊑π-S g)
+  subS (PT.sub-prod x y)  = SSub.sub-* (subS x) (subS y)
+  subS (PT.sub-sum x y)   = SSub.sub-+ (subS x) (subS y)
+  subS PT.sub-μ           = SSub.sub-μ
+  subS (PT.sub-ν {φ = φ} {φ′} g) = SSub.sub-ν (⊑φ-S φ φ′ g)
+
 module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where
 
   import Once.Lang.Core.PolyTyping S as PT
   import Once.Lang.Core.Syntax S as L
+  open SubS S using (subS)
   open import Once.Adequacy.SpecCore.Prim S using (litS; primS; primDom-S; primCod-S)
 
   S′ : SC.Defs s
@@ -211,19 +229,6 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   ptmS (PT.prim p t)          = SC.prim (primS p) (ptmS t)
   ptmS (PT.sigop c A)         = SC.sigop c (declS A)
   ptmS (PT.ref d τ)           = SC.ref d (castSub S d (λ i → ptyS (τ i)))
-
-  subS : ∀ {a} {A B : LP.Ty a} → A PT.<:ₚ B → ptyS A SSub.<: ptyS B
-  subS PT.sub-var         = SSub.sub-var
-  subS PT.sub-void        = SSub.sub-void
-  subS PT.sub-unit        = SSub.sub-unit
-  subS PT.sub-int         = SSub.sub-int
-  subS PT.sub-float       = SSub.sub-float
-  subS PT.sub-rigid       = SSub.sub-unit
-  subS (PT.sub-arr x y g) = SSub.sub-arr (subS x) (subS y) (⊑π-S g)
-  subS (PT.sub-prod x y)  = SSub.sub-* (subS x) (subS y)
-  subS (PT.sub-sum x y)   = SSub.sub-+ (subS x) (subS y)
-  subS PT.sub-μ           = SSub.sub-μ
-  subS (PT.sub-ν {φ = φ} {φ′} g) = SSub.sub-ν (⊑φ-S φ φ′ g)
 
   -- A reference's type and kinds, at the Spec's schema.
   ref-ty : ∀ {s₀ a} (S₀ : LP.Sig Fs s₀) (d : Fin s₀) (τ : LP.Sub (LP.Schema.arity (S₀ LP.!! d)) a)

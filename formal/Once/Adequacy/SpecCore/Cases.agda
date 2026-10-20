@@ -51,6 +51,7 @@ open import Once.Adequacy.SpecCore.Value Σ
 open import Once.Adequacy.SpecCore.Monad Σ
 open import Once.Adequacy.SpecCore.Env S Σ fmt
 open import Once.Adequacy.SpecCore.Fundamental S Σ sigop-S fmt
+open import Once.Adequacy.SpecCore.Conv S Σ using (conv-R)
 
 ------------------------------------------------------------------------
 -- Primitive operations: the same function of the same words
@@ -158,3 +159,7 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
     where
       gC = subst (λ Z → GR Z _) (LP.⌈⌉-⟪⟫ (L.primCod p) σ) (GR-inst (ptr LP.⌈ L.primCod p ⌉) g)
       gD = subst (λ Z → GR Z _) (sym (LP.⌈⌉-⟪⟫ (L.primDom p) σ)) (gDom σ′ p)
+
+  coerce : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π A B t} (p : A PT.<:ₚ B)
+           (d : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π) → Fund ρ ρ′ d → Fund ρ ρ′ (PT.⊢coerce p d)
+  coerce {π = π} p d ih r r′ g e = fmap-R (pr π) (ih r r′ g e) (conv-R p g)
