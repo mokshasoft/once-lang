@@ -62,7 +62,7 @@ open import Once.Parser.Module.Core using (Decl; mkModule)
 open import Once.Parser.Module.Resolve using (ModuleMap; polyDefNames; collectUnaliased; collectAliases)
 import Once.Lang.Resolution as LR
 open import Once.Lang.Module using (ModTele; MainIn; emptyScope; entrySig)
-open import Once.Lang.Core.Translate using (toProgram; [])
+open import Once.Lang.Core.Translate using (toProgram; []; noCF)
 import Once.Lang.Core.Translate
 import Data.Empty
 open import Once.Postulates using (extensionality)
@@ -114,9 +114,6 @@ private
 ------------------------------------------------------------------------
 
 private
-  noCF : ∀ {Fs} → Once.Lang.Core.Translate.SigCF (LP.[] {Fs = Fs})
-  noCF ()
-
   noNames : Fin 0 → CanonicalName
   noNames ()
 

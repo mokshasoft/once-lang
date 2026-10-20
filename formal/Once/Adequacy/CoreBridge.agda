@@ -140,10 +140,10 @@ private
           (interp-subst (teleSig≡entrySig mt) I)
           (WB-sym sym (RelS-tr (interp (teleSig mt) I′) []
              (agree-at {teleSig mt} {I′} fe
-               (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] (λ ()) [] inv₀ (λ k → k) (dist , TP.none-in-empty _)))))
+               (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] TR.noCF [] inv₀ (λ k → k) (dist , TP.none-in-empty _)))))
     where
       I′ = subst Impl (sym (teleSig≡entrySig mt)) I
-      P  = TR.toProgram Tele.[] TR.[] TR.[] TR.[] (λ ()) mt mi (λ k → k)
+      P  = TR.toProgram Tele.[] TR.[] TR.[] TR.[] TR.noCF mt mi (λ k → k)
       module TWm = TW fmt (teleSig mt) I′
       inv₀ : TWI.Inv fmt (teleSig mt) I′ C.emptyCScope Tele.[] TR.[] TR.[] TR.[] []
       inv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }

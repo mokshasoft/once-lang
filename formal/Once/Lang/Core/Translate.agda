@@ -343,5 +343,9 @@ mutual
                   ss (impDefs (funName fi ==str "main") is) (wkT ts) (monoSg sg g) (suc d) e rest u
 
 -- A typed module's core program, over the signatures it is compiled against.
+-- (the empty signature has no entry; named, so every caller builds the same program)
+noCF : ∀ {Fs} → SigCF ([] {Fs = Fs})
+noCF ()
+
 toProgram₀ : ∀ {es} (mt : ModTele emptyScope es) → MainIn mt → Program (teleSig mt)
-toProgram₀ mt mi = toProgram {S = [] {Fs = teleSig mt}} TL.[] [] [] [] (λ ()) mt mi (λ m → m)
+toProgram₀ mt mi = toProgram {S = [] {Fs = teleSig mt}} TL.[] [] [] [] noCF mt mi (λ m → m)
