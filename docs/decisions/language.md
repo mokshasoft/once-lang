@@ -270,9 +270,10 @@ entry updates the rule it changes here, in the same commit.
   definition's type IS its body's principal type — the least type over the
   signature's domains (domains are annotations; smaller only in codomains,
   grades and `Void`, D321) — and a signature must equal it — never a supertype (two signatures on one body would make two
-  functions: `Act` is a finite tree, `Eff` a `T∞` tree). A sig-less definition
-  gets its principal type from an untrusted oracle and is then checked by the
-  unification-free kernel. (D321, D314, D072, D007)
+  functions: `Act` is a finite tree, `Eff` a `T∞` tree). Without a signature,
+  a definition's type is the one its body synthesizes; a body that only checks
+  (a λ, a bare polymorphic reference) needs a signature to declare its context.
+  (D323, D321, D314, D007)
 
 ## 8. Polymorphism and modules
 
@@ -392,7 +393,8 @@ with the code:
 2. **D317**: the loop is spelled `ana` at `Eff A B` (one name for both
    anamorphisms, chosen by the expected type); a name of its own is the
    alternative.
-3. **D072**: the oracle's completeness is an open obligation.
+3. **D072** (closed by D323): the oracle no longer types definitions; at most
+   it suggests a signature.
 4. **The Spec claims over D318's definitions** (finality of every stream,
    the loop's unrolling, sameness as a partial equivalence respected by
    `>>=`, the Freyd structure up to observation, the inhabited model and
@@ -405,8 +407,8 @@ with the code:
    module's path. The Spec cannot yet state this.
 5. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical
    names").
-6. **Domains from the body** (D322's option 2): binder annotations and
-   constrained schemas for sig-less definitions would let a body state its
-   own domains — an extension, not decided.
+6. **Domains from the body** (D322's option 2): binder annotations
+   (`f (x : Int) = …`) would let a body declare its own context, so a λ could
+   go without a signature (D323) — an extension, not decided.
 7. **D317 in flight**: the implementation follows the new Spec in plan 0.119
    §7 D; until then the compiler's proofs are red against it.

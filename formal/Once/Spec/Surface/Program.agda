@@ -14,6 +14,10 @@
 --     judgment over its type variables. A definition's type is its body's
 --     principal type over its domains (it checks at no strictly smaller type
 --     with the same domains); a signature only confirms it (D314, D007).
+--     Without a signature, the type is the one the body SYNTHESIZES (D323):
+--     the definition decides it alone. A body that only checks — a λ — has
+--     no type of its own: its domain is a context, which only a signature
+--     declares.
 --   * Its ENTRY: the definition named `main`, used at `Eff Unit Unit` (D315,
 --     `Spec.Core.Program`).
 ------------------------------------------------------------------------
@@ -33,7 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (Many; mk-kind; pure; act; eff)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Type
-  using (Ty; Fun; KCtx; base; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; Occurs; OccursF)
+  using (Ty; Fun; KCtx; ∅ₖ; base; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; Occurs; OccursF)
 open import Once.Spec.Sub using (_<:ᶜ_)
 open import Once.Spec.Signature
   using (BTy; unit; void; int; float; DeclType; constant; value; operation; _∶_; Signature; WellFormed; OneName)
@@ -204,10 +208,13 @@ module _ (Σ : Signature) where
             → SchemaOf T sc → (b : Body S nm sc e) → Principal S nm sc e
             → Walk (S ▷ sc) (canonical (x ∷ []) ∷ⁿ nm) (def tl sc (Body.term b) (Body.typed b)) ds S′ nm′ tl′
             → Walk S nm tl (DTypeSig x T ∷ DFunDef x e ∷ ds) S′ nm′ tl′
-    -- A definition without one, at a principal schema.
-    w-nosig : ∀ {x e ds sc s′} {S′ : Defs s′} {nm′ tl′}
-            → (b : Body S nm sc e) → Principal S nm sc e
-            → Walk (S ▷ sc) (canonical (x ∷ []) ∷ⁿ nm) (def tl sc (Body.term b) (Body.typed b)) ds S′ nm′ tl′
+    -- A definition without one: the type its body synthesizes (no type
+    -- variables), which is its principal type.
+    w-nosig : ∀ {x e ds A t s′} {S′ : Defs s′} {nm′ tl′}
+            → SurfaceTyping._⊢_⇒_↝_ Σ S nm ∅ₖ SurfaceTyping.∅ e A t
+            → (typed : CoreTyping._⊩_⊢[_]_∷_!_ Σ S ∅ₖ ∅ [] t A pure)
+            → Principal S nm (schema 0 ∅ₖ A) e
+            → Walk (S ▷ schema 0 ∅ₖ A) (canonical (x ∷ []) ∷ⁿ nm) (def tl (schema 0 ∅ₖ A) t typed) ds S′ nm′ tl′
             → Walk S nm tl (DFunDef x e ∷ ds) S′ nm′ tl′
 
 ------------------------------------------------------------------------

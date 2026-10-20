@@ -19046,3 +19046,32 @@ option 1 nothing needs it.
 * The checker (`Lang`), elaboration and the Spec bridges follow the new `d-case`/`s-case` (the coercions are
   identities when the branches agree: coherence, `coerce` along `refl`).
 * `loop-sum`, `loop-emit` and `layer2-initial` drop their `case` annotations.
+
+## D323 — WITHOUT A SIGNATURE, A DEFINITION HAS THE TYPE ITS BODY SYNTHESIZES (2026-10-20)
+
+**Approved by the user, 2026-10-20** (plan 0.121 §3.1, scoping of `Bridges.complete`). **Amends**: D007 ("signatures are optional" — now: a signature is optional where the body
+synthesizes), D072 (the oracle no longer types definitions). **Relates**: D314/D321/D322 (a definition's type
+is its body's; a signature confirms it; domains are the context), D316 (bidirectional surface), plan 0.59.
+
+### Problem
+`w-nosig` accepted a definition without a signature at ANY principal schema. Nothing in the definition chose
+it: `twice = \f -> f (f 3)` is principal at both `(Int -> Int) -> Int` and `(Int -> Void) -> Void`
+(incomparable), so a later `h : (Int -> Void) -> Void; h = \k -> twice k` made the Spec pick the second. The
+type was decided by later uses, not by the definition — against D314's principle — and no compiler that fixes
+one type per definition can be complete for it (an oracle hypothesis would be refutable; the apex vacuous).
+
+### Decision
+1. **Without a signature, a definition's type is the one its body SYNTHESIZES** (`L ⊢ e ⇒ A`, at no type
+   variables), and it must be principal, as every definition's. Synthesis is deterministic (`synth-unique`),
+   so the definition alone decides its type.
+2. **A body that only checks has no type of its own**: a λ (`f x = …`) takes a context, its domain, which
+   only a signature declares (D321/D322 option 1); a bare polymorphic reference (`myId = id`) is the same.
+   Such a definition needs a signature. Binder annotations (`f (x : Int) = …`, D322's future extension) would
+   let the body declare its own context, and then a signature only confirms.
+3. **The D072 oracle leaves the trust boundary**: the compiler types a definition without a signature by the
+   verified checker's synthesis alone. The oracle may stay as a hint (a suggested signature in an error).
+
+### Consequences
+* `Bridges.complete` becomes provable from the checker's existing completeness (`infer-complete`).
+* Plan 0.59 (oracle principality) is no longer needed for correctness; `language.md` Open item 3 closes.
+* About 4 of 153 test programs (and some Haskell specs) gain a signature.
