@@ -1616,21 +1616,21 @@ d_'10214'_'10215''7522'_362 v0 v1 v2 v3 v4
                             (coe d_world_318 (coe v13)))
                          (coe v11) (coe v10))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v10
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
         -> case coe v1 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v11
-               -> case coe v11 of
-                    MAlonzo.Code.Once.Spec.Name.C_canonical_12 v12
-                      -> case coe v12 of
-                           (:) v13 v14
+             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v10
+               -> case coe v10 of
+                    MAlonzo.Code.Once.Spec.Name.C_canonical_12 v11
+                      -> case coe v11 of
+                           (:) v12 v13
                              -> coe
-                                  (\ v15 v16 v17 ->
+                                  (\ v14 v15 v16 ->
                                      coe
                                        MAlonzo.Code.Once.Denotation.DefEnv.du_impAt_516
                                        (coe
                                           MAlonzo.Code.Once.Lang.Typing.Scope.d_imports_124
                                           (coe v0))
-                                       (coe v13) (coe d_entries_316 (coe v16)))
+                                       (coe v12) (coe d_entries_316 (coe v15)))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

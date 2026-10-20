@@ -298,21 +298,21 @@ d_guard'45'true_198 = erased
 -- Once.Adequacy.NameClash.ce-syms
 d_ce'45'syms_212 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_388 ->
+  MAlonzo.Code.Once.Compile.T_CScope_622 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_290] ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_524] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_ce'45'syms_212 = erased
 -- Once.Adequacy.NameClash.ce-syms-fun
 d_ce'45'syms'45'fun_226 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_388 ->
+  MAlonzo.Code.Once.Compile.T_CScope_622 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_290] ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_524] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_ce'45'syms'45'fun_226 = erased
@@ -342,10 +342,10 @@ d_program'45'no'45'clash_644 v0
                        MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.C_'91''93'_22
                 MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
                   -> let v4
-                           = MAlonzo.Code.Once.Compile.d_compileEntries_498
+                           = MAlonzo.Code.Once.Compile.d_compileEntries_732
                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
-                               (coe MAlonzo.Code.Once.Compile.d_emptyCScope_404) (coe v3) in
+                               (coe MAlonzo.Code.Once.Compile.d_emptyCScope_638) (coe v3) in
                      coe
                        (case coe v4 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5
@@ -373,7 +373,7 @@ d_program'45'no'45'clash_644 v0
 -- Once.Adequacy.NameClash._.guard
 d_guard_680 ::
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_290] ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_524] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -382,7 +382,7 @@ d_guard_680 = erased
 -- Once.Adequacy.NameClash._.bridge
 d_bridge_682 ::
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_290] ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_524] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

@@ -937,6 +937,6 @@ d_viewBundle_938 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.Lang.Typing.Scope.d_classifyAppHeadView_344
+         MAlonzo.Code.Once.Lang.Typing.Scope.d_classifyAppHeadView_340
          (coe v0))
       erased

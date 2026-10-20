@@ -810,8 +810,8 @@ d_subst'45'i'8242'_606 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v18 v20
         -> coe
              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v18 v20
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v20
-        -> coe MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v20
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
+        -> coe MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v21
         -> coe MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v21
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v18 v19 v20 v21 v25

@@ -399,6 +399,7 @@ library
       MAlonzo.Code.Once.Lang.Core.DerivedTyping
       MAlonzo.Code.Once.Lang.Core.Meaning
       MAlonzo.Code.Once.Lang.Core.PolyTy
+      MAlonzo.Code.Once.Lang.Core.PolySub
       MAlonzo.Code.Once.Lang.Core.PolyTyping
       MAlonzo.Code.Once.Lang.Core.Rename
       MAlonzo.Code.Once.Lang.Core.Schema

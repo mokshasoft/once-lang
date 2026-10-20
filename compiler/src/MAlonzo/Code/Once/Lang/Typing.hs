@@ -41,7 +41,7 @@ data T__'8866''7522'_'8758'_'10814'__10
     C_t'45'var'45'local_62 MAlonzo.Code.Once.Lang.Context.T_SVar_112 |
     C_t'45'var'45'resolved_70 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
                               MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 |
-    C_t'45'var'45'own_78 MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 |
+    C_t'45'var'45'own_78 |
     C_t'45'var'45'import_86 MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 |
     C_t'45'var'45'poly'45'instantiate'45'infer_102 MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10
                                                    MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34

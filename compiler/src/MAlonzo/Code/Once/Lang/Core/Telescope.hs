@@ -24,13 +24,13 @@ import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Lang.Context
 import qualified MAlonzo.Code.Once.Lang.Contract
 import qualified MAlonzo.Code.Once.Lang.Core.Meaning
+import qualified MAlonzo.Code.Once.Lang.Core.PolySub
 import qualified MAlonzo.Code.Once.Lang.Core.PolyTy
 import qualified MAlonzo.Code.Once.Lang.Core.PolyTyping
 import qualified MAlonzo.Code.Once.Lang.GradedOps
 import qualified MAlonzo.Code.Once.Lang.Iterative
 import qualified MAlonzo.Code.Once.Lang.Type
 import qualified MAlonzo.Code.Once.Lang.Type.Grade
-import qualified MAlonzo.Code.Once.Lang.Type.Sub
 import qualified MAlonzo.Code.Once.Lang.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Numerics
 
@@ -39,7 +39,7 @@ d_Tele_12 a0 a1 a2 = ()
 data T_Tele_12
   = C_'91''93'_16 |
     C_def_28 T_Tele_12 MAlonzo.Code.Once.Lang.Core.PolyTyping.T_PTm_402
-             MAlonzo.Code.Once.Lang.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__774
+             MAlonzo.Code.Once.Lang.Core.PolyTyping.T__'8873'_'8866''91'_'93'_'8759'_'33'__650
 -- Once.Lang.Core.Telescope.teleSem
 d_teleSem_36 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -114,7 +114,7 @@ d_teleDefs_50 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  (coe v7))
                               (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34)
                               (coe
-                                 MAlonzo.Code.Once.Lang.Core.PolyTyping.du_instantiate_1214
+                                 MAlonzo.Code.Once.Lang.Core.PolyTyping.du_instantiate_1090
                                  (coe
                                     MAlonzo.Code.Once.Lang.Core.PolyTy.d_arity_816
                                     (coe
@@ -164,7 +164,7 @@ du_noKinds_96 = MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Telescope.MainEntry
 d_MainEntry_98 a0 = ()
 newtype T_MainEntry_98
-  = C_entry_102 MAlonzo.Code.Once.Lang.Type.Sub.T__'60''58'__26
+  = C_entry_102 MAlonzo.Code.Once.Lang.Core.PolySub.T__'60''58''8346'__10
 -- Once.Lang.Core.Telescope.Program
 d_Program_106 a0 = ()
 data T_Program_106
@@ -236,15 +236,12 @@ d_runEntry_142 v0 v1 v2
                     MAlonzo.Code.Once.Lang.GradedOps.d_'10214'_'10215''60''58''7515'_492
                     (MAlonzo.Code.Once.Lang.Core.PolyTy.d__'10218'_'10219'_344
                        (coe (0 :: Integer)) (coe v7) (\ v8 -> coe du_noVars_94))
+                    (MAlonzo.Code.Once.Lang.Core.PolyTy.d__'10218'_'10219'_344
+                       (coe (0 :: Integer)) (coe d_IOUnit_92) (\ v8 -> coe du_noVars_94))
                     (coe
-                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
-                       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20)
-                       (coe
-                          MAlonzo.Code.Once.Lang.Type.Grade.C_mk'45'kind_78
-                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
-                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38))
-                       (coe MAlonzo.Code.Once.Lang.Type.C_Unit_20))
-                    v4 (coe v2 (\ v8 -> coe du_noVars_94) (\ v8 -> coe du_noResp_138))
+                       MAlonzo.Code.Once.Lang.Core.PolySub.du_'60''58''8346''45''10218''10219'_90
+                       (coe v7) (coe d_IOUnit_92) (\ v8 -> coe du_noVars_94) (coe v4))
+                    (coe v2 (\ v8 -> coe du_noVars_94) (\ v8 -> coe du_noResp_138))
                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

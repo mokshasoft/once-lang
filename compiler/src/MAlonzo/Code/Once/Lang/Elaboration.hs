@@ -1593,14 +1593,14 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v15)) v5
                        erased)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v14
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v15
-               -> case coe v15 of
-                    MAlonzo.Code.Once.Spec.Name.C_canonical_12 v16
-                      -> case coe v16 of
-                           (:) v17 v18
-                             -> coe du_importE_768 (coe d_imported_578 v7 v17 v5 erased)
+             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v14
+               -> case coe v14 of
+                    MAlonzo.Code.Once.Spec.Name.C_canonical_12 v15
+                      -> case coe v15 of
+                           (:) v16 v17
+                             -> coe du_importE_768 (coe d_imported_578 v7 v16 v5 erased)
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

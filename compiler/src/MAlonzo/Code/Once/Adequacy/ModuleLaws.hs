@@ -25,6 +25,6 @@ import qualified MAlonzo.Code.Once.Parser
 d_teleSig'8801'entrySig_12 ::
   MAlonzo.Code.Once.Lang.Module.T_Scope_6 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
-  MAlonzo.Code.Once.Lang.Module.T_ModTele_50 ->
+  MAlonzo.Code.Once.Lang.Module.T_ModTele_70 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_teleSig'8801'entrySig_12 = erased

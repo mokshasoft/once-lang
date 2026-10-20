@@ -344,7 +344,7 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                         = case coe v5 of
                             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v16 v18
                               -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased
-                            MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v18
+                            MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                               -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                             _ -> MAlonzo.RTE.mazUnreachableError in
                   coe
@@ -356,11 +356,11 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                         -> coe
                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
                                              erased
-                                      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v23
+                                      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                         -> case coe v12 of
-                                             MAlonzo.Code.Once.Spec.Name.C_canonical_12 v24
-                                               -> case coe v24 of
-                                                    (:) v25 v26
+                                             MAlonzo.Code.Once.Spec.Name.C_canonical_12 v23
+                                               -> case coe v23 of
+                                                    (:) v24 v25
                                                       -> coe
                                                            MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                     _ -> coe v13
@@ -375,11 +375,11 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                                   -> coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                        erased erased
-                                                MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v28
+                                                MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                                   -> case coe v12 of
-                                                       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v29
-                                                         -> case coe v29 of
-                                                              (:) v30 v31
+                                                       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v28
+                                                         -> case coe v28 of
+                                                              (:) v29 v30
                                                                 -> coe
                                                                      MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                               _ -> coe v18
@@ -394,11 +394,11 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                                             -> coe
                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                  erased erased
-                                                          MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v33
+                                                          MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                                             -> case coe v12 of
-                                                                 MAlonzo.Code.Once.Spec.Name.C_canonical_12 v34
-                                                                   -> case coe v34 of
-                                                                        (:) v35 v36
+                                                                 MAlonzo.Code.Once.Spec.Name.C_canonical_12 v33
+                                                                   -> case coe v33 of
+                                                                        (:) v34 v35
                                                                           -> coe
                                                                                MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                         _ -> coe v23
@@ -413,11 +413,11 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                                                       -> coe
                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                            erased erased
-                                                                    MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v38
+                                                                    MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                                                       -> case coe v12 of
-                                                                           MAlonzo.Code.Once.Spec.Name.C_canonical_12 v39
-                                                                             -> case coe v39 of
-                                                                                  (:) v40 v41
+                                                                           MAlonzo.Code.Once.Spec.Name.C_canonical_12 v38
+                                                                             -> case coe v38 of
+                                                                                  (:) v39 v40
                                                                                     -> coe
                                                                                          MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                   _ -> coe v28
@@ -432,12 +432,12 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                                                                 -> coe
                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                      erased erased
-                                                                              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v43
+                                                                              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                                                                 -> case coe v12 of
-                                                                                     MAlonzo.Code.Once.Spec.Name.C_canonical_12 v44
+                                                                                     MAlonzo.Code.Once.Spec.Name.C_canonical_12 v43
                                                                                        -> case coe
-                                                                                                 v44 of
-                                                                                            (:) v45 v46
+                                                                                                 v43 of
+                                                                                            (:) v44 v45
                                                                                               -> coe
                                                                                                    MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                             _ -> coe
@@ -454,13 +454,13 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                erased
                                                                                                erased
-                                                                                        MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v48
+                                                                                        MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                                                                           -> case coe
                                                                                                     v12 of
-                                                                                               MAlonzo.Code.Once.Spec.Name.C_canonical_12 v49
+                                                                                               MAlonzo.Code.Once.Spec.Name.C_canonical_12 v48
                                                                                                  -> case coe
-                                                                                                           v49 of
-                                                                                                      (:) v50 v51
+                                                                                                           v48 of
+                                                                                                      (:) v49 v50
                                                                                                         -> coe
                                                                                                              MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                                       _ -> coe
@@ -478,13 +478,13 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                          erased
                                                                                                          erased
-                                                                                                  MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v53
+                                                                                                  MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                                                                                     -> case coe
                                                                                                               v12 of
-                                                                                                         MAlonzo.Code.Once.Spec.Name.C_canonical_12 v54
+                                                                                                         MAlonzo.Code.Once.Spec.Name.C_canonical_12 v53
                                                                                                            -> case coe
-                                                                                                                     v54 of
-                                                                                                                (:) v55 v56
+                                                                                                                     v53 of
+                                                                                                                (:) v54 v55
                                                                                                                   -> coe
                                                                                                                        MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                                                 _ -> coe
@@ -505,13 +505,13 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                            erased
                                                                                                            erased
-                                                                                                    MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v58
+                                                                                                    MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                                                                                                       -> case coe
                                                                                                                 v12 of
-                                                                                                           MAlonzo.Code.Once.Spec.Name.C_canonical_12 v59
+                                                                                                           MAlonzo.Code.Once.Spec.Name.C_canonical_12 v58
                                                                                                              -> case coe
-                                                                                                                       v59 of
-                                                                                                                  (:) v60 v61
+                                                                                                                       v58 of
+                                                                                                                  (:) v59 v60
                                                                                                                     -> coe
                                                                                                                          MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                                                   _ -> coe
@@ -528,11 +528,11 @@ du_agree'45'ii_494 v0 v1 v2 v3 v4 v5
                                  _ -> coe v18)
                        _ -> coe v13)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v11
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
         -> case coe v5 of
-             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v15 v17
+             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v14 v16
                -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
-             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v17
+             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v12

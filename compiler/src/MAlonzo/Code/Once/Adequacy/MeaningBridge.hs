@@ -2676,27 +2676,27 @@ d_bridge'45'i_2100 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                          (coe MAlonzo.Code.Once.Denotation.Meaning.d_world_318 (coe v8))
                          (coe v17) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78 v16
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v17
-               -> case coe v17 of
-                    MAlonzo.Code.Once.Spec.Name.C_canonical_12 v18
-                      -> case coe v18 of
-                           (:) v19 v20
+             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v16
+               -> case coe v16 of
+                    MAlonzo.Code.Once.Spec.Name.C_canonical_12 v17
+                      -> case coe v17 of
+                           (:) v18 v19
                              -> coe
-                                  (\ v21 v22 ->
+                                  (\ v20 v21 ->
                                      coe
                                        du_imprel'45'at_1992
                                        (coe
                                           MAlonzo.Code.Once.Lang.Typing.Scope.d_imports_124
                                           (coe v3))
-                                       (coe v19)
+                                       (coe v18)
                                        (coe
                                           MAlonzo.Code.Once.Denotation.Meaning.d_entries_316
                                           (coe v8))
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                          (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v22))))
+                                          (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v21))))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
