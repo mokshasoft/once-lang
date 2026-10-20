@@ -268,3 +268,29 @@ mutual
   GF-unique g-Id      g-Id        = refl
   GF-unique (g-⊕ f g) (g-⊕ f′ g′) = cong₂ g-⊕ (GF-unique f f′) (GF-unique g g′)
   GF-unique (g-⊗ f g) (g-⊗ f′ g′) = cong₂ g-⊗ (GF-unique f f′) (GF-unique g g′)
+
+------------------------------------------------------------------------
+-- Definitions' instances
+------------------------------------------------------------------------
+
+import Once.Spec.Core.Syntax as SC
+open import Once.Adequacy.SpecCore.Schema using (defsS; castSub)
+
+-- An instance of the `d`-th definition, on both sides.
+InstD : ∀ {Fs s₀} (S₀ : LP.Sig Fs s₀) (d : Fin s₀) → LP.GSub (LP.Schema.arity (S₀ LP.!! d))
+      → ST.TySub (SC.Schema.arity (defsS S₀ SC.!! d)) 0 → Set
+InstD (S₀ LP.▷ sc) zero    τ τ′ = InstG τ τ′
+InstD (S₀ LP.▷ sc) (suc d) τ τ′ = InstD S₀ d τ τ′
+
+GR-def : ∀ {Fs s₀} (S₀ : LP.Sig Fs s₀) (d : Fin s₀) {τ τ′} → InstD S₀ d τ τ′
+       → GR (LP.Schema.type (S₀ LP.!! d) LP.⟪ τ ⟫) (SC.Schema.type (defsS S₀ SC.!! d) ST.⟨ τ′ ⟩)
+GR-def (S₀ LP.▷ sc) zero    i = GR-inst (ptr (LP.Schema.type sc)) i
+GR-def (S₀ LP.▷ sc) (suc d) i = GR-def S₀ d i
+
+-- A reference's instance, instantiated on both sides.
+inst-ref : ∀ {Fs s₀ m} (S₀ : LP.Sig Fs s₀) (d : Fin s₀) (τ : LP.Sub (LP.Schema.arity (S₀ LP.!! d)) m)
+           {σ σ′} → InstG σ σ′
+         → InstD S₀ d (λ i → τ i LP.⟪ σ ⟫) (λ i → castSub S₀ d (λ j → ptyS (τ j)) i ST.⟨ σ′ ⟩)
+inst-ref (S₀ LP.▷ sc) zero    τ g i = GR-inst (ptr (τ i)) g
+inst-ref (S₀ LP.▷ sc) (suc d) τ g   = inst-ref S₀ d τ g
+

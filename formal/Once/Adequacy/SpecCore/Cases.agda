@@ -202,24 +202,6 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
 -- Definitions and declarations: the definitions environments related
 ------------------------------------------------------------------------
 
--- An instance of the `d`-th definition, on both sides.
-InstD : ∀ {s₀} (S₀ : LP.Sig Fs s₀) (d : Fin s₀) → LP.GSub (LP.Schema.arity (S₀ LP.!! d))
-      → ST.TySub (SC.Schema.arity (defsS S₀ SC.!! d)) 0 → Set
-InstD (S₀ LP.▷ sc) zero    τ τ′ = InstG τ τ′
-InstD (S₀ LP.▷ sc) (suc d) τ τ′ = InstD S₀ d τ τ′
-
-GR-def : ∀ {s₀} (S₀ : LP.Sig Fs s₀) (d : Fin s₀) {τ τ′} → InstD S₀ d τ τ′
-       → GR (LP.Schema.type (S₀ LP.!! d) LP.⟪ τ ⟫) (SC.Schema.type (defsS S₀ SC.!! d) ST.⟨ τ′ ⟩)
-GR-def (S₀ LP.▷ sc) zero    i = GR-inst (ptr (LP.Schema.type sc)) i
-GR-def (S₀ LP.▷ sc) (suc d) i = GR-def S₀ d i
-
--- A reference's instance, instantiated on both sides.
-inst-ref : ∀ {s₀ m} (S₀ : LP.Sig Fs s₀) (d : Fin s₀) (τ : LP.Sub (LP.Schema.arity (S₀ LP.!! d)) m)
-           {σ σ′} → InstG σ σ′
-         → InstD S₀ d (λ i → τ i LP.⟪ σ ⟫) (λ i → castSub S₀ d (λ j → ptyS (τ j)) i ST.⟨ σ′ ⟩)
-inst-ref (S₀ LP.▷ sc) zero    τ g i = GR-inst (ptr (τ i)) g
-inst-ref (S₀ LP.▷ sc) (suc d) τ g   = inst-ref S₀ d τ g
-
 -- The definitions mean related values at related instances.
 DefsR : GM.DefSem → SM.DefSem → Set
 DefsR ρ ρ′ = ∀ d τ r τ′ r′ (i : InstD S d τ τ′) → ValR (GR-def S d i) (GM.DefSem.defs ρ d τ r) (SM.DefSem.defs ρ′ d τ′ r′)
