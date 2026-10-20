@@ -99,6 +99,7 @@ open import Once.Adequacy.SpecFront.ScopeNames using (h-imp-of; h-poly-of)
 open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; schema-occ; schema-arrow)
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps
 import Once.Adequacy.SpecFront.Def as Def
+open import Once.Adequacy.SpecFront.Align Σ ps using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 open import Once.Adequacy.SpecFront.AbsR using (cf-R)
 import Once.Lang.Type.Instance
 
@@ -164,18 +165,6 @@ module AtState {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSi
 ------------------------------------------------------------------------
 -- The declarations and the entries
 ------------------------------------------------------------------------
-
--- A definition with a signature (monomorphic or telescope), one without, and
--- the other declarations skipped; each body related.
-data Align : List SX.Decl → List Parser.Entry → Set where
-  al-nil   : Align [] []
-  al-skip  : ∀ {d ds es} → NotDefinition Σ d → Align ds es → Align (d ∷ ds) es
-  al-mono  : ∀ {x T′ e e′ ty ds es} → SchemaOf T′ (schS (monoSchema ty)) → RX ps [] e e′ → Align ds es
-           → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x (just ty) e false) ∷ es)
-  al-nosig : ∀ {x e e′ ds es} → RX ps [] e e′ → Align ds es
-           → Align (SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x nothing e false) ∷ es)
-  al-poly  : ∀ {x T T′ e e′ ds es} → SchemaOf T′ (schS (schemaOf T)) → RX ps [] e e′ → Align ds es
-           → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-poly (Parser.mkPolyFunInfo x T e) ∷ es)
 
 -- The entries: definitions (no FFI declaration), their names distinct, new to
 -- the scope and to the signature, polymorphic exactly when one of `ps`.

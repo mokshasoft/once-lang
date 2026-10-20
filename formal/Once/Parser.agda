@@ -452,20 +452,20 @@ guardDistinct (inj₂ es) =
 -- signatures move (`sigsFirst`), so moving them cannot make a separated
 -- signature and definition adjacent.
 sigsAdjacent : List Decl → Maybe String → String ⊎ ⊤
+-- (top level, so a proof can follow the decision)
+sigsAdjacent-def : (s n : String) → Dec (s ≡ n) → List Decl → String ⊎ ⊤
 sigsAdjacent []                    nothing  = inj₂ tt
 sigsAdjacent []                    (just s) = inj₁ (danglingSig s)
 sigsAdjacent (DTypeSig n _ ∷ ds)   nothing  = sigsAdjacent ds (just n)
 sigsAdjacent (DTypeSig n _ ∷ ds)   (just s) = inj₁ (danglingSig s)
 sigsAdjacent (DFunDef n _ ∷ ds)    nothing  = sigsAdjacent ds nothing
-sigsAdjacent (DFunDef n _ ∷ ds)    (just s) = sigsAdjacent-def (s ≟ n) ds
-  where
-    sigsAdjacent-def : Dec (s ≡ n) → List Decl → String ⊎ ⊤
-    sigsAdjacent-def (yes _) ds′ = sigsAdjacent ds′ nothing
-    sigsAdjacent-def (no _)  _   = inj₁ (danglingSig s)
+sigsAdjacent (DFunDef n _ ∷ ds)    (just s) = sigsAdjacent-def s n (s ≟ n) ds
 {-# CATCHALL #-}
 sigsAdjacent (_ ∷ ds)              nothing  = sigsAdjacent ds nothing
 {-# CATCHALL #-}
 sigsAdjacent (_ ∷ ds)              (just s) = inj₁ (danglingSig s)
+sigsAdjacent-def s n (yes _) ds′ = sigsAdjacent ds′ nothing
+sigsAdjacent-def s n (no _)  _   = inj₁ (danglingSig s)
 
 -- The program's signature is its own `signature` declarations, then those
 -- of its imports (the Spec's `Σ₀ ++ Σᵢ`), and every definition sees all of
