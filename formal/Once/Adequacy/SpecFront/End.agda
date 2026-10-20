@@ -92,7 +92,7 @@ endOf {S = S} {sc} tl ss is ts sgcf nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er
 
 -- A core program is an end's telescope, its entry named `main`.
 EndsAt : End → TL.Program Fs → Set
-EndsAt (end {S = S} tl nm) p = Σ[ d ∈ Fin _ ] Σ[ me ∈ TL.MainEntry (LP._!!_ S d) ] (p ≡ TL.program tl d me) × (nm d ≡ canonical ("main" ∷ []))
+EndsAt e p = Σ[ d ∈ Fin (End.s e) ] Σ[ me ∈ TL.MainEntry (LP._!!_ (End.S e) d) ] (p ≡ TL.program (End.tl e) d me) × (End.nm e d ≡ canonical ("main" ∷ []))
 
 -- after `main`: the entry, weakened along
 from-end : ∀ {s} {S : LP.Sig Fs s} {sc es} (tl : TL.Tele S) (ss : SigSig Fs (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))

@@ -56,7 +56,7 @@ import Once.Lang.Resolution as LR
 open import Once.Lang.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (toISig; declTy)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts; nonSigs-none)
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts; nonSigs-none; FFIEntry; ffi-of)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-of; decl-eq)
 open import Once.Adequacy.SpecFront.Align Data.List.[] ps using (expand-id)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
@@ -210,17 +210,17 @@ private
 -- the Spec's `SignatureOf`, whose table is the prefix's.
 signature-of : ∀ {al mm mm′ um am dsU dsR ds′ es} → ModRel mm mm′ → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
              → XAlign al (Parser.sigsFirst dsR) es
-             → Σ[ fs ∈ List Parser.Entry ] Σ[ es′ ∈ List Parser.Entry ] (es ≡ fs ++ es′) × XAlign al (Parser.nonSigs dsR) es′
-               × (All FFIFacts fs → Σ[ Σₛ ∈ Signature ] SignatureOf mm′ ds′ Σₛ × (toISig Σₛ ≡ entrySig es))
+             → Σ[ fs ∈ List Parser.Entry ] Σ[ es′ ∈ List Parser.Entry ] (es ≡ fs ++ es′) × XAlign al (Parser.nonSigs dsR) es′ × All FFIEntry fs
+               × (All FFIFacts fs → Σ[ Σₛ ∈ Signature ] SignatureOf mm′ ds′ Σₛ × (toISig Σₛ ≡ entrySig fs) × (entrySig es ≡ entrySig fs))
 signature-of {al} {dsR = dsR} mr rds pw xa =
   let (f₁ , r₁ , e₁ , x₁ , xr) = sigs-split′ (Parser.ownSigs dsR) _ (own-sigs dsR) xa
       (f₂ , r₂ , e₂ , x₂ , xn) = sigs-split′ (Parser.importedSigs dsR) _ (imported-sigs dsR) xr
       ees = trans e₁ (trans (cong (f₁ ++_) e₂) (sym (++-assoc f₁ f₂ r₂)))
-  in f₁ ++ f₂ , r₂ , ees , xn ,
+  in f₁ ++ f₂ , r₂ , ees , xn , AllP.++⁺ (ffi-of (own-sigs dsR) x₁) (ffi-of (imported-sigs dsR) x₂) ,
      λ fa → let fa₁ = AllP.++⁻ˡ f₁ fa ; fa₂ = AllP.++⁻ʳ f₁ fa
                 (Σ₀ , so , t₀) = own-part pw (subst (λ l → XAlign al l f₁) (own-res rds) x₁) fa₁
                 (Σᵢ , im , tᵢ) = imp-part mr rds pw x₂ fa₂
             in Σ₀ ++ Σᵢ , (Σ₀ , Σᵢ , so , im , refl)
-               , trans (toISig-++ Σ₀ Σᵢ) (trans (cong₂ _++_ t₀ tᵢ) (sym (trans (cong entrySig ees)
-                   (trans (entrySig-++ (f₁ ++ f₂) r₂ fa) (trans (cong₂ _++_ (entrySig-++ f₁ f₂ fa₁) (defs-table xn (nonSigs-none dsR)))
-                     (++-identityʳ _))))))
+               , trans (toISig-++ Σ₀ Σᵢ) (trans (cong₂ _++_ t₀ tᵢ) (sym (entrySig-++ f₁ f₂ fa₁)))
+               , trans (cong entrySig ees) (trans (entrySig-++ (f₁ ++ f₂) r₂ fa)
+                   (trans (cong (entrySig (f₁ ++ f₂) ++_) (defs-table xn (nonSigs-none dsR))) (++-identityʳ _)))

@@ -163,6 +163,13 @@ FFIEntry : Entry → Set
 FFIEntry (e-fun fi)  = Once.Parser.FunInfo.funIsPrimitive fi ≡ true
 FFIEntry (e-poly _)  = ⊥
 
+-- the signatures' entries are FFI entries
+ffi-of : ∀ {al sigs fs} → All IsSig sigs → XAlign al sigs fs → All FFIEntry fs
+ffi-of [] xa-nil = []
+ffi-of (is-sig ∷ a) (xa-pass () xa)
+ffi-of (is-sig ∷ a) (xa-sig _ xa) = refl ∷ ffi-of a xa
+ffi-of (is-sig ∷ a) (xa-isig _ xa) = refl ∷ ffi-of a xa
+
 -- An FFI entry's facts (the typed telescope's).
 FFIFacts : Entry → Set
 FFIFacts (e-fun fi)  = (Once.Parser.FunInfo.funIsPrimitive fi ≡ true) × Σ[ ty ∈ LT.Type ] (Once.Parser.FunInfo.funType fi ≡ just ty) × IsConcrete ty × HonestFFI ty × RigidFree ty

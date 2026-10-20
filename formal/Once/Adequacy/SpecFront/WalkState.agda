@@ -171,7 +171,7 @@ record WInv {s} (S : LP.Sig Fs s) (sc : Scope) (is : ImpSig S (Scope.imps sc)) (
 open WInv
 
 -- The start: nothing in scope.
-winv-empty : ∀ {sig} → WInv (LP.[] {Fs = Fs}) (scope sig C.emptyFunCtx []) [] [] (λ ())
+winv-empty : ∀ {sig} {nm : Fin 0 → CanonicalName} → WInv (LP.[] {Fs = Fs}) (scope sig C.emptyFunCtx []) [] [] nm
 winv-empty = record
   { imp-named  = tt
   ; tele-named = tt

@@ -58,3 +58,10 @@ prefix (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts
   in past mt′ ss′ mi′ u′ ((refl , ty , refl , c , h , g) ∷ facts) same
 prefix (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts sgcf (mono ep _ _ _ _ _) mi u = ⊥-elim (t≢f (trans (sym fe) ep))
 prefix (Parser.e-poly _ ∷ fs) (() ∷ fa) tl ss is ts sgcf mt mi u
+
+-- (the FFI entries' facts alone)
+ffi-facts : ∀ {sc} (fs : List Parser.Entry) {es} → All FFIEntry fs → ModTele sc (fs ++ es) → All FFIFacts fs
+ffi-facts [] [] mt = []
+ffi-facts (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) (ffi {ty = ty} refl refl c h g rest) = (refl , ty , refl , c , h , g) ∷ ffi-facts fs fa rest
+ffi-facts (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) (mono ep _ _ _ _ _) = ⊥-elim (t≢f (trans (sym fe) ep))
+ffi-facts (Parser.e-poly _ ∷ fs) (() ∷ fa) mt
