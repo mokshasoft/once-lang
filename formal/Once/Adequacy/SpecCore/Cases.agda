@@ -29,7 +29,7 @@ module Once.Adequacy.SpecCore.Cases
 open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
 import Once.Lang.Type as LT
 import Once.Lang.Type.Grade as LG
@@ -61,6 +61,9 @@ open import Once.Adequacy.SpecCore.Env S Σ fmt
 open import Once.Adequacy.SpecCore.Fundamental S Σ sigop-S fmt
 open import Once.Adequacy.SpecCore.Conv S Σ using (conv-R)
 open import Once.Adequacy.SpecCore.Layer Σ
+import Once.Adequacy.SpecCore.Fold as Fold
+import Once.Lang.Context as LC
+import Once.Lang.Type.Sub as LS
 
 ------------------------------------------------------------------------
 -- Primitive operations: the same function of the same words
@@ -300,3 +303,33 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
     where
       gY = GR-inst (ptr (LP.⟦ F ⟧F (LP.ν-type F φ))) g
       gX = subst (λ Z → GR Z _) (LP.⟦⟧F-⟪⟫ F (LP.ν-type F φ) σ) gY
+
+  -- (the compiler's typing moved along an equation inside its type)
+  L-at′ : ∀ {n} {Γ : LC.Ctx n} {Ψ t X Y π π′ B′} (h : LT.Type → LT.Type) (e : X ≡ Y)
+          (d : Γ GT.⊢[ Ψ ] t ∷ h X ! π) (p : PR π π′) (gX : GR (h X) B′) (gY : GR (h Y) B′) {γ y}
+        → MR p (ValR gX) (GM.⟦ d ⟧ fmt ρ γ) y
+        → MR p (ValR gY) (GM.⟦ subst (λ Z → Γ GT.⊢[ Ψ ] t ∷ h Z ! π) e d ⟧ fmt ρ γ) y
+  L-at′ h refl d p gX gY r = subst (λ x → MR p (ValR x) (GM.⟦ d ⟧ fmt ρ _) _) (GR-unique gX gY) r
+
+  fold : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψa Ψt π π₁ π₂ F A alg t}
+         (u : LG.pure LS.⊑π π) (wf : LP.WFFun Δ F)
+         (da : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψa alg (LP.⟦ F ⟧F A LP.⇒[ LG.mk-kind LG.Many π ] A) π₁)
+         (dt : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψt t (LP.μ-type F) π₂)
+       → Fund ρ ρ′ da → Fund ρ ρ′ dt → Fund ρ ρ′ (PT.⊢fold u wf da dt)
+  fold {Γ = Γ} {Ψa} {Ψt} {π} {π₁} {π₂} {F} {A} u wf da dt iha iht {σ} {σ′} r r′ g e =
+    S-at ρ ρ′ g (eqᵘ-many Ψa Ψt) refl (eqᵍ-3 π₁ π₂ π)
+         (S⊢.⊢fold (wfS wf) (atS refl (cong (λ X → X ST.⇒[ _ ] _) (ptyS-⟦⟧ F A)) refl (trD da)) (trD dt)) (crΓ Γ)
+         (ur-+ (ur-* qr-many (ur Ψa)) (ur Ψt)) (ur _) gA gA (pr-· (pr π₁) (pr-· (pr π₂) (pr π))) (pr _) _
+         (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π))
+                   (L-at′ (λ X → X LT.⇒[ LG.mk-kind LG.Many π ] (A LP.⟪ σ ⟫)) (LP.⟦⟧F-⟪⟫ F A σ)
+                          (PT.instantiate σ r da) (pr π₁) gAlgX gAlg
+                          (S-at ρ ρ′ g refl (cong (λ X → X ST.⇒[ _ ] _) (ptyS-⟦⟧ F A)) refl (trD da) (crΓ Γ) (ur Ψa) (ur Ψa)
+                                (GR-inst (ptr (LP.⟦ F ⟧F A LP.⇒[ LG.mk-kind LG.Many π ] A)) g) gAlgX (pr π₁) (pr π₁) _
+                                (iha r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψa) e₀)))
+                   (λ ralg → bindᵍ-R (pr π₂) (pr π) (iht r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψt) e₀))
+                               (λ rv → Fold.fold-R Σ g F A (LP.wf-⟪⟫ r wf) u (λ {x} {y} r₀ → ralg r₀) rv)))
+         e
+    where
+      gA    = GR-inst (ptr A) g
+      gAlg  = g-⇒ {q = LG.Many} {π = π} (GR-⟦⟧ g (pfr F) gA) gA
+      gAlgX = subst (λ Z → GR (Z LT.⇒[ LG.mk-kind LG.Many π ] (A LP.⟪ σ ⟫)) _) (sym (LP.⟦⟧F-⟪⟫ F A σ)) gAlg
