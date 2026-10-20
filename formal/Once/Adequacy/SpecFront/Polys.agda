@@ -10,7 +10,7 @@
 -- (`polyDefNames`), with the extractor's own classification (`isGround`,
 -- then `isConcrete?`). The extractor reads the resolved declarations, the
 -- signatures moved first. On a module whose type signatures each precede
--- their definition (`sigsAdjacent`, R10), the two agree: `polyDefNames` is
+-- their definition (`Adj`, the extractor's `sigsAdjacent`, R10), the two agree: `polyDefNames` is
 -- the names of the telescope entries (`ps-entries`). So an entry is
 -- polymorphic exactly when its name is one of them (`kinds-of`).
 ------------------------------------------------------------------------
@@ -58,41 +58,39 @@ polyNames (Parser.e-fun _ ∷ es)  = polyNames es
 -- `sigsAdjacent`, as a relation
 ------------------------------------------------------------------------
 
-data Other : Decl → Set where
-  o-sig    : ∀ {n o t}   → Other (DSignature n o t)
-  o-alias  : ∀ {n ps t}  → Other (DTypeAlias n ps t)
-  o-import : ∀ {i}       → Other (DImport i)
+-- Each type signature immediately followed by its definition.
+data NotTSig : Decl → Set where
+  nt-def    : ∀ {x b}       → NotTSig (DFunDef x b)
+  nt-sig    : ∀ {x o T}     → NotTSig (DSignature x o T)
+  nt-alias  : ∀ {x ps′ t}   → NotTSig (DTypeAlias x ps′ t)
+  nt-import : ∀ {i}         → NotTSig (DImport i)
 
--- a type signature, then its definition
-data Adj : List Decl → Maybe String → Set where
-  a-nil   : Adj [] nothing
-  a-tsig  : ∀ {n t ds} → Adj ds (just n) → Adj (DTypeSig n t ∷ ds) nothing
-  a-defP  : ∀ {n b ds} → Adj ds nothing → Adj (DFunDef n b ∷ ds) (just n)
-  a-def   : ∀ {n b ds} → Adj ds nothing → Adj (DFunDef n b ∷ ds) nothing
-  a-other : ∀ {d ds} → Other d → Adj ds nothing → Adj (d ∷ ds) nothing
+data Adj : List Decl → Set where
+  adj-nil   : Adj []
+  adj-sig   : ∀ {x T b ds} → Adj ds → Adj (DTypeSig x T ∷ DFunDef x b ∷ ds)
+  adj-other : ∀ {d ds} → NotTSig d → Adj ds → Adj (d ∷ ds)
 
-private
-  inj₁≢inj₂ : ∀ {s : String} → (String ⊎ ⊤ ∋ inj₁ s) ≡ inj₂ tt → ⊥
-  inj₁≢inj₂ ()
+-- The extractor's check gives it.
+mutual
+  adj-of : ∀ ds → Parser.sigsAdjacent ds nothing ≡ inj₂ tt → Adj ds
+  adj-of [] _ = adj-nil
+  adj-of (DTypeSig n _ ∷ ds) e = adj-pend n ds e
+  adj-of (DFunDef n _ ∷ ds) e = adj-other nt-def (adj-of ds e)
+  adj-of (DSignature _ _ _ ∷ ds) e = adj-other nt-sig (adj-of ds e)
+  adj-of (DTypeAlias _ _ _ ∷ ds) e = adj-other nt-alias (adj-of ds e)
+  adj-of (DImport _ ∷ ds) e = adj-other nt-import (adj-of ds e)
 
-  adj-def : ∀ s n b (d : Dec (s ≡ n)) ds → Parser.sigsAdjacent-def s n d ds ≡ inj₂ tt
-          → (∀ p → Parser.sigsAdjacent ds p ≡ inj₂ tt → Adj ds p) → Adj (DFunDef n b ∷ ds) (just s)
-  adj-def s .s b (yes refl) ds e rec = a-defP (rec nothing e)
-  adj-def s n  b (no _)     ds e rec = ⊥-elim (inj₁≢inj₂ e)
+  adj-pend : ∀ {T} s ds → Parser.sigsAdjacent ds (just s) ≡ inj₂ tt → Adj (DTypeSig s T ∷ ds)
+  adj-pend s [] ()
+  adj-pend s (DTypeSig _ _ ∷ ds) ()
+  adj-pend s (DFunDef n b ∷ ds) e = adj-def s n b ds (s ≟ n) e
+  adj-pend s (DSignature _ _ _ ∷ ds) ()
+  adj-pend s (DTypeAlias _ _ _ ∷ ds) ()
+  adj-pend s (DImport _ ∷ ds) ()
 
-adj-of : ∀ ds p → Parser.sigsAdjacent ds p ≡ inj₂ tt → Adj ds p
-adj-of [] nothing e = a-nil
-adj-of [] (just s) e = ⊥-elim (inj₁≢inj₂ e)
-adj-of (DTypeSig n _ ∷ ds) nothing e = a-tsig (adj-of ds (just n) e)
-adj-of (DTypeSig n _ ∷ ds) (just s) e = ⊥-elim (inj₁≢inj₂ e)
-adj-of (DFunDef n _ ∷ ds) nothing e = a-def (adj-of ds nothing e)
-adj-of (DFunDef n b ∷ ds) (just s) e = adj-def s n b (s ≟ n) ds e (adj-of ds)
-adj-of (DSignature _ _ _ ∷ ds) nothing e = a-other o-sig (adj-of ds nothing e)
-adj-of (DSignature _ _ _ ∷ ds) (just s) e = ⊥-elim (inj₁≢inj₂ e)
-adj-of (DTypeAlias _ _ _ ∷ ds) nothing e = a-other o-alias (adj-of ds nothing e)
-adj-of (DTypeAlias _ _ _ ∷ ds) (just s) e = ⊥-elim (inj₁≢inj₂ e)
-adj-of (DImport _ ∷ ds) nothing e = a-other o-import (adj-of ds nothing e)
-adj-of (DImport _ ∷ ds) (just s) e = ⊥-elim (inj₁≢inj₂ e)
+  adj-def : ∀ {T} s n b ds (d : Dec (s ≡ n)) → Parser.sigsAdjacent-def s n d ds ≡ inj₂ tt → Adj (DTypeSig s T ∷ DFunDef n b ∷ ds)
+  adj-def s .s b ds (yes refl) e = adj-sig (adj-of ds e)
+  adj-def s n b ds (no _) ()
 
 ------------------------------------------------------------------------
 -- The written declarations and the resolved ones
@@ -107,29 +105,29 @@ private
   pdn-owned o (DTypeAlias _ _ _ ∷ ds) rest = pdn-owned o ds rest
   pdn-owned o (DImport _ ∷ ds) rest = pdn-owned o ds rest
 
-  adj-owned : ∀ o ds rest → Adj (signaturesWithOwner o ds ++ rest) nothing → Adj rest nothing
+  adj-owned : ∀ o ds rest → Adj (signaturesWithOwner o ds ++ rest) → Adj rest
   adj-owned o [] rest a = a
-  adj-owned o (DSignature _ _ _ ∷ ds) rest (a-other _ a) = adj-owned o ds rest a
+  adj-owned o (DSignature _ _ _ ∷ ds) rest (adj-other _ a) = adj-owned o ds rest a
   adj-owned o (DTypeSig _ _ ∷ ds) rest a = adj-owned o ds rest a
   adj-owned o (DFunDef _ _ ∷ ds) rest a = adj-owned o ds rest a
   adj-owned o (DTypeAlias _ _ _ ∷ ds) rest a = adj-owned o ds rest a
   adj-owned o (DImport _ ∷ ds) rest a = adj-owned o ds rest a
 
 -- (mirrors `pdn-go`'s classification of a type signature)
-pdn-res : ∀ {mm ps um am dsU dsR p} → LR.ResolvesDecls mm ps um am dsU dsR → Adj dsR p → pdn-go dsU p ≡ pdn-go dsR p
-pdn-res LR.rds-nil a-nil = refl
-pdn-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (a-tsig {n} {t} a) with isGround t
+pdn-res : ∀ {mm ps um am dsU dsR} → LR.ResolvesDecls mm ps um am dsU dsR → Adj dsR → pdn-go dsU nothing ≡ pdn-go dsR nothing
+pdn-res LR.rds-nil adj-nil = refl
+pdn-res (LR.rds-cons LR.nim-typesig (LR.rd-typesig {n} {t}) (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds)) (adj-sig a) with isGround t
 ... | inj₂ _ = cong (n ∷_) (pdn-res rds a)
 ... | inj₁ g with isConcrete? (extractGround t g)
 ...   | just _  = pdn-res rds a
 ...   | nothing = cong (n ∷_) (pdn-res rds a)
-pdn-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (a-defP a) = pdn-res rds a
-pdn-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (a-def a) = pdn-res rds a
-pdn-res (LR.rds-cons LR.nim-sig LR.rd-signature rds) (a-other _ a) = pdn-res rds a
-pdn-res (LR.rds-cons LR.nim-alias LR.rd-typealias rds) (a-other _ a) = pdn-res rds a
-pdn-res (LR.rds-import {imp = mkImport p (just x)} {impDs = impDs} {ds' = dsR′} _ rds) (a-other _ a) =
+pdn-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (adj-other () a)
+pdn-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (adj-other _ a) = pdn-res rds a
+pdn-res (LR.rds-cons LR.nim-sig LR.rd-signature rds) (adj-other _ a) = pdn-res rds a
+pdn-res (LR.rds-cons LR.nim-alias LR.rd-typealias rds) (adj-other _ a) = pdn-res rds a
+pdn-res (LR.rds-import {imp = mkImport p (just x)} {impDs = impDs} {ds' = dsR′} _ rds) (adj-other _ a) =
   trans (pdn-res rds (adj-owned _ impDs dsR′ a)) (sym (pdn-owned _ impDs dsR′))
-pdn-res (LR.rds-import {imp = mkImport p nothing} {impDs = impDs} {ds' = dsR′} _ rds) (a-other _ a) =
+pdn-res (LR.rds-import {imp = mkImport p nothing} {impDs = impDs} {ds' = dsR′} _ rds) (adj-other _ a) =
   trans (pdn-res rds (adj-owned _ impDs dsR′ a)) (sym (pdn-owned _ impDs dsR′))
 
 ------------------------------------------------------------------------
@@ -155,14 +153,14 @@ private
   pdn-mono′ : ∀ {al n t rest ty} → SigReading al t (just ty) → pdn-go (DTypeSig n t ∷ rest) nothing ≡ pdn-go rest (just n)
   pdn-mono′ (sr-mono g c ig ic) = pdn-mono ig ic
 
-pdn-xa : ∀ {al ds es} → Adj ds nothing → XAlign al (Parser.nonSigs ds) es → pdn-go ds nothing ≡ polyNames es
-pdn-xa a-nil xa-nil = refl
-pdn-xa (a-tsig (a-defP a)) (xa-mono sr xa) = trans (pdn-mono′ sr) (pdn-xa a xa)
-pdn-xa (a-tsig (a-defP a)) (xa-poly sr xa) = trans (pdn-poly sr) (cong (_ ∷_) (pdn-xa a xa))
-pdn-xa (a-def a) (xa-nosig xa) = pdn-xa a xa
-pdn-xa (a-other o-sig a) xa = pdn-xa a xa
-pdn-xa (a-other o-alias a) (xa-pass _ xa) = pdn-xa a xa
-pdn-xa (a-other o-import a) (xa-pass _ xa) = pdn-xa a xa
+pdn-xa : ∀ {al ds es} → Adj ds → XAlign al (Parser.nonSigs ds) es → pdn-go ds nothing ≡ polyNames es
+pdn-xa adj-nil xa-nil = refl
+pdn-xa (adj-sig a) (xa-mono sr xa) = trans (pdn-mono′ sr) (pdn-xa a xa)
+pdn-xa (adj-sig a) (xa-poly sr xa) = trans (pdn-poly sr) (cong (_ ∷_) (pdn-xa a xa))
+pdn-xa (adj-other nt-def a) (xa-nosig xa) = pdn-xa a xa
+pdn-xa (adj-other nt-sig a) xa = pdn-xa a xa
+pdn-xa (adj-other nt-alias a) (xa-pass _ xa) = pdn-xa a xa
+pdn-xa (adj-other nt-import a) (xa-pass _ xa) = pdn-xa a xa
 
 ------------------------------------------------------------------------
 -- The entries' kinds

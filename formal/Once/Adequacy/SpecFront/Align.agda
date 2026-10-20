@@ -22,6 +22,8 @@ open import Once.Spec.Signature using (Signature)
 
 module Once.Adequacy.SpecFront.Align (Σ : Signature) (ps : List String) where
 
+open import Once.Adequacy.SpecFront.Polys using (Adj; adj-nil; adj-sig; adj-other)
+
 open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -85,40 +87,6 @@ data DR : List SX.Decl → List Decl → Set where
   dr-sig    : ∀ {x T′ T ds dc} → DR ds dc → DR (SX.DSignature x T′ ∷ ds) (DSignature x nothing T ∷ dc)
   dr-import : ∀ {i i′ sigs ds dc} → All ImportedSig sigs → DR ds dc → DR (SX.DImport i′ ∷ ds) (DImport i ∷ sigs ++ dc)
   dr-alias  : ∀ {x ps′ t x′ ps″ t′ ds dc} → DR ds dc → DR (SX.DTypeAlias x′ ps″ t′ ∷ ds) (DTypeAlias x ps′ t ∷ dc)
-
--- Each type signature immediately followed by its definition.
-data NotTSig : Decl → Set where
-  nt-def    : ∀ {x b}       → NotTSig (DFunDef x b)
-  nt-sig    : ∀ {x o T}     → NotTSig (DSignature x o T)
-  nt-alias  : ∀ {x ps′ t}   → NotTSig (DTypeAlias x ps′ t)
-  nt-import : ∀ {i}         → NotTSig (DImport i)
-
-data Adj : List Decl → Set where
-  adj-nil   : Adj []
-  adj-sig   : ∀ {x T b ds} → Adj ds → Adj (DTypeSig x T ∷ DFunDef x b ∷ ds)
-  adj-other : ∀ {d ds} → NotTSig d → Adj ds → Adj (d ∷ ds)
-
--- The extractor's check gives it.
-mutual
-  adj-of : ∀ ds → Parser.sigsAdjacent ds nothing ≡ inj₂ tt → Adj ds
-  adj-of [] _ = adj-nil
-  adj-of (DTypeSig n _ ∷ ds) e = adj-pend n ds e
-  adj-of (DFunDef n _ ∷ ds) e = adj-other nt-def (adj-of ds e)
-  adj-of (DSignature _ _ _ ∷ ds) e = adj-other nt-sig (adj-of ds e)
-  adj-of (DTypeAlias _ _ _ ∷ ds) e = adj-other nt-alias (adj-of ds e)
-  adj-of (DImport _ ∷ ds) e = adj-other nt-import (adj-of ds e)
-
-  adj-pend : ∀ {T} s ds → Parser.sigsAdjacent ds (just s) ≡ inj₂ tt → Adj (DTypeSig s T ∷ ds)
-  adj-pend s [] ()
-  adj-pend s (DTypeSig _ _ ∷ ds) ()
-  adj-pend s (DFunDef n b ∷ ds) e = adj-def s n b ds (s Data.String.≟ n) e
-  adj-pend s (DSignature _ _ _ ∷ ds) ()
-  adj-pend s (DTypeAlias _ _ _ ∷ ds) ()
-  adj-pend s (DImport _ ∷ ds) ()
-
-  adj-def : ∀ {T} s n b ds (d : Dec (s ≡ n)) → Parser.sigsAdjacent-def s n d ds ≡ inj₂ tt → Adj (DTypeSig s T ∷ DFunDef n b ∷ ds)
-  adj-def s .s b ds (yes refl) e = adj-sig (adj-of ds e)
-  adj-def s n b ds (no _) ()
 
 ------------------------------------------------------------------------
 -- A ground signature's schema
