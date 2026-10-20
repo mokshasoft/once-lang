@@ -55,13 +55,14 @@ data Decl : Set where
   DFunDef    : String → RawExpr → Decl
   -- | `DSignature name owner ty`
   -- `owner = nothing`  : source-level primitive (user-written).
-  -- `owner = just A`   : primitive inlined by import resolution,
-  --                      imported under alias `A` (i.e. user writes
-  --                      `name@A`).
+  -- `owner = just p`   : primitive inlined by import resolution, owned by
+  --                      the imported module's full path `p` (plan 0.121:
+  --                      its key is `showCanonical (canonical (p ++ [name]))`,
+  --                      the name a reference to it resolves to).
   -- Plan 0.98 E / D226: no effect annotation. An external arrow's effect is
   -- its CODOMAIN (`Void` halts, `Unit` emits), so `! halts` had nothing left
   -- to say.
-  DSignature : String → Maybe String → PolyType → Decl
+  DSignature : String → Maybe (List String) → PolyType → Decl
   DTypeAlias : String → List String → Type → Decl
   DImport    : Import → Decl
 

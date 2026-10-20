@@ -130,7 +130,7 @@ open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-s
 import Once.Spec.Surface.Program as SPr
 
 private
-  owner-just : ∀ (i : Import) → Σ[ o ∈ String ] ownerOf i ≡ just o
+  owner-just : ∀ (i : Import) → Σ[ o ∈ List String ] ownerOf i ≡ just o
   owner-just (mkImport p (just _)) = _ , refl
   owner-just (mkImport p nothing)  = _ , refl
 
@@ -140,7 +140,7 @@ module Decls (Σ : Signature) where
 
   private
     -- an import's signatures are owned by it
-    owned : ∀ (o : String) (ds : List Decl) → All ImportedSig (signaturesWithOwner (just o) ds)
+    owned : ∀ (o : List String) (ds : List Decl) → All ImportedSig (signaturesWithOwner (just o) ds)
     owned o [] = []
     owned o (DSignature x _ T ∷ ds) = (x , o , T , refl) ∷ owned o ds
     owned o (DTypeSig _ _ ∷ ds) = owned o ds
@@ -166,7 +166,7 @@ module Decls (Σ : Signature) where
     in _ , SPr.rd-other SPr.nf-import rd
        , dr-import (subst-own eo (owned o impDs)) dr
     where
-      subst-own : ∀ {o} {mo} → mo ≡ just o → All ImportedSig (signaturesWithOwner (just o) impDs)
+      subst-own : ∀ {o : List String} {mo} → mo ≡ just o → All ImportedSig (signaturesWithOwner (just o) impDs)
                 → All ImportedSig (signaturesWithOwner mo impDs)
       subst-own refl a = a
 

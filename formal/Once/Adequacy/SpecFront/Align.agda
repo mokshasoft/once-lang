@@ -76,7 +76,7 @@ data Align : List SX.Decl → List Parser.Entry → Set where
 
 -- Imported signatures, owned by the importing site.
 ImportedSig : Decl → Set
-ImportedSig d = Σ[ x ∈ String ] Σ[ o ∈ String ] Σ[ T ∈ PolyType ] d ≡ DSignature x (just o) T
+ImportedSig d = Σ[ x ∈ String ] Σ[ o ∈ List String ] Σ[ T ∈ PolyType ] d ≡ DSignature x (just o) T
 
 data DR : List SX.Decl → List Decl → Set where
   dr-nil    : DR [] []

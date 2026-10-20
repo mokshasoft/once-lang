@@ -41,6 +41,8 @@ open import Once.Lang.Type.WellFormed using (IsConcrete)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Lang.Syntax using (RawExpr; RVar)
+open import Once.Spec.Name using (canonical)
+open import Once.Lang.Name using (showCanonical)
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser.TypeAlias using (TypeAliasEnv; expandAliases)
 open import Once.Parser
@@ -71,8 +73,9 @@ data XAlign (al : TypeAliasEnv) : List Decl → List Entry → Set where
            → XAlign al (DFunDef x b ∷ ds) (e-fun (mkFunInfo x nothing b false) ∷ es)
   xa-sig   : ∀ {x T ty ds es} → projectSig al x T ≡ inj₂ ty → XAlign al ds es
            → XAlign al (DSignature x nothing T ∷ ds) (e-fun (mkFunInfo x (just ty) (RVar x) true) ∷ es)
-  xa-isig  : ∀ {x o T ty ds es} → projectSig al (o ++ˢ "." ++ˢ x) T ≡ inj₂ ty → XAlign al ds es
-           → XAlign al (DSignature x (just o) T ∷ ds) (e-fun (mkFunInfo (o ++ˢ "." ++ˢ x) (just ty) (RVar (o ++ˢ "." ++ˢ x)) true) ∷ es)
+  xa-isig  : ∀ {x o T ty ds es} → projectSig al (showCanonical (canonical (o ++ x ∷ []))) T ≡ inj₂ ty → XAlign al ds es
+           → XAlign al (DSignature x (just o) T ∷ ds)
+                    (e-fun (mkFunInfo (showCanonical (canonical (o ++ x ∷ []))) (just ty) (RVar (showCanonical (canonical (o ++ x ∷ [])))) true) ∷ es)
 
 private
   consFun-inj : ∀ (r : String ⊎ List Entry) fi {es} → extractFunctions-consFun r fi ≡ inj₂ es
@@ -106,10 +109,10 @@ mutual
   ... | inj₂ gty =
     let (es′ , r , e) = consFun-inj (extractFunctions-go al rest nothing) (mkFunInfo name (just gty) (RVar name) true) eq
     in subst-es e (xa-sig ps (extract-align al rest r))
-  extract-align al (DSignature name (just owner) ty ∷ rest) eq with projectSig al (owner ++ˢ "." ++ˢ name) ty in ps
+  extract-align al (DSignature name (just owner) ty ∷ rest) eq with projectSig al (showCanonical (canonical (owner ++ name ∷ []))) ty in ps
   ... | inj₁ err = case-err eq
   ... | inj₂ gty =
-    let (es′ , r , e) = consFun-inj (extractFunctions-go al rest nothing) (mkFunInfo (owner ++ˢ "." ++ˢ name) (just gty) (RVar (owner ++ˢ "." ++ˢ name)) true) eq
+    let (es′ , r , e) = consFun-inj (extractFunctions-go al rest nothing) (mkFunInfo (showCanonical (canonical (owner ++ name ∷ []))) (just gty) (RVar (showCanonical (canonical (owner ++ name ∷ [])))) true) eq
     in subst-es e (xa-isig ps (extract-align al rest r))
   extract-align al (DTypeAlias n ps t ∷ rest) eq = xa-pass pa-alias (extract-align al rest eq)
   extract-align al (DImport i ∷ rest) eq = xa-pass pa-import (extract-align al rest eq)

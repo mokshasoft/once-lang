@@ -14,6 +14,8 @@ open import Once.Lang.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
+open import Once.Spec.Name using (canonical)
+open import Once.Lang.Name using (showCanonical)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -358,10 +360,10 @@ extractFunctions-go aliases (DSignature name owner ty ∷ rest) (just (s , _)) =
 extractFunctions-go aliases (DSignature name nothing ty ∷ rest) nothing with projectSig aliases name ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) (RVar name) true)
-extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) nothing with projectSig aliases (owner ++ "." ++ name) ty
+extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) nothing with projectSig aliases (showCanonical (canonical (owner ++ₗ name ∷ []))) ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  =
-         let qname = owner ++ "." ++ name
+         let qname = showCanonical (canonical (owner ++ₗ name ∷ []))
          in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
 {-# CATCHALL #-}
 extractFunctions-go aliases (_ ∷ rest) nothing = extractFunctions-go aliases rest nothing

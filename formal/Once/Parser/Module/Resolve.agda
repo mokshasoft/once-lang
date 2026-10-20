@@ -354,7 +354,7 @@ canonDecl polys um am d                         = d
 -- | Pull out just the DSignature decls from a module, retagging each
 -- with the given owner. Non-primitive decls are dropped — they
 -- belong to the imported module's own scope, not the importer's.
-signaturesWithOwner : Maybe String → List Decl → List Decl
+signaturesWithOwner : Maybe (List String) → List Decl → List Decl
 signaturesWithOwner _     []                                   = []
 signaturesWithOwner owner (DSignature name _ ty ∷ rest)   =
   DSignature name owner ty ∷ signaturesWithOwner owner rest
@@ -370,9 +370,9 @@ signaturesWithOwner owner (_ ∷ rest)                           =
 -- `canon` produces (`RQualified`/`RVar` → `RResolved (canonical (path++[name]))`).
 -- So the import-table key = `showCanonical cn` by construction, and distinct
 -- imported modules' same-named primitives get distinct symbols.
-ownerOf : Import → Maybe String
-ownerOf (mkImport path (just _)) = just (showPath (expandPath path))
-ownerOf (mkImport path nothing)  = just (showPath (expandPath path))
+ownerOf : Import → Maybe (List String)
+ownerOf (mkImport path (just _)) = just (expandPath path)
+ownerOf (mkImport path nothing)  = just (expandPath path)
 
 ------------------------------------------------------------------------
 -- resolveImports
