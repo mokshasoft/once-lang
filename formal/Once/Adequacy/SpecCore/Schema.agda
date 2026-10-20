@@ -87,6 +87,12 @@ defsS (S LP.▷ sc) = defsS S SS.▷ schS sc
 !!-defsS (S LP.▷ sc) zero    = refl
 !!-defsS (S LP.▷ sc) (suc d) = !!-defsS S d
 
+-- An instance of the `d`-th schema, read at the Spec's schema (the same arity).
+castSub : ∀ {Fs s′ m} (S₀ : LP.Sig Fs s′) (d : Fin s′)
+        → ST.TySub (LP.Schema.arity (S₀ LP.!! d)) m → ST.TySub (SS.Schema.arity (defsS S₀ SS.!! d)) m
+castSub (S₀ LP.▷ sc) zero    τ′ = τ′
+castSub (S₀ LP.▷ sc) (suc d) τ′ = castSub S₀ d τ′
+
 -- Every definition's schema is clean.
 CleanSig : ∀ {Fs s} → LP.Sig Fs s → Set
 CleanSig S = ∀ d → Clean (LP.Schema.type (S LP.!! d))

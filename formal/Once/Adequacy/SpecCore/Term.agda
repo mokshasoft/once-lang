@@ -61,28 +61,7 @@ open S⊢ using (_⊩_⊢[_]_∷_!_)
 -- Literals and primitives
 ------------------------------------------------------------------------
 
-litS : L.Lit → SC.Lit
-litS (L.lit-int i)   = SC.lit-int i
-litS (L.lit-float d) = SC.lit-float d
-
-primS : L.Prim → SC.Prim
-primS L.p-add  = SC.p-add
-primS L.p-sub  = SC.p-sub
-primS L.p-mul  = SC.p-mul
-primS L.p-div  = SC.p-div
-primS L.p-mod  = SC.p-mod
-primS L.p-neg  = SC.p-neg
-primS L.p-lt   = SC.p-lt
-primS L.p-le   = SC.p-le
-primS L.p-gt   = SC.p-gt
-primS L.p-ge   = SC.p-ge
-primS L.p-eq   = SC.p-eq
-primS L.p-ne   = SC.p-ne
-primS L.p-fadd = SC.p-fadd
-primS L.p-fsub = SC.p-fsub
-primS L.p-fmul = SC.p-fmul
-primS L.p-fdiv = SC.p-fdiv
-primS L.p-i2f  = SC.p-i2f
+open import Once.Adequacy.SpecCore.Prim S using (litS; primS)
 
 module _ {m} {Δ : ST.KCtx m} where
 
@@ -135,12 +114,6 @@ module _ {m} {Δ : ST.KCtx m} where
 ------------------------------------------------------------------------
 -- References to definitions
 ------------------------------------------------------------------------
-
--- An instance of the `d`-th schema, read at the Spec's schema (the same arity).
-castSub : ∀ {s′ m} (S₀ : LP.Sig Fs s′) (d : Fin s′)
-        → ST.TySub (LP.Schema.arity (S₀ LP.!! d)) m → ST.TySub (SC.Schema.arity (defsS S₀ SC.!! d)) m
-castSub (S₀ LP.▷ sc) zero    τ′ = τ′
-castSub (S₀ LP.▷ sc) (suc d) τ′ = castSub S₀ d τ′
 
 module _ {m} {Δ : ST.KCtx m} where
 
