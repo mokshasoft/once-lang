@@ -73,6 +73,12 @@ irf-cons {y = y} g old {x} lk with y Str.≟ x
 ... | yes _ = subst RigidFree (just-injective lk) g
 ... | no _  = old lk
 
+-- D324: the definitions' context, `main` left out (`C.extendDefs`).
+irf-defs : ∀ (b : Bool) {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps
+         → ImportsRF (C.extendDefs-at b imps y ty)
+irf-defs true  {imps} {y} {ty} g old = old
+irf-defs false {imps} {y} {ty} g old = irf-cons {imps} {y} {ty} g old
+
 -- The remaining entries' names: distinct, and new to the scope.
 entryName : Parser.Entry → String
 entryName = Once.Parser.entryNameOf
@@ -127,8 +133,14 @@ private
 fresh-head : ∀ {csc e es} → Fresh csc (e ∷ es) → All (entryName e ≢_) (scopeNames csc)
 fresh-head (_ , (h ∷ _)) = h
 
+-- D324: `main` does not enter the scope, which then stays as it was.
+fresh-fun-at : ∀ (b : Bool) {csc fi ty es} → Fresh csc (Parser.e-fun fi ∷ es)
+             → Fresh (C.cscope (C.CScope.csig csc) (C.extendDefs-at b (C.CScope.cimps csc) (funName fi) ty) (C.CScope.ctele csc)) es
+fresh-fun-at true  ((_ ∷ tl) , (_ ∷ hs)) = tl , hs
+fresh-fun-at false {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) = tl , insert-all [] (scopeNames csc) (map entryName es) hd hs
+
 fresh-fun : ∀ {csc fi ty es} → Fresh csc (Parser.e-fun fi ∷ es) → Fresh (C.extendScope csc (funName fi) ty) es
-fresh-fun {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) = tl , insert-all [] (scopeNames csc) (map entryName es) hd hs
+fresh-fun {csc} {fi} {ty} {es} = fresh-fun-at (funName fi Str.== "main") {csc} {fi} {ty} {es}
 
 -- D274: an FFI declaration extends Σ, not the definitions' names.
 fresh-sig : ∀ {csc fi ty es} → Fresh csc (Parser.e-fun fi ∷ es) → Fresh (C.extendSig csc (funName fi) ty) es
@@ -170,7 +182,7 @@ lookup-head n L with StrProp._≟_ n n
 -- (D249: the extractor's guard).
 entries-distinct : ∀ (m : P.Module) {es : List Parser.Entry}
   → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map entryName es)
-entries-distinct (P.mkModule ds) eq = NC.guard-entries (Parser.extractFunctions-go (Parser.extractAliases (P.mkModule ds)) ds Maybe.nothing) eq
+entries-distinct (P.mkModule ds) eq = NC.guard-entries (Parser.thenExtract (Parser.sigsAdjacent ds Maybe.nothing) (Parser.extractFunctions-go (Parser.extractAliases (P.mkModule ds)) (Parser.sigsFirst ds) Maybe.nothing)) eq
 
 none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (scopeNames C.emptyCScope)) xs
 none-in-empty []       = []

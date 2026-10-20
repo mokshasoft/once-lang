@@ -52,7 +52,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Spec.Word as OnceWord
-open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna; OpNeg)
+open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; OpNeg)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
    DImport)
@@ -105,7 +105,6 @@ rawIntLits RUnit                = []
 -- a FLOAT literal is not checked here: it always lowers, rounding if the
 -- target cannot hold it exactly (D116).
 rawIntLits (RFloat _ _ _ _)       = []
-rawIntLits (RStringLit _)       = []
 
 negLits (RInt n) = (- n) ∷ []
 {-# CATCHALL #-}

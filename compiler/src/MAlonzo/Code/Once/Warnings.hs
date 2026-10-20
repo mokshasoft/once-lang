@@ -303,17 +303,15 @@ d_rawFloatLits_244 v0
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v3) (coe v4))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Lang.Syntax.C_RStringLit_58 v1
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_60 v1 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_58 v1 v2
         -> coe d_rawFloatLits_244 (coe v1)
-      MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v1 v2 v3
+      MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawFloatLits_244 (coe v2)) (coe d_rawFloatLits_244 (coe v3))
-      MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_64 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62 v2
         -> coe d_rawFloatLits_244 (coe v2)
-      MAlonzo.Code.Once.Lang.Syntax.C_RAna_66 v1 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RAna_64 v1 v2
         -> coe d_rawFloatLits_244 (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Warnings.declFloatLits
@@ -574,7 +572,7 @@ d_loopWarnings_408 ::
 d_loopWarnings_408 v0
   = coe
       du_go_416
-      (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_950 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_936 (coe v0))
 -- Once.Warnings._.go
 d_go_416 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->

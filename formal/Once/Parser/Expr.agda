@@ -44,7 +44,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
+open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.Type using (parseTypeWF)
@@ -869,7 +869,8 @@ parseAtomExprWF (TInt n _    ∷ rest) _ = just (RInt n , rest , pae-int)
 -- Plan 0.71 F3a: the AST has its node now, so the rejection F1 left here
 -- becomes the real rule.
 parseAtomExprWF (TFloat i f l _ ∷ rest) _ = just (RFloat i f l _ , rest , pae-float)
-parseAtomExprWF (TString s ∷ rest) _ = just (RStringLit s , rest , pae-str)
+-- A string literal is no expression (the Spec's grammar has none).
+parseAtomExprWF (TString _  ∷ _) _ = nothing
 parseAtomExprWF (TRParen    ∷ _) _ = nothing
 parseAtomExprWF (TLBrace    ∷ _) _ = nothing
 parseAtomExprWF (TRBrace    ∷ _) _ = nothing
@@ -942,13 +943,8 @@ parseAppTailWF f (TInt n _    ∷ rest) (acc rec)
     with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...   | nothing                   = nothing
 ...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TInt dA dT)
-parseAppTailWF f (TString s ∷ rest) (acc rec)
-  with parseAtomExprWF (TString s ∷ rest) (acc rec)
-... | nothing = nothing
-... | just (arg , rest' , dA)
-    with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
-...   | nothing                   = nothing
-...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TString dA dT)
+-- A string literal is no expression (the Spec's grammar has none).
+parseAppTailWF f (TString s ∷ rest) _ = nothing
 -- Non-atom-start tokens: tail no-ops.
 parseAppTailWF f (TRParen   ∷ r) _ = just (f , TRParen   ∷ r , papp-done nas-TRParen)
 parseAppTailWF f (TFloat i fr l _ ∷ rest) (acc rec)

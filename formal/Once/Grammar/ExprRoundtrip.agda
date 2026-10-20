@@ -46,7 +46,7 @@ open G using (GExpr)
 open import Once.Lang.Syntax
 open import Once.TypeCheck.Raw
 open import Once.Parser.Expr using (parseExpr)
-open import Once.Grammar.ExprPrinter using (printGExpr; ConcreteExpr; c-e-unit; c-e-int; c-e-string)
+open import Once.Grammar.ExprPrinter using (printGExpr; ConcreteExpr; c-e-unit; c-e-int)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
 
 ------------------------------------------------------------------------
@@ -68,10 +68,6 @@ round-trip-EInt-0 = refl
 round-trip-EInt-42 :
   parseExpr (printGExpr (G.EInt 42)) ≡ just (RInt (+ 42) , [])
 round-trip-EInt-42 = refl
-
-round-trip-EString :
-  parseExpr (printGExpr (G.EString "hello")) ≡ just (RStringLit "hello" , [])
-round-trip-EString = refl
 
 -- Non-reserved variable name.
 round-trip-EVar-x :
@@ -177,7 +173,7 @@ round-trip-EApp-two-args = refl
 ------------------------------------------------------------------------
 -- Partial general theorems: leaves proved generically.
 --
--- These quantify over the name or value: every EInt, every EString,
+-- These quantify over the name or value: every EInt,
 -- every non-reserved EVar round-trips. Proves the leaf cases of the
 -- general theorem, which a compound-case structural induction will
 -- extend.
@@ -190,12 +186,6 @@ round-trip-EInt :
   ∀ (n : ℕ)
   → parseExpr (printGExpr (G.EInt n)) ≡ just (RInt (+ n) , [])
 round-trip-EInt n = refl
-
--- EString: every string round-trips.
-round-trip-EString-gen :
-  ∀ (s : String)
-  → parseExpr (printGExpr (G.EString s)) ≡ just (RStringLit s , [])
-round-trip-EString-gen s = refl
 
 -- EUnit is nullary; covered above.
 
@@ -223,11 +213,6 @@ round-trip-c-e-int :
   ∀ {n} → parseExpr (printGExpr (G.EInt n))
         ≡ just (gexprToRaw (c-e-int {n}) , [])
 round-trip-c-e-int = refl
-
-round-trip-c-e-string :
-  ∀ {s} → parseExpr (printGExpr (G.EString s))
-        ≡ just (gexprToRaw (c-e-string {s}) , [])
-round-trip-c-e-string = refl
 
 -- EVar / EQualified: a ConcreteExpr-witness-level round-trip for
 -- these needs additional `name ≢ "let"` / `name ≢ "destruct"` side

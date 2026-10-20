@@ -68,7 +68,6 @@ printGExpr G.EUnit       = TLParen ∷ TRParen ∷ []
 -- source they came from. The roundtrip below is what pins that this is
 -- consistent rather than arbitrary.
 printGExpr (G.EInt n)    = TInt (+ n) 0 ∷ []
-printGExpr (G.EString s) = TString s ∷ []
 printGExpr (G.EVar name) = TWord name ∷ []
 printGExpr (G.EQualified name alias) =
   TWord name ∷ TAt ∷ TWord alias ∷ []
@@ -148,7 +147,6 @@ open import Once.Parser.Expr using (isReserved)
 data ConcreteExpr : GExpr → Set where
   c-e-unit   : ConcreteExpr G.EUnit
   c-e-int    : ∀ {n} → ConcreteExpr (G.EInt n)
-  c-e-string : ∀ {s} → ConcreteExpr (G.EString s)
   c-e-var    : ∀ {name} → isReserved name ≡ false
              → ConcreteExpr (G.EVar name)
   c-e-qual   : ∀ {name alias} → isReserved name ≡ false

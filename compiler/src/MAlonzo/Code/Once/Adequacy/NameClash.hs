@@ -233,31 +233,31 @@ d_GuardB_136 v0
          (coe
             MAlonzo.Code.Data.Bool.Base.d__'8743'__24
             (coe
-               MAlonzo.Code.Once.Parser.d_namesDistinct_482
+               MAlonzo.Code.Once.Parser.d_namesDistinct_486
                (coe
-                  MAlonzo.Code.Once.Parser.d_emittedNames_522
+                  MAlonzo.Code.Once.Parser.d_emittedNames_526
                   (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v0))))
             (coe
-               MAlonzo.Code.Once.Parser.d_allValidIdentB_506
+               MAlonzo.Code.Once.Parser.d_allValidIdentB_510
                (coe
-                  MAlonzo.Code.Once.Parser.d_emittedNames_522
+                  MAlonzo.Code.Once.Parser.d_emittedNames_526
                   (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v0)))))
          (coe
-            MAlonzo.Code.Once.Parser.d_namesDistinct_482
+            MAlonzo.Code.Once.Parser.d_namesDistinct_486
             (coe
                MAlonzo.Code.Data.List.Base.du__'43''43'__32
                (coe
-                  MAlonzo.Code.Once.Parser.d_emittedNames_522
+                  MAlonzo.Code.Once.Parser.d_emittedNames_526
                   (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v0)))
                (coe
                   MAlonzo.Code.Data.List.Base.du_map_22
                   (coe (\ v1 -> MAlonzo.Code.Once.Parser.d_pfunName_124 (coe v1)))
                   (coe MAlonzo.Code.Once.Parser.d_polysOf_146 (coe v0))))))
       (coe
-         MAlonzo.Code.Once.Parser.d_namesDistinct_482
+         MAlonzo.Code.Once.Parser.d_namesDistinct_486
          (coe
             MAlonzo.Code.Data.List.Base.du_map_22
-            (coe MAlonzo.Code.Once.Parser.d_entryNameOf_532) (coe v0)))
+            (coe MAlonzo.Code.Once.Parser.d_entryNameOf_536) (coe v0)))
 -- Once.Adequacy.NameClash.guard-whole
 d_guard'45'whole_144 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -287,7 +287,7 @@ du_guard'45'entries_188 v0
       du_namesDistinct'45'sound_68
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
-         (coe MAlonzo.Code.Once.Parser.d_entryNameOf_532) (coe v0))
+         (coe MAlonzo.Code.Once.Parser.d_entryNameOf_536) (coe v0))
 -- Once.Adequacy.NameClash.guard-true
 d_guard'45'true_198 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -298,7 +298,7 @@ d_guard'45'true_198 = erased
 -- Once.Adequacy.NameClash.ce-syms
 d_ce'45'syms_212 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -307,7 +307,7 @@ d_ce'45'syms_212 = erased
 -- Once.Adequacy.NameClash.ce-syms-fun
 d_ce'45'syms'45'fun_226 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   Bool ->
@@ -324,11 +324,17 @@ d_program'45'no'45'clash_678 v0
   = case coe v0 of
       MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_38 v1
         -> let v2
-                 = MAlonzo.Code.Once.Parser.d_guardDistinct_538
+                 = MAlonzo.Code.Once.Parser.d_guardDistinct_542
                      (coe
-                        MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_216
-                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
-                        (coe v1) (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)) in
+                        MAlonzo.Code.Once.Parser.d_thenExtract_626
+                        (coe
+                           MAlonzo.Code.Once.Parser.d_sigsAdjacent_554 (coe v1)
+                           (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
+                        (coe
+                           MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
+                           (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
+                           (coe MAlonzo.Code.Once.Parser.d_sigsFirst_622 (coe v1))
+                           (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))) in
            coe
              (case coe v2 of
                 MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3
@@ -336,10 +342,10 @@ d_program'45'no'45'clash_678 v0
                        MAlonzo.Code.Data.List.Relation.Unary.AllPairs.Core.C_'91''93'_22
                 MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
                   -> let v4
-                           = MAlonzo.Code.Once.Compile.d_compileEntries_520
+                           = MAlonzo.Code.Once.Compile.d_compileEntries_506
                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8)
-                               (coe MAlonzo.Code.Once.Compile.d_emptyCScope_448) (coe v3) in
+                               (coe MAlonzo.Code.Once.Compile.d_emptyCScope_412) (coe v3) in
                      coe
                        (case coe v4 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5
@@ -349,17 +355,17 @@ d_program'45'no'45'clash_678 v0
                             -> coe
                                  d_map'45'allpairs'45'own_110
                                  (coe
-                                    MAlonzo.Code.Once.Parser.d_emittedNames_522
+                                    MAlonzo.Code.Once.Parser.d_emittedNames_526
                                     (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3)))
                                  (coe
                                     du_namesDistinct'45'sound_68
                                     (coe
-                                       MAlonzo.Code.Once.Parser.d_emittedNames_522
+                                       MAlonzo.Code.Once.Parser.d_emittedNames_526
                                        (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3))))
                                  (coe
                                     du_allValidIdentB'45'sound_58
                                     (coe
-                                       MAlonzo.Code.Once.Parser.d_emittedNames_522
+                                       MAlonzo.Code.Once.Parser.d_emittedNames_526
                                        (coe MAlonzo.Code.Once.Parser.d_funsOf_138 (coe v3))))
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> MAlonzo.RTE.mazUnreachableError)

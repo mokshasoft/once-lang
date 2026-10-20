@@ -536,7 +536,6 @@ library
       MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Instance
       MAlonzo.Code.Once.TypeCheck.ModeSub
-      MAlonzo.Code.Once.TypeCheck.Principal
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Once.TypeCheck.RigidSubst
       MAlonzo.Code.Once.TypeCheck.Route

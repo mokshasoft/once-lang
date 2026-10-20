@@ -105,8 +105,6 @@ checkElab-fallback-RFloat {ctx} i f l p with Float <:? Float
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 
--- RStringLit always infers at type `Str`.
-
 -- RUnit always infers at type `Unit`.
 checkElab-fallback-RUnit :
   ∀ {ctx : NamedCtx}

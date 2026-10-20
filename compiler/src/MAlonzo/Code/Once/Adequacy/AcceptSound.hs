@@ -108,7 +108,7 @@ du_compileFunBody'45'sound_96 v0 v1 v2 v3
          (coe
             du_compileFunBody'45'aux'45'success_36
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6334
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                   (coe v0) (coe v1))
@@ -209,16 +209,16 @@ du_compileFun'45'sound_252 v0 v1 v2 v3 v4
          (coe ("main" :: Data.Text.Text)))
 -- Once.Adequacy.AcceptSound.scopeOf
 d_scopeOf_270 ::
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Lang.Module.T_Scope_6
 d_scopeOf_270 v0
   = coe
       MAlonzo.Code.Once.Lang.Module.C_scope_20
-      (coe MAlonzo.Code.Once.Compile.d_csig_440 (coe v0))
-      (coe MAlonzo.Code.Once.Compile.d_cimps_442 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_csig_404 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_cimps_406 (coe v0))
       (coe
-         MAlonzo.Code.Once.Compile.d_telePolys_454
-         (MAlonzo.Code.Once.Compile.d_ctele_444 (coe v0)))
+         MAlonzo.Code.Once.Compile.d_telePolys_418
+         (MAlonzo.Code.Once.Compile.d_ctele_408 (coe v0)))
 -- Once.Adequacy.AcceptSound.consCF-inj
 d_consCF'45'inj_282 ::
   MAlonzo.Code.Once.Compile.T_CompiledFun_298 ->
@@ -238,7 +238,7 @@ du_consCF'45'inj_282 v0
 -- Once.Adequacy.AcceptSound.ce-sound
 d_ce'45'sound_294 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -246,7 +246,7 @@ d_ce'45'sound_294 ::
 d_ce'45'sound_294 v0 v1 v2 v3 ~v4 = du_ce'45'sound_294 v0 v1 v2 v3
 du_ce'45'sound_294 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
   MAlonzo.Code.Once.Lang.Module.T_ModTele_50
@@ -269,7 +269,7 @@ du_ce'45'sound_294 v0 v1 v2 v3
 -- Once.Adequacy.AcceptSound.ce-fun-sound
 d_ce'45'fun'45'sound_308 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   Bool ->
@@ -281,7 +281,7 @@ d_ce'45'fun'45'sound_308 v0 v1 v2 v3 v4 ~v5 v6 ~v7
   = du_ce'45'fun'45'sound_308 v0 v1 v2 v3 v4 v6
 du_ce'45'fun'45'sound_308 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   Bool ->
@@ -295,15 +295,15 @@ du_ce'45'fun'45'sound_308 v0 v1 v2 v3 v4 v5
       else coe
              du_ce'45'mono'45'sound_336 (coe v0) (coe v1) (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.Compile.d_resolveFunType_404
-                (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v1))
-                (coe MAlonzo.Code.Once.Compile.d_cpolys_456 (coe v1))
+                MAlonzo.Code.Once.Compile.d_resolveFunType_368
+                (coe MAlonzo.Code.Once.Compile.d_ctop_414 (coe v1))
+                (coe MAlonzo.Code.Once.Compile.d_cpolys_420 (coe v1))
                 (coe MAlonzo.Code.Once.Parser.d_funType_108 (coe v2))
                 (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v2)))
 -- Once.Adequacy.AcceptSound.ce-prim-sound
 d_ce'45'prim'45'sound_322 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -316,7 +316,7 @@ d_ce'45'prim'45'sound_322 v0 v1 v2 v3 ~v4 v5 ~v6 v7 ~v8
   = du_ce'45'prim'45'sound_322 v0 v1 v2 v3 v5 v7
 du_ce'45'prim'45'sound_322 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   Maybe MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -335,7 +335,7 @@ du_ce'45'prim'45'sound_322 v0 v1 v2 v3 v4 v5
 -- Once.Adequacy.AcceptSound.ce-mono-sound
 d_ce'45'mono'45'sound_336 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -348,7 +348,7 @@ d_ce'45'mono'45'sound_336 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 ~v8
   = du_ce'45'mono'45'sound_336 v0 v1 v2 v3 v5
 du_ce'45'mono'45'sound_336 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -367,7 +367,7 @@ du_ce'45'mono'45'sound_336 v0 v1 v2 v3 v4
 -- Once.Adequacy.AcceptSound.ce-poly-sound
 d_ce'45'poly'45'sound_348 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
@@ -377,7 +377,7 @@ d_ce'45'poly'45'sound_348 v0 v1 v2 v3 v4 ~v5
   = du_ce'45'poly'45'sound_348 v0 v1 v2 v3 v4
 du_ce'45'poly'45'sound_348 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
@@ -394,7 +394,7 @@ du_ce'45'poly'45'sound_348 v0 v1 v2 v3 v4
 -- Once.Adequacy.AcceptSound._.conc
 d_conc_440 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -416,7 +416,7 @@ d_conc_440 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 ~v8 v9 ~v10 v11 ~v12 v13 ~v14
   = du_conc_440 v0 v1 v2 v3 v5 v9 v11 v13 v15
 du_conc_440 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -437,7 +437,7 @@ du_conc_440 v0 v1 v2 v3 v4 v5 v6 v7 v8
                            (coe
                               du_ce'45'sound_294 (coe v0)
                               (coe
-                                 MAlonzo.Code.Once.Compile.d_extendSig_496 (coe v1)
+                                 MAlonzo.Code.Once.Compile.d_extendSig_482 (coe v1)
                                  (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v2)) (coe v4))
                               (coe v3) (coe v8))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -446,7 +446,7 @@ du_conc_440 v0 v1 v2 v3 v4 v5 v6 v7 v8
 -- Once.Adequacy.AcceptSound._.ctx
 d_ctx_482 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -457,17 +457,17 @@ d_ctx_482 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104
 d_ctx_482 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 = du_ctx_482 v1
 du_ctx_482 ::
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104
 du_ctx_482 v0
   = coe
       MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
-      (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v0))
-      (coe MAlonzo.Code.Once.Compile.d_cpolys_456 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_ctop_414 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_cpolys_420 (coe v0))
 -- Once.Adequacy.AcceptSound._.ty
 d_ty_484 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -488,7 +488,7 @@ du_ty_484 v0 v1
 -- Once.Adequacy.AcceptSound._.pstep
 d_pstep_490 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -505,7 +505,7 @@ d_pstep_490 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11 ~v12
   = du_pstep_490 v0 v1 v2 v3 v5 v9
 du_pstep_490 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -522,7 +522,7 @@ du_pstep_490 v0 v1 v2 v3 v4 v5
 -- Once.Adequacy.AcceptSound._.grd
 d_grd_496 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -539,7 +539,7 @@ d_grd_496 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 ~v8 ~v9 v10 ~v11 ~v12
   = du_grd_496 v0 v1 v2 v3 v5 v10
 du_grd_496 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -552,11 +552,11 @@ du_grd_496 v0 v1 v2 v3 v4 v5
              du_step_518 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v6)
              (coe
                 MAlonzo.Code.Once.Compile.du_compileFun_280 (coe v0)
-                (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v1))
-                (coe MAlonzo.Code.Once.Compile.d_cpolys_456 (coe v1))
+                (coe MAlonzo.Code.Once.Compile.d_ctop_414 (coe v1))
+                (coe MAlonzo.Code.Once.Compile.d_cpolys_420 (coe v1))
                 (coe
-                   MAlonzo.Code.Once.Compile.d_declImps_460
-                   (coe MAlonzo.Code.Once.Compile.d_ctele_444 (coe v1)))
+                   MAlonzo.Code.Once.Compile.d_declImps_424
+                   (coe MAlonzo.Code.Once.Compile.d_ctele_408 (coe v1)))
                 (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v2))
                 (coe du_ty_484 (coe v2) (coe v4))
                 (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v2)))
@@ -564,7 +564,7 @@ du_grd_496 v0 v1 v2 v3 v4 v5
 -- Once.Adequacy.AcceptSound._._.step
 d_step_518 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -586,7 +586,7 @@ d_step_518 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 ~v8 ~v9 v10 ~v11 ~v12 v13
   = du_step_518 v0 v1 v2 v3 v5 v10 v13
 du_step_518 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -603,8 +603,8 @@ du_step_518 v0 v1 v2 v3 v4 v5 v6
          (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
             (coe
                du_compileFun'45'sound_252
-               (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v1))
-               (coe MAlonzo.Code.Once.Compile.d_cpolys_456 (coe v1))
+               (coe MAlonzo.Code.Once.Compile.d_ctop_414 (coe v1))
+               (coe MAlonzo.Code.Once.Compile.d_cpolys_420 (coe v1))
                (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v2))
                (coe du_ty_484 (coe v2) (coe v4))
                (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v2))))
@@ -612,15 +612,15 @@ du_step_518 v0 v1 v2 v3 v4 v5 v6
          (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
             (coe
                du_compileFun'45'sound_252
-               (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v1))
-               (coe MAlonzo.Code.Once.Compile.d_cpolys_456 (coe v1))
+               (coe MAlonzo.Code.Once.Compile.d_ctop_414 (coe v1))
+               (coe MAlonzo.Code.Once.Compile.d_cpolys_420 (coe v1))
                (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v2))
                (coe du_ty_484 (coe v2) (coe v4))
                (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v2))))
          (coe
             du_ce'45'sound_294 (coe v0)
             (coe
-               MAlonzo.Code.Once.Compile.d_extendScope_488 (coe v1)
+               MAlonzo.Code.Once.Compile.d_extendScope_474 (coe v1)
                (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v2))
                (coe du_ty_484 (coe v2) (coe v4)))
             (coe v3)
@@ -629,17 +629,17 @@ du_step_518 v0 v1 v2 v3 v4 v5 v6
                (coe
                   du_consCF'45'inj_282
                   (coe
-                     MAlonzo.Code.Once.Compile.d_compileEntries_520
+                     MAlonzo.Code.Once.Compile.d_compileEntries_506
                      (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v0)
                      (coe
-                        MAlonzo.Code.Once.Compile.d_extendScope_488 (coe v1)
+                        MAlonzo.Code.Once.Compile.d_extendScope_474 (coe v1)
                         (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v2))
                         (coe du_ty_484 (coe v2) (coe v4)))
                      (coe v3))))))
 -- Once.Adequacy.AcceptSound._.ctx
 d_ctx_544 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
@@ -647,17 +647,17 @@ d_ctx_544 ::
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104
 d_ctx_544 ~v0 v1 ~v2 ~v3 ~v4 ~v5 = du_ctx_544 v1
 du_ctx_544 ::
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Lang.Typing.Scope.T_NamedCtx_104
 du_ctx_544 v0
   = coe
       MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
-      (coe MAlonzo.Code.Once.Compile.d_ctop_450 (coe v0))
-      (coe MAlonzo.Code.Once.Compile.d_cpolys_456 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_ctop_414 (coe v0))
+      (coe MAlonzo.Code.Once.Compile.d_cpolys_420 (coe v0))
 -- Once.Adequacy.AcceptSound._.low
 d_low_546 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
@@ -676,7 +676,7 @@ du_low_546 v0
 -- Once.Adequacy.AcceptSound._.step
 d_step_552 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
@@ -691,7 +691,7 @@ d_step_552 v0 v1 v2 v3 ~v4 ~v5 ~v6 v7 ~v8 v9 ~v10
   = du_step_552 v0 v1 v2 v3 v7 v9
 du_step_552 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -706,14 +706,14 @@ du_step_552 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Lang.Module.C_poly_88 v8 v7
                     (coe
                        du_ce'45'sound_294 (coe v0)
-                       (coe MAlonzo.Code.Once.Compile.d_addEntry_504 (coe v1) (coe v2))
+                       (coe MAlonzo.Code.Once.Compile.d_addEntry_490 (coe v1) (coe v2))
                        (coe v3) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.AcceptSound._.pstep
 d_pstep_572 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_298] ->
@@ -727,7 +727,7 @@ d_pstep_572 v0 v1 v2 v3 ~v4 ~v5 v6 ~v7 v8 ~v9
   = du_pstep_572 v0 v1 v2 v3 v6 v8
 du_pstep_572 ::
   Bool ->
-  MAlonzo.Code.Once.Compile.T_CScope_432 ->
+  MAlonzo.Code.Once.Compile.T_CScope_396 ->
   MAlonzo.Code.Once.Parser.T_PolyFunInfo_116 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   Maybe MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
@@ -739,7 +739,7 @@ du_pstep_572 v0 v1 v2 v3 v4 v5
       (coe
          du_step_552 (coe v0) (coe v1) (coe v2) (coe v3)
          (coe
-            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6338
+            MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6334
             (coe du_ctx_544 (coe v1))
             (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v2))
             (coe
@@ -764,7 +764,7 @@ du_crm'45'aux'45'sound_586 v0 v1 v2
       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
         -> coe
              du_ce'45'sound_294 (coe v0)
-             (coe MAlonzo.Code.Once.Compile.d_emptyCScope_448) (coe v3) (coe v2)
+             (coe MAlonzo.Code.Once.Compile.d_emptyCScope_412) (coe v3) (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.AcceptSound.crm-sound
 d_crm'45'sound_608 ::
@@ -781,7 +781,7 @@ du_crm'45'sound_608 v0 v1 v2
   = coe
       du_crm'45'aux'45'sound_586 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_550
+         MAlonzo.Code.Once.Parser.d_extractFunctions_632
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
       (coe v2)

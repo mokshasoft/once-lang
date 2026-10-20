@@ -126,7 +126,6 @@ open import Once.Lang.Type.Honest using (HonestFFI; honest?)
 open import Once.Lang.Type.DecEq using (_≟T_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
-import Once.TypeCheck.Principal as Principal
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborateFull)
@@ -305,30 +304,18 @@ buildPolyCtx [] = emptyPolyCtx
 buildPolyCtx (pfi ∷ rest) =
   (pfunName pfi , pfunType pfi , pfunBody pfi) ∷ buildPolyCtx rest
 
--- | D007 type inference: a definition without an explicit signature has its
--- type fully determined by the composition of its body (no specialization,
--- no ambiguity — D007). Inferred in a SELF-LESS context (Once has no
--- recursion). `inferElab`'s `success` carries the inferred type `A`.
--- | D072: validate an untrusted oracle answer with the verified
--- `checkElab` before adopting it (check-after-infer is the trust
--- boundary — a wrong oracle answer is a rejected program, never an
--- unsound one). Top-level aux (not a `with`) so proofs can match the
--- `Maybe Type` scrutinee directly.
-inferType-validate : NamedCtx → RawExpr → String → Maybe Type → String ⊎ Type
-inferType-validate nctx body err nothing = inj₁ err
-inferType-validate nctx body err (just T) with checkElab nctx body T
-... | TE.success _ _ _ _ = inj₂ T
-... | TE.failure _       = inj₁ err
+-- | D323: a definition without an explicit signature has the type its body
+-- synthesizes (no specialization, no ambiguity). Inferred in a SELF-LESS
+-- context (Once has no recursion). `inferElab`'s `success` carries it.
 
 inferType : TopCtx → PolyCtx → RawExpr → String ⊎ Type
 inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) body
 ... | TE.success A _ _ _ _ = inj₂ A
--- D072: bidirectional synthesis failed — ask the principal-type oracle
--- (ground answers only here; schema answers route via the telescope, M3).
+-- D323: a definition without a signature has the type its body synthesizes;
+-- a body that only checks (a λ, a bare polymorphic reference) needs one.
 ... | TE.failure err       =
-      inferType-validate (ctxWithImportsAndPolys ctx polys) body
-        ("Cannot infer type: " ++ Error.renderError err)
-        (Principal.principalGround (ctxWithImportsAndPolys ctx polys) body)
+      inj₁ ("The body has no type of its own (" ++ Error.renderError err
+            ++ "): a definition without a signature must synthesize its type; give it a signature")
 
 -- | The explicit signature if given, otherwise the inferred type (D007).
 resolveFunType : TopCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Type
@@ -407,8 +394,17 @@ declImps-aux e es x (yes _) = proj₂ e
 declImps-aux e es x (no _)  = declImps es x
 
 -- A monomorphic definition extends the definitions…
+-- D324: `main` is the program's entry, not a name: no later definition sees
+-- it. The one place a definition enters the definitions' context — the
+-- compiler's scope and the typing's (`Lang.Module.addImp`) both use it.
+extendDefs : FunCtx → String → Type → FunCtx
+extendDefs-at : Bool → FunCtx → String → Type → FunCtx
+extendDefs fc x ty = extendDefs-at (x == "main") fc x ty
+extendDefs-at true  fc x ty = fc
+extendDefs-at false fc x ty = extendFunCtx fc x ty
+
 extendScope : CScope → String → Type → CScope
-extendScope sc x ty = cscope (CScope.csig sc) (extendFunCtx (CScope.cimps sc) x ty) (CScope.ctele sc)
+extendScope sc x ty = cscope (CScope.csig sc) (extendDefs (CScope.cimps sc) x ty) (CScope.ctele sc)
 
 -- …an FFI declaration the signature Σ (D274)…
 extendSig : CScope → String → Type → CScope

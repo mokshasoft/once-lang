@@ -44,7 +44,7 @@ open import Data.String using (_≟_)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.Parser using
   ( FunInfo; PolyFunInfo; Entry; e-fun; e-poly; funsOf; polysOf
-  ; extractFunctions; extractFunctions-go; extractAliases
+  ; extractFunctions; extractFunctions-go; extractAliases; thenExtract; sigsAdjacent; sigsFirst
   ; namesDistinct; allValidIdentB; validIdentB; validCharsB
   ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
@@ -244,6 +244,6 @@ program-no-clash (mkModule ds)
             (allValidIdentB-sound _ (∧-elimʳ guard)))
       where
         guard : (namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es))) ≡ true
-        guard = guard-true (extractFunctions-go (extractAliases (mkModule ds)) ds nothing) efeq
+        guard = guard-true (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (extractAliases (mkModule ds)) (sigsFirst ds) nothing)) efeq
         bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf es))
         bridge = ce-syms false C.emptyCScope es cfs caeq

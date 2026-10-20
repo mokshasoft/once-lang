@@ -28,7 +28,8 @@ open import Data.Maybe using (just)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using () renaming (_≟_ to _≟str_)
+open import Data.String using () renaming (_≟_ to _≟str_; _==_ to _==str_)
+open import Data.Bool using (Bool; true; false)
 import Data.String.Properties as StrProp
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
@@ -115,6 +116,12 @@ data TeleSig {Fs s} (S : Sig Fs s) : List Parser.PolyFunInfo → Set where
 wkI : ∀ {Fs s} {S : Sig Fs s} {sc : Schema} {imps} → ImpSig S imps → ImpSig (S ▷ sc) imps
 wkI []              = []
 wkI (i-def d e is)  = i-def (suc d) e (wkI is)
+
+-- A definition's entry joins the definitions' context unless it is `main`
+-- (D324, `C.extendDefs`); either way the signature grows by it.
+impDefs : ∀ {Fs s} {S : Sig Fs s} (b : Bool) {x T imps} → ImpSig S imps → ImpSig (S ▷ monoSchema T) (C.extendDefs-at b imps x T)
+impDefs true  is = wkI is
+impDefs false is = i-def zero refl (wkI is)
 
 wkT : ∀ {Fs s} {S : Sig Fs s} {sc : Schema} {ps} → TeleSig S ps → TeleSig (S ▷ sc) ps
 wkT []             = []
@@ -283,7 +290,7 @@ mutual
            → (rest : ModTele (addImp sc (funName fi) ty) es) → MainIn rest → SigIn rest S → Program Fs
   monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest mi′ u =
     toProgram (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D)
-              ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) rest mi′ u
+              ss (impDefs (funName fi ==str "main") is) (wkT ts) (monoSg sg g) rest mi′ u
 
   -- `main`: an entry like any other (D253); the program refers to it.
   monoHere : ∀ {Fs s} {S : Sig Fs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig Fs (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → TeleSig S (Scope.tele sc)
@@ -291,7 +298,7 @@ mutual
            → (rest : ModTele (addImp sc (funName fi) ty) es) → ty ≡ EffUU → SigIn rest S → Program Fs
   monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest e u =
     toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D)
-                  ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero (cong monoSchema e) rest u
+                  ss (impDefs (funName fi ==str "main") is) (wkT ts) (monoSg sg g) zero (cong monoSchema e) rest u
 
   -- The entries after `main`: the telescope goes on, `main`'s entry is weakened.
   toProgramFrom : ∀ {Fs s} {S : Sig Fs s} {sc es} → Tele S → SigSig Fs (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc) → SigCF S
@@ -303,7 +310,7 @@ mutual
                   ss (wkI is) (t-def zero refl (wkT ts)) (polySg sg pfi) (suc d) e rest u
   toProgramFrom {S = S} {sc = sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr te g D rest) u =
     toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D)
-                  ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest u
+                  ss (impDefs (funName fi ==str "main") is) (wkT ts) (monoSg sg g) (suc d) e rest u
 
 -- A typed module's core program, over the signatures it is compiled against.
 toProgram₀ : ∀ {es} (mt : ModTele emptyScope es) → MainIn mt → Program (teleSig mt)

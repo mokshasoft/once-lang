@@ -112,7 +112,6 @@ data GExpr : Set where
   -- Literals
   EUnit      : GExpr                       -- ()
   EInt       : ℕ → GExpr                   -- integer literal
-  EString    : String → GExpr              -- string literal
 
   -- Variables
   EVar       : LowerIdent → GExpr

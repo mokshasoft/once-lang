@@ -61,7 +61,6 @@ data RawExpr : Set where
   -- A decimal literal as written: integer part, fraction digits, number of
   -- fraction digits, and its source offset (used only for warnings).
   RFloat     : ℕ → ℕ → ℕ → ℕ → RawExpr
-  RStringLit : String → RawExpr
   RAnnot     : RawExpr → Type → RawExpr               -- (e : T)
   RBinOp     : BinOp → RawExpr → RawExpr → RawExpr
   RUnaryOp   : UnaryOp → RawExpr → RawExpr
@@ -129,6 +128,5 @@ data ClosedLiftShape : RawExpr → Set where
   cls-let    : ∀ {x e₁ e₂}   → ClosedLiftShape (RLet x e₁ e₂)
   cls-destr  : ∀ {s x eL y eR} → ClosedLiftShape (RDestruct s x eL y eR)
   cls-unit   :                 ClosedLiftShape RUnit
-  cls-str    : ∀ {s}         → ClosedLiftShape (RStringLit s)
   cls-annot  : ∀ {e T}       → ClosedLiftShape (RAnnot e T)
   cls-binop  : ∀ {op a b}    → ClosedLiftShape (RBinOp op a b)

@@ -149,7 +149,6 @@ private
   argStart aao-TLambda _ _ = as-lambda
   argStart aao-TInt _ _ = as-int
   argStart aao-TFloat _ _ = as-float
-  argStart aao-TString pae-str ()
   argStart (aao-word nr) _ _ = as-word (reserved-false→ nr)
 
   aparg₁ : ∀ {left toks₁ arg toks₂ e′ rest} → AppArgOk toks₁ → E.ParsesAtomExpr toks₁ arg toks₂
@@ -209,7 +208,6 @@ aptail→ (papp-arg ok da dt) em = aparg₁ ok da (aptail→ dt em)
 atom→ pae-unit e-unit = atom-unit
 atom→ pae-int e-int = atom-int
 atom→ pae-float e-float = atom-float
-atom→ pae-str ()
 atom→ (pae-var nr nq) e-var = atom-var (reserved-false→ nr) (notQual→ nq)
 atom→ (pae-qual nr) e-qual = atom-qual (reserved-false→ nr)
 atom→ (pae-paren de dc) em = paren₁ de (pcont→ dc em)

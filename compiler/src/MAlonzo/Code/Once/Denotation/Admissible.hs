@@ -70,17 +70,15 @@ d_rawIntLits_6 v0
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.Lang.Syntax.C_RFloat_56 v1 v2 v3 v4
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Lang.Syntax.C_RStringLit_58 v1
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_60 v1 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_58 v1 v2
         -> coe d_rawIntLits_6 (coe v1)
-      MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v1 v2 v3
+      MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v2)) (coe d_rawIntLits_6 (coe v3))
-      MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_64 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62 v2
         -> coe d_negLits_8 (coe v2)
-      MAlonzo.Code.Once.Lang.Syntax.C_RAna_66 v1 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RAna_64 v1 v2
         -> coe d_rawIntLits_6 (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible.negLits

@@ -17,7 +17,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Agda.Builtin.Bool
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
@@ -524,27 +523,3 @@ d_showPolyFunctor_134 v0
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (d_showPolyFunctor_134 (coe v2)) (")" :: Data.Text.Text))))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Type.purityEqBool
-d_purityEqBool_176 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 -> Bool
-d_purityEqBool_176 v0 v1
-  = let v2 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
-    coe
-      (case coe v0 of
-         MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
-           -> case coe v1 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v2
-         MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
-           -> case coe v1 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_act_36
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v2
-         MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
-           -> case coe v1 of
-                MAlonzo.Code.Once.Lang.Type.Grade.C_eff_38
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-                _ -> coe v2
-         _ -> MAlonzo.RTE.mazUnreachableError)

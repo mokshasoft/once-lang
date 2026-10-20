@@ -27,7 +27,7 @@ open G using (GExpr)
 open import Once.Lang.Syntax
 open import Once.TypeCheck.Raw
 open import Once.Grammar.ExprPrinter using
-  (ConcreteExpr; c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual;
+  (ConcreteExpr; c-e-unit; c-e-int; c-e-var; c-e-qual;
    c-e-lam; c-e-app; c-e-pair; c-e-annot; c-e-binop; c-e-unary; c-e-comp;
    c-e-let1; c-e-destr)
 
@@ -70,7 +70,6 @@ open import Once.Grammar.ParserRelation using (toType)
 gexprToRaw : ∀ {g : GExpr} → ConcreteExpr g → RawExpr
 gexprToRaw c-e-unit                   = RUnit
 gexprToRaw (c-e-int {n})              = RInt (+ n)
-gexprToRaw (c-e-string {s})           = RStringLit s
 gexprToRaw (c-e-var {name} _)         = RVar name
 gexprToRaw (c-e-qual {name} {alias} _) = RQualified name alias
 gexprToRaw (c-e-lam {x} c)            = RLam x (gexprToRaw c)

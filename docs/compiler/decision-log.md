@@ -19075,6 +19075,8 @@ one type per definition can be complete for it (an oracle hypothesis would be re
 * `Bridges.complete` becomes provable from the checker's existing completeness (`infer-complete`).
 * Plan 0.59 (oracle principality) is no longer needed for correctness; `language.md` Open item 3 closes.
 * About 4 of 153 test programs (and some Haskell specs) gain a signature.
+* The oracle (`TypeCheck.Principal`) had no other use and is deleted; the front end (`extractFunctions`,
+  `polyDefNames`, `inferType`) types a definition without a signature by synthesis alone.
 
 ## D324 — NO DEFINITION REFERS TO `main` (2026-10-20)
 

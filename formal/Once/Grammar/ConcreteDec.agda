@@ -23,14 +23,14 @@ open import Data.Product using (_,_)
 
 open import Once.Grammar as G
   using ( GExpr; GType
-        ; EUnit; EInt; EString; EVar; EQualified; ELam; EApp; EPair
+        ; EUnit; EInt; EVar; EQualified; ELam; EApp; EPair
         ; EAnnot; EBinOp; EUnaryOp; ECompose; ELet; EDestruct
         ; TUnit; TVoid; TInt; TFloat; TEff; TAct; TVar; GMu; GNu; GNuAct
         ; _⊗_; _⊕_; _⇒[_]_ )
 open import Once.Grammar.Printer using
   ( Concrete; c-unit; c-void; c-int; c-float; c-prod; c-sum; c-fun; c-eff; c-act )
 open import Once.Grammar.ExprPrinter using
-  ( ConcreteExpr; c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual
+  ( ConcreteExpr; c-e-unit; c-e-int; c-e-var; c-e-qual
   ; c-e-lam; c-e-app; c-e-pair; c-e-annot; c-e-binop; c-e-unary
   ; c-e-comp; c-e-let1; c-e-destr )
 open import Once.Parser.Expr using (isReserved)
@@ -81,7 +81,6 @@ concreteType? (GNuAct _) = nothing
 concrete? : (g : GExpr) → Maybe (ConcreteExpr g)
 concrete? EUnit       = just c-e-unit
 concrete? (EInt _)    = just c-e-int
-concrete? (EString _) = just c-e-string
 concrete? (EVar name) with isReserved name in eq
 ... | false = just (c-e-var eq)
 ... | true  = nothing

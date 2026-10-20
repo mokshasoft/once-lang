@@ -14,8 +14,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Lang.Syntax
   using ( RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt
-        ; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna
-        ; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-str
+        ; RFloat; RAnnot; RBinOp; RUnaryOp; RAna
+        ; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit
         ; cls-annot; cls-binop )
 
 -- | Decides it. The elaborator calls this on the expression it is checking, so
@@ -27,7 +27,6 @@ closedLiftShape? (RResolved _)         = just cls-res
 closedLiftShape? (RLet _ _ _)          = just cls-let
 closedLiftShape? (RDestruct _ _ _ _ _) = just cls-destr
 closedLiftShape? RUnit                 = just cls-unit
-closedLiftShape? (RStringLit _)        = just cls-str
 closedLiftShape? (RAnnot _ _)          = just cls-annot
 closedLiftShape? (RBinOp _ _ _)        = just cls-binop
 closedLiftShape? (RApp _ _)            = nothing
@@ -48,6 +47,5 @@ closedLiftShape?-just cls-res   = refl
 closedLiftShape?-just cls-let   = refl
 closedLiftShape?-just cls-destr = refl
 closedLiftShape?-just cls-unit  = refl
-closedLiftShape?-just cls-str   = refl
 closedLiftShape?-just cls-annot = refl
 closedLiftShape?-just cls-binop = refl

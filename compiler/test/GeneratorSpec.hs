@@ -85,16 +85,19 @@ inferenceTests = testGroup "type inference"
   ]
 
 ------------------------------------------------------------------------
--- D072: the former "inference limits" are lifted — the principal-type
--- oracle infers a SCHEMA for bare/composed polymorphic builtins and
--- routes the def to the telescope (each use is kernel-checked).
+-- D323: without a signature, a definition has the type its body synthesizes.
+-- A body that only checks (a bare polymorphic builtin, a composition, a
+-- lambda) has no type of its own and needs a signature.
 ------------------------------------------------------------------------
 
 inferenceLimitTests :: TestTree
-inferenceLimitTests = testGroup "inference schemas (D072: bare polymorphic builtins accepted)"
-  [ accepts "bare `id` is inferred (schema t0 -> t0)"       [ "f = id" ]
-  , accepts "bare `compose` chain is inferred"              [ "f = compose id id" ]
-  , accepts "`pair id id` is inferred"                      [ "f = pair id id" ]
+inferenceLimitTests = testGroup "no signature: the synthesized type (D323)"
+  [ rejects "bare `id` needs a signature"                   [ "f = id" ]
+  , rejects "a bare `compose` chain needs a signature"      [ "f = compose id id" ]
+  , rejects "`pair id id` needs a signature"                [ "f = pair id id" ]
+  , rejects "a lambda needs a signature"                    [ "f x = x + 1" ]
+  , accepts "an applied generator synthesizes"              [ "f = id 7" ]
+  , accepts "with a signature, a lambda is accepted"        [ "f : Int -> Int", "f x = x + 1" ]
   ]
 
 ------------------------------------------------------------------------

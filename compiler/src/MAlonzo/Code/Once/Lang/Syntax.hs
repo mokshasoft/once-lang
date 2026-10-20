@@ -49,14 +49,13 @@ data T_RawExpr_34
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34 |
     C_RUnit_52 | C_RInt_54 Integer |
     C_RFloat_56 Integer Integer Integer Integer |
-    C_RStringLit_58 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RAnnot_60 T_RawExpr_34 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
-    C_RBinOp_62 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
-    C_RUnaryOp_64 T_RawExpr_34 |
-    C_RAna_66 MAlonzo.Code.Once.Lang.Type.T_Functor_6 T_RawExpr_34
+    C_RAnnot_58 T_RawExpr_34 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
+    C_RBinOp_60 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
+    C_RUnaryOp_62 T_RawExpr_34 |
+    C_RAna_64 MAlonzo.Code.Once.Lang.Type.T_Functor_6 T_RawExpr_34
 -- Once.Lang.Syntax.isComparisonOp
-d_isComparisonOp_68 :: T_BinOp_6 -> Bool
-d_isComparisonOp_68 v0
+d_isComparisonOp_66 :: T_BinOp_6 -> Bool
+d_isComparisonOp_66 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
@@ -71,8 +70,8 @@ d_isComparisonOp_68 v0
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Syntax.isFloatArithmeticOp
-d_isFloatArithmeticOp_70 :: T_BinOp_6 -> Bool
-d_isFloatArithmeticOp_70 v0
+d_isFloatArithmeticOp_68 :: T_BinOp_6 -> Bool
+d_isFloatArithmeticOp_68 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
@@ -87,8 +86,8 @@ d_isFloatArithmeticOp_70 v0
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Syntax.isArithmeticOp
-d_isArithmeticOp_72 :: T_BinOp_6 -> Bool
-d_isArithmeticOp_72 v0
+d_isArithmeticOp_70 :: T_BinOp_6 -> Bool
+d_isArithmeticOp_70 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
@@ -103,8 +102,8 @@ d_isArithmeticOp_72 v0
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Syntax.ClosedLiftShape
-d_ClosedLiftShape_74 a0 = ()
-data T_ClosedLiftShape_74
-  = C_cls'45'var_78 | C_cls'45'qual_84 | C_cls'45'res_88 |
-    C_cls'45'let_96 | C_cls'45'destr_108 | C_cls'45'unit_110 |
-    C_cls'45'str_114 | C_cls'45'annot_120 | C_cls'45'binop_128
+d_ClosedLiftShape_72 a0 = ()
+data T_ClosedLiftShape_72
+  = C_cls'45'var_76 | C_cls'45'qual_82 | C_cls'45'res_86 |
+    C_cls'45'let_94 | C_cls'45'destr_106 | C_cls'45'unit_108 |
+    C_cls'45'annot_114 | C_cls'45'binop_122

@@ -77,7 +77,7 @@ open import Once.Lang.Core.PolyTy using (Sig)
 open import Once.Lang.Core.Telescope using (Tele; Program; runCore; program; noKinds; noVars; noResp)
 open import Once.Lang.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Lang.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
+open import Once.Lang.Core.Translate using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
 import Once.Lang.Core.Abstract as A
 import Once.Lang.Core.Translate as TR
 open import Once.Compile using (irFunOf; tableOf-go; mainCall)
@@ -180,7 +180,7 @@ from-sem tl ss is ts sg d e (ffi _ _ c h g rest) u = from-sem tl (s-ffi h g (u (
 from-sem {S = S} {sc} tl ss is ts sg d e (poly {pfi = pfi} {Ψ = Ψ} pr D rest) u =
   from-sem (TR.polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts sg D) ss (wkI is) (t-def zero refl (wkT ts)) (polySg sg pfi) (suc d) e rest u
 from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr te g D rest) u =
-  from-sem (TR.monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D) ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) (suc d) e rest u
+  from-sem (TR.monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D) ss (impDefs (funName fi Str.== "main") is) (wkT ts) (monoSg sg g) (suc d) e rest u
 
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd} (g : RigidFree EffUU)
               (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ EffUU ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ EffUU ⌋}
@@ -223,7 +223,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} g D {irFun} cf {e
             ≡ runCore fmt (monoHere {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo "main" ft bd false} {ty = EffUU}
                                     {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest refl u) Ip
     core-eq = trans (cong (λ (v : ⟦ EffUU ⟧ᵛ) → v tt) (sym core≡))
-                    (sym (from-sem tl′ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g) zero refl rest u))
+                    (sym (from-sem tl′ ss (impDefs ("main" Str.== "main") {x = "main"} {T = EffUU} is) (wkT ts) (monoSg sg g) zero refl rest u))
 
 mutual
   walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es) (mi : MainIn mt)
@@ -287,7 +287,7 @@ mutual
   -- not `main`: the entry joins the table and the telescope
   {-# CATCHALL #-}
   walk-mono-d {csc} {es} {x} {ft} {bd} {ty} g D rest {irFun} cf rest-b mi′ tl ss is ts sg pre inv u fr (no ¬q) td =
-    walk rest rest-b mi′ _ ss (i-def zero refl (wkI is)) (wkT ts) (monoSg sg g)
+    walk rest rest-b mi′ _ ss (impDefs (x Str.== "main") is) (wkT ts) (monoSg sg g)
          (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre)
          (inv-mono sg {fi = Parser.mkFunInfo x ft bd false} {ty = ty} {g = g} D {irFun = irFun} cf inv
                    (fresh-head {csc = csc} {e = Parser.e-fun (Parser.mkFunInfo x ft bd false)} {es = es} fr)) u

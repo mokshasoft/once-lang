@@ -202,16 +202,3 @@ mutual
   showPolyFunctor PId           = "Id"
   showPolyFunctor (F P⊕ G)      = "(" ++ showPolyFunctor F ++ " ⊕ " ++ showPolyFunctor G ++ ")"
   showPolyFunctor (F P⊗ G)      = "(" ++ showPolyFunctor F ++ " ⊗ " ++ showPolyFunctor G ++ ")"
-
-
-------------------------------------------------------------------------
--- Bool-valued Purity equality (the oracle's unifier, `TypeCheck.Principal`).
--- Decidable equality is `_≟p_` above.
-
-
-purityEqBool : Purity → Purity → Bool
-purityEqBool pure pure = true
-purityEqBool eff  eff  = true
-purityEqBool act  act  = true
-{-# CATCHALL #-}
-purityEqBool _    _    = false

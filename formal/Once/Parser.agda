@@ -14,6 +14,7 @@ open import Once.Lang.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
+open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_; _++_; toList)
@@ -31,7 +32,6 @@ open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Lang.Syntax using (RawExpr; RVar)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
-open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
 open import Once.Parser.Type using (isUpperWord)
@@ -310,9 +310,15 @@ extractFunctions-consPoly : EFResult → String → PolyType → RawExpr → EFR
 extractFunctions-consPoly (inj₁ err) _ _ _ = inj₁ err
 extractFunctions-consPoly (inj₂ es)  n t b = inj₂ (e-poly (mkPolyFunInfo n t b) ∷ es)
 
+-- A signature is followed by its own definition, and by nothing else (the
+-- Spec's `Walk`: `w-sig`); a signature left over is an error, never dropped.
+danglingSig : String → String
+danglingSig s = "The signature of `" ++ s ++ "` is not followed by its definition"
+
 extractFunctions-go : TypeAliasEnv → List Decl → Maybe PendingSig → EFResult
 extractFunctions-sigless : TypeAliasEnv → (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → EFResult
-extractFunctions-go aliases [] _ = inj₂ []
+extractFunctions-go aliases [] nothing = inj₂ []
+extractFunctions-go aliases [] (just (s , _)) = inj₁ (danglingSig s)
 -- Signatures are classified now: ground types get expanded eagerly;
 -- polymorphic types are carried as-is for the matching DFunDef.
 -- Plan 0.58 / D071: a ground signature routes to a monomorphic `FunInfo`
@@ -321,7 +327,8 @@ extractFunctions-go aliases [] _ = inj₂ []
 -- projection carried as a `PolyFunInfo` and δ-reduced at use sites, NOT gated by
 -- FFI concreteness. The resolver's keep-bare set (`polyDefNames`) uses the SAME
 -- `isGround`-then-`isConcrete?` criterion, so the two classifications agree.
-extractFunctions-go aliases (DTypeSig name ty ∷ rest) _ with isGround ty
+extractFunctions-go aliases (DTypeSig name ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
+extractFunctions-go aliases (DTypeSig name ty ∷ rest) nothing with isGround ty
 ... | inj₂ _  = extractFunctions-go aliases rest (just (name , inj₂ ty))
 ... | inj₁ g  with isConcrete? (extractGround ty g)
 ...   | just _  = extractFunctions-go aliases rest (just (name , inj₁ (expandAliases aliases (extractGround ty g))))
@@ -329,25 +336,15 @@ extractFunctions-go aliases (DTypeSig name ty ∷ rest) _ with isGround ty
 -- DFunDef with matching ground sig → FunInfo (user-defined; not primitive)
 extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
 ... | yes _ = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) body false)
-... | no  _ = extractFunctions-go aliases rest nothing
+... | no  _ = inj₁ (danglingSig sigName)
 -- DFunDef with matching polymorphic sig → PolyFunInfo
 extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
 ... | yes _ = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) name pty body
-... | no  _ = extractFunctions-go aliases rest nothing
--- D007: NO explicit signature → KEEP the definition (was dropped).
--- D072 M3: if the body's principal type is a SCHEMA (`siglessSchema`),
--- the def is a telescope entry (PolyFunInfo) with that schema — the
--- oracle acting as an automatic signature-writer; uses instantiate via
--- t-var-poly-instantiate and every instantiation is kernel-checked, so
--- a wrong oracle schema is a rejected use, never unsoundness. Ground or
--- unknown bodies keep the FunInfo path (type INFERRED during
--- compilation — inferElab, or the oracle's ground answers via
--- inferType, D072 M2). `polyDefNames` (Resolve) uses the SAME
--- criterion, so the keep-bare set agrees.
--- D227 amendment: `main`'s type is the language's, not an inference result —
--- `main : Eff Unit Unit` is the program's INTERFACE. A sig-less `main` is therefore
--- declared at `Eff Unit Unit` and CHECKED there, where `Void <: Unit` (D226)
--- accepts a halting body (`main = exit@S …` infers `Eff Unit Void`).
+... | no  _ = inj₁ (danglingSig sigName)
+-- D323: NO explicit signature → a monomorphic definition at the type its
+-- body SYNTHESIZES (`inferElab`, during compilation). No oracle: the
+-- definition alone decides its type. `polyDefNames` (Resolve) never keeps a
+-- sig-less definition bare, so the two classifications agree.
 extractFunctions-go aliases (DFunDef name body ∷ rest) nothing =
   extractFunctions-sigless aliases name body rest (name ≟ "main")
 -- Primitives: use RVar as placeholder body (actual impl is external).
@@ -357,25 +354,25 @@ extractFunctions-go aliases (DFunDef name body ∷ rest) nothing =
 -- resolves to this FunInfo without further wiring. Primitives must
 -- be ground; polymorphic primitive signatures are rejected by
 -- `projectSig`.
-extractFunctions-go aliases (DSignature name nothing ty ∷ rest) _ with projectSig aliases name ty
+extractFunctions-go aliases (DSignature name owner ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
+extractFunctions-go aliases (DSignature name nothing ty ∷ rest) nothing with projectSig aliases name ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) (RVar name) true)
-extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
+extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) nothing with projectSig aliases (owner ++ "." ++ name) ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  =
          let qname = owner ++ "." ++ name
          in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
 {-# CATCHALL #-}
-extractFunctions-go aliases (_ ∷ rest) pending = extractFunctions-go aliases rest pending
+extractFunctions-go aliases (_ ∷ rest) nothing = extractFunctions-go aliases rest nothing
+{-# CATCHALL #-}
+extractFunctions-go aliases (_ ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
 
--- D315: a sig-less `main` is at its INFERRED type, like any definition (the
--- compiler then uses it at `Eff Unit Unit`); it is a FunInfo, never a schema.
-extractFunctions-sigless aliases name body rest (yes _) =
+-- D315/D323: a sig-less definition, `main` included, is a FunInfo at its
+-- synthesized type (`main` is then used at `Eff Unit Unit`); never a schema.
+extractFunctions-sigless aliases name body rest _ =
   extractFunctions-consFun (extractFunctions-go aliases rest nothing)
     (mkFunInfo name nothing body false)
-extractFunctions-sigless aliases name body rest (no _) with siglessSchema body
-... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) name pty body
-... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing body false)
 
 
 -- Plan 0.50 (clash-freedom): REJECT duplicate top-level definition names. Two
@@ -450,8 +447,57 @@ guardDistinct (inj₂ es) =
                 (inj₂ es)
   where nms = emittedNames (funsOf es)
 
+-- The Spec's `Walk` (`w-sig`): a type signature is IMMEDIATELY followed by
+-- its own definition. Checked on the declarations as written, before the
+-- signatures move (`sigsFirst`), so moving them cannot make a separated
+-- signature and definition adjacent.
+sigsAdjacent : List Decl → Maybe String → String ⊎ ⊤
+sigsAdjacent []                    nothing  = inj₂ tt
+sigsAdjacent []                    (just s) = inj₁ (danglingSig s)
+sigsAdjacent (DTypeSig n _ ∷ ds)   nothing  = sigsAdjacent ds (just n)
+sigsAdjacent (DTypeSig n _ ∷ ds)   (just s) = inj₁ (danglingSig s)
+sigsAdjacent (DFunDef n _ ∷ ds)    nothing  = sigsAdjacent ds nothing
+sigsAdjacent (DFunDef n _ ∷ ds)    (just s) = sigsAdjacent-def (s ≟ n) ds
+  where
+    sigsAdjacent-def : Dec (s ≡ n) → List Decl → String ⊎ ⊤
+    sigsAdjacent-def (yes _) ds′ = sigsAdjacent ds′ nothing
+    sigsAdjacent-def (no _)  _   = inj₁ (danglingSig s)
+{-# CATCHALL #-}
+sigsAdjacent (_ ∷ ds)              nothing  = sigsAdjacent ds nothing
+{-# CATCHALL #-}
+sigsAdjacent (_ ∷ ds)              (just s) = inj₁ (danglingSig s)
+
+-- The program's signature is its own `signature` declarations, then those
+-- of its imports (the Spec's `Σ₀ ++ Σᵢ`), and every definition sees all of
+-- it: the signature entries come first, in that order.
+ownSigs : List Decl → List Decl
+ownSigs []                             = []
+ownSigs (DSignature n nothing t ∷ ds)  = DSignature n nothing t ∷ ownSigs ds
+{-# CATCHALL #-}
+ownSigs (_ ∷ ds)                       = ownSigs ds
+
+importedSigs : List Decl → List Decl
+importedSigs []                            = []
+importedSigs (DSignature n (just o) t ∷ ds) = DSignature n (just o) t ∷ importedSigs ds
+{-# CATCHALL #-}
+importedSigs (_ ∷ ds)                      = importedSigs ds
+
+nonSigs : List Decl → List Decl
+nonSigs []                       = []
+nonSigs (DSignature _ _ _ ∷ ds)  = nonSigs ds
+{-# CATCHALL #-}
+nonSigs (d ∷ ds)                 = d ∷ nonSigs ds
+
+sigsFirst : List Decl → List Decl
+sigsFirst ds = ownSigs ds ++ₗ (importedSigs ds ++ₗ nonSigs ds)
+
+thenExtract : String ⊎ ⊤ → EFResult → EFResult
+thenExtract (inj₁ err) _ = inj₁ err
+thenExtract (inj₂ _)   r = r
+
 extractFunctions : TypeAliasEnv → Module → String ⊎ List Entry
-extractFunctions aliases (mkModule ds) = guardDistinct (extractFunctions-go aliases ds nothing)
+extractFunctions aliases (mkModule ds) =
+  guardDistinct (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go aliases (sigsFirst ds) nothing))
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all
 -- removed. The eager RawExpr-level inlining pipeline is replaced by

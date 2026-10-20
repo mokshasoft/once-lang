@@ -957,15 +957,13 @@ d_classifyAppHeadView_344 v0
                -> coe C_ahv'45'other_340
              MAlonzo.Code.Once.Lang.Syntax.C_RFloat_56 v3 v4 v5 v6
                -> coe C_ahv'45'other_340
-             MAlonzo.Code.Once.Lang.Syntax.C_RStringLit_58 v3
+             MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_58 v3 v4
                -> coe C_ahv'45'other_340
-             MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_60 v3 v4
+             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v3 v4 v5
                -> coe C_ahv'45'other_340
-             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v3 v4 v5
+             MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62 v4
                -> coe C_ahv'45'other_340
-             MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_64 v4
-               -> coe C_ahv'45'other_340
-             MAlonzo.Code.Once.Lang.Syntax.C_RAna_66 v3 v4
+             MAlonzo.Code.Once.Lang.Syntax.C_RAna_64 v3 v4
                -> coe C_ahv'45'other_340
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 v1 v2
@@ -981,15 +979,13 @@ d_classifyAppHeadView_344 v0
         -> coe C_ahv'45'other_340
       MAlonzo.Code.Once.Lang.Syntax.C_RFloat_56 v1 v2 v3 v4
         -> coe C_ahv'45'other_340
-      MAlonzo.Code.Once.Lang.Syntax.C_RStringLit_58 v1
+      MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_58 v1 v2
         -> coe C_ahv'45'other_340
-      MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_60 v1 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v1 v2 v3
         -> coe C_ahv'45'other_340
-      MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v1 v2 v3
+      MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62 v2
         -> coe C_ahv'45'other_340
-      MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_64 v2
-        -> coe C_ahv'45'other_340
-      MAlonzo.Code.Once.Lang.Syntax.C_RAna_66 v1 v2
+      MAlonzo.Code.Once.Lang.Syntax.C_RAna_64 v1 v2
         -> coe C_ahv'45'other_340
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Typing.Scope.viewToPba

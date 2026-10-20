@@ -53,7 +53,7 @@ open import Once.Lang.Syntax using (RawExpr)
 open import Once.Lang.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
-  LambdaInInferMode; LambdaRequiresFunctionType; StringLiteralUnsupported;
+  LambdaInInferMode; LambdaRequiresFunctionType;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
   FstNeedsPair; SndNeedsPair;
@@ -545,7 +545,6 @@ spineOf e = go e []
     go Raw.RUnit             args = mkSpine Raw.RUnit args
     go (Raw.RInt n)          args = mkSpine (Raw.RInt n) args
     go (Raw.RFloat i f l p)    args = mkSpine (Raw.RFloat i f l p) args
-    go (Raw.RStringLit s)    args = mkSpine (Raw.RStringLit s) args
     go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
     go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
     go (Raw.RUnaryOp op x)   args = mkSpine (Raw.RUnaryOp op x) args
@@ -2317,7 +2316,6 @@ mutual
 
   inferElabV ctx (Raw.RFloat i f l p) = inferElabV-RFloat-aux ctx i f l p
 
-  inferElabV ctx (Raw.RStringLit s) = failure StringLiteralUnsupported , tt
 
   inferElabV ctx Raw.RUnit =
     success Unit _ Surface.unit 0 0 , t-unit
@@ -2471,7 +2469,7 @@ mutual
   checkElabV-wf ctx ac (Raw.RUnaryOp Raw.OpNeg e) T =
     checkElabV-neg-dispatch ctx e T (negOperandView e)
 
-  -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
+  -- Generic infer-and-match fallback — covers RInt, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified, RResolved.
   -- NB: the `with inferElabV ctx e` here is LOAD-BEARING for termination — the
   -- mutual `checkElab`↔`inferElab` same-size call (`checkElab e → inferElab e`)

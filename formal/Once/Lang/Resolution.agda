@@ -38,7 +38,7 @@ open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp;
-  RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot;
+  RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
   RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using (Module; mkModule; Decl;
   DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import)
@@ -86,49 +86,54 @@ data ExpandsTo : List String → List String → Set where
 -- A bare reference. THE four-way decision, and the whole of D136.
 ------------------------------------------------------------------------
 
-data ResolvesVar (bound : List String) (um : UnaliasedMap) : String → RawExpr → Set where
+data ResolvesVar (ps bound : List String) (um : UnaliasedMap) : String → RawExpr → Set where
 
   -- A lexical binder shadows everything, generators included.
   rv-binder : ∀ {x}
             → x ∈ bound
-            → ResolvesVar bound um x (RVar x)
+            → ResolvesVar ps bound um x (RVar x)
 
   -- A RESERVED WORD is the generator. It does not matter what else is in
   -- scope: the namespace is compiler-owned, and a definition whose name a
   -- generator has taken is reached as `name@this`.
   rv-gen : ∀ {x}
          → ¬ (x ∈ bound) → GenWord x
-         → ResolvesVar bound um x (RResolved (gen x))
+         → ResolvesVar ps bound um x (RResolved (gen x))
 
   -- Neither: an unaliased import that exports it, at that module's full path.
   rv-import : ∀ {x path path'}
             → ¬ (x ∈ bound) → ¬ GenWord x
             → FirstAt x path um → ExpandsTo path path'
-            → ResolvesVar bound um x (RResolved (canonical (path' ++ (x ∷ []))))
+            → ResolvesVar ps bound um x (RResolved (canonical (path' ++ (x ∷ []))))
 
-  -- Neither, and no import claims it: the OWN module.
+  -- Neither, and no import claims it: the OWN module — a polymorphic
+  -- definition stays bare (the elaborator's telescope), a monomorphic one is
+  -- canonical. Generators and imports come first (the Spec's order).
+  rv-own-poly : ∀ {x}
+              → ¬ (x ∈ bound) → ¬ GenWord x → Absent x um → x ∈ ps
+              → ResolvesVar ps bound um x (RVar x)
   rv-own : ∀ {x}
-         → ¬ (x ∈ bound) → ¬ GenWord x → Absent x um
-         → ResolvesVar bound um x (RResolved (canonical (x ∷ [])))
+         → ¬ (x ∈ bound) → ¬ GenWord x → Absent x um → ¬ (x ∈ ps)
+         → ResolvesVar ps bound um x (RResolved (canonical (x ∷ [])))
 
 ------------------------------------------------------------------------
 -- Expressions. Every non-reference form is a congruence; binders extend
 -- `bound`, which is the only reason this is indexed by a scope at all.
 ------------------------------------------------------------------------
 
-data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
+data ResolvesExpr (ps : List String) (um : UnaliasedMap) (am : AliasMap)
                   : List String → RawExpr → RawExpr → Set where
 
   re-var : ∀ {bound x e}
-         → ResolvesVar bound um x e
-         → ResolvesExpr um am bound (RVar x) e
+         → ResolvesVar ps bound um x e
+         → ResolvesExpr ps um am bound (RVar x) e
 
   -- D136: `name@this` is the OWN-MODULE escape hatch — how a definition whose
   -- name a generator has taken is reached. `this` is a RESERVED alias, decided
   -- before the alias table is consulted, so the other two rules must exclude
   -- it or the three would overlap.
   re-this : ∀ {bound name}
-          → ResolvesExpr um am bound (RQualified name "this")
+          → ResolvesExpr ps um am bound (RQualified name "this")
                                      (RResolved (canonical (name ∷ [])))
 
   -- `name@A` at a known alias is that module's path; at an unknown alias it is
@@ -136,63 +141,62 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
   re-qual : ∀ {bound name alias path path'}
           → alias ≢ "this"
           → FirstAt alias path am → ExpandsTo path path'
-          → ResolvesExpr um am bound (RQualified name alias)
+          → ResolvesExpr ps um am bound (RQualified name alias)
                                      (RResolved (canonical (path' ++ (name ∷ []))))
   re-qual-path : ∀ {bound name alias}
                → alias ≢ "this"
                → Absent alias am
-               → ResolvesExpr um am bound (RQualified name alias)
+               → ResolvesExpr ps um am bound (RQualified name alias)
                                           (RResolved (canonical (alias ∷ name ∷ [])))
 
   -- Already resolved: the identity. This is what makes `name@this` and every
   -- compiler-generated reference a fixed point.
-  re-res : ∀ {bound cn} → ResolvesExpr um am bound (RResolved cn) (RResolved cn)
+  re-res : ∀ {bound cn} → ResolvesExpr ps um am bound (RResolved cn) (RResolved cn)
 
   re-app : ∀ {bound f f' a a'}
-         → ResolvesExpr um am bound f f' → ResolvesExpr um am bound a a'
-         → ResolvesExpr um am bound (RApp f a) (RApp f' a')
+         → ResolvesExpr ps um am bound f f' → ResolvesExpr ps um am bound a a'
+         → ResolvesExpr ps um am bound (RApp f a) (RApp f' a')
 
   re-lam : ∀ {bound x b b'}
-         → ResolvesExpr um am (x ∷ bound) b b'
-         → ResolvesExpr um am bound (RLam x b) (RLam x b')
+         → ResolvesExpr ps um am (x ∷ bound) b b'
+         → ResolvesExpr ps um am bound (RLam x b) (RLam x b')
 
   re-let : ∀ {bound x e₁ e₁' e₂ e₂'}
-         → ResolvesExpr um am bound e₁ e₁'
-         → ResolvesExpr um am (x ∷ bound) e₂ e₂'
-         → ResolvesExpr um am bound (RLet x e₁ e₂) (RLet x e₁' e₂')
+         → ResolvesExpr ps um am bound e₁ e₁'
+         → ResolvesExpr ps um am (x ∷ bound) e₂ e₂'
+         → ResolvesExpr ps um am bound (RLet x e₁ e₂) (RLet x e₁' e₂')
 
   re-pair : ∀ {bound a a' b b'}
-          → ResolvesExpr um am bound a a' → ResolvesExpr um am bound b b'
-          → ResolvesExpr um am bound (RPair a b) (RPair a' b')
+          → ResolvesExpr ps um am bound a a' → ResolvesExpr ps um am bound b b'
+          → ResolvesExpr ps um am bound (RPair a b) (RPair a' b')
 
   re-destruct : ∀ {bound s s' xl el el' xr er er'}
-              → ResolvesExpr um am bound s s'
-              → ResolvesExpr um am (xl ∷ bound) el el'
-              → ResolvesExpr um am (xr ∷ bound) er er'
-              → ResolvesExpr um am bound (RDestruct s xl el xr er)
+              → ResolvesExpr ps um am bound s s'
+              → ResolvesExpr ps um am (xl ∷ bound) el el'
+              → ResolvesExpr ps um am (xr ∷ bound) er er'
+              → ResolvesExpr ps um am bound (RDestruct s xl el xr er)
                                          (RDestruct s' xl el' xr er')
 
   re-annot : ∀ {bound e e' t}
-           → ResolvesExpr um am bound e e'
-           → ResolvesExpr um am bound (RAnnot e t) (RAnnot e' t)
+           → ResolvesExpr ps um am bound e e'
+           → ResolvesExpr ps um am bound (RAnnot e t) (RAnnot e' t)
 
   re-binop : ∀ {bound op a a' b b'}
-           → ResolvesExpr um am bound a a' → ResolvesExpr um am bound b b'
-           → ResolvesExpr um am bound (RBinOp op a b) (RBinOp op a' b')
+           → ResolvesExpr ps um am bound a a' → ResolvesExpr ps um am bound b b'
+           → ResolvesExpr ps um am bound (RBinOp op a b) (RBinOp op a' b')
 
   re-unop : ∀ {bound op e e'}
-          → ResolvesExpr um am bound e e'
-          → ResolvesExpr um am bound (RUnaryOp op e) (RUnaryOp op e')
+          → ResolvesExpr ps um am bound e e'
+          → ResolvesExpr ps um am bound (RUnaryOp op e) (RUnaryOp op e')
 
   re-ana : ∀ {bound F c c'}
-         → ResolvesExpr um am bound c c'
-         → ResolvesExpr um am bound (RAna F c) (RAna F c')
+         → ResolvesExpr ps um am bound c c'
+         → ResolvesExpr ps um am bound (RAna F c) (RAna F c')
 
   -- Literals are fixed points.
-  re-unit  : ∀ {bound} → ResolvesExpr um am bound RUnit RUnit
-  re-int   : ∀ {bound n} → ResolvesExpr um am bound (RInt n) (RInt n)
-  re-float : ∀ {bound i f l p} → ResolvesExpr um am bound (RFloat i f l p) (RFloat i f l p)
-  re-str   : ∀ {bound s} → ResolvesExpr um am bound (RStringLit s) (RStringLit s)
+  re-unit  : ∀ {bound} → ResolvesExpr ps um am bound RUnit RUnit
+  re-int   : ∀ {bound n} → ResolvesExpr ps um am bound (RInt n) (RInt n)
+  re-float : ∀ {bound i f l p} → ResolvesExpr ps um am bound (RFloat i f l p) (RFloat i f l p)
 
 ------------------------------------------------------------------------
 -- Declarations. Only a function BODY carries references; every other form
@@ -202,7 +206,7 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
 data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
                   : Decl → Decl → Set where
   rd-fundef : ∀ {name body body'}
-            → ResolvesExpr um am polys body body'
+            → ResolvesExpr polys um am [] body body'
             → ResolvesDecl polys um am (DFunDef name body)
                                        (DFunDef name body')
   -- Signatures, aliases and imports carry no references. ENUMERATED rather

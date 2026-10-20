@@ -183,24 +183,21 @@ destructErrorTests = testGroup "destruct errors"
 -- Mode errors: check-only constructs used in inference position
 ------------------------------------------------------------------------
 
--- D072: these four were rejection tests ("check-only constructs used in
--- inference position"). The principal-type oracle now infers a SCHEMA
--- for each (bare lambda `t0 -> t0`, `inl : t0 -> t0 + t1`, `inr`,
--- `initial : Void -> t0`) and routes the def to the telescope, so they
--- are ACCEPTED — each use site instantiates the schema and is
--- kernel-checked.
+-- D323: without a signature, a definition has the type its body SYNTHESIZES.
+-- These bodies only check (a lambda takes a context; `inl`, `inr` and
+-- `initial` leave their target open), so each needs a signature.
 modeErrorTests :: TestTree
-modeErrorTests = testGroup "Inference-mode schemas (D072: accepted)"
-  [ accepts "bare lambda without a type signature"
+modeErrorTests = testGroup "Check-only bodies need a signature (D323)"
+  [ rejects "bare lambda without a type signature"
       [ "f = \\x -> x"
       ]
-  , accepts "inl with no target sum type"
+  , rejects "inl with no target sum type"
       [ "g = inl"
       ]
-  , accepts "inr with no target sum type"
+  , rejects "inr with no target sum type"
       [ "g = inr"
       ]
-  , accepts "initial with no target type"
+  , rejects "initial with no target type"
       [ "g = initial"
       ]
   ]

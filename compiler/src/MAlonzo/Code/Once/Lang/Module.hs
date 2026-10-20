@@ -102,8 +102,8 @@ d_addImp_36 v0 v1 v2
   = coe
       C_scope_20 (coe d_sig_14 (coe v0))
       (coe
-         MAlonzo.Code.Once.Compile.d_extendFunCtx_114
-         (coe d_imps_16 (coe v0)) (coe v1) (coe v2))
+         MAlonzo.Code.Once.Compile.d_extendDefs_452 (coe d_imps_16 (coe v0))
+         (coe v1) (coe v2))
       (coe d_tele_18 (coe v0))
 -- Once.Lang.Module.addPoly
 d_addPoly_44 ::
@@ -224,7 +224,7 @@ d_moduleSig_134 v0
   = coe
       d_moduleSig'45'ef_130
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_550
+         MAlonzo.Code.Once.Parser.d_extractFunctions_632
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
          (coe v0))
 -- Once.Lang.Module.ModuleTyped-ef

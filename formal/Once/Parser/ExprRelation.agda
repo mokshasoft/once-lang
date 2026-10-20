@@ -61,7 +61,7 @@ open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 
-open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
+open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
 open import Once.Parser.Token
 open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
 
@@ -180,7 +180,6 @@ data AppArgOk : List Token → Set where
   -- atom rule below. Asserting this while `parseAtomExprWF` still returned
   -- `nothing` would have claimed a parse the parser does not produce.
   aao-TFloat  : ∀ {i f l p rest} → AppArgOk (TFloat i f l p ∷ rest)
-  aao-TString : ∀ {s rest} → AppArgOk (TString s ∷ rest)
   aao-word    : ∀ {name rest} → isReserved name ≡ false
               → AppArgOk (TWord name ∷ rest)
 
@@ -449,8 +448,6 @@ mutual
     pae-float : ∀ {i f l p rest}
              → ParsesAtomExpr (TFloat i f l p ∷ rest) (RFloat i f l p) rest
 
-    pae-str  : ∀ {s rest}
-             → ParsesAtomExpr (TString s ∷ rest) (RStringLit s) rest
 
     pae-var  : ∀ {name rest}
              → isReserved name ≡ false
@@ -703,7 +700,6 @@ mutual
   ParsesAtomExpr-shrinks pae-unit      = s≤s (m≤n⇒m≤1+n ≤-refl)
   ParsesAtomExpr-shrinks pae-int       = s≤s ≤-refl
   ParsesAtomExpr-shrinks pae-float     = s≤s ≤-refl
-  ParsesAtomExpr-shrinks pae-str       = s≤s ≤-refl
   ParsesAtomExpr-shrinks (pae-var _ _) = s≤s ≤-refl
   ParsesAtomExpr-shrinks (pae-qual _)  = s≤s (m≤n⇒m≤1+n (n≤1+n _))
   ParsesAtomExpr-shrinks (pae-paren dE dC) =

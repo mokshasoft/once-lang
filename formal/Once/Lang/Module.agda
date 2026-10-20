@@ -84,8 +84,9 @@ ctxOf sc = ctxWithImportsAndPolys (topCtx (Scope.sig sc) (Scope.imps sc)) (C.bui
 addSig : Scope → String → Type → Scope
 addSig sc x ty = scope ((x , ty) ∷ Scope.sig sc) (Scope.imps sc) (Scope.tele sc)
 
+-- D324: `main` never enters the definitions' context (`C.extendDefs`).
 addImp : Scope → String → Type → Scope
-addImp sc x ty = scope (Scope.sig sc) (C.extendFunCtx (Scope.imps sc) x ty) (Scope.tele sc)
+addImp sc x ty = scope (Scope.sig sc) (C.extendDefs (Scope.imps sc) x ty) (Scope.tele sc)
 
 addPoly : Scope → Parser.PolyFunInfo → Scope
 addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)

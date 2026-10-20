@@ -146,7 +146,6 @@ parsesAtomExpr→opFails :
 parsesAtomExpr→opFails pae-unit       = refl
 parsesAtomExpr→opFails pae-int        = refl
 parsesAtomExpr→opFails pae-float      = refl
-parsesAtomExpr→opFails pae-str        = refl
 parsesAtomExpr→opFails (pae-var _ _)  = refl
 parsesAtomExpr→opFails (pae-qual _)   = refl
 parsesAtomExpr→opFails (pae-paren _ _)      = refl
@@ -416,8 +415,6 @@ private
   atail-arg rec aao-TInt (pae-int , _) IH with IH (s≤s ≤-refl)
   ... | d2 , eq2 rewrite eq2 = _ , refl
   atail-arg rec aao-TFloat (pae-float , _) IH with IH (s≤s ≤-refl)
-  ... | d2 , eq2 rewrite eq2 = _ , refl
-  atail-arg rec aao-TString (pae-str , _) IH with IH (s≤s ≤-refl)
   ... | d2 , eq2 rewrite eq2 = _ , refl
   atail-arg rec (aao-word {name = name} notR) (d1 , eq1) IH with reserved-view name
   ... | rv-reserved isR = ⊥-elim (bool-absurd isR notR)
@@ -797,7 +794,6 @@ mutual
   complete-atomExprWFraw pae-unit (acc rec) = _ , refl
   complete-atomExprWFraw pae-int _ = _ , refl
   complete-atomExprWFraw pae-float _ = _ , refl
-  complete-atomExprWFraw pae-str _ = _ , refl
 
   -- Variable: dispatch through atomExprWordWF: views for "let", "destruct",
   -- then reserved. Must show name is not "let"/"destruct" using eq.

@@ -31,7 +31,7 @@ open import Once.TypeCheck.Raw
 open import Once.Parser.Token
 open import Once.Parser.ExprRelation
 open import Once.Grammar.ExprPrinter using
-  (ConcreteExpr; c-e-unit; c-e-int; c-e-string; c-e-var; c-e-qual;
+  (ConcreteExpr; c-e-unit; c-e-int; c-e-var; c-e-qual;
    c-e-lam; c-e-app; c-e-pair; c-e-annot; c-e-binop; c-e-unary; c-e-comp;
    c-e-let1; c-e-destr; printGExpr; binOpToken)
 open import Once.Grammar.ExprConvert using
@@ -261,7 +261,6 @@ concreteExpr-AppArgOk :
   → AppArgOk (printGExpr g ++ rest)
 concreteExpr-AppArgOk c-e-unit   _ = aao-TLParen
 concreteExpr-AppArgOk c-e-int    _ = aao-TInt
-concreteExpr-AppArgOk c-e-string _ = aao-TString
 concreteExpr-AppArgOk (c-e-var  nr) _ = aao-word nr
 concreteExpr-AppArgOk (c-e-qual nr) _ = aao-word nr
 concreteExpr-AppArgOk (c-e-lam   _) _ = aao-TLParen
@@ -294,7 +293,6 @@ nqp-printGExpr :
   → NotQualPrefix (printGExpr g ++ rest)
 nqp-printGExpr c-e-unit       _ _ = nqp-TLParen
 nqp-printGExpr c-e-int        _ _ = nqp-TInt
-nqp-printGExpr c-e-string     _ _ = nqp-TString
 nqp-printGExpr (c-e-var  _)   _ _ = nqp-TWord
 nqp-printGExpr (c-e-qual _)   _ _ = nqp-TWord
 nqp-printGExpr (c-e-lam   _)  _ _ = nqp-TLParen
@@ -326,7 +324,6 @@ mutual
   -- Leaves
   rt-atom-expr c-e-unit   _ _   = pae-unit
   rt-atom-expr c-e-int    _ _   = pae-int
-  rt-atom-expr c-e-string _ _   = pae-str
   rt-atom-expr (c-e-var nr) _ nqp = pae-var nr nqp
   rt-atom-expr (c-e-qual nr) _ _  = pae-qual nr
 

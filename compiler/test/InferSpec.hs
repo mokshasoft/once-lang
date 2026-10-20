@@ -1,14 +1,13 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- | Signature-less inference, end to end (D072).
+-- | Definitions without a signature, end to end (D323).
 --
--- These programs declare definitions WITHOUT a type signature and rely on the
--- untrusted unification oracle plus the verified check to recover one. They
--- ran only in `tests/run-exit-tests.sh` until 2026-09-08, which meant they
--- were exercised on x86_64 alone, by hand, and never in `cabal test`. Ported
--- here so each runs on all three backends (x86_64 native, x86_32 / riscv64
--- under qemu) through the same `exitCases` helper as everything else.
+-- A definition without a signature has the type its body SYNTHESIZES; the
+-- definition alone decides it. These programs rely on that and run on all
+-- three backends (x86_64 native, x86_32 / riscv64 under qemu). Bodies that
+-- only check (a lambda, a bare polymorphic reference) need a signature; their
+-- rejection is tested in `GeneratorSpec`.
 module InferSpec (inferTests) where
 
 import Test.Tasty
@@ -16,10 +15,7 @@ import Test.Tasty
 import Backend.Common (exitCases)
 
 inferTests :: TestTree
-inferTests = testGroup "Inference (no signature)"
-  [ exitCases "identity, inferred (exit 0)"          "infer-id"            0
-  , exitCases "lambda, inferred (exit 5)"            "infer-lambda"        5
-  , exitCases "composition, inferred (exit 5)"       "infer-compose"       5
-  , exitCases "composition chain, inferred (exit 7)" "infer-compose-chain" 7
-  , exitCases "polymorphic alias, inferred (exit 9)" "infer-poly-alias"    9
+inferTests = testGroup "No signature: the synthesized type (D323)"
+  [ exitCases "a literal (exit 7)"                   "infer-literal"       7
+  , exitCases "an applied generator (exit 7)"        "infer-applied"       7
   ]

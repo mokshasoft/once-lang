@@ -35,7 +35,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.String using (String)
 import Data.String as Str
@@ -442,6 +442,14 @@ private
   ... | yes refl = subst (RefLinked σ (e ∷ pre) x) (just-injective lk) hr
   ... | no _     = RefLinked-mono (linkedAt-cons e pre) {y} {A} (old lk)
 
+  -- D324: a definition named `main` does not enter the context (`C.extendDefs`);
+  -- the table still grows by its compiled form.
+  imp-defs : ∀ (b : Bool) {imps : Imports} {pre : List IRFun} (x : String) (ty : Type) (e : IRFun)
+           → RefLinked σ (e ∷ pre) x ty → (∀ {y A} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
+           → ∀ {y A} → lookupImport (C.extendDefs-at b imps x ty) y ≡ just A → RefLinked σ (e ∷ pre) y A
+  imp-defs true  {pre = pre} x ty e hr old {y} {A} lk = RefLinked-mono (linkedAt-cons e pre) {y} {A} (old lk)
+  imp-defs false x ty e hr old lk = imp-cons x ty e hr old lk
+
   sig-cons : ∀ {sg : Imports} (x : String) (ty : Type) → (x , ty) ∈ σ
            → (∀ {y A} → lookupImport sg y ≡ just A → (y , A) ∈ σ)
            → ∀ {y A} → lookupImport ((x , ty) ∷ sg) y ≡ just A → (y , A) ∈ σ
@@ -467,10 +475,10 @@ linv-entry : ∀ {csc pre} (x : String) (ty : Type) (ir : IR ⌊ Unit ⌋ ⌊ ty
            → Linked σ pre (fbody (irFunOf (C.mkCompiledFun (bare x) ty ir)))
            → LInv σ csc pre → LInv σ (C.extendScope csc x ty) (irFunOf (C.mkCompiledFun (bare x) ty ir) ∷ pre)
 linv-entry {σ = σ} {csc} {pre} x ty ir g lb inv = record
-  { irf    = irf-cons {imps = C.CScope.cimps csc} {y = x} {ty = ty} g (LInv.irf inv)
+  { irf    = irf-defs (x Str.== "main") {imps = C.CScope.cimps csc} {y = x} {ty = ty} g (LInv.irf inv)
   ; irs    = LInv.irs inv
   ; iself  = LInv.iself inv
-  ; imp-ok = imp-cons x ty e (ref-entry pre x ty ir) (LInv.imp-ok inv)
+  ; imp-ok = imp-defs (x Str.== "main") x ty e (ref-entry pre x ty ir) (LInv.imp-ok inv)
   ; tel-ok = λ I ia pr → SpliceOK-mono (linkedAt-cons e pre) {polys = C.cpolys csc} {I = I} (LInv.tel-ok inv I ia pr)
   ; ent-ok = ents-cons e pre lb (LInv.ent-ok inv)
   ; sig-ok = LInv.sig-ok inv

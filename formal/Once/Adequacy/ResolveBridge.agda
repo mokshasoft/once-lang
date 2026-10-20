@@ -40,7 +40,7 @@ open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Name using (GenWord)
-open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
+open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature;
   DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
@@ -161,113 +161,117 @@ GenWord-isBuiltinName x gw with isBuiltinName x in eb
 -- THE BRIDGE, at a bare reference. Four arms, one per rule.
 ------------------------------------------------------------------------
 
-resolvesVar-sound : ∀ (bound : List String) (um : UnaliasedMap) (x : String) (e : RawExpr)
-                  → ResolvesVar bound um x e
-                  → canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x ≡ e
-resolvesVar-sound bound um x _ (rv-binder i)
+resolvesVar-sound : ∀ (ps bound : List String) (um : UnaliasedMap) (x : String) (e : RawExpr)
+                  → ResolvesVar ps bound um x e
+                  → canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) (does (x ∈? ps)) x ≡ e
+resolvesVar-sound ps bound um x _ (rv-binder i)
   rewrite dec-true (x ∈? bound) i = refl
-resolvesVar-sound bound um x _ (rv-gen ∉ gw)
+resolvesVar-sound ps bound um x _ (rv-gen ∉ gw)
   rewrite dec-false (x ∈? bound) ∉ | GenWord-isBuiltinName x gw = refl
-resolvesVar-sound bound um x _ (rv-import ∉ ¬gw fa ex)
+resolvesVar-sound ps bound um x _ (rv-import ∉ ¬gw fa ex)
   rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
         | lookupUn-complete um x _ fa | expandPath-complete _ _ ex = refl
-resolvesVar-sound bound um x _ (rv-own ∉ ¬gw ab)
+resolvesVar-sound ps bound um x _ (rv-own-poly ∉ ¬gw ab ∈ps)
   rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
-        | lookupUn-absent um x ab = refl
+        | lookupUn-absent um x ab | dec-true (x ∈? ps) ∈ps = refl
+resolvesVar-sound ps bound um x _ (rv-own ∉ ¬gw ab ∉ps)
+  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
+        | lookupUn-absent um x ab | dec-false (x ∈? ps) ∉ps = refl
 
-resolvesVar-complete : ∀ (bound : List String) (um : UnaliasedMap) (x : String)
-                     → ResolvesVar bound um x
-                         (canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x)
-resolvesVar-complete bound um x with does (x ∈? bound) in eb
+resolvesVar-complete : ∀ (ps bound : List String) (um : UnaliasedMap) (x : String)
+                     → ResolvesVar ps bound um x
+                         (canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) (does (x ∈? ps)) x)
+resolvesVar-complete ps bound um x with does (x ∈? bound) in eb
 ... | true  = rv-binder (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound))))
 ... | false with isBuiltinName x in eg
 ...   | true  = rv-gen (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-sound x eg)
 ...   | false with lookupUnaliased um x in eu
 ...     | just p  = rv-import (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
                               (lookupUn-sound um x p eu) (expandPath-sound p)
-...     | nothing = rv-own (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
-                           (lookupUn-nothing um x eu)
+...     | nothing with does (x ∈? ps) in ep
+...       | true  = rv-own-poly (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
+                                (lookupUn-nothing um x eu) (invert (subst (Reflects (x ∈ ps)) ep (proof (x ∈? ps))))
+...       | false = rv-own (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
+                           (lookupUn-nothing um x eu) (invert (subst (Reflects (x ∈ ps)) ep (proof (x ∈? ps))))
 
 ------------------------------------------------------------------------
 -- THE BRIDGE, at an expression. Congruence throughout; the two interesting
 -- leaves are `RVar` (above) and `RQualified`.
 ------------------------------------------------------------------------
 
-resolves-sound : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String)
+resolves-sound : ∀ (ps : List String) (um : UnaliasedMap) (am : AliasMap) (bound : List String)
                  (e e' : RawExpr)
-               → ResolvesExpr um am bound e e' → canonExpr bound um am e ≡ e'
-resolves-sound um am bound _ _ (re-var rv) = resolvesVar-sound bound um _ _ rv
-resolves-sound um am bound _ _ (re-this {name = n}) with "this" ≟ "this"
+               → ResolvesExpr ps um am bound e e' → canonExpr ps bound um am e ≡ e'
+resolves-sound ps um am bound _ _ (re-var rv) = resolvesVar-sound ps bound um _ _ rv
+resolves-sound ps um am bound _ _ (re-this {name = n}) with "this" ≟ "this"
 ... | yes _ = refl
 ... | no ¬e = ⊥-elim (¬e refl)
-resolves-sound um am bound _ _ (re-qual {alias = a} a≢ fa ex) with a ≟ "this"
+resolves-sound ps um am bound _ _ (re-qual {alias = a} a≢ fa ex) with a ≟ "this"
 ... | yes e = ⊥-elim (a≢ e)
 ... | no  _ rewrite lookupAl-complete am a _ fa | expandPath-complete _ _ ex = refl
-resolves-sound um am bound _ _ (re-qual-path {alias = a} a≢ ab) with a ≟ "this"
+resolves-sound ps um am bound _ _ (re-qual-path {alias = a} a≢ ab) with a ≟ "this"
 ... | yes e = ⊥-elim (a≢ e)
 ... | no  _ rewrite lookupAl-absent am a ab = refl
-resolves-sound um am bound _ _ re-res = refl
-resolves-sound um am bound _ _ (re-app rf ra) =
-  cong₂ RApp (resolves-sound um am bound _ _ rf) (resolves-sound um am bound _ _ ra)
-resolves-sound um am bound _ _ (re-lam {x = x} rb) =
-  cong (RLam x) (resolves-sound um am (x ∷ bound) _ _ rb)
-resolves-sound um am bound _ _ (re-let {x = x} r₁ r₂) =
-  cong₂ (RLet x) (resolves-sound um am bound _ _ r₁)
-                 (resolves-sound um am (x ∷ bound) _ _ r₂)
-resolves-sound um am bound _ _ (re-pair ra rb) =
-  cong₂ RPair (resolves-sound um am bound _ _ ra) (resolves-sound um am bound _ _ rb)
-resolves-sound um am bound _ _ (re-destruct {xl = xl} {xr = xr} rs rl rr) =
+resolves-sound ps um am bound _ _ re-res = refl
+resolves-sound ps um am bound _ _ (re-app rf ra) =
+  cong₂ RApp (resolves-sound ps um am bound _ _ rf) (resolves-sound ps um am bound _ _ ra)
+resolves-sound ps um am bound _ _ (re-lam {x = x} rb) =
+  cong (RLam x) (resolves-sound ps um am (x ∷ bound) _ _ rb)
+resolves-sound ps um am bound _ _ (re-let {x = x} r₁ r₂) =
+  cong₂ (RLet x) (resolves-sound ps um am bound _ _ r₁)
+                 (resolves-sound ps um am (x ∷ bound) _ _ r₂)
+resolves-sound ps um am bound _ _ (re-pair ra rb) =
+  cong₂ RPair (resolves-sound ps um am bound _ _ ra) (resolves-sound ps um am bound _ _ rb)
+resolves-sound ps um am bound _ _ (re-destruct {xl = xl} {xr = xr} rs rl rr) =
   cong₃ (λ a b c → RDestruct a xl b xr c)
-        (resolves-sound um am bound _ _ rs)
-        (resolves-sound um am (xl ∷ bound) _ _ rl)
-        (resolves-sound um am (xr ∷ bound) _ _ rr)
+        (resolves-sound ps um am bound _ _ rs)
+        (resolves-sound ps um am (xl ∷ bound) _ _ rl)
+        (resolves-sound ps um am (xr ∷ bound) _ _ rr)
   where
     cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a' b b' c c'}
           → a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
     cong₃ f refl refl refl = refl
-resolves-sound um am bound _ _ (re-annot {t = t} r) =
-  cong (λ z → RAnnot z t) (resolves-sound um am bound _ _ r)
-resolves-sound um am bound _ _ (re-binop {op = op} ra rb) =
-  cong₂ (RBinOp op) (resolves-sound um am bound _ _ ra) (resolves-sound um am bound _ _ rb)
-resolves-sound um am bound _ _ (re-unop {op = op} r) =
-  cong (RUnaryOp op) (resolves-sound um am bound _ _ r)
-resolves-sound um am bound _ _ (re-ana {F = F} r) =
-  cong (RAna F) (resolves-sound um am bound _ _ r)
-resolves-sound um am bound _ _ re-unit  = refl
-resolves-sound um am bound _ _ re-int   = refl
-resolves-sound um am bound _ _ re-float = refl
-resolves-sound um am bound _ _ re-str   = refl
+resolves-sound ps um am bound _ _ (re-annot {t = t} r) =
+  cong (λ z → RAnnot z t) (resolves-sound ps um am bound _ _ r)
+resolves-sound ps um am bound _ _ (re-binop {op = op} ra rb) =
+  cong₂ (RBinOp op) (resolves-sound ps um am bound _ _ ra) (resolves-sound ps um am bound _ _ rb)
+resolves-sound ps um am bound _ _ (re-unop {op = op} r) =
+  cong (RUnaryOp op) (resolves-sound ps um am bound _ _ r)
+resolves-sound ps um am bound _ _ (re-ana {F = F} r) =
+  cong (RAna F) (resolves-sound ps um am bound _ _ r)
+resolves-sound ps um am bound _ _ re-unit  = refl
+resolves-sound ps um am bound _ _ re-int   = refl
+resolves-sound ps um am bound _ _ re-float = refl
 
-resolves-complete : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String)
+resolves-complete : ∀ (ps : List String) (um : UnaliasedMap) (am : AliasMap) (bound : List String)
                     (e : RawExpr)
-                  → ResolvesExpr um am bound e (canonExpr bound um am e)
-resolves-complete um am bound (RVar x) = re-var (resolvesVar-complete bound um x)
-resolves-complete um am bound (RQualified n a) with a ≟ "this"
+                  → ResolvesExpr ps um am bound e (canonExpr ps bound um am e)
+resolves-complete ps um am bound (RVar x) = re-var (resolvesVar-complete ps bound um x)
+resolves-complete ps um am bound (RQualified n a) with a ≟ "this"
 ... | yes refl = re-this
 ... | no a≢ with lookupImportAlias am a in ea
 ...   | just p  = re-qual a≢ (lookupAl-sound am a p ea) (expandPath-sound p)
 ...   | nothing = re-qual-path a≢ (lookupAl-nothing am a ea)
-resolves-complete um am bound (RResolved cn) = re-res
-resolves-complete um am bound (RApp f a) =
-  re-app (resolves-complete um am bound f) (resolves-complete um am bound a)
-resolves-complete um am bound (RLam x b) = re-lam (resolves-complete um am (x ∷ bound) b)
-resolves-complete um am bound (RLet x e₁ e₂) =
-  re-let (resolves-complete um am bound e₁) (resolves-complete um am (x ∷ bound) e₂)
-resolves-complete um am bound (RPair a b) =
-  re-pair (resolves-complete um am bound a) (resolves-complete um am bound b)
-resolves-complete um am bound (RDestruct s xl el xr er) =
-  re-destruct (resolves-complete um am bound s)
-              (resolves-complete um am (xl ∷ bound) el)
-              (resolves-complete um am (xr ∷ bound) er)
-resolves-complete um am bound (RAnnot e t) = re-annot (resolves-complete um am bound e)
-resolves-complete um am bound (RBinOp op a b) =
-  re-binop (resolves-complete um am bound a) (resolves-complete um am bound b)
-resolves-complete um am bound (RUnaryOp op e) = re-unop (resolves-complete um am bound e)
-resolves-complete um am bound (RAna F c) = re-ana (resolves-complete um am bound c)
-resolves-complete um am bound RUnit           = re-unit
-resolves-complete um am bound (RInt n)        = re-int
-resolves-complete um am bound (RFloat i f l p) = re-float
-resolves-complete um am bound (RStringLit s)  = re-str
+resolves-complete ps um am bound (RResolved cn) = re-res
+resolves-complete ps um am bound (RApp f a) =
+  re-app (resolves-complete ps um am bound f) (resolves-complete ps um am bound a)
+resolves-complete ps um am bound (RLam x b) = re-lam (resolves-complete ps um am (x ∷ bound) b)
+resolves-complete ps um am bound (RLet x e₁ e₂) =
+  re-let (resolves-complete ps um am bound e₁) (resolves-complete ps um am (x ∷ bound) e₂)
+resolves-complete ps um am bound (RPair a b) =
+  re-pair (resolves-complete ps um am bound a) (resolves-complete ps um am bound b)
+resolves-complete ps um am bound (RDestruct s xl el xr er) =
+  re-destruct (resolves-complete ps um am bound s)
+              (resolves-complete ps um am (xl ∷ bound) el)
+              (resolves-complete ps um am (xr ∷ bound) er)
+resolves-complete ps um am bound (RAnnot e t) = re-annot (resolves-complete ps um am bound e)
+resolves-complete ps um am bound (RBinOp op a b) =
+  re-binop (resolves-complete ps um am bound a) (resolves-complete ps um am bound b)
+resolves-complete ps um am bound (RUnaryOp op e) = re-unop (resolves-complete ps um am bound e)
+resolves-complete ps um am bound (RAna F c) = re-ana (resolves-complete ps um am bound c)
+resolves-complete ps um am bound RUnit           = re-unit
+resolves-complete ps um am bound (RInt n)        = re-int
+resolves-complete ps um am bound (RFloat i f l p) = re-float
 
 ------------------------------------------------------------------------
 -- THE BRIDGE, at a declaration. Only a function body carries references.
@@ -277,7 +281,7 @@ resolvesDecl-sound : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMa
                      (d d' : Decl)
                    → ResolvesDecl polys um am d d' → canonDecl polys um am d ≡ d'
 resolvesDecl-sound polys um am _ _ (rd-fundef {name = n} rb) =
-  cong (DFunDef n) (resolves-sound um am polys _ _ rb)
+  cong (DFunDef n) (resolves-sound polys um am [] _ _ rb)
 resolvesDecl-sound polys um am _ _ rd-typesig   = refl
 resolvesDecl-sound polys um am _ _ rd-signature = refl
 resolvesDecl-sound polys um am _ _ rd-typealias = refl
@@ -287,7 +291,7 @@ resolvesDecl-complete : ∀ (polys : List String) (um : UnaliasedMap) (am : Alia
                         (d : Decl)
                       → ResolvesDecl polys um am d (canonDecl polys um am d)
 resolvesDecl-complete polys um am (DFunDef n b) =
-  rd-fundef (resolves-complete um am polys b)
+  rd-fundef (resolves-complete polys um am [] b)
 resolvesDecl-complete polys um am (DTypeSig n t)      = rd-typesig
 resolvesDecl-complete polys um am (DSignature n o t) = rd-signature
 resolvesDecl-complete polys um am (DTypeAlias n ps t) = rd-typealias

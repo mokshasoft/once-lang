@@ -63,48 +63,47 @@ data T_UnaryOp_76 = C_OpNeg_78
 d_GExpr_80 = ()
 data T_GExpr_80
   = C_EUnit_82 | C_EInt_84 Integer |
-    C_EString_86 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_EVar_88 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_EQualified_90 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_EVar_86 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_EQualified_88 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_ELam_92 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_80 |
-    C_EApp_94 T_GExpr_80 T_GExpr_80 |
-    C_EPair_96 T_GExpr_80 T_GExpr_80 |
-    C_ELet_98 [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] T_GExpr_80 |
-    C_EDestruct_100 T_GExpr_80
-                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_80
-                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_80 |
-    C_EBinOp_102 T_BinOp_52 T_GExpr_80 T_GExpr_80 |
-    C_EUnaryOp_104 T_GExpr_80 | C_ECompose_106 T_GExpr_80 T_GExpr_80 |
-    C_EAnnot_108 T_GExpr_80 T_GType_8
+    C_ELam_90 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_80 |
+    C_EApp_92 T_GExpr_80 T_GExpr_80 |
+    C_EPair_94 T_GExpr_80 T_GExpr_80 |
+    C_ELet_96 [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] T_GExpr_80 |
+    C_EDestruct_98 T_GExpr_80
+                   MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_80
+                   MAlonzo.Code.Agda.Builtin.String.T_String_6 T_GExpr_80 |
+    C_EBinOp_100 T_BinOp_52 T_GExpr_80 T_GExpr_80 |
+    C_EUnaryOp_102 T_GExpr_80 | C_ECompose_104 T_GExpr_80 T_GExpr_80 |
+    C_EAnnot_106 T_GExpr_80 T_GType_8
 -- Once.Grammar.ModulePath
-d_ModulePath_110 :: ()
-d_ModulePath_110 = erased
+d_ModulePath_108 :: ()
+d_ModulePath_108 = erased
 -- Once.Grammar.GDecl
-d_GDecl_112 = ()
-data T_GDecl_112
-  = C_DTypeSig_114 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_GDecl_110 = ()
+data T_GDecl_110
+  = C_DTypeSig_112 MAlonzo.Code.Agda.Builtin.String.T_String_6
                    T_GType_8 |
-    C_DFunDef_116 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DFunDef_114 MAlonzo.Code.Agda.Builtin.String.T_String_6
                   [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GExpr_80 |
-    C_DSignature_118 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DSignature_116 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      T_GType_8 |
-    C_DTypeAlias_120 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DTypeAlias_118 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GType_8 |
-    C_DImport_122 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+    C_DImport_120 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
 -- Once.Grammar.GModule
-d_GModule_124 = ()
-newtype T_GModule_124 = C_mkGModule_130 [T_GDecl_112]
+d_GModule_122 = ()
+newtype T_GModule_122 = C_mkGModule_128 [T_GDecl_110]
 -- Once.Grammar.GModule.decls
-d_decls_128 :: T_GModule_124 -> [T_GDecl_112]
-d_decls_128 v0
+d_decls_126 :: T_GModule_122 -> [T_GDecl_110]
+d_decls_126 v0
   = case coe v0 of
-      C_mkGModule_130 v1 -> coe v1
+      C_mkGModule_128 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ValidDeclPair
-d_ValidDeclPair_132 a0 a1 = ()
-data T_ValidDeclPair_132 = C_validPair_142
+d_ValidDeclPair_130 a0 a1 = ()
+data T_ValidDeclPair_130 = C_validPair_140
 -- Once.Grammar.ValidMainType
-d_ValidMainType_144 a0 = ()
-data T_ValidMainType_144 = C_validMain_148
+d_ValidMainType_142 a0 = ()
+data T_ValidMainType_142 = C_validMain_146

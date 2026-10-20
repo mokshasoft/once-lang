@@ -171,7 +171,7 @@ du_impEnv_82 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.Adequacy.CoreMeaningBridge.du_refSem_100 (coe v0)
                        (coe v6)
-                       (coe MAlonzo.Code.Once.Lang.Core.Translate.du_mono'45'inst_256))
+                       (coe MAlonzo.Code.Once.Lang.Core.Translate.du_mono'45'inst_276))
                     (coe du_impEnv_82 (coe v0) (coe v10) (coe v8))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -204,7 +204,7 @@ du_defEnv_92 v0 v1 v2
                             MAlonzo.Code.Once.Adequacy.CoreMeaningBridge.du_refSem_100 (coe v0)
                             (coe v5)
                             (coe
-                               MAlonzo.Code.Once.Lang.Core.Translate.du_poly'45'inst_274
+                               MAlonzo.Code.Once.Lang.Core.Translate.du_poly'45'inst_294
                                (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v8)) (coe v11))))
                     (coe du_defEnv_92 (coe v0) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -279,7 +279,7 @@ du_envOf_306 v0 v1 v2 v3 v4 v5 v6 v7
          (\ v8 v9 v10 ->
             MAlonzo.Code.Once.Lang.Elaboration.d_member_486
               (coe
-                 MAlonzo.Code.Once.Lang.Core.Translate.du_sigAt_376 (coe v2)
+                 MAlonzo.Code.Once.Lang.Core.Translate.du_sigAt_396 (coe v2)
                  (coe v5)
                  (coe MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v8)))))
 -- Once.Adequacy.CoreEnv._.agree

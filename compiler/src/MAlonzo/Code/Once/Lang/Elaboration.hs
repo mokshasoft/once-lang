@@ -1618,7 +1618,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'annot_112 v13 v14
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_60 v15 v16
+             MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_58 v15 v16
                -> coe
                     d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3) (coe v15)
                     (coe v5) (coe v6) (coe v7) (coe v14)
@@ -1645,7 +1645,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'neg_136 v12
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_64 v14
+             MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62 v14
                -> coe
                     du_lift1_664
                     (coe
@@ -1660,7 +1660,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'neg'45'float_148
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_64 v15
+             MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62 v15
                -> case coe v15 of
                     MAlonzo.Code.Once.Lang.Syntax.C_RFloat_56 v16 v17 v18 v19
                       -> coe
@@ -1878,7 +1878,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith_216 v13 v14 v16 v17
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v18 v19 v20
+             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v18 v19 v20
                -> case coe v18 of
                     MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
                       -> coe
@@ -1944,7 +1944,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float_230 v13 v14 v16 v17
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v18 v19 v20
+             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v18 v19 v20
                -> case coe v18 of
                     MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
                       -> coe
@@ -1998,7 +1998,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float'45'il_244 v13 v14 v16 v17
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v18 v19 v20
+             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v18 v19 v20
                -> case coe v18 of
                     MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
                       -> coe
@@ -2060,7 +2060,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'arith'45'float'45'ir_258 v13 v14 v16 v17
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v18 v19 v20
+             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v18 v19 v20
                -> case coe v18 of
                     MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8
                       -> coe
@@ -2122,7 +2122,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'binop'45'cmp_272 v13 v14 v16 v17
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_62 v18 v19 v20
+             MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60 v18 v19 v20
                -> case coe v18 of
                     MAlonzo.Code.Once.Lang.Syntax.C_OpLt_18
                       -> coe

@@ -49,10 +49,9 @@ open import Once.Lang.Type.Poly using (extractGround)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
-open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.CanonicalName using (genWord?)
-open import Once.Lang.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-str; cls-annot; cls-binop)
+open import Once.Lang.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
 
 ------------------------------------------------------------------------
 -- ModuleMap: path → resolved Module
@@ -187,10 +186,10 @@ isBuiltinName-false x eq = toWitnessFalse (subst (λ b → T (not b)) (sym eq) t
 -- absent) → "unbound/unspecialized". So these names must stay bare `RVar` — they
 -- are threaded into `canonExpr`'s initial `bound`, kept by the SAME dispatch as
 -- local binders. See tests/poly-bare-ref.once.
--- D072 M3: `polyDefNames` now threads the same pending-signature state
--- as `extractFunctions-go` so it can recognize SIG-LESS defs and apply
--- the oracle's `siglessSchema` criterion to them — the keep-bare set
--- and the FunInfo/PolyFunInfo routing must agree exactly.
+-- `polyDefNames` threads the same pending-signature state as
+-- `extractFunctions-go`; a SIG-LESS def is never kept bare (D323: it is
+-- monomorphic, at its synthesized type) — the keep-bare set and the
+-- FunInfo/PolyFunInfo routing agree exactly.
 pdn-go : List Decl → Maybe String → List String
 pdn-sigless : (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → List String
 pdn-go [] _ = []
@@ -205,21 +204,17 @@ pdn-go (DTypeSig name ty ∷ rest) _       with isGround ty
 ...   | just _  = pdn-go rest (just name)               -- ground + concrete → mono (resolved as usual)
 ...   | nothing = name ∷ pdn-go rest (just name)        -- ground + non-concrete → keep bare
 -- A DFunDef consumes (or drops, on name mismatch) the pending sig —
--- mirroring `extractFunctions-go`. Sig-less + schema-shaped body
--- (D072): keep bare (it routes to PolyFunInfo).
+-- mirroring `extractFunctions-go`.
 pdn-go (DFunDef name body ∷ rest) (just _) = pdn-go rest nothing
--- D315: a sig-less `main` is a FunInfo at its inferred type, so it
--- is never kept bare — mirroring `extractFunctions-sigless`.
+-- D323: a sig-less def is a FunInfo at its synthesized type, never kept
+-- bare — mirroring `extractFunctions-sigless`.
 pdn-go (DFunDef name body ∷ rest) nothing = pdn-sigless name body rest (name ≟ "main")
 -- A DSignature resets the pending (mirror of `extractFunctions-go`).
 pdn-go (DSignature name owner ty ∷ rest) _ = pdn-go rest nothing
 {-# CATCHALL #-}
 pdn-go (_ ∷ rest) pending                = pdn-go rest pending
 
-pdn-sigless name body rest (yes _) = pdn-go rest nothing
-pdn-sigless name body rest (no _) with siglessSchema body
-... | just _  = name ∷ pdn-go rest nothing
-... | nothing = pdn-go rest nothing
+pdn-sigless name body rest _ = pdn-go rest nothing
 
 polyDefNames : List Decl → List String
 polyDefNames ds = pdn-go ds nothing
@@ -254,97 +249,100 @@ expandPath (c ∷ rest) with c ≟ "I"
 -- a GENERATOR name is the generator, whatever else is in scope; and only a
 -- non-generator falls through to import / own-module resolution. A definition
 -- whose name a generator has taken is reached as `name@this`.
-canonVar : Bool → Bool → Maybe (List String) → String → RawExpr
-canonVar true  _     _           x = RVar x                                             -- lexical binder shadows
-canonVar false true  _           x = RResolved (gen x)                                  -- a GENERATOR
-canonVar false false (just path) x = RResolved (canonical (expandPath path ++L (x ∷ []))) -- unaliased import: full path
-canonVar false false nothing     x = RResolved (canonical (x ∷ []))                     -- own-module ref
+-- The own module's POLYMORPHIC definitions come last, after generators and
+-- imports (the Spec's order, `rn-gen`/`rn-import`/`rn-own`), and stay bare: the
+-- elaborator reaches them in its telescope, not the import table.
+canonVar : Bool → Bool → Maybe (List String) → Bool → String → RawExpr
+canonVar true  _     _           _     x = RVar x                                             -- lexical binder shadows
+canonVar false true  _           _     x = RResolved (gen x)                                  -- a GENERATOR
+canonVar false false (just path) _     x = RResolved (canonical (expandPath path ++L (x ∷ []))) -- unaliased import: full path
+canonVar false false nothing     true  x = RVar x                                             -- own polymorphic def: bare
+canonVar false false nothing     false x = RResolved (canonical (x ∷ []))                     -- own-module ref
 
 -- | Rewrite `RQualified` (via alias map) and bare top-level `RVar` refs to
 -- `RResolved`; recurse structurally, threading the bound-variable set `bound`
--- (lambda/let/destruct binders) so LOCALS are never canonicalized. `um` carries
--- unaliased-import name→path for full-path resolution.
-canonExpr : List String → UnaliasedMap → AliasMap → RawExpr → RawExpr
+-- (lambda/let/destruct binders) so LOCALS are never canonicalized. `ps` names
+-- the own module's polymorphic definitions (kept bare, after generators and
+-- imports). `um` carries unaliased-import name→path for full-path resolution.
+canonExpr : List String → List String → UnaliasedMap → AliasMap → RawExpr → RawExpr
 -- D136: `name@this` reaches the OWN module — the escape hatch for a definition
 -- whose name a generator has taken. `this` is a RESERVED alias and is decided
 -- BEFORE the alias table, so an `import … as this` cannot capture it.
-canonExpr bound um am (RQualified name alias) with alias ≟ "this"
+canonExpr ps bound um am (RQualified name alias) with alias ≟ "this"
 ... | yes _ = RResolved (canonical (name ∷ []))
 ... | no  _ with lookupImportAlias am alias
 ...   | just path = RResolved (canonical (expandPath path ++L (name ∷ [])))
 ...   | nothing   = RResolved (canonical (alias ∷ name ∷ []))   -- an unknown alias is a path of one component
-canonExpr bound um am (RVar x)            = canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x
-canonExpr bound um am (RResolved cn)      = RResolved cn
-canonExpr bound um am (RApp f x)          = RApp (canonExpr bound um am f) (canonExpr bound um am x)
-canonExpr bound um am (RLam x b)          = RLam x (canonExpr (x ∷ bound) um am b)
-canonExpr bound um am (RLet x e₁ e₂)      = RLet x (canonExpr bound um am e₁) (canonExpr (x ∷ bound) um am e₂)
-canonExpr bound um am (RPair a b)         = RPair (canonExpr bound um am a) (canonExpr bound um am b)
-canonExpr bound um am (RDestruct s xl el xr er) =
-  RDestruct (canonExpr bound um am s) xl (canonExpr (xl ∷ bound) um am el) xr (canonExpr (xr ∷ bound) um am er)
-canonExpr bound um am RUnit               = RUnit
-canonExpr bound um am (RInt n)            = RInt n
-canonExpr bound um am (RFloat i f l p)    = RFloat i f l p
-canonExpr bound um am (RStringLit s)      = RStringLit s
-canonExpr bound um am (RAnnot e t)        = RAnnot (canonExpr bound um am e) t
-canonExpr bound um am (RBinOp op a b)     = RBinOp op (canonExpr bound um am a) (canonExpr bound um am b)
-canonExpr bound um am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound um am e)
-canonExpr bound um am (RAna F c)          = RAna F (canonExpr bound um am c)
+canonExpr ps bound um am (RVar x)            = canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) (does (x ∈? ps)) x
+canonExpr ps bound um am (RResolved cn)      = RResolved cn
+canonExpr ps bound um am (RApp f x)          = RApp (canonExpr ps bound um am f) (canonExpr ps bound um am x)
+canonExpr ps bound um am (RLam x b)          = RLam x (canonExpr ps (x ∷ bound) um am b)
+canonExpr ps bound um am (RLet x e₁ e₂)      = RLet x (canonExpr ps bound um am e₁) (canonExpr ps (x ∷ bound) um am e₂)
+canonExpr ps bound um am (RPair a b)         = RPair (canonExpr ps bound um am a) (canonExpr ps bound um am b)
+canonExpr ps bound um am (RDestruct s xl el xr er) =
+  RDestruct (canonExpr ps bound um am s) xl (canonExpr ps (xl ∷ bound) um am el) xr (canonExpr ps (xr ∷ bound) um am er)
+canonExpr ps bound um am RUnit               = RUnit
+canonExpr ps bound um am (RInt n)            = RInt n
+canonExpr ps bound um am (RFloat i f l p)    = RFloat i f l p
+canonExpr ps bound um am (RAnnot e t)        = RAnnot (canonExpr ps bound um am e) t
+canonExpr ps bound um am (RBinOp op a b)     = RBinOp op (canonExpr ps bound um am a) (canonExpr ps bound um am b)
+canonExpr ps bound um am (RUnaryOp op e)     = RUnaryOp op (canonExpr ps bound um am e)
+canonExpr ps bound um am (RAna F c)          = RAna F (canonExpr ps bound um am c)
 
 -- | D126: resolution PRESERVES the closed-lift side condition. It has to —
 -- otherwise a derivation using the lift would not survive `canonExpr`. The two
 -- shape-CHANGING cases are the interesting ones, and both land back in the set:
 -- a bare `RVar` becomes `RResolved` (or stays), and `RQualified` always
 -- becomes `RResolved`.
-cls-canon : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
+cls-canon : ∀ (ps bound : List String) (um : UnaliasedMap) (am : AliasMap)
               {e : RawExpr}
-          → ClosedLiftShape e → ClosedLiftShape (canonExpr bound um am e)
-cls-canon bound um am (cls-var {x = x})
-  with does (x ∈? bound) | isBuiltinName x | lookupUnaliased um x
-... | true  | _     | _       = cls-var
-... | false | true  | _       = cls-res
-... | false | false | just _  = cls-res
-... | false | false | nothing = cls-res
-cls-canon bound um am (cls-qual {a = alias}) with alias ≟ "this"
+          → ClosedLiftShape e → ClosedLiftShape (canonExpr ps bound um am e)
+cls-canon ps bound um am (cls-var {x = x})
+  with does (x ∈? bound) | isBuiltinName x | lookupUnaliased um x | does (x ∈? ps)
+... | true  | _     | _       | _     = cls-var
+... | false | true  | _       | _     = cls-res
+... | false | false | just _  | _     = cls-res
+... | false | false | nothing | true  = cls-var
+... | false | false | nothing | false = cls-res
+cls-canon ps bound um am (cls-qual {a = alias}) with alias ≟ "this"
 ... | yes _ = cls-res
 ... | no  _ with lookupImportAlias am alias
 ...   | just _  = cls-res
 ...   | nothing = cls-res
-cls-canon bound um am cls-res   = cls-res
-cls-canon bound um am cls-let   = cls-let
-cls-canon bound um am cls-destr = cls-destr
-cls-canon bound um am cls-unit  = cls-unit
-cls-canon bound um am cls-str   = cls-str
-cls-canon bound um am cls-annot = cls-annot
-cls-canon bound um am cls-binop = cls-binop
+cls-canon ps bound um am cls-res   = cls-res
+cls-canon ps bound um am cls-let   = cls-let
+cls-canon ps bound um am cls-destr = cls-destr
+cls-canon ps bound um am cls-unit  = cls-unit
+cls-canon ps bound um am cls-annot = cls-annot
+cls-canon ps bound um am cls-binop = cls-binop
 
 -- | …and REFLECTS it: `canonExpr` never turns a check-directed shape into a
 -- liftable one, so the seven non-liftable shapes are absurd on the left.
-cls-reflect : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
+cls-reflect : ∀ (ps bound : List String) (um : UnaliasedMap) (am : AliasMap)
                 (e : RawExpr)
-            → ClosedLiftShape (canonExpr bound um am e) → ClosedLiftShape e
-cls-reflect bound um am (RVar _) _              = cls-var
-cls-reflect bound um am (RQualified _ _) _      = cls-qual
-cls-reflect bound um am (RResolved _) _         = cls-res
-cls-reflect bound um am (RLet _ _ _) _          = cls-let
-cls-reflect bound um am (RDestruct _ _ _ _ _) _ = cls-destr
-cls-reflect bound um am RUnit _                 = cls-unit
-cls-reflect bound um am (RStringLit _) _        = cls-str
-cls-reflect bound um am (RAnnot _ _) _          = cls-annot
-cls-reflect bound um am (RBinOp _ _ _) _        = cls-binop
-cls-reflect bound um am (RApp _ _) ()
-cls-reflect bound um am (RLam _ _) ()
-cls-reflect bound um am (RPair _ _) ()
-cls-reflect bound um am (RInt _) ()
-cls-reflect bound um am (RFloat _ _ _ _) ()
-cls-reflect bound um am (RUnaryOp _ _) ()
-cls-reflect bound um am (RAna _ _) ()
+            → ClosedLiftShape (canonExpr ps bound um am e) → ClosedLiftShape e
+cls-reflect ps bound um am (RVar _) _              = cls-var
+cls-reflect ps bound um am (RQualified _ _) _      = cls-qual
+cls-reflect ps bound um am (RResolved _) _         = cls-res
+cls-reflect ps bound um am (RLet _ _ _) _          = cls-let
+cls-reflect ps bound um am (RDestruct _ _ _ _ _) _ = cls-destr
+cls-reflect ps bound um am RUnit _                 = cls-unit
+cls-reflect ps bound um am (RAnnot _ _) _          = cls-annot
+cls-reflect ps bound um am (RBinOp _ _ _) _        = cls-binop
+cls-reflect ps bound um am (RApp _ _) ()
+cls-reflect ps bound um am (RLam _ _) ()
+cls-reflect ps bound um am (RPair _ _) ()
+cls-reflect ps bound um am (RInt _) ()
+cls-reflect ps bound um am (RFloat _ _ _ _) ()
+cls-reflect ps bound um am (RUnaryOp _ _) ()
+cls-reflect ps bound um am (RAna _ _) ()
 
 -- | Apply `canonExpr` to a decl's function body; everything else is untouched
 -- (signatures/imports/type-aliases carry no expression refs). The initial bound
 -- set is `polys` — the own-module polymorphic-def names — so bare references to
 -- them are KEPT as `RVar` (taking `t-var-poly-instantiate`), never canonicalized.
 canonDecl : List String → UnaliasedMap → AliasMap → Decl → Decl
-canonDecl polys um am (DFunDef name body) = DFunDef name (canonExpr polys um am body)
+canonDecl polys um am (DFunDef name body) = DFunDef name (canonExpr polys [] um am body)
 {-# CATCHALL #-}
 canonDecl polys um am d                         = d
 

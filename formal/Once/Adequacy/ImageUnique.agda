@@ -478,7 +478,7 @@ table-names (mkModule ds) with Parser.extractFunctions (Parser.extractAliases (m
         ; valid = allValidIdentB-sound _ (∧-elimʳ guard)
         }
   where
-    guard = guard-true (extractFunctions-go (Parser.extractAliases (mkModule ds)) ds nothing) efeq
+    guard = guard-true (Parser.thenExtract (Parser.sigsAdjacent ds nothing) (extractFunctions-go (Parser.extractAliases (mkModule ds)) (Parser.sigsFirst ds) nothing)) efeq
 
 -- distinctness survives reversal
 ap-reverse : ∀ {xs : List String} → AllPairs _≢_ xs → AllPairs _≢_ (reverse xs)
