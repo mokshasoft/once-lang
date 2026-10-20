@@ -68,6 +68,7 @@ open Obs Σ using (Model; World; module Model; module World)
 import Once.Adequacy.SpecInterp as SI
 open SI using (toISig; declTy; ⌞_⌟; qL; toImpl; toInterp)
 open import Once.Adequacy.SpecCore.Poly using (declS)
+open import Once.Adequacy.SpecCore.DeclType using (toB-⌞⌟; declS-declTy)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open import Once.Adequacy.SpecCore.Observe Σ using (Agree)
@@ -114,15 +115,6 @@ wf-at (_ S.∷ ws) (there m)   = wf-at ws m
 -- Base types and values
 ------------------------------------------------------------------------
 
--- Reading a declaration's type as the compiler's, and back, is the identity.
-toB-⌞⌟ : ∀ b → Once.Adequacy.SpecCore.Poly.toB ⌞ b ⌟ ≡ b
-toB-⌞⌟ S.unit    = refl
-toB-⌞⌟ S.void    = refl
-toB-⌞⌟ S.int     = refl
-toB-⌞⌟ S.float   = refl
-toB-⌞⌟ (a S.* b) = cong₂ S._*_ (toB-⌞⌟ a) (toB-⌞⌟ b)
-toB-⌞⌟ (a S.+ b) = cong₂ S._+_ (toB-⌞⌟ a) (toB-⌞⌟ b)
-
 base-of : ∀ b .(ib : LW.IsBaseType ⌞ b ⌟) → baseOf ⌞ b ⌟ ib ≡ b
 base-of S.unit    _ = refl
 base-of S.void    _ = refl
@@ -130,20 +122,6 @@ base-of S.int     _ = refl
 base-of S.float   _ = refl
 base-of (a S.* b) _ = cong₂ S._*_ (base-of a _) (base-of b _)
 base-of (a S.+ b) _ = cong₂ S._+_ (base-of a _) (base-of b _)
-
-declS-declTy : ∀ t → declS (declTy t) ≡ t
-declS-declTy (constant S.unit)      = refl
-declS-declTy (constant S.void)      = refl
-declS-declTy (constant S.int)       = refl
-declS-declTy (constant S.float)     = refl
-declS-declTy (constant (a S.* b))   = cong constant (toB-⌞⌟ (a S.* b))
-declS-declTy (constant (a S.+ b))   = cong constant (toB-⌞⌟ (a S.+ b))
-declS-declTy (value a SG.Zero b)     = cong₂ (λ x y → value x SG.Zero y) (toB-⌞⌟ a) (toB-⌞⌟ b)
-declS-declTy (value a SG.One b)      = cong₂ (λ x y → value x SG.One y) (toB-⌞⌟ a) (toB-⌞⌟ b)
-declS-declTy (value a SG.Many b)     = cong₂ (λ x y → value x SG.Many y) (toB-⌞⌟ a) (toB-⌞⌟ b)
-declS-declTy (operation a SG.Zero b) = cong₂ (λ x y → operation x SG.Zero y) (toB-⌞⌟ a) (toB-⌞⌟ b)
-declS-declTy (operation a SG.One b)  = cong₂ (λ x y → operation x SG.One y) (toB-⌞⌟ a) (toB-⌞⌟ b)
-declS-declTy (operation a SG.Many b) = cong₂ (λ x y → operation x SG.Many y) (toB-⌞⌟ a) (toB-⌞⌟ b)
 
 -- A base type read as the compiler's is `Void`, or `Unit`, only as itself.
 ⌞⌟-void : ∀ b → ⌞ b ⌟ ≡ T.Void → b ≡ S.void

@@ -37,7 +37,7 @@ open import Function using (_∋_)
 
 import Once.Lang.Type as LT
 open import Once.Lang.Type.Poly using (PolyType; Ground; extractGround)
-open import Once.Lang.Type.WellFormed using (IsConcrete)
+open import Once.Lang.Type.WellFormed using (IsConcrete; RigidFree)
 open import Once.Lang.Type.Honest using (HonestFFI)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
@@ -165,7 +165,7 @@ FFIEntry (e-poly _)  = ⊥
 
 -- An FFI entry's facts (the typed telescope's).
 FFIFacts : Entry → Set
-FFIFacts (e-fun fi)  = (Once.Parser.FunInfo.funIsPrimitive fi ≡ true) × Σ[ ty ∈ LT.Type ] (Once.Parser.FunInfo.funType fi ≡ just ty) × IsConcrete ty × HonestFFI ty
+FFIFacts (e-fun fi)  = (Once.Parser.FunInfo.funIsPrimitive fi ≡ true) × Σ[ ty ∈ LT.Type ] (Once.Parser.FunInfo.funType fi ≡ just ty) × IsConcrete ty × HonestFFI ty × RigidFree ty
 FFIFacts (e-poly _)  = ⊥
 
 own-sigs : ∀ ds → All IsSig (Once.Parser.ownSigs ds)

@@ -55,6 +55,6 @@ prefix : ∀ {Fs s} {S : LP.Sig Fs s} {sc} (fs : List Parser.Entry) {es} → All
 prefix [] [] tl ss is ts sgcf mt mi u = past mt ss mi u [] refl
 prefix (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts sgcf (ffi {ty = ty} refl refl c h g rest) mi u =
   let past mt′ ss′ mi′ u′ facts same = prefix fs fa tl (s-ffi h g (u (here refl)) ss) is ts sgcf rest mi (λ m → u (there m))
-  in past mt′ ss′ mi′ u′ ((refl , ty , refl , c , h) ∷ facts) same
+  in past mt′ ss′ mi′ u′ ((refl , ty , refl , c , h , g) ∷ facts) same
 prefix (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts sgcf (mono ep _ _ _ _ _) mi u = ⊥-elim (t≢f (trans (sym fe) ep))
 prefix (Parser.e-poly _ ∷ fs) (() ∷ fa) tl ss is ts sgcf mt mi u
