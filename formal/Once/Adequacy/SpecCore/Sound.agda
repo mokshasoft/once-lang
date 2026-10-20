@@ -69,17 +69,10 @@ private
 ------------------------------------------------------------------------
 
 -- `main`'s conversion, at the Spec's types.
-entryS : ∀ {s} (S : LP.Sig (toISig Σ) s) d → TL.MainEntry (S LP.!! d) → SP.Entry (defsS S SC.!! d)
-entryS (S LP.▷ sc) zero    (TL.entry p) = SP.entry (SubS.subS (S LP.▷ sc) p)
-entryS (S LP.▷ sc) (suc d) e            = entryS S d e
+open PG Σ sigop-S fmt using (entryS)
 
 programS : TL.Program (toISig Σ) → SP.Program
-programS (TL.program {sig = S} defs d e) = record
-  { wf     = wf
-  ; defs   = PG.teleS Σ sigop-S fmt defs
-  ; main   = d
-  ; isMain = entryS S d e
-  }
+programS = PG.programS Σ sigop-S fmt wf
 
 ------------------------------------------------------------------------
 -- The entry: related definitions, converted, run alike

@@ -18,7 +18,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Lang.Contract using (ISig; Impl)
 open import Once.Lang.Name using (showCanonical)
-open import Once.Spec.Signature using (Signature; _∶_)
+open import Once.Spec.Signature using (Signature; _∶_; WellFormed)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
@@ -44,7 +44,7 @@ import Once.Spec.Core.Program Σ as SP
 import Once.Spec.Core.Meaning as SM
 open import Once.Spec.Observation Σ using (Model)
 open import Once.Adequacy.SpecCore.Schema using (schS; defsS)
-open import Once.Adequacy.SpecCore.Poly using (module Translate)
+open import Once.Adequacy.SpecCore.Poly using (module Translate; module SubS)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 import Once.Adequacy.SpecCore.Cases as Cases
@@ -57,6 +57,24 @@ teleS : ∀ {s} {S : LP.Sig Fs s} → TL.Tele S → SP.Tele (defsS S)
 teleS TL.[]                         = SP.[]
 teleS (TL.def {S = S} tl sc body D) =
   SP.def (teleS tl) (schS sc) (Translate.ptmS S Σ sigop-S body) (Translate.trD S Σ sigop-S D)
+
+------------------------------------------------------------------------
+-- The program
+------------------------------------------------------------------------
+
+-- `main`'s conversion, at the Spec's types.
+entryS : ∀ {s} (S : LP.Sig Fs s) d → TL.MainEntry (S LP.!! d) → SP.Entry (defsS S SC.!! d)
+entryS (S LP.▷ sc) zero    (TL.entry p) = SP.entry (SubS.subS (S LP.▷ sc) p)
+entryS (S LP.▷ sc) (suc d) e            = entryS S d e
+
+-- A compiler core program, as the Spec's.
+programS : WellFormed Σ → TL.Program Fs → SP.Program
+programS wf (TL.program {sig = S} defs d e) = record
+  { wf     = wf
+  ; defs   = teleS defs
+  ; main   = d
+  ; isMain = entryS S d e
+  }
 
 ------------------------------------------------------------------------
 -- The declarations, related once for every prefix
