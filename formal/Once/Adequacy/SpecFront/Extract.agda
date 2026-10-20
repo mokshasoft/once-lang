@@ -18,11 +18,17 @@
 
 module Once.Adequacy.SpecFront.Extract where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; _++_)
+import Data.List
+import Data.List.Properties
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+import Data.List.Relation.Unary.All.Properties
+import Relation.Binary.PropositionalEquality
+open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using (String; _≟_; _++_)
+open import Data.String using (String; _≟_) renaming (_++_ to _++ˢ_)
 open import Data.Unit using (⊤)
 open import Data.Bool using (true; false)
 open import Relation.Nullary using (yes; no)
@@ -65,8 +71,8 @@ data XAlign (al : TypeAliasEnv) : List Decl → List Entry → Set where
            → XAlign al (DFunDef x b ∷ ds) (e-fun (mkFunInfo x nothing b false) ∷ es)
   xa-sig   : ∀ {x T ty ds es} → projectSig al x T ≡ inj₂ ty → XAlign al ds es
            → XAlign al (DSignature x nothing T ∷ ds) (e-fun (mkFunInfo x (just ty) (RVar x) true) ∷ es)
-  xa-isig  : ∀ {x o T ty ds es} → projectSig al (o ++ "." ++ x) T ≡ inj₂ ty → XAlign al ds es
-           → XAlign al (DSignature x (just o) T ∷ ds) (e-fun (mkFunInfo (o ++ "." ++ x) (just ty) (RVar (o ++ "." ++ x)) true) ∷ es)
+  xa-isig  : ∀ {x o T ty ds es} → projectSig al (o ++ˢ "." ++ˢ x) T ≡ inj₂ ty → XAlign al ds es
+           → XAlign al (DSignature x (just o) T ∷ ds) (e-fun (mkFunInfo (o ++ˢ "." ++ˢ x) (just ty) (RVar (o ++ˢ "." ++ˢ x)) true) ∷ es)
 
 private
   consFun-inj : ∀ (r : String ⊎ List Entry) fi {es} → extractFunctions-consFun r fi ≡ inj₂ es
@@ -100,10 +106,10 @@ mutual
   ... | inj₂ gty =
     let (es′ , r , e) = consFun-inj (extractFunctions-go al rest nothing) (mkFunInfo name (just gty) (RVar name) true) eq
     in subst-es e (xa-sig ps (extract-align al rest r))
-  extract-align al (DSignature name (just owner) ty ∷ rest) eq with projectSig al (owner ++ "." ++ name) ty in ps
+  extract-align al (DSignature name (just owner) ty ∷ rest) eq with projectSig al (owner ++ˢ "." ++ˢ name) ty in ps
   ... | inj₁ err = case-err eq
   ... | inj₂ gty =
-    let (es′ , r , e) = consFun-inj (extractFunctions-go al rest nothing) (mkFunInfo (owner ++ "." ++ name) (just gty) (RVar (owner ++ "." ++ name)) true) eq
+    let (es′ , r , e) = consFun-inj (extractFunctions-go al rest nothing) (mkFunInfo (owner ++ˢ "." ++ˢ name) (just gty) (RVar (owner ++ˢ "." ++ˢ name)) true) eq
     in subst-es e (xa-isig ps (extract-align al rest r))
   extract-align al (DTypeAlias n ps t ∷ rest) eq = xa-pass pa-alias (extract-align al rest eq)
   extract-align al (DImport i ∷ rest) eq = xa-pass pa-import (extract-align al rest eq)
@@ -140,3 +146,54 @@ mutual
 
   case-err : ∀ {A : Set} {e : String} {es : List Entry} → (String ⊎ List Entry ∋ inj₁ e) ≡ inj₂ es → A
   case-err ()
+
+------------------------------------------------------------------------
+-- The signatures first (`sigsFirst`): their entries, then the definitions'
+------------------------------------------------------------------------
+
+data IsSig : Decl → Set where
+  is-sig : ∀ {x o T} → IsSig (DSignature x o T)
+
+-- An FFI entry.
+FFIEntry : Entry → Set
+FFIEntry (e-fun fi)  = Once.Parser.FunInfo.funIsPrimitive fi ≡ true
+FFIEntry (e-poly _)  = ⊥
+
+own-sigs : ∀ ds → All IsSig (Once.Parser.ownSigs ds)
+own-sigs [] = []
+own-sigs (DSignature n nothing t ∷ ds) = is-sig ∷ own-sigs ds
+own-sigs (DSignature n (just o) t ∷ ds) = own-sigs ds
+own-sigs (DTypeSig _ _ ∷ ds) = own-sigs ds
+own-sigs (DFunDef _ _ ∷ ds) = own-sigs ds
+own-sigs (DTypeAlias _ _ _ ∷ ds) = own-sigs ds
+own-sigs (DImport _ ∷ ds) = own-sigs ds
+
+imported-sigs : ∀ ds → All IsSig (Once.Parser.importedSigs ds)
+imported-sigs [] = []
+imported-sigs (DSignature n nothing t ∷ ds) = imported-sigs ds
+imported-sigs (DSignature n (just o) t ∷ ds) = is-sig ∷ imported-sigs ds
+imported-sigs (DTypeSig _ _ ∷ ds) = imported-sigs ds
+imported-sigs (DFunDef _ _ ∷ ds) = imported-sigs ds
+imported-sigs (DTypeAlias _ _ _ ∷ ds) = imported-sigs ds
+imported-sigs (DImport _ ∷ ds) = imported-sigs ds
+
+-- Signatures before the rest: their FFI entries before the rest's.
+sigs-split : ∀ {al} (sigs rest : List Decl) {es} → All IsSig sigs → XAlign al (sigs ++ rest) es
+           → Σ[ fs ∈ List Entry ] Σ[ es′ ∈ List Entry ] (es ≡ fs Data.List.++ es′) × All FFIEntry fs × XAlign al rest es′
+sigs-split [] rest [] xa = [] , _ , refl , [] , xa
+sigs-split (DSignature x nothing T ∷ sigs) rest (is-sig ∷ as) (xa-sig ps xa) =
+  let (fs , es′ , e , ffs , xa′) = sigs-split sigs rest as xa in _ ∷ fs , es′ , Relation.Binary.PropositionalEquality.cong (_ ∷_) e , refl ∷ ffs , xa′
+sigs-split (DSignature x (just o) T ∷ sigs) rest (is-sig ∷ as) (xa-isig ps xa) =
+  let (fs , es′ , e , ffs , xa′) = sigs-split sigs rest as xa in _ ∷ fs , es′ , Relation.Binary.PropositionalEquality.cong (_ ∷_) e , refl ∷ ffs , xa′
+
+-- The extractor's entries: the signatures' FFI entries, then the definitions'.
+sigsFirst-split : ∀ {al} ds {es} → XAlign al (Once.Parser.sigsFirst ds) es
+                → Σ[ fs ∈ List Entry ] Σ[ es′ ∈ List Entry ] (es ≡ fs Data.List.++ es′) × All FFIEntry fs × XAlign al (Once.Parser.nonSigs ds) es′
+sigsFirst-split {al} ds xa =
+  let (fs₁ , r₁ , e₁ , f₁ , xa₁) = sigs-split (Once.Parser.ownSigs ds) _ (own-sigs ds) xa
+      (fs₂ , r₂ , e₂ , f₂ , xa₂) = sigs-split (Once.Parser.importedSigs ds) _ (imported-sigs ds) xa₁
+  in fs₁ Data.List.++ fs₂ , r₂
+     , Relation.Binary.PropositionalEquality.trans e₁
+         (Relation.Binary.PropositionalEquality.trans (Relation.Binary.PropositionalEquality.cong (fs₁ Data.List.++_) e₂)
+           (Relation.Binary.PropositionalEquality.sym (Data.List.Properties.++-assoc fs₁ fs₂ r₂)))
+     , Data.List.Relation.Unary.All.Properties.++⁺ f₁ f₂ , xa₂
