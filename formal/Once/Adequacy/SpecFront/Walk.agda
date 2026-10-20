@@ -98,6 +98,7 @@ open import Once.Adequacy.SpecFront.Expr using (RX)
 open import Once.Adequacy.SpecFront.ScopeNames using (h-imp-of; h-poly-of)
 open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; schema-occ; schema-arrow)
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps
+open import Once.Adequacy.SpecFront.End {Fs} Σ ps using (EntryKind; End; end; endOf; no-ffi; all-tail)
 import Once.Adequacy.SpecFront.Def as Def
 open import Once.Adequacy.SpecFront.Align Σ ps using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 open import Once.Adequacy.SpecFront.AbsR using (cf-R)
@@ -166,12 +167,8 @@ module AtState {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSi
 -- The declarations and the entries
 ------------------------------------------------------------------------
 
--- The entries: definitions (no FFI declaration), their names distinct, new to
--- the scope and to the signature, polymorphic exactly when one of `ps`.
-EntryKind : Parser.Entry → Set
-EntryKind (Parser.e-fun fi)   = (funIsPrimitive fi ≡ false) × ¬ (funName fi ∈ ps)
-EntryKind (Parser.e-poly pfi) = pfunName pfi ∈ ps
-
+-- The entries: definitions (`EntryKind`), their names distinct, new to the
+-- scope and to the signature.
 record EntriesOK (sc : Scope) (es : List Parser.Entry) : Set where
   field
     distinct : AllPairs _≢_ (map Parser.entryNameOf es)
@@ -185,8 +182,6 @@ private
   ap-head (h ∷ _) = h
   ap-tail : ∀ {x : String} {xs} → AllPairs _≢_ (x ∷ xs) → AllPairs _≢_ xs
   ap-tail (_ ∷ t) = t
-  all-tail : ∀ {a} {X : Set a} {P : X → Set} {x xs} → All P (x ∷ xs) → All P xs
-  all-tail (_ ∷ t) = t
 
   -- the rest are new to the scope with one more definition of another name
   fresh-ins : ∀ {x} (as bs : List String) {ys : List String} → All (x ≢_) ys
@@ -220,36 +215,6 @@ eok-poly {sc} {pfi} o =
          ; nosig = all-tail (nosig o) ; kinds = all-tail (kinds o) }
 
 ------------------------------------------------------------------------
--- The compiler's telescope, to its end
-------------------------------------------------------------------------
-
-private
-  no-ffi′ : ∀ {fi es} → funIsPrimitive fi ≡ true → All EntryKind (Parser.e-fun fi ∷ es) → ⊥
-  no-ffi′ ep ((ep′ , _) ∷ _) = t≢f (trans (sym ep) ep′)
-    where
-      t≢f : true ≡ false → ⊥
-      t≢f ()
-
-record End : Set where
-  constructor end
-  field
-    {s}  : ℕ
-    {S}  : LP.Sig Fs s
-    tl   : TL.Tele S
-    nm   : Fin s → CanonicalName
-
-endOf : ∀ {s} {S : LP.Sig Fs s} {sc es} → TL.Tele S → SigSig Fs (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
-      → SigCF S → (Fin s → CanonicalName) → (mt : ModTele sc es) → All EntryKind es → End
-endOf tl ss is ts sgcf nm [] _ = end tl nm
-endOf tl ss is ts sgcf nm (ffi ep _ _ _ _ _) ks = ⊥-elim (no-ffi′ ep ks)
-endOf {S = S} {sc} tl ss is ts sgcf nm (poly {pfi = pfi} {Ψ = Ψ} pr D rest) ks =
-  endOf (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts sgcf D) ss (wkI is) (t-def zero refl (wkT ts)) (polySg sgcf pfi)
-        (canonical (pfunName pfi ∷ []) ∷ⁿ nm) rest (all-tail ks)
-endOf {S = S} {sc} tl ss is ts sgcf nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr g D rest) ks =
-  endOf (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts) (monoSg sgcf g)
-        (canonical (funName fi ∷ []) ∷ⁿ nm) rest (all-tail ks)
-
-------------------------------------------------------------------------
 -- The walk
 ------------------------------------------------------------------------
 
@@ -257,11 +222,6 @@ private
   fin0 : Fin 0 → ⊥
   fin0 ()
 
-  no-ffi : ∀ {fi es} → funIsPrimitive fi ≡ true → All EntryKind (Parser.e-fun fi ∷ es) → ⊥
-  no-ffi ep ((ep′ , _) ∷ _) = t≢f (trans (sym ep) ep′)
-    where
-      t≢f : true ≡ false → ⊥
-      t≢f ()
 
   all-head : ∀ {a} {X : Set a} {P : X → Set} {x xs} → All P (x ∷ xs) → P x
   all-head (h ∷ _) = h
