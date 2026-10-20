@@ -268,7 +268,7 @@ opaque
                  (cong≅ᵗ (λ x → IMu Predₘ.J x (ixₚ d c)) ξ-IMuᴰ cDNNC))
 
 ------------------------------------------------------------------------
--- ★ stkA? c ≡ true — a stable ambient (Spec/Variance)
+-- ★ stkA? c ≡ true — a stable ambient: the closed codes but ⌜Π⌝, and ⌜Hom⌝ at a stable ambient (Spec/Variance)
 ------------------------------------------------------------------------
 
 TStkA⊢cbase : RTm Δ → RTm Δ → RTm Δ → RTm Δ → Tel Δ

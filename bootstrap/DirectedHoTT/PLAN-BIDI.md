@@ -845,6 +845,15 @@ tag rules key on it (`⊢fzero : Fin (suc n)`). After:
      (`cJ₀ₚ`/`cJₚ`) for all four families. Each extra `module … = SynFam …`
      was a separate instance (memory: parameterised-module-instances).
      Knot/Preds 851 → 815 generated lines, 10 s / 0.7 GB.
+  7. ✅ the segment generator (item 5's ⬜): `gen-judge.py` (`PSEGS`,
+     `gen_pseg`) emits each whole `Examples/Preds<P>` segment from the
+     PREDS rows — header, imports, re-exports, entry numbers, `Rows`,
+     `tys`/`tms`, the SigExtend line, `wf`, and `Kc`/`wfKc` at the top.
+     A family is now its PREDS row and nothing else. `core_code` is the
+     one template for "a family's code is a ref to its core entry": the
+     side conditions use it byte-identically, and `Knot/PwCore` (P4, hand-
+     written until now) is generated from it too. Sweep ALL GREEN, 298
+     modules.
 
 **Then, the migration recipe** (each step is one family):
 - a schema becomes a CLOSED λ-entry; an instance becomes
