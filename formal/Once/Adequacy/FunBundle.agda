@@ -62,7 +62,7 @@ open import Once.TypeCheck.Elaborate as TE
 open import Once.Lang.Typing.Scope using (NamedCtx)
 open import Once.Lang.Syntax using (RawExpr)
 open import Once.TypeCheck.Soundness using (check-sound)
-open import Once.Lang.Principal using (lowerings)
+open import Once.Lang.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module
@@ -94,7 +94,7 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
     (ep : funIsPrimitive fi ≡ false) →
     (rf : C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty₀) →
-    (fc : C.firstChecking (ctxC sc) (funBody fi) (lowerings ty₀) ≡ nothing) →
+    (fc : C.firstChecking (ctxC sc) (funBody fi) (below ty₀) ≡ nothing) →
     (te : C.entryType (funName fi) ty₀ ≡ ty) →
     {g : RigidFree ty} → (eg : rigidFree? ty ≡ just g) →
     (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f) →
@@ -106,7 +106,7 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     {Ψ  : Usage (NamedCtx.size (ctxC sc))}
     {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ (rigidOf (Parser.PolyFunInfo.pfunType pfi))}
     {d f : ℕ} →
-    (fc : C.firstChecking (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ nothing) →
+    (fc : C.firstChecking (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ nothing) →
     (ce : checkElab (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ TE.success Ψ se d f) →
     FunBundle (C.addEntry sc pfi) es →
     FunBundle sc (Parser.e-poly pfi ∷ es)
@@ -165,9 +165,9 @@ bundle→typed : ∀ {sc es} → FunBundle sc es → ModTele (AS.scopeOf sc) es
 bundle→typed bnil = []
 bundle→typed (bffi {c = c} {h = h} {g = g} ep et _ _ _ rest) = ffi ep et c h g (bundle→typed rest)
 bundle→typed {sc} (bcons {fi = fi} {ty₀ = ty₀} {ty = ty} ep rf fc te {g} eg ce cf rest) =
-  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (lowerings ty₀) fc) te g (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
+  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty₀) fc) te g (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
 bundle→typed {sc} (bpoly {pfi = pfi} fc ce rest) =
-  poly (firstChecking-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi))) fc)
+  poly (firstChecking-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) fc)
        (check-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
 
 bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
@@ -194,10 +194,10 @@ cgb-mono : ∀ (sc : C.CScope) (fi : FunInfo) (es : List Parser.Entry) (compiled
   → C.ce-mono IR.Heap false sc fi es rt ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
 cgb-poly-p : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
   → (mp : Maybe Type)
-  → C.firstChecking (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ mp
+  → C.firstChecking (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ mp
   → C.ce-poly-p IR.Heap false sc pfi es mp ≡ inj₂ compiled → CGB sc (Parser.e-poly pfi ∷ es) compiled
 cgb-poly : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
-  → C.firstChecking (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ nothing
+  → C.firstChecking (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ nothing
   → (r : TE.VerifiedCheckResult (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
   → TE.checkElabV (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
   → C.ce-poly IR.Heap false sc pfi es (C.checkOK r) ≡ inj₂ compiled → CGB sc (Parser.e-poly pfi ∷ es) compiled
@@ -225,7 +225,7 @@ cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (hone
 
 cgb-mono sc fi es compiled ep (inj₁ _) er ()
 cgb-mono sc fi es compiled ep (inj₂ ty₀) er eq
-  with C.firstChecking (ctxC sc) (funBody fi) (lowerings ty₀) in fc
+  with C.firstChecking (ctxC sc) (funBody fi) (below ty₀) in fc
 ... | just _ = case eq of λ ()
 ... | nothing
   with C.entryType (funName fi) ty₀ in te

@@ -58,7 +58,7 @@ import Once.IR as IR
 import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.Classify as Classify
 open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Lang.Principal using (lowerings)
+open import Once.Lang.Principal using (below)
 open import Once.Type.Rigid using (rigidFree?)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Lang.Type.Honest using (honest?)
@@ -190,7 +190,7 @@ ce-syms-fun : ∀ (doOpt : Bool) (sc : C.CScope) (fi : FunInfo) (es : List Entry
 ce-syms doOpt sc [] cfs eq = cong C.emittedSyms (sym (inj₂-injective eq))
 ce-syms doOpt sc (e-fun fi ∷ es) cfs eq = ce-syms-fun doOpt sc fi es (FunInfo.funIsPrimitive fi) refl cfs eq
 ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
-  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (PolyFunInfo.pfunType pfi)))
+  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (below (rigidOf (PolyFunInfo.pfunType pfi)))
 ... | just _ = case eq of λ ()
 ... | nothing
   with C.checkOK (TE.checkElabV (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
@@ -212,7 +212,7 @@ ce-syms-fun doOpt sc fi es false ep cfs eq
   with C.resolveFunType (C.ctop sc) (C.cpolys sc) (FunInfo.funType fi) (FunInfo.funBody fi)
 ... | inj₁ _ = case eq of λ ()
 ... | inj₂ ty₀
-  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (FunInfo.funBody fi) (lowerings ty₀)
+  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (FunInfo.funBody fi) (below ty₀)
 ...   | just _ = case eq of λ ()
 ...   | nothing with C.entryType (FunInfo.funName fi) ty₀
 ...     | ty with rigidFree? ty

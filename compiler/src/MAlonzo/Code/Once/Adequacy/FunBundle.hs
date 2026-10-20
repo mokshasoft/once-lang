@@ -380,7 +380,7 @@ du_ce'45'bundleP_396 v0 v1 v2
                        (coe d_ctxC_8 (coe v0))
                        (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v5))
                        (coe
-                          MAlonzo.Code.Once.Lang.Principal.d_lowerings_10
+                          MAlonzo.Code.Once.Lang.Principal.d_below_10
                           (coe
                              MAlonzo.Code.Once.Lang.Type.Instance.d_rigidOf_130
                              (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v5)))))
@@ -472,7 +472,7 @@ du_cgb'45'mono_432 v0 v1 v2 v3
                  = MAlonzo.Code.Once.Compile.d_firstChecking_36
                      (coe d_ctxC_8 (coe v0))
                      (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v1))
-                     (coe MAlonzo.Code.Once.Lang.Principal.d_lowerings_10 (coe v4)) in
+                     (coe MAlonzo.Code.Once.Lang.Principal.d_below_10 (coe v4)) in
            coe
              (case coe v5 of
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6 -> erased

@@ -884,7 +884,7 @@ d_compileEntries_506 v0 v1 v2 v3
                           (coe d_ctop_414 (coe v2)) (coe d_cpolys_420 (coe v2)))
                        (coe MAlonzo.Code.Once.Parser.d_pfunBody_128 (coe v6))
                        (coe
-                          MAlonzo.Code.Once.Lang.Principal.d_lowerings_10
+                          MAlonzo.Code.Once.Lang.Principal.d_below_10
                           (coe
                              MAlonzo.Code.Once.Lang.Type.Instance.d_rigidOf_130
                              (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v6)))))
@@ -1025,7 +1025,7 @@ d_ce'45'mono_524 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
                    (coe d_ctop_414 (coe v2)) (coe d_cpolys_420 (coe v2)))
                 (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v3))
-                (coe MAlonzo.Code.Once.Lang.Principal.d_lowerings_10 (coe v6)))
+                (coe MAlonzo.Code.Once.Lang.Principal.d_below_10 (coe v6)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.ce-mono-p
 d_ce'45'mono'45'p_530 ::

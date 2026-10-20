@@ -362,7 +362,7 @@ du_ce'45'mono'45'sound_336 v0 v1 v2 v3 v4
                 MAlonzo.Code.Once.Compile.d_firstChecking_36
                 (coe du_ctx_482 (coe v1))
                 (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v2))
-                (coe MAlonzo.Code.Once.Lang.Principal.d_lowerings_10 (coe v5)))
+                (coe MAlonzo.Code.Once.Lang.Principal.d_below_10 (coe v5)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.AcceptSound.ce-poly-sound
 d_ce'45'poly'45'sound_348 ::
@@ -669,7 +669,7 @@ du_low_546 ::
   [MAlonzo.Code.Once.Lang.Type.T_Type_8]
 du_low_546 v0
   = coe
-      MAlonzo.Code.Once.Lang.Principal.d_lowerings_10
+      MAlonzo.Code.Once.Lang.Principal.d_below_10
       (coe
          MAlonzo.Code.Once.Lang.Type.Instance.d_rigidOf_130
          (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v0)))

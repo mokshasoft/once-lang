@@ -131,7 +131,7 @@ import Data.Nat
 open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Denotation.Realize using (realize)
 open import Once.Surface.LoopWarn using (silentLoops)
-open import Once.Lang.Principal using (lowerings)
+open import Once.Lang.Principal using (below)
 open import Once.Lang.Type.Sub using (_<:_)
 open import Once.Type.Sub using (_<:?_)
 open import Data.Nat using (_<ᵇ_)
@@ -438,7 +438,7 @@ compileEntries m doOpt sc []                 = inj₂ []
 compileEntries m doOpt sc (e-fun fi ∷ es)    = ce-fun m doOpt sc fi es (funIsPrimitive fi)
 compileEntries m doOpt sc (e-poly pfi ∷ es)  =
   ce-poly-p m doOpt sc pfi es
-    (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (pfunBody pfi) (lowerings (rigidOf (pfunType pfi))))
+    (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (pfunBody pfi) (below (rigidOf (pfunType pfi))))
 
 ce-fun m doOpt sc fi es true  = ce-prim m doOpt sc fi es (funType fi)
 ce-fun m doOpt sc fi es false =
@@ -459,7 +459,7 @@ ce-prim-conc m doOpt sc fi es ty (just conc) (just _) (just _) =
 
 ce-mono m doOpt sc fi es (inj₁ err) = inj₁ err
 ce-mono m doOpt sc fi es (inj₂ ty)  =
-  ce-mono-p m doOpt sc fi es ty (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) (lowerings ty))
+  ce-mono-p m doOpt sc fi es ty (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) (below ty))
 -- D314/D321: a definition is at its principal type; D315: `main` is then
 -- compiled at `Eff Unit Unit`.
 ce-mono-p m doOpt sc fi es ty (just X) =

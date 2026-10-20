@@ -29,7 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Lang.Type.Honest using (honest?)
 open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Lang.Principal using (lowerings)
+open import Once.Lang.Principal using (below)
 open import Once.Type.Rigid using (rigidFree?)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
@@ -139,7 +139,7 @@ ce-doOpt doOpt sc [] eq = _ , refl
 ce-doOpt doOpt sc (Parser.e-fun fi ∷ es) eq = ce-fun-doOpt doOpt sc fi es (Parser.FunInfo.funIsPrimitive fi) eq
 ce-doOpt doOpt sc (Parser.e-poly pfi ∷ es) eq =
   ce-poly-p-doOpt doOpt sc pfi es
-    (C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
+    (C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
 
 ce-fun-doOpt doOpt sc fi es true  eq = ce-prim-doOpt doOpt sc fi es (Parser.FunInfo.funType fi) eq
 ce-fun-doOpt doOpt sc fi es false eq =
@@ -159,7 +159,7 @@ ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) (
 ce-mono-doOpt doOpt sc fi es (inj₁ _) ()
 ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq =
   ce-mono-p-doOpt doOpt sc fi es ty
-    (C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.FunInfo.funBody fi) (lowerings ty)) eq
+    (C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (Parser.FunInfo.funBody fi) (below ty)) eq
 
 ce-mono-p-doOpt doOpt sc fi es ty (just _) ()
 ce-mono-p-doOpt doOpt sc fi es ty nothing eq =

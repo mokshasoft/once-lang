@@ -25,7 +25,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.Lang.Principal using (lowerings)
+open import Once.Lang.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤; tt)
@@ -196,11 +196,11 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty₀) er eq = pstep _ refl eq
   where
     ctx = ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)
     ty = C.entryType (Parser.FunInfo.funName fi) ty₀
-    -- D314/D321: the body checks at none of its type's lowerings.
-    pstep : (mx : Maybe Type) → C.firstChecking ctx (Parser.FunInfo.funBody fi) (lowerings ty₀) ≡ mx
+    -- D314/D321: the body checks at no type strictly below its type.
+    pstep : (mx : Maybe Type) → C.firstChecking ctx (Parser.FunInfo.funBody fi) (below ty₀) ≡ mx
           → ∀ {cfs} → C.ce-mono-p IR.Heap doOpt sc fi es ty₀ mx ≡ inj₂ cfs
           → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
-    grd : C.firstChecking ctx (Parser.FunInfo.funBody fi) (lowerings ty₀) ≡ nothing
+    grd : C.firstChecking ctx (Parser.FunInfo.funBody fi) (below ty₀) ≡ nothing
         → (mg : Maybe (RigidFree ty)) → ∀ {cfs} → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ cfs
         → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
     pstep (just _) _ ()
@@ -218,13 +218,13 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty₀) er eq = pstep _ refl eq
         step (inj₂ ir) cf eq′ =
           let (Ψ , jud) = compileFun-sound doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                             (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf
-          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (lowerings ty₀) fc) refl g jud
+          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty₀) fc) refl g jud
                (ce-sound doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
 ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
   where
     ctx = ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)
-    low = lowerings (rigidOf (Parser.PolyFunInfo.pfunType pfi))
+    low = below (rigidOf (Parser.PolyFunInfo.pfunType pfi))
     step : C.firstChecking ctx (Parser.PolyFunInfo.pfunBody pfi) low ≡ nothing
          → (r : TE.VerifiedCheckResult ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
          → TE.checkElabV ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
