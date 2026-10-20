@@ -24,6 +24,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe)
+import Data.Maybe
 open import Data.List using (List; _∷_)
 open import Once.Spec.Name using (bare)
 open import Once.CanonicalName using (_≟ᶜ_)
@@ -71,6 +72,25 @@ compileFun-main-sub : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.Stri
 compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
 ... | inj₂ tt  = validateMain-sub ty veq
 ... | inj₁ err = case eq of λ ()
+
+-- R8: `main` without a signature, compiled from its synthesis.
+compileFunI-main-sub : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  C.compileFunI IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
+  ty <: EffUU
+compileFunI-main-sub ctx polys impsOf ty body irFun eq = go (C.validateMain ty) refl eq
+  where
+    go : ∀ vm → C.validateMain ty ≡ vm → C.compileFunI-main-aux IR.Heap false ctx polys impsOf "main" ty body vm ≡ inj₂ irFun
+       → ty <: EffUU
+    go (inj₂ tt) veq _ = validateMain-sub ty veq
+    go (inj₁ _)  _   ()
+
+compileFunM-main-sub : ∀ (ft : Maybe Type) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  C.compileFunM ft IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
+  ty <: EffUU
+compileFunM-main-sub (Data.Maybe.just _) = compileFun-main-sub
+compileFunM-main-sub Data.Maybe.nothing  = compileFunI-main-sub
 
 ------------------------------------------------------------------------
 -- (3) findMain dispatch helpers: a head whose name ≠ "main" is skipped.

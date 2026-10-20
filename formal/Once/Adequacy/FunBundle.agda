@@ -24,7 +24,7 @@ module Once.Adequacy.FunBundle where
 
 open import Once.Lang.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
-open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn)
+open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoBody)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -61,13 +61,15 @@ open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
 open import Once.Lang.Typing.Scope using (NamedCtx)
 open import Once.Lang.Syntax using (RawExpr)
-open import Once.TypeCheck.Soundness using (check-sound)
+open import Once.TypeCheck.Soundness using (check-sound; infer-soundV)
 open import Once.Lang.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
 import Data.String as String
+import Once.Lang.Typing
+import Once.Lang.Type.DecEq
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; mainEntry; moduleToIR; moduleToIR-aux)
@@ -81,6 +83,19 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 ctxC : C.CScope → NamedCtx
 ctxC sc = ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)
+
+-- R8: a definition's elaboration succeeded in its own mode — checked at its
+-- signature, or synthesized.
+ElabOK : Maybe Type → (ctx : NamedCtx) → RawExpr → (ty : Type) → (Ψ : Usage (NamedCtx.size ctx))
+       → Expr (NamedCtx.debruijn ctx) Ψ ty → ℕ → ℕ → Set
+ElabOK (just _) ctx e ty Ψ se d f = checkElab ctx e ty ≡ TE.success Ψ se d f
+ElabOK nothing  ctx e ty Ψ se d f = TE.inferElab ctx e ≡ TE.success ty Ψ se d f
+
+-- …and so its body has a derivation in that mode.
+elabOK-sound : ∀ (ft : Maybe Type) (ctx : NamedCtx) (e : RawExpr) (ty : Type) {Ψ se d f}
+             → ElabOK ft ctx e ty Ψ se d f → MonoBody ft ctx e ty Ψ
+elabOK-sound (just _) ctx e ty ce = check-sound ctx e ty ce
+elabOK-sound nothing  ctx e ty ce = infer-soundV ctx e ce
 
 data FunBundle : C.CScope → List Parser.Entry → Set where
   bnil  : ∀ {sc} → FunBundle sc []
@@ -98,8 +113,8 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     (rf : C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty) →
     (fc : C.firstChecking (ctxC sc) (funBody fi) (below ty) ≡ nothing) →
     {g : RigidFree ty} → (eg : rigidFree? ty ≡ just g) →
-    (ce : checkElab (ctxC sc) (funBody fi) ty ≡ TE.success Ψ se d f) →
-    (cf : C.compileFun IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
+    (ce : ElabOK (funType fi) (ctxC sc) (funBody fi) ty Ψ se d f) →
+    (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
             (funName fi) ty (funBody fi) ≡ inj₂ irFun) →
     FunBundle (C.extendScope sc (funName fi) ty) es →
     FunBundle sc (Parser.e-fun fi ∷ es)
@@ -157,6 +172,52 @@ compileFun-ce : ∀ (polys : PolyCtx) (impsOf : String.String → TopCtx)
 compileFun-ce polys impsOf ctx ty fi irFun eq =
   compileFun-aux-ce false ctx polys impsOf (funName fi) ty (funBody fi) (funName fi == "main") eq
 
+-- R8: a definition without a signature — its synthesis succeeded, at its type.
+compileFunI-ce : ∀ (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (ctx : TopCtx) (ty : Type) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  C.compileFunI IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
+  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
+  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
+  Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
+    TE.inferElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ≡ TE.success ty Ψ se d f))))
+compileFunI-ce polys impsOf ctx ty fi irFun eq =
+  aux (TE.inferElabV (ctxWithImportsAndPolys ctx polys) (funBody fi)) (body (funName fi == "main") eq)
+  where
+    nctx = ctxWithImportsAndPolys ctx polys
+    body : (b : Bool) → C.compileFunI-aux IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) b ≡ inj₂ irFun
+         → C.compileFunBodyI IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun
+    body true  e = main (C.validateMain ty) e
+      where
+        main : (v : String ⊎ ⊤) → C.compileFunI-main-aux IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) v ≡ inj₂ irFun
+             → C.compileFunBodyI IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun
+        main (inj₁ _) ()
+        main (inj₂ _) e′ = e′
+    body false e = e
+    at : ∀ {T Ψ} (w : nctx Once.Lang.Typing.⊢ᵢ funBody fi ∶ T ⨾ Ψ) (dd : Dec (T ≡ ty))
+       → C.compileFunBodyI-at IR.Heap false ctx polys impsOf (funName fi) ty refl w dd ≡ inj₂ irFun → T ≡ ty
+    at w (yes e) _ = e
+    at w (no _) ()
+    aux : (cr : TE.VerifiedInferResult nctx (funBody fi))
+        → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf (funName fi) ty refl cr ≡ inj₂ irFun
+        → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ ty) (λ se →
+            Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → proj₁ cr ≡ TE.success ty Ψ se d f))))
+    aux (TE.failure _ , _) ()
+    aux (TE.success T Ψ se d f , w) e = fix (at w (T Once.Lang.Type.DecEq.≟T ty) e) se
+      where
+        fix : (eq′ : T ≡ ty) (se′ : Expr (NamedCtx.debruijn nctx) Ψ T)
+            → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ′ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ′ ty) (λ se″ →
+                Σ-syntax ℕ (λ d′ → Σ-syntax ℕ (λ f′ → TE.success T Ψ se′ d f ≡ TE.success ty Ψ′ se″ d′ f′))))
+        fix refl se′ = Ψ , se′ , d , f , refl
+
+compileFunM-ce : ∀ (ft : Maybe Type) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (ctx : TopCtx) (ty : Type) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) → funType fi ≡ ft →
+  C.compileFunM ft IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
+  Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
+  Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
+  Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → ElabOK ft (ctxWithImportsAndPolys ctx polys) (funBody fi) ty Ψ se d f))))
+compileFunM-ce (just _) polys impsOf ctx ty fi irFun _ eq = compileFun-ce polys impsOf ctx ty fi irFun eq
+compileFunM-ce nothing  polys impsOf ctx ty fi irFun _ eq = compileFunI-ce polys impsOf ctx ty fi irFun eq
+
 ------------------------------------------------------------------------
 -- (2) Typing view + compiled view.
 ------------------------------------------------------------------------
@@ -166,7 +227,7 @@ bundle→typed : ∀ {sc es} → FunBundle sc es → ModTele (AS.scopeOf sc) es
 bundle→typed bnil = []
 bundle→typed (bffi {c = c} {h = h} {g = g} ep et _ _ _ rest) = ffi ep et c h g (bundle→typed rest)
 bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf fc {g} eg ce cf rest) =
-  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty) fc) g (check-sound (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
+  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty) fc) g (elabOK-sound (funType fi) (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
 bundle→typed {sc} (bpoly {pfi = pfi} fc ce rest) =
   poly (firstChecking-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) fc)
        (check-sound (ctxC sc) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
@@ -232,13 +293,13 @@ cgb-mono sc fi es compiled ep (inj₂ ty) er eq
   with rigidFree? ty in eg
 ... | nothing = case eq of λ ()
 ... | just g
-  with C.compileFun IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funName fi) ty (funBody fi) in cf
+  with C.compileFunM (funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funName fi) ty (funBody fi) in cf
 ... | inj₁ _ = case eq of λ ()
 ... | inj₂ irFun
       with C.compileEntries IR.Heap false (C.extendScope sc (funName fi) ty) es in rec
 ...   | inj₁ _ = case eq of λ ()
 ...   | inj₂ rest =
-        let (Ψ , se , d , f , ce) = compileFun-ce (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.ctop sc) ty fi irFun cf
+        let (Ψ , se , d , f , ce) = compileFunM-ce (funType fi) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.ctop sc) ty fi irFun refl cf
             (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
         in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er fc eg ce cf b
          , trans (cong (C.mkCompiledFun (bare (funName fi)) ty irFun ∷_) beq)

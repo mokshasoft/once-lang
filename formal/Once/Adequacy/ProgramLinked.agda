@@ -92,6 +92,7 @@ open import Once.Type.Sub using (_<:?_)
 open import Once.CanonicalName using (_≟ᶜ_)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
+import Data.Maybe
 open import Once.Adequacy.TelePosition
 open import Once.Adequacy.ElaborateLinked
 
@@ -507,6 +508,34 @@ body-linked {σ = σ} {csc} {pre} inv x ty {body} cf ce =
         uf : Imports
         uf = (x , ty) ∷ C.CScope.cimps csc
 
+-- R8: likewise a definition without a signature, compiled from its synthesis.
+body-linkedI : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
+                 {se : _} {d f : ℕ}
+             → C.compileFunI IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
+             → (ce : Once.TypeCheck.Elaborate.inferElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body
+                       ≡ success ty Usage.[] se d f)
+             → Linked σ pre irFun
+body-linkedI {σ = σ} {csc} {pre} inv x ty {body} cf ce =
+  subst (Linked σ pre) (sym (irFun-formI (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body cf ce))
+    (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D′))
+      (resolve-refs pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+         (LInv.tel-ok inv (C.declImps (C.CScope.ctele csc)) (LInv.iself inv))
+         (<-wellFounded (length (C.cpolys csc))) uf 0 (realize-infer D′)
+         (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef (C.CScope.cimps csc)} {Pp = PolyRef (C.cpolys csc)} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef (C.cpolys csc)}
+                   (LInv.sig-ok inv) (λ {x} {A} → LInv.imp-ok inv {x} {A}) (λ r → r) (realize-infer D′) (realize-refs-i D′))))
+  where D′ = sound-of-i (Once.TypeCheck.Elaborate.inferElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body) ce
+        uf : Imports
+        uf = (x , ty) ∷ C.CScope.cimps csc
+
+-- A definition, in its own mode.
+body-linkedM : ∀ {csc pre} → LInv σ csc pre → (ft : Data.Maybe.Maybe Type) (x : String) (ty : Type) {body : RawExpr}
+                 {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} {Ψ : Usage 0} {se : _} {d f : ℕ}
+             → C.compileFunM ft IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
+             → FB.ElabOK ft (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty Ψ se d f
+             → Linked σ pre irFun
+body-linkedM inv (Data.Maybe.just _) x ty {Ψ = Usage.[]} cf ce = body-linked inv x ty cf ce
+body-linkedM inv Data.Maybe.nothing  x ty {Ψ = Usage.[]} cf ce = body-linkedI inv x ty cf ce
+
 -- A telescope entry joins the scope. Its splice at a kinded instance is
 -- linked: its body, typed once at the rigid schema, types at the instance
 -- (`inst-at`, D243/D252), so the checker succeeds there (completeness); the
@@ -591,7 +620,7 @@ link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr g
   with inj₂-injective (trans (sym er) rf)
 ... | refl = link-walk rest rest-b _
                (linv-entry (funName fi) ty irFun g
-                  (dc-linked pre ty irFun (body-linked inv (funName fi) ty cf ce))
+                  (dc-linked pre ty irFun (body-linkedM inv (Parser.FunInfo.funType fi) (funName fi) ty cf ce))
                   inv)
                (fresh-fun {csc = csc} {fi = fi} {ty = ty} {es = es} fr) u
 

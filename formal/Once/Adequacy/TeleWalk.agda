@@ -71,7 +71,7 @@ open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf)
+open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoBody)
 open import Once.Lang.Principal using (PrincipalAt)
 open import Once.Lang.Core.PolyTy using (Sig)
 open import Once.Lang.Core.Telescope using (Tele; Program; runCore; program; noKinds; noVars; noResp; MainEntry)
@@ -272,8 +272,8 @@ from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep 
 -- `main` (D315): its run at its own type, converted, against the compiled
 -- entry the bundle finds — whichever proofs of the conversion each side holds.
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd ty} (p : ty <: EffUU) (g : RigidFree ty)
-              (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ ty ⨾ Ctx.Usage.[]) {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
-              (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+              (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[]) {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
+              (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" ty bd ≡ Data.Sum.inj₂ irFun)
               {es} (rest : ModTele (AS.scopeOf (C.extendScope csc "main" ty)) es)
               (rest-b : FB.FunBundle (C.extendScope csc "main" ty) es)
@@ -335,9 +335,9 @@ mutual
 
   walk-mono : ∀ {csc es x ft bd ty} (er : C.resolveFunType (C.ctop csc) (C.cpolys csc) ft bd ≡ inj₂ ty)
                 (pr : PrincipalAt (ctxOf (AS.scopeOf csc)) bd ty)
-                (g : RigidFree ty) (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ ty ⨾ Ctx.Usage.[])
+                (g : RigidFree ty) (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[])
                 (rest : ModTele (AS.scopeOf (C.extendScope csc x ty)) es)
-                {irFun} (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+                {irFun} (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                                 x ty bd ≡ Data.Sum.inj₂ irFun)
                 (rest-b : FB.FunBundle (C.extendScope csc x ty) es)
                 (mi : ((x ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest)
@@ -353,9 +353,9 @@ mutual
     walk-mono-d g D rest cf rest-b mi′ tl ss is ts sg pre inv u fr (x Str.≟ "main") (ty <:? EffUU) nd′ td
 
   walk-mono-d : ∀ {csc es x ft bd ty}
-                (g : RigidFree ty) (D : ctxOf (AS.scopeOf csc) ⊢ᶜ bd ∶ ty ⨾ Ctx.Usage.[])
+                (g : RigidFree ty) (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[])
                 (rest : ModTele (AS.scopeOf (C.extendScope csc x ty)) es)
-                {irFun} (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+                {irFun} (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                                 x ty bd ≡ Data.Sum.inj₂ irFun)
                 (rest-b : FB.FunBundle (C.extendScope csc x ty) es)
                 (mi′ : MainIn rest)

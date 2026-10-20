@@ -113,6 +113,7 @@ import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
 open import Once.Lang.Typing.Scope using (NamedCtx; PolyCtx)
+open import Once.Lang.Typing using (_⊢ᵢ_∶_⨾_)
 open import Once.TypeCheck.Classify using (TopCtx; topCtx; emptyTopCtx; ctxWithImportsAndPolys; emptyPolyCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
@@ -129,7 +130,7 @@ import Data.Nat
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborateFull)
-open import Once.Denotation.Realize using (realize)
+open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.Surface.LoopWarn using (silentLoops)
 open import Once.Lang.Principal using (below)
 open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-unit; sub-void)
@@ -261,6 +262,52 @@ compileFun-aux m doOpt ctx polys impsOf name ty expr false = compileFunBody m do
 
 compileFun : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx polys impsOf name ty expr (name == "main")
+
+-- R8 (plan 0.121): a definition WITHOUT a signature is compiled from its body's
+-- SYNTHESIS — the term the Spec's `w-nosig` takes — at the type it
+-- synthesizes (D323). (Checking it at that type would elaborate differently:
+-- a pair literal component-wise, a synthesized part with an identity coercion.)
+compileFunBodyI-at : ∀ {ctx : NamedCtx} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size ctx)}
+  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
+  → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
+  → ctx ⊢ᵢ body ∶ T ⨾ Ψ → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (no _) =
+  inj₁ ("Type error in " ++ name ++ ": its body synthesizes another type than " ++ showType ty)
+compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =
+  let userList = (name , ty) ∷ TopCtx.tdefs ctx
+      resolved = resolveExpr polys impsOf userList 0 (realize-infer w)
+      ir = elaborateFull m resolved
+  in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
+
+compileFunBodyI-aux : ∀ {ctx : NamedCtx} {body : RawExpr}
+  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
+  → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
+  → TE.VerifiedInferResult ctx body → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
+  inj₁ ("Type error in " ++ name ++ ": " ++ Error.renderError err)
+compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success T _ _ _ _ , w) =
+  compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (T ≟T ty)
+
+compileFunBodyI : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBodyI m doOpt ctx polys impsOf name ty expr =
+  compileFunBodyI-aux m doOpt ctx polys impsOf name ty refl
+    (TE.inferElabV (ctxWithImportsAndPolys ctx polys) expr)
+
+compileFunI-main-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunI-main-aux m doOpt ctx polys impsOf name ty expr (inj₁ err) = inj₁ err
+compileFunI-main-aux m doOpt ctx polys impsOf name ty expr (inj₂ _)   = compileFunBodyI m doOpt ctx polys impsOf name ty expr
+
+compileFunI-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunI-aux m doOpt ctx polys impsOf name ty expr true  = compileFunI-main-aux m doOpt ctx polys impsOf name ty expr (validateMain ty)
+compileFunI-aux m doOpt ctx polys impsOf name ty expr false = compileFunBodyI m doOpt ctx polys impsOf name ty expr
+
+compileFunI : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunI m doOpt ctx polys impsOf name ty expr = compileFunI-aux m doOpt ctx polys impsOf name ty expr (name == "main")
+
+-- A definition, by whether it has a signature.
+compileFunM : Maybe Type → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunM (just _) = compileFun
+compileFunM nothing  = compileFunI
 
 ------------------------------------------------------------------------
 -- Module compilation: source → List (name, IR)
@@ -461,7 +508,7 @@ ce-mono-g m doOpt sc fi es ty nothing =
   inj₁ ("The type of `" ++ funName fi ++ "` mentions a type parameter: " ++ showType ty)
 ce-mono-g m doOpt sc fi es ty (just _) =
   ce-mono-ir m doOpt sc fi es ty
-    (compileFun m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
+    (compileFunM (funType fi) m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
 ce-mono-ir m doOpt sc fi es ty (inj₁ err) = inj₁ err
 ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
   consCF (mkCompiledFun (bare (funName fi)) ty ir)
@@ -495,6 +542,8 @@ lw-fun     : CScope → FunInfo → List Entry → Bool → List String
 lw-prim    : CScope → FunInfo → List Entry → Maybe Type → List String
 lw-mono    : CScope → FunInfo → List Entry → String ⊎ Type → List String
 lw-body    : (ctx : NamedCtx) (body : RawExpr) (ty : Type) → TE.VerifiedCheckResult ctx body ty → Bool
+lw-bodyI   : (ctx : NamedCtx) (body : RawExpr) → TE.VerifiedInferResult ctx body → Bool
+lw-bodyM   : Maybe Type → (ctx : NamedCtx) (body : RawExpr) (ty : Type) → Bool
 lw-name    : FunInfo → Bool → List String
 
 lw-entries sc []                = []
@@ -506,10 +555,14 @@ lw-prim sc fi es nothing   = []
 lw-prim sc fi es (just ty) = lw-entries (extendSig sc (funName fi) ty) es
 lw-mono sc fi es (inj₁ _)  = []
 lw-mono sc fi es (inj₂ ty) =
-  lw-name fi (lw-body _ (funBody fi) ty (TE.checkElabV (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty))
+  lw-name fi (lw-bodyM (funType fi) (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty)
   DL.++ lw-entries (extendScope sc (funName fi) ty) es
 lw-body ctx body ty (TE.failure _ , _)       = false
 lw-body ctx body ty (TE.success _ _ _ _ , w) = 0 <ᵇ silentLoops (realize w)
+lw-bodyI ctx body (TE.failure _ , _)         = false
+lw-bodyI ctx body (TE.success _ _ _ _ _ , w) = 0 <ᵇ silentLoops (realize-infer w)
+lw-bodyM (just _) ctx body ty = lw-body ctx body ty (TE.checkElabV ctx body ty)
+lw-bodyM nothing  ctx body ty = lw-bodyI ctx body (TE.inferElabV ctx body)
 lw-name fi true  = funName fi ∷ []
 lw-name fi false = []
 

@@ -24,7 +24,9 @@ module Once.Lang.Core.Translate where
 open import Data.Nat using (zero; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
+import Data.Maybe
+import Once.Lang.Typing.Scope
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -44,12 +46,12 @@ open import Once.Lang.Type.WellFormed using (RigidFree; RigidFreeF; rf-Unit; rf-
 open import Once.Type.Rigid using (ground-kinded)
 import Once.Compile as C
 import Once.Parser as Parser
-open Parser.FunInfo using (funName; funBody)
+open Parser.FunInfo using (funName; funBody; funType)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.Lang.Typing.Scope using (lookupImport; lookupPolyPrefix)
 open import Once.Lang.Context as Ctx using (Usage)
 open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Lang.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp)
+open import Once.Lang.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; MonoBody)
 open import Once.Lang.Contract using (ISig)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -195,6 +197,13 @@ private
      → PT._⊩_⊢[_]_∷_!_ S Δ PT.∅ Ψ t A π → PT._⊩_⊢[_]_∷_!_ S Δ PT.∅ Usage.[] t A π
   u0 {Ψ = Usage.[]} d = d
 
+-- R8: a monomorphic body, elaborated in its own mode — checked at its
+-- signature, or synthesized.
+elabM : ∀ {Fs s} {S : Sig Fs s} (ft : Data.Maybe.Maybe T.Type) {ctx : Once.Lang.Typing.Scope.NamedCtx} {e ty Ψ}
+      → E.Views S ctx → MonoBody ft ctx e ty Ψ → E.Elab S (Once.Lang.Typing.Scope.NamedCtx.debruijn ctx) Ψ ty
+elabM {S = S} (just _) V D = E.elabᶜ S V D
+elabM {S = S} nothing  V D = E.elabᵢ S V D
+
 -- The walk's `main` selection is TOP-LEVEL (not `where`-bound), so a proof can
 -- follow it: the first `main : Eff Unit Unit`, exactly as the compiler's `findMain`
 -- picks it.
@@ -202,12 +211,12 @@ module _ {Fs s} {S : Sig Fs s} {sc : Scope} {fi : Parser.FunInfo} {ty : T.Type} 
 
 
   monoElab : SigSig Fs (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
-           → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ → E.Elab S Ctx.∅ Ψ ty
-  monoElab ss is ts D = E.elabᶜ S (viewOf ss is ts) D
+           → MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ → E.Elab S Ctx.∅ Ψ ty
+  monoElab ss is ts D = elabM (funType fi) (viewOf ss is ts) D
 
   -- The body at its type, as a core derivation over no type variables.
   monoBody : (ss : SigSig Fs (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc)) → SigCF S → RigidFree ty
-           → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+           → (D : MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            → PT._⊩_⊢[_]_∷_!_ S noKinds PT.∅ Usage.[] (A.absTm S noKinds (proj₁ (monoElab ss is ts D))) ⌈ ty ⌉ T.pure
   monoBody ss is ts sg g D =
     subst (λ X → PT._⊩_⊢[_]_∷_!_ S noKinds PT.∅ Usage.[] (A.absTm S noKinds (proj₁ (monoElab ss is ts D))) X T.pure)
@@ -238,7 +247,7 @@ module _ {Fs s} {S : Sig Fs s} {sc : Scope} {pfi : Parser.PolyFunInfo} {Ψ : Usa
 
 -- A definition's telescope entry.
 monoDef : ∀ {Fs s} {S : Sig Fs s} {sc fi ty Ψ} → Tele S → (ss : SigSig Fs (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-        → SigCF S → RigidFree ty → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ → Tele (S ▷ monoSchema ty)
+        → SigCF S → RigidFree ty → MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ → Tele (S ▷ monoSchema ty)
 monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D =
   def tl (monoSchema ty) (A.absTm S noKinds (proj₁ (monoElab {S = S} {sc = sc} {fi = fi} ss is ts D)))
                          (monoBody {S = S} {sc = sc} {fi = fi} ss is ts sg g D)
@@ -287,7 +296,7 @@ mutual
     monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest mi u
 
   monoPick : ∀ {Fs s} {S : Sig Fs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig Fs (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → TeleSig S (Scope.tele sc)
-           → SigCF S → RigidFree ty → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+           → SigCF S → RigidFree ty → (D : MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            → (rest : ModTele (addImp sc (funName fi) ty) es) → ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest
            → SigIn rest S → Program Fs
   monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest (inj₁ (_ , e)) u =
@@ -296,7 +305,7 @@ mutual
     monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest mi′ (funName fi ≟str "main") (ty <:? EffUU) u
 
   monoDispatch : ∀ {Fs s} {S : Sig Fs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig Fs (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → TeleSig S (Scope.tele sc)
-               → SigCF S → RigidFree ty → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+               → SigCF S → RigidFree ty → (D : MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
                → (rest : ModTele (addImp sc (funName fi) ty) es) → MainIn rest
                → Dec (funName fi ≡ "main") → Dec (ty <: EffUU) → SigIn rest S → Program Fs
   monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest mi′ (yes _) (yes e) u =
@@ -307,7 +316,7 @@ mutual
     monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest mi′ u
 
   monoNext : ∀ {Fs s} {S : Sig Fs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig Fs (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → TeleSig S (Scope.tele sc)
-           → SigCF S → RigidFree ty → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+           → SigCF S → RigidFree ty → (D : MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            → (rest : ModTele (addImp sc (funName fi) ty) es) → MainIn rest → SigIn rest S → Program Fs
   monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest mi′ u =
     toProgram (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D)
@@ -315,7 +324,7 @@ mutual
 
   -- `main`: an entry like any other (D253); the program refers to it.
   monoHere : ∀ {Fs s} {S : Sig Fs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig Fs (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → TeleSig S (Scope.tele sc)
-           → SigCF S → RigidFree ty → (D : ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+           → SigCF S → RigidFree ty → (D : MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            → (rest : ModTele (addImp sc (funName fi) ty) es) → ty <: EffUU → SigIn rest S → Program Fs
   monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D rest e u =
     toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D)

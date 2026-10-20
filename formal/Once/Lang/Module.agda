@@ -51,7 +51,9 @@ import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.Lang.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
+import Once.Lang.Context as Surface
+open import Once.Lang.Syntax using (RawExpr)
 
 open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunType; pfunBody)
@@ -92,6 +94,12 @@ addImp sc x ty = scope (Scope.sig sc) (C.extendDefs (Scope.imps sc) x ty) (Scope
 addPoly : Scope → Parser.PolyFunInfo → Scope
 addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 
+-- R8 (plan 0.121): a monomorphic definition's body — CHECKED at its signature,
+-- or, without one, SYNTHESIZING its type (D323; the Spec's `w-sig`/`w-nosig`).
+MonoBody : Maybe Type → (ctx : NamedCtx) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
+MonoBody (just _) ctx e ty Ψ = ctx ⊢ᶜ e ∶ ty ⨾ Ψ
+MonoBody nothing  ctx e ty Ψ = ctx ⊢ᵢ e ∶ ty ⨾ Ψ
+
 data ModTele : Scope → List Parser.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
   -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
@@ -110,7 +118,7 @@ data ModTele : Scope → List Parser.Entry → Set where
        → C.resolveFunType (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty
        → PrincipalAt (ctxOf sc) (funBody fi) ty
        → RigidFree ty                    -- D243: a monomorphic type is GROUND
-       → ctxOf sc ⊢ᶜ funBody fi ∶ ty ⨾ Ψ
+       → MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (Parser.e-fun fi ∷ es)
   -- D243: a telescope definition, typed ONCE, at its schema with rigid

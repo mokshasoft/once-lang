@@ -217,7 +217,7 @@ ce-syms-fun doOpt sc fi es false ep cfs eq
 ...   | nothing with rigidFree? ty
 ...       | nothing = case eq of λ ()
 ...       | just _
-    with C.compileFun IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
+    with C.compileFunM (FunInfo.funType fi) IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
 ...         | inj₁ _ = case eq of λ ()
 ...         | inj₂ irFun
       with C.compileEntries IR.Heap doOpt (C.extendScope sc (FunInfo.funName fi) ty) es in rec

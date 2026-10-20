@@ -49,7 +49,7 @@ open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-open Parser.FunInfo using (funName; funBody)
+open Parser.FunInfo using (funName; funBody; funType)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.IR using (IR)
 import Once.IR
@@ -57,13 +57,13 @@ open import Once.IRTy using (⌊_⌋)
 import Once.Lang.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.Lang.Typing.Scope using (Imports)
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Denotation.Realize using (realize)
+open import Once.Denotation.Realize using (realize; realize-infer)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf)
+open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; MonoBody)
 open import Once.Lang.Core.PolyTy using (Sig)
 open import Once.Lang.Core.Telescope using (Tele; def; teleSem; noKinds)
 open import Once.Lang.Core.Schema using (schemaOf; kindsOf)
@@ -101,9 +101,10 @@ import Once.Adequacy.TeleEntry fmt ι as TE
 import Once.Adequacy.ElabInst as EI
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
-open import Once.Adequacy.Coherence fmt using (realize-invariant)
+open import Once.Adequacy.Coherence fmt using (realize-invariant; realize-invariant-i)
 import Once.TypeCheck.Completeness
 import Once.TypeCheck.Elaborate
+import Data.Maybe
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.ValueDomain using (cohᴰ)
@@ -214,9 +215,9 @@ defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def d e ts) = cong₂ _,_ refl (defEnv
 module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig Fs (C.CScope.csig csc)} {is : ImpSig S (C.CScope.cimps csc)}
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
                 (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} (g : RigidFree ty)
-                (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ctx.Usage.[])
+                (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ctx.Usage.[])
                 {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
-                (cf : C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+                (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
                 (inv : Inv {S = S} csc tl ss is ts pre) where
   x    = funName fi
@@ -230,46 +231,83 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
   ctx  = ctxOf (AS.scopeOf csc)
   ρ    = CE.envOf fmt S δ ss is ts
   V    = viewOf {S = S} ss is ts
-  Dc   = proj₂ (ElabM.elabᶜ S V D)
+  Dc   = proj₂ (TR.elabM (funType fi) V D)
   uf : C.FunCtx
   uf   = (x , ty) ∷ C.CScope.cimps csc
   σx   = σW pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf
-  ccE  = Once.TypeCheck.Completeness.check-complete D
-  ce   = proj₂ (proj₂ (proj₂ ccE))
-  D′   = sound-of (Once.TypeCheck.Elaborate.checkElabV ctx (funBody fi) ty) ce
   M    = evalᴰ fmt (tableEnv fmt φ pre) irFun tt
 
-  -- the compiled body's run is related to the elaboration's surface meaning
-  -- (the compile chain): faithfulness, then linking (an equation), then
-  -- coherence.
-  chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ realize D ⟧ˢ fmt σx tt)
-  chain =
-    ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
-             (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf ce))
-       (RelS-trans (RelD-trans ty)
-         (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′) tt)
-             (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))))
-         (realize-invariant D′ D σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
+  -- With a signature: the compiled body's run is related to the elaboration's
+  -- surface meaning (the compile chain): faithfulness, then linking (an
+  -- equation), then coherence.
+  relC : (D′ : ctx ⊢ᶜ funBody fi ∶ ty ⨾ Ctx.Usage.[])
+       → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
+       → RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+  relC D′ cf′ =
+    TE.abi-rel ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S V D′)) fmt δ tt) M
+      (GM-D Once.Lang.Type.Grade.pure ty
+            (subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (SD.⟦ realize D′ ⟧ˢ fmt σx tt))
+                   (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D′ tt) relA)
+            chain)
+    where
+      ccE  = Once.TypeCheck.Completeness.check-complete D′
+      ce   = proj₂ (proj₂ (proj₂ ccE))
+      D″   = sound-of (Once.TypeCheck.Elaborate.checkElabV ctx (funBody fi) ty) ce
+      chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
+      chain =
+        ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
+                 (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf′ ce))
+           (RelS-trans (RelD-trans ty)
+             (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″) tt)
+                 (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″))))
+             (realize-invariant D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
+      relA : RelGM Once.Lang.Type.Grade.pure ty (MeaningM.⟦_⟧ᶜ D′ fmt ρ tt) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
+      relA = MB.bridge-c fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
+               (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
-  relA : RelGM Once.Lang.Type.Grade.pure ty (MeaningM.⟦_⟧ᶜ D fmt ρ tt) (SD.⟦ realize D ⟧ˢ fmt σx tt)
-  relA = MB.bridge-c fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
-           (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
+  -- R8, without a signature: the same chain, through the synthesis.
+  relI : (D′ : ctx ⊢ᵢ funBody fi ∶ ty ⨾ Ctx.Usage.[])
+       → C.compileFunI IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
+       → RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᵢ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+  relI D′ cf′ =
+    TE.abi-rel ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᵢ S V D′)) fmt δ tt) M
+      (GM-D Once.Lang.Type.Grade.pure ty
+            (subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt))
+                   (CMB.bridge-i fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D′ tt) relA)
+            chain)
+    where
+      ciE  = Once.TypeCheck.Completeness.infer-complete D′
+      ce   = proj₂ (proj₂ (proj₂ ciE))
+      D″   = sound-of-i (Once.TypeCheck.Elaborate.inferElabV ctx (funBody fi)) ce
+      chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
+      chain =
+        ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
+                 (irFun-formI (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf′ ce))
+           (RelS-trans (RelD-trans ty)
+             (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″) tt)
+                 (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″))))
+             (realize-invariant-i D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
+      relA : RelGM Once.Lang.Type.Grade.pure ty (MeaningM.⟦_⟧ᵢ D′ fmt ρ tt) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
+      relA = MB.bridge-i fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
+               (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
+
+  relM-at : ∀ (ft : Data.Maybe.Maybe Type) (D′ : MonoBody ft ctx (funBody fi) ty Ctx.Usage.[])
+          → C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
+          → RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S (proj₂ (TR.elabM ft V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+  relM-at (Data.Maybe.just _) D′ cf′ = relC D′ cf′
+  relM-at Data.Maybe.nothing  D′ cf′ = relI D′ cf′
 
   entry≡ : GM.⟦_⟧ S Dc fmt δ tt ≡ CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)
   entry≡ = sym (CAS.mono-entry-sem S noKinds _ _ sg g Dc fmt δ)
 
   relM : RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
-  relM = TE.abi-rel ty (GM.⟦_⟧ S Dc fmt δ tt) M
-           (GM-D Once.Lang.Type.Grade.pure ty
-                 (subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (SD.⟦ realize D ⟧ˢ fmt σx tt))
-                        (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D tt) relA)
-                 chain)
+  relM = relM-at (funType fi) D cf
 
 -- D324: `main` joins the telescope and the table, not the definitions' scope.
 inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
-             {Ψ : Ctx.Usage 0} (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+             {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
-         → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+         → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
          → Inv (C.cscope (C.CScope.csig csc) (C.extendDefs-at b (C.CScope.cimps csc) (funName fi) ty) (C.CScope.ctele csc))
@@ -279,9 +317,9 @@ inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigC
                (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
 
 inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
-             {Ψ : Ctx.Usage 0} (D : ctxOf (AS.scopeOf csc) ⊢ᶜ funBody fi ∶ ty ⨾ Ψ)
+             {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
-         → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+         → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
          → Inv (C.extendScope csc (funName fi) ty)

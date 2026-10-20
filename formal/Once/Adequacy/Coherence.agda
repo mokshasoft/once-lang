@@ -44,7 +44,7 @@ open import Once.Lang.Typing.Scope using (NamedCtx)
 open import Once.Lang.Typing
 import Once.TypeCheck.ModeSub as MS
 open import Once.TypeCheck.Route
-open import Once.TypeCheck.RouteBuild using (route-cc)
+open import Once.TypeCheck.RouteBuild using (route-cc; route-ii)
 import Once.Lang.Context as Surface
 open import Once.Surface.Syntax using (coerce)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
@@ -208,3 +208,11 @@ realize-invariant :
   → RelD Surface.⟦ NamedCtx.debruijn ctx Surface.↾ Ψ ⟧ᶜ dγ dγ′
   → RelS (RelD A) (⟦ RC d₁ ⟧ˢ fmt σ dγ) (⟦ RC d₂ ⟧ˢ fmt σ dγ′)
 realize-invariant d₁ d₂ σ rσ r = ≈-out (≅-≈ (coh-cc (route-cc d₁ d₂))) σ rσ r
+
+-- R8: likewise for two synthesis derivations (a definition without a signature).
+realize-invariant-i :
+  ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    (d₁ d₂ : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (σ : SD.DefsSem) → RelDefs σ σ → ∀ {dγ dγ′}
+  → RelD Surface.⟦ NamedCtx.debruijn ctx Surface.↾ Ψ ⟧ᶜ dγ dγ′
+  → RelS (RelD A) (⟦ RI d₁ ⟧ˢ fmt σ dγ) (⟦ RI d₂ ⟧ˢ fmt σ dγ′)
+realize-invariant-i d₁ d₂ σ rσ r = ≈-out (≅-≈ (coh-ii (route-ii d₁ d₂))) σ rσ r
