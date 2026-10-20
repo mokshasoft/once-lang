@@ -115,3 +115,57 @@ res-expr (re-unop e) (e-neg ee) g = let (e′ , re′ , xe) = res-expr e ee g in
 res-expr re-unit e-unit g = _ , r-unit , x-unit
 res-expr re-int e-int g = _ , r-int , x-int
 res-expr re-float e-float g = _ , r-float , x-float
+
+------------------------------------------------------------------------
+-- The declarations
+------------------------------------------------------------------------
+
+open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.Maybe using (just; nothing)
+open import Once.Spec.Signature using (Signature)
+open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport; Import)
+open import Once.Parser.Module.Resolve using (signaturesWithOwner; ownerOf)
+open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
+import Once.Spec.Surface.Program as SPr
+
+private
+  owner-just : ∀ (i : Import) → Σ[ o ∈ String ] ownerOf i ≡ just o
+  owner-just (mkImport p (just _)) = _ , refl
+  owner-just (mkImport p nothing)  = _ , refl
+
+-- The resolved declarations: the Spec's, related to the compiler's.
+module Decls (Σ : Signature) where
+  open import Once.Adequacy.SpecFront.Align Σ ps using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias; ImportedSig)
+
+  private
+    -- an import's signatures are owned by it
+    owned : ∀ (o : String) (ds : List Decl) → All ImportedSig (signaturesWithOwner (just o) ds)
+    owned o [] = []
+    owned o (DSignature x _ T ∷ ds) = (x , o , T , refl) ∷ owned o ds
+    owned o (DTypeSig _ _ ∷ ds) = owned o ds
+    owned o (DFunDef _ _ ∷ ds) = owned o ds
+    owned o (DTypeAlias _ _ _ ∷ ds) = owned o ds
+    owned o (DImport _ ∷ ds) = owned o ds
+
+  -- the definitions' resolved bodies are good (the resolver's check)
+  res-decls : ∀ {mm um am dsU dsR ds′} → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+            → Σ[ dsR′ ∈ List S.Decl ] SPr.ResolvesDecls (env um am) ds′ dsR′ × DR dsR′ dsR
+  res-decls LR.rds-nil [] = [] , SPr.rd-nil , dr-nil
+  res-decls (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb g) rds) (d-fundef em ∷ pw) =
+    let (e′ , re′ , rx) = res-expr rb em g ; (ds′ , rd , dr) = res-decls rds pw
+    in _ , SPr.rd-def re′ rd , dr-def rx dr
+  res-decls (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (d-typesig ∷ pw) =
+    let (ds′ , rd , dr) = res-decls rds pw in _ , SPr.rd-other SPr.nf-tsig rd , dr-tsig dr
+  res-decls (LR.rds-cons LR.nim-sig LR.rd-signature rds) (d-signature ∷ pw) =
+    let (ds′ , rd , dr) = res-decls rds pw in _ , SPr.rd-other SPr.nf-sig rd , dr-sig dr
+  res-decls (LR.rds-cons LR.nim-alias LR.rd-typealias rds) (d-alias ∷ pw) =
+    let (ds′ , rd , dr) = res-decls rds pw in _ , SPr.rd-other SPr.nf-alias rd , dr-alias dr
+  res-decls (LR.rds-import {imp = imp} {impDs = impDs} fa rds) (d-import ∷ pw) =
+    let (ds′ , rd , dr) = res-decls rds pw ; (o , eo) = owner-just imp
+    in _ , SPr.rd-other SPr.nf-import rd
+       , dr-import (subst-own eo (owned o impDs)) dr
+    where
+      subst-own : ∀ {o} {mo} → mo ≡ just o → All ImportedSig (signaturesWithOwner (just o) impDs)
+                → All ImportedSig (signaturesWithOwner mo impDs)
+      subst-own refl a = a
