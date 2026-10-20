@@ -116,6 +116,19 @@ types = record
   ; ⊑π-unique = ⊑π-unique
   }
 
+-- Keeping the domains is a special case of converting.
+<:ᶜ⇒<: : ∀ {m} {A B : Ty m} → A <:ᶜ B → A <: B
+<:ᶜ⇒<: subᶜ-void        = sub-void
+<:ᶜ⇒<: subᶜ-var         = sub-var
+<:ᶜ⇒<: subᶜ-unit        = sub-unit
+<:ᶜ⇒<: subᶜ-int         = sub-int
+<:ᶜ⇒<: subᶜ-float       = sub-float
+<:ᶜ⇒<: (subᶜ-arr {A = A} b g) = sub-arr (<:-refl A) (<:ᶜ⇒<: b) g
+<:ᶜ⇒<: (subᶜ-* a b)     = sub-* (<:ᶜ⇒<: a) (<:ᶜ⇒<: b)
+<:ᶜ⇒<: (subᶜ-+ a b)     = sub-+ (<:ᶜ⇒<: a) (<:ᶜ⇒<: b)
+<:ᶜ⇒<: subᶜ-μ           = sub-μ
+<:ᶜ⇒<: (subᶜ-ν g)       = sub-ν g
+
 join-unique : ∀ {m} {A B C C′ : Ty m} → A ⊔ B ≔ C → A ⊔ B ≔ C′ → C ≡ C′
-join-unique j j′ = <:-antisym (least j (left j′) (right j′)) (least j′ (left j) (right j))
+join-unique j j′ = <:-antisym (<:ᶜ⇒<: (least j (left j′) (right j′))) (<:ᶜ⇒<: (least j′ (left j) (right j)))
   where open _⊔_≔_

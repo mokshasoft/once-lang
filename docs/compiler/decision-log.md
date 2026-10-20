@@ -18986,8 +18986,8 @@ Wells 2002), which fails or explodes with subtyping and a bottom.
 
 ## D322 — A CASE IS AT THE JOIN OF ITS BRANCHES; A DEFINITION'S TYPE IS ITS BODY'S, IN THE CONTEXT ITS DOMAINS DECLARE (2026-10-20)
 
-**Proposed 2026-10-20** (discussion of the D321 note `principal-types-inl.md`); pending the user's approval of
-the Spec patch. **Keeps**: D314/D321 (option B: a signature confirms the body's principal type). **Relates**:
+**Approved by the user, 2026-10-20** (discussion of the D321 note `principal-types-inl.md`; `f6db947b5`);
+**amended the same day** (item 1: the join is taken in `<:ᶜ`, see "Amendment" below). **Keeps**: D314/D321 (option B: a signature confirms the body's principal type). **Relates**:
 D226 (subtyping), D316 (bidirectional typing), GOAL.md (the Spec read by a categorical mathematician, the
 surface written by a programmer).
 
@@ -19004,9 +19004,10 @@ different codomains (`stop : … -> Int + Void`, `next : … -> Void + (Int * In
 asked for one: the program needed an annotation although its least type exists (3 of 81 exit tests).
 
 ### Decision
-1. **Joins** (`Spec.Sub`): `A ⊔ B ≔ C` — `C` is the least type both convert into, stated by its universal
-   property (`left`, `right`, `least`). Full join: arrows join codomains and grades and meet domains (a meet
-   always exists, `Void` the bottom); there is no top, so some pairs have no join and are rejected as before.
+1. **Joins** (`Spec.Sub`): `A ⊔ B ≔ C` — `C` is the least type both convert into WITH EVERY DOMAIN KEPT
+   (`<:ᶜ`, D321's order), stated by its universal property (`left`, `right`, `least`). Arrows out of one
+   domain join codomains and grades; arrows out of different domains have no join; there is no top, so
+   some pairs have no join and are rejected as before.
 2. **`d-case` and `s-case` are at the join** of their branches' types, each branch composed with its
    conversion (`coerce`). A `case` keeps its least type, as D321 asks of every definition.
 3. **`Spec.Metatheory.Types` claims antisymmetry** of `<:` and `⊑π` (the header already said "partial
@@ -19021,11 +19022,19 @@ asked for one: the program needed an annotation although its least type exists (
    constrained `∀b. b <: Int ⇒ (Int -> b) -> b` is least — bounded quantification, or algebraic
    subtyping with a top).
 6. **Compiler diagnostics** (not Spec):
-   * a WARNING (not an error) when a joined domain is uninhabited: both arms are converted to the unique
-     map out of an empty type, so the `case` throws both away; any real call of it is already a type error
-     (GOAL.md: almost always a bug, the language does not forbid it);
    * the "not its principal type" error teaches both fixes: write the principal type, or annotate the body
      (`(inl 2 : Int + Unit)`) to state the wider one.
+
+### Amendment (2026-10-20): the join keeps the domains
+The first version took the join in `<:`, meeting the domains of two arrows. A meet is not stable under type
+substitution: two type variables meet at `Void` (only `Void` lies below both), while at an instance `a = b =
+Int` they meet at `Int`. A polymorphic definition typed once (D243, D316) would then have, at an instance, a
+different type than the instance typed directly — typing would not be parametric (D251: no rule is sensitive
+to `Void`), and the compiler's surface substitution lemma (`TypeCheck.RigidSubst`) fails. Taken in `<:ᶜ` the
+join varies only what a term produces (D321: a term is a morphism out of a given object): it needs no meet,
+commutes with type substitution, and still types every program the join was introduced for (`stop`/`next` in
+`loop-sum`). Two branches that are arrows out of different domains are now rejected at the `case`, so the
+proposed warning on an uninhabited joined domain is gone.
 
 ### Future extension (not decided)
 Option 2's capability can come later without breaking programs: binder annotations (`\(x : Int) -> …`) and a

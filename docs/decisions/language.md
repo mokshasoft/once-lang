@@ -241,10 +241,11 @@ entry updates the rule it changes here, in the same commit.
   entry, D315) — never between a definition and its signature; in the core it is the
   term `coerce A B t`. `A <: Unit` and `Int <: Float` are not subtyping. (D226)
 - **Joins**: two branches of one `case`/`destruct` meet at the least type
-  both convert into (`A ⊔ B ≔ C`, stated by its universal property), each
-  composed with its conversion. Arrows join codomains and grades and meet
-  domains; with no top type, `Int` and `Unit` have no join. A joined domain
-  that is uninhabited draws a warning, not an error. (D322)
+  both convert into with every domain kept (`A ⊔ B ≔ C` in `<:ᶜ`, stated by
+  its universal property), each composed with its conversion. Arrows out of
+  one domain join codomains and grades; arrows out of different domains, and
+  with no top type `Int` and `Unit`, have no join. A join commutes with type
+  substitution, so typing stays parametric. (D322)
 - **Eliminators consume their principal argument up to `<:`**; grades are
   never narrowed. (D229, its Void rules withdrawn by D251)
 - **Int widens to Float** only in mixed binary operations (two local rules);

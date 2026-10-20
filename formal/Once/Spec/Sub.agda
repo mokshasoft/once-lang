@@ -25,13 +25,16 @@
 -- out of a given object: its domains are annotations, and its principal type
 -- is the least codomain over them (`Spec.Surface.Program.Principal`).
 --
--- `A ⊔ B ≔ C`: `C` is the join of `A` and `B`, the least type both convert
--- into. Two branches of one `case` meet at their join, each composed with
--- its conversion (`Spec.Surface.Typing`), so the `case` keeps its least
--- type. `Void` is the unit (`Void ⊔ X = X`); sums and products join
--- componentwise; arrows join codomains and grades and meet domains (a meet
--- always exists: `Void` is the bottom). There is no top: `μ` and a type
--- variable join only with themselves, and `Int` and `Unit` have no join.
+-- `A ⊔ B ≔ C`: `C` is the join of `A` and `B` in `<:ᶜ`, the least type both
+-- convert into with every domain kept. Two branches of one `case` meet at
+-- their join, each composed with its conversion (`Spec.Surface.Typing`), so
+-- the `case` keeps its least type. `Void` is the unit (`Void ⊔ X = X`); sums
+-- and products join componentwise; arrows out of one domain join codomains
+-- and grades. There is no top: `μ` and a type variable join only with
+-- themselves, and `Int` and `Unit` have no join. A join varies only what a
+-- term produces, so it commutes with type substitution and typing stays
+-- parametric (in `<:` two type variables would meet at `Void`, and an
+-- instance would type differently from its schema).
 ------------------------------------------------------------------------
 
 module Once.Spec.Sub where
@@ -71,6 +74,6 @@ data _<:ᶜ_ {m} : Ty m → Ty m → Set where
 
 record _⊔_≔_ {m} (A B C : Ty m) : Set where
   field
-    left  : A <: C
-    right : B <: C
-    least : ∀ {D} → A <: D → B <: D → C <: D
+    left  : A <:ᶜ C
+    right : B <:ᶜ C
+    least : ∀ {D} → A <:ᶜ D → B <:ᶜ D → C <:ᶜ D
