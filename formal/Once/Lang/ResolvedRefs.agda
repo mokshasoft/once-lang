@@ -10,7 +10,8 @@
 -- definition other than to `canonical [x]` (`r-this`), which for a
 -- polymorphic `x` the compiler has no typing for (its own polymorphic
 -- references stay bare). A resolved body whose canonical references avoid both
--- is GOOD (`GoodRefs`); the resolver checks it (`goodRefs?`), so a program
+-- is GOOD (`GoodRefs`; also: every annotation a surface type, which a parsed
+-- one always is); the resolver checks it (`goodRefs?`), so a program
 -- naming either is rejected where it is resolved — it was rejected when typed
 -- anyway — and the resolution bridge reads the Spec's resolution off the
 -- compiler's.
@@ -33,6 +34,11 @@ open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt;
   RFloat; RAnnot; RBinOp; RUnaryOp; RAna)
 
+open import Data.Maybe using (just; nothing)
+import Relation.Binary.PropositionalEquality
+open import Once.Lang.Type.WellFormed using (RigidFree)
+open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
+
 -- A canonical name that is neither `main` nor an own polymorphic definition.
 GoodName : List String → CanonicalName → Set
 GoodName ps c = ∀ {x} → c ≡ canonical (x ∷ []) → (x ≢ "main") × ¬ (x ∈ ps)
@@ -49,7 +55,7 @@ GoodRefs ps (RDestruct s _ l _ r) = GoodRefs ps s × GoodRefs ps l × GoodRefs p
 GoodRefs ps RUnit                 = ⊤
 GoodRefs ps (RInt _)              = ⊤
 GoodRefs ps (RFloat _ _ _ _)      = ⊤
-GoodRefs ps (RAnnot e _)          = GoodRefs ps e
+GoodRefs ps (RAnnot e T)          = RigidFree T × GoodRefs ps e
 GoodRefs ps (RBinOp _ a b)        = GoodRefs ps a × GoodRefs ps b
 GoodRefs ps (RUnaryOp _ e)        = GoodRefs ps e
 GoodRefs ps (RAna _ e)            = GoodRefs ps e
@@ -62,6 +68,17 @@ private
   one-name ps x (yes m) _       = no (λ g → proj₁ (g refl) m)
   one-name ps x (no _)  (yes i) = no (λ g → proj₂ (g refl) i)
   one-name ps x (no nm) (no ni) = yes (λ { refl → nm , ni })
+
+-- (an annotation is a surface type: no rigid constant)
+rigidFree-dec : ∀ T → Dec (RigidFree T)
+rigidFree-dec T = from (rigidFree? T) refl
+  where
+    from : ∀ m → rigidFree? T ≡ m → Dec (RigidFree T)
+    from (just r) _ = yes r
+    from nothing  e = no (λ r → nothing≢just (Relation.Binary.PropositionalEquality.trans (Relation.Binary.PropositionalEquality.sym e) (rigidFree?-complete r)))
+      where
+        nothing≢just : ∀ {A : Set} {a : A} → nothing ≡ just a → Data.Empty.⊥
+        nothing≢just ()
 
 goodName? : ∀ ps c → Dec (GoodName ps c)
 goodName? ps (canonical [])           = yes (λ e → ⊥-elim′ (parts≢ (λ ()) e))
@@ -86,7 +103,7 @@ goodRefs? ps (RDestruct s _ l _ r) = goodRefs? ps s ×-dec (goodRefs? ps l ×-de
 goodRefs? ps RUnit                 = yes tt
 goodRefs? ps (RInt _)              = yes tt
 goodRefs? ps (RFloat _ _ _ _)      = yes tt
-goodRefs? ps (RAnnot e _)          = goodRefs? ps e
+goodRefs? ps (RAnnot e T)          = rigidFree-dec T ×-dec goodRefs? ps e
 goodRefs? ps (RBinOp _ a b)        = goodRefs? ps a ×-dec goodRefs? ps b
 goodRefs? ps (RUnaryOp _ e)        = goodRefs? ps e
 goodRefs? ps (RAna _ e)            = goodRefs? ps e
