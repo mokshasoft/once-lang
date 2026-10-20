@@ -31,6 +31,7 @@ open import Once.Lang.Context using (Usage; zeroUsage; singleUse)
 open import Once.Lang.Core.PolyTy
 open Schema using (type)
 open import Once.Lang.Core.PolyTyping S
+open import Once.Lang.Core.PolySub
 import Once.Lang.Core.Syntax S as G
 open G using (primDom; primCod)
 

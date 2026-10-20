@@ -39,6 +39,7 @@ import Once.Lang.GradedOps as LOps
 import Once.Spec.Type as ST
 import Once.Lang.Graded as LGr
 import Once.Lang.Core.PolyTyping S as PT
+import Once.Lang.Core.PolySub as PS
 import Once.Lang.Core.Syntax S as L
 import Once.Lang.Core.Typing S as GT
 import Once.Lang.Core.Meaning S as GM
@@ -175,7 +176,7 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
       gC = subst (λ Z → GR Z _) (LP.⌈⌉-⟪⟫ (L.primCod p) σ) (GR-inst (ptr LP.⌈ L.primCod p ⌉) g)
       gD = subst (λ Z → GR Z _) (sym (LP.⌈⌉-⟪⟫ (L.primDom p) σ)) (gDom σ′ p)
 
-  coerce : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π A B t} (p : A PT.<:ₚ B)
+  coerce : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π A B t} (p : A PS.<:ₚ B)
            (d : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π) → Fund ρ ρ′ d → Fund ρ ρ′ (PT.⊢coerce p d)
   coerce {π = π} p d ih r r′ g e = fmap-R (pr π) (ih r r′ g e) (conv-R p g)
 

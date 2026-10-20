@@ -25,8 +25,6 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 import Once.Lang.Type.Grade as T
-import Once.Lang.Type as LT
-open import Once.Lang.Type.Sub using (_<:_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Lang.Trace using (interp)
 open import Once.Lang.Contract using (ISig; Impl)
@@ -35,6 +33,7 @@ open import Once.Lang.Context using (Usage)
 open import Once.Lang.Core.PolyTy
 open Schema using (arity; kinds; type)
 import Once.Lang.Core.PolyTyping as PT
+import Once.Lang.Core.PolySub as PS
 import Once.Lang.Core.Meaning as GM
 open import Once.Lang.Graded using (⟦_⟧ᵛ; M; toT∞)
 import Once.Lang.GradedOps as LOps
@@ -84,8 +83,7 @@ noKinds ()
 -- `main`'s entry (D315, plan 0.121 R7): `main` is a monomorphic definition at
 -- its own type, usable as `Eff Unit Unit` — the entry converts it.
 data MainEntry : Schema → Set where
-  entry : ∀ {A : Ty 0} → A ⟪ noVars ⟫ <: (LT.Unit LT.⇒[ T.mk-kind T.Many T.eff ] LT.Unit)
-        → MainEntry (schema 0 noKinds A)
+  entry : ∀ {A : Ty 0} → A PS.<:ₚ IOUnit → MainEntry (schema 0 noKinds A)
 
 -- D253: `main` is an entry like any other; a program names it. Plan 0.105:
 -- over the interpretation signatures it is compiled against (`Fs`).
@@ -108,7 +106,7 @@ noResp ()
 -- Run `main`: its only instance, converted to `Unit ⇒[ eff ] Unit`, applied to
 -- the unit input.
 runEntry : ∀ {sc} → MainEntry sc → EntrySem sc → M T.eff ⊤
-runEntry (entry p) f = LOps.⟦ p ⟧<:ᵛ (f noVars noResp) tt
+runEntry (entry p) f = LOps.⟦ PS.<:ₚ-⟪⟫ noVars p ⟧<:ᵛ (f noVars noResp) tt
 
 -- THE CORE MEANING OF A PROGRAM: run its `main` entry (D250: an entry denotes a
 -- VALUE, here the suspension `Unit ⇒[eff] Unit`) in the telescope's

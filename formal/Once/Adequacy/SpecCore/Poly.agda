@@ -171,24 +171,26 @@ kindS-base LT.k-any  ()
 -- Subtyping, over the definitions signature's terms' types.
 module SubS {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) where
   import Once.Lang.Core.PolyTyping S as PT
+  import Once.Lang.Core.PolySub as PS
 
-  subS : ∀ {a} {A B : LP.Ty a} → A PT.<:ₚ B → ptyS A SSub.<: ptyS B
-  subS PT.sub-var         = SSub.sub-var
-  subS PT.sub-void        = SSub.sub-void
-  subS PT.sub-unit        = SSub.sub-unit
-  subS PT.sub-int         = SSub.sub-int
-  subS PT.sub-float       = SSub.sub-float
-  subS PT.sub-rigid       = SSub.sub-unit
-  subS (PT.sub-arr x y g) = SSub.sub-arr (subS x) (subS y) (⊑π-S g)
-  subS (PT.sub-prod x y)  = SSub.sub-* (subS x) (subS y)
-  subS (PT.sub-sum x y)   = SSub.sub-+ (subS x) (subS y)
-  subS PT.sub-μ           = SSub.sub-μ
-  subS (PT.sub-ν {φ = φ} {φ′} g) = SSub.sub-ν (⊑φ-S φ φ′ g)
+  subS : ∀ {a} {A B : LP.Ty a} → A PS.<:ₚ B → ptyS A SSub.<: ptyS B
+  subS PS.sub-var         = SSub.sub-var
+  subS PS.sub-void        = SSub.sub-void
+  subS PS.sub-unit        = SSub.sub-unit
+  subS PS.sub-int         = SSub.sub-int
+  subS PS.sub-float       = SSub.sub-float
+  subS PS.sub-rigid       = SSub.sub-unit
+  subS (PS.sub-arr x y g) = SSub.sub-arr (subS x) (subS y) (⊑π-S g)
+  subS (PS.sub-prod x y)  = SSub.sub-* (subS x) (subS y)
+  subS (PS.sub-sum x y)   = SSub.sub-+ (subS x) (subS y)
+  subS PS.sub-μ           = SSub.sub-μ
+  subS (PS.sub-ν {φ = φ} {φ′} g) = SSub.sub-ν (⊑φ-S φ φ′ g)
 
 module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where
 
   import Once.Lang.Core.PolyTyping S as PT
+  import Once.Lang.Core.PolySub as PS
   import Once.Lang.Core.Syntax S as L
   open SubS S using (subS)
   open import Once.Adequacy.SpecCore.Prim S using (litS; primS; primDom-S; primCod-S)

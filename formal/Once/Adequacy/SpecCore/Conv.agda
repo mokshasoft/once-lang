@@ -44,6 +44,7 @@ import Once.Lang.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
 open import Once.Lang.FunctorMeaning using (translateF)
 import Once.Lang.Core.PolyTyping S as PT
+import Once.Lang.Core.PolySub as PS
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open T∞R
@@ -138,28 +139,28 @@ refl-R g-rigid {()} r
 open import Once.Adequacy.SpecCore.Poly using (module SubS)
 open SubS S using (subS)
 
-conv-R : ∀ {m} {A B : LP.Ty m} (p : A PT.<:ₚ B) {σ σ′} (g : InstG σ σ′) {x x′}
+conv-R : ∀ {m} {A B : LP.Ty m} (p : A PS.<:ₚ B) {σ σ′} (g : InstG σ σ′) {x x′}
        → ValR (GR-inst (ptr A) g) x x′
-       → ValR (GR-inst (ptr B) g) (LOps.⟦ PT.<:ₚ-⟪⟫ σ p ⟧<:ᵛ x) (SD.conv σ′ (subS p) x′)
-conv-R {A = LP.var i} PT.sub-var g r = refl-R (g i) r
-conv-R PT.sub-void g {()} r
-conv-R PT.sub-unit g r = r
-conv-R PT.sub-int g r = r
-conv-R PT.sub-float g r = r
-conv-R PT.sub-rigid g r = tt
-conv-R (PT.sub-arr {q = LG.Zero} {π} {π′} a b x) g r =
+       → ValR (GR-inst (ptr B) g) (LOps.⟦ PS.<:ₚ-⟪⟫ σ p ⟧<:ᵛ x) (SD.conv σ′ (subS p) x′)
+conv-R {A = LP.var i} PS.sub-var g r = refl-R (g i) r
+conv-R PS.sub-void g {()} r
+conv-R PS.sub-unit g r = r
+conv-R PS.sub-int g r = r
+conv-R PS.sub-float g r = r
+conv-R PS.sub-rigid g r = tt
+conv-R (PS.sub-arr {q = LG.Zero} {π} {π′} a b x) g r =
   sub-R x (⊑π-S x) (pr π) (pr π′) (fmap-R (pr π) r (conv-R b g))
-conv-R (PT.sub-arr {q = LG.One} {π} {π′} a b x) g r =
+conv-R (PS.sub-arr {q = LG.One} {π} {π′} a b x) g r =
   λ rx → sub-R x (⊑π-S x) (pr π) (pr π′) (fmap-R (pr π) (r (conv-R a g rx)) (conv-R b g))
-conv-R (PT.sub-arr {q = LG.Many} {π} {π′} a b x) g r =
+conv-R (PS.sub-arr {q = LG.Many} {π} {π′} a b x) g r =
   λ rx → sub-R x (⊑π-S x) (pr π) (pr π′) (fmap-R (pr π) (r (conv-R a g rx)) (conv-R b g))
-conv-R (PT.sub-prod a b) g {_ , _} {_ , _} (r , r′) = conv-R a g r , conv-R b g r′
-conv-R (PT.sub-sum a b) g {inj₁ _} {inj₁ _} r = conv-R a g r
-conv-R (PT.sub-sum a b) g {inj₂ _} {inj₂ _} r = conv-R b g r
-conv-R (PT.sub-sum a b) g {inj₁ _} {inj₂ _} ()
-conv-R (PT.sub-sum a b) g {inj₂ _} {inj₁ _} ()
-conv-R PT.sub-μ g r = r
-conv-R (PT.sub-ν {φ = LG.pure} {LG.pure} x) g r = r
-conv-R (PT.sub-ν {φ = LG.act}  {LG.act}  x) g r = r
-conv-R (PT.sub-ν {F = F} {φ = LG.pure} {LG.act} x) g r = embν-R (GF-inst (pfr F) g) r
-conv-R (PT.sub-ν {φ = LG.act} {LG.pure} ()) g r
+conv-R (PS.sub-prod a b) g {_ , _} {_ , _} (r , r′) = conv-R a g r , conv-R b g r′
+conv-R (PS.sub-sum a b) g {inj₁ _} {inj₁ _} r = conv-R a g r
+conv-R (PS.sub-sum a b) g {inj₂ _} {inj₂ _} r = conv-R b g r
+conv-R (PS.sub-sum a b) g {inj₁ _} {inj₂ _} ()
+conv-R (PS.sub-sum a b) g {inj₂ _} {inj₁ _} ()
+conv-R PS.sub-μ g r = r
+conv-R (PS.sub-ν {φ = LG.pure} {LG.pure} x) g r = r
+conv-R (PS.sub-ν {φ = LG.act}  {LG.act}  x) g r = r
+conv-R (PS.sub-ν {F = F} {φ = LG.pure} {LG.act} x) g r = embν-R (GF-inst (pfr F) g) r
+conv-R (PS.sub-ν {φ = LG.act} {LG.pure} ()) g r

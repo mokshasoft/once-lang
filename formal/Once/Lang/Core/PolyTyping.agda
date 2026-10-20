@@ -45,6 +45,7 @@ open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Lang.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
 open import Once.Lang.Core.PolyTy
+open import Once.Lang.Core.PolySub using (_<:ₚ_; <:ₚ-⟪⟫)
 open Schema using (arity; kinds; type)
 import Once.Lang.Core.Syntax S as G
 open G using (Lit; lit-int; lit-float; Prim; primDom; primCod)
@@ -129,41 +130,6 @@ sigop c A    ⟪ σ ⟫ₜ = G.sigop c A
 ref d τ      ⟪ σ ⟫ₜ = G.ref d (λ i → τ i ⟪ σ ⟫)
 
 infixl 60 _⟪_⟫ᶜ _⟪_⟫ₜ
-
-------------------------------------------------------------------------
--- Subtyping over open types (D226's judgment; a variable is only below
--- itself — no bounded quantification).
-------------------------------------------------------------------------
-
-infix 4 _<:ₚ_
-
-data _<:ₚ_ {m} : Ty m → Ty m → Set where
-  sub-var    : ∀ {i} → var i <:ₚ var i
-  sub-void   : ∀ {B} → Void <:ₚ B
-  sub-unit   : Unit <:ₚ Unit
-  sub-int    : Int <:ₚ Int
-  sub-float  : Float <:ₚ Float
-  sub-rigid  : ∀ {k i} → rigid k i <:ₚ rigid k i
-  sub-arr    : ∀ {A A′ B B′ q π π′}
-             → A′ <:ₚ A → B <:ₚ B′ → π ⊑π π′
-             → (A ⇒[ mk-kind q π ] B) <:ₚ (A′ ⇒[ mk-kind q π′ ] B′)
-  sub-prod   : ∀ {A A′ B B′} → A <:ₚ A′ → B <:ₚ B′ → (A * B) <:ₚ (A′ * B′)
-  sub-sum    : ∀ {A A′ B B′} → A <:ₚ A′ → B <:ₚ B′ → (A + B) <:ₚ (A′ + B′)
-  sub-μ      : ∀ {F} → μ-type F <:ₚ μ-type F
-  sub-ν      : ∀ {F φ φ′} → fin φ ⊑π fin φ′ → ν-type F φ <:ₚ ν-type F φ′
-
-<:ₚ-⟪⟫ : ∀ {m} {A B : Ty m} (σ : GSub m) → A <:ₚ B → A ⟪ σ ⟫ <: B ⟪ σ ⟫
-<:ₚ-⟪⟫ {A = var i} σ sub-var = Once.Lang.Type.Sub.<:-refl (σ i)
-<:ₚ-⟪⟫ σ sub-void   = sub-void
-<:ₚ-⟪⟫ σ sub-unit   = sub-unit
-<:ₚ-⟪⟫ σ sub-int    = sub-int
-<:ₚ-⟪⟫ σ sub-float  = sub-float
-<:ₚ-⟪⟫ σ sub-rigid  = sub-rigid
-<:ₚ-⟪⟫ σ (sub-arr a b g) = sub-arr (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b) g
-<:ₚ-⟪⟫ σ (sub-prod a b)  = sub-prod (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b)
-<:ₚ-⟪⟫ σ (sub-sum a b)   = sub-sum (<:ₚ-⟪⟫ σ a) (<:ₚ-⟪⟫ σ b)
-<:ₚ-⟪⟫ σ sub-μ           = sub-μ
-<:ₚ-⟪⟫ σ (sub-ν g)       = sub-ν g
 
 ------------------------------------------------------------------------
 -- The judgment

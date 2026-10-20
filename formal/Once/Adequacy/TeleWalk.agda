@@ -52,7 +52,7 @@ open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
 open import Once.Lang.Type using (Type)
 open import Once.Lang.Type.DecEq using (_≟T_)
@@ -76,7 +76,7 @@ open import Once.Lang.Principal using (PrincipalAt)
 open import Once.Lang.Core.PolyTy using (Sig)
 open import Once.Lang.Core.Telescope using (Tele; Program; runCore; program; noKinds; noVars; noResp; MainEntry)
 open import Once.Lang.Core.PolyTy using (⌈⌉-⟪⟫)
-open import Once.Lang.Type.Sub using (_<:_; sub-void; sub-unit; sub-arr; _⊑π_; ⊑-eff; ⊑-pe; ⊑-ae)
+open import Once.Lang.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid; _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub using (_<:?_)
 open import Once.Lang.GradedOps using (⟦_⟧<:ᵛ; fmapM)
 open import Once.Lang.Graded using (M; subM)
@@ -92,6 +92,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Lang.Core.Translate using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
 import Once.Lang.Core.Abstract as A
 import Once.Lang.Core.Translate as TR
+import Once.Lang.Core.PolySub
 open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
@@ -167,10 +168,33 @@ private
     where inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelSB R (Once.Lang.Trace.ret (inj₁ a)) (Once.Lang.Trace.ret (inj₁ b)) → R a b
           inv (s-ret r) = r
 
+  -- A subtyping has one proof.
+  ⊑π-irr : ∀ {π π′} (g g′ : π ⊑π π′) → g ≡ g′
+  ⊑π-irr ⊑-pure ⊑-pure = refl
+  ⊑π-irr ⊑-eff  ⊑-eff  = refl
+  ⊑π-irr ⊑-pe   ⊑-pe   = refl
+  ⊑π-irr ⊑-act  ⊑-act  = refl
+  ⊑π-irr ⊑-pa   ⊑-pa   = refl
+  ⊑π-irr ⊑-ae   ⊑-ae   = refl
+
+  <:-irr : ∀ {A B} (p q : A <: B) → p ≡ q
+  <:-irr sub-void          sub-void             = refl
+  <:-irr sub-unit          sub-unit             = refl
+  <:-irr sub-int           sub-int              = refl
+  <:-irr sub-float         sub-float            = refl
+  <:-irr (sub-arr a b g)   (sub-arr a′ b′ g′)   =
+    trans (cong (λ x → sub-arr x b g) (<:-irr a a′))
+          (trans (cong (λ x → sub-arr a′ x g) (<:-irr b b′)) (cong (sub-arr a′ b′) (⊑π-irr g g′)))
+  <:-irr (sub-prod a b)    (sub-prod a′ b′)     = cong₂ sub-prod (<:-irr a a′) (<:-irr b b′)
+  <:-irr (sub-sum a b)     (sub-sum a′ b′)      = cong₂ sub-sum (<:-irr a a′) (<:-irr b b′)
+  <:-irr sub-μ             sub-μ                = refl
+  <:-irr (sub-ν g)         (sub-ν g′)           = cong sub-ν (⊑π-irr g g′)
+  <:-irr sub-rigid         sub-rigid            = refl
+
   -- The entry's conversion, read across the schema's round trip.
-  conv-subst : ∀ {X ty : Type} (e : X ≡ ty) (p : ty <: EffUU) (x : ⟦ X ⟧ᵛ)
-             → ⟦ subst (_<: EffUU) (sym e) p ⟧<:ᵛ x ≡ ⟦ p ⟧<:ᵛ (subst (λ Y → ⟦ Y ⟧ᵛ) e x)
-  conv-subst refl p x = refl
+  conv-subst : ∀ {X ty : Type} (e : X ≡ ty) (q : X <: EffUU) (p : ty <: EffUU) (x : ⟦ X ⟧ᵛ)
+             → ⟦ q ⟧<:ᵛ x ≡ ⟦ p ⟧<:ᵛ (subst (λ Y → ⟦ Y ⟧ᵛ) e x)
+  conv-subst refl q p x = cong (λ r → ⟦ r ⟧<:ᵛ x) (<:-irr q p)
 
   -- `main`'s result, converted to `Unit` at grade `eff`: the run is unchanged…
   conv-unit : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Lang.Type.Unit ⟧ᵛ} {t}
@@ -283,7 +307,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} {ty} p g D {irFun
             ≡ ⟦ p ⟧<:ᵛ (GM.⟦_⟧ S Dc fmt δ tt) tt
     core-eq =
       trans (from-sem tl′ ss (impDefs ("main" Str.== "main") {x = "main"} {T = ty} is) (wkT ts) (monoSg sg g) zero (TR.mainEntry p) rest u)
-        (trans (cong (λ f → f tt) (conv-subst (⌈⌉-⟪⟫ ty noVars) p _))
+        (trans (cong (λ f → f tt) (conv-subst (⌈⌉-⟪⟫ ty noVars) (Once.Lang.Core.PolySub.<:ₚ-⟪⟫ noVars (TR.⌈⌉-<: p)) p _))
                (cong (λ v → ⟦ p ⟧<:ᵛ v tt) (CAS.mono-entry-sem S noKinds noVars noResp sg g Dc fmt δ)))
 
 mutual

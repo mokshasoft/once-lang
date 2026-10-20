@@ -60,8 +60,10 @@ open import Once.Lang.Core.AbsTy
 open import Once.Lang.Core.Schema using (schemaOf; schemaOf-cf; kindsOf; kinded-instance)
 open import Once.Lang.Core.Telescope using (Tele; def; Program; program; noKinds; noVars)
 open import Once.Lang.Type.Sub using (_<:_)
+import Once.Lang.Type.Sub as LSub
 open import Once.Type.Sub using (_<:?_)
 import Once.Lang.Core.PolyTyping as PT
+import Once.Lang.Core.PolySub as PS
 import Once.Lang.Core.Abstract as A
 import Once.Lang.Elaboration as E
 
@@ -252,9 +254,22 @@ polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts sg D =
 programAt : ∀ {Fs s} {S : Sig Fs s} → Tele S → (d : Fin s) → TL.MainEntry (S !! d) → Program Fs
 programAt tl d e = program tl d e
 
+-- A ground subtyping, read over open types.
+⌈⌉-<: : ∀ {m} {A B : T.Type} → A <: B → PS._<:ₚ_ {m} ⌈ A ⌉ ⌈ B ⌉
+⌈⌉-<: LSub.sub-void        = PS.sub-void
+⌈⌉-<: LSub.sub-unit        = PS.sub-unit
+⌈⌉-<: LSub.sub-int         = PS.sub-int
+⌈⌉-<: LSub.sub-float       = PS.sub-float
+⌈⌉-<: (LSub.sub-arr a b g) = PS.sub-arr (⌈⌉-<: a) (⌈⌉-<: b) g
+⌈⌉-<: (LSub.sub-prod a b)  = PS.sub-prod (⌈⌉-<: a) (⌈⌉-<: b)
+⌈⌉-<: (LSub.sub-sum a b)   = PS.sub-sum (⌈⌉-<: a) (⌈⌉-<: b)
+⌈⌉-<: LSub.sub-μ           = PS.sub-μ
+⌈⌉-<: (LSub.sub-ν g)       = PS.sub-ν g
+⌈⌉-<: LSub.sub-rigid       = PS.sub-rigid
+
 -- `main`'s own entry: a ground type below `Eff Unit Unit`.
 mainEntry : ∀ {ty} → ty <: EffUU → TL.MainEntry (monoSchema ty)
-mainEntry {ty} p = TL.entry (subst (_<: EffUU) (sym (⌈⌉-⟪⟫ ty noVars)) p)
+mainEntry p = TL.entry (⌈⌉-<: p)
 
 -- The walk's invariant: the declarations still ahead are in the signatures.
 SigIn : ∀ {sc es} → ModTele sc es → ∀ {Fs s} → Sig Fs s → Set

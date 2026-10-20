@@ -52,6 +52,7 @@ import Once.Spec.Type as ST
 import Once.Spec.Context as SCx
 import Once.Lang.Graded as LGr
 import Once.Lang.Core.PolyTyping S as PT
+import Once.Lang.Core.PolySub as PS
 import Once.Lang.Core.Typing S as GT
 import Once.Lang.Core.Meaning S as GM
 open import Once.Adequacy.SpecCore.Schema using (defsS; kindsS)
@@ -138,7 +139,7 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
       c-iter   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψf Ψs π₁ π₂ A B f x}
                  (df : Δ ⊩ Γ ⊢[ Ψf ] f ∷ A LP.⇒[ LG.mk-kind LG.Many LG.act ] (B LP.+ A) ! π₁)
                  (dx : Δ ⊩ Γ ⊢[ Ψs ] x ∷ A ! π₂) → Fund df → Fund dx → Fund (PT.⊢iter df dx)
-      c-coerce : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π A B t} (p : A PT.<:ₚ B)
+      c-coerce : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π A B t} (p : A PS.<:ₚ B)
                  (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Fund d → Fund (PT.⊢coerce p d)
       c-lit-int   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {i} → Fund (PT.⊢lit-int {Δ = Δ} {Γ = Γ} {i = i})
       c-lit-float : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {d} → Fund (PT.⊢lit-float {Δ = Δ} {Γ = Γ} {d = d})

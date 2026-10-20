@@ -38,6 +38,7 @@ open Schema using (type)
 import Once.Lang.Core.Syntax S as G
 import Once.Lang.Core.Typing S as GT
 open import Once.Lang.Core.PolyTyping S
+open import Once.Lang.Core.PolySub
 open import Once.Lang.Core.TySubst S using (<:ₚ-refl)
 open import Once.Lang.Core.AbsTy
 
