@@ -89,7 +89,7 @@ private
   resolvesOwn (r-local ())
   resolvesOwn (r-name _ (rn-gen g))         = ⊥-elim (notGenF g)
   resolvesOwn (r-name _ (rn-import _ fa _)) = ⊥-elim (noFirst fa)
-  resolvesOwn (r-name _ (rn-own _ _))       = refl
+  resolvesOwn (r-name _ (rn-own _ _ _))     = refl
 
   checkOwn : ∀ {Σ} → Σ ≡ [] → ∀ {nm : Fin 0 → CanonicalName} {m Δ n} {L : SurfaceTyping.Locals Σ [] nm m n} {e A t}
            → e ≡ RResolved (canonical ("f" ∷ [])) → ¬ SurfaceTyping._⊢_⇐_↝_ Σ [] nm Δ L e A t

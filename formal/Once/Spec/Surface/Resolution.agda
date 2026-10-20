@@ -13,6 +13,11 @@
 -- own. A module path written with the leading shorthand `I` means
 -- `Interpretations`.
 --
+-- The program's entry, `main`, is not a name a definition can refer to
+-- (D324): it is where the program starts, not a morphism to compose with, so
+-- no definition can run the program again from its start — its only
+-- repetition is structured recursion.
+--
 -- An import contributes the `signature` declarations of the module it names:
 -- the operations of the Interpretations the program is compiled against.
 ------------------------------------------------------------------------
@@ -105,14 +110,14 @@ data ResolvesName (E : Env) : String → Expr → Set where
   rn-gen    : ∀ {x} → GenWord x → ResolvesName E x (RResolved (gen x))
   rn-import : ∀ {x p p′} → ¬ GenWord x → FirstAt x p (Env.unaliased E) → Expands p p′
             → ResolvesName E x (RResolved (canonical (p′ ++ (x ∷ []))))
-  rn-own    : ∀ {x} → ¬ GenWord x → Absent x (Env.unaliased E)
+  rn-own    : ∀ {x} → ¬ GenWord x → Absent x (Env.unaliased E) → x ≢ "main"
             → ResolvesName E x (RResolved (canonical (x ∷ [])))
 
 -- An expression, under the locally bound names `bound`.
 data Resolves (E : Env) (bound : List String) : Expr → Expr → Set where
   r-local : ∀ {x} → x ∈ bound → Resolves E bound (RVar x) (RVar x)
   r-name  : ∀ {x e} → ¬ (x ∈ bound) → ResolvesName E x e → Resolves E bound (RVar x) e
-  r-this  : ∀ {x} → Resolves E bound (RQualified x "this") (RResolved (canonical (x ∷ [])))
+  r-this  : ∀ {x} → x ≢ "main" → Resolves E bound (RQualified x "this") (RResolved (canonical (x ∷ [])))
   r-qual  : ∀ {x a p p′} → a ≢ "this" → FirstAt a p (Env.aliased E) → Expands p p′
           → Resolves E bound (RQualified x a) (RResolved (canonical (p′ ++ (x ∷ []))))
   -- An alias that names no import is read as a path of one component.

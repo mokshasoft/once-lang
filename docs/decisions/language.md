@@ -20,12 +20,14 @@ entry updates the rule it changes here, in the same commit.
   (it may run forever — a server), `Act Unit Unit` (it ends), or `Unit -> Unit`
   (no events). The entry is an ordinary USE of `main` at `Eff Unit Unit`, up to
   subtyping (`ty <: Eff Unit Unit`), exactly as an `Act A B` or `A -> B` may be
-  passed where an `Eff A B` is required; nothing about `main` is special.
+  passed where an `Eff A B` is required.
   `main : Eff Unit Unit` on a body that ends is rejected (D007: a signature
-  never widens). It takes nothing and returns nothing; `main` is an ordinary
-  entry of the module telescope, and the program runs a reference to it. There
-  is no `IO`: the sugar is gone from the language (a library alias is plan
-  0.96). (D315 ← D253, D227, D239)
+  never widens). It takes nothing and returns nothing; `main` is an entry of
+  the module telescope, and the program runs a reference to it. It is the one
+  definition no other definition may refer to (D324): a program cannot run
+  itself again from its start, so its only repetition is structured
+  recursion. There is no `IO`: the sugar is gone from the language (a library
+  alias is plan 0.96). (D324, D315 ← D253, D227, D239)
 - **Its meaning is its sequence of observable effects**, against every
   Interpretation, and nothing else: internal states, the work between two
   effects and where a run pauses are not observed. An effectful computation

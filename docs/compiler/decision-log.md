@@ -19075,3 +19075,28 @@ one type per definition can be complete for it (an oracle hypothesis would be re
 * `Bridges.complete` becomes provable from the checker's existing completeness (`infer-complete`).
 * Plan 0.59 (oracle principality) is no longer needed for correctness; `language.md` Open item 3 closes.
 * About 4 of 153 test programs (and some Haskell specs) gain a signature.
+
+## D324 — NO DEFINITION REFERS TO `main` (2026-10-20)
+
+**Decided and approved by the user, 2026-10-20** (plan 0.121 §3.2, R2).
+**Relates**: D315 (`main` at its principal type, used at `Eff Unit Unit`), D241 (no general recursion: a
+definition sees only earlier ones), GOAL.md ("Structured recursion only").
+
+### Problem
+`main` was an ordinary definition: a later definition could refer to it, at `main`'s own type. That makes
+`main` a morphism other code composes with — a definition that runs the program again from its start —
+which is outside structured recursion. In the compiler it also made `main`'s type matter twice: as a
+definition (its principal type) and as the entry (`Eff Unit Unit`); the compiler put `main` in scope at the
+entry's type, which the Spec does not (plan 0.121 §3.2, R2).
+
+### Decision
+1. **`main` is not a name a definition can refer to** (`Spec.Surface.Resolution`): a bare `main` that no
+   λ/`let`/`destruct` binds resolves to nothing (`rn-own` excludes it), and neither does `main@this`
+   (`r-this`). A program that mentions it is rejected. A local variable named `main` is unaffected.
+2. `main` stays the program's entry (`entry ≡ canonical ["main"]`), typed at its principal type and used at
+   `Eff Unit Unit` (D315).
+
+### Consequences
+* The compiler does not put `main` in scope for later definitions; its body may be compiled at
+  `Eff Unit Unit` for the entry, which no other definition observes.
+* A program's only repetition is structured recursion: `cata`, and `ana` (the loop).
